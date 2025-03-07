@@ -1,21 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
-namespace Neatoo.RemoteFactory;
+namespace Neatoo.RemoteFactory.FactoryGenerator;
 
 [Generator(LanguageNames.CSharp)]
 public class FactoryGenerator : IIncrementalGenerator
@@ -372,15 +361,15 @@ public class FactoryGenerator : IIncrementalGenerator
                                         {{
                                             return null;
                                         }}
-                                        {DoInsertUpdateDeleteMethodCall(this.DataMapperSaveMethods.Where(s => s.FactoryOperation == RemoteFactory.FactoryOperation.Delete).FirstOrDefault())};
+                                        {DoInsertUpdateDeleteMethodCall(this.DataMapperSaveMethods.Where(s => s.FactoryOperation == RemoteFactory.FactoryGenerator.FactoryOperation.Delete).FirstOrDefault())};
                                     }}
                                     else if (target.IsNew)
                                     {{
-                                        {DoInsertUpdateDeleteMethodCall(this.DataMapperSaveMethods.Where(s => s.FactoryOperation == RemoteFactory.FactoryOperation.Insert).FirstOrDefault())};
+                                        {DoInsertUpdateDeleteMethodCall(this.DataMapperSaveMethods.Where(s => s.FactoryOperation == RemoteFactory.FactoryGenerator.FactoryOperation.Insert).FirstOrDefault())};
                                     }}
                                     else
                                     {{
-                                         {DoInsertUpdateDeleteMethodCall(this.DataMapperSaveMethods.Where(s => s.FactoryOperation == RemoteFactory.FactoryOperation.Update).FirstOrDefault())};
+                                         {DoInsertUpdateDeleteMethodCall(this.DataMapperSaveMethods.Where(s => s.FactoryOperation == RemoteFactory.FactoryGenerator.FactoryOperation.Update).FirstOrDefault())};
                                     }}
                             ");
 
@@ -635,7 +624,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				methodBuilder.AppendLine($"public virtual async {this.ReturnType()} Remote{this.UniqueName}({this.ParameterDeclarationsText()})");
 				methodBuilder.AppendLine("{");
-				methodBuilder.AppendLine($" return await DoRemoteRequest.ForDelegate<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{this.ParameterIdentifiersText()}]);");
+				methodBuilder.AppendLine($" return await MakeRemoteDelegateRequest.ForDelegate<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{this.ParameterIdentifiersText()}]);");
 				methodBuilder.AppendLine("}");
 				methodBuilder.AppendLine("");
 
@@ -700,7 +689,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		{
 			var classNamedSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax) ?? throw new Exception($"Cannot get named symbol for {classDeclarationSyntax}");
 
-			var usingDirectives = new List<string>() { "using Neatoo;", "using Neatoo.Portal;" };
+			var usingDirectives = new List<string>() { "using Microsoft.Extensions.DependencyInjection;" };
 			var methodNames = new List<string>();
 			var className = classDeclarationSyntax.Identifier.Text;
 			var returnType = $"{className}";
@@ -872,8 +861,9 @@ public class FactoryGenerator : IIncrementalGenerator
 				}
 
 				source = $@"
-                    using Microsoft.Extensions.DependencyInjection;
-                    using Neatoo.Portal.Internal;
+						  #nullable enable
+
+                    using Neatoo.RemoteFactory.Internal;
                     {string.Join("\n", usingDirectives)}
                     /*
                     Debugging Messages:
@@ -891,7 +881,7 @@ public class FactoryGenerator : IIncrementalGenerator
                         {{
 
                             private readonly IServiceProvider ServiceProvider;  
-                            private readonly IDoRemoteRequest DoRemoteRequest;
+                            private readonly IMakeRemoteDelegateRequest MakeRemoteDelegateRequest;
 
                     // Delegates
                     {classText.Delegates}
@@ -904,10 +894,10 @@ public class FactoryGenerator : IIncrementalGenerator
                                     {classText.ConstructorPropertyAssignmentsLocal}
                             }}
 
-                            public {className}Factory(IServiceProvider serviceProvider, IDoRemoteRequest remoteMethodDelegate, {string.Join("\n,", classText.ConstructorParametersLocal)})
+                            public {className}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, {string.Join("\n,", classText.ConstructorParametersLocal)})
                             {{
                                     this.ServiceProvider = serviceProvider;
-                                    this.DoRemoteRequest = remoteMethodDelegate;
+                                    this.MakeRemoteDelegateRequest = remoteMethodDelegate;
                                     {classText.ConstructorPropertyAssignmentsRemote}
                             }}
 

@@ -1,5 +1,10 @@
-﻿namespace Neatoo.RemoteFactory;
+﻿#if NETSTANDARD
+namespace Neatoo.RemoteFactory.FactoryGenerator;
+#else
+namespace Neatoo.RemoteFactory;
+#endif
 
+[Flags]
 public enum AuthorizeOperation
 {
 	Create = 1,
@@ -11,3 +16,4 @@ public enum AuthorizeOperation
 	Write = 128,
 	Execute = 256
 }
+

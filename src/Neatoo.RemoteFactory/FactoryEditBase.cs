@@ -18,6 +18,6 @@ public abstract class FactoryEditBase<T> : FactoryBase, IFactoryEditBase<T>
 
 	Task<ISaveMetaProperties?> IFactoryEditBase<T>.Save(T target)
 	{
-		throw new Exception("Save not implemented");
+		throw new NotImplementedException("Save not implemented");
 	}
 }
