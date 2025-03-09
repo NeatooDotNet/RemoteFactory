@@ -50,10 +50,14 @@ public sealed class ServiceAttribute : Attribute
 	}
 }
 
-public sealed class CreateAttribute : FactoryOperationAttribute
+[System.AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor, Inherited = false, AllowMultiple = false)]
+public sealed class CreateAttribute : Attribute
 {
-	public CreateAttribute() : base(FactoryOperation.Create)
+	public FactoryOperation Operation { get; }
+
+	public CreateAttribute() 
 	{
+		this.Operation = FactoryOperation.Create;
 	}
 }
 

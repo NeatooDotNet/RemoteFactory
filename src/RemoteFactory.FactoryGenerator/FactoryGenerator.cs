@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -71,7 +72,52 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	internal class CallMethod
 	{
-		public CallMethod(INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, MethodDeclarationSyntax methodDeclaration)
+		public CallMethod(INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, ConstructorDeclarationSyntax constructorDeclarationSyntax) : this(classSymbol, methodSymbol, constructorDeclarationSyntax.AttributeLists, constructorDeclarationSyntax.ParameterList)
+		{
+			if (this.FactoryOperation != RemoteFactory.FactoryGenerator.FactoryOperation.Create)
+			{
+				throw new InvalidOperationException($"Only Create can be a constructor. Method {methodSymbol.Name}");
+			}
+
+			this.Name = "Create";
+			this.IsConstructor = true;
+		}
+
+		public CallMethod(INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, MethodDeclarationSyntax methodDeclarationSyntax, List<string> messages) : this(classSymbol, methodSymbol, methodDeclarationSyntax.AttributeLists, methodDeclarationSyntax.ParameterList)
+		{
+			if (methodSymbol.ReturnType.ToDisplayString().Contains(classSymbol.Name))
+			{
+				var methodType = methodSymbol.ReturnType.ToDisplayString();
+
+				if (methodType.Contains(@"Task<"))
+				{
+					methodType = Regex.Match(methodType, @"Task<(.*?)>").Groups[1].Value;
+					messages.Add($"Method {methodSymbol.Name} had Task removed {methodType}");
+				}
+
+				if (methodType.EndsWith("?"))
+				{
+					this.IsNullable = true;
+					methodType = methodType.Substring(0, methodType.Length - 1);
+					messages.Add($"Method {methodSymbol.Name} had ? removed {methodType}");
+				}
+
+				if (methodType == classSymbol.ToDisplayString())
+				{
+					if (((int?)this.FactoryOperation & (int)RemoteFactory.FactoryGenerator.AuthorizeOperation.Read) == 0)
+					{
+						throw new InvalidOperationException("Only Fetch and Create can return the target type");
+					}
+					if (!methodSymbol.IsStatic)
+					{
+						throw new InvalidOperationException($"{methodSymbol.Name} must be static. Only static factories are allowed.");
+					}
+					this.IsStaticFactory = true;
+				}
+			}
+		}
+
+		private CallMethod(INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, SyntaxList<AttributeListSyntax> attributeLists, ParameterListSyntax? parameterListSyntax)
 		{
 			var attributes = methodSymbol.GetAttributes().Select(a => a.AttributeClass?.Name.Replace("Attribute", "")).Where(a => a != null).ToList();
 
@@ -91,7 +137,7 @@ public class FactoryGenerator : IIncrementalGenerator
 				}
 				if (attribute == "Authorize")
 				{
-					var attr = methodDeclaration.AttributeLists.SelectMany(a => a.Attributes)
+					var attr = attributeLists.SelectMany(a => a.Attributes)
 						 .Where(a => a.Name.ToString() == "Authorize")
 						 .SingleOrDefault()?
 						 .ArgumentList?.Arguments.ToFullString();
@@ -136,9 +182,9 @@ public class FactoryGenerator : IIncrementalGenerator
 			//}
 			//else
 			//{
-			if (methodDeclaration != null)
+			if (parameterListSyntax != null)
 			{
-				this.Parameters = [.. methodDeclaration.ParameterList.Parameters.Select(p => new ParameterInfo()
+				this.Parameters = [.. parameterListSyntax.Parameters.Select(p => new ParameterInfo()
 				{
 					Name = p.Identifier.Text,
 					Type = p.Type!.ToFullString(),
@@ -159,9 +205,13 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		}
 
+
 		public string Name { get; set; }
 		public string ClassName { get; set; }
 		public string NamePostfix => this.Name.Replace(this.FactoryOperation?.ToString() ?? "", "");
+		public bool IsConstructor { get; } = false;
+		public bool IsStaticFactory { get; } = false;
+		public bool IsNullable { get; } = false;
 		public bool IsBool { get; private set; }
 		public bool IsTask { get; private set; }
 		public bool IsRemote { get; private set; }
@@ -223,7 +273,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		// Even though they always return a value
 		public override bool IsNullable => true;
 
-	  public override StringBuilder PublicMethod(FactoryText classText)
+		public override StringBuilder PublicMethod(FactoryText classText)
 		{
 			return new StringBuilder();
 		}
@@ -416,6 +466,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		public override bool IsTask => this.IsRemote || this.CallMethod.IsTask || this.AuthCallMethods.Any(m => m.IsTask);
 		public override bool IsRemote => this.CallMethod.IsRemote || this.AuthCallMethods.Any(m => m.IsRemote);
 		public override bool IsAsync => (this.HasAuth && this.CallMethod.IsTask) || this.AuthCallMethods.Any(m => m.IsTask);
+		public override bool IsNullable => this.CallMethod.IsNullable;
 
 		public CallMethod CallMethod { get; set; }
 
@@ -437,14 +488,25 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				var targetType = this.TargetType;
 
-				if(this.IsNullable)
+				if (this.IsNullable)
 				{
 					targetType = $"{targetType}?";
 				}
 
 				methodCall += $"<{targetType}>";
 
-				methodCall = $"{methodCall}(target, FactoryOperation.{this.FactoryOperation}, () => target.{this.Name} ({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
+				if (this.CallMethod.IsConstructor)
+				{
+					methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => new {this.ConcreteType}({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
+				}
+				else if (this.CallMethod.IsStaticFactory)
+				{
+					methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => {this.ConcreteType}.{this.Name}({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
+				}
+				else
+				{
+					methodCall = $"{methodCall}(target, FactoryOperation.{this.FactoryOperation}, () => target.{this.Name} ({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
+				}
 
 				if (this.IsAsync && this.CallMethod.IsTask)
 				{
@@ -469,7 +531,11 @@ public class FactoryGenerator : IIncrementalGenerator
 		{
 			var methodBuilder = base.LocalMethodStart();
 
-			methodBuilder.AppendLine($"var target = ServiceProvider.GetRequiredService<{this.ConcreteType}>();");
+			if (!this.CallMethod.IsConstructor)
+			{
+				methodBuilder.AppendLine($"var target = ServiceProvider.GetRequiredService<{this.ConcreteType}>();");
+			}
+
 			methodBuilder.AppendLine($"{this.ServiceAssignmentsText}");
 			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall};");
 			methodBuilder.AppendLine("}");
@@ -758,7 +824,7 @@ public class FactoryGenerator : IIncrementalGenerator
 					recurseClassDeclaration = GetBaseClassDeclarationSyntax(semanticModel, recurseClassDeclaration, messages);
 				}
 
-
+				messages.Add($"Class: {classNamedSymbol.ToDisplayString()} Name: {classNamedSymbol.Name}");
 				var targetCallMethods = FindTargetMethods(targetType, classNamedSymbol, messages);
 				var authCallMethods = FindAuthMethods(semanticModel, targetType, classNamedSymbol, messages);
 
@@ -986,20 +1052,31 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		foreach (var method in methods.Where(m => m.GetAttributes().Any()).ToList())
 		{
-			if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not MethodDeclarationSyntax methodDeclaration)
+			CallMethod callMethod;
+			messages.Add($"Method: {method.Name} ReturnType: {method.ReturnType.ToDisplayString()}");
+
+			if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ConstructorDeclarationSyntax constructorDeclaration)
+			{
+				callMethod = new CallMethod(namedTypeSymbol, method, constructorDeclaration);
+			}
+			else if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax methodDeclaration)
+			{
+				callMethod = new CallMethod(namedTypeSymbol, method, methodDeclaration, messages);
+			}
+			else
 			{
 				messages.Add($"No MethodDeclarationSyntax for {method.Name}");
 				continue;
 			}
 
-			var methodInfo = new CallMethod(namedTypeSymbol, method, methodDeclaration);
-			if (methodInfo.FactoryOperation != null || methodInfo.AuthorizeOperation != null)
+
+			if (callMethod.FactoryOperation != null || callMethod.AuthorizeOperation != null)
 			{
-				callMethodInfoList.Add(methodInfo);
+				callMethodInfoList.Add(callMethod);
 			}
 			else
 			{
-				messages.Add($"No Factory or Authorize attribute for {methodInfo.Name}");
+				messages.Add($"No Factory or Authorize attribute for {callMethod.Name}");
 			}
 		}
 		return callMethodInfoList;
@@ -1036,7 +1113,7 @@ public class FactoryGenerator : IIncrementalGenerator
 						continue;
 					}
 
-					var callMethod = new CallMethod(classNamedSymbol, method, methodDeclaration);
+					var callMethod = new CallMethod(classNamedSymbol, method, methodDeclaration, messages);
 
 					if (callMethod.AuthorizeOperation != null)
 					{

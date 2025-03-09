@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA2201</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj"  OutputItemType="Analyzer"  />
+    <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
+    <ProjectReference Include="..\HorseFarm.Ef\HorseFarm.Ef.csproj" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces"></PackageReference>
+		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild"></PackageReference>
+	</ItemGroup>
+</Project>
