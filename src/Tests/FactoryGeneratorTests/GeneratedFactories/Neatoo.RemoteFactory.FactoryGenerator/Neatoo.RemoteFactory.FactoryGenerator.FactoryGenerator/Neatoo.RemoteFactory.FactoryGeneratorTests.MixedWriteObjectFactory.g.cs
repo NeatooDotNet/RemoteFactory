@@ -1,0 +1,1084 @@
+﻿#nullable enable
+using Neatoo.RemoteFactory.Internal;
+using Neatoo.RemoteFactory;
+using Microsoft.Extensions.DependencyInjection;
+using static Neatoo.RemoteFactory.FactoryGeneratorTests.MixedWriteTests;
+using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
+
+/*
+                    Debugging Messages:
+                    Parent class: MixedWriteTests
+No MethodDeclarationSyntax for GetType
+No MethodDeclarationSyntax for MemberwiseClone
+No AuthorizeAttribute
+
+                    */
+namespace Neatoo.RemoteFactory.FactoryGeneratorTests
+{
+    public interface IMixedWriteObjectFactory
+    {
+        MixedWriteObject? SaveVoid(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveBool(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveTask(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target);
+        MixedWriteObject? SaveBoolFalseDep(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target);
+        Task<MixedWriteObject?> SaveTaskBoolFalseDep(MixedWriteObject target);
+        MixedWriteObject? SaveVoid(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveTask(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveTaskBoolFalse(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param);
+        Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param);
+    }
+
+    internal class MixedWriteObjectFactory : FactorySaveBase<MixedWriteObject>, IFactorySave<MixedWriteObject>, IMixedWriteObjectFactory
+    {
+        private readonly IServiceProvider ServiceProvider;
+        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
+        // Delegates
+        public delegate Task<MixedWriteObject?> SaveVoidDepDelegate(MixedWriteObject target);
+        public delegate Task<MixedWriteObject?> SaveBoolTrueDepDelegate(MixedWriteObject target);
+        public delegate Task<MixedWriteObject?> SaveBool1Delegate(MixedWriteObject target, int? param);
+        public delegate Task<MixedWriteObject?> SaveBoolTrueDep1Delegate(MixedWriteObject target, int? param);
+        public delegate Task<MixedWriteObject?> SaveBoolFalseDep1Delegate(MixedWriteObject target, int? param);
+        public delegate Task<MixedWriteObject?> SaveTaskDep1Delegate(MixedWriteObject target, int? param);
+        public delegate Task<MixedWriteObject?> SaveTaskBoolDep1Delegate(MixedWriteObject target, int? param);
+        // Delegate Properties to provide Local or Remote fork in execution
+        public SaveVoidDepDelegate SaveVoidDepProperty { get; }
+        public SaveBoolTrueDepDelegate SaveBoolTrueDepProperty { get; }
+        public SaveBool1Delegate SaveBool1Property { get; }
+        public SaveBoolTrueDep1Delegate SaveBoolTrueDep1Property { get; }
+        public SaveBoolFalseDep1Delegate SaveBoolFalseDep1Property { get; }
+        public SaveTaskDep1Delegate SaveTaskDep1Property { get; }
+        public SaveTaskBoolDep1Delegate SaveTaskBoolDep1Property { get; }
+
+        public MixedWriteObjectFactory(IServiceProvider serviceProvider)
+        {
+            this.ServiceProvider = serviceProvider;
+            SaveVoidDepProperty = LocalSaveVoidDep;
+            SaveBoolTrueDepProperty = LocalSaveBoolTrueDep;
+            SaveBool1Property = LocalSaveBool1;
+            SaveBoolTrueDep1Property = LocalSaveBoolTrueDep1;
+            SaveBoolFalseDep1Property = LocalSaveBoolFalseDep1;
+            SaveTaskDep1Property = LocalSaveTaskDep1;
+            SaveTaskBoolDep1Property = LocalSaveTaskBoolDep1;
+        }
+
+        public MixedWriteObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
+        {
+            this.ServiceProvider = serviceProvider;
+            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+            SaveVoidDepProperty = RemoteSaveVoidDep;
+            SaveBoolTrueDepProperty = RemoteSaveBoolTrueDep;
+            SaveBool1Property = RemoteSaveBool1;
+            SaveBoolTrueDep1Property = RemoteSaveBoolTrueDep1;
+            SaveBoolFalseDep1Property = RemoteSaveBoolFalseDep1;
+            SaveTaskDep1Property = RemoteSaveTaskDep1;
+            SaveTaskBoolDep1Property = RemoteSaveTaskBoolDep1;
+        }
+
+        public MixedWriteObject? LocalInsertVoid(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid());
+        }
+
+        public MixedWriteObject? LocalInsertBool(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool());
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTask(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask());
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskBool(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool());
+        }
+
+        public MixedWriteObject? LocalInsertVoid1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid(param));
+        }
+
+        public MixedWriteObject? LocalInsertBool1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool(param));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTask1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask(param));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskBool1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool(param));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskBoolFalse(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalse(param));
+        }
+
+        public MixedWriteObject? LocalInsertVoidDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(service));
+        }
+
+        public MixedWriteObject? LocalInsertBoolTrueDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(service));
+        }
+
+        public MixedWriteObject? LocalInsertBoolFalseDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskBoolDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskBoolFalseDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalseDep(service));
+        }
+
+        public MixedWriteObject? LocalInsertVoidDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(param, service));
+        }
+
+        public MixedWriteObject? LocalInsertBoolTrueDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(param, service));
+        }
+
+        public MixedWriteObject? LocalInsertBoolFalseDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(param, service));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(param, service));
+        }
+
+        public Task<MixedWriteObject?> LocalInsertTaskBoolDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(param, service));
+        }
+
+        public MixedWriteObject? LocalUpdateVoid(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid());
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateBool(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool());
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateTask(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask());
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateTaskBool(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool());
+        }
+
+        public MixedWriteObject? LocalUpdateVoid1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid(param));
+        }
+
+        public MixedWriteObject? LocalUpdateBool1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool(param));
+        }
+
+        public MixedWriteObject? LocalUpdateTask1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask(param));
+        }
+
+        public MixedWriteObject? LocalUpdateTaskBool1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool(param));
+        }
+
+        public MixedWriteObject? LocalUpdateTaskBoolFalse(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalse(param));
+        }
+
+        public MixedWriteObject? LocalUpdateVoidDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateBoolTrueDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return Task.FromResult(DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(service)));
+        }
+
+        public MixedWriteObject? LocalUpdateBoolFalseDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateTaskDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(service));
+        }
+
+        public MixedWriteObject? LocalUpdateTaskBoolDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateTaskBoolFalseDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalseDep(service));
+        }
+
+        public MixedWriteObject? LocalUpdateVoidDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(param, service));
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateBoolTrueDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return Task.FromResult(DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(param, service)));
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateBoolFalseDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(param, service));
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateTaskDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(param, service));
+        }
+
+        public Task<MixedWriteObject?> LocalUpdateTaskBoolDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(param, service));
+        }
+
+        public MixedWriteObject? LocalDeleteVoid(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid());
+        }
+
+        public MixedWriteObject? LocalDeleteBool(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool());
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteTask(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask());
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteTaskBool(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool());
+        }
+
+        public MixedWriteObject? LocalDeleteVoid1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid(param));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteBool1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return Task.FromResult(DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool(param)));
+        }
+
+        public MixedWriteObject? LocalDeleteTask1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask(param));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteTaskBool1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool(param));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteTaskBoolFalse(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalse(param));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteVoidDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return Task.FromResult(DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(service)));
+        }
+
+        public MixedWriteObject? LocalDeleteBoolTrueDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(service));
+        }
+
+        public MixedWriteObject? LocalDeleteBoolFalseDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteTaskDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(service));
+        }
+
+        public MixedWriteObject? LocalDeleteTaskBoolDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(service));
+        }
+
+        public MixedWriteObject? LocalDeleteTaskBoolFalseDep(MixedWriteObject target)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalseDep(service));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteVoidDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallBoolAsync<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(param, service));
+        }
+
+        public MixedWriteObject? LocalDeleteBoolTrueDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(param, service));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteBoolFalseDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return Task.FromResult(DoFactoryMethodCallBool<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(param, service)));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteTaskDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return DoFactoryMethodCallAsync<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(param, service));
+        }
+
+        public Task<MixedWriteObject?> LocalDeleteTaskBoolDep1(MixedWriteObject target, int? param)
+        {
+            var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
+            var service = ServiceProvider.GetRequiredService<IService>();
+            return Task.FromResult(DoFactoryMethodCall<MixedWriteObject?>(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(param, service)));
+        }
+
+        public virtual MixedWriteObject? SaveVoid(MixedWriteObject target)
+        {
+            return LocalSaveVoid(target);
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<MixedWriteObject>.Save(MixedWriteObject target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target));
+        }
+
+        public virtual MixedWriteObject? LocalSaveVoid(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteVoid(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertVoid(target);
+            }
+            else
+            {
+                return LocalUpdateVoid(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target)
+        {
+            return LocalSaveBool(target);
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveBool(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteBool(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertBool(target);
+            }
+            else
+            {
+                return await LocalUpdateBool(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTask(MixedWriteObject target)
+        {
+            return LocalSaveTask(target);
+        }
+
+        public virtual Task<MixedWriteObject?> LocalSaveTask(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return Task.FromResult(default(MixedWriteObject));
+                }
+
+                return LocalDeleteTask(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertTask(target);
+            }
+            else
+            {
+                return LocalUpdateTask(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target)
+        {
+            return LocalSaveTaskBool(target);
+        }
+
+        public virtual Task<MixedWriteObject?> LocalSaveTaskBool(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return Task.FromResult(default(MixedWriteObject));
+                }
+
+                return LocalDeleteTaskBool(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertTaskBool(target);
+            }
+            else
+            {
+                return LocalUpdateTaskBool(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target)
+        {
+            return SaveVoidDepProperty(target);
+        }
+
+        public virtual async Task<MixedWriteObject?> RemoteSaveVoidDep(MixedWriteObject target)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MixedWriteObject?>(typeof(SaveVoidDepDelegate), [target]))!;
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveVoidDep(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return await LocalDeleteVoidDep(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertVoidDep(target);
+            }
+            else
+            {
+                return LocalUpdateVoidDep(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target)
+        {
+            return SaveBoolTrueDepProperty(target);
+        }
+
+        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep(MixedWriteObject target)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MixedWriteObject?>(typeof(SaveBoolTrueDepDelegate), [target]))!;
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteBoolTrueDep(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertBoolTrueDep(target);
+            }
+            else
+            {
+                return await LocalUpdateBoolTrueDep(target);
+            }
+        }
+
+        public virtual MixedWriteObject? SaveBoolFalseDep(MixedWriteObject target)
+        {
+            return LocalSaveBoolFalseDep(target);
+        }
+
+        public virtual MixedWriteObject? LocalSaveBoolFalseDep(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteBoolFalseDep(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertBoolFalseDep(target);
+            }
+            else
+            {
+                return LocalUpdateBoolFalseDep(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target)
+        {
+            return LocalSaveTaskDep(target);
+        }
+
+        public virtual Task<MixedWriteObject?> LocalSaveTaskDep(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return Task.FromResult(default(MixedWriteObject));
+                }
+
+                return LocalDeleteTaskDep(target);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertTaskDep(target);
+            }
+            else
+            {
+                return LocalUpdateTaskDep(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target)
+        {
+            return LocalSaveTaskBoolDep(target);
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolDep(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteTaskBoolDep(target);
+            }
+            else if (target.IsNew)
+            {
+                return await LocalInsertTaskBoolDep(target);
+            }
+            else
+            {
+                return LocalUpdateTaskBoolDep(target);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskBoolFalseDep(MixedWriteObject target)
+        {
+            return LocalSaveTaskBoolFalseDep(target);
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolFalseDep(MixedWriteObject target)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteTaskBoolFalseDep(target);
+            }
+            else if (target.IsNew)
+            {
+                return await LocalInsertTaskBoolFalseDep(target);
+            }
+            else
+            {
+                return await LocalUpdateTaskBoolFalseDep(target);
+            }
+        }
+
+        public virtual MixedWriteObject? SaveVoid(MixedWriteObject target, int? param)
+        {
+            return LocalSaveVoid1(target, param);
+        }
+
+        public virtual MixedWriteObject? LocalSaveVoid1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteVoid1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertVoid1(target, param);
+            }
+            else
+            {
+                return LocalUpdateVoid1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param)
+        {
+            return SaveBool1Property(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> RemoteSaveBool1(MixedWriteObject target, int? param)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MixedWriteObject?>(typeof(SaveBool1Delegate), [target, param]))!;
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveBool1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return await LocalDeleteBool1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertBool1(target, param);
+            }
+            else
+            {
+                return LocalUpdateBool1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTask(MixedWriteObject target, int? param)
+        {
+            return LocalSaveTask1(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveTask1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteTask1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return await LocalInsertTask1(target, param);
+            }
+            else
+            {
+                return LocalUpdateTask1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, int? param)
+        {
+            return LocalSaveTaskBool1(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBool1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return await LocalDeleteTaskBool1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return await LocalInsertTaskBool1(target, param);
+            }
+            else
+            {
+                return LocalUpdateTaskBool1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskBoolFalse(MixedWriteObject target, int? param)
+        {
+            return LocalSaveTaskBoolFalse(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolFalse(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return await LocalDeleteTaskBoolFalse(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return await LocalInsertTaskBoolFalse(target, param);
+            }
+            else
+            {
+                return LocalUpdateTaskBoolFalse(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, int? param)
+        {
+            return LocalSaveVoidDep1(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveVoidDep1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return await LocalDeleteVoidDep1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertVoidDep1(target, param);
+            }
+            else
+            {
+                return LocalUpdateVoidDep1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param)
+        {
+            return SaveBoolTrueDep1Property(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep1(MixedWriteObject target, int? param)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MixedWriteObject?>(typeof(SaveBoolTrueDep1Delegate), [target, param]))!;
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return LocalDeleteBoolTrueDep1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertBoolTrueDep1(target, param);
+            }
+            else
+            {
+                return await LocalUpdateBoolTrueDep1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param)
+        {
+            return SaveBoolFalseDep1Property(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> RemoteSaveBoolFalseDep1(MixedWriteObject target, int? param)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MixedWriteObject?>(typeof(SaveBoolFalseDep1Delegate), [target, param]))!;
+        }
+
+        public virtual async Task<MixedWriteObject?> LocalSaveBoolFalseDep1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return default(MixedWriteObject);
+                }
+
+                return await LocalDeleteBoolFalseDep1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertBoolFalseDep1(target, param);
+            }
+            else
+            {
+                return await LocalUpdateBoolFalseDep1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param)
+        {
+            return SaveTaskDep1Property(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> RemoteSaveTaskDep1(MixedWriteObject target, int? param)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MixedWriteObject?>(typeof(SaveTaskDep1Delegate), [target, param]))!;
+        }
+
+        public virtual Task<MixedWriteObject?> LocalSaveTaskDep1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return Task.FromResult(default(MixedWriteObject));
+                }
+
+                return LocalDeleteTaskDep1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertTaskDep1(target, param);
+            }
+            else
+            {
+                return LocalUpdateTaskDep1(target, param);
+            }
+        }
+
+        public virtual Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param)
+        {
+            return SaveTaskBoolDep1Property(target, param);
+        }
+
+        public virtual async Task<MixedWriteObject?> RemoteSaveTaskBoolDep1(MixedWriteObject target, int? param)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MixedWriteObject?>(typeof(SaveTaskBoolDep1Delegate), [target, param]))!;
+        }
+
+        public virtual Task<MixedWriteObject?> LocalSaveTaskBoolDep1(MixedWriteObject target, int? param)
+        {
+            if (target.IsDeleted)
+            {
+                if (target.IsNew)
+                {
+                    return Task.FromResult(default(MixedWriteObject));
+                }
+
+                return LocalDeleteTaskBoolDep1(target, param);
+            }
+            else if (target.IsNew)
+            {
+                return LocalInsertTaskBoolDep1(target, param);
+            }
+            else
+            {
+                return LocalUpdateTaskBoolDep1(target, param);
+            }
+        }
+
+        public static void FactoryServiceRegistrar(IServiceCollection services)
+        {
+            services.AddTransient<MixedWriteObject>();
+            services.AddScoped<MixedWriteObjectFactory>();
+            services.AddScoped<IMixedWriteObjectFactory, MixedWriteObjectFactory>();
+            services.AddScoped<SaveVoidDepDelegate>(cc =>
+            {
+                var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
+                return (MixedWriteObject target) => factory.LocalSaveVoidDep(target);
+            });
+            services.AddScoped<SaveBoolTrueDepDelegate>(cc =>
+            {
+                var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
+                return (MixedWriteObject target) => factory.LocalSaveBoolTrueDep(target);
+            });
+            services.AddScoped<SaveBool1Delegate>(cc =>
+            {
+                var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
+                return (MixedWriteObject target, int? param) => factory.LocalSaveBool1(target, param);
+            });
+            services.AddScoped<SaveBoolTrueDep1Delegate>(cc =>
+            {
+                var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
+                return (MixedWriteObject target, int? param) => factory.LocalSaveBoolTrueDep1(target, param);
+            });
+            services.AddScoped<SaveBoolFalseDep1Delegate>(cc =>
+            {
+                var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
+                return (MixedWriteObject target, int? param) => factory.LocalSaveBoolFalseDep1(target, param);
+            });
+            services.AddScoped<SaveTaskDep1Delegate>(cc =>
+            {
+                var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
+                return (MixedWriteObject target, int? param) => factory.LocalSaveTaskDep1(target, param);
+            });
+            services.AddScoped<SaveTaskBoolDep1Delegate>(cc =>
+            {
+                var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
+                return (MixedWriteObject target, int? param) => factory.LocalSaveTaskBoolDep1(target, param);
+            });
+            services.AddScoped<IFactorySave<MixedWriteObject>, MixedWriteObjectFactory>();
+        }
+    }
+}

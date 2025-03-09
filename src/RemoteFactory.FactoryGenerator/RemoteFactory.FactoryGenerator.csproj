@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<AssemblyName>Neatoo.RemoteFactory.FactoryGenerator</AssemblyName>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Include="..\RemoteFactory\AuthorizeOperation.cs" Link="AuthorizeOperation.cs" />
+	  <Compile Include="..\RemoteFactory\FactoryAttributes.cs" Link="FactoryAttributes.cs" />
+	  <Compile Include="..\RemoteFactory\FactoryOperation.cs" Link="FactoryOperation.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="System.Text.Json" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<RootNamespace>Neatoo.RemoteFactory</RootNamespace>
+
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<AssemblyName>Neatoo.RemoteFactory</AssemblyName>
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+		<DebugType>embedded</DebugType>
+		<Description>A 2-Tier Client/Server Data Mapper for .NET Domain Models (aka Object Graphs) powered by Roslyn</Description>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
+		<GenerateDocumentationFile>false</GenerateDocumentationFile>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageId>Neatoo.RemoteFactory</PackageId>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageProjectUrl>https://github.com/NeatooDotNet/RemoteFactory</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReleaseNotes>None yet</PackageReleaseNotes>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageTags>OO Domain Modeling C# .NET Blazor WPF ASP.NET CSLA</PackageTags>
+		<PackageVersion>2025.1.0-beta</PackageVersion>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/NeatooDotNet/RemoteFactory</RepositoryUrl>
+	</PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+	  <None Include="..\..\README.md" Pack="true" PackagePath="" />
+	  <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
+	  <None Include="$(OutputPath)\$(AssemblyName).FactoryGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" PrivateAssets="all"  />
+  </ItemGroup>
+</Project>
