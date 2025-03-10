@@ -20,7 +20,7 @@ public static partial class RemoteFactoryServices
 {
 	public const string HttpClientKey = "NeatooHttpClient";
 
-	public static void AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory portalServer, params Assembly[] assemblies)
+	public static IServiceCollection AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory portalServer, params Assembly[] assemblies)
 	{
 		ArgumentNullException.ThrowIfNull(services, nameof(services));
 		ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
@@ -69,6 +69,7 @@ public static partial class RemoteFactoryServices
 			services.AutoRegisterAssemblyTypes(assembly);
 		}
 
+		return services;
 	}
 
 	private static void AutoRegisterAssemblyTypes(this IServiceCollection services, Assembly assembly)
