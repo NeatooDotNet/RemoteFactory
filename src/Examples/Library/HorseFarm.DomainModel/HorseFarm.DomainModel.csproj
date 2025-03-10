@@ -12,7 +12,14 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces"></PackageReference>
-		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild"></PackageReference>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all"></PackageReference>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all"></PackageReference>
+		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" PrivateAssets="all"></PackageReference>
+	</ItemGroup>
+
+
+	<ItemGroup>
+		<BlazorWebAssemblyLazyLoad Include="Microsoft.EntityFrameworkCore.dll" />
+		<BlazorWebAssemblyLazyLoad Include="Microsoft.EntityFrameworkCore.Relational.dll" />
 	</ItemGroup>
 </Project>
