@@ -23,24 +23,10 @@ public interface IHorseFarm : ICustomBase
 [Factory]
 internal sealed class HorseFarm : CustomBase, IHorseFarm
 {
-	[JsonIgnore]
 	private readonly ILightHorseFactory lightHorseFactory;
-	[JsonIgnore]
 	private readonly IHeavyHorseFactory heavyHorseFactory;
-	[JsonIgnore]
 	private readonly IRacingChariotFactory racingChariotFactory;
-	[JsonIgnore]
 	private readonly IWagonFactory wagonFactory;
-
-	public HorseFarm()
-	{
-		this.lightHorseFactory = null!;
-		this.heavyHorseFactory = null!;
-		this.racingChariotFactory = null!;
-		this.wagonFactory = null!;
-		this.Pasture = null!;
-		this.Carts = null!;
-	}
 
 	[Create]
 	public HorseFarm([Service] ILightHorseFactory lightHorseFactory,
@@ -60,6 +46,8 @@ internal sealed class HorseFarm : CustomBase, IHorseFarm
 
 	public IPasture Pasture { get; set { field = value; this.OnPropertyChanged(); } }
 	public ICartCollection Carts { get; set { field = value; this.OnPropertyChanged(); } }
+
+	[JsonIgnore]
 	public IEnumerable<IHorse> Horses => this.Carts.SelectMany(c => c.Horses).Union(this.Pasture.HorseList);
 
 	public IRacingChariot AddRacingChariot()
@@ -116,7 +104,7 @@ internal sealed class HorseFarm : CustomBase, IHorseFarm
 
 	[Remote]
 	[Fetch]
-	public async Task Fetch([Service] IHorseFarmContext horseBarnContext,
+	public async Task<bool> Fetch([Service] IHorseFarmContext horseBarnContext,
 									[Service] IPastureFactory pastureFactory,
 									[Service] ICartCollectionFactory cartFactory)
 	{
@@ -128,6 +116,14 @@ internal sealed class HorseFarm : CustomBase, IHorseFarm
 			this.Pasture = pastureFactory.Fetch(horseBarn.Pasture);
 			this.Carts = cartFactory.Fetch(horseBarn.Carts);
 		}
+		else
+		{
+			return false;
+		}
+
+		this.IsNew = false;
+
+		return true;
 	}
 
 	[Remote]

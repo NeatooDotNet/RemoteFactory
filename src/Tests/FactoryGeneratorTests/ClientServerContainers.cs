@@ -67,9 +67,9 @@ internal static class ClientServerContainers
 				RegisterIfAttribute(serverCollection);
 				RegisterIfAttribute(clientCollection);
 
-				serverCollection.AddNeatooRemoteFactory(NeatooHost.Local, Assembly.GetExecutingAssembly());
+				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Local, Assembly.GetExecutingAssembly());
 				clientCollection.AddScoped<ServerServiceProvider>();
-				clientCollection.AddNeatooRemoteFactory(NeatooHost.Remote, Assembly.GetExecutingAssembly());
+				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
 
 				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
 				serverContainer = serverCollection.BuildServiceProvider();

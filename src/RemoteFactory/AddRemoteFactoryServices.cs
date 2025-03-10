@@ -8,35 +8,61 @@ using System.Text.RegularExpressions;
 
 namespace Neatoo.RemoteFactory;
 
-public enum NeatooHost
+public enum NeatooFactory
 {
 	Local,
 	Remote
 }
 
-public static partial class RemoteFactoryServices
- {
+public delegate IEnumerable<Type> GetServiceImplementationTypes(Type type);
 
-	public static void AddNeatooRemoteFactory(this IServiceCollection services, NeatooHost portalServer, params Assembly[] assemblies)
+public static partial class RemoteFactoryServices
+{
+	public const string HttpClientKey = "NeatooHttpClient";
+
+	public static void AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory portalServer, params Assembly[] assemblies)
 	{
 		ArgumentNullException.ThrowIfNull(services, nameof(services));
 		ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
 
-		if(assemblies.Length == 0)
+		if (assemblies.Length == 0)
 		{
 			assemblies = [Assembly.GetExecutingAssembly()!];
 		}
 
-		services.AddSingleton<ILocalAssemblies>(new LocalAssemblies(assemblies));
+		services.AddSingleton<IServiceAssemblies>(new ServiceAssemblies(assemblies));
 		services.AddScopedSelf<INeatooJsonSerializer, NeatooJsonSerializer>();
+		services.AddScoped<NeatooJsonTypeInfoResolver>();
 		services.AddTransient<NeatooJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
-		services.AddTransient<HandleRemoteDelegateRequest>(s => LocalServer.HandlePortalRequest(s));
 
-		if (portalServer == NeatooHost.Remote)
+		if (portalServer == NeatooFactory.Remote)
 		{
 			services.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
+
+			services.AddTransient(sp =>
+			{
+				var httpClient = sp.GetRequiredKeyedService<HttpClient>(HttpClientKey);
+				return MakeRemoteDelegateRequestHttpCallImplementation.Create(httpClient);
+			});
 		}
+		else
+		{
+			services.AddTransient<HandleRemoteDelegateRequest>(s => LocalServer.HandlePortalRequest(s));
+		}
+
+		services.AddSingleton<GetServiceImplementationTypes>(s =>
+			{
+				return (Type type) =>
+				{
+					// This is why these are delegates
+					// Need access to the DI container
+					return services
+							  .Where(d => d.ServiceType == type && d.ImplementationType != null)
+							  .Select(d => d.ImplementationType!)
+							  .Distinct();
+				};
+			});
 
 		foreach (var assembly in assemblies)
 		{
@@ -76,7 +102,7 @@ public static partial class RemoteFactoryServices
 	public static IServiceCollection AddTransientSelf<TService, TImpl>(this IServiceCollection services) where TImpl : class, TService where TService : class
 	{
 		services.AddTransient<TService, TImpl>();
-		services.AddTransient(provider => (TImpl) provider.GetRequiredService<TService>());
+		services.AddTransient(provider => (TImpl)provider.GetRequiredService<TService>());
 		return services;
 	}
 
@@ -94,6 +120,6 @@ public static partial class RemoteFactoryServices
 		return services;
 	}
 
-   [GeneratedRegex(@"(.*)([\.|\+])\w+$")]
-   public static partial Regex GetConcreteName();
+	[GeneratedRegex(@"(.*)([\.|\+])\w+$")]
+	public static partial Regex GetConcreteName();
 }

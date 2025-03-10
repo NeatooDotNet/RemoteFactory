@@ -4,7 +4,6 @@ using System.Text;
 
 namespace Neatoo.RemoteFactory.Internal;
 
-public delegate Task<RemoteResponseDto> MakeRemoteDelegateRequestCall(RemoteDelegateRequestDto request);
 
 public interface IMakeRemoteDelegateRequest
 {
@@ -14,9 +13,9 @@ public interface IMakeRemoteDelegateRequest
 public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 {
 	private readonly INeatooJsonSerializer NeatooJsonSerializer;
-	private readonly MakeRemoteDelegateRequestCall MakeRemoteDelegateRequestCall;
+	private readonly MakeRemoteDelegateRequestHttpCall MakeRemoteDelegateRequestCall;
 
-	public MakeRemoteDelegateRequest(INeatooJsonSerializer neatooJsonSerializer, MakeRemoteDelegateRequestCall sendRemoteDelegateRequestToServer)
+	public MakeRemoteDelegateRequest(INeatooJsonSerializer neatooJsonSerializer, MakeRemoteDelegateRequestHttpCall sendRemoteDelegateRequestToServer)
 	{
 	  this.NeatooJsonSerializer = neatooJsonSerializer;
 	  this.MakeRemoteDelegateRequestCall = sendRemoteDelegateRequestToServer;

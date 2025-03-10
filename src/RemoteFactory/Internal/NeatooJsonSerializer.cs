@@ -20,22 +20,23 @@ public interface INeatooJsonSerializer
 
 public class NeatooJsonSerializer : INeatooJsonSerializer
 {
-	private readonly ILocalAssemblies localAssemblies;
+	private readonly IServiceAssemblies serviceAssemblies;
 
 	JsonSerializerOptions Options { get; }
 
 	private NeatooReferenceHandler ReferenceHandler { get; } = new NeatooReferenceHandler();
 
-	public NeatooJsonSerializer(NeatooJsonConverterFactory neatooJsonConverterFactory, ILocalAssemblies localAssemblies)
+	public NeatooJsonSerializer(NeatooJsonConverterFactory neatooJsonConverterFactory, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver)
 	{
 		this.Options = new JsonSerializerOptions
 		{
 			ReferenceHandler = this.ReferenceHandler,
 			Converters = { neatooJsonConverterFactory },
+			TypeInfoResolver = neatooDefaultJsonTypeInfoResolver,
 			WriteIndented = true,
 			IncludeFields = true
 		};
-		this.localAssemblies = localAssemblies;
+		this.serviceAssemblies = serviceAssemblies;
 	}
 
 
@@ -167,7 +168,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 
 		var result = new RemoteDelegateRequest()
 		{
-			DelegateType = this.localAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType),
+			DelegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType),
 			Parameters = parameters,
 			Target = target
 		};
@@ -192,7 +193,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			return null;
 		}
 
-		var targetType = this.localAssemblies.FindType(objectTypeJson.AssemblyType);
+		var targetType = this.serviceAssemblies.FindType(objectTypeJson.AssemblyType);
 		ArgumentNullException.ThrowIfNull(targetType, nameof(objectTypeJson.AssemblyType));
 		return this.Deserialize(objectTypeJson.Json, targetType);
 	}

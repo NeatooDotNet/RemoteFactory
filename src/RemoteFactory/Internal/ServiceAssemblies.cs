@@ -2,16 +2,16 @@
 
 namespace Neatoo.RemoteFactory.Internal;
 
-public interface ILocalAssemblies
+public interface IServiceAssemblies
 {
 	bool HasType(Type type);
 	Type? FindType(string fullName);
 }
 
-public class LocalAssemblies : ILocalAssemblies
+public class ServiceAssemblies : IServiceAssemblies
 {
 	private List<Assembly> Assemblies { get; } = new List<Assembly>();
-	public LocalAssemblies(Assembly[] assemblies)
+	public ServiceAssemblies(Assembly[] assemblies)
 	{
 		this.Assemblies.AddRange(assemblies);
 

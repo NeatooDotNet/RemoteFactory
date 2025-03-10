@@ -37,8 +37,7 @@ public class HorseFarmTests : IAsyncLifetime
 		this.clientScope.Dispose();
 	}
 
-	[Fact]
-	public async Task HorseFarm_FullRun()
+	private async Task<IHorseFarm> CreateAndSaveHorseFarm()
 	{
 		var horseFarm = this.horseFarmFactory.Create();
 
@@ -64,8 +63,7 @@ public class HorseFarmTests : IAsyncLifetime
 			wagon.Name = "Wagon";
 			wagon.NumberOfHorses = 2;
 
-			// Key: Cannot add an ILightHorse to the wagon 
-			// No validation, no if statements
+			// Key Point: Cannot add a ILightHorse to the wagon 
 			horseFarm.MoveHorseToCart(heavyHorse, wagon);
 
 			criteria.Name = "Heavy Horse B";
@@ -78,7 +76,15 @@ public class HorseFarmTests : IAsyncLifetime
 
 		AddCartToHorseFarm();
 
-		horseFarm = (IHorseFarm) (await this.horseFarmFactory.Save(horseFarm))!;
+		horseFarm = (IHorseFarm)(await this.horseFarmFactory.Save(horseFarm))!;
+
+		return horseFarm;
+	}
+
+	[Fact]
+	public async Task HorseFarm_CreateAndSave()
+	{
+		var horseFarm = await this.CreateAndSaveHorseFarm();
 
 		var horseFarmContext = this.serverScope.ServiceProvider.GetRequiredService<IHorseFarmContext>();
 
@@ -94,28 +100,34 @@ public class HorseFarmTests : IAsyncLifetime
 		var pasture = await horseFarmContext.Pastures.ToListAsync();
 		Assert.Equal(pasture.Single().Id, horseFarm.Pasture.Id);
 
-		//horseFarm = await this.horseFarmFactory.Fetch();
-
-		//AddCartToHorseFarm();
-
-		//foreach (var item in horseFarm.Horses)
-		//{
-		//	item.Name = Guid.NewGuid().ToString();
-		//}
-
-		//var horseNames = horseFarm.Horses.Select(h => h.Name).ToList();
-
-		//// Mix of Inserts and Updates
-		//horseFarm = (IHorseFarm) (await this.horseFarmFactory.Save(horseFarm))!;
-
-		//Assert.Equivalent(horseNames, horseFarmContext.Horses.Select(h => h.Name).ToList());
-		//Assert.Equivalent(horseFarm.Carts.Select(c => c.Id).ToList(), horseFarmContext.Carts.Select(c => c.Id).ToList());
-		//Assert.Equal(horseFarm.Pasture.Id, horseFarmContext.Pastures.Single().Id);
-
-
-		//horseFarm = await this.horseFarmFactory.Fetch();
-
 	}
 
+	[Fact]
+	public async Task HorseFarm_FetchAndSave()
+	{
+		var horseFarm = await this.CreateAndSaveHorseFarm();
 
+		horseFarm = await this.horseFarmFactory.Fetch();
+
+		Assert.False(horseFarm!.IsNew);
+
+		var criteria = this.horseCriteriaFactory.Create();
+
+		criteria.Name = "Heavy Horse C";
+		criteria.Breed = Breed.Clydesdale;
+		criteria.BirthDay = DateOnly.FromDateTime(DateTime.Now);
+
+		var heavyHorse = (IHeavyHorse)horseFarm.AddNewHorse(criteria);
+
+		criteria.Name = "Light Horse C";
+		criteria.Breed = Breed.Thoroughbred;
+		criteria.BirthDay = DateOnly.FromDateTime(DateTime.Now);
+
+		var lightHorse = (ILightHorse)horseFarm.AddNewHorse(criteria);
+
+		horseFarm = await this.horseFarmFactory.Save(horseFarm);
+
+
+
+	}
 }

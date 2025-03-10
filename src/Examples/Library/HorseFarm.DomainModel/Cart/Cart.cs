@@ -4,6 +4,7 @@ using Neatoo.RemoteFactory;
 using System.Collections.Specialized;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 namespace HorseFarm.DomainModel.Cart;
 
@@ -39,6 +40,7 @@ internal class Cart<C, H> : CustomBase, ICart
 
 	public IHorseCollection HorseList { get; set { field = value; this.OnPropertyChanged(); } } = null!;
 
+	[JsonIgnore]
 	internal IEnumerable<IHorse> Horses => this.HorseList.Cast<IHorse>();
 
 	IEnumerable<IHorse> ICart.Horses => this.HorseList.Cast<IHorse>();
@@ -88,6 +90,7 @@ internal class Cart<C, H> : CustomBase, ICart
 		this.Name = cart.Name;
 		this.NumberOfHorses = cart.NumberOfHorses;
 		this.HorseList = horseFactory.Fetch(cart.Horses);
+		this.IsNew = false;
 	}
 
 	[Insert]

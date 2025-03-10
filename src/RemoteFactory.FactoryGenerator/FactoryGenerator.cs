@@ -567,7 +567,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		{
 			var methodBuilder = base.LocalMethodStart();
 
-			if (!this.CallMethod.IsConstructor)
+			if (!this.CallMethod.IsConstructor && !this.CallMethod.IsStaticFactory)
 			{
 				methodBuilder.AppendLine($"var target = ServiceProvider.GetRequiredService<{this.ConcreteType}>();");
 			}
@@ -828,7 +828,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			if (classNamedSymbol.Interfaces.Any(i => i.Name == $"I{classNamedSymbol.Name}"))
 			{
 				targetType = $"I{classNamedSymbol.Name}";
-				factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<I{classNamedSymbol.Name}, {classNamedSymbol.Name}>();");
 			}
 
 			// Generate the source code for the found method
@@ -990,6 +989,16 @@ public class FactoryGenerator : IIncrementalGenerator
 					factoryText.MethodsBuilder.Append(methodBuilder);
 				}
 
+				// We only need the target registered if we do a fetch or create that is not the constructor
+				if (factoryMethods.OfType<ReadFactoryMethod>().Any(f => !(f.CallMethod.IsConstructor || f.CallMethod.IsStaticFactory)))
+				{
+					factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetConcreteType}>();");
+					if (targetType != targetConcreteType)
+					{
+						factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetType}, {targetConcreteType}>();");
+					}
+				}
+
 				var isSave = saveMethods.Any();
 				var editText = isSave ? "Save" : "";
 				if (isSave)
@@ -1043,7 +1052,6 @@ public class FactoryGenerator : IIncrementalGenerator
 
                             public static void FactoryServiceRegistrar(IServiceCollection services)
                             {{
-                                services.AddTransient<{targetClassName}>();
                                 services.AddScoped<{targetClassName}Factory>();
                                 services.AddScoped<I{targetClassName}Factory, {targetClassName}Factory>();
                     {factoryText.ServiceRegistrations}

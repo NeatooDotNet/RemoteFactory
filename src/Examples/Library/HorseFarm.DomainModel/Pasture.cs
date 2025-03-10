@@ -2,13 +2,14 @@
 using HorseFarm.DomainModel.Horse;
 using Neatoo.RemoteFactory;
 using System.Collections.Specialized;
+using System.Collections;
+using System.Text.Json.Serialization;
 
 namespace HorseFarm.DomainModel;
 
 public interface IPasture : ICustomBase
 {
-	internal IHorseCollection HorseList { get; }
-	public INotifyCollectionChanged Horses { get; }
+	IHorseCollection HorseList { get; }
 	internal void RemoveHorse(IHorse horse);
 }
 
@@ -16,8 +17,6 @@ public interface IPasture : ICustomBase
 internal sealed class Pasture : CustomBase, IPasture
 {
 	public IHorseCollection HorseList { get; set { field = value; this.OnPropertyChanged(); } } = null!;
-
-	public INotifyCollectionChanged Horses => this.HorseList;
 
 	public void RemoveHorse(IHorse horse)
 	{
@@ -37,6 +36,7 @@ internal sealed class Pasture : CustomBase, IPasture
 	{
 		this.Id = pasture.Id;
 		this.HorseList = horseListFactory.Fetch(pasture.Horses);
+		this.IsNew = false;
 	}
 
 	[Insert]

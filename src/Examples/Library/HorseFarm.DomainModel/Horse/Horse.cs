@@ -57,6 +57,7 @@ internal class Horse<H> : CustomBase, IHorse
 		this.BirthDate = horse.BirthDate;
 		this.Breed = (Breed)horse.Breed;
 		this.Name = horse.Name;
+		this.IsNew = false;
 	}
 
 	HorseEntity? horse;

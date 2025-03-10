@@ -13,11 +13,8 @@ public interface IHorseCriteria
 [Factory]
 internal sealed class HorseCriteria : CustomBase, IHorseCriteria
 {
-
 	[Create]
-	public HorseCriteria()
-	{
-	}
+	public HorseCriteria()	{	}
 
 	[Required]
 	public string? Name { get; set { field = value; this.OnPropertyChanged(); } } = null;
@@ -27,6 +24,5 @@ internal sealed class HorseCriteria : CustomBase, IHorseCriteria
 
 	[Required]
 	public DateOnly? BirthDay { get; set { field = value; this.OnPropertyChanged(); } } = null;
-
 
 }
