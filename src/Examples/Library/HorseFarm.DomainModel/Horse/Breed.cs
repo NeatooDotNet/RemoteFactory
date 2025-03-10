@@ -1,4 +1,4 @@
-﻿namespace HorseFarm.Lib.Horse;
+﻿namespace HorseFarm.DomainModel.Horse;
 
 public enum Breed
 {

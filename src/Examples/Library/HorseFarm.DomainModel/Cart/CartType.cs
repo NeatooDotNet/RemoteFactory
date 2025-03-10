@@ -1,4 +1,4 @@
-﻿namespace HorseFarm.Lib.Cart;
+﻿namespace HorseFarm.DomainModel.Cart;
 
 internal enum CartType
 {

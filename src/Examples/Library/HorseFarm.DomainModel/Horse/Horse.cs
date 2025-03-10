@@ -3,12 +3,11 @@ using HorseFarm.Ef;
 using Microsoft.EntityFrameworkCore;
 
 
-namespace HorseFarm.Lib.Horse;
+namespace HorseFarm.DomainModel.Horse;
 
 
-public interface IHorse
+public interface IHorse : ICustomBase
 {
-	internal int? Id { get; }
 	string Name { get; set; }
 	DateOnly BirthDate { get; set; }
 	Breed Breed { get; }
@@ -31,18 +30,23 @@ public interface IHorse
 internal class Horse<H> : CustomBase, IHorse
 	 where H : Horse<H>
 {
-	public string Name { get; set { field = value; this.OnPropertyChanged(); } } = null!;
+	public Horse()
+	{
+		this.Name = null!;
+	}
+
+	public Horse(IHorseCriteria horseCriteria)
+	{
+		this.Breed = horseCriteria.Breed!.Value;
+		this.BirthDate = horseCriteria.BirthDay!.Value;
+		this.Name = horseCriteria.Name!;
+	}
+
+	public string Name { get; set { field = value; this.OnPropertyChanged(); } }
 
 	public DateOnly BirthDate { get; set { field = value; this.OnPropertyChanged(); } }
 
 	public Breed Breed { get; set { field = value; this.OnPropertyChanged(); } }
-
-	public virtual void Create(IHorseCriteria horseCriteria)
-	{
-		this.Breed = horseCriteria.Breed;
-		this.BirthDate = horseCriteria.BirthDay!.Value;
-		this.Name = horseCriteria.Name!;
-	}
 
 #if !CLIENT
 
@@ -51,7 +55,7 @@ internal class Horse<H> : CustomBase, IHorse
 	{
 		this.Id = horse.Id;
 		this.BirthDate = horse.BirthDate;
-		this.Breed = (Breed) horse.Breed;
+		this.Breed = (Breed)horse.Breed;
 		this.Name = horse.Name;
 	}
 
@@ -60,29 +64,29 @@ internal class Horse<H> : CustomBase, IHorse
 	[Insert]
 	internal void Insert(PastureEntity pasture)
 	{
-	  this.horse = new HorseEntity
-	  {
-		 BirthDate = this.BirthDate,
-		 Breed = (int) this.Breed,
-		 Name = this.Name
-	  };
+		this.horse = new HorseEntity
+		{
+			BirthDate = this.BirthDate,
+			Breed = (int)this.Breed,
+			Name = this.Name
+		};
 
-	  pasture.Horses.Add(this.horse);
+		pasture.Horses.Add(this.horse);
 
-	  this.horse.PropertyChanged += this.HandleIdPropertyChanged;
+		this.horse.PropertyChanged += this.HandleIdPropertyChanged;
 	}
 
 	[Insert]
 	internal void Insert(CartEntity cart)
 	{
-	  var horse = new HorseEntity
-	  {
-		 BirthDate = this.BirthDate,
-		 Breed = (int) this.Breed,
-		 Name = this.Name
-	  };
+		var horse = new HorseEntity
+		{
+			BirthDate = this.BirthDate,
+			Breed = (int)this.Breed,
+			Name = this.Name
+		};
 
-	  cart.Horses.Add(horse);
+		cart.Horses.Add(horse);
 
 		horse.PropertyChanged += this.HandleIdPropertyChanged;
 	}
@@ -107,7 +111,7 @@ internal class Horse<H> : CustomBase, IHorse
 
 		horse.Pasture?.Horses.Remove(horse);
 		horse.BirthDate = this.BirthDate;
-		horse.Breed = (int) this.Breed;
+		horse.Breed = (int)this.Breed;
 		horse.Name = this.Name;
 		cart.Horses.Add(horse);
 	}

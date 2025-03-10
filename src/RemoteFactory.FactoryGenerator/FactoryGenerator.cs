@@ -222,14 +222,49 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public void MakeAuthCall(FactoryMethod inMethod, StringBuilder methodBuilder)
 		{
-			var parameters = inMethod.Parameters.ToList();
+			var parameterText = "";
 
-			if (!this.Parameters.Any(p => p.IsTarget))
+			if (this.Parameters.Count > 0)
 			{
-				parameters.RemoveAll(p => p.IsTarget);
+				var declaredParameters = inMethod.Parameters.ToList();
+
+				declaredParameters.RemoveAll(p => p.IsTarget);
+
+				var callParameter = this.Parameters.GetEnumerator();
+				var declaredParameter = declaredParameters.GetEnumerator();
+				var parameters = new List<string>();
+
+				declaredParameter.MoveNext();
+
+				while (callParameter.MoveNext() && declaredParameter.Current != null)
+				{
+					while (declaredParameter.Current.Type != callParameter.Current.Type)
+					{
+						if (!declaredParameter.MoveNext())
+						{
+							break;
+						}
+					}
+
+					if (declaredParameter.Current == null)
+					{
+						break;
+					}
+
+					parameters.Add(declaredParameter.Current.Name);
+
+					declaredParameter.MoveNext();
+				}
+
+				while(callParameter.Current != null)
+				{
+					parameters.Add($"/* Missing {callParameter.Current.Type} {callParameter.Current.Name} */");
+					callParameter.MoveNext();
+				}
+
+				parameterText = string.Join(", ", parameters);
 			}
 
-			var parameterText = string.Join(", ", parameters.Select(a => a.Name).Take(this.Parameters.Count));
 
 			var callText = $"{this.ClassName}.{this.Name}({parameterText})";
 
@@ -255,6 +290,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			methodBuilder.AppendLine($"return {returnText};");
 			methodBuilder.AppendLine("}");
+
 		}
 	}
 
@@ -547,13 +583,12 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	internal class CanFactoryMethod : FactoryMethod
 	{
-		public CanFactoryMethod(string targetType, string concreteType, FactoryMethod factoryMethod) : base(targetType, concreteType)
+		public CanFactoryMethod(string targetType, string concreteType, string methodName, ICollection<CallMethod> authMethods) : base(targetType, concreteType)
 		{
-			this.Name = $"Can{factoryMethod.Name}";
+			this.Name = $"Can{methodName}";
 			this.UniqueName = this.Name;
-			this.NamePostfix = factoryMethod.NamePostfix;
-			this.AuthCallMethods.AddRange(factoryMethod.AuthCallMethods);
-			this.Parameters = [.. factoryMethod.Parameters.Where(p => !p.IsTarget)];
+			this.AuthCallMethods.AddRange(authMethods);
+			this.Parameters = authMethods.SelectMany(m => m.Parameters).Distinct().ToList();
 		}
 
 		public override bool IsBool => true;
@@ -750,6 +785,15 @@ public class FactoryGenerator : IIncrementalGenerator
 		public IParameterSymbol? ParameterSymbol { get; set; } = null!;
 		public bool IsService { get; set; }
 		public bool IsTarget { get; set; }
+
+		public override bool Equals(object obj)
+		{
+			return obj is ParameterInfo info &&
+						 this.Name == info.Name &&
+						 this.Type == info.Type;
+		}
+
+		override public int GetHashCode() => (this.Name, this.Type).GetHashCode();
 	}
 
 	internal class FactoryText
@@ -878,32 +922,28 @@ public class FactoryGenerator : IIncrementalGenerator
 					}
 				}
 
-				foreach (var factoryMethod in factoryMethods.ToList())
+				if (authCallMethods.Any())
 				{
-					if (factoryMethod.HasAuth)
+					foreach (var factoryOperation in factoryMethods.Where(f => f.FactoryOperation != null).Select(f => f.FactoryOperation!.Value).Distinct().ToList())
 					{
-						if (factoryMethod.AuthCallMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+						var authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) != 0).ToList();
+						if (authMethods.Any() && !authMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
 						{
-							messages.Add($"Factory Can{factoryMethod.Name} not created because it matches to an auth method with a {targetType} parameter");
-						}
-						else
-						{
-							if (factoryMethod is WriteFactoryMethod writeFactoryMethod)
-							{
-								// Don't add a CanInsert, CanDelete and CanUpdate when the Auth is the same for each
-								// In cases where there is only an AuthorizedOperation.Write
-								if (factoryMethod.AuthCallMethods.Any(m => ((int?)m.AuthorizeOperation & (int?)factoryMethod.FactoryOperation) == (int?)m.AuthorizeOperation))
-								{
-									factoryMethods.Add(new CanFactoryMethod(targetType, targetConcreteType, factoryMethod));
-								}
-							}
-							else
-							{
-								factoryMethods.Add(new CanFactoryMethod(targetType, targetConcreteType, factoryMethod));
-							}
+							var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryOperation.ToString(), authMethods);
+							factoryMethods.Add(canMethod);
 						}
 					}
+
+					var allWrite = new[] {AuthorizeOperation.Write, AuthorizeOperation.Insert, AuthorizeOperation.Update, AuthorizeOperation.Delete}.Aggregate((a, b) => a | b);
+					var writeAuthMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)allWrite) != 0).ToList();
+
+					if (writeAuthMethods.Any() && !writeAuthMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+					{
+						var canMethod = new CanFactoryMethod(targetType, targetConcreteType, "Save", writeAuthMethods);
+						factoryMethods.Add(canMethod);
+					}
 				}
+
 
 				var defaultSaveMethod = factoryMethods.OfType<SaveFactoryMethod>()
 									 .Where(s => s.Parameters.Where(p => !p.IsTarget && !p.IsService).Count() == 0 && s.Parameters.First().IsTarget)
@@ -1018,7 +1058,11 @@ public class FactoryGenerator : IIncrementalGenerator
 			}
 			catch (Exception ex)
 			{
-				source = $"/* Error: {ex.GetType().FullName} {ex.Message} */";
+				source = @$"/* Error: {ex.GetType().FullName} {ex.Message} 
+
+	{WithStringBuilder(messages)}
+*/";
+
 			}
 
 			context.AddSource($"{namespaceName}.{targetClassName}Factory.g.cs", source);
@@ -1053,7 +1097,6 @@ public class FactoryGenerator : IIncrementalGenerator
 		foreach (var method in methods.Where(m => m.GetAttributes().Any()).ToList())
 		{
 			CallMethod callMethod;
-			messages.Add($"Method: {method.Name} ReturnType: {method.ReturnType.ToDisplayString()}");
 
 			if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ConstructorDeclarationSyntax constructorDeclaration)
 			{
@@ -1166,42 +1209,46 @@ public class FactoryGenerator : IIncrementalGenerator
 					}
 				}
 
-				var methodParameter = method.Parameters.GetEnumerator();
-				var authMethodParameter = authMethod.Parameters.GetEnumerator();
+				// This used to not match the auth method if the parameters didn't match
+				// But..now CallMethod.CallAuthMethod matches on parameters
+				// So, we include all of the Auth methods so there's a compile error
+				// if there's an auth method that can't be called (???)
 
-				methodParameter.MoveNext();
-				authMethodParameter.MoveNext();
 
-				// Don't disqualify an auth method we're in a write method and the first parameter is the target
-				// But also accept auth methods that have a first parameter of target
-				if (methodParameter.Current?.IsTarget ?? false)
-				{
-					methodParameter.MoveNext();
-					if (method.IsSave && authMethodParameter.Current != null && authMethodParameter.Current.IsTarget)
-					{
-						authMethodParameter.MoveNext();
-					}
-				}
+				//var methodParameter = method.Parameters.GetEnumerator();
+				//var authMethodParameter = authMethod.Parameters.GetEnumerator();
 
-				if (authMethodParameter.Current != null)
-				{
-					do
-					{
-						if (authMethodParameter.Current.ParameterSymbol != null && methodParameter.Current?.ParameterSymbol != null
-							&& authMethodParameter.Current.ParameterSymbol.Type.ToDisplayString() != methodParameter.Current.ParameterSymbol.Type.ToDisplayString())
-						{
-							messages.Add($"Parameter type mismatch for {authMethod.Name} and {method.Name} parameter {authMethodParameter.Current.Name} {authMethodParameter.Current.Type}");
-							messages.Add($"{authMethodParameter.Current.ParameterSymbol.Type.ToDisplayString()} != {methodParameter.Current.ParameterSymbol.Type.ToDisplayString()}");
-							assignAuthMethod = false;
-							break;
-						}
-						else if (authMethodParameter.Current.Type != methodParameter.Current?.Type)
-						{
-							assignAuthMethod = false;
-							break;
-						}
-					} while (authMethodParameter.MoveNext() && methodParameter.MoveNext());
-				}
+				//methodParameter.MoveNext();
+				//authMethodParameter.MoveNext();
+
+				//// Don't disqualify an auth method we're in a write method and the first parameter is the target
+				//// But also accept auth methods that have a first parameter of target
+				//if (methodParameter.Current?.IsTarget ?? false)
+				//{
+				//	methodParameter.MoveNext();
+				//	if (method.IsSave && authMethodParameter.Current != null && authMethodParameter.Current.IsTarget)
+				//	{
+				//		authMethodParameter.MoveNext();
+				//	}
+				//}
+
+				//if (authMethodParameter.Current != null)
+				//{
+				//	do
+				//	{
+				//		if (authMethodParameter.Current.ParameterSymbol != null && methodParameter.Current?.ParameterSymbol != null
+				//			&& authMethodParameter.Current.ParameterSymbol.Type.ToDisplayString() != methodParameter.Current.ParameterSymbol.Type.ToDisplayString())
+				//		{
+				//			assignAuthMethod = false;
+				//			break;
+				//		}
+				//		else if (authMethodParameter.Current.Type != methodParameter.Current?.Type)
+				//		{
+				//			assignAuthMethod = false;
+				//			break;
+				//		}
+				//	} while (authMethodParameter.MoveNext() && methodParameter.MoveNext());
+				//}
 
 				if (assignAuthMethod)
 				{

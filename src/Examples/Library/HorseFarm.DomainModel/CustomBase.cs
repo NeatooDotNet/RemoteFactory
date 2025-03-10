@@ -4,14 +4,14 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace HorseFarm.Lib;
+namespace HorseFarm.DomainModel;
 
-internal interface ICustomEditBase<T>
+public interface ICustomBase : IFactorySaveMeta
 {
 	int? Id { get; }
 }
 
-internal abstract class CustomBase : INotifyPropertyChanged, IFactorySaveMeta
+internal abstract class CustomBase : INotifyPropertyChanged, ICustomBase
 {
 	private int? _id;
 
@@ -26,7 +26,7 @@ internal abstract class CustomBase : INotifyPropertyChanged, IFactorySaveMeta
 	}
 
    public bool IsDeleted { get; set; }
-   public bool IsNew { get; set; }
+	public bool IsNew { get; set; } = true;
 
 	public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -34,8 +34,6 @@ internal abstract class CustomBase : INotifyPropertyChanged, IFactorySaveMeta
 	{
 		this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 	}
-
-#if !CLIENT
 
 	/// <summary>
 	/// Get the Id from the EF model entity once it is saved
@@ -54,7 +52,5 @@ internal abstract class CustomBase : INotifyPropertyChanged, IFactorySaveMeta
 			id.PropertyChanged -= this.HandleIdPropertyChanged;
 		}
 	}
-
-#endif
 
 }

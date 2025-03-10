@@ -7,10 +7,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
 public class ReadTests
 {
 	[Factory]
-	public class ReadObject
+	public class ReadObject : ReadParamObject
 	{
-		public bool CreateCalled { get; set; }
-
 		[Create]
 
 		public void CreateVoid()
@@ -40,50 +38,6 @@ public class ReadTests
 		{
 		 this.CreateCalled = true;
 			return Task.FromResult(true);
-		}
-
-		[Create]
-
-		public void CreateVoid(int? param)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-		}
-
-		[Create]
-
-		public bool CreateBool(int? param)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			return true;
-		}
-
-		[Create]
-
-		public Task CreateTask(int? param)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			return Task.CompletedTask;
-		}
-
-		[Create]
-
-		public Task<bool> CreateTaskBool(int? param)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			return Task.FromResult(true);
-		}
-
-		[Create]
-
-		public Task<bool> CreateTaskBoolFalse(int? param)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			return Task.FromResult(false);
 		}
 
 		[Create]
@@ -139,57 +93,6 @@ public class ReadTests
 			return Task.FromResult(false);
 		}
 
-		[Create]
-
-		public void CreateVoidDep(int? param, [Service] IService service)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			Assert.NotNull(service);
-		}
-
-		[Create]
-
-		public bool CreateBoolTrueDep(int? param, [Service] IService service)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			Assert.NotNull(service);
-			return true;
-		}
-
-		[Create]
-
-		public bool CreateBoolFalseDep(int? param, [Service] IService service)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			Assert.NotNull(service);
-			return false;
-		}
-
-		[Create]
-
-		public Task CreateTaskDep(int? param, [Service] IService service)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			Assert.NotNull(service);
-			return Task.CompletedTask;
-		}
-
-		[Create]
-
-		public Task<bool> CreateTaskBoolDep(int? param, [Service] IService service)
-		{
-		 this.CreateCalled = true;
-			Assert.Equal(1, param);
-			Assert.NotNull(service);
-			return Task.FromResult(true);
-		}
-
-		public bool FetchCalled { get; set; }
-
 		[Fetch]
 
 		public void FetchVoid()
@@ -218,41 +121,6 @@ public class ReadTests
 		public Task<bool> FetchTaskBool()
 		{
 		 this.FetchCalled = true;
-			return Task.FromResult(true);
-		}
-
-		[Fetch]
-
-		public void FetchVoid(int? param)
-		{
-		 this.FetchCalled = true;
-			Assert.Equal(1, param);
-		}
-
-		[Fetch]
-
-		public bool FetchBool(int? param)
-		{
-		 this.FetchCalled = true;
-			Assert.Equal(1, param);
-			return true;
-		}
-
-		[Fetch]
-
-		public Task FetchTask(int? param)
-		{
-		 this.FetchCalled = true;
-			Assert.Equal(1, param);
-			return Task.CompletedTask;
-		}
-
-		[Fetch]
-
-		public Task<bool> FetchTaskBool(int? param)
-		{
-		 this.FetchCalled = true;
-			Assert.Equal(1, param);
 			return Task.FromResult(true);
 		}
 
@@ -300,11 +168,147 @@ public class ReadTests
 			return Task.FromResult(true);
 		}
 
+	}
+
+	public class ReadParamObject
+	{
+		public bool CreateCalled { get; set; }
+
+		[Create]
+
+		public void CreateVoid(int? param)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+		}
+
+		[Create]
+
+		public bool CreateBool(int? param)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			return true;
+		}
+
+		[Create]
+
+		public Task CreateTask(int? param)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			return Task.CompletedTask;
+		}
+
+		[Create]
+
+		public Task<bool> CreateTaskBool(int? param)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			return Task.FromResult(true);
+		}
+
+		[Create]
+
+		public Task<bool> CreateTaskBoolFalse(int? param)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			return Task.FromResult(false);
+		}
+
+		[Create]
+
+		public void CreateVoidDep(int? param, [Service] IService service)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			Assert.NotNull(service);
+		}
+
+		[Create]
+
+		public bool CreateBoolTrueDep(int? param, [Service] IService service)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			Assert.NotNull(service);
+			return true;
+		}
+
+		[Create]
+
+		public bool CreateBoolFalseDep(int? param, [Service] IService service)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			Assert.NotNull(service);
+			return false;
+		}
+
+		[Create]
+
+		public Task CreateTaskDep(int? param, [Service] IService service)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			Assert.NotNull(service);
+			return Task.CompletedTask;
+		}
+
+		[Create]
+
+		public Task<bool> CreateTaskBoolDep(int? param, [Service] IService service)
+		{
+			this.CreateCalled = true;
+			Assert.Equal(1, param);
+			Assert.NotNull(service);
+			return Task.FromResult(true);
+		}
+
+		public bool FetchCalled { get; set; }
+
+		[Fetch]
+
+		public void FetchVoid(int? param)
+		{
+			this.FetchCalled = true;
+			Assert.Equal(1, param);
+		}
+
+		[Fetch]
+
+		public bool FetchBool(int? param)
+		{
+			this.FetchCalled = true;
+			Assert.Equal(1, param);
+			return true;
+		}
+
+		[Fetch]
+
+		public Task FetchTask(int? param)
+		{
+			this.FetchCalled = true;
+			Assert.Equal(1, param);
+			return Task.CompletedTask;
+		}
+
+		[Fetch]
+
+		public Task<bool> FetchTaskBool(int? param)
+		{
+			this.FetchCalled = true;
+			Assert.Equal(1, param);
+			return Task.FromResult(true);
+		}
+
 		[Fetch]
 
 		public void FetchVoidDep(int? param, [Service] IService service)
 		{
-		 this.FetchCalled = true;
+			this.FetchCalled = true;
 			Assert.Equal(1, param);
 			Assert.NotNull(service);
 		}
@@ -313,7 +317,7 @@ public class ReadTests
 
 		public bool FetchBoolTrueDep(int? param, [Service] IService service)
 		{
-		 this.FetchCalled = true;
+			this.FetchCalled = true;
 			Assert.Equal(1, param);
 			Assert.NotNull(service);
 			return true;
@@ -323,7 +327,7 @@ public class ReadTests
 
 		public bool FetchBoolFalseDep(int? param, [Service] IService service)
 		{
-		 this.FetchCalled = true;
+			this.FetchCalled = true;
 			Assert.Equal(1, param);
 			Assert.NotNull(service);
 			return false;
@@ -333,7 +337,7 @@ public class ReadTests
 
 		public Task FetchTaskDep(int? param, [Service] IService service)
 		{
-		 this.FetchCalled = true;
+			this.FetchCalled = true;
 			Assert.Equal(1, param);
 			Assert.NotNull(service);
 			return Task.CompletedTask;
@@ -343,7 +347,7 @@ public class ReadTests
 
 		public Task<bool> FetchTaskBoolDep(int? param, [Service] IService service)
 		{
-		 this.FetchCalled = true;
+			this.FetchCalled = true;
 			Assert.Equal(1, param);
 			Assert.NotNull(service);
 			return Task.FromResult(true);
@@ -353,7 +357,7 @@ public class ReadTests
 
 		public Task<bool> FetchTaskBoolFalseDep(int? param, [Service] IService service)
 		{
-		 this.FetchCalled = true;
+			this.FetchCalled = true;
 			Assert.Equal(1, param);
 			Assert.NotNull(service);
 			return Task.FromResult(false);

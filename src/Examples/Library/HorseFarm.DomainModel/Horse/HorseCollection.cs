@@ -1,24 +1,25 @@
 ﻿using HorseFarm.Ef;
-using HorseFarm.Lib.Cart;
+using HorseFarm.DomainModel.Cart;
 using Neatoo.RemoteFactory;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 
-namespace HorseFarm.Lib.Horse;
+namespace HorseFarm.DomainModel.Horse;
 
-public interface IHorseCollection : ICollection<IHorse>, INotifyCollectionChanged
+public interface IHorseCollection : ICollection<IHorse>, INotifyCollectionChanged, IFactorySaveMeta
 {
 
 	internal void RemoveHorse(IHorse horse);
 }
 
 [Factory]
-internal class HorseCollection : ObservableCollection<IHorse>, IHorseCollection, IFactorySaveMeta
+internal sealed class HorseCollection : ObservableCollection<IHorse>, IHorseCollection
 {
 	public bool IsDeleted => false;
 
 	public bool IsNew => false;
 
+	[Create]
    public HorseCollection() : base()
 	{
 	}
@@ -31,11 +32,6 @@ internal class HorseCollection : ObservableCollection<IHorse>, IHorseCollection,
 		}
 	}
 
-	[Create]
-	public static void Create()
-	{
-
-	}
 
 #if !CLIENT
 

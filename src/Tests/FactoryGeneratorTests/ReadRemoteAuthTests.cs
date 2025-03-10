@@ -260,14 +260,14 @@ public class ReadRemoteAuthTests
 
 	[Factory]
 	[Authorize<ReadRemoteAuth>]
-	public class ReadRemoteAuthDataMapper : ReadTests.ReadObject
+	public class ReadRemoteAuthObj : ReadTests.ReadParamObject
 	{
 
 	}
 
 	[Factory]
 	[Authorize<ReadRemoteAuthTask>]
-	public class ReadRemoteAuthTaskDataMapper : ReadTests.ReadObject
+	public class ReadRemoteAuthTaskObj : ReadTests.ReadParamObject
 	{
 
 	}
@@ -285,7 +285,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthDataMapperFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
@@ -306,7 +306,7 @@ public class ReadRemoteAuthTests
 				result = method.Invoke(readFactory, null);
 			}
 
-			if (result is Task<ReadRemoteAuthDataMapper?> task)
+			if (result is Task<ReadRemoteAuthObj?> task)
 			{
 				if (!methodName.Contains("False"))
 				{
@@ -317,7 +317,7 @@ public class ReadRemoteAuthTests
 					Assert.Null(await task);
 				}
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthDataMapper>> authTask)
+			else if (result is Task<Authorized<ReadRemoteAuthObj>> authTask)
 			{
 				if (!methodName.Contains("False"))
 				{
@@ -328,7 +328,7 @@ public class ReadRemoteAuthTests
 					Assert.Null((await authTask).Result);
 				}
 			}
-			else if (result is Authorized<ReadRemoteAuthDataMapper> auth)
+			else if (result is Authorized<ReadRemoteAuthObj> auth)
 			{
 				Assert.True(auth.HasAccess);
 
@@ -373,7 +373,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthTaskTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthTaskDataMapperFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthTaskObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
@@ -394,7 +394,7 @@ public class ReadRemoteAuthTests
 				result = method.Invoke(readFactory, null);
 			}
 
-			if (result is Task<ReadRemoteAuthTaskDataMapper?> task)
+			if (result is Task<ReadRemoteAuthTaskObj?> task)
 			{
 				if (!methodName.Contains("False"))
 				{
@@ -405,7 +405,7 @@ public class ReadRemoteAuthTests
 					Assert.Null(await task);
 				}
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthTaskDataMapper>> authTask)
+			else if (result is Task<Authorized<ReadRemoteAuthTaskObj>> authTask)
 			{
 				if (!methodName.Contains("False"))
 				{
@@ -416,7 +416,7 @@ public class ReadRemoteAuthTests
 					Assert.Null((await authTask).Result);
 				}
 			}
-			else if (result is Authorized<ReadRemoteAuthTaskDataMapper> auth)
+			else if (result is Authorized<ReadRemoteAuthTaskObj> auth)
 			{
 				Assert.True(auth.HasAccess);
 
@@ -469,7 +469,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthBoolFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthDataMapperFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
@@ -488,22 +488,22 @@ public class ReadRemoteAuthTests
 				continue;
 			}
 
-			if (result is Task<ReadRemoteAuthDataMapper?> task)
+			if (result is Task<ReadRemoteAuthObj?> task)
 			{
 				Assert.Null(await task);
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthDataMapper>> authTask)
+			else if (result is Task<Authorized<ReadRemoteAuthObj>> authTask)
 			{
 				var auth = await authTask;
 				Assert.False(auth.HasAccess);
 				Assert.Null(auth.Result);
 				Assert.Null(auth.Message);
 			}
-			else if (result is Authorized<ReadRemoteAuthDataMapper> authDataMapper)
+			else if (result is Authorized<ReadRemoteAuthObj> authObj)
 			{
-				Assert.False(authDataMapper.HasAccess);
-				Assert.Null(authDataMapper.Result);
-				Assert.Null(authDataMapper.Message);
+				Assert.False(authObj.HasAccess);
+				Assert.Null(authObj.Result);
+				Assert.Null(authObj.Message);
 			}
 			else if (result is Task<Authorized> authorizedTask)
 			{
@@ -522,7 +522,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthStringFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthDataMapperFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
@@ -541,22 +541,22 @@ public class ReadRemoteAuthTests
 				continue;
 			}
 
-			if (result is Task<ReadRemoteAuthDataMapper?> task)
+			if (result is Task<ReadRemoteAuthObj?> task)
 			{
 				Assert.Null(await task);
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthDataMapper>> authTask)
+			else if (result is Task<Authorized<ReadRemoteAuthObj>> authTask)
 			{
 				var auth = await authTask;
 				Assert.False(auth.HasAccess);
 				Assert.Null(auth.Result);
 				Assert.Equal("Fail", auth.Message);
 			}
-			else if (result is Authorized<ReadRemoteAuthDataMapper> authDataMapper)
+			else if (result is Authorized<ReadRemoteAuthObj> authObj)
 			{
-				Assert.False(authDataMapper.HasAccess);
-				Assert.Null(authDataMapper.Result);
-				Assert.Equal("Fail", authDataMapper.Message);
+				Assert.False(authObj.HasAccess);
+				Assert.Null(authObj.Result);
+				Assert.Equal("Fail", authObj.Message);
 			}
 			else if (result is Task<Authorized> authorizedTask)
 			{

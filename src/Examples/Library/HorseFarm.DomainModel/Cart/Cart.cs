@@ -1,16 +1,15 @@
 ﻿using HorseFarm.Ef;
-using HorseFarm.Lib.Horse;
+using HorseFarm.DomainModel.Horse;
 using Neatoo.RemoteFactory;
 using System.Collections.Specialized;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
-namespace HorseFarm.Lib.Cart;
+namespace HorseFarm.DomainModel.Cart;
 
 
-public interface ICart : INotifyCollectionChanged
+public interface ICart : INotifyCollectionChanged, ICustomBase
 {
-	internal int? Id { get; }
 	string Name { get; set; }
 	int NumberOfHorses { get; set; }
 	IEnumerable<IHorse> Horses { get; }

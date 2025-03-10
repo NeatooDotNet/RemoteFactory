@@ -1,20 +1,19 @@
 ﻿using HorseFarm.Ef;
-using HorseFarm.Lib.Horse;
+using HorseFarm.DomainModel.Horse;
 using Neatoo.RemoteFactory;
 using System.Collections.Specialized;
 
-namespace HorseFarm.Lib;
+namespace HorseFarm.DomainModel;
 
-public interface IPasture
+public interface IPasture : ICustomBase
 {
-	internal int? Id { get; }
 	internal IHorseCollection HorseList { get; }
 	public INotifyCollectionChanged Horses { get; }
 	internal void RemoveHorse(IHorse horse);
 }
 
 [Factory]
-internal class Pasture : CustomBase, IPasture
+internal sealed class Pasture : CustomBase, IPasture
 {
 	public IHorseCollection HorseList { get; set { field = value; this.OnPropertyChanged(); } } = null!;
 
