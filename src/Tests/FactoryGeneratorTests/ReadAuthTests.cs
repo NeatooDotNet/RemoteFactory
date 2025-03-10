@@ -236,15 +236,15 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
 
 		[Factory]
 		[Authorize<ReadAuth>]
-		public class ReadAuthObject : ReadTests.ReadObject
-		{
+		public class ReadAuthObject : ReadTests.ReadParamObject
+	{
 
 		}
 
 		[Factory]
 		[Authorize<ReadAuthTask>]
-		public class ReadAuthTaskObject : ReadTests.ReadObject
-		{
+		public class ReadAuthTaskObject : ReadTests.ReadParamObject
+	{
 
 		}
 

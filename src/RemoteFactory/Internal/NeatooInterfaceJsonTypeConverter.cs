@@ -11,12 +11,12 @@ namespace Neatoo.RemoteFactory.Internal;
 public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 {
 	private readonly IServiceProvider scope;
-	private readonly ILocalAssemblies localAssemblies;
+	private readonly IServiceAssemblies serviceAssemblies;
 
-	public NeatooInterfaceJsonTypeConverter(IServiceProvider scope, ILocalAssemblies localAssemblies)
+	public NeatooInterfaceJsonTypeConverter(IServiceProvider scope, IServiceAssemblies serviceAssemblies)
 	{
 		this.scope = scope;
-		this.localAssemblies = localAssemblies;
+		this.serviceAssemblies = serviceAssemblies;
 	}
 
 	public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -27,9 +27,6 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 		{
 			throw new JsonException();
 		}
-
-		var editBaseType = typeToConvert;
-
 
 		T? result = default;
 		var id = string.Empty;
@@ -67,7 +64,7 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 			if (propertyName == "$type")
 			{
 				var typeName = reader.GetString() ?? throw new JsonException("Expecting string value for $type");
-				concreteType = this.localAssemblies.FindType(typeName) ?? throw new JsonException($"Could not load {typeName}");
+				concreteType = this.serviceAssemblies.FindType(typeName) ?? throw new JsonException($"Could not load {typeName}");
 			}
 			else if (propertyName == "$value")
 			{
@@ -93,7 +90,6 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 		writer.WritePropertyName("$type");
 		var type = value.GetType().FullName;
 		writer.WriteStringValue(type);
-
 
 		writer.WritePropertyName("$value");
 		JsonSerializer.Serialize(writer, value, value.GetType(), options);

@@ -1,0 +1,142 @@
+﻿@page "/"
+@using Blazor.HorseFarm.Components
+@using Neatoo
+@using global::HorseFarm.DomainModel
+@using global::HorseFarm.DomainModel.Horse
+@using global::HorseFarm.DomainModel.Cart
+
+<h1>HorseFarm</h1>
+
+@if (HorseFarm != null)
+{
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <h3 class="accent-header">Carts</h3>
+            </div>
+            <div class="col">
+                <h3 class="accent-header">Pasture</h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col" style="background-color: lightblue;">
+                <div>
+                    @foreach (var cart in HorseFarm.Carts)
+                    {
+                        <CartComponent HorseFarm="@HorseFarm" Cart="cart" HorseDragDrop="@HorseDragDrop" />
+                    }
+                </div>
+            </div>
+            <div class="col dropZone can-drop" style="background-color: lightgrey;" ondragover="event.preventDefault()" @ondrop="HandleDragDrop">
+                    <Blazor.HorseFarm.Components.PastureComponent Pasture="HorseFarm.Pasture" HorseDragDrop="@HorseDragDrop" />
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <button @onclick="Reload">Reload</button>
+                <button @onclick="ResetHorseFarm">Reset</button>
+                <button @onclick="Save">Save</button>
+            </div>
+        </div>
+    </div>
+}
+<style>
+    .accent-header {
+        font-size: 40px;
+        color: var(--accent-color);
+    }
+</style>
+
+@code {
+
+    [Inject]
+    public IHorseFarmFactory horseFarmFactory { get; set; } = default!;
+
+    [Inject]
+    public IHorseCriteriaFactory horseCriteriaFactory { get; set; } = default!;
+
+    public IHorseFarm HorseFarm { get; set; } = default!;
+
+    public HorseDragDrop HorseDragDrop { get; set; } = new HorseDragDrop();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var farm = await horseFarmFactory.Fetch();
+
+        if (farm is null)
+        {
+            await ResetHorseFarm();
+
+        }
+        else
+        {
+            HorseFarm = farm!;
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    public async Task ResetHorseFarm()
+    {
+        var farm = horseFarmFactory.Create();
+
+        var horseCriteria = horseCriteriaFactory.Create();
+        horseCriteria.Name = "Secretariat";
+        horseCriteria.Breed = Breed.Clydesdale;
+        horseCriteria.BirthDay = new DateOnly(2010, 1, 1);
+
+        farm.AddNewHorse(horseCriteria);
+
+        horseCriteria = horseCriteriaFactory.Create();
+        horseCriteria.Name = "Seattle Slew";
+        horseCriteria.Breed = Breed.Clydesdale;
+        horseCriteria.BirthDay = new DateOnly(2000, 1, 1);
+
+        farm.AddNewHorse(horseCriteria);
+
+        horseCriteria = horseCriteriaFactory.Create();
+        horseCriteria.Name = "Speedy";
+        horseCriteria.Breed = Breed.Thoroughbred;
+        horseCriteria.BirthDay = new DateOnly(2010, 1, 1);
+
+        farm.AddNewHorse(horseCriteria);
+
+        horseCriteria = horseCriteriaFactory.Create();
+        horseCriteria.Name = "Flash";
+        horseCriteria.Breed = Breed.Mustang;
+        horseCriteria.BirthDay = new DateOnly(2015, 1, 1);
+
+        farm.AddNewHorse(horseCriteria);
+
+
+        ICart cart = farm.AddRacingChariot();
+        cart.NumberOfHorses = 2;
+        cart.Name = "Racing Chariot A";
+
+        cart = farm.AddWagon();
+        cart.NumberOfHorses = 2;
+        cart.Name = "Wagon A";
+
+        HorseFarm = (await horseFarmFactory.Save(farm))!;
+
+    }
+
+    public async Task Reload()
+    {
+        HorseFarm = (await horseFarmFactory.Fetch())!;
+    }
+
+    public void HandleDragDrop()
+    {
+        if (HorseDragDrop.Horse != null)
+        {
+            HorseFarm.MoveHorseToPasture(HorseDragDrop.Horse);
+            HorseDragDrop.Dropped();
+        }
+    }
+
+    private async Task Save(MouseEventArgs e)
+    {
+        HorseFarm = (await horseFarmFactory.Save(HorseFarm))!;
+    }
+}

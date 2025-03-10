@@ -1,0 +1,57 @@
+﻿@using global::HorseFarm.DomainModel
+@using global::HorseFarm.DomainModel.Cart
+@using global::HorseFarm.DomainModel.Horse
+@inject NavigationManager Navigation
+
+
+@if (Cart != null)
+{
+    <div>
+        <label>Name: @Cart.Name</label>
+    </div>
+    <div>
+        <label>Number of Horses: @Cart.NumberOfHorses</label>
+    </div>
+    <div class="card dropZone can-drop" ondragover="event.preventDefault()" @ondrop="HandleDragDrop">
+        <div class="card-header">
+            <h4>Horses</h4>
+        </div>
+        <div class="card-body">
+            @foreach (var horse in Cart.Horses)
+            {
+                <HorseComponent Horse="horse" HorseDragDrop="@HorseDragDrop" />
+            }
+        </div>
+    </div>
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+
+    [Parameter]
+    public IHorseFarm HorseFarm { get; set; } = default!;
+
+    [Parameter]
+    public ICart Cart { get; set; } = default!;
+
+    [Parameter]
+    public HorseDragDrop HorseDragDrop { get; set; } = default!;
+
+    public void HandleDragDrop(DragEventArgs dragEventArgs)
+    {
+        if (HorseDragDrop.Horse != null && Cart.CanAddHorse(HorseDragDrop.Horse))
+        {
+            HorseFarm.MoveHorseToCart(HorseDragDrop.Horse, Cart);
+            HorseDragDrop.Dropped();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        HorseDragDrop.OnDrop += (s, e) => StateHasChanged();
+    }
+}
