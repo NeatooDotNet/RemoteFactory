@@ -76,7 +76,7 @@ public class HorseFarmTests : IAsyncLifetime
 
 		AddCartToHorseFarm();
 
-		horseFarm = (IHorseFarm)(await this.horseFarmFactory.Save(horseFarm))!;
+		horseFarm = await this.horseFarmFactory.Save(horseFarm);
 
 		return horseFarm;
 	}
@@ -126,8 +126,5 @@ public class HorseFarmTests : IAsyncLifetime
 		var lightHorse = (ILightHorse)horseFarm.AddNewHorse(criteria);
 
 		horseFarm = await this.horseFarmFactory.Save(horseFarm);
-
-
-
 	}
 }

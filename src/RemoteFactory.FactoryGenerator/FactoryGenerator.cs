@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -72,97 +73,117 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	internal class CallMethod
 	{
-		public CallMethod(INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, ConstructorDeclarationSyntax constructorDeclarationSyntax) : this(classSymbol, methodSymbol, constructorDeclarationSyntax.AttributeLists, constructorDeclarationSyntax.ParameterList)
+		public CallMethod(AttributeData attribute, INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, ConstructorDeclarationSyntax constructorDeclarationSyntax, List<string> messages) : this(attribute, classSymbol, methodSymbol, constructorDeclarationSyntax.AttributeLists, constructorDeclarationSyntax.ParameterList, messages)
 		{
-			if (this.FactoryOperation != RemoteFactory.FactoryGenerator.FactoryOperation.Create)
-			{
-				throw new InvalidOperationException($"Only Create can be a constructor. Method {methodSymbol.Name}");
-			}
-
-			this.Name = "Create";
+			this.Name = this.FactoryOperation.ToString();
 			this.IsConstructor = true;
 		}
 
-		public CallMethod(INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, MethodDeclarationSyntax methodDeclarationSyntax, List<string> messages) : this(classSymbol, methodSymbol, methodDeclarationSyntax.AttributeLists, methodDeclarationSyntax.ParameterList)
+		public CallMethod(AttributeData attribute, INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, MethodDeclarationSyntax methodDeclarationSyntax, List<string> messages) : this(attribute, classSymbol, methodSymbol, methodDeclarationSyntax.AttributeLists, methodDeclarationSyntax.ParameterList, messages)
 		{
+
+			if (this.Ignore) { return; }
+
+			var methodType = methodSymbol.ReturnType.ToDisplayString();
+
+			if (methodType.Contains(@"Task<"))
+			{
+				methodType = Regex.Match(methodType, @"Task<(.*?)>").Groups[1].Value;
+			}
+
+			if (methodSymbol.IsStatic)
+			{
+				messages.Add($"Static Method {methodSymbol.Name} Method Return Type: {methodType} Class Type: {classSymbol.ToDisplayString()}");
+			}
+
 			if (methodSymbol.ReturnType.ToDisplayString().Contains(classSymbol.Name))
 			{
-				var methodType = methodSymbol.ReturnType.ToDisplayString();
-
-				if (methodType.Contains(@"Task<"))
-				{
-					methodType = Regex.Match(methodType, @"Task<(.*?)>").Groups[1].Value;
-					messages.Add($"Method {methodSymbol.Name} had Task removed {methodType}");
-				}
 
 				if (methodType.EndsWith("?"))
 				{
 					this.IsNullable = true;
 					methodType = methodType.Substring(0, methodType.Length - 1);
-					messages.Add($"Method {methodSymbol.Name} had ? removed {methodType}");
 				}
 
 				if (methodType == classSymbol.ToDisplayString())
 				{
 					if (((int?)this.FactoryOperation & (int)RemoteFactory.FactoryGenerator.AuthorizeOperation.Read) == 0)
 					{
-						throw new InvalidOperationException("Only Fetch and Create can return the target type");
+						messages.Add($"Ignoring {this.Name}, Only Fetch and Create methods can return the target type");
+						this.Ignore = true;
 					}
 					if (!methodSymbol.IsStatic)
 					{
-						throw new InvalidOperationException($"{methodSymbol.Name} must be static. Only static factories are allowed.");
+						messages.Add($"Ignoring {methodSymbol.Name}; it must be static. Only static factories are allowed.");
+						this.Ignore = true;
 					}
+
 					this.IsStaticFactory = true;
 				}
+
+			}
+			else if (this.AuthorizeOperation != null && !(methodType == "bool" || methodType == "string" || methodType == "string?"))
+			{
+				messages.Add($"Ignoring {methodSymbol.Name}; wrong return type of {methodType} for an Authorize method");
+				this.Ignore = true;
+			}
+			else if (this.FactoryOperation != null && !(methodType == "void" || methodType == "bool" || methodType == "System.Threading.Tasks.Task"))
+			{
+				messages.Add($"Ignoring {methodSymbol.Name}; wrong return type of {methodType} for a Factory method");
+				this.Ignore = true;
 			}
 		}
 
-		private CallMethod(INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, SyntaxList<AttributeListSyntax> attributeLists, ParameterListSyntax? parameterListSyntax)
+		private CallMethod(AttributeData attribute_, INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, SyntaxList<AttributeListSyntax> attributeLists, ParameterListSyntax? parameterListSyntax, List<string> messages)
 		{
-			var attributes = methodSymbol.GetAttributes().Select(a => a.AttributeClass?.Name.Replace("Attribute", "")).Where(a => a != null).ToList();
+			var otherAttributes = methodSymbol.GetAttributes().Select(a => a.AttributeClass?.Name.Replace("Attribute", "")).Where(a => a != null).ToList();
+			var attributeName = attribute_.AttributeClass?.Name.Replace("Attribute", "");
 
 			this.Name = methodSymbol.Name;
 			this.ClassName = methodSymbol.ContainingType.Name;
 			this.IsBool = methodSymbol.ReturnType.ToString().Contains("bool");
 			this.IsTask = methodSymbol.ReturnType.ToString().Contains("Task");
-			this.IsRemote = attributes.Any(a => a == "Remote");
-			this.IsSave = attributes.Any(a => factorySaveOperationAttributes.Contains(a!));
+			this.IsRemote = otherAttributes.Any(a => a == "Remote");
+			this.IsSave = factorySaveOperationAttributes.Contains(attributeName!);
 
-			foreach (var attribute in attributes)
+			if (Enum.TryParse<FactoryOperation>(attributeName, out var dmm))
 			{
-				if (Enum.TryParse<FactoryOperation>(attribute, out var dmm))
+				this.FactoryOperation = dmm;
+			}
+			else if (attributeName == "Authorize")
+			{
+				var attr = attributeLists.SelectMany(a => a.Attributes)
+					 .Where(a => a.Name.ToString() == "Authorize")
+					 .SingleOrDefault()?
+					 .ArgumentList?.Arguments.ToFullString();
+
+				var pattern = @"AuthorizeOperation\.(\w+)";
+
+				// Use Regex.Matches to find all matches in the attr string
+				var matches = Regex.Matches(attr, pattern);
+				var authorizeOperationList = new List<AuthorizeOperation>();
+
+				foreach (Match match in matches)
 				{
-					this.FactoryOperation = dmm;
-					break;
-				}
-				if (attribute == "Authorize")
-				{
-					var attr = attributeLists.SelectMany(a => a.Attributes)
-						 .Where(a => a.Name.ToString() == "Authorize")
-						 .SingleOrDefault()?
-						 .ArgumentList?.Arguments.ToFullString();
+					// Extract the matched value (e.g., "Read", "Write")
+					var value = match.Groups[1].Value;
 
-					var pattern = @"AuthorizeOperation\.(\w+)";
-
-					// Use Regex.Matches to find all matches in the attr string
-					var matches = Regex.Matches(attr, pattern);
-					var authorizeOperationList = new List<AuthorizeOperation>();
-
-					foreach (Match match in matches)
+					// Try to parse the value into the AuthorizeOperation enum
+					if (Enum.TryParse<AuthorizeOperation>(value, out var dmType))
 					{
-						// Extract the matched value (e.g., "Read", "Write")
-						var value = match.Groups[1].Value;
-
-						// Try to parse the value into the AuthorizeOperation enum
-						if (Enum.TryParse<AuthorizeOperation>(value, out var dmType))
-						{
-							// Successfully parsed the value into the AuthorizeOperation enum
-							authorizeOperationList.Add(dmType);
-						}
+						// Successfully parsed the value into the AuthorizeOperation enum
+						authorizeOperationList.Add(dmType);
 					}
-
-					this.AuthorizeOperation = authorizeOperationList.Aggregate((a, b) => a | b);
 				}
+
+				this.AuthorizeOperation = authorizeOperationList.Aggregate((a, b) => a | b);
+			}
+			else
+			{
+				this.Parameters = [];
+				this.Ignore = true;
+				messages.Add($"Ignoring [{methodSymbol.Name}] method with attribute [{attributeName}]. Not a Factory or Authorize attribute.");
+				return;
 			}
 
 			//if (methodSymbol.IsGenericMethod)
@@ -208,6 +229,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public string Name { get; set; }
 		public string ClassName { get; set; }
+		public bool Ignore { get; set; }
 		public string NamePostfix => this.Name.Replace(this.FactoryOperation?.ToString() ?? "", "");
 		public bool IsConstructor { get; } = false;
 		public bool IsStaticFactory { get; } = false;
@@ -256,7 +278,7 @@ public class FactoryGenerator : IIncrementalGenerator
 					declaredParameter.MoveNext();
 				}
 
-				while(callParameter.Current != null)
+				while (callParameter.Current != null)
 				{
 					parameters.Add($"/* Missing {callParameter.Current.Type} {callParameter.Current.Name} */");
 					callParameter.MoveNext();
@@ -265,8 +287,7 @@ public class FactoryGenerator : IIncrementalGenerator
 				parameterText = string.Join(", ", parameters);
 			}
 
-
-			var callText = $"{this.ClassName}.{this.Name}({parameterText})";
+			var callText = $"{this.ClassName.ToLower()}.{this.Name}({parameterText})";
 
 			if (this.IsTask)
 			{
@@ -304,10 +325,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.Parameters.Insert(0, new ParameterInfo() { Name = "target", Type = $"{targetType}", IsService = false, IsTarget = true });
 			// this.TargetType = $"{targetType}?"; breaks auth
 		}
-
-		// Match the nullability return of Save methods to the return of the individual Insert/Update/Delete methods
-		// Even though they always return a value
-		public override bool IsNullable => true;
 
 		public override StringBuilder PublicMethod(FactoryText classText)
 		{
@@ -347,11 +364,11 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public bool IsDefault { get; set; } = false;
 		public override bool IsSave => true;
-		public override bool IsBool => true;
 		public override bool IsRemote => this.WriteFactoryMethods.Any(m => m.IsRemote);
 		public override bool IsTask => this.IsRemote || this.WriteFactoryMethods.Any(m => m.IsTask);
-		public override bool IsAsync => this.WriteFactoryMethods.Any(m => m.IsTask) && this.WriteFactoryMethods.Any(m => !m.IsTask);
+		public override bool IsAsync => this.WriteFactoryMethods.Any(m => m.IsTask);
 		public override bool HasAuth => this.WriteFactoryMethods.Any(m => m.HasAuth);
+		public override bool IsNullable => this.WriteFactoryMethods.Any(m => m.FactoryOperation == RemoteFactory.FactoryGenerator.FactoryOperation.Delete || m.IsNullable);
 
 		public List<WriteFactoryMethod> WriteFactoryMethods { get; }
 
@@ -419,6 +436,17 @@ public class FactoryGenerator : IIncrementalGenerator
 			methodBuilder.AppendLine($@"public virtual {this.AsyncKeyword} {this.ReturnType()} Local{this.UniqueName}({this.ParameterDeclarationsText()})
                                             {{");
 
+			var defaultReturn = $"default({this.TargetType})";
+			if (this.HasAuth)
+			{
+				defaultReturn = $"new Authorized<{this.TargetType}>()";
+			}
+
+			if (this.IsTask && !this.IsAsync)
+			{
+				defaultReturn = $"Task.FromResult({defaultReturn})";
+			}
+
 			string DoInsertUpdateDeleteMethodCall(FactoryMethod? method)
 			{
 
@@ -444,27 +472,24 @@ public class FactoryGenerator : IIncrementalGenerator
 					methodCall = $"Task.FromResult({methodCall})";
 				}
 
-				return $"return {methodCall}";
+				if (method.FactoryOperation == RemoteFactory.FactoryGenerator.FactoryOperation.Delete)
+				{
+					methodCall = $@"if (target.IsNew) {{ return {defaultReturn}; }}
+										return {methodCall}";
+					return methodCall;
+				}
+				else
+				{
+					return $"return {methodCall}";
+				}
 			}
 
-			var defaultReturn = $"default({this.TargetType})";
-			if (this.HasAuth)
-			{
-				defaultReturn = $"new Authorized<{this.TargetType}>()";
-			}
 
-			if (this.IsTask && !this.IsAsync)
-			{
-				defaultReturn = $"Task.FromResult({defaultReturn})";
-			}
 
 			methodBuilder.AppendLine($@"
                                             if (target.IsDeleted)
                                     {{
-                                        if (target.IsNew)
-                                        {{
-                                            return {defaultReturn};
-                                        }}
+
                                         {DoInsertUpdateDeleteMethodCall(this.WriteFactoryMethods.Where(s => s.FactoryOperation == RemoteFactory.FactoryGenerator.FactoryOperation.Delete).FirstOrDefault())};
                                     }}
                                     else if (target.IsNew)
@@ -502,7 +527,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		public override bool IsTask => this.IsRemote || this.CallMethod.IsTask || this.AuthCallMethods.Any(m => m.IsTask);
 		public override bool IsRemote => this.CallMethod.IsRemote || this.AuthCallMethods.Any(m => m.IsRemote);
 		public override bool IsAsync => (this.HasAuth && this.CallMethod.IsTask) || this.AuthCallMethods.Any(m => m.IsTask);
-		public override bool IsNullable => this.CallMethod.IsNullable;
+		public override bool IsNullable => this.CallMethod.IsNullable || this.HasAuth;
 
 		public CallMethod CallMethod { get; set; }
 
@@ -524,7 +549,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				var targetType = this.TargetType;
 
-				if (this.IsNullable)
+				if (this.CallMethod.IsNullable)
 				{
 					targetType = $"{targetType}?";
 				}
@@ -719,7 +744,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			}
 			else
 			{
-				methodBuilder.AppendLine($"return ({awaitKeyword} Local{this.UniqueName}({this.ParameterIdentifiersText(includeServices: false)})).Result!;");
+				methodBuilder.AppendLine($"return ({awaitKeyword} Local{this.UniqueName}({this.ParameterIdentifiersText(includeServices: false)})).Result;");
 			}
 
 			methodBuilder.AppendLine("}");
@@ -766,9 +791,13 @@ public class FactoryGenerator : IIncrementalGenerator
 			if (this.AuthCallMethods.Count > 0)
 			{
 				methodBuilder.AppendLine("Authorized authorized;");
-				foreach (var authMethod in this.AuthCallMethods)
+				foreach (var authClass in this.AuthCallMethods.GroupBy(m => m.ClassName))
 				{
-					authMethod.MakeAuthCall(this, methodBuilder);
+					methodBuilder.AppendLine($"{authClass.Key} {authClass.Key.ToLower()} = ServiceProvider.GetRequiredService<{authClass.Key}>();");
+					foreach (var authMethod in authClass)
+					{
+						authMethod.MakeAuthCall(this, methodBuilder);
+					}
 				}
 			}
 
@@ -806,7 +835,6 @@ public class FactoryGenerator : IIncrementalGenerator
 		public StringBuilder SaveMethods { get; set; } = new();
 		public StringBuilder InterfaceMethods { get; set; } = new();
 		public StringBuilder ServiceRegistrations { get; set; } = new();
-		public StringBuilder ConstructorServiceParameters { get; set; } = new();
 	}
 
 	private static void Execute(SourceProductionContext context, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel)
@@ -816,18 +844,20 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		try
 		{
-			var classNamedSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax) ?? throw new Exception($"Cannot get named symbol for {classDeclarationSyntax}");
-
+			var concreteSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax) ?? throw new Exception($"Cannot get named symbol for {classDeclarationSyntax}");
 			var usingDirectives = new List<string>() { "using Neatoo.RemoteFactory;", "using Microsoft.Extensions.DependencyInjection;" };
 			var methodNames = new List<string>();
 			var targetClassName = classDeclarationSyntax.Identifier.Text;
 			var targetType = $"{targetClassName}";
 			var targetConcreteType = $"{targetClassName}";
 			var factoryText = new FactoryText();
+			var targetSymbol = concreteSymbol;
 
-			if (classNamedSymbol.Interfaces.Any(i => i.Name == $"I{classNamedSymbol.Name}"))
+			var interfaceSymbol = concreteSymbol.Interfaces.FirstOrDefault(i => i.Name == $"I{concreteSymbol.Name}");
+			if (interfaceSymbol != null)
 			{
-				targetType = $"I{classNamedSymbol.Name}";
+				targetType = $"I{concreteSymbol.Name}";
+				targetSymbol = interfaceSymbol;
 			}
 
 			// Generate the source code for the found method
@@ -867,9 +897,10 @@ public class FactoryGenerator : IIncrementalGenerator
 					recurseClassDeclaration = GetBaseClassDeclarationSyntax(semanticModel, recurseClassDeclaration, messages);
 				}
 
-				messages.Add($"Class: {classNamedSymbol.ToDisplayString()} Name: {classNamedSymbol.Name}");
-				var targetCallMethods = FindTargetMethods(targetType, classNamedSymbol, messages);
-				var authCallMethods = FindAuthMethods(semanticModel, targetType, classNamedSymbol, messages);
+				messages.Add($"Class: {concreteSymbol.ToDisplayString()} Name: {concreteSymbol.Name}");
+				var concreteMethods = GetMethodsRecursive(concreteSymbol);
+				var targetCallMethods = CreateCallMethods(targetSymbol, concreteMethods, messages);
+				var authCallMethods = FindAuthMethods(semanticModel, targetType, concreteSymbol, messages);
 
 				var factoryMethods = new List<FactoryMethod>();
 
@@ -923,26 +954,38 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				if (authCallMethods.Any())
 				{
-					foreach (var factoryOperation in factoryMethods.Where(f => f.FactoryOperation != null).Select(f => f.FactoryOperation!.Value).Distinct().ToList())
+					foreach (var factoryOperation in factoryMethods.Where(f => f.FactoryOperation != null)
+																					.Select(f => f.FactoryOperation!.Value)
+																					.Distinct().ToList())
 					{
-						var authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) != 0).ToList();
-						if (authMethods.Any() && !authMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+						var authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) == (int?)a.AuthorizeOperation).ToList();
+
+						if (authMethods.Any())
 						{
-							var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryOperation.ToString(), authMethods);
-							factoryMethods.Add(canMethod);
+							// Two-steps to avoid having a 'CanInsert' method just because there is a 'AuthorizeOperation.Write' method
+							// But, be sure to include the 'AuthorizeOperation.Write' method if there is a CanInsert method
+							authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) != 0).ToList();
+
+							if (!authMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+							{
+								var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryOperation.ToString(), authMethods);
+								factoryMethods.Add(canMethod);
+							}
 						}
 					}
 
-					var allWrite = new[] {AuthorizeOperation.Write, AuthorizeOperation.Insert, AuthorizeOperation.Update, AuthorizeOperation.Delete}.Aggregate((a, b) => a | b);
-					var writeAuthMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)allWrite) != 0).ToList();
-
-					if (writeAuthMethods.Any() && !writeAuthMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+					if (factoryMethods.Any(f => f.IsSave))
 					{
-						var canMethod = new CanFactoryMethod(targetType, targetConcreteType, "Save", writeAuthMethods);
-						factoryMethods.Add(canMethod);
+						var allWrite = new[] { AuthorizeOperation.Write, AuthorizeOperation.Insert, AuthorizeOperation.Update, AuthorizeOperation.Delete }.Aggregate((a, b) => a | b);
+						var writeAuthMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)allWrite) != 0).ToList();
+
+						if (writeAuthMethods.Any() && !writeAuthMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+						{
+							var canMethod = new CanFactoryMethod(targetType, targetConcreteType, "Save", writeAuthMethods);
+							factoryMethods.Add(canMethod);
+						}
 					}
 				}
-
 
 				var defaultSaveMethod = factoryMethods.OfType<SaveFactoryMethod>()
 									 .Where(s => s.Parameters.Where(p => !p.IsTarget && !p.IsService).Count() == 0 && s.Parameters.First().IsTarget)
@@ -961,23 +1004,6 @@ public class FactoryGenerator : IIncrementalGenerator
 						method.UniqueName = $"{method.UniqueName}{count}";
 					}
 					methodNames.Add(method.UniqueName);
-				}
-
-				foreach (var authMethods in authCallMethods.GroupBy(a => a.ClassName))
-				{
-					var authMethod = authMethods.First();
-					var constructorParameter = $"{authMethod.ClassName} {authMethod.ClassName.ToLower()}";
-					var propertyAssignment = $"this.{authMethod.ClassName} = {authMethod.ClassName.ToLower()};";
-
-					if (authMethods.Any(a => !a.IsRemote))
-					{
-						factoryText.ConstructorPropertyAssignmentsRemote.AppendLine(propertyAssignment);
-					}
-					factoryText.ConstructorServiceParameters.AppendLine(',' + constructorParameter);
-					factoryText.ConstructorPropertyAssignmentsLocal.AppendLine(propertyAssignment);
-					factoryText.ConstructorPropertyAssignmentsRemote.AppendLine(propertyAssignment);
-
-					factoryText.PropertyDeclarations.AppendLine($"public {authMethod.ClassName} {authMethod.ClassName} {{ get; }}");
 				}
 
 				foreach (var factoryMethod in factoryMethods)
@@ -1011,10 +1037,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
                     using Neatoo.RemoteFactory.Internal;
                     {WithStringBuilder(usingDirectives)}
-                    /*
-                    Debugging Messages:
-                    {WithStringBuilder(messages)}
-                    */
+
                     namespace {namespaceName}
                     {{
 
@@ -1034,13 +1057,13 @@ public class FactoryGenerator : IIncrementalGenerator
                     // Delegate Properties to provide Local or Remote fork in execution
                     {factoryText.PropertyDeclarations}
 
-                            public {targetClassName}Factory(IServiceProvider serviceProvider, {factoryText.ConstructorServiceParameters.ToString().Trim(',')})
+                            public {targetClassName}Factory(IServiceProvider serviceProvider)
                             {{
                                     this.ServiceProvider = serviceProvider;
                                     {factoryText.ConstructorPropertyAssignmentsLocal}
                             }}
 
-                            public {targetClassName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, {factoryText.ConstructorServiceParameters.ToString().Trim(',')})
+                            public {targetClassName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
                             {{
                                     this.ServiceProvider = serviceProvider;
                                     this.MakeRemoteDelegateRequest = remoteMethodDelegate;
@@ -1092,42 +1115,38 @@ public class FactoryGenerator : IIncrementalGenerator
 		return methods;
 	}
 
-	private static List<CallMethod> FindTargetMethods(string targetType, INamedTypeSymbol namedTypeSymbol, List<string> messages)
+	private static List<CallMethod> CreateCallMethods(INamedTypeSymbol namedTypeSymbol, List<IMethodSymbol> methods, List<string> messages)
 	{
-		if (targetType is null)
-		{
-			throw new ArgumentNullException(nameof(targetType));
-		}
-
-		var methods = GetMethodsRecursive(namedTypeSymbol);
 		var callMethodInfoList = new List<CallMethod>();
 
 		foreach (var method in methods.Where(m => m.GetAttributes().Any()).ToList())
 		{
 			CallMethod callMethod;
 
-			if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ConstructorDeclarationSyntax constructorDeclaration)
+			var attributes = method.GetAttributes().ToList();
+			foreach (var attribute in attributes.Where(a => a != null))
 			{
-				callMethod = new CallMethod(namedTypeSymbol, method, constructorDeclaration);
-			}
-			else if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax methodDeclaration)
-			{
-				callMethod = new CallMethod(namedTypeSymbol, method, methodDeclaration, messages);
-			}
-			else
-			{
-				messages.Add($"No MethodDeclarationSyntax for {method.Name}");
-				continue;
-			}
+				if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ConstructorDeclarationSyntax constructorDeclaration)
+				{
+					callMethod = new CallMethod(attribute!, namedTypeSymbol, method, constructorDeclaration, messages);
+				}
+				else if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax methodDeclaration)
+				{
+					callMethod = new CallMethod(attribute!, namedTypeSymbol, method, methodDeclaration, messages);
+				}
+				else
+				{
+					messages.Add($"No MethodDeclarationSyntax for {method.Name}");
+					continue;
+				}
 
+				if (callMethod.Ignore)
+				{
+					messages.Add($"No Factory or Authorize attribute for {callMethod.Name} attribute {attribute.AttributeClass?.Name.ToString()}");
+					continue;
+				}
 
-			if (callMethod.FactoryOperation != null || callMethod.AuthorizeOperation != null)
-			{
 				callMethodInfoList.Add(callMethod);
-			}
-			else
-			{
-				messages.Add($"No Factory or Authorize attribute for {callMethod.Name}");
 			}
 		}
 		return callMethodInfoList;
@@ -1158,21 +1177,22 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				foreach (var method in methods)
 				{
+					var attributes = method.GetAttributes().ToList();
+
 					if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not MethodDeclarationSyntax methodDeclaration)
 					{
 						messages.Add($"No MethodDeclarationSyntax for {method.Name}");
 						continue;
 					}
 
-					var callMethod = new CallMethod(classNamedSymbol, method, methodDeclaration, messages);
+					foreach (var attribute in attributes)
+					{
+						var callMethod = new CallMethod(attribute, classNamedSymbol, method, methodDeclaration, messages);
 
-					if (callMethod.AuthorizeOperation != null)
-					{
-						callMethods.Add(callMethod);
-					}
-					else
-					{
-						messages.Add($"No AuthorizeOperation for {authorizeAttribute}");
+						if (!callMethod.Ignore && callMethod.AuthorizeOperation != null)
+						{
+							callMethods.Add(callMethod);
+						}
 					}
 				}
 			}
@@ -1216,47 +1236,6 @@ public class FactoryGenerator : IIncrementalGenerator
 						assignAuthMethod = true;
 					}
 				}
-
-				// This used to not match the auth method if the parameters didn't match
-				// But..now CallMethod.CallAuthMethod matches on parameters
-				// So, we include all of the Auth methods so there's a compile error
-				// if there's an auth method that can't be called (???)
-
-
-				//var methodParameter = method.Parameters.GetEnumerator();
-				//var authMethodParameter = authMethod.Parameters.GetEnumerator();
-
-				//methodParameter.MoveNext();
-				//authMethodParameter.MoveNext();
-
-				//// Don't disqualify an auth method we're in a write method and the first parameter is the target
-				//// But also accept auth methods that have a first parameter of target
-				//if (methodParameter.Current?.IsTarget ?? false)
-				//{
-				//	methodParameter.MoveNext();
-				//	if (method.IsSave && authMethodParameter.Current != null && authMethodParameter.Current.IsTarget)
-				//	{
-				//		authMethodParameter.MoveNext();
-				//	}
-				//}
-
-				//if (authMethodParameter.Current != null)
-				//{
-				//	do
-				//	{
-				//		if (authMethodParameter.Current.ParameterSymbol != null && methodParameter.Current?.ParameterSymbol != null
-				//			&& authMethodParameter.Current.ParameterSymbol.Type.ToDisplayString() != methodParameter.Current.ParameterSymbol.Type.ToDisplayString())
-				//		{
-				//			assignAuthMethod = false;
-				//			break;
-				//		}
-				//		else if (authMethodParameter.Current.Type != methodParameter.Current?.Type)
-				//		{
-				//			assignAuthMethod = false;
-				//			break;
-				//		}
-				//	} while (authMethodParameter.MoveNext() && methodParameter.MoveNext());
-				//}
 
 				if (assignAuthMethod)
 				{

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
+using Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
 using Neatoo.RemoteFactory.Internal;
 using System;
 using System.Collections.Generic;
@@ -68,10 +69,13 @@ internal static class ClientServerContainers
 				RegisterIfAttribute(clientCollection);
 
 				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Local, Assembly.GetExecutingAssembly());
-				clientCollection.AddScoped<ServerServiceProvider>();
-				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
+				serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
+				serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
 
+				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
+				clientCollection.AddScoped<ServerServiceProvider>();
 				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
+
 				serverContainer = serverCollection.BuildServiceProvider();
 				clientContainer = clientCollection.BuildServiceProvider();
 			}
@@ -90,7 +94,7 @@ internal static class ClientServerContainers
 
 		foreach (var t in Assembly.GetExecutingAssembly().GetTypes())
 		{
-			if (t.GetCustomAttribute<FactoryAttribute>() != null)
+			if (!t.GenericTypeArguments.Any() && !t.IsAbstract && t.GetCustomAttribute<FactoryAttribute>() != null)
 			{
 				services.AddScoped(t);
 			}

@@ -156,5 +156,4 @@ internal sealed class HorseFarm : CustomBase, IHorseFarm
 
 		await horseBarnContext.SaveChangesAsync();
 	}
-
 }
