@@ -61,10 +61,13 @@ public sealed class CreateAttribute : Attribute
 	}
 }
 
-public sealed class FetchAttribute : FactoryOperationAttribute
+[System.AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor, Inherited = false, AllowMultiple = false)]
+public sealed class FetchAttribute : Attribute
 {
-	public FetchAttribute() : base(FactoryOperation.Fetch)
+	public FactoryOperation Operation { get; }
+	public FetchAttribute()
 	{
+		this.Operation = FactoryOperation.Fetch;
 	}
 }
 

@@ -48,8 +48,6 @@ internal class Horse<H> : CustomBase, IHorse
 
 	public Breed Breed { get; set { field = value; this.OnPropertyChanged(); } }
 
-#if !CLIENT
-
 	[Fetch]
 	internal void Fetch(HorseEntity horse)
 	{
@@ -130,6 +128,4 @@ internal class Horse<H> : CustomBase, IHorse
 		var horse = pasture.Horses.First(h => h.Id == this.Id);
 		pasture.Horses.Remove(horse);
 	}
-
-#endif
 }

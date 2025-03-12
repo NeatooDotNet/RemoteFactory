@@ -9,13 +9,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+// Incorporate Neatoo RemoteFactory
 builder.Services.AddNeatooRemoteFactory(NeatooFactory.Local, typeof(IHorseFarmFactory).Assembly);
+
 builder.Services.AddScoped<IHorseFarmContext, HorseFarmContext>();
+
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-
-//app.UseAuthorization();
 
 app.MapControllers();
 

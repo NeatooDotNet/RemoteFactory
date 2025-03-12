@@ -88,7 +88,14 @@ public class Authorized<T> : Authorized
 	public Authorized(T? result)
 	{
 		this.Result = result;
-		this.HasAccess = true;
+		if(result == null)
+		{
+			this.HasAccess = false;
+		}
+		else
+		{
+			this.HasAccess = true;
+		}
 	}
 
    public T? ToT()
