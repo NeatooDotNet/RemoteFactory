@@ -18,7 +18,7 @@
 		<PackageReleaseNotes>None yet</PackageReleaseNotes>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>OO Domain Modeling C# .NET Blazor WPF ASP.NET CSLA</PackageTags>
-		<PackageVersion>2025.2.0-beta</PackageVersion>
+		<PackageVersion>2025.3.0-beta</PackageVersion>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<RepositoryUrl>https://github.com/NeatooDotNet/RemoteFactory</RepositoryUrl>
@@ -27,7 +27,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
 	  <None Include="..\..\README.md" Pack="true" PackagePath="" />
 	  <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
-	  <None Include="$(OutputPath)\$(AssemblyName).FactoryGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+	  <None Include="$(OutputPath)\net9.0\$(AssemblyName).FactoryGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" PrivateAssets="all"  />

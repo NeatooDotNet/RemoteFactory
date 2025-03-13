@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net.Http.Json;
 
 namespace Neatoo.RemoteFactory.Internal;
 
-	public delegate Task<RemoteResponseDto> MakeRemoteDelegateRequestHttpCall(RemoteDelegateRequestDto request);
-
-
+public delegate Task<RemoteResponseDto> MakeRemoteDelegateRequestHttpCall(RemoteDelegateRequestDto request);
 
 public static class MakeRemoteDelegateRequestHttpCallImplementation
 {
@@ -19,7 +12,7 @@ public static class MakeRemoteDelegateRequestHttpCallImplementation
 		{
 			var uri = new Uri(httpClient.BaseAddress!, "api/remotefactory");
 
-			var response = await httpClient.PostAsync(uri, JsonContent.Create(request, typeof(RemoteDelegateRequestDto)));
+			var response = await httpClient.PostAsync(uri, JsonContent.Create(request));
 
 			if (!response.IsSuccessStatusCode)
 			{

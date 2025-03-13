@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Neatoo.RemoteFactory;
@@ -33,7 +34,8 @@ public static partial class RemoteFactoryServices
 		services.AddSingleton<IServiceAssemblies>(new ServiceAssemblies(assemblies));
 		services.AddScopedSelf<INeatooJsonSerializer, NeatooJsonSerializer>();
 		services.AddScoped<NeatooJsonTypeInfoResolver>();
-		services.AddTransient<NeatooJsonConverterFactory>();
+		services.AddTransient<NeatooInterfaceJsonConverterFactory>();
+		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
 
 		if (portalServer == NeatooFactory.Remote)

@@ -87,9 +87,12 @@ internal sealed class HorseFarm : CustomBase, IHorseFarm
 
 	public void MoveHorseToCart(IHorse horse, ICart cart)
 	{
-		this.Pasture.RemoveHorse(horse);
-		this.Carts.RemoveHorse(horse);
-		cart.AddHorse(horse);
+		if (cart.CanAddHorse(horse))
+		{
+			this.Pasture.RemoveHorse(horse);
+			this.Carts.RemoveHorse(horse);
+			cart.AddHorse(horse);
+		}
 	}
 
 	public void MoveHorseToPasture(IHorse horse)

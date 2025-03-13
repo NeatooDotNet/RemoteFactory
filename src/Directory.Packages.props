@@ -114,6 +114,7 @@
     <PackageVersion Include="RecordParser" Version="2.3.0" />
     <PackageVersion Include="Refit" Version="8.0.0" />
     <PackageVersion Include="RestSharp" Version="112.1.0" />
+    <PackageVersion Include="Rocks" Version="9.0.1" />
     <PackageVersion Include="Sep" Version="0.9.0" />
     <PackageVersion Include="Serilog" Version="4.2.0" />
     <PackageVersion Include="ServiceStack" Version="8.6.0" />
@@ -156,5 +157,6 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.13.0" />
     <PackageVersion Include="Verify.XUnit" Version="28.11.0" />
     <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.0" />
   </ItemGroup>
 </Project>

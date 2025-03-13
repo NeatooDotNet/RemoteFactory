@@ -21,5 +21,6 @@
 	<ItemGroup>
 		<BlazorWebAssemblyLazyLoad Include="Microsoft.EntityFrameworkCore.dll" />
 		<BlazorWebAssemblyLazyLoad Include="Microsoft.EntityFrameworkCore.Relational.dll" />
+		<InternalsVisibleTo Include="HorseFarm.DomainModel.UnitTests" />
 	</ItemGroup>
 </Project>

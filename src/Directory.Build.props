@@ -12,8 +12,7 @@
 		<NuGetAuditMode>all</NuGetAuditMode>
 		<NuGetAuditLevel>critical</NuGetAuditLevel>
 		<Nullable>enable</Nullable>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFrameworks>net8.0;net9.0</TargetFrameworks>
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-		<Version>2025.1.0</Version>
 	</PropertyGroup>
 </Project>

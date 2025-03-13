@@ -26,16 +26,23 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 
 	private NeatooReferenceHandler ReferenceHandler { get; } = new NeatooReferenceHandler();
 
-	public NeatooJsonSerializer(NeatooJsonConverterFactory neatooJsonConverterFactory, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver)
+	public NeatooJsonSerializer(IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver)
 	{
+		ArgumentNullException.ThrowIfNull(neatooJsonConverterFactories, nameof(neatooJsonConverterFactories));
+
 		this.Options = new JsonSerializerOptions
 		{
 			ReferenceHandler = this.ReferenceHandler,
-			Converters = { neatooJsonConverterFactory },
 			TypeInfoResolver = neatooDefaultJsonTypeInfoResolver,
 			WriteIndented = true,
 			IncludeFields = true
 		};
+
+		foreach (var neatooJsonConverterFactory in neatooJsonConverterFactories)
+		{
+			this.Options.Converters.Add(neatooJsonConverterFactory);
+		}
+
 		this.serviceAssemblies = serviceAssemblies;
 	}
 

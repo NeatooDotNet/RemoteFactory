@@ -17,7 +17,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Examples\Library\HorseFarm.DomainModel\HorseFarm.DomainModel.csproj" />
+	  <ProjectReference Include="..\..\Library\HorseFarm.DomainModel\HorseFarm.DomainModel.csproj" />
 	</ItemGroup>
 
 
