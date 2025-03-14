@@ -12,9 +12,9 @@ public interface INeatooJsonSerializer
 	string? Serialize(object? target, Type targetType);
 	T? Deserialize<T>(string json);
 	object? Deserialize(string json, Type type);
-	RemoteDelegateRequestDto ToRemoteDelegateRequest(Type delegateType, params object?[]? parameters);
-	RemoteDelegateRequestDto ToRemoteDelegateRequest(Type delegateType, object saveTarget, params object?[]? parameters);
-	RemoteDelegateRequest DeserializeRemoteDelegateRequest(RemoteDelegateRequestDto remoteDelegateRequest);
+	RemoteRequestDto ToRemoteDelegateRequest(Type delegateType, params object?[]? parameters);
+	RemoteRequestDto ToRemoteDelegateRequest(Type delegateType, object saveTarget, params object?[]? parameters);
+	RemoteRequest DeserializeRemoteDelegateRequest(RemoteRequestDto remoteDelegateRequest);
 	T? DeserializeRemoteResponse<T>(RemoteResponseDto remoteResponse);
 }
 
@@ -101,7 +101,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		return JsonSerializer.Deserialize(json, type, this.Options);
 	}
 
-	public RemoteDelegateRequestDto ToRemoteDelegateRequest(Type delegateType, params object?[]? parameters)
+	public RemoteRequestDto ToRemoteDelegateRequest(Type delegateType, params object?[]? parameters)
 	{
 		ArgumentNullException.ThrowIfNull(delegateType, nameof(delegateType));
 		ArgumentNullException.ThrowIfNull(delegateType.FullName, nameof(delegateType.FullName));
@@ -113,14 +113,14 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			parameterJson = parameters.Select(c => this.ToObjectJson(c)).ToList();
 		}
 
-		return new RemoteDelegateRequestDto
+		return new RemoteRequestDto
 		{
 			DelegateAssemblyType = delegateType.FullName,
 			Parameters = parameterJson
 		};
 	}
 
-	public RemoteDelegateRequestDto ToRemoteDelegateRequest(Type delegateType, object saveTarget, params object?[]? parameters)
+	public RemoteRequestDto ToRemoteDelegateRequest(Type delegateType, object saveTarget, params object?[]? parameters)
 	{
 		ArgumentNullException.ThrowIfNull(delegateType, nameof(delegateType));
 		ArgumentNullException.ThrowIfNull(delegateType.FullName, nameof(delegateType.FullName));
@@ -137,7 +137,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 
 			parameterJson = [.. parameters.Select(c => this.ToObjectJson(c))];
 		}
-		return new RemoteDelegateRequestDto
+		return new RemoteRequestDto
 		{
 			DelegateAssemblyType = delegateType.FullName,
 			Parameters = parameterJson,
@@ -157,7 +157,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		return new ObjectJson(this.Serialize(target)!, targetType.FullName);
 	}
 
-	public RemoteDelegateRequest DeserializeRemoteDelegateRequest(RemoteDelegateRequestDto remoteDelegateRequest)
+	public RemoteRequest DeserializeRemoteDelegateRequest(RemoteRequestDto remoteDelegateRequest)
 	{
 		ArgumentNullException.ThrowIfNull(remoteDelegateRequest, nameof(remoteDelegateRequest));
 
@@ -173,7 +173,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			parameters = remoteDelegateRequest.Parameters.Select(c => this.FromObjectJson(c)).ToImmutableList();
 		}
 
-		var result = new RemoteDelegateRequest()
+		var result = new RemoteRequest()
 		{
 			DelegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType),
 			Parameters = parameters,

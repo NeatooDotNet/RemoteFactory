@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
-using Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
+﻿using HorseFarm.Ef;
+using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.Internal;
 using System;
 using System.Collections.Generic;
@@ -10,7 +10,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
+namespace HorseFarm.DomainModel.IntegrationTests;
 
 public class ServerServiceProvider
 {
@@ -68,14 +68,14 @@ internal static class ClientServerContainers
 				RegisterIfAttribute(serverCollection);
 				RegisterIfAttribute(clientCollection);
 
-				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Local, Assembly.GetExecutingAssembly());
-				serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
-				serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
+				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Local, Assembly.GetExecutingAssembly(), typeof(IHorseFarm).Assembly);
+				serverCollection.AddScoped<IHorseFarmContext, HorseFarmContext>();
 
-				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
+
 				clientCollection.AddScoped<ServerServiceProvider>();
-				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
+				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly(), typeof(IHorseFarm).Assembly);
 
+				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
 				serverContainer = serverCollection.BuildServiceProvider();
 				clientContainer = clientCollection.BuildServiceProvider();
 			}
@@ -91,10 +91,9 @@ internal static class ClientServerContainers
 
 	private static void RegisterIfAttribute(this IServiceCollection services)
 	{
-
 		foreach (var t in Assembly.GetExecutingAssembly().GetTypes())
 		{
-			if (!t.GenericTypeArguments.Any() && !t.IsAbstract && t.GetCustomAttribute<FactoryAttribute>() != null)
+			if (t.GetCustomAttribute<FactoryAttribute>() != null)
 			{
 				services.AddScoped(t);
 			}

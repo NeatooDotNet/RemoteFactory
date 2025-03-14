@@ -2,15 +2,15 @@
 
 namespace Neatoo.RemoteFactory.Internal;
 
-public delegate Task<RemoteResponseDto> MakeRemoteDelegateRequestHttpCall(RemoteDelegateRequestDto request);
+public delegate Task<RemoteResponseDto> MakeRemoteDelegateRequestHttpCall(RemoteRequestDto request);
 
 public static class MakeRemoteDelegateRequestHttpCallImplementation
 {
 	public static MakeRemoteDelegateRequestHttpCall Create(HttpClient httpClient)
 	{
-		return async (RemoteDelegateRequestDto request) =>
+		return async (RemoteRequestDto request) =>
 		{
-			var uri = new Uri(httpClient.BaseAddress!, "api/remotefactory");
+			var uri = new Uri(httpClient.BaseAddress!, "api/neatoo");
 
 			var response = await httpClient.PostAsync(uri, JsonContent.Create(request));
 

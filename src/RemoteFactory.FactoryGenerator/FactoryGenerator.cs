@@ -350,9 +350,9 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	internal class SaveFactoryMethod : FactoryMethod
 	{
-		public SaveFactoryMethod(string targetType, string concreteType, List<WriteFactoryMethod> writeFactoryMethods) : base(targetType, concreteType)
+		public SaveFactoryMethod(string? nameOverride, string targetType, string concreteType, List<WriteFactoryMethod> writeFactoryMethods) : base(targetType, concreteType)
 		{
-			var writeFactoryMethod = writeFactoryMethods.First();
+			var writeFactoryMethod = writeFactoryMethods.OrderByDescending(w => w.FactoryOperation!).First();
 			this.Name = $"Save{writeFactoryMethod.NamePostfix}";
 			this.UniqueName = this.Name;
 			this.WriteFactoryMethods = writeFactoryMethods;
@@ -859,41 +859,13 @@ public class FactoryGenerator : IIncrementalGenerator
 			}
 
 			// Generate the source code for the found method
-			var namespaceName = FindNamespace(classDeclarationSyntax);
+			var namespaceName = FindNamespace(classDeclarationSyntax) ?? "MissingNamespace";
 
 			try
 			{
 
-				var parentClassDeclaration = classDeclarationSyntax.Parent as ClassDeclarationSyntax;
-				var parentClassUsingText = "";
 
-				while (parentClassDeclaration != null)
-				{
-					messages.Add("Parent class: " + parentClassDeclaration.Identifier.Text);
-					parentClassUsingText = $"{parentClassDeclaration.Identifier.Text}.{parentClassUsingText}";
-					parentClassDeclaration = parentClassDeclaration.Parent as ClassDeclarationSyntax;
-				}
-
-				if (!string.IsNullOrEmpty(parentClassUsingText))
-				{
-					usingDirectives.Add($"using static {namespaceName}.{parentClassUsingText.TrimEnd('.')};");
-				}
-
-				var recurseClassDeclaration = classDeclarationSyntax;
-
-				while (recurseClassDeclaration != null)
-				{
-					var compilationUnitSyntax = recurseClassDeclaration.SyntaxTree.GetCompilationUnitRoot();
-					foreach (var using_ in compilationUnitSyntax.Usings)
-					{
-						if (!usingDirectives.Contains(using_.ToString()))
-						{
-							usingDirectives.Add(using_.ToString());
-						}
-					}
-
-					recurseClassDeclaration = GetBaseClassDeclarationSyntax(semanticModel, recurseClassDeclaration, messages);
-				}
+				UsingStatements(usingDirectives, classDeclarationSyntax, semanticModel, namespaceName, messages);
 
 				messages.Add($"Class: {concreteSymbol.ToDisplayString()} Name: {concreteSymbol.Name}");
 				var concreteMethods = GetMethodsRecursive(concreteSymbol);
@@ -916,20 +888,27 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				MatchAuthMethods(factoryMethods, authCallMethods, messages);
 
-				var saveMethods = factoryMethods
+				var writeMethodsGrouped = factoryMethods
 									 .OfType<WriteFactoryMethod>()
 									 .Where(m => m.IsSave)
 									 .GroupBy(m => string.Join(",", m.Parameters.Where(m => !m.IsTarget && !m.IsService)
 																	 .Select(m => m.Type.ToString())))
 									 .ToList();
 
-				foreach (var saveMethod in saveMethods)
+				string? nameOverride = null;
+
+				if(writeMethodsGrouped.Count == 1)
 				{
-					if (saveMethod.Count(m => m.FactoryOperation == FactoryOperation.Insert) > 1
-						 || saveMethod.Count(m => m.FactoryOperation == FactoryOperation.Update) > 1
-						 || saveMethod.Count(m => m.FactoryOperation == FactoryOperation.Delete) > 1)
+					nameOverride = "Save";
+				}
+
+				foreach (var writeMethodGroup in writeMethodsGrouped)
+				{
+					if (writeMethodGroup.Count(m => m.FactoryOperation == FactoryOperation.Insert) > 1
+						 || writeMethodGroup.Count(m => m.FactoryOperation == FactoryOperation.Update) > 1
+						 || writeMethodGroup.Count(m => m.FactoryOperation == FactoryOperation.Delete) > 1)
 					{
-						var byName = saveMethod.GroupBy(m => m.NamePostfix).ToList();
+						var byName = writeMethodGroup.GroupBy(m => m.NamePostfix).ToList();
 
 						foreach (var byNameMethod in byName)
 						{
@@ -937,16 +916,16 @@ public class FactoryGenerator : IIncrementalGenerator
 									  || byNameMethod.Count(m => m.FactoryOperation == FactoryOperation.Update) > 1
 									  || byNameMethod.Count(m => m.FactoryOperation == FactoryOperation.Delete) > 1)
 							{
-								messages.Add($"Multiple Insert/Update/Delete methods with the same name: {saveMethod.First().Name}");
+								messages.Add($"Multiple Insert/Update/Delete methods with the same name: {writeMethodGroup.First().Name}");
 								break;
 							}
 
-							factoryMethods.Add(new SaveFactoryMethod(targetType, targetConcreteType, [.. byNameMethod]));
+							factoryMethods.Add(new SaveFactoryMethod(nameOverride, targetType, targetConcreteType, [.. byNameMethod]));
 						}
 					}
 					else
 					{
-						factoryMethods.Add(new SaveFactoryMethod(targetType, targetConcreteType, [.. saveMethod]));
+						factoryMethods.Add(new SaveFactoryMethod(nameOverride, targetType, targetConcreteType, [.. writeMethodGroup]));
 					}
 				}
 
@@ -1023,7 +1002,7 @@ public class FactoryGenerator : IIncrementalGenerator
 					}
 				}
 
-				var isSave = saveMethods.Any();
+				var isSave = writeMethodsGrouped.Any();
 				var editText = isSave ? "Save" : "";
 				if (isSave)
 				{
@@ -1036,6 +1015,9 @@ public class FactoryGenerator : IIncrementalGenerator
                     using Neatoo.RemoteFactory.Internal;
                     {WithStringBuilder(usingDirectives)}
 
+/*
+{WithStringBuilder(messages)}
+*/
                     namespace {namespaceName}
                     {{
 
@@ -1240,6 +1222,40 @@ public class FactoryGenerator : IIncrementalGenerator
 					method.AuthCallMethods.Add(authMethod);
 				}
 			}
+		}
+	}
+
+	public static void UsingStatements(List<string> usingDirectives, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel,    string namespaceName, List<string> messages)
+	{
+		var parentClassDeclaration = classDeclarationSyntax.Parent as ClassDeclarationSyntax;
+		var parentClassUsingText = "";
+
+		while (parentClassDeclaration != null)
+		{
+			messages.Add("Parent class: " + parentClassDeclaration.Identifier.Text);
+			parentClassUsingText = $"{parentClassDeclaration.Identifier.Text}.{parentClassUsingText}";
+			parentClassDeclaration = parentClassDeclaration.Parent as ClassDeclarationSyntax;
+		}
+
+		if (!string.IsNullOrEmpty(parentClassUsingText))
+		{
+			usingDirectives.Add($"using static {namespaceName}.{parentClassUsingText.TrimEnd('.')};");
+		}
+
+		var recurseClassDeclaration = classDeclarationSyntax;
+
+		while (recurseClassDeclaration != null)
+		{
+			var compilationUnitSyntax = recurseClassDeclaration.SyntaxTree.GetCompilationUnitRoot();
+			foreach (var using_ in compilationUnitSyntax.Usings)
+			{
+				if (!usingDirectives.Contains(using_.ToString()))
+				{
+					usingDirectives.Add(using_.ToString());
+				}
+			}
+
+			recurseClassDeclaration = GetBaseClassDeclarationSyntax(semanticModel, recurseClassDeclaration, messages);
 		}
 	}
 
