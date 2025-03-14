@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Blazor.Bootstrap" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<BlazorWebAssemblyLazyLoad Include="Microsoft.EntityFrameworkCore.dll" />
+		<BlazorWebAssemblyLazyLoad Include="Microsoft.EntityFrameworkCore.Relational.dll" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Person.DomainModel\Person.DomainModel.csproj" />
+	</ItemGroup>
+
+</Project>
