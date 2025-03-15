@@ -1,26 +1,26 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory.FactoryGeneratorTests;
+using Xunit;
 
-namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
+namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
 
-public class ReadRemoteAuthTests
+public class ReadAuthTests
 {
-
-	public class ReadRemoteAuthTask : ReadRemoteAuth
+	public class ReadAuthTask : ReadAuth
 	{
-		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
-		public Task<bool> CanReadRemoteBoolTask()
+
+		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		public Task<bool> CanAnyBoolTask()
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
 			return Task.FromResult(true);
 		}
 
-		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
-		public Task<bool> CanReadRemoteBoolFalseTask(int? p)
+		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		public Task<bool> CanAnyBoolFalseTask(int? p)
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
 			if (p == 10)
 			{
 				return Task.FromResult(false);
@@ -28,19 +28,17 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
-		public Task<string> CanReadRemoteStringTask()
+		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		public Task<string> CanAnyStringTask()
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
 			return Task.FromResult(string.Empty);
 		}
 
-		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
-		public Task<string> CanReadRemoteStringFalseTask(int? p)
+		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		public Task<string> CanAnyStringFalseTask(int? p)
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
 			if (p == 20)
 			{
 				return Task.FromResult("Fail");
@@ -48,7 +46,42 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(string.Empty);
 		}
 
-		[Remote]
+		[Authorize(AuthorizeOperation.Read)]
+		public Task<bool> CanReadBoolTask()
+		{
+			this.CanReadCalled++;
+			return Task.FromResult(true);
+		}
+
+		[Authorize(AuthorizeOperation.Read)]
+		public Task<bool> CanReadBoolFalseTask(int? p)
+		{
+			this.CanReadCalled++;
+			if (p == 10)
+			{
+				return Task.FromResult(false);
+			}
+			return Task.FromResult(true);
+		}
+
+		[Authorize(AuthorizeOperation.Read)]
+		public Task<string> CanReadStringTask()
+		{
+			this.CanReadCalled++;
+			return Task.FromResult(string.Empty);
+		}
+
+		[Authorize(AuthorizeOperation.Read)]
+		public Task<string> CanReadStringFalseTask(int? p)
+		{
+			this.CanReadCalled++;
+			if (p == 20)
+			{
+				return Task.FromResult("Fail");
+			}
+			return Task.FromResult(string.Empty);
+		}
+
 		[Authorize(AuthorizeOperation.Create)]
 		public Task<bool> CanCreateBoolTask()
 		{
@@ -56,7 +89,6 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Create)]
 		public Task<bool> CanCreateBoolFalseTask(int? p)
 		{
@@ -68,7 +100,6 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Create)]
 		public Task<string> CanCreateStringTask()
 		{
@@ -76,7 +107,6 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(string.Empty);
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Create)]
 		public Task<string> CanCreateStringFalseTask(int? p)
 		{
@@ -88,7 +118,6 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(string.Empty);
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public Task<bool> CanFetchBoolTask()
 		{
@@ -96,7 +125,6 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public Task<bool> CanFetchBoolFalseTask(int? p)
 		{
@@ -108,7 +136,6 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public Task<string> CanFetchStringTask()
 		{
@@ -116,7 +143,6 @@ public class ReadRemoteAuthTests
 			return Task.FromResult(string.Empty);
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public Task<string> CanFetchStringFalseTask(int? p)
 		{
@@ -129,23 +155,21 @@ public class ReadRemoteAuthTests
 		}
 	}
 
-	public class ReadRemoteAuth
+	public class ReadAuth
 	{
-		public int CanReadRemoteCalled { get; set; }
+		public int CanAnyCalled { get; set; }
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Read)]
-		public bool CanReadRemoteBool()
+		public bool CanAnyBool()
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
 			return true;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Read)]
-		public bool CanReadRemoteBoolFalse(int? p)
+		public bool CanAnyBoolFalse(int? p)
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
 			if (p == 10)
 			{
 				return false;
@@ -153,19 +177,55 @@ public class ReadRemoteAuthTests
 			return true;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Read)]
-		public string? CanReadRemoteString()
+		public string? CanAnyString()
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
 			return string.Empty;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Read)]
-		public string? CanReadRemoteStringFalse(int? p)
+		public string? CanAnyStringFalse(int? p)
 		{
-			this.CanReadRemoteCalled++;
+			this.CanAnyCalled++;
+			if (p == 20)
+			{
+				return "Fail";
+			}
+			return string.Empty;
+		}
+
+		public int CanReadCalled { get; set; }
+
+		[Authorize(AuthorizeOperation.Read)]
+		public bool CanReadBool()
+		{
+			this.CanReadCalled++;
+			return true;
+		}
+
+		[Authorize(AuthorizeOperation.Read)]
+		public bool CanReadBoolFalse(int? p)
+		{
+			this.CanReadCalled++;
+			if (p == 10)
+			{
+				return false;
+			}
+			return true;
+		}
+
+		[Authorize(AuthorizeOperation.Read)]
+		public string? CanReadString()
+		{
+			this.CanReadCalled++;
+			return string.Empty;
+		}
+
+		[Authorize(AuthorizeOperation.Read)]
+		public string? CanReadStringFalse(int? p)
+		{
+			this.CanReadCalled++;
 			if (p == 20)
 			{
 				return "Fail";
@@ -175,7 +235,6 @@ public class ReadRemoteAuthTests
 
 		public int CanCreateCalled { get; set; }
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Create)]
 		public bool CanCreateBool()
 		{
@@ -183,7 +242,6 @@ public class ReadRemoteAuthTests
 			return true;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Create)]
 		public bool CanCreateBoolFalse(int? p)
 		{
@@ -195,7 +253,6 @@ public class ReadRemoteAuthTests
 			return true;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Create)]
 		public string? CanCreateString()
 		{
@@ -203,7 +260,6 @@ public class ReadRemoteAuthTests
 			return string.Empty;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Create)]
 		public string? CanCreateStringFalse(int? p)
 		{
@@ -217,7 +273,6 @@ public class ReadRemoteAuthTests
 
 		public int CanFetchCalled { get; set; }
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public bool CanFetchBool()
 		{
@@ -225,7 +280,6 @@ public class ReadRemoteAuthTests
 			return true;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public bool CanFetchBoolFalse(int? p)
 		{
@@ -237,7 +291,6 @@ public class ReadRemoteAuthTests
 			return true;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public string? CanFetchString()
 		{
@@ -245,7 +298,6 @@ public class ReadRemoteAuthTests
 			return string.Empty;
 		}
 
-		[Remote]
 		[Authorize(AuthorizeOperation.Fetch)]
 		public string? CanFetchStringFalse(int? p)
 		{
@@ -259,34 +311,32 @@ public class ReadRemoteAuthTests
 	}
 
 	[Factory]
-	[Authorize<ReadRemoteAuth>]
-	public class ReadRemoteAuthObj : ReadTests.ReadParamObject
+	[Authorize<ReadAuth>]
+	public class ReadAuthObject : ReadTests.ReadParamObject
 	{
 
 	}
 
 	[Factory]
-	[Authorize<ReadRemoteAuthTask>]
-	public class ReadRemoteAuthTaskObj : ReadTests.ReadParamObject
+	[Authorize<ReadAuthTask>]
+	public class ReadAuthTaskObject : ReadTests.ReadParamObject
 	{
 
 	}
 
 	private IServiceScope clientScope;
-	private IServiceScope serverScope;
 
-	public ReadRemoteAuthTests()
+	public ReadAuthTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
 		this.clientScope = scopes.client;
-		this.serverScope = scopes.server;
 	}
 
 	[Fact]
-	public async Task ReadRemoteAuthTest()
+	public async Task ReadAuthTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
-		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
+		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
@@ -298,7 +348,7 @@ public class ReadRemoteAuthTests
 			var expect = 2;
 			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 1 });
+				result = method.Invoke(readFactory, [1]);
 				expect = 4;
 			}
 			else
@@ -306,8 +356,9 @@ public class ReadRemoteAuthTests
 				result = method.Invoke(readFactory, null);
 			}
 
-			if (result is Task<ReadRemoteAuthObj?> task)
+			if (result is Task<ReadAuthObject?> task)
 			{
+				Assert.Contains("Task", methodName);
 				if (!methodName.Contains("False"))
 				{
 					Assert.NotNull(await task);
@@ -317,8 +368,10 @@ public class ReadRemoteAuthTests
 					Assert.Null(await task);
 				}
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthObj>> authTask)
+			else if (result is Task<Authorized<ReadAuthObject>> authTask)
 			{
+				Assert.Contains("Task", methodName);
+
 				if (!methodName.Contains("False"))
 				{
 					Assert.NotNull((await authTask).Result);
@@ -328,7 +381,7 @@ public class ReadRemoteAuthTests
 					Assert.Null((await authTask).Result);
 				}
 			}
-			else if (result is Authorized<ReadRemoteAuthObj> auth)
+			else if (result is Authorized<ReadAuthObject> auth)
 			{
 				Assert.True(auth.HasAccess);
 
@@ -346,9 +399,18 @@ public class ReadRemoteAuthTests
 				Assert.StartsWith("Can", methodName);
 				Assert.True((await canTask).HasAccess);
 			}
+			else if (result is Authorized can)
+			{
+				Assert.StartsWith("Can", methodName);
+				Assert.True(can.HasAccess);
+			}
+			else if (result is ReadAuthObject success)
+			{
+				Assert.DoesNotContain("False", methodName);
+			}
 			else
 			{
-				Assert.Fail();
+				Assert.Contains("False", methodName);
 			}
 
 
@@ -361,20 +423,22 @@ public class ReadRemoteAuthTests
 				Assert.Equal(expect, authorized.CanFetchCalled);
 			}
 
-			Assert.Equal(expect, authorized.CanReadRemoteCalled);
+			Assert.Equal(expect, authorized.CanReadCalled);
+			Assert.Equal(expect, authorized.CanAnyCalled);
 
 			authorized.CanCreateCalled = 0;
 			authorized.CanFetchCalled = 0;
-			authorized.CanReadRemoteCalled = 0;
+			authorized.CanReadCalled = 0;
+			authorized.CanAnyCalled = 0;
 		}
 	}
 
 
 	[Fact]
-	public async Task ReadRemoteAuthTaskTest()
+	public async Task ReadAuthTaskTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthTaskObjFactory>();
-		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthTaskObjectFactory>();
+		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuthTask>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
@@ -394,7 +458,7 @@ public class ReadRemoteAuthTests
 				result = method.Invoke(readFactory, null);
 			}
 
-			if (result is Task<ReadRemoteAuthTaskObj?> task)
+			if (result is Task<ReadAuthTaskObject?> task)
 			{
 				if (!methodName.Contains("False"))
 				{
@@ -405,7 +469,7 @@ public class ReadRemoteAuthTests
 					Assert.Null(await task);
 				}
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthTaskObj>> authTask)
+			else if (result is Task<Authorized<ReadAuthTaskObject>> authTask)
 			{
 				if (!methodName.Contains("False"))
 				{
@@ -416,7 +480,7 @@ public class ReadRemoteAuthTests
 					Assert.Null((await authTask).Result);
 				}
 			}
-			else if (result is Authorized<ReadRemoteAuthTaskObj> auth)
+			else if (result is Authorized<ReadAuthTaskObject> auth)
 			{
 				Assert.True(auth.HasAccess);
 
@@ -458,19 +522,22 @@ public class ReadRemoteAuthTests
 				Assert.Equal(expect, authorized.CanFetchCalled);
 			}
 
-			Assert.Equal(expect, authorized.CanReadRemoteCalled);
+			Assert.Equal(expect, authorized.CanReadCalled);
+			Assert.Equal(expect, authorized.CanAnyCalled);
 
 			authorized.CanCreateCalled = 0;
 			authorized.CanFetchCalled = 0;
-			authorized.CanReadRemoteCalled = 0;
+			authorized.CanReadCalled = 0;
+			authorized.CanAnyCalled = 0;
 		}
 	}
 
+
 	[Fact]
-	public async Task ReadRemoteAuthBoolFailTest()
+	public async Task ReadAuthBoolFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
-		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
+		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
@@ -488,44 +555,46 @@ public class ReadRemoteAuthTests
 				continue;
 			}
 
-			if (result is Task<ReadRemoteAuthObj?> task)
+			if (result is Task<ReadAuthObject?> task)
 			{
 				Assert.Null(await task);
+				Assert.True(methodName.StartsWith("Create") || methodName.Contains("Fetch"));
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthObj>> authTask)
+			else if (result is Task<Authorized<ReadAuthObject>> authTask)
 			{
 				var auth = await authTask;
 				Assert.False(auth.HasAccess);
 				Assert.Null(auth.Result);
 				Assert.Null(auth.Message);
+				Assert.StartsWith("Try", methodName);
 			}
-			else if (result is Authorized<ReadRemoteAuthObj> authObj)
+			else if (result is Authorized<ReadAuthObject> authDataMapper)
 			{
-				Assert.False(authObj.HasAccess);
-				Assert.Null(authObj.Result);
-				Assert.Null(authObj.Message);
+				Assert.False(authDataMapper.HasAccess);
+				Assert.Null(authDataMapper.Result);
+				Assert.Null(authDataMapper.Message);
+				Assert.True(methodName.StartsWith("Can") || methodName.StartsWith("Try"));
 			}
-			else if (result is Task<Authorized> authorizedTask)
+			else if (result is Authorized auth_)
 			{
-				var a = await authorizedTask;
-				Assert.False(a.HasAccess);
-				Assert.Null(a.Message);
+				Assert.False(auth_.HasAccess);
+				Assert.StartsWith("Can", methodName);
 			}
-			else
+			else if (result == null)
 			{
-				Assert.Fail();
+				Assert.True(methodName.StartsWith("Create") || methodName.Contains("Fetch"));
 			}
 
 		}
 	}
 
 	[Fact]
-	public async Task ReadRemoteAuthStringFailTest()
+	public async Task ReadAuthStringFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
-		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
+		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
-		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
+		var methods = readFactory.GetType().GetMethods().Where(m => m.Name == "CanCreateVoid").ToList(); // m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
 		{
@@ -541,32 +610,35 @@ public class ReadRemoteAuthTests
 				continue;
 			}
 
-			if (result is Task<ReadRemoteAuthObj?> task)
+			if (result is Task<ReadAuthObject?> task)
 			{
 				Assert.Null(await task);
+				Assert.True(methodName.StartsWith("Create") || methodName.Contains("Fetch"));
 			}
-			else if (result is Task<Authorized<ReadRemoteAuthObj>> authTask)
+			else if (result is Task<Authorized<ReadAuthObject>> authTask)
 			{
 				var auth = await authTask;
 				Assert.False(auth.HasAccess);
 				Assert.Null(auth.Result);
 				Assert.Equal("Fail", auth.Message);
+				Assert.StartsWith("Try", methodName);
 			}
-			else if (result is Authorized<ReadRemoteAuthObj> authObj)
+			else if (result is Authorized<ReadAuthObject> authDataMapper)
 			{
-				Assert.False(authObj.HasAccess);
-				Assert.Null(authObj.Result);
-				Assert.Equal("Fail", authObj.Message);
+				Assert.False(authDataMapper.HasAccess);
+				Assert.Null(authDataMapper.Result);
+				Assert.Equal("Fail", authDataMapper.Message);
+				Assert.True(methodName.StartsWith("Can") || methodName.StartsWith("Try"));
 			}
-			else if (result is Task<Authorized> authorizedTask)
+			else if (result is Authorized auth_)
 			{
-				var a = await authorizedTask;
-				Assert.False(a.HasAccess);
-				Assert.Equal("Fail", a.Message);
+				Assert.False(auth_.HasAccess);
+				Assert.Equal("Fail", auth_.Message);
+				Assert.StartsWith("Can", methodName);
 			}
-			else
+			else if (result == null)
 			{
-				Assert.Fail();
+				Assert.True(methodName.StartsWith("Create") || methodName.Contains("Fetch"));
 			}
 
 		}

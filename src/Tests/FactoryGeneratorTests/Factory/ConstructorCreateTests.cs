@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 
-namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
+namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
 public class ConstructorCreateTests
 {

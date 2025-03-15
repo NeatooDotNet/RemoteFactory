@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory.FactoryGeneratorTests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
+namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
 public class NullableParameterTests
 {

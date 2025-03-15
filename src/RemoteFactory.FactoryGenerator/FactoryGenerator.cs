@@ -543,16 +543,11 @@ public class FactoryGenerator : IIncrementalGenerator
 				if (this.CallMethod.IsTask)
 				{
 					methodCall += "Async";
+					if (this.CallMethod.IsNullable)
+					{
+						methodCall += "Nullable";
+					}
 				}
-
-				var targetType = this.TargetType;
-
-				if (this.CallMethod.IsNullable)
-				{
-					targetType = $"{targetType}?";
-				}
-
-				methodCall += $"<{targetType}>";
 
 				if (this.CallMethod.IsConstructor)
 				{
@@ -839,11 +834,13 @@ public class FactoryGenerator : IIncrementalGenerator
 	{
 		var messages = new List<string>();
 		string source;
+		var usingDirectives = new List<string>() { "using Neatoo.RemoteFactory;",
+																 "using Neatoo.RemoteFactory.Internal;",
+																 "using Microsoft.Extensions.DependencyInjection;" };
 
 		try
 		{
 			var concreteSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax) ?? throw new Exception($"Cannot get named symbol for {classDeclarationSyntax}");
-			var usingDirectives = new List<string>() { "using Neatoo.RemoteFactory;", "using Microsoft.Extensions.DependencyInjection;" };
 			var methodNames = new List<string>();
 			var targetClassName = classDeclarationSyntax.Identifier.Text;
 			var targetType = $"{targetClassName}";
@@ -856,6 +853,11 @@ public class FactoryGenerator : IIncrementalGenerator
 			{
 				targetType = $"I{concreteSymbol.Name}";
 				targetSymbol = interfaceSymbol;
+				messages.Add($"Interface Found. TargetType: {targetType} ConcreteType: {concreteSymbol.Name}");
+			}
+			else
+			{
+				messages.Add($"No Interface Found. TargetType: {targetType}");
 			}
 
 			// Generate the source code for the found method
@@ -863,8 +865,6 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			try
 			{
-
-
 				UsingStatements(usingDirectives, classDeclarationSyntax, semanticModel, namespaceName, messages);
 
 				messages.Add($"Class: {concreteSymbol.ToDisplayString()} Name: {concreteSymbol.Name}");
@@ -897,7 +897,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				string? nameOverride = null;
 
-				if(writeMethodsGrouped.Count == 1)
+				if (writeMethodsGrouped.Count == 1)
 				{
 					nameOverride = "Save";
 				}
@@ -964,10 +964,15 @@ public class FactoryGenerator : IIncrementalGenerator
 					}
 				}
 
+				var hasDefaultSave = false;
 				var defaultSaveMethod = factoryMethods.OfType<SaveFactoryMethod>()
 									 .Where(s => s.Parameters.Where(p => !p.IsTarget && !p.IsService).Count() == 0 && s.Parameters.First().IsTarget)
 									 .FirstOrDefault();
-				if (defaultSaveMethod != null) { defaultSaveMethod.IsDefault = true; }
+				if (defaultSaveMethod != null)
+				{
+					defaultSaveMethod.IsDefault = true;
+					hasDefaultSave = true;
+				}
 
 				foreach (var method in factoryMethods.OrderBy(m => m.Parameters.Count).ToList())
 				{
@@ -1002,17 +1007,16 @@ public class FactoryGenerator : IIncrementalGenerator
 					}
 				}
 
-				var isSave = writeMethodsGrouped.Any();
-				var editText = isSave ? "Save" : "";
-				if (isSave)
+				var editText = "";
+				if (hasDefaultSave)
 				{
+					editText = "Save";
 					factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{targetClassName}>, {targetClassName}Factory>();");
 				}
 
 				source = $@"
 						  #nullable enable
 
-                    using Neatoo.RemoteFactory.Internal;
                     {WithStringBuilder(usingDirectives)}
 
 /*
@@ -1026,7 +1030,7 @@ public class FactoryGenerator : IIncrementalGenerator
                     {factoryText.InterfaceMethods}
                         }}
 
-                        internal class {targetClassName}Factory : Factory{editText}Base{(isSave ? $"<{targetClassName}>, IFactorySave<{targetClassName}>" : "")}, I{targetClassName}Factory
+                        internal class {targetClassName}Factory : Factory{editText}Base<{targetType}>{(hasDefaultSave ? $", IFactorySave<{targetClassName}>" : "")}, I{targetClassName}Factory
                         {{
 
                             private readonly IServiceProvider ServiceProvider;  
@@ -1037,13 +1041,13 @@ public class FactoryGenerator : IIncrementalGenerator
                     // Delegate Properties to provide Local or Remote fork in execution
                     {factoryText.PropertyDeclarations}
 
-                            public {targetClassName}Factory(IServiceProvider serviceProvider)
+                            public {targetClassName}Factory(IServiceProvider serviceProvider, IFactoryCore<{targetType}> factoryCore) : base(factoryCore)
                             {{
                                     this.ServiceProvider = serviceProvider;
                                     {factoryText.ConstructorPropertyAssignmentsLocal}
                             }}
 
-                            public {targetClassName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
+                            public {targetClassName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetType}> factoryCore) : base(factoryCore)
                             {{
                                     this.ServiceProvider = serviceProvider;
                                     this.MakeRemoteDelegateRequest = remoteMethodDelegate;
@@ -1225,7 +1229,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		}
 	}
 
-	public static void UsingStatements(List<string> usingDirectives, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel,    string namespaceName, List<string> messages)
+	public static void UsingStatements(List<string> usingDirectives, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel, string namespaceName, List<string> messages)
 	{
 		var parentClassDeclaration = classDeclarationSyntax.Parent as ClassDeclarationSyntax;
 		var parentClassUsingText = "";
@@ -1254,7 +1258,6 @@ public class FactoryGenerator : IIncrementalGenerator
 					usingDirectives.Add(using_.ToString());
 				}
 			}
-
 			recurseClassDeclaration = GetBaseClassDeclarationSyntax(semanticModel, recurseClassDeclaration, messages);
 		}
 	}

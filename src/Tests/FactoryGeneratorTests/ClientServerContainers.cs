@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
 using Neatoo.RemoteFactory.Internal;
@@ -75,6 +76,7 @@ internal static class ClientServerContainers
 				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
 				clientCollection.AddScoped<ServerServiceProvider>();
 				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
+				clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
 
 				serverContainer = serverCollection.BuildServiceProvider();
 				clientContainer = clientCollection.BuildServiceProvider();

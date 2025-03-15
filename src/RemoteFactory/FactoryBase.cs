@@ -1,67 +1,60 @@
 ﻿
+using Neatoo.RemoteFactory.Internal;
+
 namespace Neatoo.RemoteFactory;
 
 
-public abstract class FactoryBase
+public abstract class FactoryBase<T>
 {
-   protected virtual T DoFactoryMethodCall<T>(FactoryOperation operation, Func<T> mapperMethodCall)
-   {
-	  ArgumentNullException.ThrowIfNull(mapperMethodCall, nameof(mapperMethodCall));
+   protected IFactoryCore<T> FactoryCore { get; }
 
-	  return mapperMethodCall();
+   protected FactoryBase(IFactoryCore<T> factoryCore)
+	{
+	  this.FactoryCore = factoryCore;
    }
 
+   protected virtual T DoFactoryMethodCall(FactoryOperation operation, Func<T> factoryMethodCall)
+   {
+	  ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-	protected virtual Task<T> DoFactoryMethodCallAsync<T>(FactoryOperation operation, Func<Task<T>> mapperMethodCall)
-	{
-		ArgumentNullException.ThrowIfNull(mapperMethodCall, nameof(mapperMethodCall));
-
-		return mapperMethodCall();
+	  return this.FactoryCore.DoFactoryMethodCall(operation, factoryMethodCall);
 	}
 
-	protected virtual T DoFactoryMethodCall<T>(T target, FactoryOperation operation, Action mapperMethodCall)
+	protected virtual Task<T> DoFactoryMethodCallAsync(FactoryOperation operation, Func<Task<T>> factoryMethodCall)
+	{
+		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
+
+		return this.FactoryCore.DoFactoryMethodCallAsync(operation, factoryMethodCall);
+	}
+
+	protected virtual Task<T?> DoFactoryMethodCallAsyncNullable(FactoryOperation operation, Func<Task<T?>> factoryMethodCall)
+	{
+		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
+
+		return this.FactoryCore.DoFactoryMethodCallAsyncNullable(operation, factoryMethodCall);
+	}
+
+	protected virtual T DoFactoryMethodCall(T target, FactoryOperation operation, Action factoryMethodCall)
    {
-	  ArgumentNullException.ThrowIfNull(mapperMethodCall, nameof(mapperMethodCall));
+	  ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-	  mapperMethodCall();
-
-	  return target;
+		return this.FactoryCore.DoFactoryMethodCall(target, operation, factoryMethodCall);
    }
 
-   protected virtual T? DoFactoryMethodCallBool<T>(T target, FactoryOperation operation, Func<bool> mapperMethodCall)
+   protected virtual T? DoFactoryMethodCallBool(T target, FactoryOperation operation, Func<bool> factoryMethodCall)
    {
-	  ArgumentNullException.ThrowIfNull(mapperMethodCall, nameof(mapperMethodCall));
+	  ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-	  var succeeded = mapperMethodCall();
+		return this.FactoryCore.DoFactoryMethodCallBool(target, operation, factoryMethodCall);
+	}
 
-	  if (!succeeded)
-	  {
-		 return default;
-	  }
-
-	  return target;
-   }
-
-   protected virtual async Task<T> DoFactoryMethodCallAsync<T>(T target, FactoryOperation operation, Func<Task> mapperMethodCall)
+	protected virtual Task<T> DoFactoryMethodCallAsync(T target, FactoryOperation operation, Func<Task> factoryMethodCall)
    {
-	  ArgumentNullException.ThrowIfNull(mapperMethodCall, nameof(mapperMethodCall));
+		return this.FactoryCore.DoFactoryMethodCallAsync(target, operation, factoryMethodCall);
+	}
 
-	  await mapperMethodCall();
-
-	  return target;
-   }
-
-   protected virtual async Task<T?> DoFactoryMethodCallBoolAsync<T>(T target, FactoryOperation operation, Func<Task<bool>> mapperMethodCall)
+	protected virtual Task<T?> DoFactoryMethodCallBoolAsync(T target, FactoryOperation operation, Func<Task<bool>> factoryMethodCall)
    {
-	  ArgumentNullException.ThrowIfNull(mapperMethodCall, nameof(mapperMethodCall));
-
-	  var succeeded = await mapperMethodCall();
-
-	  if (!succeeded)
-	  {
-		 return default;
-	  }
-
-	  return target;
-   }
+	  return this.FactoryCore.DoFactoryMethodCallBoolAsync(target, operation, factoryMethodCall);
+	}
 }

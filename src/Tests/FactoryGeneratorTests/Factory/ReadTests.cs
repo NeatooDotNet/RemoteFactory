@@ -1,51 +1,182 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory.FactoryGeneratorTests;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using Xunit;
 
-namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
+namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
-
-public class RemoteReadTests
+public class ReadTests
 {
-
 	[Factory]
-	public class RemoteReadDataMapper
+	public class ReadObject : ReadParamObject
 	{
-		public bool CreateCalled { get; set; }
-
 		[Create]
-		[Remote]
+
 		public void CreateVoid()
 		{
-			this.CreateCalled = true;
+		 this.CreateCalled = true;
 		}
 
 		[Create]
-		[Remote]
+
 		public bool CreateBool()
 		{
-			this.CreateCalled = true;
+		 this.CreateCalled = true;
 			return true;
 		}
 
 		[Create]
-		[Remote]
+
 		public Task CreateTask()
 		{
-			this.CreateCalled = true;
+		 this.CreateCalled = true;
 			return Task.CompletedTask;
 		}
 
 		[Create]
-		[Remote]
+
 		public Task<bool> CreateTaskBool()
 		{
-			this.CreateCalled = true;
+		 this.CreateCalled = true;
 			return Task.FromResult(true);
 		}
 
 		[Create]
-		[Remote]
+
+		public void CreateVoidDep([Service] IService service)
+		{
+		 this.CreateCalled = true;
+			Assert.NotNull(service);
+		}
+
+		[Create]
+
+		public bool CreateBoolTrueDep([Service] IService service)
+		{
+		 this.CreateCalled = true;
+			Assert.NotNull(service);
+			return true;
+		}
+
+		[Create]
+
+		public bool CreateBoolFalseDep([Service] IService service)
+		{
+		 this.CreateCalled = true;
+			Assert.NotNull(service);
+			return false;
+		}
+
+		[Create]
+
+		public Task CreateTaskDep([Service] IService service)
+		{
+		 this.CreateCalled = true;
+			Assert.NotNull(service);
+			return Task.CompletedTask;
+		}
+
+		[Create]
+
+		public Task<bool> CreateTaskBoolDep([Service] IService service)
+		{
+		 this.CreateCalled = true;
+			Assert.NotNull(service);
+			return Task.FromResult(true);
+		}
+
+		[Create]
+
+		public Task<bool> CreateTaskBoolFalseDep([Service] IService service)
+		{
+		 this.CreateCalled = true;
+			Assert.NotNull(service);
+			return Task.FromResult(false);
+		}
+
+		[Fetch]
+
+		public void FetchVoid()
+		{
+		 this.FetchCalled = true;
+		}
+
+		[Fetch]
+
+		public bool FetchBool()
+		{
+		 this.FetchCalled = true;
+			return true;
+		}
+
+		[Fetch]
+
+		public Task FetchTask()
+		{
+		 this.FetchCalled = true;
+			return Task.CompletedTask;
+		}
+
+		[Fetch]
+
+		public Task<bool> FetchTaskBool()
+		{
+		 this.FetchCalled = true;
+			return Task.FromResult(true);
+		}
+
+		[Fetch]
+
+		public void FetchVoidDep([Service] IService service)
+		{
+		 this.FetchCalled = true;
+			Assert.NotNull(service);
+		}
+
+		[Fetch]
+
+		public bool FetchBoolTrueDep([Service] IService service)
+		{
+		 this.FetchCalled = true;
+			Assert.NotNull(service);
+			return true;
+		}
+
+		[Fetch]
+
+		public bool FetchBoolFalseDep([Service] IService service)
+		{
+		 this.FetchCalled = true;
+			Assert.NotNull(service);
+			return false;
+		}
+
+		[Fetch]
+
+		public Task FetchTaskDep([Service] IService service)
+		{
+		 this.FetchCalled = true;
+			Assert.NotNull(service);
+			return Task.CompletedTask;
+		}
+
+		[Fetch]
+
+		public Task<bool> FetchTaskBoolDep([Service] IService service)
+		{
+		 this.FetchCalled = true;
+			Assert.NotNull(service);
+			return Task.FromResult(true);
+		}
+
+	}
+
+	public class ReadParamObject
+	{
+		public bool CreateCalled { get; set; }
+
+		[Create]
+
 		public void CreateVoid(int? param)
 		{
 			this.CreateCalled = true;
@@ -53,7 +184,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public bool CreateBool(int? param)
 		{
 			this.CreateCalled = true;
@@ -62,7 +193,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public Task CreateTask(int? param)
 		{
 			this.CreateCalled = true;
@@ -71,7 +202,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public Task<bool> CreateTaskBool(int? param)
 		{
 			this.CreateCalled = true;
@@ -80,7 +211,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public Task<bool> CreateTaskBoolFalse(int? param)
 		{
 			this.CreateCalled = true;
@@ -89,60 +220,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
-		public void CreateVoidDep([Service] IService service)
-		{
-			this.CreateCalled = true;
-			Assert.NotNull(service);
-		}
 
-		[Create]
-		[Remote]
-		public bool CreateBoolTrueDep([Service] IService service)
-		{
-			this.CreateCalled = true;
-			Assert.NotNull(service);
-			return true;
-		}
-
-		[Create]
-		[Remote]
-		public bool CreateBoolFalseDep([Service] IService service)
-		{
-			this.CreateCalled = true;
-			Assert.NotNull(service);
-			return false;
-		}
-
-		[Create]
-		[Remote]
-		public Task CreateTaskDep([Service] IService service)
-		{
-			this.CreateCalled = true;
-			Assert.NotNull(service);
-			return Task.CompletedTask;
-		}
-
-		[Create]
-		[Remote]
-		public Task<bool> CreateTaskBoolDep([Service] IService service)
-		{
-			this.CreateCalled = true;
-			Assert.NotNull(service);
-			return Task.FromResult(true);
-		}
-
-		[Create]
-		[Remote]
-		public Task<bool> CreateTaskBoolFalseDep([Service] IService service)
-		{
-			this.CreateCalled = true;
-			Assert.NotNull(service);
-			return Task.FromResult(false);
-		}
-
-		[Create]
-		[Remote]
 		public void CreateVoidDep(int? param, [Service] IService service)
 		{
 			this.CreateCalled = true;
@@ -151,7 +229,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public bool CreateBoolTrueDep(int? param, [Service] IService service)
 		{
 			this.CreateCalled = true;
@@ -161,7 +239,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public bool CreateBoolFalseDep(int? param, [Service] IService service)
 		{
 			this.CreateCalled = true;
@@ -171,7 +249,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public Task CreateTaskDep(int? param, [Service] IService service)
 		{
 			this.CreateCalled = true;
@@ -181,7 +259,7 @@ public class RemoteReadTests
 		}
 
 		[Create]
-		[Remote]
+
 		public Task<bool> CreateTaskBoolDep(int? param, [Service] IService service)
 		{
 			this.CreateCalled = true;
@@ -193,38 +271,7 @@ public class RemoteReadTests
 		public bool FetchCalled { get; set; }
 
 		[Fetch]
-		[Remote]
-		public void FetchVoid()
-		{
-			this.FetchCalled = true;
-		}
 
-		[Fetch]
-		[Remote]
-		public bool FetchBool()
-		{
-			this.FetchCalled = true;
-			return true;
-		}
-
-		[Fetch]
-		[Remote]
-		public Task FetchTask()
-		{
-			this.FetchCalled = true;
-			return Task.CompletedTask;
-		}
-
-		[Fetch]
-		[Remote]
-		public Task<bool> FetchTaskBool()
-		{
-			this.FetchCalled = true;
-			return Task.FromResult(true);
-		}
-
-		[Fetch]
-		[Remote]
 		public void FetchVoid(int? param)
 		{
 			this.FetchCalled = true;
@@ -232,7 +279,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public bool FetchBool(int? param)
 		{
 			this.FetchCalled = true;
@@ -241,7 +288,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public Task FetchTask(int? param)
 		{
 			this.FetchCalled = true;
@@ -250,7 +297,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public Task<bool> FetchTaskBool(int? param)
 		{
 			this.FetchCalled = true;
@@ -259,51 +306,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
-		public void FetchVoidDep([Service] IService service)
-		{
-			this.FetchCalled = true;
-			Assert.NotNull(service);
-		}
 
-		[Fetch]
-		[Remote]
-		public bool FetchBoolTrueDep([Service] IService service)
-		{
-			this.FetchCalled = true;
-			Assert.NotNull(service);
-			return true;
-		}
-
-		[Fetch]
-		[Remote]
-		public bool FetchBoolFalseDep([Service] IService service)
-		{
-			this.FetchCalled = true;
-			Assert.NotNull(service);
-			return false;
-		}
-
-		[Fetch]
-		[Remote]
-		public Task FetchTaskDep([Service] IService service)
-		{
-			this.FetchCalled = true;
-			Assert.NotNull(service);
-			return Task.CompletedTask;
-		}
-
-		[Fetch]
-		[Remote]
-		public Task<bool> FetchTaskBoolDep([Service] IService service)
-		{
-			this.FetchCalled = true;
-			Assert.NotNull(service);
-			return Task.FromResult(true);
-		}
-
-		[Fetch]
-		[Remote]
 		public void FetchVoidDep(int? param, [Service] IService service)
 		{
 			this.FetchCalled = true;
@@ -312,7 +315,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public bool FetchBoolTrueDep(int? param, [Service] IService service)
 		{
 			this.FetchCalled = true;
@@ -322,7 +325,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public bool FetchBoolFalseDep(int? param, [Service] IService service)
 		{
 			this.FetchCalled = true;
@@ -332,7 +335,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public Task FetchTaskDep(int? param, [Service] IService service)
 		{
 			this.FetchCalled = true;
@@ -342,7 +345,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public Task<bool> FetchTaskBoolDep(int? param, [Service] IService service)
 		{
 			this.FetchCalled = true;
@@ -352,7 +355,7 @@ public class RemoteReadTests
 		}
 
 		[Fetch]
-		[Remote]
+
 		public Task<bool> FetchTaskBoolFalseDep(int? param, [Service] IService service)
 		{
 			this.FetchCalled = true;
@@ -362,48 +365,54 @@ public class RemoteReadTests
 		}
 	}
 
-
 	private IServiceScope clientScope;
 
-	public RemoteReadTests()
+	public ReadTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
-		this.clientScope = scopes.client;
+	  this.clientScope = scopes.client;
 	}
 
 	[Fact]
-	public async Task RemoteReadTest()
+	public async Task ReadFactoryTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IRemoteReadDataMapperFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadObjectFactory>();
 
-		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch")).ToList();
+		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.Contains("Create") || m.Name.Contains("Fetch")).ToList();
 
 		foreach (var method in methods)
 		{
 			object? result;
 			var methodName = method.Name;
 
-			if (method.GetParameters().Length != 0)
+			if (method.GetParameters().Any())
 			{
-				result = method.Invoke(readFactory, [1]);
+				result = method.Invoke(readFactory, new object[] { 1 });
 			}
 			else
 			{
 				result = method.Invoke(readFactory, null);
 			}
 
-			if (result is Task<RemoteReadDataMapper?> taskBool)
+			if (result is Task<ReadObject?> task)
 			{
+				Assert.Contains("Task", methodName);
 				if (method.Name.Contains("False"))
 				{
-					Assert.Null(await taskBool);
+					Assert.Null(await task);
 				}
 				else
 				{
-					var remoteRead = await taskBool;
-					Assert.NotNull(result);
-					Assert.True(remoteRead!.CreateCalled || remoteRead!.FetchCalled);
+					var r = await task;
+					Assert.NotNull(r);
+					Assert.True(r!.CreateCalled || r!.FetchCalled);
 				}
+			}
+			else if (result is ReadObject r)
+			{
+				Assert.DoesNotContain("Task", methodName);
+				Assert.DoesNotContain("False", methodName);
+				Assert.NotNull(r);
 			}
 			else
 			{
@@ -412,7 +421,6 @@ public class RemoteReadTests
 				Assert.Contains("False", methodName);
 				Assert.Null(result);
 			}
-
 		}
 	}
 }

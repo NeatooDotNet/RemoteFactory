@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
+namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
  public abstract class FactoryTestBase<TFactory>
 	where TFactory : notnull

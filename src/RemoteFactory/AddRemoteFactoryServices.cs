@@ -33,6 +33,7 @@ public static partial class RemoteFactoryServices
 		services.AddTransient<NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
+		services.AddScoped(typeof(IFactoryCore<>), typeof(FactoryCore<>));
 
 		if (portalServer == NeatooFactory.Remote)
 		{
