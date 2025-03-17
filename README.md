@@ -5,7 +5,7 @@ Neatoo is a .NET Domain Model Framework. Neatoo Remote Factory is a 2-Tier Data 
 
 To get started with Neatoo Remote Factory, follow these steps:
 
-__1. Install the [Neatoo Remote Factory NuGet package](https://www.nuget.org/packages/Neatoo.RemoteFactory) in your project.__
+__1. Install the [Neatoo Remote Factory NuGet package](https://www.nuget.org/packages/Neatoo.RemoteFactory) in your client and server projects.__
 
 __2. Register the necessary services in ASP.NET server application. Be sure to include your Domain Model library assembly.__
 
