@@ -163,9 +163,11 @@ public class MapperGenerator : IIncrementalGenerator
 				}
 			}
 
-			var classDeclaration = classDeclarationSyntax.GetText().GetSubText(new Microsoft.CodeAnalysis.Text.TextSpan(classDeclarationSyntax.Modifiers.Span.Start - classDeclarationSyntax.SpanStart, classDeclarationSyntax.Identifier.Span.End - classDeclarationSyntax.Modifiers.Span.Start + 2));
+			var classDeclaration = classDeclarationSyntax.ToFullString().Substring(classDeclarationSyntax.Modifiers.FullSpan.Start - classDeclarationSyntax.FullSpan.Start, classDeclarationSyntax.Identifier.FullSpan.End - classDeclarationSyntax.Modifiers.FullSpan.Start);
 
-			var source = $@"
+			if (mapperMethods.Length > 0)
+			{
+				var source = $@"
 						  #nullable enable
 
                     using Neatoo.RemoteFactory.Internal;
@@ -174,7 +176,6 @@ namespace {namespaceName};
 
 /*
 {FactoryGenerator.WithStringBuilder(messages)}
-
 */
 
 {classDeclaration}
@@ -184,11 +185,12 @@ namespace {namespaceName};
 
 
 ";
-			source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().SyntaxTree.GetText().ToString();
+				source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().SyntaxTree.GetText().ToString();
 
-			context.AddSource($"{namespaceName}.{className}Partial.g.cs", source);
-
+				context.AddSource($"{namespaceName}.{className}Partial.g.cs", source);
+			}
 		}
+
 		catch (Exception ex)
 		{
 			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0001", "Error", ex.Message, "MapperGenerator", DiagnosticSeverity.Error, true), Location.None));
