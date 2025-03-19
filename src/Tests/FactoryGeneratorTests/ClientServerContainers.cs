@@ -72,11 +72,13 @@ internal static class ClientServerContainers
 				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Local, Assembly.GetExecutingAssembly());
 				serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
 				serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
+				serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
 
 				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
 				clientCollection.AddScoped<ServerServiceProvider>();
 				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
 				clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
+				clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
 
 				serverContainer = serverCollection.BuildServiceProvider();
 				clientContainer = clientCollection.BuildServiceProvider();

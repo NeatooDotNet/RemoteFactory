@@ -63,38 +63,55 @@ public static partial class RemoteFactoryServices
 				};
 			});
 
-		foreach (var assembly in assemblies)
-		{
-			services.AutoRegisterAssemblyTypes(assembly);
-		}
+		services.RegisterFactories(assemblies);
 
 		return services;
 	}
 
-	private static void AutoRegisterAssemblyTypes(this IServiceCollection services, Assembly assembly)
+	private static void RegisterFactories(this IServiceCollection services, params Assembly[] assemblies)
 	{
-		var types = assembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract && !string.IsNullOrEmpty(t.FullName)).ToList();
-		var interfaces = assembly.GetTypes().Where(t => t.IsInterface && t.Name.StartsWith('I') && !string.IsNullOrEmpty(t.FullName))
-														.ToDictionary(t => GetConcreteName().Replace(t.FullName!, $"$1$2{t.Name.Substring(1)}"));
-
-		foreach (var t in types)
+		foreach (var assembly in assemblies)
 		{
-			if (t.GetCustomAttribute<FactoryAttribute>() != null)
-			{
-				// Let the factory handle the registration
-				continue;
-			}
+			var types = assembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract
+							&& !string.IsNullOrEmpty(t.FullName)
+							&& t.BaseType?.IsGenericType == true
+							&& (t.BaseType?.GetGenericTypeDefinition() == typeof(FactoryBase<>) || t.BaseType?.GetGenericTypeDefinition() == typeof(FactorySaveBase<>))).ToList();
 
-			var registrationMethod = t.GetMethod("FactoryServiceRegistrar", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+			foreach (var t in types)
+			{
+				var registrationMethod = t.GetMethod("FactoryServiceRegistrar", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
 
-			if (registrationMethod != null)
-			{
-				registrationMethod.Invoke(null, [services]);
+				registrationMethod?.Invoke(null, [services]);
 			}
-			else if (interfaces.TryGetValue(t.FullName!, out var i))
+		}
+	}
+
+	/// <summary>
+	/// Register services where the service and implementation have the same name
+	/// but the service is an interface whose name starts with an "I"
+	/// and the implementation is the concrete type without the "I"
+	/// Ex. IBusinessObject would be registered to BusinessObject
+	/// </summary>
+	/// <param name="services"></param>
+	/// <param name="assembly"></param>
+	public static void RegisterMatchingName(this IServiceCollection services, params Assembly[] assemblies)
+	{
+		ArgumentNullException.ThrowIfNull(services, nameof(services));
+		ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
+
+		foreach (var assembly in assemblies)
+		{
+			var types = assembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract && !string.IsNullOrEmpty(t.FullName)).ToList();
+
+			var interfaces = assembly.GetTypes().Where(t => t.IsInterface && t.Name.StartsWith('I') && !string.IsNullOrEmpty(t.FullName))
+													.ToDictionary(t => GetConcreteName().Replace(t.FullName!, $"$1$2{t.Name.Substring(1)}"));
+			foreach (var t in types)
 			{
-				services.AddTransient(i, t);
-				services.AddTransient(t);
+				if (interfaces.TryGetValue(t.FullName!, out var i))
+				{
+					services.AddTransient(i, t);
+					services.AddTransient(t);
+				}
 			}
 		}
 	}
