@@ -31,21 +31,42 @@ public class FactoryCore<T> : IFactoryCore<T>
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		return factoryMethodCall();
+		var target = factoryMethodCall();
+
+		if (target is IFactoryOnComplete factoryOnComplete)
+		{
+			factoryOnComplete.FactoryComplete(operation);
+		}
+
+		return target;
 	}
 
-	public virtual Task<T> DoFactoryMethodCallAsync(FactoryOperation operation, Func<Task<T>> factoryMethodCall)
+	public virtual async Task<T> DoFactoryMethodCallAsync(FactoryOperation operation, Func<Task<T>> factoryMethodCall)
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		return factoryMethodCall();
+		var target = await factoryMethodCall();
+
+		if (target is IFactoryOnComplete factoryOnComplete)
+		{
+			factoryOnComplete.FactoryComplete(operation);
+		}
+
+		return target;
 	}
 
 	public virtual Task<T?> DoFactoryMethodCallAsyncNullable(FactoryOperation operation, Func<Task<T?>> factoryMethodCall)
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		return factoryMethodCall();
+		var target = factoryMethodCall();
+
+		if (target is IFactoryOnComplete factoryOnComplete)
+		{
+			factoryOnComplete.FactoryComplete(operation);
+		}
+
+		return target;
 	}
 
 	public virtual T DoFactoryMethodCall(T target, FactoryOperation operation, Action factoryMethodCall)

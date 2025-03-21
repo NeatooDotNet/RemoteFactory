@@ -11,6 +11,13 @@ public class FactoryOnStartCompleteTests : FactoryTestBase<IFactoryOnStartComple
 {
 	public class FactoryOnStartCompleteObj : ReadObject, IFactoryOnStart, IFactoryOnStartAsync, IFactoryOnComplete, IFactoryOnCompleteAsync
 	{
+		[Create]
+		[Fetch]
+		public FactoryOnStartCompleteObj()
+		{
+			this.StartCalled = true;
+		}
+
 		public bool StartCalled { get; set; }
 		public bool CompleteCalled { get; set; }
 		public bool StartAsyncCalled { get; set; }

@@ -11,6 +11,19 @@ public class ReadTests
 	public class ReadObject : ReadParamObject
 	{
 		[Create]
+		[Fetch]
+		public ReadObject() : base()
+		{
+		}
+
+		[Create]
+		[Fetch]
+		public ReadObject(int? param) : base(param)
+		{
+
+		}
+
+		[Create]
 
 		public void CreateVoid()
 		{
@@ -173,6 +186,23 @@ public class ReadTests
 
 	public class ReadParamObject
 	{
+		[Create]
+		[Fetch]
+		public ReadParamObject()
+		{
+			this.CreateCalled = true;
+			this.FetchCalled = true;
+		}
+
+		[Create]
+		[Fetch]
+		public ReadParamObject(int? param)
+		{
+			this.CreateCalled = true;
+			this.FetchCalled = true;
+			Assert.Equal(1, param);
+		}
+
 		public bool CreateCalled { get; set; }
 
 		[Create]
@@ -413,6 +443,7 @@ public class ReadTests
 				Assert.DoesNotContain("Task", methodName);
 				Assert.DoesNotContain("False", methodName);
 				Assert.NotNull(r);
+				Assert.True(r!.CreateCalled || r!.FetchCalled);
 			}
 			else
 			{

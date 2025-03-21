@@ -1089,12 +1089,14 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	}
 
-	private static List<IMethodSymbol> GetMethodsRecursive(INamedTypeSymbol? classNamedSymbol)
+	private static List<IMethodSymbol> GetMethodsRecursive(INamedTypeSymbol? classNamedSymbol, bool includeConst = true)
 	{
-		var methods = classNamedSymbol?.GetMembers().OfType<IMethodSymbol>().ToList() ?? [];
+		var methods = classNamedSymbol?.GetMembers().OfType<IMethodSymbol>()
+						.Where(m => includeConst || m.MethodKind != MethodKind.Constructor) // Only include top-level constructors
+						.ToList() ?? [];
 		if (classNamedSymbol?.BaseType != null)
 		{
-			methods.AddRange(GetMethodsRecursive(classNamedSymbol.BaseType));
+			methods.AddRange(GetMethodsRecursive(classNamedSymbol.BaseType, false));
 		}
 		return methods;
 	}
