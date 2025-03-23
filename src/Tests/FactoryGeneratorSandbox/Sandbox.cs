@@ -153,4 +153,29 @@ public Task Insert(){}
 		TestHelper.Verify(source);
 	}
 
+	[Fact]
+	public void StaticExecute()
+	{
+		// The source code to test
+		var source = @"
+using Neatoo.RemoteFactory;
+
+namespace FactoryGeneratorSandbox;
+
+public delegate Task<int> MyRemoteMethodCall(string message);
+
+[Factory]
+internal static class ExecuteDef {
+
+	[Execute<MyRemoteMethodCall>]
+	public static Task<int> DoExecute(string message, [Service] IService service)
+	{
+		return 1;
+	}
+}
+
+";
+
+		TestHelper.Verify(source);
+	}
 }

@@ -15,7 +15,17 @@ public class FactoryGenerator : IIncrementalGenerator
 			predicate: static (s, _) => IsSyntaxTargetForGeneration(s),
 			transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
 			.Where(static m => m is not null),
-			static (ctx, source) => Execute(ctx, source!.Value.classDeclaration, source.Value.semanticModel));
+			static (ctx, source) =>
+			{
+				if (source!.Value.classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+				{
+					GenerateExecute(ctx, source!.Value.classDeclaration, source.Value.semanticModel);
+				}
+				else
+				{
+					GenerateFactory(ctx, source!.Value.classDeclaration, source.Value.semanticModel);
+				}
+			});
 
 	public static bool IsSyntaxTargetForGeneration(SyntaxNode node) => node is ClassDeclarationSyntax classDeclarationSyntax
 				 && !(classDeclarationSyntax.TypeParameterList?.Parameters.Any() ?? false || classDeclarationSyntax.Modifiers.Any(SyntaxKind.AbstractKeyword))
@@ -125,6 +135,14 @@ public class FactoryGenerator : IIncrementalGenerator
 				messages.Add($"Ignoring {methodSymbol.Name}; wrong return type of {methodType} for an Authorize method");
 				this.Ignore = true;
 			}
+			else if (this.FactoryOperation == RemoteFactory.FactoryGenerator.FactoryOperation.Execute)
+			{
+				if (!methodSymbol.IsStatic || !classSymbol.IsStatic)
+				{
+					messages.Add($"Ignoring {methodSymbol.Name}. Execute Operations must be a static method in a static class");
+					this.Ignore = true;
+				}
+			}
 			else if (this.FactoryOperation != null && !(methodType == "void" || methodType == "bool" || methodType == "System.Threading.Tasks.Task"))
 			{
 				messages.Add($"Ignoring {methodSymbol.Name}; wrong return type of {methodType} for a Factory method");
@@ -134,6 +152,8 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		private CallMethod(AttributeData attribute_, INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, SyntaxList<AttributeListSyntax> attributeLists, ParameterListSyntax? parameterListSyntax, List<string> messages)
 		{
+			this.MethodSymbol = methodSymbol;
+			this.AttributeData = attribute_;
 			var otherAttributes = methodSymbol.GetAttributes().Select(a => a.AttributeClass?.Name.Replace("Attribute", "")).Where(a => a != null).ToList();
 			var attributeName = attribute_.AttributeClass?.Name.Replace("Attribute", "");
 
@@ -203,14 +223,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			//{
 			if (parameterListSyntax != null)
 			{
-				this.Parameters = [.. parameterListSyntax.Parameters.Select(p => new ParameterInfo()
-				{
-					Name = p.Identifier.Text,
-					Type = p.Type!.ToFullString(),
-					ParameterSymbol = methodSymbol.Parameters.Where(mp => mp.Name == p.Identifier.Text).FirstOrDefault(),
-					IsService = p.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.ToFullString() == "Service"),
-				})];
-
+				this.Parameters = [.. parameterListSyntax.Parameters.Select(p => new ParameterInfo(p, methodSymbol))];
 			}
 			else
 			{
@@ -236,6 +249,8 @@ public class FactoryGenerator : IIncrementalGenerator
 		public bool IsTask { get; private set; }
 		public bool IsRemote { get; private set; }
 		public bool IsSave { get; private set; }
+		public IMethodSymbol MethodSymbol { get; protected set; }
+		public AttributeData AttributeData { get; protected set; }
 		public FactoryOperation? FactoryOperation { get; private set; }
 		public AuthorizeOperation? AuthorizeOperation { get; private set; }
 		public List<ParameterInfo> Parameters { get; private set; }
@@ -309,7 +324,6 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			methodBuilder.AppendLine($"return {returnText};");
 			methodBuilder.AppendLine("}");
-
 		}
 	}
 
@@ -802,6 +816,16 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	public class ParameterInfo
 	{
+		public ParameterInfo() { }
+
+		public ParameterInfo(ParameterSyntax parameterSyntax, IMethodSymbol methodSymbol)
+		{
+			this.Name = parameterSyntax.Identifier.Text;
+			this.Type = parameterSyntax.Type!.ToFullString();
+			this.ParameterSymbol = methodSymbol.Parameters.Where(mp => mp.Name == parameterSyntax.Identifier.Text).FirstOrDefault();
+			this.IsService = parameterSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.ToFullString() == "Service");
+		}
+
 		public string Name { get; set; } = null!;
 		public string Type { get; set; } = null!;
 		public IParameterSymbol? ParameterSymbol { get; set; } = null!;
@@ -830,7 +854,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		public StringBuilder ServiceRegistrations { get; set; } = new();
 	}
 
-	private static void Execute(SourceProductionContext context, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel)
+	private static void GenerateFactory(SourceProductionContext context, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel)
 	{
 		var messages = new List<string>();
 		string source;
@@ -1057,7 +1081,7 @@ public class FactoryGenerator : IIncrementalGenerator
                     {factoryText.MethodsBuilder}
                     {factoryText.SaveMethods}
 
-                            public static void FactoryServiceRegistrar(IServiceCollection services)
+                            public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
                             {{
                                 services.AddScoped<{targetClassName}Factory>();
                                 services.AddScoped<I{targetClassName}Factory, {targetClassName}Factory>();
@@ -1089,6 +1113,253 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	}
 
+	private static void GenerateExecute(SourceProductionContext context, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel)
+	{
+		var messages = new List<string>();
+		string source;
+		var usingDirectives = new List<string>() { "using Neatoo.RemoteFactory;",
+																 "using Neatoo.RemoteFactory.Internal;",
+																 "using Microsoft.Extensions.DependencyInjection;" };
+
+		try
+		{
+			var staticSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax) ?? throw new Exception($"Cannot get named symbol for {classDeclarationSyntax}");
+			var methodNames = new List<string>();
+			var remoteMethods = new StringBuilder();
+			var localMethods = new StringBuilder();
+			var className = classDeclarationSyntax.Identifier.Text;
+
+			// Generate the source code for the found method
+			var namespaceName = FindNamespace(classDeclarationSyntax) ?? "MissingNamespace";
+
+			try
+			{
+				UsingStatements(usingDirectives, classDeclarationSyntax, semanticModel, namespaceName, messages);
+
+				messages.Add($"Static Class: {staticSymbol.ToDisplayString()} Name: {staticSymbol.Name}");
+				var concreteMethods = GetMethodsRecursive(staticSymbol);
+				//var targetCallMethods = CreateCallMethods(staticSymbol, concreteMethods, messages);
+				//var authCallMethods = FindAuthMethods(semanticModel, targetType, staticSymbol, messages);
+
+				//var factoryMethods = new List<FactoryMethod>();
+
+
+
+				foreach (var method in concreteMethods)
+				{
+					if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not MethodDeclarationSyntax methodDeclaration)
+					{
+						messages.Add($"No MethodDeclarationSyntax for {method.Name}");
+						continue;
+					}
+
+					if (!methodDeclaration.ReturnType.ToString().StartsWith("Task"))
+					{
+						messages.Add($"{method.Name} skipped. Method must return Task");
+						continue;
+					}
+
+					var executeAttribute = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "ExecuteAttribute");
+					if (executeAttribute != null && executeAttribute.AttributeClass?.TypeArguments.Length == 1)
+					{
+						var typeSymbol = executeAttribute.AttributeClass.TypeArguments[0];
+
+						if (typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not DelegateDeclarationSyntax delegateSyntax)
+						{
+							messages.Add($"No DelegateDeclarationSyntax for {typeSymbol.Name}");
+							continue;
+						}
+
+						if (!delegateSyntax.ReturnType.ToString().StartsWith("Task"))
+						{
+							messages.Add($"{typeSymbol.Name} skipped. Delegates must return Task");
+							continue;
+						}
+
+						if (delegateSyntax.ReturnType.ToString() != methodDeclaration.ReturnType.ToString())
+						{
+							messages.Add($"{typeSymbol.Name} skipped. Method return type does not match Delegate return type.");
+							continue;
+						}
+
+						//var typeSyntax = typeArgument. as TypeDeclarationSyntax;
+						//var correctSemanticModel = semanticModel.Compilation.GetSemanticModel(typeSyntax.SyntaxTree);
+
+						//var classSymbol = correctSemanticModel.GetDeclaredSymbol(typeSyntax) as INamedTypeSymbol;
+
+						var delegateName = typeSymbol.ToDisplayString();
+
+						var parameters = methodDeclaration.ParameterList.Parameters.Select(p => new ParameterInfo(p, method)).ToList();
+
+						var parameterDeclarations = string.Join(", ", parameters.Where(p => !p.IsService)
+																		.Select(p => $"{p.Type} {p.Name}"));
+						var parameterIdentifiers = string.Join(", ", parameters.Where(p => !p.IsService).Select(p => p.Name));
+						var allParameterIdentifiers = string.Join(", ", parameters.Select(p => p.Name));
+						var serviceAssignmentsText = WithStringBuilder(parameters.Where(p => p.IsService).Select(p => $"var {p.Name} = cc.GetRequiredService<{p.Type}>();"));
+
+						remoteMethods.AppendLine(@$"
+						  services.AddTransient<{delegateName}>(cc =>
+						  {{
+								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof({delegateName}), [{parameterIdentifiers}]);
+						  }});");
+
+						localMethods.AppendLine(@$"
+						  services.AddTransient<{delegateName}>(cc =>
+						  {{
+								return ({parameterDeclarations}) => {{
+								{serviceAssignmentsText}
+								return {className}.{method.Name}({allParameterIdentifiers});
+							}};
+						  }});");
+
+					}
+
+
+
+
+					//					remoteMethods.AppendLine(@"
+					//						services.AddScoped<" + $"{callMethod.Name}>(cc => {{" + $@"
+					//																	 var factory = cc.GetRequiredService<{staticSymbol.Name}Factory>();
+					//																	 return ({callMethod.ParameterDeclarationsText()}) => factory.{callMethod.Name}({callMethod.ParameterIdentifiersText()});
+					//																}});
+
+
+					//");
+
+				}
+
+				//MatchAuthMethods(factoryMethods, authCallMethods, messages);
+
+				//if (authCallMethods.Any())
+				//{
+				//	foreach (var factoryOperation in factoryMethods.Where(f => f.FactoryOperation != null)
+				//																	.Select(f => f.FactoryOperation!.Value)
+				//																	.Distinct().ToList())
+				//	{
+				//		var authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) == (int?)a.AuthorizeOperation).ToList();
+
+				//		if (authMethods.Any())
+				//		{
+				//			// Two-steps to avoid having a 'CanInsert' method just because there is a 'AuthorizeOperation.Write' method
+				//			// But, be sure to include the 'AuthorizeOperation.Write' method if there is a CanInsert method
+				//			authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) != 0).ToList();
+
+				//			if (!authMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+				//			{
+				//				var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryOperation.ToString(), authMethods);
+				//				factoryMethods.Add(canMethod);
+				//			}
+				//		}
+				//	}
+
+				//	if (factoryMethods.Any(f => f.IsSave))
+				//	{
+				//		var allWrite = new[] { AuthorizeOperation.Write, AuthorizeOperation.Insert, AuthorizeOperation.Update, AuthorizeOperation.Delete }.Aggregate((a, b) => a | b);
+				//		var writeAuthMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)allWrite) != 0).ToList();
+
+				//		if (writeAuthMethods.Any() && !writeAuthMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
+				//		{
+				//			var canMethod = new CanFactoryMethod(targetType, targetConcreteType, "Save", writeAuthMethods);
+				//			factoryMethods.Add(canMethod);
+				//		}
+				//	}
+				//}
+
+
+				//foreach (var method in factoryMethods.OrderBy(m => m.Parameters.Count).ToList())
+				//{
+				//	if (methodNames.Contains(method.Name))
+				//	{
+				//		var count = 1;
+				//		while (methodNames.Contains($"{method.UniqueName}{count}"))
+				//		{
+				//			count += 1;
+				//		}
+				//		method.UniqueName = $"{method.UniqueName}{count}";
+				//	}
+				//	methodNames.Add(method.UniqueName);
+				//}
+
+				//foreach (var factoryMethod in factoryMethods)
+				//{
+				//	var methodBuilder = new StringBuilder();
+				//	methodBuilder.Append(factoryMethod.PublicMethod(factoryText));
+				//	methodBuilder.Append(factoryMethod.RemoteMethod(factoryText));
+				//	methodBuilder.Append(factoryMethod.LocalMethod());
+				//	factoryText.MethodsBuilder.Append(methodBuilder);
+				//}
+
+				//// We only need the target registered if we do a fetch or create that is not the constructor
+				//if (factoryMethods.OfType<ReadFactoryMethod>().Any(f => !(f.CallMethod.IsConstructor || f.CallMethod.IsStaticFactory)))
+				//{
+				//	factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetConcreteType}>();");
+				//	if (targetType != targetConcreteType)
+				//	{
+				//		factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetType}, {targetConcreteType}>();");
+				//	}
+				//}
+
+				//var editText = "";
+				//if (hasDefaultSave)
+				//{
+				//	editText = "Save";
+				//	factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{targetClassName}>, {targetClassName}Factory>();");
+				//}
+
+				source = $@"
+						  #nullable enable
+
+                    {WithStringBuilder(usingDirectives)}
+
+/*
+							{WithStringBuilder(messages)}
+*/
+                    namespace {namespaceName}
+                    {{
+
+                        internal static class {classDeclarationSyntax.Identifier.Text}Factory 
+                        {{
+
+
+                            public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+                            {{
+						if(remoteLocal == NeatooFactory.Remote)
+						  {{
+{remoteMethods}
+}}
+
+						if(remoteLocal == NeatooFactory.Local)
+						  {{
+{localMethods}
+                            }}
+
+	                        }}
+							  }}
+						}}";
+
+
+				source = source.Replace("[, ", "[");
+				source = source.Replace("(, ", "(");
+				source = source.Replace(", )", ")");
+				source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().SyntaxTree.GetText().ToString();
+			}
+			catch (Exception ex)
+			{
+				source = @$"/* Error: {ex.GetType().FullName} {ex.Message} 
+
+	{WithStringBuilder(messages)}
+*/";
+
+			}
+
+			context.AddSource($"{namespaceName}.{classDeclarationSyntax.Identifier.Text}Factory.g.cs", source);
+		}
+		catch (Exception ex)
+		{
+			source = $"// Error: {ex.Message}";
+		}
+
+	}
 	private static List<IMethodSymbol> GetMethodsRecursive(INamedTypeSymbol? classNamedSymbol, bool includeConst = true)
 	{
 		var methods = classNamedSymbol?.GetMembers().OfType<IMethodSymbol>()
@@ -1152,10 +1423,8 @@ public class FactoryGenerator : IIncrementalGenerator
 		{
 			var authorizationRuleType = authorizeAttribute.AttributeClass?.TypeArguments[0];
 
-
 			if (authorizationRuleType?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is TypeDeclarationSyntax syntax)
 			{
-
 				var authSemanticModel = semanticModel.Compilation.GetSemanticModel(syntax.SyntaxTree);
 				var authSymbol = authSemanticModel.GetDeclaredSymbol(syntax);
 

@@ -55,7 +55,7 @@ public sealed class CreateAttribute : Attribute
 {
 	public FactoryOperation Operation { get; }
 
-	public CreateAttribute() 
+	public CreateAttribute()
 	{
 		this.Operation = FactoryOperation.Create;
 	}
@@ -73,40 +73,29 @@ public sealed class FetchAttribute : Attribute
 
 public sealed class InsertAttribute : FactoryOperationAttribute
 {
-	public InsertAttribute() : base(FactoryOperation.Insert)
-	{
-	}
+	public InsertAttribute() : base(FactoryOperation.Insert) { }
 }
 
 public sealed class UpdateAttribute : FactoryOperationAttribute
 {
-	public UpdateAttribute() : base(FactoryOperation.Update)
-	{
-	}
+	public UpdateAttribute() : base(FactoryOperation.Update) { }
 }
 
 public sealed class DeleteAttribute : FactoryOperationAttribute
 {
-	public DeleteAttribute() : base(FactoryOperation.Delete)
-	{
-	}
+	public DeleteAttribute() : base(FactoryOperation.Delete) { }
 }
 
 public sealed class ExecuteAttribute<TDelegate> : FactoryOperationAttribute
 	 where TDelegate : Delegate
 {
-	public ExecuteAttribute() : base(FactoryOperation.Execute)
-	{
-	}
+	public ExecuteAttribute() : base(FactoryOperation.Execute) { }
 }
 
 [System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class AuthorizeAttribute<T> : Attribute
 {
-	public AuthorizeAttribute()
-	{
-
-	}
+	public AuthorizeAttribute() { }
 }
 
 [System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
