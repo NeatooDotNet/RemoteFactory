@@ -17,7 +17,7 @@ public static partial class RemoteFactoryServices
 {
 	public const string HttpClientKey = "NeatooHttpClient";
 
-	public static IServiceCollection AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory portalServer, params Assembly[] assemblies)
+	public static IServiceCollection AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory remoteLocal, params Assembly[] assemblies)
 	{
 		ArgumentNullException.ThrowIfNull(services, nameof(services));
 		ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
@@ -35,7 +35,7 @@ public static partial class RemoteFactoryServices
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
 		services.AddScoped(typeof(IFactoryCore<>), typeof(FactoryCore<>));
 
-		if (portalServer == NeatooFactory.Remote)
+		if (remoteLocal == NeatooFactory.Remote)
 		{
 			services.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
 
@@ -63,25 +63,21 @@ public static partial class RemoteFactoryServices
 				};
 			});
 
-		services.RegisterFactories(assemblies);
+		services.RegisterFactories(remoteLocal, assemblies);
 
 		return services;
 	}
 
-	private static void RegisterFactories(this IServiceCollection services, params Assembly[] assemblies)
+	private static void RegisterFactories(this IServiceCollection services, NeatooFactory remoteLocal, params Assembly[] assemblies)
 	{
 		foreach (var assembly in assemblies)
 		{
-			var types = assembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract
-							&& !string.IsNullOrEmpty(t.FullName)
-							&& t.BaseType?.IsGenericType == true
-							&& (t.BaseType?.GetGenericTypeDefinition() == typeof(FactoryBase<>) || t.BaseType?.GetGenericTypeDefinition() == typeof(FactorySaveBase<>))).ToList();
+			var methods = assembly.GetTypes().Select(t => t.GetMethod("FactoryServiceRegistrar", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
+				.Where(m => m != null).ToList();
 
-			foreach (var t in types)
+			foreach (var m in methods)
 			{
-				var registrationMethod = t.GetMethod("FactoryServiceRegistrar", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-
-				registrationMethod?.Invoke(null, [services]);
+				m?.Invoke(null, [services, remoteLocal]);
 			}
 		}
 	}

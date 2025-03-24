@@ -28,8 +28,17 @@ internal sealed class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		this.NeatooJsonSerializer = neatooJsonSerializer;
 		this.serviceProvider = serviceProvider;
 	}
+	public async Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
+	{
+		var result = await this.ForDelegateNullable<T>(delegateType, parameters);
+		if (result == null)
+		{
+			throw new InvalidOperationException($"The result of the remote delegate call was null, but a non-nullable type was expected.");
+		}
+		return result;
+	}
 
-	public async Task<T?> ForDelegate<T>(Type delegateType, object?[]? parameters)
+	public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters)
 	{
 		// Mimic all the steps of a Remote call except the actual http call
 
