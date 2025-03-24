@@ -119,7 +119,7 @@ else
 
     public Role selectedRole
     {
-        get; 
+        get;
         set
         {
             field = value;
@@ -161,18 +161,25 @@ else
 
     private void UserRoleChanged()
     {
-        httpClient.DefaultRequestHeaders.Remove("UserRoles");
-        httpClient.DefaultRequestHeaders.Add("UserRoles", selectedRole.ToString());
-        if (selectedRole == Role.None)
+        try
         {
-            PersonModel = null;
-        }
+            httpClient.DefaultRequestHeaders.Remove("UserRoles");
+            httpClient.DefaultRequestHeaders.Add("UserRoles", selectedRole.ToString());
+            if (selectedRole == Role.None)
+            {
+                PersonModel = null;
+            }
 
-        User.Role = selectedRole;
-        CanCreate = PersonModelFactory.CanCreate();
-        CanFetch = PersonModelFactory.CanFetch();
-        CanUpdate = PersonModelFactory.CanUpdate();
-        CanDelete = PersonModelFactory.CanDelete();
+            User.Role = selectedRole;
+            CanCreate = PersonModelFactory.CanCreate();
+            CanFetch = PersonModelFactory.CanFetch();
+            CanUpdate = PersonModelFactory.CanUpdate();
+            CanDelete = PersonModelFactory.CanDelete();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
 
 }
