@@ -769,14 +769,16 @@ public class FactoryGenerator : IIncrementalGenerator
 			var methodBuilder = new StringBuilder();
 			if (this.IsRemote)
 			{
+				var nullableText = this.ReturnType(includeTask: false).EndsWith("?") ? "Nullable" : "";
+
 				classText.Delegates.AppendLine($"public delegate {this.ReturnType()} {this.DelegateName}({this.ParameterDeclarationsText()});");
 				classText.PropertyDeclarations.AppendLine($"public {this.DelegateName} {this.UniqueName}Property {{ get; }}");
 				classText.ConstructorPropertyAssignmentsLocal.AppendLine($"{this.UniqueName}Property = Local{this.UniqueName};");
 				classText.ConstructorPropertyAssignmentsRemote.AppendLine($"{this.UniqueName}Property = Remote{this.UniqueName};");
-
+				
 				methodBuilder.AppendLine($"public virtual async {this.ReturnType()} Remote{this.UniqueName}({this.ParameterDeclarationsText()})");
 				methodBuilder.AppendLine("{");
-				methodBuilder.AppendLine($" return (await MakeRemoteDelegateRequest!.ForDelegate<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{this.ParameterIdentifiersText()}]))!;");
+				methodBuilder.AppendLine($" return (await MakeRemoteDelegateRequest!.ForDelegate{nullableText}<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{this.ParameterIdentifiersText()}]))!;");
 				methodBuilder.AppendLine("}");
 				methodBuilder.AppendLine("");
 
@@ -1143,8 +1145,6 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				//var factoryMethods = new List<FactoryMethod>();
 
-
-
 				foreach (var method in concreteMethods)
 				{
 					if (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not MethodDeclarationSyntax methodDeclaration)
@@ -1162,23 +1162,34 @@ public class FactoryGenerator : IIncrementalGenerator
 					var executeAttribute = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "ExecuteAttribute");
 					if (executeAttribute != null && executeAttribute.AttributeClass?.TypeArguments.Length == 1)
 					{
-						var typeSymbol = executeAttribute.AttributeClass.TypeArguments[0];
+						var delegateSymbol = executeAttribute.AttributeClass.TypeArguments[0];
 
-						if (typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not DelegateDeclarationSyntax delegateSyntax)
+						if (delegateSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not DelegateDeclarationSyntax delegateSyntax)
 						{
-							messages.Add($"No DelegateDeclarationSyntax for {typeSymbol.Name}");
+							messages.Add($"No DelegateDeclarationSyntax for {delegateSymbol.Name}");
 							continue;
 						}
 
-						if (!delegateSyntax.ReturnType.ToString().StartsWith("Task"))
+						if (semanticModel.GetTypeInfo(delegateSyntax.ReturnType).Type is not INamedTypeSymbol returnTypeSymbol)
 						{
-							messages.Add($"{typeSymbol.Name} skipped. Delegates must return Task");
+							messages.Add($"No INamedTypeSymbol for {delegateSymbol.Name}");
 							continue;
 						}
+
+						if(!returnTypeSymbol.OriginalDefinition.ToDisplayString().EndsWith("Task<TResult>"))
+						{
+							messages.Add($"{delegateSymbol.Name} skipped. Delegates must return Task not {returnTypeSymbol.OriginalDefinition.ToDisplayString()}");
+							continue;
+						}
+
+						var isNullable = returnTypeSymbol.TypeArguments.First().NullableAnnotation == NullableAnnotation.Annotated;
+						var nullableText = isNullable ? "Nullable" : "";
+
+						var returnType = returnTypeSymbol.TypeArguments.First()?.ToString();
 
 						if (delegateSyntax.ReturnType.ToString() != methodDeclaration.ReturnType.ToString())
 						{
-							messages.Add($"{typeSymbol.Name} skipped. Method return type does not match Delegate return type.");
+							messages.Add($"{delegateSymbol.Name} skipped. Method return type does not match Delegate return type.");
 							continue;
 						}
 
@@ -1187,7 +1198,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 						//var classSymbol = correctSemanticModel.GetDeclaredSymbol(typeSyntax) as INamedTypeSymbol;
 
-						var delegateName = typeSymbol.ToDisplayString();
+						var delegateName = delegateSymbol.ToDisplayString();
 
 						var parameters = methodDeclaration.ParameterList.Parameters.Select(p => new ParameterInfo(p, method)).ToList();
 
@@ -1200,7 +1211,7 @@ public class FactoryGenerator : IIncrementalGenerator
 						remoteMethods.AppendLine(@$"
 						  services.AddTransient<{delegateName}>(cc =>
 						  {{
-								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof({delegateName}), [{parameterIdentifiers}]);
+								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate{nullableText}<{returnType}>(typeof({delegateName}), [{parameterIdentifiers}]);
 						  }});");
 
 						localMethods.AppendLine(@$"

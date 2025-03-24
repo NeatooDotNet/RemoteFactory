@@ -159,19 +159,24 @@ public Task Insert(){}
 		// The source code to test
 		var source = @"
 using Neatoo.RemoteFactory;
+using System.Threading.Tasks;
 
 namespace FactoryGeneratorSandbox;
 
-public delegate Task<int> MyRemoteMethodCall(string message);
+public delegate Task<bool> MyRemoteMethodCall(string message);
 
 [Factory]
 internal static class ExecuteDef {
 
 	[Execute<MyRemoteMethodCall>]
-	public static Task<int> DoExecute(string message, [Service] IService service)
+	public static Task<bool> DoExecute(string message, [Service] IService service)
 	{
 		return 1;
 	}
+}
+
+public class Task<TResult> {
+
 }
 
 ";

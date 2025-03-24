@@ -20,22 +20,45 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Factory]
 	public static class ExecuteStatic
 	{
-		public delegate Task<int> RunOnServer(string message);
+		public delegate Task<string> RunOnServer(string message);
 
 		[Execute<RunOnServer>]
-		public static Task<int> DoExecute(string message)
+		public static Task<string> DoExecute(string message)
 		{
 			Assert.Equal("Hello", message);
-			return Task.FromResult(1);
+			return Task.FromResult("hello");
 		}
 	}
+
 
 	[Fact]
 	public async Task ExecuteTest_DoExecute()
 	{
 		var del = this.scope.ServiceProvider.GetRequiredService<ExecuteStatic.RunOnServer>();
 		var result = await del("Hello");
-		Assert.Equal(1, result);
+		Assert.Equal("hello", result);
+	}
+
+	[Factory]
+	public static class ExecuteNullableStatic
+	{
+		public delegate Task<string?> RunOnServer(string message);
+
+		[Execute<RunOnServer>]
+		public static Task<string?> DoExecute(string message)
+		{
+			Assert.Equal("Hello", message);
+			return Task.FromResult(default(string));
+		}
+	}
+
+
+	[Fact]
+	public async Task ExecuteTest_Nullable()
+	{
+		var del = this.scope.ServiceProvider.GetRequiredService<ExecuteNullableStatic.RunOnServer>();
+		var result = await del("Hello");
+		Assert.Null(result);
 	}
 }
 
