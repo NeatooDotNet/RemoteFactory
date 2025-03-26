@@ -89,7 +89,6 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public CallMethod(AttributeData attribute, INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, MethodDeclarationSyntax methodDeclarationSyntax, List<string> messages) : this(attribute, classSymbol, methodSymbol, methodDeclarationSyntax.AttributeLists, methodDeclarationSyntax.ParameterList, messages)
 		{
-
 			if (this.Ignore) { return; }
 
 			var methodType = methodSymbol.ReturnType.ToDisplayString();
@@ -143,11 +142,11 @@ public class FactoryGenerator : IIncrementalGenerator
 					this.Ignore = true;
 				}
 			}
-			else if (this.FactoryOperation != null && !(methodType == "void" || methodType == "bool" || methodType == "System.Threading.Tasks.Task"))
-			{
-				messages.Add($"Ignoring {methodSymbol.Name}; wrong return type of {methodType} for a Factory method");
-				this.Ignore = true;
-			}
+			//else if (this.FactoryOperation != null && !(methodType == "void" || methodType == "bool" || methodType == "System.Threading.Tasks.Task"))
+			//{
+			//	messages.Add($"Ignoring {methodSymbol.Name}; wrong return type of {methodType} for a Factory method");
+			//	this.Ignore = true;
+			//}
 		}
 
 		private CallMethod(AttributeData attribute_, INamedTypeSymbol classSymbol, IMethodSymbol methodSymbol, SyntaxList<AttributeListSyntax> attributeLists, ParameterListSyntax? parameterListSyntax, List<string> messages)
@@ -539,7 +538,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		public override bool IsTask => this.IsRemote || this.CallMethod.IsTask || this.AuthCallMethods.Any(m => m.IsTask);
 		public override bool IsRemote => this.CallMethod.IsRemote || this.AuthCallMethods.Any(m => m.IsRemote);
 		public override bool IsAsync => (this.HasAuth && this.CallMethod.IsTask) || this.AuthCallMethods.Any(m => m.IsTask);
-		public override bool IsNullable => this.CallMethod.IsNullable || this.HasAuth;
+		public override bool IsNullable => this.CallMethod.IsNullable || this.HasAuth || this.IsBool;
 
 		public CallMethod CallMethod { get; set; }
 

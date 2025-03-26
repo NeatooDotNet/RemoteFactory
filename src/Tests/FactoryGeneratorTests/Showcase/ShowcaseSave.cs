@@ -1,5 +1,4 @@
-﻿using Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
-using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
+﻿using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,5 +1,4 @@
-﻿using Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
-using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
+﻿using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
 

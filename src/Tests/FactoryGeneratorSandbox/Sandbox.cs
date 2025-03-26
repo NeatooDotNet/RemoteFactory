@@ -139,11 +139,11 @@ namespace NeatooLibrary {
 internal class Obj {
 
 	[Insert]
-public Task Insert(){}
+public int InsertMethod(){}
 [Update]
-	public Task Update(){}
+	public string Update(){}
 	[Delete]
-	public Task Delete(){}
+	public void Delete(){}
 
 }
 ";
