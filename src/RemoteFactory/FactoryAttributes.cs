@@ -107,3 +107,11 @@ public sealed class AuthorizeAttribute : Attribute
 		this.Operation = operation;
 	}
 }
+
+[System.AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+public sealed class MapperIgnoreAttribute : Attribute
+{
+	public MapperIgnoreAttribute()
+	{
+	}
+}

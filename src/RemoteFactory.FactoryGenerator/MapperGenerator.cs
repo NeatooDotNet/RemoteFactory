@@ -138,17 +138,37 @@ public class MapperGenerator : IIncrementalGenerator
 
 						foreach (var parameterProperty in parameterProperties)
 						{
+							var nullException = "";
 							var classProperty = classProperties.FirstOrDefault(p => p.Name == parameterProperty.Name);
+
+							if(classProperty.GetAttributes().Any(a => a.AttributeClass?.Name == "MapperIgnoreAttribute"))
+							{
+								messages.Add($"Property {classProperty} ignored has MapperIgnore attribute");
+								continue;
+							}
+
 							if (classProperty != null)
 							{
 								propertiesMatched = true;
+
 								if (mapTo)
 								{
-									methodBuilder.AppendLine($"{parameterIdentifier}.{parameterProperty.Name} = this.{classProperty.Name};");
+									if (classProperty.NullableAnnotation == NullableAnnotation.Annotated
+											&& parameterProperty.NullableAnnotation != NullableAnnotation.Annotated)
+									{
+										nullException = $"?? throw new NullReferenceException(\"{classSymbol!.ToDisplayString()}.{classProperty.Name}\")";
+									}
+
+									methodBuilder.AppendLine($"{parameterIdentifier}.{parameterProperty.Name} = this.{classProperty.Name}{nullException};");
 								}
 								else if (mapFrom)
 								{
-									methodBuilder.Append($"this.{classProperty.Name} = {parameterIdentifier}.{parameterProperty.Name};");
+									if (parameterProperty.NullableAnnotation == NullableAnnotation.Annotated
+											&& classProperty.NullableAnnotation != NullableAnnotation.Annotated)
+									{
+										nullException = $"?? throw new NullReferenceException(\"{parameterSymbol!.Type.ToDisplayString()}.{parameterProperty.Name}\")";
+									}
+									methodBuilder.Append($"this.{classProperty.Name} = {parameterIdentifier}.{parameterProperty.Name}{nullException};");
 								}
 							}
 						}
