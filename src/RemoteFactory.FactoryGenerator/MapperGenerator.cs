@@ -141,10 +141,17 @@ public class MapperGenerator : IIncrementalGenerator
 							var nullException = "";
 							var classProperty = classProperties.FirstOrDefault(p => p.Name == parameterProperty.Name);
 
-							if(classProperty.GetAttributes().Any(a => a.AttributeClass?.Name == "MapperIgnoreAttribute"))
+							try
 							{
-								messages.Add($"Property {classProperty} ignored has MapperIgnore attribute");
-								continue;
+								if (classProperty.GetAttributes().Any(a => a.AttributeClass?.Name == "MapperIgnoreAttribute"))
+								{
+									messages.Add($"Property {classProperty.ToDisplayString()} ignored has MapperIgnore attribute");
+									continue;
+								}
+							}
+							catch (Exception ex)
+							{
+								messages.Add($"!!!!!Error checking for MapperIgnore attribute: {ex.Message}");
 							}
 
 							if (classProperty != null)
@@ -153,21 +160,36 @@ public class MapperGenerator : IIncrementalGenerator
 
 								if (mapTo)
 								{
-									if (classProperty.NullableAnnotation == NullableAnnotation.Annotated
-											&& parameterProperty.NullableAnnotation != NullableAnnotation.Annotated)
+									try
 									{
-										nullException = $"?? throw new NullReferenceException(\"{classSymbol!.ToDisplayString()}.{classProperty.Name}\")";
+										if (classProperty.NullableAnnotation == NullableAnnotation.Annotated
+												&& parameterProperty.NullableAnnotation != NullableAnnotation.Annotated)
+										{
+											nullException = $"?? throw new NullReferenceException(\"{classSymbol?.ToDisplayString()}.{classProperty.Name}\")";
+										}
+									}
+									catch (Exception ex)
+									{
+										messages.Add($"!!!!!Error checking for NullableAnnotation in MapTo: {ex.Message}");
 									}
 
 									methodBuilder.AppendLine($"{parameterIdentifier}.{parameterProperty.Name} = this.{classProperty.Name}{nullException};");
 								}
 								else if (mapFrom)
 								{
-									if (parameterProperty.NullableAnnotation == NullableAnnotation.Annotated
-											&& classProperty.NullableAnnotation != NullableAnnotation.Annotated)
+									try
 									{
-										nullException = $"?? throw new NullReferenceException(\"{parameterSymbol!.Type.ToDisplayString()}.{parameterProperty.Name}\")";
+										if (parameterProperty.NullableAnnotation == NullableAnnotation.Annotated
+												&& classProperty.NullableAnnotation != NullableAnnotation.Annotated)
+										{
+											nullException = $"?? throw new NullReferenceException(\"{parameterSymbol?.Type.ToDisplayString()}.{parameterProperty.Name}\")";
+										}
 									}
+									catch (Exception ex)
+									{
+										messages.Add($"!!!!!Error checking for NullableAnnotation in MapFrom: {ex.Message}");
+									}
+
 									methodBuilder.Append($"this.{classProperty.Name} = {parameterIdentifier}.{parameterProperty.Name}{nullException};");
 								}
 							}
