@@ -138,59 +138,56 @@ public class MapperGenerator : IIncrementalGenerator
 
 						foreach (var parameterProperty in parameterProperties)
 						{
-							var nullException = "";
 							var classProperty = classProperties.FirstOrDefault(p => p.Name == parameterProperty.Name);
 
-							try
+							if (classProperty != null)
 							{
 								if (classProperty.GetAttributes().Any(a => a.AttributeClass?.Name == "MapperIgnoreAttribute"))
 								{
 									messages.Add($"Property {classProperty.ToDisplayString()} ignored has MapperIgnore attribute");
 									continue;
 								}
-							}
-							catch (Exception ex)
-							{
-								messages.Add($"!!!!!Error checking for MapperIgnore attribute: {ex.Message}");
-							}
 
-							if (classProperty != null)
-							{
 								propertiesMatched = true;
+
+								var typesMatch = classProperty.Type.ToDisplayString().Trim('?') == parameterProperty.Type.ToDisplayString().Trim('?');
+								if (!typesMatch)
+								{
+									messages.Add($"Warning: Property {classProperty.Name}'s type of {classProperty.Type.ToDisplayString()} does not match {parameterProperty.Type.ToDisplayString()}");
+								}
+
+								var nullException = string.Empty;
+								var typeCast = string.Empty;
 
 								if (mapTo)
 								{
-									try
+									if (classProperty.NullableAnnotation == NullableAnnotation.Annotated
+											&& parameterProperty.NullableAnnotation != NullableAnnotation.Annotated)
 									{
-										if (classProperty.NullableAnnotation == NullableAnnotation.Annotated
-												&& parameterProperty.NullableAnnotation != NullableAnnotation.Annotated)
-										{
-											nullException = $"?? throw new NullReferenceException(\"{classSymbol?.ToDisplayString()}.{classProperty.Name}\")";
-										}
-									}
-									catch (Exception ex)
-									{
-										messages.Add($"!!!!!Error checking for NullableAnnotation in MapTo: {ex.Message}");
+										nullException = $"?? throw new NullReferenceException(\"{classSymbol?.ToDisplayString()}.{classProperty.Name}\")";
 									}
 
-									methodBuilder.AppendLine($"{parameterIdentifier}.{parameterProperty.Name} = this.{classProperty.Name}{nullException};");
+									if (!typesMatch)
+									{
+										typeCast = $"({parameterProperty.Type.ToDisplayString()}{(nullException.Length > 0 ? "?" : "")}) ";
+									}
+
+									methodBuilder.AppendLine($"{parameterIdentifier}.{parameterProperty.Name} = {typeCast} this.{classProperty.Name}{nullException};");
 								}
 								else if (mapFrom)
 								{
-									try
+									if (parameterProperty.NullableAnnotation == NullableAnnotation.Annotated
+											&& classProperty.NullableAnnotation != NullableAnnotation.Annotated)
 									{
-										if (parameterProperty.NullableAnnotation == NullableAnnotation.Annotated
-												&& classProperty.NullableAnnotation != NullableAnnotation.Annotated)
-										{
-											nullException = $"?? throw new NullReferenceException(\"{parameterSymbol?.Type.ToDisplayString()}.{parameterProperty.Name}\")";
-										}
-									}
-									catch (Exception ex)
-									{
-										messages.Add($"!!!!!Error checking for NullableAnnotation in MapFrom: {ex.Message}");
+										nullException = $"?? throw new NullReferenceException(\"{parameterSymbol?.Type.ToDisplayString()}.{parameterProperty.Name}\")";
 									}
 
-									methodBuilder.Append($"this.{classProperty.Name} = {parameterIdentifier}.{parameterProperty.Name}{nullException};");
+									if (!typesMatch)
+									{
+										typeCast = $"({classProperty.Type.ToDisplayString()}{(nullException.Length > 0 ? "?" : "")}) ";
+									}
+
+									methodBuilder.Append($"this.{classProperty.Name} = {typeCast} {parameterIdentifier}.{parameterProperty.Name}{nullException};");
 								}
 							}
 						}
@@ -229,7 +226,7 @@ namespace {namespaceName};
 ";
 				source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().SyntaxTree.GetText().ToString();
 
-				context.AddSource($"{namespaceName}.{className}Partial.g.cs", source);
+				context.AddSource($"{namespaceName}.{className}Mapper.g.cs", source);
 			}
 		}
 
