@@ -18,7 +18,6 @@ public class MapperGenerator : IIncrementalGenerator
 				static (ctx, source) => Execute(ctx, source!.Value.classDeclaration, source.Value.semanticModel));
 
 	public static bool IsSyntaxTargetForGeneration(SyntaxNode node) => node is ClassDeclarationSyntax classDeclarationSyntax
-				&& !(classDeclarationSyntax.TypeParameterList?.Parameters.Any() ?? false || classDeclarationSyntax.Modifiers.Any(SyntaxKind.AbstractKeyword))
 				&& !(classDeclarationSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.Name.ToString() == "SuppressFactory"));
 
 	public static (ClassDeclarationSyntax classDeclaration, SemanticModel semanticModel)? GetSemanticTargetForGeneration(GeneratorSyntaxContext context)
@@ -88,7 +87,6 @@ public class MapperGenerator : IIncrementalGenerator
 			var namespaceName = FactoryGenerator.FindNamespace(classDeclarationSyntax) ?? "MissingNamespace";
 
 			FactoryGenerator.UsingStatements(usingDirectives, classDeclarationSyntax, semanticModel, namespaceName, messages);
-
 
 			var classProperties = GetPropertiesRecursive(classSymbol);
 
@@ -203,6 +201,11 @@ public class MapperGenerator : IIncrementalGenerator
 			}
 
 			var classDeclaration = classDeclarationSyntax.ToFullString().Substring(classDeclarationSyntax.Modifiers.FullSpan.Start - classDeclarationSyntax.FullSpan.Start, classDeclarationSyntax.Identifier.FullSpan.End - classDeclarationSyntax.Modifiers.FullSpan.Start);
+
+			if (classDeclarationSyntax.TypeParameterList != null)
+			{
+				classDeclaration = classDeclarationSyntax.ToFullString().Substring(classDeclarationSyntax.Modifiers.FullSpan.Start - classDeclarationSyntax.FullSpan.Start, classDeclarationSyntax.TypeParameterList.FullSpan.End - classDeclarationSyntax.Modifiers.FullSpan.Start);
+			}
 
 			if (mapperMethods.Length > 0)
 			{
