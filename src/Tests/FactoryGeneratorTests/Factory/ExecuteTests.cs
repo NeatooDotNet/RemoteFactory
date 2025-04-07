@@ -8,7 +8,29 @@ using System.Threading.Tasks;
 
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
- public class ExecuteTests
+[Factory]
+public static partial class ExecuteStatic
+{
+	[Execute]
+	private static Task<string> _RunOnServer(string message)
+	{
+		Assert.Equal("Hello", message);
+		return Task.FromResult("hello");
+	}
+}
+
+[Factory]
+public static partial class ExecuteNullableStatic
+{
+	[Execute]
+	private static Task<string?> _RunOnServer(string message)
+	{
+		Assert.Equal("Hello", message);
+		return Task.FromResult(default(string));
+	}
+}
+
+public class ExecuteTests
 {
    private readonly IServiceScope scope;
 
@@ -17,18 +39,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 		this.scope = ClientServerContainers.Scopes().client;
 	}
 
-	[Factory]
-	public static class ExecuteStatic
-	{
-		public delegate Task<string> RunOnServer(string message);
-
-		[Execute<RunOnServer>]
-		public static Task<string> DoExecute(string message)
-		{
-			Assert.Equal("Hello", message);
-			return Task.FromResult("hello");
-		}
-	}
 
 
 	[Fact]
@@ -39,18 +49,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 		Assert.Equal("hello", result);
 	}
 
-	[Factory]
-	public static class ExecuteNullableStatic
-	{
-		public delegate Task<string?> RunOnServer(string message);
-
-		[Execute<RunOnServer>]
-		public static Task<string?> DoExecute(string message)
-		{
-			Assert.Equal("Hello", message);
-			return Task.FromResult(default(string));
-		}
-	}
 
 
 	[Fact]

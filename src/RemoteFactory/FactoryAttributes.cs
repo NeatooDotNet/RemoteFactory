@@ -86,8 +86,7 @@ public sealed class DeleteAttribute : FactoryOperationAttribute
 	public DeleteAttribute() : base(FactoryOperation.Delete) { }
 }
 
-public sealed class ExecuteAttribute<TDelegate> : FactoryOperationAttribute
-	 where TDelegate : Delegate
+public sealed class ExecuteAttribute : FactoryOperationAttribute
 {
 	public ExecuteAttribute() : base(FactoryOperation.Execute) { }
 }

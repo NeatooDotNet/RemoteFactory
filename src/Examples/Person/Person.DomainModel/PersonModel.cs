@@ -14,11 +14,6 @@ public interface IPersonModel : INotifyPropertyChanged, IFactorySaveMeta
 	string? LastName { get; set; }
 	string? Email { get; set; }
 	string? Phone { get; set; }
-	string? Address { get; set; }
-	string? City { get; set; }
-	string? State { get; set; }
-	string? Zip { get; set; }
-	string? Country { get; set; }
 	string? Notes { get; set; }
 	DateTime Created { get; }
 	DateTime Modified { get; }
@@ -46,11 +41,6 @@ internal partial class PersonModel : IPersonModel
 	public string? LastName { get; set { field = value; this.OnPropertyChanged(); } }
 	public string? Email { get; set { field = value; this.OnPropertyChanged(); } }
 	public string? Phone { get; set { field = value; this.OnPropertyChanged(); } }
-	public string? Address { get; set { field = value; this.OnPropertyChanged(); } }
-	public string? City { get; set { field = value; this.OnPropertyChanged(); } }
-	public string? State { get; set { field = value; this.OnPropertyChanged(); } }
-	public string? Zip { get; set { field = value; this.OnPropertyChanged(); } }
-	public string? Country { get; set { field = value; this.OnPropertyChanged(); } }
 	public string? Notes { get; set { field = value; this.OnPropertyChanged(); } }
 	public DateTime Created { get; set { field = value; this.OnPropertyChanged(); } }
 	public DateTime Modified { get; set { field = value; this.OnPropertyChanged(); } }

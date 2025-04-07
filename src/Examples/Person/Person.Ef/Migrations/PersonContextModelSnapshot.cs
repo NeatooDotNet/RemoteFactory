@@ -27,15 +27,6 @@ namespace Person.Ef.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Address")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("City")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Country")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
@@ -57,12 +48,6 @@ namespace Person.Ef.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("State")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Zip")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

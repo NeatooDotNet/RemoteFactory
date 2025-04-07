@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 namespace FactoryGeneratorSandbox;
 
 [Factory]
- public static class ExecuteFactory
+ public static partial class ExecuteFactory
  {
-	public delegate int Execute(string message);
 
-	[Execute<Execute>]
-	public static int DoExecute(string message)
+	[Execute]
+	internal static int ExecuteMethod(string message)
 	{
 		Console.WriteLine($"Message: {message}");
 		return 1;
 	}
+
 }

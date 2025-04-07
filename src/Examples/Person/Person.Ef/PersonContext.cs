@@ -1,5 +1,4 @@
-﻿#nullable disable
-
+﻿
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel;
@@ -56,17 +55,12 @@ public class PersonContext : DbContext, IPersonContext
 public class PersonEntity : IdPropertyChangedBase
 {
 	[Required]
-	public string FirstName { get; set; }
+	public string FirstName { get; set; } = null!;
 	[Required]
-	public string LastName { get; set; }
-	public string Email { get; set; }
-	public string Phone { get; set; }
-	public string Address { get; set; }
-	public string City { get; set; }
-	public string State { get; set; }
-	public string Zip { get; set; }
-	public string Country { get; set; }
-	public string Notes { get; set; }
+	public string LastName { get; set; } = null!;
+	public string Email { get; set; } = null!;
+	public string Phone { get; set; } = null!;
+	public string? Notes { get; set; }
 	public DateTime Created { get; set; }
 	public DateTime Modified { get; set; }
 }
@@ -87,8 +81,8 @@ public abstract class IdPropertyChangedBase : INotifyPropertyChanged
 		}
 	}
 
-	public event PropertyChangedEventHandler PropertyChanged;
-	protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+	public event PropertyChangedEventHandler? PropertyChanged;
+	protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
 	{
 		PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 	}

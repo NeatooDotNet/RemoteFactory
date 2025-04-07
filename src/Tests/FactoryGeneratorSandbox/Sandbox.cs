@@ -163,13 +163,11 @@ using System.Threading.Tasks;
 
 namespace FactoryGeneratorSandbox;
 
-public delegate Task<bool> MyRemoteMethodCall(string message);
-
 [Factory]
-internal static class ExecuteDef {
+internal static partial class ExecuteMethods {
 
-	[Execute<MyRemoteMethodCall>]
-	public static Task<bool> DoExecute(string message, [Service] IService service)
+	[Execute]
+	private static Task<bool> _IsSomething(string message, [Service] IService service)
 	{
 		return 1;
 	}

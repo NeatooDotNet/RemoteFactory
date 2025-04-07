@@ -11,7 +11,7 @@ using Person.Ef;
 namespace Person.Ef.Migrations
 {
     [DbContext(typeof(PersonContext))]
-    [Migration("20250313232224_InitialCreate")]
+    [Migration("20250407224036_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -29,15 +29,6 @@ namespace Person.Ef.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("Address")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("City")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Country")
-                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
@@ -60,12 +51,6 @@ namespace Person.Ef.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("State")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Zip")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

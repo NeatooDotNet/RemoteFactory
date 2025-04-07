@@ -21,11 +21,6 @@ namespace Person.Ef.Migrations
                     LastName = table.Column<string>(type: "TEXT", nullable: false),
                     Email = table.Column<string>(type: "TEXT", nullable: true),
                     Phone = table.Column<string>(type: "TEXT", nullable: true),
-                    Address = table.Column<string>(type: "TEXT", nullable: true),
-                    City = table.Column<string>(type: "TEXT", nullable: true),
-                    State = table.Column<string>(type: "TEXT", nullable: true),
-                    Zip = table.Column<string>(type: "TEXT", nullable: true),
-                    Country = table.Column<string>(type: "TEXT", nullable: true),
                     Notes = table.Column<string>(type: "TEXT", nullable: true),
                     Created = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Modified = table.Column<DateTime>(type: "TEXT", nullable: false)
