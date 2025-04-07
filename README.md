@@ -1,5 +1,5 @@
 # Remote Factory
-Neatoo is a .NET Domain Model Framework. Neatoo Remote Factory is a 2-Tier Data Mapper Factory for Domain Models. It works great with Blazor Standalone applications.
+Neatoo is a .NET Domain Model Framework. Neatoo Remote Factory is a Data Mapper Factory for Domain Models. If simplifies 2-Tier client/server calls and provides authentication. It works great with Blazor Standalone applications and WPF.
 
 ## Getting Started
 
