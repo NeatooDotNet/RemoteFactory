@@ -5,19 +5,16 @@
 	  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
-
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all"></PackageReference>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all"></PackageReference>
 		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" PrivateAssets="all"></PackageReference>
 	</ItemGroup>
 
-
 	<ItemGroup>
 		<InternalsVisibleTo Include="Person.DomainModel.UnitTests" />
 		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
 	</ItemGroup>
-
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj"  OutputItemType="Analyzer"  />

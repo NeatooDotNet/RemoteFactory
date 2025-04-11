@@ -6,7 +6,7 @@
 		<AssemblyName>Neatoo.RemoteFactory</AssemblyName>
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 		<DebugType>embedded</DebugType>
-		<Description>A 2-Tier Client/Server Data Mapper for .NET Domain Models powered by Roslyn</Description>
+		<Description>A 2-Tier Client/Server Data Mapper for .NET Domain Models powered by Roslyn source generators</Description>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 		<EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -19,7 +19,7 @@
 		<PackageReleaseNotes>None yet</PackageReleaseNotes>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>OO Domain Modeling C# .NET Blazor WPF ASP.NET CSLA</PackageTags>
-		<PackageVersion>9.14.3</PackageVersion>
+		<PackageVersion>9.14.4</PackageVersion>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<RepositoryUrl>https://github.com/NeatooDotNet/RemoteFactory</RepositoryUrl>
