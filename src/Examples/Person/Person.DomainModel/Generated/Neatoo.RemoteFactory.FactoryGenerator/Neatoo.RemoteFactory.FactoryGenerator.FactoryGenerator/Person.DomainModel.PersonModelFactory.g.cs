@@ -24,6 +24,7 @@ namespace Person.DomainModel
         Authorized CanCreate();
         Authorized CanFetch();
         Authorized CanUpdate();
+        Authorized CanInsert();
         Authorized CanDelete();
         Authorized CanSave();
     }
@@ -277,6 +278,24 @@ namespace Person.DomainModel
             }
 
             authorized = ipersonmodelauth.CanUpdate();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanInsert()
+        {
+            return LocalCanInsert();
+        }
+
+        public Authorized LocalCanInsert()
+        {
+            Authorized authorized;
+            IPersonModelAuth ipersonmodelauth = ServiceProvider.GetRequiredService<IPersonModelAuth>();
+            authorized = ipersonmodelauth.CanAccess();
             if (!authorized.HasAccess)
             {
                 return authorized;

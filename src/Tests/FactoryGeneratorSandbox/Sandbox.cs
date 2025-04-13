@@ -154,7 +154,7 @@ public int InsertMethod(){}
 	}
 
 	[Fact]
-	public void StaticExecute()
+	public void Test()
 	{
 		// The source code to test
 		var source = @"
@@ -163,19 +163,37 @@ using System.Threading.Tasks;
 
 namespace FactoryGeneratorSandbox;
 
-[Factory]
-internal static partial class ExecuteMethods {
-
-	[Execute]
-	private static Task<bool> _IsSomething(string message, [Service] IService service)
+   public class BugNoCanCreateFetchAuth
 	{
-		return 1;
+		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		public static bool CanAccess()
+		{
+			return true;
+		}
+
+		[Authorize(AuthorizeOperation.Write)]
+		public static bool CanWrite()
+		{
+			return true;
+		}
+
 	}
-}
 
-public class Task<TResult> {
+	[Factory]
+	[Authorize<BugNoCanCreateFetchAuth>()]
+	public class BugNoCanCreateFetchObj
+	{
+		[Create]
+		public void Create()
+		{
 
-}
+		}
+
+		[Insert]
+		public void Insert()
+		{
+		}
+	}
 
 ";
 

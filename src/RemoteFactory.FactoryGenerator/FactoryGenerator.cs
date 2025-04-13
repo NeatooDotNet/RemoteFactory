@@ -960,14 +960,10 @@ public class FactoryGenerator : IIncrementalGenerator
 																					.Select(f => f.FactoryOperation!.Value)
 																					.Distinct().ToList())
 					{
-						var authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) == (int?)a.AuthorizeOperation).ToList();
+						var authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) != 0).ToList();
 
 						if (authMethods.Any())
 						{
-							// Two-steps to avoid having a 'CanInsert' method just because there is a 'AuthorizeOperation.Write' method
-							// But, be sure to include the 'AuthorizeOperation.Write' method if there is a CanInsert method
-							authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeOperation & (int?)factoryOperation) != 0).ToList();
-
 							if (!authMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
 							{
 								var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryOperation.ToString(), authMethods);
@@ -1199,7 +1195,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 						var delegateName = methodDeclaration.Identifier.Text;
 
-						if(delegateName.StartsWith("Execute"))
+						if (delegateName.StartsWith("Execute"))
 						{
 							delegateName = delegateName.Substring("Execute".Length);
 						}
