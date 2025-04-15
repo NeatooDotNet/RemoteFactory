@@ -3,6 +3,9 @@ Neatoo Remote Factory is a Data Mapper Factory for Domain Models powered by Rosl
 
 Create streamlined Blazor and WPF applications with Neatoo!
 
+[Discord](https://discord.gg/M3dVuZkG)
+[Nuget](https://www.nuget.org/packages/Neatoo)
+
 ## Videos
 
 [![Introduction](https://img.youtube.com/vi/FeS1umd3O1Y/default.jpg)](https://youtu.be/FeS1umd3O1Y)
