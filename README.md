@@ -8,7 +8,7 @@ Create streamlined Blazor and WPF applications with Neatoo!
 
 ## Videos
 
-[![Introduction](https://img.youtube.com/vi/e9zZ6d8LKkM/default.jpg)](https://youtu.be/e9zZ6d8LKkM?si=-EcUFep7Gih-7GiM)
+[![Introduction](https://raw.githubusercontent.com/NeatooDotNet/RemoteFactory/main/youtubetile.jpg)](https://youtu.be/e9zZ6d8LKkM?si=-EcUFep7Gih-7GiM)
 
 ## Example
 
