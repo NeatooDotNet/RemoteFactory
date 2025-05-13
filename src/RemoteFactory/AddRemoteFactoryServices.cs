@@ -7,8 +7,18 @@ namespace Neatoo.RemoteFactory;
 
 public enum NeatooFactory
 {
-	Local,
-	Remote
+	/// <summary>
+	/// This is the server in a 3-Tier architecture
+	/// </summary>
+	Server,
+	/// <summary>
+	/// This is the client in a 3-Tier architecture
+	/// </summary>
+	Remote,
+	/// <summary>
+	/// A client-only architecture
+	/// </summary>
+	Local
 }
 
 public delegate IEnumerable<Type> GetServiceImplementationTypes(Type type);
@@ -37,6 +47,7 @@ public static partial class RemoteFactoryServices
 
 		if (remoteLocal == NeatooFactory.Remote)
 		{
+			// This being registered changes the behavior of every Factory
 			services.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
 
 			services.AddTransient(sp =>
@@ -44,6 +55,13 @@ public static partial class RemoteFactoryServices
 				var httpClient = sp.GetRequiredKeyedService<HttpClient>(HttpClientKey);
 				return MakeRemoteDelegateRequestHttpCallImplementation.Create(httpClient);
 			});
+		}
+		else if (remoteLocal == NeatooFactory.Local)
+		{
+			// Client Only
+			// We still Serialize the objects
+			// but we don't need to make a call to the server
+			services.AddScoped<IMakeRemoteDelegateRequest, MakeLocalSerializedDelegateRequest>();
 		}
 		else
 		{

@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors();
 
 // Neatoo
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Local, typeof(IPersonModel).Assembly);
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(IPersonModel).Assembly);
 builder.Services.AddScoped<IPersonContext, PersonContext>();
 builder.Services.RegisterMatchingName(typeof(IPersonModelAuth).Assembly);
 builder.Services.AddScoped<IUser, User>();

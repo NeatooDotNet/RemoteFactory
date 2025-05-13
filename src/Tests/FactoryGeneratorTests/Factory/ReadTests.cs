@@ -396,18 +396,32 @@ public class ReadTests
 	}
 
 	private IServiceScope clientScope;
+	private IServiceScope localScope;
 
 	public ReadTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
 	  this.clientScope = scopes.client;
+		this.localScope = scopes.local;
 	}
 
 	[Fact]
-	public async Task ReadFactoryTest()
+	public Task ReadFactoryTest_Client()
 	{
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadObjectFactory>();
+		return this.ReadFactory(readFactory);
+	}
 
+	[Fact]
+	public Task ReadFactoryTest_Local()
+	{
+		var readFactory = this.localScope.ServiceProvider.GetRequiredService<IReadObjectFactory>();
+		return this.ReadFactory(readFactory);
+	}
+
+	private async Task ReadFactory(IReadObjectFactory readFactory)
+	{
+		
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.Contains("Create") || m.Name.Contains("Fetch")).ToList();
 
 		foreach (var method in methods)

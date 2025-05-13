@@ -365,18 +365,31 @@ public class RemoteReadTests
 
 
 	private IServiceScope clientScope;
+	private IServiceScope localScope;
 
 	public RemoteReadTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
 		this.clientScope = scopes.client;
+		this.localScope = scopes.local;
 	}
 
 	[Fact]
-	public async Task RemoteReadTest()
+	public Task RemoteReadFactoryTest_Client()
 	{
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IRemoteReadDataMapperFactory>();
+		return this.RemoteRead(readFactory);
+	}
 
+	[Fact]
+	public Task RemoteReadFactoryTest_Local()
+	{
+		var readFactory = this.localScope.ServiceProvider.GetRequiredService<IRemoteReadDataMapperFactory>();
+		return this.RemoteRead(readFactory);
+	}
+
+	private async Task RemoteRead(IRemoteReadDataMapperFactory readFactory)
+	{
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch")).ToList();
 
 		foreach (var method in methods)

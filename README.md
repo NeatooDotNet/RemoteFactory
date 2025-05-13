@@ -45,7 +45,7 @@ __1. Install the [Neatoo Remote Factory NuGet package](https://www.nuget.org/pac
 __2. Register the necessary services in ASP.NET server application. Be sure to include your Domain Model library assembly.__
 
 ```csharp
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Local, typeof(IPersonModel).Assembly);
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(IPersonModel).Assembly);
 ```
 
 __3. Add a single controller to your ASP.NET server application__

@@ -1257,7 +1257,7 @@ public class FactoryGenerator : IIncrementalGenerator
 {remoteMethods}
 }}
 
-						if(remoteLocal == NeatooFactory.Local)
+						if(remoteLocal == NeatooFactory.Local || remoteLocal == NeatooFactory.Server)
 						  {{
 {localMethods}
                             }}

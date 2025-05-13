@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory.FactoryGeneratorTests;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
+using System.Reflection;
 using Xunit;
 
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
@@ -554,71 +555,84 @@ public class RemoteWriteTests
 		}
 	}
 
-	private IServiceScope clientScope;
-
-	public RemoteWriteTests()
+	public static IEnumerable<object[]> RemoteWriteFactoryTest_Client()
 	{
 		var scopes = ClientServerContainers.Scopes();
-		this.clientScope = scopes.client;
-	}
 
-	[Fact]
-	public async Task RemoteWriteDataMapperTest()
-	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IRemoteWriteObjectFactory>();
-
-		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
+		var factory = scopes.client.ServiceProvider.GetRequiredService<IRemoteWriteObjectFactory>();
+		var methods = factory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
 
 		foreach (var method in methods)
 		{
-			object? result;
-			var methodName = method.Name;
+			yield return [method, factory];
+		}
+	}
 
-			async Task<RemoteWriteObject?> doSave(RemoteWriteObject remoteWrite)
+	public static IEnumerable<object[]> RemoteWriteFactoryTest_Local()
+	{
+		var scopes = ClientServerContainers.Scopes();
+
+		var factory = scopes.local.ServiceProvider.GetRequiredService<IRemoteWriteObjectFactory>();
+		var methods = factory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
+
+		foreach (var method in methods)
+		{
+			yield return [method, factory];
+		}
+	}
+
+	[Theory]
+	[MemberData(nameof(RemoteWriteFactoryTest_Local))]
+	[MemberData(nameof(RemoteWriteFactoryTest_Client))]
+	public async Task RemoteWrite(MethodInfo method, IRemoteWriteObjectFactory remoteFactory)
+	{
+		object? result;
+		var methodName = method.Name;
+
+		async Task<RemoteWriteObject?> doSave(RemoteWriteObject remoteWrite)
+		{
+			if (method.GetParameters().Count() == 2)
 			{
-				if (method.GetParameters().Count() == 2)
-				{
-					result = method.Invoke(readFactory, [remoteWrite, 1]);
-				}
-				else
-				{
-					result = method.Invoke(readFactory, [remoteWrite]);
-				}
-
-				if (result is Task<RemoteWriteObject?> taskBool)
-				{
-					if (method.Name.Contains("False"))
-					{
-						Assert.Null(await taskBool);
-					}
-					else
-					{
-						Assert.NotNull(await taskBool);
-					}
-					return taskBool.Result;
-				}
-				else
-				{
-					Assert.Contains("Bool", methodName);
-					Assert.Contains("False", methodName);
-					Assert.Null(result);
-					return null;
-				}
+				result = method.Invoke(remoteFactory, [remoteWrite, 1]);
+			}
+			else
+			{
+				result = method.Invoke(remoteFactory, [remoteWrite]);
 			}
 
-			var writeDataMapperToSave = new RemoteWriteObject();
-			var writeDataMapper = await doSave(writeDataMapperToSave);
-			Assert.True(writeDataMapper?.UpdateCalled ?? true);
-
-			writeDataMapperToSave = new RemoteWriteObject() { IsNew = true };
-			writeDataMapper = await doSave(writeDataMapperToSave);
-			Assert.True(writeDataMapper?.InsertCalled ?? true);
-
-			writeDataMapperToSave = new RemoteWriteObject() { IsDeleted = true };
-			writeDataMapper = await doSave(writeDataMapperToSave);
-			Assert.True(writeDataMapper?.DeleteCalled ?? true);
-
+			if (result is Task<RemoteWriteObject?> taskBool)
+			{
+				if (method.Name.Contains("False"))
+				{
+					Assert.Null(await taskBool);
+				}
+				else
+				{
+					Assert.NotNull(await taskBool);
+				}
+				return taskBool.Result;
+			}
+			else
+			{
+				Assert.Contains("Bool", methodName);
+				Assert.Contains("False", methodName);
+				Assert.Null(result);
+				return null;
+			}
 		}
+
+		var writeDataMapperToSave = new RemoteWriteObject();
+		var writeDataMapper = await doSave(writeDataMapperToSave);
+		Assert.True(writeDataMapper?.UpdateCalled ?? true);
+
+		writeDataMapperToSave = new RemoteWriteObject() { IsNew = true };
+		writeDataMapper = await doSave(writeDataMapperToSave);
+		Assert.True(writeDataMapper?.InsertCalled ?? true);
+
+		writeDataMapperToSave = new RemoteWriteObject() { IsDeleted = true };
+		writeDataMapper = await doSave(writeDataMapperToSave);
+		Assert.True(writeDataMapper?.DeleteCalled ?? true);
+
 	}
 }
 

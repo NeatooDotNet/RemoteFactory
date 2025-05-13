@@ -18,12 +18,12 @@ public class ServerServiceProvider
 	public IServiceProvider serverProvider { get; set; } = null!;
 }
 
-internal sealed class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
+internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDelegateRequest
 {
 	private readonly INeatooJsonSerializer NeatooJsonSerializer;
 	private readonly IServiceProvider serviceProvider;
 
-	public MakeRemoteDelegateRequest(INeatooJsonSerializer neatooJsonSerializer, IServiceProvider serviceProvider)
+	public MakeSerializedServerStandinDelegateRequest(INeatooJsonSerializer neatooJsonSerializer, IServiceProvider serviceProvider)
 	{
 		this.NeatooJsonSerializer = neatooJsonSerializer;
 		this.serviceProvider = serviceProvider;
@@ -65,8 +65,9 @@ internal static class ClientServerContainers
 	private static object lockContainer = new object();
 	static IServiceProvider serverContainer = null!;
 	static IServiceProvider clientContainer = null!;
+	static IServiceProvider localContainer = null!;
 
-	public static (IServiceScope server, IServiceScope client) Scopes()
+	public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes()
 	{
 		lock (lockContainer)
 		{
@@ -74,32 +75,39 @@ internal static class ClientServerContainers
 			{
 				var serverCollection = new ServiceCollection();
 				var clientCollection = new ServiceCollection();
+				var localCollection = new ServiceCollection();
 
 				RegisterIfAttribute(serverCollection);
 				RegisterIfAttribute(clientCollection);
+				RegisterIfAttribute(localCollection);
 
-				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Local, Assembly.GetExecutingAssembly());
+				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, Assembly.GetExecutingAssembly());
 				serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
 				serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
 				serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
 
 				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
 				clientCollection.AddScoped<ServerServiceProvider>();
-				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
+				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
 				clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
 				clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
 
+				localCollection.AddNeatooRemoteFactory(NeatooFactory.Local, Assembly.GetExecutingAssembly());
+				localCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+
 				serverContainer = serverCollection.BuildServiceProvider();
 				clientContainer = clientCollection.BuildServiceProvider();
+				localContainer = localCollection.BuildServiceProvider();
 			}
 		}
 
 		var serverScope = serverContainer.CreateScope();
 		var clientScope = clientContainer.CreateScope();
+		var localScope = localContainer.CreateScope();
 
 		clientScope.GetRequiredService<ServerServiceProvider>().serverProvider = serverScope.ServiceProvider;
 
-		return (serverScope, clientScope);
+		return (serverScope, clientScope, localScope);
 	}
 
 	private static void RegisterIfAttribute(this IServiceCollection services)
