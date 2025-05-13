@@ -1,5 +1,5 @@
 # Remote Factory
-Neatoo Remote Factory is a Data Mapper Factory for Domain Models powered by Roslyn Source Generators. It allows Domain Model objects to be 2-Tier client/server and authentication agnostic. Used with [Neatoo](https://github.com/NeatooDotNet/Neatoo) you can create streamlined Rich Domain Models in .NET with authorization, business rules, data-binding and meta properties. All with a single controller and no DTOs*. It is Dependency Injection and Async/Await centric. Plus high performance thanks to the source generators. 
+Neatoo Remote Factory is a Data Mapper Factory for Domain Models powered by Roslyn Source Generators. It allows Domain Model objects to be 3-Tier client/server and authentication agnostic. Used with [Neatoo](https://github.com/NeatooDotNet/Neatoo) you can create streamlined Rich Domain Models in .NET with authorization, business rules, data-binding and meta properties. All with a single controller and no DTOs*. It is Dependency Injection and Async/Await centric. Plus high performance thanks to the source generators. 
 
 Create streamlined Blazor and WPF applications with Neatoo!
 
