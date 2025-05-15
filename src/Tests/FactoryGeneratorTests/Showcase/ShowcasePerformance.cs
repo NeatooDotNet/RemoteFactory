@@ -143,7 +143,7 @@ public class ShowcasePerformance
 
 				serviceCollection.AddScoped(typeof(IFactoryCore<>), typeof(FactoryCore<>));
 
-				ShowcasePerformanceNeatooObjFactory.FactoryServiceRegistrar(serviceCollection, NeatooFactory.Local);
+				ShowcasePerformanceNeatooObjFactory.FactoryServiceRegistrar(serviceCollection, NeatooFactory.StandAlone);
 
 				serviceProvider = serviceCollection.BuildServiceProvider();
 			}

@@ -173,9 +173,16 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			parameters = remoteDelegateRequest.Parameters.Select(c => this.FromObjectJson(c)).ToImmutableList();
 		}
 
+		var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType);
+
+		if(delegateType == null)
+		{
+			throw new MissingDelegateException($"Cannot find delegate type {remoteDelegateRequest.DelegateAssemblyType} in the registered assemblies");
+		}
+
 		var result = new RemoteRequest()
 		{
-			DelegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType),
+			DelegateType = delegateType,
 			Parameters = parameters,
 			Target = target
 		};
@@ -205,4 +212,13 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		return this.Deserialize(objectTypeJson.Json, targetType);
 	}
 
+}
+
+
+[Serializable]
+public class MissingDelegateException : Exception
+{
+	public MissingDelegateException() { }
+	public MissingDelegateException(string message) : base(message) { }
+	public MissingDelegateException(string message, Exception inner) : base(message, inner) { }
 }

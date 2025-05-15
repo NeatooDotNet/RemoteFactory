@@ -18,7 +18,7 @@ public enum NeatooFactory
 	/// <summary>
 	/// A client-only architecture
 	/// </summary>
-	Local
+	StandAlone
 }
 
 public delegate IEnumerable<Type> GetServiceImplementationTypes(Type type);
@@ -56,7 +56,7 @@ public static partial class RemoteFactoryServices
 				return MakeRemoteDelegateRequestHttpCallImplementation.Create(httpClient);
 			});
 		}
-		else if (remoteLocal == NeatooFactory.Local)
+		else if (remoteLocal == NeatooFactory.StandAlone)
 		{
 			// Client Only
 			// We still Serialize the objects

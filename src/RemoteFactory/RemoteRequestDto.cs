@@ -11,7 +11,7 @@ public class RemoteRequestDto
 
 public class RemoteRequest
 {
-	public Type? DelegateType { get; set; } = null!;
+	public Type DelegateType { get; set; } = null!;
 	public IReadOnlyCollection<object?>? Parameters { get; set; }
 	public object? Target { get; set; }
 }
