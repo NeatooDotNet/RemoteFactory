@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <RootNamespace>Neatoo.RemoteFactory.AspNetCore</RootNamespace>
+	  <NoWarn>CA1019, IDE0021</NoWarn>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Metadata" />
+	</ItemGroup>
+</Project>
