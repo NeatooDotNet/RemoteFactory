@@ -106,7 +106,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
 	public class AuthorizeStaticFactoryAsyncFetchParamAuthObject
 	{
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public bool CanFetch(int? a)
 		{
 			if(a == 20)
@@ -118,7 +118,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	}
 
 	[Factory]
-	[Authorize<AuthorizeStaticFactoryAsyncFetchParamAuthObject>]
+	[AuthorizeFactory<AuthorizeStaticFactoryAsyncFetchParamAuthObject>]
 	public class StaticFactoryAsyncFetchParamAuthObject
 	{
 		public StaticFactoryAsyncFetchParamAuthObject()

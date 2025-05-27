@@ -270,1349 +270,1349 @@
 //		public List<object> ReadReceived { get; set; } = new List<object>();
 //		public List<object> WriteReceived { get; set; } = new List<object>();
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(VoidBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(VoidString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(VoidBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(VoidString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(VoidTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(VoidTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TrueBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TrueBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TrueBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TrueBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TrueBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TrueBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(FalseBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(FalseBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(FalseBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(FalseBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(FalseBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(FalseBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskVoidBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskVoidString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskVoidBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskVoidString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskVoidTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskVoidTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskTrueBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskTrueBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskTrueBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskTrueBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskTrueBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskTrueBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskFalseBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskFalseBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskFalseBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskFalseBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskFalseBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskFalseBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(VoidBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(VoidStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(VoidBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(VoidStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(VoidTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(VoidTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TrueBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TrueBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TrueBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TrueBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TrueBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TrueBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(FalseBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(FalseBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(FalseBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(FalseBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(FalseBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(FalseBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskVoidBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskVoidStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskVoidBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskVoidStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskVoidTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskVoidTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskTrueBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskTrueBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskTrueBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskTrueBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskTrueBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskTrueBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskFalseBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskFalseBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskFalseBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskFalseBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskFalseBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskFalseBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteVoidBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteVoidString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteVoidBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteVoidString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteVoidTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteVoidTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTrueBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTrueBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTrueBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTrueBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTrueBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTrueBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteFalseBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteFalseBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteFalseBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteFalseBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteFalseBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteFalseBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskVoidBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskVoidString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskVoidBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskVoidString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskVoidTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskVoidTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskTrueBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskTrueBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskTrueBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskTrueBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskTrueBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskTrueBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskFalseBoolBool v) { this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskFalseBoolString v) { this.ReadReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskBool v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskString v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskFalseBoolBool v) { this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskFalseBoolString v) { this.WriteReceived.Add(v); return null; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskFalseBoolTaskBool v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskFalseBoolTaskString v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteVoidBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteVoidStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteVoidBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteVoidStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteVoidTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteVoidTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTrueBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTrueBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTrueBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTrueBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTrueBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTrueBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteFalseBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteFalseBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteFalseBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteFalseBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteFalseBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteFalseBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskVoidBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskVoidStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskVoidBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskVoidStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskVoidTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskVoidTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskTrueBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskTrueBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskTrueBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskTrueBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskTrueBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskTrueBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskFalseBoolBoolRemote v) { this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskFalseBoolStringRemote v) { this.ReadReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskBoolRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskStringRemote v) { await Task.Yield(); this.ReadReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskFalseBoolBoolRemote v) { this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskFalseBoolStringRemote v) { this.WriteReceived.Add(v); return null; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskFalseBoolTaskBoolRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return true; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskFalseBoolTaskStringRemote v) { await Task.Yield(); this.WriteReceived.Add(v); return string.Empty; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(VoidBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(VoidStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(VoidBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(VoidStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(VoidTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(VoidTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TrueBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TrueBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TrueBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TrueBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TrueBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TrueBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(FalseBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(FalseBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(FalseBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(FalseBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(FalseBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(FalseBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskVoidBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskVoidStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskVoidBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskVoidStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskVoidTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskVoidTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskTrueBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskTrueBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskTrueBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskTrueBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskTrueBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskTrueBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskFalseBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskFalseBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskFalseBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskFalseBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskFalseBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskFalseBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(VoidBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(VoidStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(VoidTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(VoidBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(VoidStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(VoidTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(VoidTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TrueBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TrueBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TrueBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TrueBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(FalseBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(FalseBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(FalseBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(FalseBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(FalseBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(FalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(FalseBoolTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskVoidBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskVoidStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskVoidTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskVoidBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskVoidStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskVoidTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskVoidTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskTrueBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskTrueBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskTrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskTrueBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskTrueBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskTrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskTrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(TaskFalseBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(TaskFalseBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(TaskFalseBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(TaskFalseBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(TaskFalseBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(TaskFalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(TaskFalseBoolTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteVoidBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteVoidStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteVoidBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteVoidStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteVoidTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteVoidTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTrueBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTrueBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTrueBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTrueBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTrueBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTrueBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteFalseBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteFalseBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteFalseBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteFalseBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteFalseBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteFalseBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskVoidBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskVoidStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskVoidBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskVoidStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskVoidTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskVoidTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskTrueBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskTrueBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskTrueBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskTrueBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskTrueBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskTrueBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskFalseBoolBoolDeny v) { this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskFalseBoolStringDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskBoolDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskStringDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskFalseBoolBoolDeny v) { this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskFalseBoolStringDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskFalseBoolTaskBoolDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskFalseBoolTaskStringDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteVoidBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteVoidStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteVoidTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteVoidBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteVoidStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteVoidTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteVoidTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTrueBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTrueBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTrueBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTrueBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteFalseBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteFalseBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteFalseBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteFalseBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteFalseBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteFalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteFalseBoolTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskVoidBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskVoidStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskVoidTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskVoidBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskVoidStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskVoidTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskVoidTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskTrueBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskTrueBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskTrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskTrueBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskTrueBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskTrueBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskTrueBoolTaskStringRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public bool Read(RemoteTaskFalseBoolBoolRemoteDeny v) { this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public string? Read(RemoteTaskFalseBoolStringRemoteDeny v) { this.ReadReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Read)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 //		public async Task<bool> Read(RemoteTaskFalseBoolTaskStringRemoteDeny v) { await Task.Yield(); this.ReadReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public bool Write(RemoteTaskFalseBoolBoolRemoteDeny v) { this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public string? Write(RemoteTaskFalseBoolStringRemoteDeny v) { this.WriteReceived.Add(v); return "deny"; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<bool> Write(RemoteTaskFalseBoolTaskBoolRemoteDeny v) { await Task.Yield(); this.WriteReceived.Add(v); return false; }
 
 //		[Remote]
-//		[Authorize(AuthorizeOperation.Write)]
+//		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 //		public async Task<string> Write(RemoteTaskFalseBoolTaskStringRemoteDeny v)
 //		{
 //			await Task.Yield(); this.WriteReceived.Add(v); return "deny";
@@ -1625,7 +1625,7 @@
 //	}
 
 //	[Factory]
-//	[Authorize<AuthorizationAllCombinations>]
+//	[AuthorizeFactory<AuthorizationAllCombinations>]
 //	public class AuthorizedAllCombinations : IAuthorizedAllCombinations
 //	{
 //		public AuthorizedAllCombinations() : base()

@@ -1,35 +1,40 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 
-namespace RemoteFactory.AspNetCore;
+namespace Neatoo.RemoteFactory.AspNetCore;
 
-public class AspAuthorize
+public class AspAuthorize : IAspAuthorize
 {
    private readonly IAuthorizationPolicyProvider policyProvider;
    private readonly IPolicyEvaluator policyEvaluator;
    private readonly IHttpContextAccessor httpContextAccessor;
 
    public AspAuthorize(IAuthorizationPolicyProvider policyProvider, IPolicyEvaluator policyEvaluator, IHttpContextAccessor httpContextAccessor)
-	{
-		this.policyProvider = policyProvider;
+   {
+	  this.policyProvider = policyProvider;
 	  this.policyEvaluator = policyEvaluator;
 	  this.httpContextAccessor = httpContextAccessor;
    }
 
-	public async Task Authorize()
-	{
+   [Authorize("TestPolicy")]
+   public async Task<bool> Authorize(IEnumerable<IAuthorizeData> authorizeData)
+   {
+	  var authorized = false;
 
-		var context = this.httpContextAccessor.HttpContext;
+	  var context = this.httpContextAccessor.HttpContext;
 
-		IEnumerable<IAuthorizeData> authorizeData = [ new AuthorizeAttribute("TestPolicy") ];
-		
-		var policy = await AuthorizationPolicy.CombineAsync(this.policyProvider, authorizeData);
+	  var policy = await AuthorizationPolicy.CombineAsync(this.policyProvider, authorizeData);
 
-		var authenticateResult = await this.policyEvaluator.AuthenticateAsync(policy!, context!);
+	  var authenticateResult = await this.policyEvaluator.AuthenticateAsync(policy!, context!);
 
-		var authorizeResult = await this.policyEvaluator.AuthorizeAsync(policy!, authenticateResult, context!, null);
+	  var authorizeResult = await this.policyEvaluator.AuthorizeAsync(policy!, authenticateResult, context!, null);
 
-	}
+	  if (authenticateResult.Succeeded && authorizeResult.Succeeded)
+	  {
+		 authorized = true;
+	  }
+
+	  return authorized;
+   }
 }

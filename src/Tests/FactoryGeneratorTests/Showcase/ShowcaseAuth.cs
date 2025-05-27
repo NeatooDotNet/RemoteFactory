@@ -4,19 +4,19 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
 
 public interface IShowcaseAuthorize
 {
-	[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 	public bool AnyAccess();
 
-	[Authorize(AuthorizeOperation.Read)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 	public bool CanRead();
 
-	[Authorize(AuthorizeOperation.Create)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 	public bool CanCreate();
 
-	[Authorize(AuthorizeOperation.Fetch)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 	public bool CanFetch();
 
-	[Authorize(AuthorizeOperation.Delete)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
 	public bool CanDelete();
 }
 
@@ -37,7 +37,7 @@ public interface IShowcaseAuthObj : IFactorySaveMeta
 }
 
 [Factory]
-[Authorize<IShowcaseAuthorize>]
+[AuthorizeFactory<IShowcaseAuthorize>]
 internal class ShowcaseAuthObj : IShowcaseAuthObj
 {
 	[Fetch]

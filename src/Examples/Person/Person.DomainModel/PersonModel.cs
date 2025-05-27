@@ -21,7 +21,7 @@ public interface IPersonModel : INotifyPropertyChanged, IFactorySaveMeta
 }
 
 [Factory]
-[Authorize<IPersonModelAuth>]
+[AuthorizeFactory<IPersonModelAuth>]
 internal partial class PersonModel : IPersonModel
 {
 	[Create]

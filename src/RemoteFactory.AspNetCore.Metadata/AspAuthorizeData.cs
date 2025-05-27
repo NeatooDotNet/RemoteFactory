@@ -2,19 +2,18 @@
 
 namespace Neatoo.RemoteFactory.AspNetCore;
 
-[System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class AspAuthorizeAttribute : Attribute, IAuthorizeData
+public sealed class AspAuthorizeData : IAuthorizeData
 {
 	/// <summary>
 	/// Initializes a new instance of the <see cref="AuthorizeAttribute"/> class.
 	/// </summary>
-	public AspAuthorizeAttribute() { }
+	public AspAuthorizeData() { }
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="AuthorizeAttribute"/> class with the specified policy.
 	/// </summary>
 	/// <param name="policy">The name of the policy to require for authorization.</param>
-	public AspAuthorizeAttribute(string policy)
+	public AspAuthorizeData(string policy)
 	{
 		this.Policy = policy;
 	}

@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory;
+using Neatoo.RemoteFactory.AspNetCore.TestLibrary;
 using RemoteFactory.AspNetCore;
 
 namespace RemoteFactory.AspNetCore.Tests;
@@ -17,8 +19,21 @@ public class AspAuthorizeTests : IClassFixture<WebApplicationFactory<Program>>
 	[Fact]
 	public async Task Start()
 	{
-		using var client = this._factory.CreateClient();
+		var serviceCollection = new ServiceCollection();
 
-		using var response = await client.GetAsync("/");
+		serviceCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(AspAuthorizeTestObj).Assembly);
+		serviceCollection.AddKeyedScoped(Neatoo.RemoteFactory.RemoteFactoryServices.HttpClientKey, (sp, key) =>
+		{
+			return this._factory.CreateClient();
+		});
+
+		var services = serviceCollection.BuildServiceProvider();
+
+		var objFactory = services.GetRequiredService<IAspAuthorizeTestObjFactory>();
+
+		var result = await objFactory.Create();
+
+		var noAuthResult = await objFactory.CreateNoAuth();
+
 	}
 }

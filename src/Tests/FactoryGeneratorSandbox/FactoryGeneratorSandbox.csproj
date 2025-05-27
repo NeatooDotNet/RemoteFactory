@@ -6,6 +6,7 @@
   </PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Metadata" />
 		<PackageReference Include="Verify.XUnit" />
 		<PackageReference Include="Verify.SourceGenerators" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
@@ -22,6 +23,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\RemoteFactory.AspNetCore.Metadata\RemoteFactory.AspNetCore.Metadata.csproj" />
 	  <ProjectReference Include="..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" />
 	</ItemGroup>
   <ItemGroup>

@@ -13,7 +13,8 @@ public static class TestHelper
     public static void Verify(string source, string? source2 = null)
     {
         // Parse the provided string into a C# syntax tree
-        var syntaxTrees = new List<SyntaxTree>() { CSharpSyntaxTree.ParseText(source), CSharpSyntaxTree.ParseText(SourceAttributes) };
+        var syntaxTrees = new List<SyntaxTree>() { CSharpSyntaxTree.ParseText(source), CSharpSyntaxTree.ParseText(SourceAttributes)};
+
         if (source2 != null)
         {
             syntaxTrees.Add(CSharpSyntaxTree.ParseText(source2));
@@ -24,9 +25,19 @@ public static class TestHelper
             assemblyName: "Tests",
             syntaxTrees: syntaxTrees.ToArray());
 
+		compilation = compilation.AddReferences(compilation.References
+				.Concat(new[]
+				{
+					 MetadataReference.CreateFromFile(typeof(object).Assembly.Location), // mscorlib
+					 MetadataReference.CreateFromFile(typeof(Console).Assembly.Location), // System.Console
+					 MetadataReference.CreateFromFile(typeof(System.Runtime.GCSettings).Assembly.Location), // System.Runtime
+					 MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location), // System.Linq
+					 MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Authorization.IAuthorizeData).Assembly.Location), // Neatoo.RemoteFactory.FactoryGenerator
+					 MetadataReference.CreateFromFile(typeof(Neatoo.RemoteFactory.AspNetCore.AspAuthorizeAttribute).Assembly.Location) // Neatoo.RemoteFactory.FactoryGenerator
+				}));
 
-        // Create an instance of our EnumGenerator incremental source generator
-        var generator = new FactoryGenerator();
+		// Create an instance of our EnumGenerator incremental source generator
+		var generator = new FactoryGenerator();
 
         // The GeneratorDriver is used to run our generator against a compilation
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
@@ -136,26 +147,26 @@ public sealed class ExecuteAttribute<TDelegate> : FactoryOperationAttribute
 }
 
 [System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class AuthorizeAttribute<T> : Attribute
+public sealed class AuthorizeFactoryAttribute<T> : Attribute
 {
-	public AuthorizeAttribute()
+	public AuthorizeFactoryAttribute()
 	{
 
 	}
 }
 
 [System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class AuthorizeAttribute : Attribute
+public sealed class AuthorizeFactoryAttribute : Attribute
 {
-	public AuthorizeOperation Operation { get; }
-	public AuthorizeAttribute(AuthorizeOperation operation)
+	public AuthorizeFactoryOperation Operation { get; }
+	public AuthorizeFactoryAttribute(AuthorizeFactoryOperation operation)
 	{
 		this.Operation = operation;
 	}
 }
 
 [Flags]
-public enum AuthorizeOperation
+public enum AuthorizeFactoryOperation
 {
 	Create = 1,
 	Fetch = 2,
@@ -170,12 +181,12 @@ public enum AuthorizeOperation
 public enum FactoryOperation
 {
 	None = 0,
-	Execute = AuthorizeOperation.Read,
-	Create = AuthorizeOperation.Create | AuthorizeOperation.Read,
-	Fetch = AuthorizeOperation.Fetch | AuthorizeOperation.Read,
-	Insert = AuthorizeOperation.Insert | AuthorizeOperation.Write,
-	Update = AuthorizeOperation.Update | AuthorizeOperation.Write,
-	Delete = AuthorizeOperation.Delete | AuthorizeOperation.Write
+	Execute = AuthorizeFactoryOperation.Read,
+	Create = AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Read,
+	Fetch = AuthorizeFactoryOperation.Fetch | AuthorizeFactoryOperation.Read,
+	Insert = AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Write,
+	Update = AuthorizeFactoryOperation.Update | AuthorizeFactoryOperation.Write,
+	Delete = AuthorizeFactoryOperation.Delete | AuthorizeFactoryOperation.Write
 }
 
 

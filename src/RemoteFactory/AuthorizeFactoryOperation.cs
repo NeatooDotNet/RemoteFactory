@@ -5,7 +5,7 @@ namespace Neatoo.RemoteFactory;
 #endif
 
 [Flags]
-public enum AuthorizeOperation
+public enum AuthorizeFactoryOperation
 {
 	Create = 1,
 	Fetch = 2,

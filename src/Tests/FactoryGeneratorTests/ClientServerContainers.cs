@@ -120,10 +120,10 @@ internal static class ClientServerContainers
 				services.AddScoped(t);
 			}
 			
-			if (t.GetCustomAttribute(typeof(AuthorizeAttribute<>)) != null)
+			if (t.GetCustomAttribute(typeof(AuthorizeFactoryAttribute<>)) != null)
 			{
 
-				var attr = t.GetCustomAttribute(typeof(AuthorizeAttribute<>))!;
+				var attr = t.GetCustomAttribute(typeof(AuthorizeFactoryAttribute<>))!;
 				var authType = attr.GetType().GetGenericArguments()[0];
 
 				if (!authType.IsInterface)

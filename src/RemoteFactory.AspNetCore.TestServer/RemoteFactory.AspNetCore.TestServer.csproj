@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
     <ProjectReference Include="..\RemoteFactory\RemoteFactory.csproj" />
+    <ProjectReference Include="..\Tests\RemoteFactory.AspNetCore.TestLibrary\RemoteFactory.AspNetCore.TestLibrary.csproj" />
   </ItemGroup>
 	<ItemGroup>
 		<InternalsVisibleTo Include="RemoteFactory.AspNet.Tests" />

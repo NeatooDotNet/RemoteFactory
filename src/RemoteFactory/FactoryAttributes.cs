@@ -92,16 +92,16 @@ public sealed class ExecuteAttribute : FactoryOperationAttribute
 }
 
 [System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class AuthorizeAttribute<T> : Attribute
+public sealed class AuthorizeFactoryAttribute<T> : Attribute
 {
-	public AuthorizeAttribute() { }
+	public AuthorizeFactoryAttribute() { }
 }
 
 [System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class AuthorizeAttribute : Attribute
+public sealed class AuthorizeFactoryAttribute : Attribute
 {
-	public AuthorizeOperation Operation { get; }
-	public AuthorizeAttribute(AuthorizeOperation operation)
+	public AuthorizeFactoryOperation Operation { get; }
+	public AuthorizeFactoryAttribute(AuthorizeFactoryOperation operation)
 	{
 		this.Operation = operation;
 	}
