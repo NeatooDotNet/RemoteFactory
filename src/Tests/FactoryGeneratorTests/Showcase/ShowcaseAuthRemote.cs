@@ -5,7 +5,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
 public interface IAuthRemote
 {
 	[Remote]
-	[Authorize(AuthorizeOperation.Create)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 	bool Create();
 }
 
@@ -28,7 +28,7 @@ public interface IShowcaseAuthRemote
 }
 
 [Factory]
-[Authorize<IAuthRemote>]
+[AuthorizeFactory<IAuthRemote>]
 internal class ShowcaseAuthRemote : IShowcaseAuthRemote
 {
 	public ShowcaseAuthRemote()

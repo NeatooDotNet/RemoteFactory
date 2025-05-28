@@ -4,15 +4,15 @@ namespace Person.DomainModel;
 
 public interface IPersonModelAuth
 {
-	[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 	public bool CanAccess();
-	[Authorize(AuthorizeOperation.Create)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 	public bool CanCreate();
-	[Authorize(AuthorizeOperation.Fetch)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 	public bool CanFetch();
-	[Authorize(AuthorizeOperation.Update)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Update)]
 	public bool CanUpdate();
-	[Authorize(AuthorizeOperation.Delete)]
+	[AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
 	public bool CanDelete();
 }
 

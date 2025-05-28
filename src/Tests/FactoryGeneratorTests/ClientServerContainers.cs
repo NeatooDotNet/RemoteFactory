@@ -92,7 +92,7 @@ internal static class ClientServerContainers
 				clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
 				clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
 
-				localCollection.AddNeatooRemoteFactory(NeatooFactory.StandAlone, Assembly.GetExecutingAssembly());
+				localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, Assembly.GetExecutingAssembly());
 				localCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
 
 				serverContainer = serverCollection.BuildServiceProvider();
@@ -120,10 +120,10 @@ internal static class ClientServerContainers
 				services.AddScoped(t);
 			}
 			
-			if (t.GetCustomAttribute(typeof(AuthorizeAttribute<>)) != null)
+			if (t.GetCustomAttribute(typeof(AuthorizeFactoryAttribute<>)) != null)
 			{
 
-				var attr = t.GetCustomAttribute(typeof(AuthorizeAttribute<>))!;
+				var attr = t.GetCustomAttribute(typeof(AuthorizeFactoryAttribute<>))!;
 				var authType = attr.GetType().GetGenericArguments()[0];
 
 				if (!authType.IsInterface)

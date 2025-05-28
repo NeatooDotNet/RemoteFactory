@@ -10,7 +10,7 @@ public class ReadRemoteAuthTests
 	public class ReadRemoteAuthTask : ReadRemoteAuth
 	{
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<bool> CanReadRemoteBoolTask()
 		{
 			this.CanReadRemoteCalled++;
@@ -18,7 +18,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<bool> CanReadRemoteBoolFalseTask(int? p)
 		{
 			this.CanReadRemoteCalled++;
@@ -30,7 +30,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<string> CanReadRemoteStringTask()
 		{
 			this.CanReadRemoteCalled++;
@@ -38,7 +38,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<string> CanReadRemoteStringFalseTask(int? p)
 		{
 			this.CanReadRemoteCalled++;
@@ -50,7 +50,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<bool> CanCreateBoolTask()
 		{
 			this.CanCreateCalled++;
@@ -58,7 +58,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<bool> CanCreateBoolFalseTask(int? p)
 		{
 			this.CanCreateCalled++;
@@ -70,7 +70,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<string> CanCreateStringTask()
 		{
 			this.CanCreateCalled++;
@@ -78,7 +78,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<string> CanCreateStringFalseTask(int? p)
 		{
 			this.CanCreateCalled++;
@@ -90,7 +90,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<bool> CanFetchBoolTask()
 		{
 			this.CanFetchCalled++;
@@ -98,7 +98,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<bool> CanFetchBoolFalseTask(int? p)
 		{
 			this.CanFetchCalled++;
@@ -110,7 +110,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<string> CanFetchStringTask()
 		{
 			this.CanFetchCalled++;
@@ -118,7 +118,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<string> CanFetchStringFalseTask(int? p)
 		{
 			this.CanFetchCalled++;
@@ -135,7 +135,7 @@ public class ReadRemoteAuthTests
 		public int CanReadRemoteCalled { get; set; }
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public bool CanReadRemoteBool()
 		{
 			this.CanReadRemoteCalled++;
@@ -143,7 +143,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public bool CanReadRemoteBoolFalse(int? p)
 		{
 			this.CanReadRemoteCalled++;
@@ -155,7 +155,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public string? CanReadRemoteString()
 		{
 			this.CanReadRemoteCalled++;
@@ -163,7 +163,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public string? CanReadRemoteStringFalse(int? p)
 		{
 			this.CanReadRemoteCalled++;
@@ -177,7 +177,7 @@ public class ReadRemoteAuthTests
 		public int CanCreateCalled { get; set; }
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public bool CanCreateBool()
 		{
 			this.CanCreateCalled++;
@@ -185,7 +185,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public bool CanCreateBoolFalse(int? p)
 		{
 			this.CanCreateCalled++;
@@ -197,7 +197,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public string? CanCreateString()
 		{
 			this.CanCreateCalled++;
@@ -205,7 +205,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public string? CanCreateStringFalse(int? p)
 		{
 			this.CanCreateCalled++;
@@ -219,7 +219,7 @@ public class ReadRemoteAuthTests
 		public int CanFetchCalled { get; set; }
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public bool CanFetchBool()
 		{
 			this.CanFetchCalled++;
@@ -227,7 +227,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public bool CanFetchBoolFalse(int? p)
 		{
 			this.CanFetchCalled++;
@@ -239,7 +239,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public string? CanFetchString()
 		{
 			this.CanFetchCalled++;
@@ -247,7 +247,7 @@ public class ReadRemoteAuthTests
 		}
 
 		[Remote]
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public string? CanFetchStringFalse(int? p)
 		{
 			this.CanFetchCalled++;
@@ -260,14 +260,14 @@ public class ReadRemoteAuthTests
 	}
 
 	[Factory]
-	[Authorize<ReadRemoteAuth>]
+	[AuthorizeFactory<ReadRemoteAuth>]
 	public class ReadRemoteAuthObj : ReadTests.ReadParamObject
 	{
 
 	}
 
 	[Factory]
-	[Authorize<ReadRemoteAuthTask>]
+	[AuthorizeFactory<ReadRemoteAuthTask>]
 	public class ReadRemoteAuthTaskObj : ReadTests.ReadParamObject
 	{
 

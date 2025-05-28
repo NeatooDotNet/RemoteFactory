@@ -1,23 +1,20 @@
 using Neatoo.RemoteFactory;
 using Person.DomainModel;
 using Person.Ef;
+using Neatoo.RemoteFactory.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors();
 
 // Neatoo
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(IPersonModel).Assembly);
+builder.Services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly);
 builder.Services.AddScoped<IPersonContext, PersonContext>();
 builder.Services.RegisterMatchingName(typeof(IPersonModelAuth).Assembly);
 builder.Services.AddScoped<IUser, User>();
 
 var app = builder.Build();
 
-app.MapPost("/api/neatoo", (HttpContext httpContext, RemoteRequestDto request) =>
-{
-	var handleRemoteDelegateRequest = httpContext.RequestServices.GetRequiredService<HandleRemoteDelegateRequest>();
-	return handleRemoteDelegateRequest(request);
-});
+app.UseNeatoo();
 
 app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 

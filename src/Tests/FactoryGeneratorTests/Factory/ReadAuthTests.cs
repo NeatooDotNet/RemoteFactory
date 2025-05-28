@@ -10,14 +10,14 @@ public class ReadAuthTests
 	public class ReadAuthTask : ReadAuth
 	{
 
-		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 		public Task<bool> CanAnyBoolTask()
 		{
 			this.CanAnyCalled++;
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 		public Task<bool> CanAnyBoolFalseTask(int? p)
 		{
 			this.CanAnyCalled++;
@@ -28,14 +28,14 @@ public class ReadAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 		public Task<string> CanAnyStringTask()
 		{
 			this.CanAnyCalled++;
 			return Task.FromResult(string.Empty);
 		}
 
-		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 		public Task<string> CanAnyStringFalseTask(int? p)
 		{
 			this.CanAnyCalled++;
@@ -46,14 +46,14 @@ public class ReadAuthTests
 			return Task.FromResult(string.Empty);
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<bool> CanReadBoolTask()
 		{
 			this.CanReadCalled++;
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<bool> CanReadBoolFalseTask(int? p)
 		{
 			this.CanReadCalled++;
@@ -64,14 +64,14 @@ public class ReadAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<string> CanReadStringTask()
 		{
 			this.CanReadCalled++;
 			return Task.FromResult(string.Empty);
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public Task<string> CanReadStringFalseTask(int? p)
 		{
 			this.CanReadCalled++;
@@ -82,14 +82,14 @@ public class ReadAuthTests
 			return Task.FromResult(string.Empty);
 		}
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<bool> CanCreateBoolTask()
 		{
 			this.CanCreateCalled++;
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<bool> CanCreateBoolFalseTask(int? p)
 		{
 			this.CanCreateCalled++;
@@ -100,14 +100,14 @@ public class ReadAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<string> CanCreateStringTask()
 		{
 			this.CanCreateCalled++;
 			return Task.FromResult(string.Empty);
 		}
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public Task<string> CanCreateStringFalseTask(int? p)
 		{
 			this.CanCreateCalled++;
@@ -118,14 +118,14 @@ public class ReadAuthTests
 			return Task.FromResult(string.Empty);
 		}
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<bool> CanFetchBoolTask()
 		{
 			this.CanFetchCalled++;
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<bool> CanFetchBoolFalseTask(int? p)
 		{
 			this.CanFetchCalled++;
@@ -136,14 +136,14 @@ public class ReadAuthTests
 			return Task.FromResult(true);
 		}
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<string> CanFetchStringTask()
 		{
 			this.CanFetchCalled++;
 			return Task.FromResult(string.Empty);
 		}
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public Task<string> CanFetchStringFalseTask(int? p)
 		{
 			this.CanFetchCalled++;
@@ -159,14 +159,14 @@ public class ReadAuthTests
 	{
 		public int CanAnyCalled { get; set; }
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public bool CanAnyBool()
 		{
 			this.CanAnyCalled++;
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public bool CanAnyBoolFalse(int? p)
 		{
 			this.CanAnyCalled++;
@@ -177,14 +177,14 @@ public class ReadAuthTests
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public string? CanAnyString()
 		{
 			this.CanAnyCalled++;
 			return string.Empty;
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public string? CanAnyStringFalse(int? p)
 		{
 			this.CanAnyCalled++;
@@ -197,14 +197,14 @@ public class ReadAuthTests
 
 		public int CanReadCalled { get; set; }
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public bool CanReadBool()
 		{
 			this.CanReadCalled++;
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public bool CanReadBoolFalse(int? p)
 		{
 			this.CanReadCalled++;
@@ -215,14 +215,14 @@ public class ReadAuthTests
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public string? CanReadString()
 		{
 			this.CanReadCalled++;
 			return string.Empty;
 		}
 
-		[Authorize(AuthorizeOperation.Read)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
 		public string? CanReadStringFalse(int? p)
 		{
 			this.CanReadCalled++;
@@ -235,14 +235,14 @@ public class ReadAuthTests
 
 		public int CanCreateCalled { get; set; }
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public bool CanCreateBool()
 		{
 			this.CanCreateCalled++;
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public bool CanCreateBoolFalse(int? p)
 		{
 			this.CanCreateCalled++;
@@ -253,14 +253,14 @@ public class ReadAuthTests
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public string? CanCreateString()
 		{
 			this.CanCreateCalled++;
 			return string.Empty;
 		}
 
-		[Authorize(AuthorizeOperation.Create)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
 		public string? CanCreateStringFalse(int? p)
 		{
 			this.CanCreateCalled++;
@@ -273,14 +273,14 @@ public class ReadAuthTests
 
 		public int CanFetchCalled { get; set; }
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public bool CanFetchBool()
 		{
 			this.CanFetchCalled++;
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public bool CanFetchBoolFalse(int? p)
 		{
 			this.CanFetchCalled++;
@@ -291,14 +291,14 @@ public class ReadAuthTests
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public string? CanFetchString()
 		{
 			this.CanFetchCalled++;
 			return string.Empty;
 		}
 
-		[Authorize(AuthorizeOperation.Fetch)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 		public string? CanFetchStringFalse(int? p)
 		{
 			this.CanFetchCalled++;
@@ -311,14 +311,14 @@ public class ReadAuthTests
 	}
 
 	[Factory]
-	[Authorize<ReadAuth>]
+	[AuthorizeFactory<ReadAuth>]
 	public class ReadAuthObject : ReadTests.ReadParamObject
 	{
 
 	}
 
 	[Factory]
-	[Authorize<ReadAuthTask>]
+	[AuthorizeFactory<ReadAuthTask>]
 	public class ReadAuthTaskObject : ReadTests.ReadParamObject
 	{
 

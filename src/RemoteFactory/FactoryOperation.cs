@@ -8,11 +8,11 @@ namespace Neatoo.RemoteFactory;
 public enum FactoryOperation
 {
 	None = 0,
-	Execute = AuthorizeOperation.Read,
-	Create = AuthorizeOperation.Create | AuthorizeOperation.Read,
-	Fetch = AuthorizeOperation.Fetch | AuthorizeOperation.Read,
-	Insert = AuthorizeOperation.Insert | AuthorizeOperation.Write,
-	Update = AuthorizeOperation.Update | AuthorizeOperation.Write,
-	Delete = AuthorizeOperation.Delete | AuthorizeOperation.Write
+	Execute = AuthorizeFactoryOperation.Read,
+	Create = AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Read,
+	Fetch = AuthorizeFactoryOperation.Fetch | AuthorizeFactoryOperation.Read,
+	Insert = AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Write,
+	Update = AuthorizeFactoryOperation.Update | AuthorizeFactoryOperation.Write,
+	Delete = AuthorizeFactoryOperation.Delete | AuthorizeFactoryOperation.Write
 }
 

@@ -12,7 +12,7 @@ public class BugNoCanCreateFetch : FactoryTestBase<IBugNoCanCreateFetchObjFactor
 
    public class BugNoCanCreateFetchAuth
 	{
-		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 		public bool CanAccess()
 		{
 			return true;
@@ -20,7 +20,7 @@ public class BugNoCanCreateFetch : FactoryTestBase<IBugNoCanCreateFetchObjFactor
 	}
 
 	[Factory]
-	[Authorize<BugNoCanCreateFetchAuth>()]
+	[AuthorizeFactory<BugNoCanCreateFetchAuth>()]
 	public class BugNoCanCreateFetchObj : IFactorySaveMeta
 	{
 	  public bool IsDeleted => throw new NotImplementedException();

@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "RemoteFactory.AspNet.Tests": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:55888;http://localhost:55889"
+    }
+  }
+}

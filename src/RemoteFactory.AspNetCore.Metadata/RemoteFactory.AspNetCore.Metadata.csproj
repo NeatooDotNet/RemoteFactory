@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>Neatoo.RemoteFactory.AspNetCore</RootNamespace>
+		<NoWarn>CA1019, IDE0021</NoWarn>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<AssemblyName>Neatoo.RemoteFactory.AspNetCore.Metadata</AssemblyName>
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+		<DebugType>embedded</DebugType>
+		<Description>Asp.Net Core Server Library for Neatoo.RemoteFactory</Description>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
+		<GenerateDocumentationFile>false</GenerateDocumentationFile>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageId>Neatoo.RemoteFactory.AspNetCore.Metadata</PackageId>
+	</PropertyGroup>
+	<ItemGroup>
+		<None Include="..\..\README.md" Pack="true" PackagePath="" />
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="" />
+		<None Include="..\..\neatoo_icon.png" Pack="true" PackagePath="" Visible="false" />
+	</ItemGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Metadata" />
+	</ItemGroup>
+</Project>

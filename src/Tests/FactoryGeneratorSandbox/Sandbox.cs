@@ -1,3 +1,4 @@
+using Neatoo.RemoteFactory.AspNetCore;
 using Neatoo.RemoteFactory.FactoryGenerator;
 
 namespace FactoryGeneratorSandbox;
@@ -17,27 +18,27 @@ namespace NeatooLibrary {
 
 internal class AuthorizeObj {
 
-[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]	
+[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]	
 public bool ReadWrite() {
 
 }
 
-[Authorize(AuthorizeOperation.Create)]	
+[AuthorizeFactory(AuthorizeFactoryOperation.Create)]	
 public bool Create(int a) {
 
 }
 
-[Authorize(AuthorizeOperation.Fetch)]	
+[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]	
 public bool Fetch(string b) {
 
 }
 
-[Authorize(AuthorizeOperation.Insert)]	
+[AuthorizeFactory(AuthorizeFactoryOperation.Insert)]	
 public bool Insert(string b) {
 
 }
 
-[Authorize(AuthorizeOperation.Update)]	
+[AuthorizeFactory(AuthorizeFactoryOperation.Update)]	
 public bool Update(string b) {
 
 }
@@ -53,7 +54,7 @@ namespace NeatooLibrary {
 
 
 [Factory]
-[Authorize<AuthorizeObj>]
+[AuthorizeFactory<AuthorizeObj>]
 internal class Obj {
 
 
@@ -165,13 +166,13 @@ namespace FactoryGeneratorSandbox;
 
    public class BugNoCanCreateFetchAuth
 	{
-		[Authorize(AuthorizeOperation.Read | AuthorizeOperation.Write)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
 		public static bool CanAccess()
 		{
 			return true;
 		}
 
-		[Authorize(AuthorizeOperation.Write)]
+		[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
 		public static bool CanWrite()
 		{
 			return true;
@@ -180,7 +181,7 @@ namespace FactoryGeneratorSandbox;
 	}
 
 	[Factory]
-	[Authorize<BugNoCanCreateFetchAuth>()]
+	[AuthorizeFactory<BugNoCanCreateFetchAuth>()]
 	public class BugNoCanCreateFetchObj
 	{
 		[Create]
@@ -192,6 +193,43 @@ namespace FactoryGeneratorSandbox;
 		[Insert]
 		public void Insert()
 		{
+		}
+	}
+
+";
+
+		TestHelper.Verify(source);
+	}
+
+	private sealed class AuthedClass
+	{
+
+		[AspAuthorize("TestPolicy", Roles = "Keith")]
+		public static void AuthedMethod()
+		{
+		}
+	}
+	[Fact]
+	public void AspAuthorizeFactory()
+	{
+		// The source code to test
+		var source = @"
+using Neatoo.RemoteFactory;
+using Neatoo.RemoteFactory.AspNetCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
+
+namespace FactoryGeneratorSandbox;
+
+
+	[Factory]
+	public class AspAuthorizedObj
+	{
+		[Create]
+		[AspAuthorize(""TestPolicy"", Roles = ""Keith"")]
+		public void Create()
+		{
+
 		}
 	}
 

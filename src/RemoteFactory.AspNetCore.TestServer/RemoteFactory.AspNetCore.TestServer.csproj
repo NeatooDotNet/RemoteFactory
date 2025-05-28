@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
+    <ProjectReference Include="..\RemoteFactory\RemoteFactory.csproj" />
+    <ProjectReference Include="..\Tests\RemoteFactory.AspNetCore.TestLibrary\RemoteFactory.AspNetCore.TestLibrary.csproj" />
+  </ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="RemoteFactory.AspNet.Tests" />
+	</ItemGroup>
+</Project>
