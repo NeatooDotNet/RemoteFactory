@@ -2,7 +2,7 @@
 
 namespace Neatoo.RemoteFactory.AspNetCore;
 
-[System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+[System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
 public sealed class AspAuthorizeAttribute : Attribute, IAuthorizeData
 {
 	/// <summary>

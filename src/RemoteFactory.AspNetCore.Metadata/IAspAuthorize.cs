@@ -3,5 +3,5 @@
 namespace Neatoo.RemoteFactory.AspNetCore;
 public interface IAspAuthorize
 {
-	Task<bool> Authorize(IEnumerable<IAuthorizeData> authorizeData);
+	Task<string?> Authorize(IEnumerable<IAuthorizeData> authorizeData);
 }

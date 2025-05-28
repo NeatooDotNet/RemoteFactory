@@ -148,7 +148,7 @@ else
             User.Role = selectedRole;
             CanCreate = PersonModelFactory.CanCreate();
             CanFetch = PersonModelFactory.CanFetch();
-            CanUpdate = PersonModelFactory.CanUpdate();
+            CanUpdate = PersonModelFactory.CanUpsert();
             CanDelete = PersonModelFactory.CanDelete();
         }
         catch (Exception ex)

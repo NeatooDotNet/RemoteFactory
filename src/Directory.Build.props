@@ -6,7 +6,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>preview</LangVersion>
 		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA1050</NoWarn>
+		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA1050, CA1822</NoWarn>
 		<!-- https://learn.microsoft.com/en-us/nuget/concepts/auditing-packages -->
 		<NuGetAudit>true</NuGetAudit>
 		<NuGetAuditMode>all</NuGetAuditMode>
@@ -14,5 +14,17 @@
 		<Nullable>enable</Nullable>
 		<TargetFrameworks>net9.0</TargetFrameworks>
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+		<FileVersion>9.17.3</FileVersion>
+		<PackageVersion>9.17.3</PackageVersion>
+		<PackageIcon>neatoo_icon.png</PackageIcon>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageTags>OO Domain Modeling C# .NET Blazor WPF ASP.NET CSLA</PackageTags>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/NeatooDotNet/RemoteFactory</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/NeatooDotNet/RemoteFactory</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReleaseNotes>None yet</PackageReleaseNotes>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
 </Project>

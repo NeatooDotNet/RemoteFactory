@@ -23,8 +23,8 @@ namespace Person.DomainModel
         Task<Authorized<IPersonModel>> TrySave(IPersonModel target);
         Authorized CanCreate();
         Authorized CanFetch();
-        Authorized CanUpdate();
-        Authorized CanInsert();
+        Authorized CanUpsert();
+        Authorized CanUpsert1();
         Authorized CanDelete();
         Authorized CanSave();
     }
@@ -262,12 +262,12 @@ namespace Person.DomainModel
             return new Authorized(true);
         }
 
-        public virtual Authorized CanUpdate()
+        public virtual Authorized CanUpsert()
         {
-            return LocalCanUpdate();
+            return LocalCanUpsert();
         }
 
-        public Authorized LocalCanUpdate()
+        public Authorized LocalCanUpsert()
         {
             Authorized authorized;
             IPersonModelAuth ipersonmodelauth = ServiceProvider.GetRequiredService<IPersonModelAuth>();
@@ -286,12 +286,12 @@ namespace Person.DomainModel
             return new Authorized(true);
         }
 
-        public virtual Authorized CanInsert()
+        public virtual Authorized CanUpsert1()
         {
-            return LocalCanInsert();
+            return LocalCanUpsert1();
         }
 
-        public Authorized LocalCanInsert()
+        public Authorized LocalCanUpsert1()
         {
             Authorized authorized;
             IPersonModelAuth ipersonmodelauth = ServiceProvider.GetRequiredService<IPersonModelAuth>();

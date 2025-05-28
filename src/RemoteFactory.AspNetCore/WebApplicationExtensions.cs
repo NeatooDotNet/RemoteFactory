@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Neatoo.RemoteFactory.AspNetCore;
 public static class WebApplicationExtensions
 {
-	public static WebApplication UseNeatooRemoteFactory(this WebApplication app)
+	public static WebApplication UseNeatoo(this WebApplication app)
 	{
 		app.MapPost("/api/neatoo", (HttpContext httpContext, RemoteRequestDto request) =>
 		{

@@ -9,7 +9,8 @@ using RemoteFactory.AspNetCore.TestServer;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(AspAuthorizeTestObj).Assembly);
+builder.Services.AddNeatooAspNetCore(typeof(AspAuthorizeTestObj).Assembly);
+builder.Services.AddSingleton<AspAuthorizeTestObjAuth>();
 
 // Add services to the container.
 
@@ -26,11 +27,10 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddAuthentication("Test")
 	.AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", null);
 
-builder.Services.AddSingleton<IAspAuthorize, AspAuthorize>();
 
 var app = builder.Build();
 
-app.UseNeatooRemoteFactory();
+app.UseNeatoo();
 
 app.MapGet("/", async (HttpContext httpContext) => {
 	var authorize = httpContext.RequestServices.GetRequiredService<AspAuthorize>();

@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
 using System.Text.RegularExpressions;
+using static Neatoo.RemoteFactory.FactoryGenerator.FactoryGenerator;
 
 namespace Neatoo.RemoteFactory.FactoryGenerator;
 
@@ -253,7 +254,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		public FactoryOperation? FactoryOperation { get; private set; }
 		public AuthorizeFactoryOperation? AuthorizeFactoryOperation { get; private set; }
 		public List<ParameterInfo> Parameters { get; private set; }
-		public AspAuthorizeCall? AspAuthorizeCall { get; set; } = null;
+		public List<AspAuthorizeCall> AspAuthorizeCalls { get; set; } = [];
 
 		public void MakeAuthCall(FactoryMethod inMethod, StringBuilder methodBuilder)
 		{
@@ -336,7 +337,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		{
 			this.Parameters.Insert(0, new ParameterInfo() { Name = "target", Type = $"{targetType}", IsService = false, IsTarget = true });
 			// this.TargetType = $"{targetType}?"; breaks auth
-			this.AspAuthorizeCall = callMethodInfo.AspAuthorizeCall;
+			this.AspAuthorizeCalls = callMethodInfo.AspAuthorizeCalls;
 		}
 
 		public override StringBuilder PublicMethod(FactoryText classText)
@@ -373,6 +374,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.WriteFactoryMethods = writeFactoryMethods;
 			this.Parameters = writeFactoryMethods.First().Parameters;
 			this.AuthCallMethods.AddRange(writeFactoryMethods.SelectMany(m => m.AuthCallMethods).Distinct());
+			this.AspAuthorizeCalls.AddRange(writeFactoryMethods.SelectMany(m => m.AspAuthorizeCalls).Distinct());
 		}
 
 		public bool IsDefault { get; set; } = false;
@@ -533,14 +535,14 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.FactoryOperation = callMethod.FactoryOperation;
 			this.AuthorizeFactoryOperation = callMethod.AuthorizeFactoryOperation;
 			this.Parameters = callMethod.Parameters;
-			this.AspAuthorizeCall = callMethod.AspAuthorizeCall;
+			this.AspAuthorizeCalls = callMethod.AspAuthorizeCalls;
 		}
 
 		public override bool IsSave => this.CallMethod.IsSave;
 		public override bool IsBool => this.CallMethod.IsBool;
-		public override bool IsTask => this.IsRemote || this.CallMethod.IsTask || this.AuthCallMethods.Any(m => m.IsTask) || this.AspAuthorizeCall != null;
-		public override bool IsRemote => this.CallMethod.IsRemote || this.AuthCallMethods.Any(m => m.IsRemote) || this.AspAuthorizeCall != null;
-		public override bool IsAsync => (this.HasAuth && this.CallMethod.IsTask) || this.AuthCallMethods.Any(m => m.IsTask) || this.AspAuthorizeCall != null;
+		public override bool IsTask => this.IsRemote || this.CallMethod.IsTask || this.AuthCallMethods.Any(m => m.IsTask) || this.AspAuthorizeCalls.Count > 0;
+		public override bool IsRemote => this.CallMethod.IsRemote || this.AuthCallMethods.Any(m => m.IsRemote) || this.AspAuthorizeCalls.Count > 0;
+		public override bool IsAsync => (this.HasAuth && this.CallMethod.IsTask) || this.AuthCallMethods.Any(m => m.IsTask) || this.AspAuthorizeCalls.Count > 0;
 		public override bool IsNullable => this.CallMethod.IsNullable || this.HasAuth || this.IsBool;
 
 		public CallMethod CallMethod { get; set; }
@@ -617,12 +619,16 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	internal class CanFactoryMethod : FactoryMethod
 	{
-		public CanFactoryMethod(string targetType, string concreteType, string methodName, ICollection<CallMethod> authMethods) : base(targetType, concreteType)
+		public CanFactoryMethod(string targetType, string concreteType, string methodName) : base(targetType, concreteType)
 		{
 			this.Name = $"Can{methodName}";
-			this.UniqueName = this.Name;
+			this.UniqueName = $"Can{methodName}";
+		}
+		public CanFactoryMethod(string targetType, string concreteType, string methodName, ICollection<CallMethod> authMethods, ICollection<AspAuthorizeCall> aspAuthorizeCalls) : this(targetType, concreteType, methodName)
+		{
 			this.AuthCallMethods.AddRange(authMethods);
 			this.Parameters = authMethods.SelectMany(m => m.Parameters).Distinct().ToList();
+			this.AspAuthorizeCalls.AddRange(aspAuthorizeCalls);
 		}
 
 		public override bool IsBool => true;
@@ -642,11 +648,11 @@ public class FactoryGenerator : IIncrementalGenerator
 		public override StringBuilder PublicMethod(FactoryText classText)
 		{
 
-			classText.InterfaceMethods.AppendLine($"{this.ReturnType()} {this.Name}({this.ParameterDeclarationsText(includeServices: false)});");
+			classText.InterfaceMethods.AppendLine($"{this.ReturnType()} {this.UniqueName}({this.ParameterDeclarationsText(includeServices: false)});");
 
 			var methodBuilder = new StringBuilder();
 
-			methodBuilder.AppendLine($"public virtual {this.ReturnType()} {this.Name}({this.ParameterDeclarationsText(includeServices: false)})");
+			methodBuilder.AppendLine($"public virtual {this.ReturnType()} {this.UniqueName}({this.ParameterDeclarationsText(includeServices: false)})");
 			methodBuilder.AppendLine("{");
 
 			methodBuilder.AppendLine($"return Local{this.UniqueName}({this.ParameterIdentifiersText(includeServices: false)});");
@@ -690,8 +696,8 @@ public class FactoryGenerator : IIncrementalGenerator
 		public string DelegateName => $"{this.UniqueName}Delegate";
 
 		public List<CallMethod> AuthCallMethods { get; set; } = [];
-		public AspAuthorizeCall? AspAuthorizeCall { get; set; } = null;		
-		public virtual bool HasAuth => this.AuthCallMethods.Count > 0 || this.AspAuthorizeCall != null;
+		public List<AspAuthorizeCall> AspAuthorizeCalls { get; set; } = [];
+		public virtual bool HasAuth => this.AuthCallMethods.Count > 0 || this.AspAuthorizeCalls.Count > 0;
 		public FactoryOperation? FactoryOperation { get; set; }
 		public AuthorizeFactoryOperation? AuthorizeFactoryOperation { get; set; }
 		public List<ParameterInfo> Parameters { get; set; } = null!;
@@ -699,9 +705,9 @@ public class FactoryGenerator : IIncrementalGenerator
 		public virtual bool IsSave => false;
 		public virtual bool IsBool => false;
 		public virtual bool IsNullable => false;// (this.IsBool || this.IsSave) && (!this.IsSave || !this.HasAuth);
-		public virtual bool IsTask => this.IsRemote || this.AuthCallMethods.Any(m => m.IsTask);
-		public virtual bool IsRemote => this.AuthCallMethods.Any(m => m.IsRemote);
-		public virtual bool IsAsync => this.AuthCallMethods.Any(m => m.IsTask);
+		public virtual bool IsTask => this.IsRemote || this.AuthCallMethods.Any(m => m.IsTask) || this.AspAuthorizeCalls.Count > 0;
+		public virtual bool IsRemote => this.AuthCallMethods.Any(m => m.IsRemote) || this.AspAuthorizeCalls.Count > 0;
+		public virtual bool IsAsync => this.AuthCallMethods.Any(m => m.IsTask) || this.AspAuthorizeCalls.Count > 0;
 
 		public virtual string AsyncKeyword => this.IsAsync ? "async" : "";
 		public virtual string AwaitKeyword => this.IsAsync ? "await" : "";
@@ -802,7 +808,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			methodBuilder.AppendLine($"public {this.AsyncKeyword} {this.ReturnType()} Local{this.UniqueName}({this.ParameterDeclarationsText()})");
 			methodBuilder.AppendLine("{");
 
-			if (this.AuthCallMethods.Count > 0 || this.AspAuthorizeCall != null)
+			if (this.AuthCallMethods.Count > 0 || this.AspAuthorizeCalls.Count > 0)
 			{
 				methodBuilder.AppendLine("Authorized authorized;");
 				foreach (var authClass in this.AuthCallMethods.GroupBy(m => m.ClassName))
@@ -814,15 +820,15 @@ public class FactoryGenerator : IIncrementalGenerator
 					}
 				}
 
-				if(this.AspAuthorizeCall != null)
+				if (this.AspAuthorizeCalls.Count > 0)
 				{
 					methodBuilder.AppendLine($"var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();");
 
-					methodBuilder.AppendLine($"authorized = await aspAuthorized.Authorize([ {this.AspAuthorizeCall.ToAspAuthorizedDataText()} ]);");
+					var aspAuthorizeDataText = string.Join(", ", this.AspAuthorizeCalls.Select(a => a.ToAspAuthorizedDataText()));
+					methodBuilder.AppendLine($"authorized = await aspAuthorized.Authorize([ {aspAuthorizeDataText} ]);");
 
 					methodBuilder.AppendLine($"if (!authorized.HasAccess)");
 					methodBuilder.AppendLine("{");
-
 					methodBuilder.AppendLine($"return new {this.ReturnType(includeTask: false)}(authorized);");
 					methodBuilder.AppendLine("}");
 				}
@@ -1012,34 +1018,12 @@ public class FactoryGenerator : IIncrementalGenerator
 					}
 				}
 
-				if (authCallMethods.Any())
+				foreach (var factoryMethod in factoryMethods.ToList())
 				{
-					foreach (var factoryOperation in factoryMethods.Where(f => f.FactoryOperation != null)
-																					.Select(f => f.FactoryOperation!.Value)
-																					.Distinct().ToList())
+					if (factoryMethod.HasAuth && !factoryMethod.AuthCallMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
 					{
-						var authMethods = authCallMethods.Where(a => ((int?)a.AuthorizeFactoryOperation & (int?)factoryOperation) != 0).ToList();
-
-						if (authMethods.Any())
-						{
-							if (!authMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
-							{
-								var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryOperation.ToString(), authMethods);
-								factoryMethods.Add(canMethod);
-							}
-						}
-					}
-
-					if (factoryMethods.Any(f => f.IsSave))
-					{
-						var allWrite = new[] { AuthorizeFactoryOperation.Write, AuthorizeFactoryOperation.Insert, AuthorizeFactoryOperation.Update, AuthorizeFactoryOperation.Delete }.Aggregate((a, b) => a | b);
-						var writeAuthMethods = authCallMethods.Where(a => ((int?)a.AuthorizeFactoryOperation & (int?)allWrite) != 0).ToList();
-
-						if (writeAuthMethods.Any() && !writeAuthMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
-						{
-							var canMethod = new CanFactoryMethod(targetType, targetConcreteType, "Save", writeAuthMethods);
-							factoryMethods.Add(canMethod);
-						}
+						var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryMethod.Name, factoryMethod.AuthCallMethods, factoryMethod.AspAuthorizeCalls);
+						factoryMethods.Add(canMethod);
 					}
 				}
 
@@ -1315,7 +1299,7 @@ public class FactoryGenerator : IIncrementalGenerator
 {remoteMethods}
 }}
 
-						if(remoteLocal == NeatooFactory.StandAlone || remoteLocal == NeatooFactory.Server)
+						if(remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
 						  {{
 {localMethods}
                             }}
@@ -1369,12 +1353,12 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			var attributes = method.GetAttributes().ToList();
 
-			var aspAuthorizeAttribute = attributes.FirstOrDefault(a => a.AttributeClass?.Name == "AspAuthorizeAttribute");
-			AspAuthorizeCall? aspAuthorizeCall = null;
+			var aspAuthorizeAttributes = attributes.Where(a => a.AttributeClass?.Name == "AspAuthorizeAttribute").ToList();
+			List<AspAuthorizeCall> aspAuthorizeCalls = [];
 
-			if (aspAuthorizeAttribute != null)
+			foreach (var aspAuthorizeAttribute in aspAuthorizeAttributes)
 			{
-				aspAuthorizeCall = new AspAuthorizeCall(aspAuthorizeAttribute);
+				aspAuthorizeCalls.Add(new AspAuthorizeCall(aspAuthorizeAttribute));
 				attributes.Remove(aspAuthorizeAttribute);
 			}
 
@@ -1394,7 +1378,7 @@ public class FactoryGenerator : IIncrementalGenerator
 					continue;
 				}
 
-				callMethod.AspAuthorizeCall = aspAuthorizeCall;
+				callMethod.AspAuthorizeCalls = aspAuthorizeCalls;
 
 				if (callMethod.Ignore)
 				{
