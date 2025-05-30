@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Neatoo.RemoteFactory.Internal;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -124,8 +125,8 @@ public static partial class RemoteFactoryServices
 			{
 				if (interfaces.TryGetValue(t.FullName!, out var i))
 				{
-					services.AddTransient(i, t);
-					services.AddTransient(t);
+					services.TryAddTransient(i, t);
+					services.TryAddTransient(t);
 				}
 			}
 		}
@@ -133,15 +134,15 @@ public static partial class RemoteFactoryServices
 
 	public static IServiceCollection AddTransientSelf<TService, TImpl>(this IServiceCollection services) where TImpl : class, TService where TService : class
 	{
-		services.AddTransient<TService, TImpl>();
-		services.AddTransient(provider => (TImpl)provider.GetRequiredService<TService>());
+		services.TryAddTransient<TService, TImpl>();
+		services.TryAddTransient(provider => (TImpl)provider.GetRequiredService<TService>());
 		return services;
 	}
 
 	public static IServiceCollection AddTransientSelf(this IServiceCollection services, Type tService, Type tImpl)
 	{
-		services.AddTransient(tService, tImpl);
-		services.AddTransient(tImpl, provider => provider.GetRequiredService(tService));
+		services.TryAddTransient(tService, tImpl);
+		services.TryAddTransient(tImpl, provider => provider.GetRequiredService(tService));
 		return services;
 	}
 

@@ -237,4 +237,62 @@ namespace FactoryGeneratorSandbox;
 
 		TestHelper.Verify(source);
 	}
+
+
+	[Fact]
+	public void InterfaceFactory()
+	{
+		// The source code to test
+		var source = @"
+using Neatoo.RemoteFactory;
+using Neatoo.RemoteFactory.AspNetCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
+
+namespace FactoryGeneratorSandbox;
+
+	[Factory]
+	public interface IObj
+	{
+
+		Task<bool> MethodInt(int a, string b);
+
+	}
+
+";
+
+		TestHelper.Verify(source);
+	}
+
+	[Fact]
+	public void BaseClassBug()
+	{
+		// The source code to test
+		var source = @"
+using Neatoo.RemoteFactory;
+using Neatoo.RemoteFactory.AspNetCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
+
+namespace FactoryGeneratorSandbox;
+
+	[Factory]
+	public class NullableParameter
+	{
+		public bool CreateCalled { get; set; } = false;
+
+		[Create]
+		public static Task<NullableParameter?> Create(int? p)
+		{
+			Assert.Null(p);
+			return new NullableParameter();
+		}
+
+	}
+
+
+";
+
+		TestHelper.Verify(source);
+	}
 }

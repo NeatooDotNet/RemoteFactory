@@ -7,7 +7,7 @@ namespace Neatoo.RemoteFactory;
 
 #pragma warning disable CA1813
 
-[System.AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+[System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
 public sealed class FactoryAttribute : Attribute
 {
 	public FactoryAttribute()
@@ -15,7 +15,7 @@ public sealed class FactoryAttribute : Attribute
 	}
 }
 
-[System.AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+[System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
 public sealed class SuppressFactoryAttribute : Attribute
 {
 	public SuppressFactoryAttribute()
