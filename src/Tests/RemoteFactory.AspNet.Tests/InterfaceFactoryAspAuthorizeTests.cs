@@ -4,11 +4,13 @@ namespace RemoteFactory.AspNetCore.Tests;
 
 public class InterfaceAspAuthorizeTests : IClassFixture<ContainerFixture>
 {
-	private readonly IInterfaceAuthorizeTestObjFactory interfaceObj;
+	private readonly IInterfaceAuthorizeTestObjFactory interfaceObjFactory;
+	private readonly IInterfaceAuthorizeTestObj interfaceObj;
 
 	public InterfaceAspAuthorizeTests(ContainerFixture container)
 	{
-		this.interfaceObj = container.CreateScope.ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObjFactory>();
+		this.interfaceObjFactory = container.CreateScope.ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObjFactory>();
+		this.interfaceObj = container.CreateScope.ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObj>();
 	}
 
 	[Fact]
@@ -30,14 +32,32 @@ public class InterfaceAspAuthorizeTests : IClassFixture<ContainerFixture>
 	}
 
 	[Fact]
-	public async Task InterfaceAspAuthorize_CanHasAspAccess()
+	public async Task InterfaceAspAuthorize_Factory_HasAspAccess()
 	{
-		Assert.True(await this.interfaceObj.CanHasAspAccess(true));
+		var result = await this.interfaceObjFactory.HasAspAccess(true);
 	}
 
 	[Fact]
-	public async Task InterfaceAspAuthorize_CanNotAuthorized()
+	public async Task InterfaceAspAuthorize_Factory_HasAspAccess_NoNeatooAccess()
 	{
-		Assert.False(await this.interfaceObj.CanNoAspAccess(true));
+		await Assert.ThrowsAsync<HttpRequestException>(() => this.interfaceObjFactory.NoAspAccess(false));
+	}
+
+	[Fact]
+	public async Task InterfaceAspAuthorize_Factory_NoAspAccess()
+	{
+		await Assert.ThrowsAsync<HttpRequestException>(() => this.interfaceObjFactory.NoAspAccess(true));
+	}
+
+	[Fact]
+	public async Task InterfaceAspAuthorize_Factory_CanHasAspAccess()
+	{
+		Assert.True(await this.interfaceObjFactory.CanHasAspAccess(true));
+	}
+
+	[Fact]
+	public async Task InterfaceAspAuthorize_Factory_CanNotAuthorized()
+	{
+		Assert.False(await this.interfaceObjFactory.CanNoAspAccess(true));
 	}
 }
