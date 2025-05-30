@@ -8,9 +8,14 @@ namespace Neatoo.RemoteFactory.AspNetCore;
 
 public class AspAuthorize : IAspAuthorize
 {
-	private readonly IAuthorizationPolicyProvider policyProvider;
-	private readonly IPolicyEvaluator policyEvaluator;
-	private readonly IHttpContextAccessor httpContextAccessor;
+	private readonly IAuthorizationPolicyProvider? policyProvider;
+	private readonly IPolicyEvaluator? policyEvaluator;
+	private readonly IHttpContextAccessor? httpContextAccessor;
+
+	public AspAuthorize()
+	{
+
+	}
 
 	public AspAuthorize(IAuthorizationPolicyProvider policyProvider, IPolicyEvaluator policyEvaluator, IHttpContextAccessor httpContextAccessor)
 	{
@@ -19,27 +24,66 @@ public class AspAuthorize : IAspAuthorize
 		this.httpContextAccessor = httpContextAccessor;
 	}
 
-	public async Task<string?> Authorize(IEnumerable<IAuthorizeData> authorizeData)
+	private sealed class AuthorizeData : IAuthorizeData
+	{	
+		/// <summary>
+		/// Gets or sets the policy name that determines access to the resource.
+		/// </summary>
+		public string? Policy { get; set; }
+
+		/// <summary>
+		/// Gets or sets a comma delimited list of roles that are allowed to access the resource.
+		/// </summary>
+		public string? Roles { get; set; }
+
+		/// <summary>
+		/// Gets or sets a comma delimited list of schemes from which user information is constructed.
+		/// </summary>
+		public string? AuthenticationSchemes { get; set; }
+	}
+
+	public async Task<string?> Authorize(IEnumerable<AspAuthorizeData> authorizeData, bool forbid = false)
 	{
+		if(this.policyEvaluator == null || this.policyProvider == null || this.httpContextAccessor == null)
+		{
+			throw new InvalidOperationException("No AspCoreNet Authorization registered");
+		}
+
 		var context = this.GetHttpContext();
 
-		var policy = await this.GetAuthorizationPolicy(authorizeData);
+		var policy = await this.GetAuthorizationPolicy(authorizeData.Select(a => new AuthorizeData() {  AuthenticationSchemes = a.AuthenticationSchemes, Policy = a.Policy, Roles = a.Roles }));
 
 		var authenticateResult = await this.GetAuthenticateResult(policy, context!);
 
-		if (authenticateResult.message != null)
+		if (!authenticateResult.authenticateResult.Succeeded)
 		{
+			if (forbid)
+			{
+				await context.ForbidAsync();
+				throw new AspForbidException(authenticateResult.message ?? "Forbidden");
+			}
+
 			return authenticateResult.message;
 		}
 
 		var authorizeResult = await this.GetPolicyAuthorizationResult(policy, authenticateResult.authenticateResult, context!);
 
-		return authorizeResult.message;
+		if (!authorizeResult.authorizationResult.Succeeded)
+		{
+			if (forbid)
+			{
+				await context.ForbidAsync();
+				throw new AspForbidException(authorizeResult.message ?? "Not Authorized");
+			}
+			return authorizeResult.message ?? "Not Authorized";
+		}
+
+		return string.Empty;
 	}
 
 	protected virtual HttpContext GetHttpContext()
 	{
-		var context = this.httpContextAccessor.HttpContext;
+		var context = this.httpContextAccessor!.HttpContext;
 		if (context == null)
 		{
 			throw new InvalidOperationException("HttpContext is not available. Ensure that AspAuthorize is used within an HTTP request context.");
@@ -50,7 +94,7 @@ public class AspAuthorize : IAspAuthorize
 	protected virtual async Task<AuthorizationPolicy> GetAuthorizationPolicy(IEnumerable<IAuthorizeData> authorizeData)
 	{
 		ArgumentNullException.ThrowIfNull(authorizeData, nameof(authorizeData));
-		var policy = await AuthorizationPolicy.CombineAsync(this.policyProvider, authorizeData);
+		var policy = await AuthorizationPolicy.CombineAsync(this.policyProvider!, authorizeData);
 		if (policy == null)
 		{
 			throw new InvalidOperationException("Authorization policy not found.");
@@ -63,7 +107,7 @@ public class AspAuthorize : IAspAuthorize
 		ArgumentNullException.ThrowIfNull(authorizationPolicy, nameof(authorizationPolicy));
 		ArgumentNullException.ThrowIfNull(httpContext, nameof(httpContext));
 
-		var authenticateResult = await this.policyEvaluator.AuthenticateAsync(authorizationPolicy, httpContext);
+		var authenticateResult = await this.policyEvaluator!.AuthenticateAsync(authorizationPolicy, httpContext);
 
 		return (authenticateResult.Failure?.Message, authenticateResult);
 	}
@@ -73,7 +117,7 @@ public class AspAuthorize : IAspAuthorize
 		ArgumentNullException.ThrowIfNull(authorizationPolicy, nameof(authorizationPolicy));
 		ArgumentNullException.ThrowIfNull(authenticateResult, nameof(authenticateResult));
 		ArgumentNullException.ThrowIfNull(httpContext, nameof(httpContext));
-		var authorizationResult = await this.policyEvaluator.AuthorizeAsync(authorizationPolicy, authenticateResult, httpContext, null);
+		var authorizationResult = await this.policyEvaluator!.AuthorizeAsync(authorizationPolicy, authenticateResult, httpContext, null);
 		return (string.Join(", ", authorizationResult.AuthorizationFailure?.FailedRequirements.Select(r => r.ToString()) ?? []), authorizationResult);
 	}
 }

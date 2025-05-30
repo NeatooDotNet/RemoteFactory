@@ -11,6 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddNeatooAspNetCore(typeof(AspAuthorizeTestObj).Assembly);
 builder.Services.AddSingleton<AspAuthorizeTestObjAuth>();
+builder.Services.AddSingleton<InterfaceAuthorizeTestObjAuth>();
+builder.Services.AddTransient<IInterfaceAuthorizeTestObj, InterfaceAuthorizeTestObj>();
 
 // Add services to the container.
 
@@ -31,12 +33,6 @@ builder.Services.AddAuthentication("Test")
 var app = builder.Build();
 
 app.UseNeatoo();
-
-app.MapGet("/", async (HttpContext httpContext) => {
-	var authorize = httpContext.RequestServices.GetRequiredService<AspAuthorize>();
-
-	await authorize.Authorize([new AuthorizeAttribute("TestPolicy")]);
-});
 
 app.Run();
 

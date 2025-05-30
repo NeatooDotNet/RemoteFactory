@@ -8,7 +8,7 @@ namespace Neatoo.RemoteFactory;
 public enum FactoryOperation
 {
 	None = 0,
-	Execute = AuthorizeFactoryOperation.Read,
+	Execute = AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Execute,
 	Create = AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Read,
 	Fetch = AuthorizeFactoryOperation.Fetch | AuthorizeFactoryOperation.Read,
 	Insert = AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Write,

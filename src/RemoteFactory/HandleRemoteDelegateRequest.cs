@@ -10,9 +10,9 @@ public delegate Task<RemoteResponseDto> HandleRemoteDelegateRequest(RemoteReques
 
 public static class LocalServer
 {
-   private const string Result = "Result";
+	private const string Result = "Result";
 
-   public static HandleRemoteDelegateRequest HandlePortalRequest(IServiceProvider serviceProvider)
+	public static HandleRemoteDelegateRequest HandlePortalRequest(IServiceProvider serviceProvider)
 	{
 		return async (portalRequest) =>
 		{
@@ -21,31 +21,48 @@ public static class LocalServer
 
 			ArgumentNullException.ThrowIfNull(remoteRequest.DelegateType, nameof(remoteRequest.DelegateType));
 
-			var method = (Delegate)serviceProvider.GetRequiredService(remoteRequest.DelegateType);
-
-			var result = method.DynamicInvoke(remoteRequest.Parameters?.ToArray());
-
-			if (result is Task task)
+			try
 			{
-				await task;
-				result = task.GetType()!.GetProperty(Result)!.GetValue(task);
+				var method = (Delegate)serviceProvider.GetRequiredService(remoteRequest.DelegateType);
+
+				var result = method.DynamicInvoke(remoteRequest.Parameters?.ToArray());
+
+				if (result is Task task)
+				{
+					await task;
+					result = task.GetType()!.GetProperty(Result)!.GetValue(task);
+				}
+
+				// This is the return type the client is looking for
+				// If it is an Interface - match the interface
+				// Was having issues with the FactoryGenerator when this was returning the concrete type 
+				// instead of the interface with the concrete type specific in the JSON
+
+				var returnType = method.GetMethodInfo().ReturnType;
+
+				if (returnType.GetGenericTypeDefinition() == typeof(Task<>))
+				{
+					returnType = returnType.GetGenericArguments()[0];
+				}
+
+				var portalResponse = new RemoteResponseDto(serializer.Serialize(result, returnType));
+
+				return portalResponse;
 			}
-
-			// This is the return type the client is looking for
-			// If it is an Interface - match the interface
-			// Was having issues with the FactoryGenerator when this was returning the concrete type 
-			// instead of the interface with the concrete type specific in the JSON
-
-			var returnType = method.GetMethodInfo().ReturnType;
-
-			if (returnType.GetGenericTypeDefinition() == typeof(Task<>))
+			catch (AspForbidException)
 			{
-				returnType = returnType.GetGenericArguments()[0];
+				// context.Forbid() have already been called
+				return new RemoteResponseDto(string.Empty);
 			}
-
-			var portalResponse = new RemoteResponseDto(serializer.Serialize(result, returnType));
-
-			return portalResponse;
 		};
 	}
+}
+
+
+[Serializable]
+public class AspForbidException : Exception
+{
+	public AspForbidException() { }
+	public AspForbidException(string message) : base(message) { }
+	public AspForbidException(string message, Exception inner) : base(message, inner) { }
 }

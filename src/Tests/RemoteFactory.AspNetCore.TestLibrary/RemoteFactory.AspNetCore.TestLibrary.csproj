@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\RemoteFactory.AspNetCore.Metadata\RemoteFactory.AspNetCore.Metadata.csproj" />
 		<ProjectReference Include="..\..\RemoteFactory\RemoteFactory.csproj" />
 		<ProjectReference Include="..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>

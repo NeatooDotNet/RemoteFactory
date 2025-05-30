@@ -91,7 +91,7 @@ public sealed class ExecuteAttribute : FactoryOperationAttribute
 	public ExecuteAttribute() : base(FactoryOperation.Execute) { }
 }
 
-[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class AuthorizeFactoryAttribute<T> : Attribute
 {
 	public AuthorizeFactoryAttribute() { }

@@ -10,7 +10,7 @@ public class AspAuthorizeTestObjAuth
 }
 
 [Factory]
-[AuthorizeFactory<AspAuthorizeTestObjAuth>]
+[AuthorizeFactory<AspAuthorizeTestObjAuth>] // You probably wouldn't double up the authorization like this, but it's just for testing purposes.
 public class AspAuthorizeTestObj :  IFactorySaveMeta
 {
 	public Guid Value { get; set; }

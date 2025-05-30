@@ -24,7 +24,6 @@
 	</ItemGroup>
 	
 	<ItemGroup>
-	  <ProjectReference Include="..\RemoteFactory.AspNetCore.Metadata\RemoteFactory.AspNetCore.Metadata.csproj" />
 	  <ProjectReference Include="..\RemoteFactory\RemoteFactory.csproj" />
 	</ItemGroup>
 </Project>

@@ -14,8 +14,8 @@
 		<Nullable>enable</Nullable>
 		<TargetFrameworks>net9.0</TargetFrameworks>
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-		<FileVersion>9.17.3</FileVersion>
-		<PackageVersion>9.17.3</PackageVersion>
+		<FileVersion>9.18.0</FileVersion>
+		<PackageVersion>9.18.0</PackageVersion>
 		<PackageIcon>neatoo_icon.png</PackageIcon>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageTags>OO Domain Modeling C# .NET Blazor WPF ASP.NET CSLA</PackageTags>

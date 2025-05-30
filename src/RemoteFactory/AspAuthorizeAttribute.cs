@@ -1,9 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
-
-namespace Neatoo.RemoteFactory.AspNetCore;
+﻿namespace Neatoo.RemoteFactory;
 
 [System.AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
-public sealed class AspAuthorizeAttribute : Attribute, IAuthorizeData
+public sealed class AspAuthorizeAttribute : Attribute
 {
 	/// <summary>
 	/// Initializes a new instance of the <see cref="AuthorizeAttribute"/> class.
@@ -22,7 +20,7 @@ public sealed class AspAuthorizeAttribute : Attribute, IAuthorizeData
 	/// <summary>
 	/// Gets or sets the policy name that determines access to the resource.
 	/// </summary>
-	public string? Policy { get; set; }
+	public string? Policy { get; }
 
 	/// <summary>
 	/// Gets or sets a comma delimited list of roles that are allowed to access the resource.

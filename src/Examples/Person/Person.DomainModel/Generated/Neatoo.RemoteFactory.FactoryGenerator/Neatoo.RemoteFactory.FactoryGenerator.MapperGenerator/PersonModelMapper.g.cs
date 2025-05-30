@@ -24,18 +24,16 @@ internal partial class PersonModel
         this.Notes = personEntity.Notes;
         this.Created = personEntity.Created;
         this.Modified = personEntity.Modified;
-        this.Id = personEntity.Id;
     }
 
     public partial void MapTo(PersonEntity personEntity)
     {
         personEntity.FirstName = this.FirstName ?? throw new NullReferenceException("Person.DomainModel.PersonModel.FirstName");
         personEntity.LastName = this.LastName ?? throw new NullReferenceException("Person.DomainModel.PersonModel.LastName");
-        personEntity.Email = this.Email ?? throw new NullReferenceException("Person.DomainModel.PersonModel.Email");
-        personEntity.Phone = this.Phone ?? throw new NullReferenceException("Person.DomainModel.PersonModel.Phone");
+        personEntity.Email = this.Email;
+        personEntity.Phone = this.Phone;
         personEntity.Notes = this.Notes;
         personEntity.Created = this.Created;
         personEntity.Modified = this.Modified;
-        personEntity.Id = this.Id;
     }
 }

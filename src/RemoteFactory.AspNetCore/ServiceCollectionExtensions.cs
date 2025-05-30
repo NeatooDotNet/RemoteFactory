@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,7 @@ public static class ServiceCollectionExtensions
 	public static IServiceCollection AddNeatooAspNetCore(this IServiceCollection services, params Assembly[] entityLibraries)
 	{
 		services.AddNeatooRemoteFactory(NeatooFactory.Server, entityLibraries);
-		services.AddScoped<IAspAuthorize, AspAuthorize>();
+		services.TryAddScoped<IAspAuthorize, AspAuthorize>();
 		return services;
 	}
 

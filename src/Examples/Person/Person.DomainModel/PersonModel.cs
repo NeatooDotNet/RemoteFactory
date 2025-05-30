@@ -27,12 +27,9 @@ internal partial class PersonModel : IPersonModel
 	[Create]
 	public PersonModel()
 	{
-		this.Id = 1;
 		this.Created = DateTime.Now;
 		this.Modified = DateTime.Now;
 	}
-
-	public int Id { get; set; }
 
 	[Required(ErrorMessage = "First Name is required")]
 	public string? FirstName { get; set { field = value; this.OnPropertyChanged(); } }
@@ -76,7 +73,7 @@ internal partial class PersonModel : IPersonModel
 	[Insert]
 	public async Task Upsert([Service] IPersonContext personContext)
 	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == this.Id);
+		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
 		if(personEntity == null)
 		{
 			personEntity = new PersonEntity();
@@ -90,7 +87,7 @@ internal partial class PersonModel : IPersonModel
 	[Delete]
 	public async Task Delete([Service] IPersonContext personContext)
 	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == this.Id);
+		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
 
 		if (personEntity != null)
 		{

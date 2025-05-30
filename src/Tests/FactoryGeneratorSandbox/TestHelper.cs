@@ -33,7 +33,7 @@ public static class TestHelper
 					 MetadataReference.CreateFromFile(typeof(System.Runtime.GCSettings).Assembly.Location), // System.Runtime
 					 MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location), // System.Linq
 					 MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Authorization.IAuthorizeData).Assembly.Location), // Neatoo.RemoteFactory.FactoryGenerator
-					 MetadataReference.CreateFromFile(typeof(Neatoo.RemoteFactory.AspNetCore.AspAuthorizeAttribute).Assembly.Location) // Neatoo.RemoteFactory.FactoryGenerator
+					 MetadataReference.CreateFromFile(typeof(Neatoo.RemoteFactory.AspAuthorizeAttribute).Assembly.Location) // Neatoo.RemoteFactory.FactoryGenerator
 				}));
 
 		// Create an instance of our EnumGenerator incremental source generator

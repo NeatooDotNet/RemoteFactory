@@ -11,7 +11,7 @@ using Person.Ef;
 namespace Person.Ef.Migrations
 {
     [DbContext(typeof(PersonContext))]
-    [Migration("20250407224036_InitialCreate")]
+    [Migration("20250530223357_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -19,7 +19,7 @@ namespace Person.Ef.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.2")
+                .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Proxies:ChangeTracking", false)
                 .HasAnnotation("Proxies:CheckEquality", false)
                 .HasAnnotation("Proxies:LazyLoading", true);

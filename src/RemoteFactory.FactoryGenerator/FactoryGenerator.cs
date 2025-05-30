@@ -144,6 +144,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			}
 		}
 
+		public List<CallAuthorizeFactoryMethod> AuthCallMethods { get; set; } = [];
 		public override string NamePostfix => this.Name.Replace(this.FactoryOperation.ToString() ?? "", "");
 		public bool IsConstructor { get; set; } = false;
 		public FactoryOperation FactoryOperation { get; private set; }
@@ -216,18 +217,26 @@ public class FactoryGenerator : IIncrementalGenerator
 			methodBuilder.AppendLine($"if (!authorized.HasAccess)");
 			methodBuilder.AppendLine("{");
 
-			var returnText = $"authorized";
-			if (inMethod is not CanFactoryMethod)
+			if (!inMethod.AspForbid)
 			{
-				returnText = $"new {inMethod.ReturnType(includeTask: false)}(authorized)";
+				var returnText = $"authorized";
+				if (inMethod is not CanFactoryMethod)
+				{
+					returnText = $"new {inMethod.ReturnType(includeTask: false)}(authorized)";
+				}
+
+				if (!this.IsTask && inMethod.IsTask && !inMethod.IsAsync)
+				{
+					returnText = $"Task.FromResult({returnText})";
+				}
+
+				methodBuilder.AppendLine($"return {returnText};");
+			}
+			else
+			{
+				methodBuilder.AppendLine($"throw new NotAuthorizedException(authorized);");
 			}
 
-			if (!this.IsTask && inMethod.IsTask && !inMethod.IsAsync)
-			{
-				returnText = $"Task.FromResult({returnText})";
-			}
-
-			methodBuilder.AppendLine($"return {returnText};");
 			methodBuilder.AppendLine("}");
 		}
 	}
@@ -290,18 +299,12 @@ public class FactoryGenerator : IIncrementalGenerator
 		public WriteFactoryMethod(string targetType, string concreteType, CallFactoryMethod callFactoryMethod) : base(targetType, concreteType, callFactoryMethod)
 		{
 			this.Parameters.Insert(0, new ParameterInfo() { Name = "target", Type = $"{targetType}", IsService = false, IsTarget = true });
-			// this.TargetType = $"{targetType}?"; breaks auth
-			this.AspAuthorizeCalls = callFactoryMethod.AspAuthorizeCalls;
 		}
 
-		public override StringBuilder PublicMethod(FactoryText classText)
-		{
-			return new StringBuilder();
-		}
 
-		public override StringBuilder RemoteMethod(FactoryText classText)
+		public override void AddFactoryText(FactoryText classText)
 		{
-			return new StringBuilder();
+			classText.MethodsBuilder.Append(this.LocalMethod());
 		}
 
 		public override StringBuilder LocalMethod()
@@ -310,7 +313,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			methodBuilder.AppendLine($"var cTarget = ({this.ImplementationType}) target ?? throw new Exception(\"{this.ServiceType} must implement {this.ImplementationType}\");");
 			methodBuilder.AppendLine($"{this.ServiceAssignmentsText}");
-			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall.Replace("target", "cTarget")};");
+			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall().Replace("target", "cTarget")};");
 			methodBuilder.AppendLine("}");
 			methodBuilder.AppendLine("");
 
@@ -341,11 +344,11 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public List<WriteFactoryMethod> WriteFactoryMethods { get; }
 
-		public override StringBuilder PublicMethod(FactoryText classText)
+		public override StringBuilder PublicMethod(bool? overrideHasAuth = null)
 		{
-			if (!this.HasAuth)
+			if (!(overrideHasAuth ?? this.HasAuth))
 			{
-				return base.PublicMethod(classText);
+				return base.PublicMethod(overrideHasAuth);
 			}
 
 			var methodBuilder = new StringBuilder();
@@ -353,7 +356,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			var asyncKeyword = this.IsTask && this.HasAuth ? "async" : "";
 			var awaitKeyword = this.IsTask && this.HasAuth ? "await" : "";
 
-			classText.InterfaceMethods.AppendLine($"{this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsText()});");
 
 			methodBuilder.AppendLine($"public virtual {asyncKeyword} {this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsText()})");
 			methodBuilder.AppendLine("{");
@@ -367,7 +369,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			methodBuilder.AppendLine("return authorized.Result;");
 			methodBuilder.AppendLine("}");
 
-			classText.InterfaceMethods.AppendLine($"{this.ReturnType()} Try{this.Name}({this.ParameterDeclarationsText()});");
 
 			methodBuilder.AppendLine($"public virtual {this.AsyncKeyword} {this.ReturnType()} Try{this.Name}({this.ParameterDeclarationsText()})");
 			methodBuilder.AppendLine("{");
@@ -380,6 +381,17 @@ public class FactoryGenerator : IIncrementalGenerator
 			}
 
 			return methodBuilder;
+		}
+
+		public override StringBuilder InterfaceMethods()
+		{
+			var stringBuilder = base.InterfaceMethods();
+
+			if (this.HasAuth)
+			{
+				stringBuilder.AppendLine($"{this.ReturnType()} Try{this.Name}({this.ParameterDeclarationsText()});");
+			}
+			return stringBuilder;
 		}
 
 		public override StringBuilder LocalMethod()
@@ -488,6 +500,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.NamePostfix = callMethod.NamePostfix;
 			this.FactoryOperation = callMethod.FactoryOperation;
 			this.Parameters = callMethod.Parameters;
+			this.AuthCallMethods.AddRange(callMethod.AuthCallMethods);
 			this.AspAuthorizeCalls = callMethod.AspAuthorizeCalls;
 		}
 
@@ -500,56 +513,53 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public CallFactoryMethod CallFactoryMethod { get; set; }
 
-		public string DoFactoryMethodCall
+		public virtual string DoFactoryMethodCall()
 		{
-			get
+			var methodCall = "DoFactoryMethodCall";
+
+			if (this.CallFactoryMethod.IsBool)
 			{
-				var methodCall = "DoFactoryMethodCall";
-
-				if (this.CallFactoryMethod.IsBool)
-				{
-					methodCall += "Bool";
-				}
-
-				if (this.CallFactoryMethod.IsTask)
-				{
-					methodCall += "Async";
-					if (this.CallFactoryMethod.IsNullable)
-					{
-						methodCall += "Nullable";
-					}
-				}
-
-				if (this.CallFactoryMethod.IsConstructor)
-				{
-					methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => new {this.ImplementationType}({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
-				}
-				else if (this.CallFactoryMethod.IsStaticFactory)
-				{
-					methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => {this.ImplementationType}.{this.Name}({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
-				}
-				else
-				{
-					methodCall = $"{methodCall}(target, FactoryOperation.{this.FactoryOperation}, () => target.{this.Name} ({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
-				}
-
-				if (this.IsAsync && this.CallFactoryMethod.IsTask)
-				{
-					methodCall = $"await {methodCall}";
-				}
-
-				if (this.HasAuth)
-				{
-					methodCall = $"new Authorized<{this.ServiceType}>({methodCall})";
-				}
-
-				if (!this.CallFactoryMethod.IsTask && this.IsTask && !this.IsAsync)
-				{
-					methodCall = $"Task.FromResult({methodCall})";
-				}
-
-				return methodCall;
+				methodCall += "Bool";
 			}
+
+			if (this.CallFactoryMethod.IsTask)
+			{
+				methodCall += "Async";
+				if (this.CallFactoryMethod.IsNullable)
+				{
+					methodCall += "Nullable";
+				}
+			}
+
+			if (this.CallFactoryMethod.IsConstructor)
+			{
+				methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => new {this.ImplementationType}({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
+			}
+			else if (this.CallFactoryMethod.IsStaticFactory)
+			{
+				methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => {this.ImplementationType}.{this.Name}({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
+			}
+			else
+			{
+				methodCall = $"{methodCall}(target, FactoryOperation.{this.FactoryOperation}, () => target.{this.Name} ({this.ParameterIdentifiersText(includeServices: true, includeTarget: false)}))";
+			}
+
+			if (this.IsAsync && this.CallFactoryMethod.IsTask)
+			{
+				methodCall = $"await {methodCall}";
+			}
+
+			if (this.HasAuth)
+			{
+				methodCall = $"new Authorized<{this.ServiceType}>({methodCall})";
+			}
+
+			if (!this.CallFactoryMethod.IsTask && this.IsTask && !this.IsAsync)
+			{
+				methodCall = $"Task.FromResult({methodCall})";
+			}
+
+			return methodCall;
 		}
 
 		public override StringBuilder LocalMethod()
@@ -562,7 +572,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			}
 
 			methodBuilder.AppendLine($"{this.ServiceAssignmentsText}");
-			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall};");
+			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall()};");
 			methodBuilder.AppendLine("}");
 			methodBuilder.AppendLine("");
 
@@ -574,31 +584,44 @@ public class FactoryGenerator : IIncrementalGenerator
 	{
 		public InterfaceFactoryMethod(string serviceType, string implementationType, CallFactoryMethod callMethod) : base(serviceType, implementationType, callMethod)
 		{
+			this.AspForbid = true;
 		}
 
-		public override StringBuilder PublicMethod(FactoryText classText)
+
+		public override StringBuilder ServiceRegistrations()
 		{
-			var methodBuilder = new StringBuilder();
-
-			var nullableText = this.ReturnType(includeTask: false).EndsWith("?") ? "Nullable" : "";
-
-			classText.Delegates.AppendLine($"public delegate {this.ReturnType()} {this.DelegateName}({this.ParameterDeclarationsText()});");
-
-			methodBuilder.AppendLine($"public virtual async {this.ReturnType()} {this.Name}({this.ParameterDeclarationsText()})");
-			methodBuilder.AppendLine("{");
-			methodBuilder.AppendLine($" return (await MakeRemoteDelegateRequest!.ForDelegate{nullableText}<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{this.ParameterIdentifiersText()}]))!;");
-			methodBuilder.AppendLine("}");
-			methodBuilder.AppendLine("");
-
-			classText.ServiceRegistrations.AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
-                                                    var factory = cc.GetRequiredService<{this.ImplementationType}>();
+			return new StringBuilder().AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
+                                                    var factory = cc.GetRequiredService<{this.ImplementationType}Factory>();
                                                     return ({this.ParameterDeclarationsText()}) => factory.{this.Name}({this.ParameterIdentifiersText()});
                                                 }});");
-			return methodBuilder;
 		}
 
-	  public override bool IsBool => false;
+		public override StringBuilder PublicMethod(bool? overrideHasAuth = null) => base.PublicMethod(false);
 
+		public override StringBuilder InterfaceMethods() => new StringBuilder();
+
+		public override bool IsBool => false;
+		public override bool IsNullable => this.CallFactoryMethod.IsNullable;
+
+
+		public override string ReturnType(bool includeTask = true, bool includeAuth = true, bool includeBool = true) => base.ReturnType(includeTask, false, includeBool);
+
+		public override string DoFactoryMethodCall()
+		{
+			var methodCall = $"target.{this.Name} ({this.ParameterIdentifiersText(includeServices: false, includeTarget: false)})";
+
+			if (this.IsAsync && this.CallFactoryMethod.IsTask)
+			{
+				methodCall = $"await {methodCall}";
+			}
+
+			if (!this.CallFactoryMethod.IsTask && this.IsTask && !this.IsAsync)
+			{
+				methodCall = $"Task.FromResult({methodCall})";
+			}
+
+			return methodCall;
+		}
 	}
 
 	internal class CanFactoryMethod : FactoryMethod
@@ -610,8 +633,8 @@ public class FactoryGenerator : IIncrementalGenerator
 		}
 		public CanFactoryMethod(string targetType, string concreteType, string methodName, ICollection<CallAuthorizeFactoryMethod> authMethods, ICollection<AspAuthorizeCall> aspAuthorizeCalls) : this(targetType, concreteType, methodName)
 		{
-			this.AuthCallMethods.AddRange(authMethods);
 			this.Parameters = authMethods.SelectMany(m => m.Parameters).Distinct().ToList();
+			this.AuthCallMethods.AddRange(authMethods);
 			this.AspAuthorizeCalls.AddRange(aspAuthorizeCalls);
 		}
 
@@ -629,11 +652,8 @@ public class FactoryGenerator : IIncrementalGenerator
 			return returnType;
 		}
 
-		public override StringBuilder PublicMethod(FactoryText classText)
+		public override StringBuilder PublicMethod(bool? overrideHasAuth = null)
 		{
-
-			classText.InterfaceMethods.AppendLine($"{this.ReturnType()} {this.UniqueName}({this.ParameterDeclarationsText(includeServices: false)});");
-
 			var methodBuilder = new StringBuilder();
 
 			methodBuilder.AppendLine($"public virtual {this.ReturnType()} {this.UniqueName}({this.ParameterDeclarationsText(includeServices: false)})");
@@ -682,6 +702,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		public List<CallAuthorizeFactoryMethod> AuthCallMethods { get; set; } = [];
 		public List<AspAuthorizeCall> AspAuthorizeCalls { get; set; } = [];
 		public virtual bool HasAuth => this.AuthCallMethods.Count > 0 || this.AspAuthorizeCalls.Count > 0;
+		public bool AspForbid { get; set; } = false; // If true, the method will return a 403 Forbidden response if authorization fails
 		public FactoryOperation FactoryOperation { get; set; }
 		public List<ParameterInfo> Parameters { get; set; } = null!;
 
@@ -727,19 +748,82 @@ public class FactoryGenerator : IIncrementalGenerator
 			return result.TrimStart(',').TrimEnd(',');
 		}
 
-		public virtual StringBuilder PublicMethod(FactoryText classText)
+		public virtual void AddFactoryText(FactoryText classText)
 		{
-			var asyncKeyword = this.IsTask && this.HasAuth ? "async" : "";
-			var awaitKeyword = this.IsTask && this.HasAuth ? "await" : "";
+			classText.InterfaceMethods.Append(this.InterfaceMethods());
 
-			classText.InterfaceMethods.AppendLine($"{this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsText(includeServices: false)});");
+			if (this.IsRemote)
+			{
+				classText.Delegates.Append(this.Delegates());
+				classText.PropertyDeclarations.Append(this.PropertyDeclarations());
+				classText.ConstructorPropertyAssignmentsLocal.Append(this.ConstructorPropertyAssignmentsLocal());
+				classText.ConstructorPropertyAssignmentsRemote.Append(this.ConstructorPropertyAssignmentsRemote());
+				classText.ServiceRegistrations.Append(this.ServiceRegistrations());
+			}
+
+			var methodBuilder = new StringBuilder();
+			methodBuilder.Append(this.PublicMethod());
+			methodBuilder.Append(this.RemoteMethod());
+			methodBuilder.Append(this.LocalMethod());
+
+			classText.MethodsBuilder.Append(methodBuilder);
+		}
+
+		public virtual StringBuilder InterfaceMethods()
+		{
+			return new StringBuilder().AppendLine($"{this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsText(includeServices: false)});");
+		}
+
+		public virtual StringBuilder Delegates()
+		{
+			return new StringBuilder().AppendLine($"public delegate {this.ReturnType()} {this.DelegateName}({this.ParameterDeclarationsText()});");
+		}
+
+		public virtual StringBuilder PropertyDeclarations()
+		{
+			var propertyBuilder = new StringBuilder();
+			propertyBuilder.AppendLine($"public {this.DelegateName} {this.UniqueName}Property {{ get; }}");
+			return propertyBuilder;
+		}
+
+		public virtual StringBuilder ConstructorPropertyAssignmentsLocal()
+		{
+			var methodBuilder = new StringBuilder();
+			methodBuilder.AppendLine($"{this.UniqueName}Property = Local{this.UniqueName};");
+			return methodBuilder;
+		}
+
+		public virtual StringBuilder ConstructorPropertyAssignmentsRemote()
+		{
+			var methodBuilder = new StringBuilder();
+			if (this.IsRemote)
+			{
+				methodBuilder.AppendLine($"{this.UniqueName}Property = Remote{this.UniqueName};");
+			}
+			return methodBuilder;
+		}
+
+		public virtual StringBuilder ServiceRegistrations()
+		{
+			return new StringBuilder().AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
+                                                    var factory = cc.GetRequiredService<{this.ImplementationType}Factory>();
+                                                    return ({this.ParameterDeclarationsText()}) => factory.Local{this.UniqueName}({this.ParameterIdentifiersText()});
+                                                }});");
+		}
+
+		public virtual StringBuilder PublicMethod(bool? overrideHasAuth = null)
+		{
+			var hasAuth = overrideHasAuth ?? this.HasAuth;
+
+			var asyncKeyword = this.IsTask && hasAuth ? "async" : "";
+			var awaitKeyword = this.IsTask && hasAuth ? "await" : "";
 
 			var methodBuilder = new StringBuilder();
 
 			methodBuilder.AppendLine($"public virtual {asyncKeyword} {this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsText(includeServices: false)})");
 			methodBuilder.AppendLine("{");
 
-			if (!this.HasAuth)
+			if (!hasAuth)
 			{
 				methodBuilder.AppendLine($"return Local{this.UniqueName}({this.ParameterIdentifiersText()});");
 			}
@@ -758,17 +842,12 @@ public class FactoryGenerator : IIncrementalGenerator
 			return methodBuilder;
 		}
 
-		public virtual StringBuilder RemoteMethod(FactoryText classText)
+		public virtual StringBuilder RemoteMethod()
 		{
 			var methodBuilder = new StringBuilder();
 			if (this.IsRemote)
 			{
 				var nullableText = this.ReturnType(includeTask: false).EndsWith("?") ? "Nullable" : "";
-
-				classText.Delegates.AppendLine($"public delegate {this.ReturnType()} {this.DelegateName}({this.ParameterDeclarationsText()});");
-				classText.PropertyDeclarations.AppendLine($"public {this.DelegateName} {this.UniqueName}Property {{ get; }}");
-				classText.ConstructorPropertyAssignmentsLocal.AppendLine($"{this.UniqueName}Property = Local{this.UniqueName};");
-				classText.ConstructorPropertyAssignmentsRemote.AppendLine($"{this.UniqueName}Property = Remote{this.UniqueName};");
 
 				methodBuilder.AppendLine($"public virtual async {this.ReturnType()} Remote{this.UniqueName}({this.ParameterDeclarationsText()})");
 				methodBuilder.AppendLine("{");
@@ -776,10 +855,6 @@ public class FactoryGenerator : IIncrementalGenerator
 				methodBuilder.AppendLine("}");
 				methodBuilder.AppendLine("");
 
-				classText.ServiceRegistrations.AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
-                                                    var factory = cc.GetRequiredService<{this.ImplementationType}Factory>();
-                                                    return ({this.ParameterDeclarationsText()}) => factory.Local{this.UniqueName}({this.ParameterIdentifiersText()});
-                                                }});");
 			}
 			return methodBuilder;
 		}
@@ -808,12 +883,15 @@ public class FactoryGenerator : IIncrementalGenerator
 					methodBuilder.AppendLine($"var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();");
 
 					var aspAuthorizeDataText = string.Join(", ", this.AspAuthorizeCalls.Select(a => a.ToAspAuthorizedDataText()));
-					methodBuilder.AppendLine($"authorized = await aspAuthorized.Authorize([ {aspAuthorizeDataText} ]);");
+					methodBuilder.AppendLine($"authorized = await aspAuthorized.Authorize([ {aspAuthorizeDataText} ], {this.AspForbid.ToString().ToLower()});");
 
-					methodBuilder.AppendLine($"if (!authorized.HasAccess)");
-					methodBuilder.AppendLine("{");
-					methodBuilder.AppendLine($"return new {this.ReturnType(includeTask: false)}(authorized);");
-					methodBuilder.AppendLine("}");
+					if (!this.AspForbid)
+					{
+						methodBuilder.AppendLine($"if (!authorized.HasAccess)");
+						methodBuilder.AppendLine("{");
+						methodBuilder.AppendLine($"return new {this.ReturnType(includeTask: false)}(authorized);");
+						methodBuilder.AppendLine("}");
+					}
 				}
 			}
 
@@ -945,6 +1023,8 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				var factoryMethods = new List<FactoryMethod>();
 
+				MatchAuthMethods(typeFactoryMethods, typeAuthMethods, messages);
+
 				foreach (var targetCallMethod in typeFactoryMethods)
 				{
 					if (targetCallMethod.IsSave)
@@ -956,8 +1036,6 @@ public class FactoryGenerator : IIncrementalGenerator
 						factoryMethods.Add(new ReadFactoryMethod(targetType, targetConcreteType, targetCallMethod));
 					}
 				}
-
-				MatchAuthMethods(factoryMethods, typeAuthMethods, messages);
 
 				var writeMethodsGrouped = factoryMethods
 									 .OfType<WriteFactoryMethod>()
@@ -1005,7 +1083,12 @@ public class FactoryGenerator : IIncrementalGenerator
 					if (factoryMethod.HasAuth && !factoryMethod.AuthCallMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
 					{
 						var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryMethod.Name, factoryMethod.AuthCallMethods, factoryMethod.AspAuthorizeCalls);
-						factoryMethods.Add(canMethod);
+
+						// For if there are two FactoryOperations on a single method
+						if (!factoryMethods.Any(factoryMethods => factoryMethods.Name == canMethod.Name))
+						{
+							factoryMethods.Add(canMethod);
+						}
 					}
 				}
 
@@ -1035,11 +1118,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				foreach (var factoryMethod in factoryMethods)
 				{
-					var methodBuilder = new StringBuilder();
-					methodBuilder.Append(factoryMethod.PublicMethod(factoryText));
-					methodBuilder.Append(factoryMethod.RemoteMethod(factoryText));
-					methodBuilder.Append(factoryMethod.LocalMethod());
-					factoryText.MethodsBuilder.Append(methodBuilder);
+					factoryMethod.AddFactoryText(factoryText);
 				}
 
 				// We only need the target registered if we do a fetch or create that is not the constructor
@@ -1340,7 +1419,9 @@ public class FactoryGenerator : IIncrementalGenerator
 				messages.Add($"Class: {interfaceSymbol.ToDisplayString()} Name: {interfaceSymbol.Name}");
 				var typeMethods = GetMethodsRecursive(interfaceSymbol);
 				var typeFactoryMethods = TypeFactoryMethods(interfaceSymbol, typeMethods, [FactoryOperation.Execute], messages);
-				//var typeAuthMethods = TyepAuthMethods(semanticModel, interfaceSymbol, messages);
+				var typeAuthMethods = TypeAuthMethods(semanticModel, interfaceSymbol, messages);
+
+				MatchAuthMethods(typeFactoryMethods, typeAuthMethods, messages);
 
 				var factoryMethods = new List<FactoryMethod>();
 
@@ -1349,17 +1430,14 @@ public class FactoryGenerator : IIncrementalGenerator
 					factoryMethods.Add(new InterfaceFactoryMethod(typeFactoryMethod.ReturnTypeName!, serviceTypeName, typeFactoryMethod));
 				}
 
-				//				MatchAuthMethods(factoryMethods, authCallMethods, messages);
-
-
-				//				foreach (var factoryMethod in factoryMethods.ToList())
-				//				{
-				//					if (factoryMethod.HasAuth && !factoryMethod.AuthCallMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
-				//					{
-				//						var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryMethod.Name, factoryMethod.AuthCallMethods, factoryMethod.AspAuthorizeCalls);
-				//						factoryMethods.Add(canMethod);
-				//					}
-				//				}
+				foreach (var factoryMethod in factoryMethods.ToList())
+				{
+					if (factoryMethod.HasAuth)
+					{
+						var canMethod = new CanFactoryMethod(serviceTypeName, implementationTypeName, factoryMethod.Name, factoryMethod.AuthCallMethods, factoryMethod.AspAuthorizeCalls);
+						factoryMethods.Add(canMethod);
+					}
+				}
 
 				foreach (var method in factoryMethods.OrderBy(m => m.Parameters.Count).ToList())
 				{
@@ -1377,11 +1455,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				foreach (var factoryMethod in factoryMethods)
 				{
-					var methodBuilder = new StringBuilder();
-					methodBuilder.Append(factoryMethod.PublicMethod(factoryText));
-					//methodBuilder.Append(factoryMethod.RemoteMethod(factoryText));
-					//methodBuilder.Append(factoryMethod.LocalMethod());
-					factoryText.MethodsBuilder.Append(methodBuilder);
+					factoryMethod.AddFactoryText(factoryText);
 				}
 
 				source = $@"
@@ -1395,22 +1469,34 @@ public class FactoryGenerator : IIncrementalGenerator
 				*/
 				                    namespace {namespaceName}
 				                    {{
+												public interface {serviceTypeName}Factory : {serviceTypeName}
+												{{
+													 {factoryText.InterfaceMethods}
+												}}
 
-				                        internal class {implementationTypeName}Factory : {serviceTypeName}
+				                        internal class {implementationTypeName}Factory : {serviceTypeName}Factory
 				                        {{
 
 				                            private readonly IServiceProvider ServiceProvider;  
 				                            private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
 
-				                    // Delegates
-				                    {factoryText.Delegates}
+													  // Delegates
+													  {factoryText.Delegates}
+													  // Delegate Properties to provide Local or Remote fork in execution
+													  {factoryText.PropertyDeclarations}
 
-				                            public {implementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
-				                            {{
-				                                    this.ServiceProvider = serviceProvider;
-				                                    this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-				                                    {factoryText.ConstructorPropertyAssignmentsRemote}
-				                            }}
+													 public {implementationTypeName}Factory(IServiceProvider serviceProvider)
+													 {{
+																this.ServiceProvider = serviceProvider;
+																{factoryText.ConstructorPropertyAssignmentsLocal}
+													 }}
+
+													 public {implementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
+													 {{
+																this.ServiceProvider = serviceProvider;
+																this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+																{factoryText.ConstructorPropertyAssignmentsRemote}
+													 }}
 
 													{factoryText.MethodsBuilder}
 
@@ -1421,6 +1507,7 @@ public class FactoryGenerator : IIncrementalGenerator
 															if(remoteLocal == NeatooFactory.Remote)
 															{{
 																	services.AddScoped<{serviceTypeName}, {implementationTypeName}Factory>();
+																	services.AddScoped<{serviceTypeName}Factory, {implementationTypeName}Factory>();
 															}}
 
 															// On the server the Delegates are registered
@@ -1428,6 +1515,8 @@ public class FactoryGenerator : IIncrementalGenerator
 															// {serviceTypeName} must be registered to actual implementation
 															if(remoteLocal == NeatooFactory.Server)
 															{{
+																	services.AddScoped<{serviceTypeName}Factory, {implementationTypeName}Factory>();
+																	services.AddScoped<{implementationTypeName}Factory>();
 																	{factoryText.ServiceRegistrations}
 															}}
 				                            }}
@@ -1662,7 +1751,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		return callAuthMethods;
 	}
 
-	private static void MatchAuthMethods(IEnumerable<FactoryMethod> factoryMethods, List<CallAuthorizeFactoryMethod> authMethods, List<string> messages)
+	private static void MatchAuthMethods(IEnumerable<CallFactoryMethod> factoryMethods, List<CallAuthorizeFactoryMethod> authMethods, List<string> messages)
 	{
 		if (factoryMethods is null) { throw new ArgumentNullException(nameof(factoryMethods)); }
 		if (authMethods is null) { throw new ArgumentNullException(nameof(authMethods)); }

@@ -1,4 +1,4 @@
-using Neatoo.RemoteFactory.AspNetCore;
+using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.FactoryGenerator;
 
 namespace FactoryGeneratorSandbox;
@@ -245,16 +245,22 @@ namespace FactoryGeneratorSandbox;
 		// The source code to test
 		var source = @"
 using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.AspNetCore;
-using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
 
 namespace FactoryGeneratorSandbox;
 
+	public interface IObjAuth
+	{
+		[AuthorizeFactory(AuthorizeFactoryOperation.Execute)]
+		bool HasAccess();
+	}
+
 	[Factory]
+	[AuthorizeFactory<IObjAuth>()]
 	public interface IObj
 	{
 
+		[AspAuthorize(""TestPolicy"", Roles = ""Keith"")]
 		Task<bool> MethodInt(int a, string b);
 
 	}

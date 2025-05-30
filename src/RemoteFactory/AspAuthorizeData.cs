@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿namespace Neatoo.RemoteFactory;
 
-namespace Neatoo.RemoteFactory.AspNetCore;
-
-public sealed class AspAuthorizeData : IAuthorizeData
+public sealed class AspAuthorizeData
 {
 	/// <summary>
 	/// Initializes a new instance of the <see cref="AuthorizeAttribute"/> class.

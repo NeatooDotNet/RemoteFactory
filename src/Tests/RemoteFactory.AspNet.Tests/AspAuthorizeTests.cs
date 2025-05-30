@@ -1,46 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Neatoo.RemoteFactory;
+﻿using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.AspNetCore.TestLibrary;
-using RemoteFactory.AspNetCore;
 
 namespace RemoteFactory.AspNetCore.Tests;
-
-public class ContainerFixture : WebApplicationFactory<Program>, IDisposable
-{
-	public readonly IAspAuthorizeTestObjFactory factory;
-
-	public ContainerFixture()
-	{
-		var serviceCollection = new ServiceCollection();
-
-		serviceCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(AspAuthorizeTestObj).Assembly);
-		serviceCollection.AddKeyedScoped(Neatoo.RemoteFactory.RemoteFactoryServices.HttpClientKey, (sp, key) =>
-		{
-			return this.CreateClient();
-		});
-
-		var serviceProvider = serviceCollection.BuildServiceProvider();
-
-		this.factory = serviceProvider.GetRequiredService<IAspAuthorizeTestObjFactory>();
-	}
-
-	protected override void Dispose(bool disposing)
-	{
-		base.Dispose(disposing);
-	}
-}
 
 public class AspAuthorizeTests : IClassFixture<ContainerFixture>
 {
 	private readonly IAspAuthorizeTestObjFactory factory;
-	private ContainerFixture containerFixture;
 
 	public AspAuthorizeTests(ContainerFixture container)
 	{
-		this.factory = container.factory;
-		this.containerFixture = container;
+		this.factory = container.CreateScope.ServiceProvider.GetRequiredService<IAspAuthorizeTestObjFactory>();
 	}
 
 	[Fact]

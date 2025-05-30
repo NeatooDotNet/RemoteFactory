@@ -22,8 +22,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\RemoteFactory.AspNetCore.Metadata\RemoteFactory.AspNetCore.Metadata.csproj" />
 	  <ProjectReference Include="..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" />
+	  <ProjectReference Include="..\..\RemoteFactory\RemoteFactory.csproj" />
 	</ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
