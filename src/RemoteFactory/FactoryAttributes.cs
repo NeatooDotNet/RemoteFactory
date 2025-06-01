@@ -114,3 +114,19 @@ public sealed class MapperIgnoreAttribute : Attribute
 	{
 	}
 }
+
+[System.AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = false)]
+public sealed class FactoryHintNameLengthAttribute : Attribute
+{
+	// See the attribute guidelines at 
+	//  http://go.microsoft.com/fwlink/?LinkId=85236
+	readonly int maxHintNameLength;
+
+	// This is a positional argument
+	public FactoryHintNameLengthAttribute(int maxHintNameLength)
+	{
+		this.maxHintNameLength = maxHintNameLength;
+	}
+
+	public int MaxHintNameLength => this.maxHintNameLength;
+}

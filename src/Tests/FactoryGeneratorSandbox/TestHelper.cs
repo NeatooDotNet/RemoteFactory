@@ -33,7 +33,8 @@ public static class TestHelper
 					 MetadataReference.CreateFromFile(typeof(System.Runtime.GCSettings).Assembly.Location), // System.Runtime
 					 MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location), // System.Linq
 					 MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Authorization.IAuthorizeData).Assembly.Location), // Neatoo.RemoteFactory.FactoryGenerator
-					 MetadataReference.CreateFromFile(typeof(Neatoo.RemoteFactory.AspAuthorizeAttribute).Assembly.Location) // Neatoo.RemoteFactory.FactoryGenerator
+					 MetadataReference.CreateFromFile(typeof(Neatoo.RemoteFactory.AspAuthorizeAttribute).Assembly.Location), // Neatoo.RemoteFactory.FactoryGenerator
+					 MetadataReference.CreateFromFile(typeof(FactoryHintNameLengthAttribute).Assembly.Location), // Neatoo.RemoteFactory.FactoryGenerator
 				}));
 
 		// Create an instance of our EnumGenerator incremental source generator
@@ -189,7 +190,21 @@ public enum FactoryOperation
 	Delete = AuthorizeFactoryOperation.Delete | AuthorizeFactoryOperation.Write
 }
 
+[System.AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = false)]
+public sealed class FactoryHintNameLengthAttribute : Attribute
+{
+	// See the attribute guidelines at 
+	//  http://go.microsoft.com/fwlink/?LinkId=85236
+	readonly int maxHintNameLength;
 
+	// This is a positional argument
+	public FactoryHintNameLengthAttribute(int maxHintNameLength)
+	{
+		this.maxHintNameLength = maxHintNameLength;
+	}
+
+	public int MaxHintNameLength => this.maxHintNameLength;
+}
 
 ";
 }

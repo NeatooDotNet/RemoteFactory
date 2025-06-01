@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using static Neatoo.RemoteFactory.FactoryGenerator.FactoryGenerator;
@@ -10,8 +11,10 @@ namespace Neatoo.RemoteFactory.FactoryGenerator;
 [Generator(LanguageNames.CSharp)]
 public class FactoryGenerator : IIncrementalGenerator
 {
+	public static int? MaxHintNameLength { get; set; }
 	public void Initialize(IncrementalGeneratorInitializationContext context)
 	{
+
 		// Register the source output
 		context.RegisterSourceOutput(context.SyntaxProvider.CreateSyntaxProvider(
 			predicate: static (s, _) => IsClassSyntaxTargetForGeneration(s),
@@ -28,6 +31,7 @@ public class FactoryGenerator : IIncrementalGenerator
 					GenerateFactory(ctx, source!.Value.classDeclaration, source.Value.semanticModel);
 				}
 			});
+
 		context.RegisterSourceOutput(context.SyntaxProvider.CreateSyntaxProvider(
 				predicate: static (s, _) => IsInterfaceSyntaxTargetForGeneration(s),
 				transform: static (ctx, _) => GetInterfaceSemanticTargetForGeneration(ctx))
@@ -41,32 +45,26 @@ public class FactoryGenerator : IIncrementalGenerator
 	public static bool IsClassSyntaxTargetForGeneration(SyntaxNode node) => node is ClassDeclarationSyntax classDeclarationSyntax
 				 && !(classDeclarationSyntax.TypeParameterList?.Parameters.Any() ?? false || classDeclarationSyntax.Modifiers.Any(SyntaxKind.AbstractKeyword))
 				 && !(classDeclarationSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.Name.ToString() == "SuppressFactory"));
+
 	public static (ClassDeclarationSyntax classDeclaration, SemanticModel semanticModel)? GetClassSemanticTargetForGeneration(GeneratorSyntaxContext context)
 	{
-		try
+		var classDeclaration = (ClassDeclarationSyntax)context.Node;
+
+		var classNamedTypeSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
+
+		if (classNamedTypeSymbol == null)
 		{
-			var classDeclaration = (ClassDeclarationSyntax)context.Node;
-
-			var classNamedTypeSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-
-			if (classNamedTypeSymbol == null)
-			{
-				return null;
-			}
-
-			if (ClassOrBaseClassHasAttribute(classNamedTypeSymbol, "SuppressFactory") != null)
-			{
-				return null;
-			}
-
-			if (ClassOrBaseClassHasAttribute(classNamedTypeSymbol, "FactoryAttribute") != null)
-			{
-				return (classDeclaration, context.SemanticModel);
-			}
+			return null;
 		}
-		catch (Exception)
-		{
 
+		if (ClassOrBaseClassHasAttribute(classNamedTypeSymbol, "SuppressFactory") != null)
+		{
+			return null;
+		}
+
+		if (ClassOrBaseClassHasAttribute(classNamedTypeSymbol, "FactoryAttribute") != null)
+		{
+			return (classDeclaration, context.SemanticModel);
 		}
 
 		return null;
@@ -91,30 +89,23 @@ public class FactoryGenerator : IIncrementalGenerator
 			 && !(interfaceDeclarationSyntax.TypeParameterList?.Parameters.Any() ?? false);
 	public static (InterfaceDeclarationSyntax interfaceSyntax, SemanticModel semanticModel)? GetInterfaceSemanticTargetForGeneration(GeneratorSyntaxContext context)
 	{
-		try
+		var interfaceDeclaration = (InterfaceDeclarationSyntax)context.Node;
+
+		var interfaceSymbol = context.SemanticModel.GetDeclaredSymbol(interfaceDeclaration);
+
+		if (interfaceSymbol == null)
 		{
-			var interfaceDeclaration = (InterfaceDeclarationSyntax)context.Node;
-
-			var interfaceSymbol = context.SemanticModel.GetDeclaredSymbol(interfaceDeclaration);
-
-			if (interfaceSymbol == null)
-			{
-				return null;
-			}
-
-			if (ClassOrBaseClassHasAttribute(interfaceSymbol, "SuppressFactory") != null)
-			{
-				return null;
-			}
-
-			if (ClassOrBaseClassHasAttribute(interfaceSymbol, "FactoryAttribute") != null)
-			{
-				return (interfaceDeclaration, context.SemanticModel);
-			}
+			return null;
 		}
-		catch (Exception)
-		{
 
+		if (ClassOrBaseClassHasAttribute(interfaceSymbol, "SuppressFactory") != null)
+		{
+			return null;
+		}
+
+		if (ClassOrBaseClassHasAttribute(interfaceSymbol, "FactoryAttribute") != null)
+		{
+			return (interfaceDeclaration, context.SemanticModel);
 		}
 
 		return null;
@@ -301,7 +292,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.Parameters.Insert(0, new ParameterInfo() { Name = "target", Type = $"{targetType}", IsService = false, IsTarget = true });
 		}
 
-
 		public override void AddFactoryText(FactoryText classText)
 		{
 			classText.MethodsBuilder.Append(this.LocalMethod());
@@ -356,7 +346,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			var asyncKeyword = this.IsTask && this.HasAuth ? "async" : "";
 			var awaitKeyword = this.IsTask && this.HasAuth ? "await" : "";
 
-
 			methodBuilder.AppendLine($"public virtual {asyncKeyword} {this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsText()})");
 			methodBuilder.AppendLine("{");
 
@@ -368,7 +357,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			methodBuilder.AppendLine("}");
 			methodBuilder.AppendLine("return authorized.Result;");
 			methodBuilder.AppendLine("}");
-
 
 			methodBuilder.AppendLine($"public virtual {this.AsyncKeyword} {this.ReturnType()} Try{this.Name}({this.ParameterDeclarationsText()})");
 			methodBuilder.AppendLine("{");
@@ -503,7 +491,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.AuthCallMethods.AddRange(callMethod.AuthCallMethods);
 			this.AspAuthorizeCalls = callMethod.AspAuthorizeCalls;
 		}
-
 		public override bool IsSave => this.CallFactoryMethod.IsSave;
 		public override bool IsBool => this.CallFactoryMethod.IsBool;
 		public override bool IsTask => this.IsRemote || this.CallFactoryMethod.IsTask || this.AuthCallMethods.Any(m => m.IsTask) || this.AspAuthorizeCalls.Count > 0;
@@ -587,7 +574,6 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.AspForbid = true;
 		}
 
-
 		public override StringBuilder ServiceRegistrations()
 		{
 			return new StringBuilder().AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
@@ -602,7 +588,6 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public override bool IsBool => false;
 		public override bool IsNullable => this.CallFactoryMethod.IsNullable;
-
 
 		public override string ReturnType(bool includeTask = true, bool includeAuth = true, bool includeBool = true) => base.ReturnType(includeTask, false, includeBool);
 
@@ -989,6 +974,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		try
 		{
+
 			var concreteSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax) ?? throw new Exception($"Cannot get named symbol for {classDeclarationSyntax}");
 			var methodNames = new List<string>();
 			var targetClassName = classDeclarationSyntax.Identifier.Text;
@@ -1205,11 +1191,11 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			}
 
-			context.AddSource($"{targetClassName}Factory.g.cs", source);
+			context.AddSource($"{SafeHintName(semanticModel, $"{namespaceName}.{targetClassName}")}Factory.g.cs", source);
 		}
 		catch (Exception ex)
 		{
-			source = $"// Error: {ex.Message}";
+			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0004", "Error", ex.Message, "FactoryGenerator.GenerateFactory", DiagnosticSeverity.Error, true), Location.None));
 		}
 
 	}
@@ -1384,11 +1370,11 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			}
 
-			context.AddSource($"{typeSyntax.Identifier.Text}Factory.g.cs", source);
+			context.AddSource($"{SafeHintName(semanticModel, $"{namespaceName}.{typeSyntax.Identifier.Text}")}Factory.g.cs", source);
 		}
 		catch (Exception ex)
 		{
-			source = $"// Error: {ex.Message}";
+			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0002", "Error", ex.Message, "FactoryGenerator.GenerateExecute", DiagnosticSeverity.Error, true), Location.None));
 		}
 
 	}
@@ -1532,16 +1518,16 @@ public class FactoryGenerator : IIncrementalGenerator
 			{
 				source = @$"/* Error: {ex.GetType().FullName} {ex.Message} 
 
-	{WithStringBuilder(messages)}
+				{WithStringBuilder(messages)}
 */";
 
 			}
 
-			context.AddSource($"{serviceTypeName}Factory.g.cs", source);
+			context.AddSource($"{SafeHintName(semanticModel, $"{namespaceName}.{serviceTypeName}")}Factory.g.cs", source);
 		}
 		catch (Exception ex)
 		{
-			source = $"// Error: {ex.Message}";
+			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0004", "Error", ex.Message, "FactoryGenerator.GenerateInterfaceFactory", DiagnosticSeverity.Error, true), Location.None));
 		}
 	}
 	private static List<IMethodSymbol> GetMethodsRecursive(INamedTypeSymbol? symbol, bool includeConst = true)
@@ -1862,5 +1848,31 @@ public class FactoryGenerator : IIncrementalGenerator
 			sb.AppendLine(s);
 		}
 		return sb.ToString();
+	}
+
+	public static string SafeHintName(SemanticModel semanticModel, string hintName, int? maxLength = null)
+	{
+		if(maxLength == null)
+		{
+			var hintNameLengthAttribute = semanticModel.Compilation.Assembly.GetAttributes()
+				.Where(a => a.AttributeClass?.Name == "FactoryHintNameLengthAttribute")
+				.FirstOrDefault();
+
+			maxLength = hintNameLengthAttribute?.ConstructorArguments.FirstOrDefault().Value is int length ? length : 50;
+
+		}
+
+		if (hintName.Length > maxLength)
+		{
+			if (hintName.Contains('.'))
+			{
+				return SafeHintName(semanticModel, hintName.Substring(hintName.IndexOf('.') + 1, hintName.Length - hintName.IndexOf('.') - 1), maxLength);
+			}
+			else
+			{
+				return hintName.Substring(hintName.Length - maxLength.Value, maxLength.Value);
+			}
+		}
+		return hintName;
 	}
 }

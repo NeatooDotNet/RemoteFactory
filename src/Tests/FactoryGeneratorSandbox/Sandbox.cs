@@ -3,6 +3,7 @@ using Neatoo.RemoteFactory.FactoryGenerator;
 
 namespace FactoryGeneratorSandbox;
 
+
 public class Sandbox
 {
    [Fact]
@@ -133,11 +134,14 @@ public static Obj Create() {
 using Neatoo;
 using Neatoo.RemoteFactory;
 
-namespace NeatooLibrary {
+
+//[assembly: FactoryHintNameLength(50)]
+
+namespace NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name.NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name.NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name.NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name {
 
 
 [Factory]
-internal class Obj {
+internal class ObjObjObjObjObjObjObjObjObj {
 
 	[Insert]
 public int InsertMethod(){}
