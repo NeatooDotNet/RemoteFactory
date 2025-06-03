@@ -4,7 +4,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using static Neatoo.RemoteFactory.FactoryGenerator.FactoryGenerator;
 
 namespace Neatoo.RemoteFactory.FactoryGenerator;
 
@@ -342,7 +341,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			if (this.IsDefault)
 			{
 				var methodBuilder = new StringBuilder();
-				methodBuilder.AppendLine($"async Task<IFactorySaveMeta?> IFactorySave<{this.ImplementationType}>.Save({this.ImplementationType} target)");
+				methodBuilder.AppendLine($"async Task<IFactorySaveMeta?> IFactorySave<{this.ServiceType}>.Save({this.ServiceType} target)");
 				methodBuilder.AppendLine("{");
 
 				if (this.IsTask)
@@ -757,7 +756,6 @@ public class FactoryGenerator : IIncrementalGenerator
 				remoteMethodBuilder.Append(this.PublicMethod());
 				remoteMethodBuilder.Append(this.RemoteMethod());
 				classText.RemoteMethodsBuilder.Append(remoteMethodBuilder);
-
 			}
 			else
 			{
@@ -989,25 +987,41 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		try
 		{
-
 			var concreteSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax) ?? throw new Exception($"Cannot get named symbol for {classDeclarationSyntax}");
+
 			var methodNames = new List<string>();
 			var targetClassName = classDeclarationSyntax.Identifier.Text;
-			var targetType = $"{targetClassName}";
-			var targetConcreteType = $"{targetClassName}";
+			var targetTypeText = targetClassName;
+			var targetConcreteTypeText = targetClassName;
 			var factoryText = new FactoryText();
 			var typeSymbol = concreteSymbol;
 
-			var interfaceSymbol = concreteSymbol.Interfaces.FirstOrDefault(i => i.Name == $"I{concreteSymbol.Name}");
-			if (interfaceSymbol != null)
+			var factoryAttribute = ClassOrBaseClassHasAttribute(concreteSymbol, "FactoryAttribute");
+
+			if (factoryAttribute?.AttributeClass?.IsGenericType ?? false)
 			{
-				targetType = $"I{concreteSymbol.Name}";
-				typeSymbol = interfaceSymbol;
-				messages.Add($"Interface Found. TargetType: {targetType} ConcreteType: {concreteSymbol.Name}");
+				typeSymbol = factoryAttribute.AttributeClass.TypeArguments.First() as INamedTypeSymbol ?? throw new Exception("Generic Factory Attribute's generic type is not an INamedTypeSymbol");
 			}
 			else
 			{
-				messages.Add($"No Interface Found. TargetType: {targetType}");
+				var interfaceSymbol = concreteSymbol.Interfaces.FirstOrDefault(i => i.Name == $"I{concreteSymbol.Name}");
+				if (interfaceSymbol != null)
+				{
+					typeSymbol = interfaceSymbol;
+					messages.Add($"Interface Found. TargetType: {targetTypeText} ConcreteType: {concreteSymbol.Name}");
+				}
+				else
+				{
+					messages.Add($"No Interface Found. TargetType: {targetTypeText}");
+				}
+			}
+
+			targetTypeText = $"{typeSymbol.Name}";
+
+			targetClassName = typeSymbol.Name;
+			if (typeSymbol.TypeKind == TypeKind.Interface)
+			{
+				targetClassName = targetClassName.Substring(1); // Remove the 'I' prefix from the interface name
 			}
 
 			// Generate the source code for the found method
@@ -1031,11 +1045,11 @@ public class FactoryGenerator : IIncrementalGenerator
 				{
 					if (targetCallMethod.IsSave)
 					{
-						factoryMethods.Add(new WriteFactoryMethod(targetType, targetConcreteType, targetCallMethod));
+						factoryMethods.Add(new WriteFactoryMethod(targetTypeText, targetConcreteTypeText, targetCallMethod));
 					}
 					else
 					{
-						factoryMethods.Add(new ReadFactoryMethod(targetType, targetConcreteType, targetCallMethod));
+						factoryMethods.Add(new ReadFactoryMethod(targetTypeText, targetConcreteTypeText, targetCallMethod));
 					}
 				}
 
@@ -1071,12 +1085,12 @@ public class FactoryGenerator : IIncrementalGenerator
 								break;
 							}
 
-							factoryMethods.Add(new SaveFactoryMethod(nameOverride, targetType, targetConcreteType, [.. byNameMethod]));
+							factoryMethods.Add(new SaveFactoryMethod(nameOverride, targetTypeText, targetConcreteTypeText, [.. byNameMethod]));
 						}
 					}
 					else
 					{
-						factoryMethods.Add(new SaveFactoryMethod(nameOverride, targetType, targetConcreteType, [.. writeMethodGroup]));
+						factoryMethods.Add(new SaveFactoryMethod(nameOverride, targetTypeText, targetConcreteTypeText, [.. writeMethodGroup]));
 					}
 				}
 
@@ -1084,7 +1098,7 @@ public class FactoryGenerator : IIncrementalGenerator
 				{
 					if (factoryMethod.HasAuth && !factoryMethod.AuthCallMethods.Any(m => m.Parameters.Any(p => p.IsTarget)))
 					{
-						var canMethod = new CanFactoryMethod(targetType, targetConcreteType, factoryMethod.Name, factoryMethod.AuthCallMethods, factoryMethod.AspAuthorizeCalls);
+						var canMethod = new CanFactoryMethod(targetTypeText, targetConcreteTypeText, factoryMethod.Name, factoryMethod.AuthCallMethods, factoryMethod.AspAuthorizeCalls);
 
 						// For if there are two FactoryOperations on a single method
 						if (!factoryMethods.Any(factoryMethods => factoryMethods.Name == canMethod.Name))
@@ -1126,10 +1140,10 @@ public class FactoryGenerator : IIncrementalGenerator
 				// We only need the target registered if we do a fetch or create that is not the constructor
 				if (factoryMethods.OfType<ReadFactoryMethod>().Any(f => !(f.CallFactoryMethod.IsConstructor || f.CallFactoryMethod.IsStaticFactory)))
 				{
-					factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetConcreteType}>();");
-					if (targetType != targetConcreteType)
+					factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetConcreteTypeText}>();");
+					if (targetTypeText != targetConcreteTypeText)
 					{
-						factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetType}, {targetConcreteType}>();");
+						factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{targetTypeText}, {targetConcreteTypeText}>();");
 					}
 				}
 
@@ -1137,12 +1151,12 @@ public class FactoryGenerator : IIncrementalGenerator
 				if (hasDefaultSave)
 				{
 					editText = "Save";
-					factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{targetClassName}>, {targetClassName}Factory>();");
+					factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{targetTypeText}>, {targetConcreteTypeText}Factory>();");
 				}
 
 				var safeHintName = SafeHintName(semanticModel, $"{namespaceName}.{targetClassName}");
 				var remoteFactoryInterface = string.Empty;
-				var baseClassText = $"Factory{editText}Base<{targetType}>";
+				var baseClassText = $"Factory{editText}Base<{targetTypeText}>";
 				var baseConstructorText = $"base(factoryCore)";
 
 				if (factoryText.ClientInterfaceMethods.Length > 0)
@@ -1176,12 +1190,12 @@ public class FactoryGenerator : IIncrementalGenerator
 								  // Delegate Properties to provide Local or Remote fork in execution
 								  {factoryText.PropertyDeclarations}
 
-                            public {targetClassName}ClientFactory(IFactoryCore<{targetType}> factoryCore) : base(factoryCore)
+                            public {targetClassName}ClientFactory(IFactoryCore<{targetTypeText}> factoryCore) : base(factoryCore)
                             {{
                                     {factoryText.ConstructorPropertyAssignmentsClient}
                             }}
 
-                            public {targetClassName}ClientFactory(IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetType}> factoryCore) : this(factoryCore)
+                            public {targetClassName}ClientFactory(IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetTypeText}> factoryCore) : this(factoryCore)
                             {{
                                     this.MakeRemoteDelegateRequest = remoteMethodDelegate;
                             }}
@@ -1198,6 +1212,7 @@ public class FactoryGenerator : IIncrementalGenerator
 #endif
 
 ";
+
 					source = source.Replace("[, ", "[");
 					source = source.Replace("(, ", "(");
 					source = source.Replace(", )", ")");
@@ -1226,19 +1241,19 @@ public class FactoryGenerator : IIncrementalGenerator
 									{factoryText.InterfaceMethods}
 								}}
 
-                        internal class {targetClassName}Factory : {baseClassText}, I{targetClassName}Factory{(hasDefaultSave ? $", IFactorySave <{ targetClassName}> " : "")}
+                        internal class {targetConcreteTypeText}Factory : {baseClassText}, I{targetClassName}Factory{(hasDefaultSave ? $", IFactorySave<{targetTypeText}> " : "")}
                         {{
 
                             private readonly IServiceProvider ServiceProvider;  
 
 
-                            public {targetClassName}Factory(IServiceProvider serviceProvider, IFactoryCore<{targetType}> factoryCore) : base(factoryCore)
+                            public {targetConcreteTypeText}Factory(IServiceProvider serviceProvider, IFactoryCore<{targetTypeText}> factoryCore) : base(factoryCore)
                             {{
                                     this.ServiceProvider = serviceProvider;
                                     {factoryText.ConstructorPropertyAssignmentsLocal}
                             }}
 
-                            public {targetClassName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetType}> factoryCore) : {baseConstructorText}
+                            public {targetConcreteTypeText}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetTypeText}> factoryCore) : {baseConstructorText}
                             {{
                                     this.ServiceProvider = serviceProvider;
                             }}
@@ -1247,13 +1262,14 @@ public class FactoryGenerator : IIncrementalGenerator
 
                             public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
                             {{
-                                services.AddScoped<{targetClassName}Factory>();
-                                services.AddScoped<I{targetClassName}Factory, {targetClassName}Factory>();
+                                services.AddScoped<{targetConcreteTypeText}Factory>();
+                                services.AddScoped<I{targetClassName}Factory, {targetConcreteTypeText}Factory>();
                     {factoryText.ServiceRegistrations}
                             }}
 
                         }}
                     }}";
+
 				source = source.Replace("[, ", "[");
 				source = source.Replace("(, ", "(");
 				source = source.Replace(", )", ")");

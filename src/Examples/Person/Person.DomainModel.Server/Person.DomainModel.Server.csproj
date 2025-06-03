@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+	  <DefineConstants>$(DefineConstants);EXCLUDECLIENTFACTORIES</DefineConstants>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+		<ProjectReference Include="..\..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" OutputItemType="Analyzer" />
+		<ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
+		<ProjectReference Include="..\Person.DomainModel\Person.DomainModel.csproj" />
+		<ProjectReference Include="..\Person.Ef\Person.Ef.csproj" />
+	</ItemGroup>
+
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+		<Exec Command="del /s /q $(CompilerGeneratedFilesOutputPath)" />
+	</Target>
+</Project>

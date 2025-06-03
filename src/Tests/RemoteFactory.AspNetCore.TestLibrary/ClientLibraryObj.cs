@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 
 namespace Neatoo.RemoteFactory.AspNetCore.TestClientLibrary;
 
-public interface IServerFactoryObj : IFactorySaveMeta
+public interface IClientLibraryObj : IFactorySaveMeta
 {
 	public string Name { get; }
 }
 
 [Factory]
-internal class ServerFactoryObj : IServerFactoryObj
+internal class ClientLibraryObj : IClientLibraryObj
 {
 	public string Name { get; protected set; } = null!;
 

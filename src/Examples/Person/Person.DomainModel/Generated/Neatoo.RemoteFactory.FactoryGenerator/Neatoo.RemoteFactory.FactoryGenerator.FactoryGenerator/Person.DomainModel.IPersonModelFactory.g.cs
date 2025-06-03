@@ -15,7 +15,7 @@ using System.Runtime.CompilerServices;
 */
 namespace Person.DomainModel
 {
-    public interface IPersonModelFactory : IPersonModelClientFactory
+    public interface IIPersonModelFactory : IIPersonModelClientFactory
     {
         IPersonModel? Create();
         Authorized CanCreate();
@@ -25,17 +25,17 @@ namespace Person.DomainModel
         Authorized CanSave();
     }
 
-    internal class PersonModelFactory : PersonModelClientFactory, IPersonModelFactory, IFactorySave<IPersonModel>
+    internal class IPersonModelFactory : IPersonModelClientFactory, IIPersonModelFactory, IFactorySave<IPersonModel>
     {
         private readonly IServiceProvider ServiceProvider;
-        public PersonModelFactory(IServiceProvider serviceProvider, IFactoryCore<IPersonModel> factoryCore) : base(factoryCore)
+        public IPersonModelFactory(IServiceProvider serviceProvider, IFactoryCore<IPersonModel> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
             FetchProperty = LocalFetch;
             SaveProperty = LocalSave;
         }
 
-        public PersonModelFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IPersonModel> factoryCore) : base(remoteMethodDelegate, factoryCore)
+        public IPersonModelFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IPersonModel> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
         }
@@ -163,7 +163,7 @@ namespace Person.DomainModel
             }
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<IPersonModel>.Save(IPersonModel target)
+        async Task<IFactorySaveMeta?> IFactorySave<PersonModel>.Save(PersonModel target)
         {
             return (IFactorySaveMeta? )await Save(target);
         }
@@ -296,8 +296,8 @@ namespace Person.DomainModel
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
-            services.AddScoped<PersonModelFactory>();
-            services.AddScoped<IPersonModelFactory, PersonModelFactory>();
+            services.AddScoped<IPersonModelFactory>();
+            services.AddScoped<IIPersonModelFactory, IPersonModelFactory>();
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonModelFactory>();
@@ -310,7 +310,7 @@ namespace Person.DomainModel
             });
             services.AddTransient<PersonModel>();
             services.AddTransient<IPersonModel, PersonModel>();
-            services.AddScoped<IFactorySave<IPersonModel>, PersonModelFactory>();
+            services.AddScoped<IFactorySave<IPersonModel>, IPersonModelFactory>();
         }
     }
 }

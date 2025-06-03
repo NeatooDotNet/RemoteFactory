@@ -1,7 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using Neatoo.RemoteFactory;
-using Person.Ef;
+﻿using Neatoo.RemoteFactory;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
@@ -20,8 +17,6 @@ public interface IPersonModel : INotifyPropertyChanged, IFactorySaveMeta
 	new bool IsDeleted { get; set; }
 }
 
-[Factory]
-[AuthorizeFactory<IPersonModelAuth>]
 internal partial class PersonModel : IPersonModel
 {
 	[Create]
@@ -51,48 +46,4 @@ internal partial class PersonModel : IPersonModel
 		this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 	}
 
-	public partial void MapFrom(PersonEntity personEntity);
-	public partial void MapTo(PersonEntity personEntity);
-
-	[Remote]
-	[Fetch]
-	public async Task<bool> Fetch([Service] IPersonContext personContext)
-	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
-		if (personEntity == null)
-		{
-			return false;
-		}
-		this.MapFrom(personEntity);
-		this.IsNew = false;
-		return true;
-	}
-
-	[Remote]
-	[Update]
-	[Insert]
-	public async Task Upsert([Service] IPersonContext personContext)
-	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
-		if(personEntity == null)
-		{
-			personEntity = new PersonEntity();
-			personContext.Persons.Add(personEntity);
-		}
-		this.MapTo(personEntity);
-		await personContext.SaveChangesAsync();
-	}
-
-	[Remote]
-	[Delete]
-	public async Task Delete([Service] IPersonContext personContext)
-	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
-
-		if (personEntity != null)
-		{
-			personContext.Persons.Remove(personEntity);
-			await personContext.SaveChangesAsync();
-		}
-	}
 }

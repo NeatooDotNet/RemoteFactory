@@ -24,7 +24,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         Authorized CanSave();
     }
 
-    internal class ShowcaseAuthObjFactory : FactorySaveBase<IShowcaseAuthObj>, IShowcaseAuthObjFactory, IFactorySave<ShowcaseAuthObj>
+    internal class ShowcaseAuthObjFactory : FactorySaveBase<IShowcaseAuthObj>, IShowcaseAuthObjFactory, IFactorySave<IShowcaseAuthObj>
     {
         private readonly IServiceProvider ServiceProvider;
         public ShowcaseAuthObjFactory(IServiceProvider serviceProvider, IFactoryCore<IShowcaseAuthObj> factoryCore) : base(factoryCore)
@@ -187,7 +187,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             }
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseAuthObj>.Save(ShowcaseAuthObj target)
+        async Task<IFactorySaveMeta?> IFactorySave<IShowcaseAuthObj>.Save(IShowcaseAuthObj target)
         {
             return await Task.FromResult((IFactorySaveMeta? )Save(target));
         }
@@ -342,7 +342,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             services.AddScoped<IShowcaseAuthObjFactory, ShowcaseAuthObjFactory>();
             services.AddTransient<ShowcaseAuthObj>();
             services.AddTransient<IShowcaseAuthObj, ShowcaseAuthObj>();
-            services.AddScoped<IFactorySave<ShowcaseAuthObj>, ShowcaseAuthObjFactory>();
+            services.AddScoped<IFactorySave<IShowcaseAuthObj>, ShowcaseAuthObjFactory>();
         }
     }
 }

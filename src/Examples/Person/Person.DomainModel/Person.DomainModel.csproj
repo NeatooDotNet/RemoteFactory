@@ -13,11 +13,14 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Person.DomainModel.UnitTests" />
+		<InternalsVisibleTo Include="Person.DomainModel.Server" />
 		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+		<Compile Include="..\Person.DomainModel.Server\**\*ClientFactory.g.cs" Link="DomainModel.Server" />
+
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj"  OutputItemType="Analyzer"  />
+	  <ProjectReference Include="..\..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" OutputItemType="Analyzer" />
 	  <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
 	  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" />
 	</ItemGroup>

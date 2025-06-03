@@ -24,7 +24,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         IShowcaseSave? SaveMatchedByParamType(IShowcaseSave target, int a);
     }
 
-    internal class ShowcaseSaveFactory : ShowcaseSaveClientFactory, IShowcaseSaveFactory, IFactorySave<ShowcaseSave>
+    internal class ShowcaseSaveFactory : ShowcaseSaveClientFactory, IShowcaseSaveFactory, IFactorySave<IShowcaseSave>
     {
         private readonly IServiceProvider ServiceProvider;
         public ShowcaseSaveFactory(IServiceProvider serviceProvider, IFactoryCore<IShowcaseSave> factoryCore) : base(factoryCore)
@@ -157,7 +157,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             }
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseSave>.Save(ShowcaseSave target)
+        async Task<IFactorySaveMeta?> IFactorySave<IShowcaseSave>.Save(IShowcaseSave target)
         {
             return await Task.FromResult((IFactorySaveMeta? )Save(target));
         }
@@ -262,7 +262,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             });
             services.AddTransient<ShowcaseSave>();
             services.AddTransient<IShowcaseSave, ShowcaseSave>();
-            services.AddScoped<IFactorySave<ShowcaseSave>, ShowcaseSaveFactory>();
+            services.AddScoped<IFactorySave<IShowcaseSave>, ShowcaseSaveFactory>();
         }
     }
 }

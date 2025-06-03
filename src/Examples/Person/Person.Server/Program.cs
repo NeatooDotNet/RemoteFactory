@@ -2,12 +2,13 @@ using Neatoo.RemoteFactory;
 using Person.DomainModel;
 using Person.Ef;
 using Neatoo.RemoteFactory.AspNetCore;
+using Person.DomainModel.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors();
 
 // Neatoo
-builder.Services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly);
+builder.Services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly, typeof(IPersonModelFactory).Assembly);
 builder.Services.AddScoped<IPersonContext, PersonContext>();
 builder.Services.RegisterMatchingName(typeof(IPersonModelAuth).Assembly);
 builder.Services.AddScoped<IUser, User>();

@@ -3,8 +3,8 @@
 namespace Neatoo.RemoteFactory.AspNetCore.TestServerLibrary;
 
 
-[Factory]
-internal sealed class ServerFactoryObj : RemoteFactory.AspNetCore.TestClientLibrary.ServerFactoryObj, IServerFactoryObj
+[Factory<IClientLibraryObj>]
+internal sealed class ClientLibraryObjServerExt : ClientLibraryObj
 {
 
 	[Create]

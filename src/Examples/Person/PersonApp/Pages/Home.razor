@@ -1,7 +1,8 @@
 ﻿@page "/"
 
 @using Person.DomainModel
-@inject IPersonModelFactory PersonModelFactory
+@using Person.DomainModel.Server
+@inject IPersonModelClientFactory PersonModelFactory
 @inject IUser User
 
 <div class="h3">User Role:</div>
@@ -87,10 +88,10 @@ else
 
     public IPersonModel? PersonModel { get; set; } = default!;
 
-    private bool CanCreate { get; set; }
-    private bool CanFetch { get; set; }
-    private bool CanUpdate { get; set; }
-    private bool CanDelete { get; set; }
+    private bool CanCreate { get; set; } = true;
+    private bool CanFetch { get; set; } = true;
+    private bool CanUpdate { get; set; } = true;
+    private bool CanDelete { get; set; } = true;
 
     public Role selectedRole
     {
@@ -122,9 +123,9 @@ else
         PersonModel = await PersonModelFactory.Fetch();
     }
 
-    private void Create()
+    private async Task Create()
     {
-        PersonModel = PersonModelFactory.Create();
+        PersonModel = await PersonModelFactory.Create();
     }
 
     private async Task Delete()
@@ -146,10 +147,10 @@ else
             }
 
             User.Role = selectedRole;
-            CanCreate = PersonModelFactory.CanCreate();
-            CanFetch = PersonModelFactory.CanFetch();
-            CanUpdate = PersonModelFactory.CanUpsert();
-            CanDelete = PersonModelFactory.CanDelete();
+            // CanCreate = PersonModelFactory.CanCreate();
+            // CanFetch = PersonModelFactory.CanFetch();
+            // CanUpdate = PersonModelFactory.CanUpsert();
+            // CanDelete = PersonModelFactory.CanDelete();
         }
         catch (Exception ex)
         {

@@ -1,14 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
-    <ProjectReference Include="..\Person.DomainModel\Person.DomainModel.csproj" />
+    <ProjectReference Include="..\Person.DomainModel.Server\Person.DomainModel.Server.csproj" />
   </ItemGroup>
 
 </Project>

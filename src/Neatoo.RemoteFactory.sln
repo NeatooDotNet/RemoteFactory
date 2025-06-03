@@ -42,6 +42,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteFactory.AspNetCore.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteFactory.AspNetCore.TestServerLibrary", "Tests\RemoteFactory.AspNetCore.TestServerLibrary\RemoteFactory.AspNetCore.TestServerLibrary.csproj", "{C0EFC09D-9BBB-435B-827D-1695BD9FD187}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Person.DomainModel.Server", "Examples\Person\Person.DomainModel.Server\Person.DomainModel.Server.csproj", "{302E86C1-4C74-5504-CD99-03F8D2652C56}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -100,6 +102,10 @@ Global
 		{C0EFC09D-9BBB-435B-827D-1695BD9FD187}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C0EFC09D-9BBB-435B-827D-1695BD9FD187}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C0EFC09D-9BBB-435B-827D-1695BD9FD187}.Release|Any CPU.Build.0 = Release|Any CPU
+		{302E86C1-4C74-5504-CD99-03F8D2652C56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{302E86C1-4C74-5504-CD99-03F8D2652C56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{302E86C1-4C74-5504-CD99-03F8D2652C56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{302E86C1-4C74-5504-CD99-03F8D2652C56}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -116,6 +122,7 @@ Global
 		{4C9FC073-F848-43DF-BB4C-B02FA9033C2D} = {410FE13F-D41B-4A20-B618-8DDD801E88C8}
 		{14A52C9C-0974-C959-1E77-D8B51CC6946A} = {410FE13F-D41B-4A20-B618-8DDD801E88C8}
 		{C0EFC09D-9BBB-435B-827D-1695BD9FD187} = {410FE13F-D41B-4A20-B618-8DDD801E88C8}
+		{302E86C1-4C74-5504-CD99-03F8D2652C56} = {41CAF172-FA4E-4145-A8A6-25DBD1F6CCD7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6DBC3FBE-F0EB-451F-9D37-C97CE4DB1060}

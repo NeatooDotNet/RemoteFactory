@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 
 namespace Neatoo.RemoteFactory.Internal;
@@ -21,12 +22,13 @@ public interface INeatooJsonSerializer
 public class NeatooJsonSerializer : INeatooJsonSerializer
 {
 	private readonly IServiceAssemblies serviceAssemblies;
+   private readonly GetServiceImplementationTypes getServiceImplementationTypes;
 
-	JsonSerializerOptions Options { get; }
+   JsonSerializerOptions Options { get; }
 
 	private NeatooReferenceHandler ReferenceHandler { get; } = new NeatooReferenceHandler();
 
-	public NeatooJsonSerializer(IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver)
+	public NeatooJsonSerializer(IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver, GetServiceImplementationTypes getServiceImplementationTypes)
 	{
 		ArgumentNullException.ThrowIfNull(neatooJsonConverterFactories, nameof(neatooJsonConverterFactories));
 
@@ -44,7 +46,8 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		}
 
 		this.serviceAssemblies = serviceAssemblies;
-	}
+	  this.getServiceImplementationTypes = getServiceImplementationTypes;
+   }
 
 
 	public string? Serialize(object? target)
@@ -162,23 +165,59 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		ArgumentNullException.ThrowIfNull(remoteDelegateRequest, nameof(remoteDelegateRequest));
 
 		object? target = null;
-		IReadOnlyCollection<object?>? parameters = null;
+		List<object?>? parameters = null;
+
+		var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType);
+
+		if (delegateType == null)
+		{
+			throw new MissingDelegateException($"Cannot find delegate type {remoteDelegateRequest.DelegateAssemblyType} in the registered assemblies");
+		}
+
+		var invokeMethod = delegateType.GetMethod("Invoke")!;
+		var delegateParameters = invokeMethod.GetParameters();
+
+		if(delegateParameters.Length != remoteDelegateRequest.Parameters?.Count)
+		{
+			throw new ArgumentException($"The number of parameters in the request does not match the delegate type {delegateType.FullName}");
+		}
+
+
+
 
 		if (remoteDelegateRequest.Target != null && !string.IsNullOrEmpty(remoteDelegateRequest.Target.Json))
 		{
 			target = this.FromObjectJson(remoteDelegateRequest.Target);
 		}
+
 		if (remoteDelegateRequest.Parameters != null)
 		{
-			parameters = remoteDelegateRequest.Parameters.Select(c => this.FromObjectJson(c)).ToImmutableList();
+			var i = 0;
+			var enumerableParameters = remoteDelegateRequest.Parameters.GetEnumerator();
+			parameters = new List<object?>(remoteDelegateRequest.Parameters.Count);
+
+			while (enumerableParameters.MoveNext())
+			{
+				var parameter = enumerableParameters.Current;
+				var parameterType = delegateParameters[i].ParameterType;
+
+				if (parameterType.IsInterface)
+				{
+					var possibleTypes = this.getServiceImplementationTypes(parameterType.FullName!);
+					if (!possibleTypes.Any())
+					{
+						throw new MissingDelegateException($"Cannot find implementation for interface {parameterType.FullName} in the registered assemblies");
+					}
+
+					parameterType = possibleTypes.First();
+				}
+
+				parameters.Add(this.FromObjectJson(parameter, parameterType));
+				i++;
+			}
 		}
 
-		var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType);
 
-		if(delegateType == null)
-		{
-			throw new MissingDelegateException($"Cannot find delegate type {remoteDelegateRequest.DelegateAssemblyType} in the registered assemblies");
-		}
 
 		var result = new RemoteRequest()
 		{
@@ -200,14 +239,14 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		return this.Deserialize<T>(remoteResponse.Json);
 	}
 
-	public object? FromObjectJson(ObjectJson? objectTypeJson)
+	public object? FromObjectJson(ObjectJson? objectTypeJson, Type? targetType = null)
 	{
 		if (objectTypeJson == null)
 		{
 			return null;
 		}
 
-		var targetType = this.serviceAssemblies.FindType(objectTypeJson.AssemblyType);
+		targetType = targetType ?? this.serviceAssemblies.FindType(objectTypeJson.AssemblyType);
 		ArgumentNullException.ThrowIfNull(targetType, nameof(objectTypeJson.AssemblyType));
 		return this.Deserialize(objectTypeJson.Json, targetType);
 	}

@@ -23,7 +23,7 @@ public enum NeatooFactory
 	Logical
 }
 
-public delegate IEnumerable<Type> GetServiceImplementationTypes(Type type);
+public delegate IEnumerable<Type> GetServiceImplementationTypes(string typeName);
 
 public static partial class RemoteFactoryServices
 {
@@ -72,12 +72,12 @@ public static partial class RemoteFactoryServices
 
 		services.AddSingleton<GetServiceImplementationTypes>(s =>
 			{
-				return (Type type) =>
+				return (string typeName) =>
 				{
 					// This is why these are delegates
 					// Need access to the DI container
 					return services
-							  .Where(d => d.ServiceType == type && d.ImplementationType != null)
+							  .Where(d => d.ServiceType.FullName == typeName && d.ImplementationType != null)
 							  .Select(d => d.ImplementationType!)
 							  .Distinct();
 				};

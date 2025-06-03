@@ -280,7 +280,7 @@ namespace FactoryGeneratorSandbox;
 	}
 
 	[Fact]
-	public void BaseClassBug()
+	public void BaseClass()
 	{
 		// The source code to test
 		var source = @"
@@ -291,16 +291,25 @@ using System.Threading.Tasks;
 
 namespace FactoryGeneratorSandbox;
 
-	[Factory]
-	public class NullableParameter
+	public class ClientObj
+	{
+		[Create]
+		public void Create()
+		{
+		}
+	}
+
+
+  [Factory<ClientObj>]
+	public class ServerObj : ClientObj
 	{
 		public bool CreateCalled { get; set; } = false;
 
 		[Create]
-		public static Task<NullableParameter?> Create(int? p)
+		public Task<bool?> Create(int? p)
 		{
 			Assert.Null(p);
-			return new NullableParameter();
+			return true;
 		}
 
 	}
