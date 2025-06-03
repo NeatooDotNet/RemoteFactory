@@ -13,134 +13,13 @@ using Xunit;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
-    public interface IRemoteReadDataMapperFactory
+    public interface IRemoteReadDataMapperFactory : IRemoteReadDataMapperClientFactory
     {
-        Task<RemoteReadDataMapper> CreateVoid();
-        Task<RemoteReadDataMapper?> CreateBool();
-        Task<RemoteReadDataMapper> CreateTask();
-        Task<RemoteReadDataMapper?> CreateTaskBool();
-        Task<RemoteReadDataMapper> CreateVoid(int? param);
-        Task<RemoteReadDataMapper?> CreateBool(int? param);
-        Task<RemoteReadDataMapper> CreateTask(int? param);
-        Task<RemoteReadDataMapper?> CreateTaskBool(int? param);
-        Task<RemoteReadDataMapper?> CreateTaskBoolFalse(int? param);
-        Task<RemoteReadDataMapper> CreateVoidDep();
-        Task<RemoteReadDataMapper?> CreateBoolTrueDep();
-        Task<RemoteReadDataMapper?> CreateBoolFalseDep();
-        Task<RemoteReadDataMapper> CreateTaskDep();
-        Task<RemoteReadDataMapper?> CreateTaskBoolDep();
-        Task<RemoteReadDataMapper?> CreateTaskBoolFalseDep();
-        Task<RemoteReadDataMapper> CreateVoidDep(int? param);
-        Task<RemoteReadDataMapper?> CreateBoolTrueDep(int? param);
-        Task<RemoteReadDataMapper?> CreateBoolFalseDep(int? param);
-        Task<RemoteReadDataMapper> CreateTaskDep(int? param);
-        Task<RemoteReadDataMapper?> CreateTaskBoolDep(int? param);
-        Task<RemoteReadDataMapper> FetchVoid();
-        Task<RemoteReadDataMapper?> FetchBool();
-        Task<RemoteReadDataMapper> FetchTask();
-        Task<RemoteReadDataMapper?> FetchTaskBool();
-        Task<RemoteReadDataMapper> FetchVoid(int? param);
-        Task<RemoteReadDataMapper?> FetchBool(int? param);
-        Task<RemoteReadDataMapper> FetchTask(int? param);
-        Task<RemoteReadDataMapper?> FetchTaskBool(int? param);
-        Task<RemoteReadDataMapper> FetchVoidDep();
-        Task<RemoteReadDataMapper?> FetchBoolTrueDep();
-        Task<RemoteReadDataMapper?> FetchBoolFalseDep();
-        Task<RemoteReadDataMapper> FetchTaskDep();
-        Task<RemoteReadDataMapper?> FetchTaskBoolDep();
-        Task<RemoteReadDataMapper> FetchVoidDep(int? param);
-        Task<RemoteReadDataMapper?> FetchBoolTrueDep(int? param);
-        Task<RemoteReadDataMapper?> FetchBoolFalseDep(int? param);
-        Task<RemoteReadDataMapper> FetchTaskDep(int? param);
-        Task<RemoteReadDataMapper?> FetchTaskBoolDep(int? param);
-        Task<RemoteReadDataMapper?> FetchTaskBoolFalseDep(int? param);
     }
 
-    internal class RemoteReadDataMapperFactory : FactoryBase<RemoteReadDataMapper>, IRemoteReadDataMapperFactory
+    internal class RemoteReadDataMapperFactory : RemoteReadDataMapperClientFactory, IRemoteReadDataMapperFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<RemoteReadDataMapper> CreateVoidDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateTaskDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateVoid1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> CreateTask1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolFalseDelegate(int? param);
-        public delegate Task<RemoteReadDataMapper> CreateVoidDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateBoolTrueDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateBoolFalseDepDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateTaskDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolFalseDepDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateVoidDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateBoolTrueDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateBoolFalseDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> CreateTaskDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchVoidDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchTaskDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchVoid1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchTask1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchVoidDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchBoolTrueDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchBoolFalseDepDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchTaskDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDepDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchVoidDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchBoolTrueDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchBoolFalseDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchTaskDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolFalseDepDelegate(int? param);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public CreateVoidDelegate CreateVoidProperty { get; }
-        public CreateBoolDelegate CreateBoolProperty { get; }
-        public CreateTaskDelegate CreateTaskProperty { get; }
-        public CreateTaskBoolDelegate CreateTaskBoolProperty { get; }
-        public CreateVoid1Delegate CreateVoid1Property { get; }
-        public CreateBool1Delegate CreateBool1Property { get; }
-        public CreateTask1Delegate CreateTask1Property { get; }
-        public CreateTaskBool1Delegate CreateTaskBool1Property { get; }
-        public CreateTaskBoolFalseDelegate CreateTaskBoolFalseProperty { get; }
-        public CreateVoidDepDelegate CreateVoidDepProperty { get; }
-        public CreateBoolTrueDepDelegate CreateBoolTrueDepProperty { get; }
-        public CreateBoolFalseDepDelegate CreateBoolFalseDepProperty { get; }
-        public CreateTaskDepDelegate CreateTaskDepProperty { get; }
-        public CreateTaskBoolDepDelegate CreateTaskBoolDepProperty { get; }
-        public CreateTaskBoolFalseDepDelegate CreateTaskBoolFalseDepProperty { get; }
-        public CreateVoidDep1Delegate CreateVoidDep1Property { get; }
-        public CreateBoolTrueDep1Delegate CreateBoolTrueDep1Property { get; }
-        public CreateBoolFalseDep1Delegate CreateBoolFalseDep1Property { get; }
-        public CreateTaskDep1Delegate CreateTaskDep1Property { get; }
-        public CreateTaskBoolDep1Delegate CreateTaskBoolDep1Property { get; }
-        public FetchVoidDelegate FetchVoidProperty { get; }
-        public FetchBoolDelegate FetchBoolProperty { get; }
-        public FetchTaskDelegate FetchTaskProperty { get; }
-        public FetchTaskBoolDelegate FetchTaskBoolProperty { get; }
-        public FetchVoid1Delegate FetchVoid1Property { get; }
-        public FetchBool1Delegate FetchBool1Property { get; }
-        public FetchTask1Delegate FetchTask1Property { get; }
-        public FetchTaskBool1Delegate FetchTaskBool1Property { get; }
-        public FetchVoidDepDelegate FetchVoidDepProperty { get; }
-        public FetchBoolTrueDepDelegate FetchBoolTrueDepProperty { get; }
-        public FetchBoolFalseDepDelegate FetchBoolFalseDepProperty { get; }
-        public FetchTaskDepDelegate FetchTaskDepProperty { get; }
-        public FetchTaskBoolDepDelegate FetchTaskBoolDepProperty { get; }
-        public FetchVoidDep1Delegate FetchVoidDep1Property { get; }
-        public FetchBoolTrueDep1Delegate FetchBoolTrueDep1Property { get; }
-        public FetchBoolFalseDep1Delegate FetchBoolFalseDep1Property { get; }
-        public FetchTaskDep1Delegate FetchTaskDep1Property { get; }
-        public FetchTaskBoolDep1Delegate FetchTaskBoolDep1Property { get; }
-        public FetchTaskBoolFalseDepDelegate FetchTaskBoolFalseDepProperty { get; }
-
         public RemoteReadDataMapperFactory(IServiceProvider serviceProvider, IFactoryCore<RemoteReadDataMapper> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -185,59 +64,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             FetchTaskBoolFalseDepProperty = LocalFetchTaskBoolFalseDep;
         }
 
-        public RemoteReadDataMapperFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<RemoteReadDataMapper> factoryCore) : base(factoryCore)
+        public RemoteReadDataMapperFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<RemoteReadDataMapper> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            CreateVoidProperty = RemoteCreateVoid;
-            CreateBoolProperty = RemoteCreateBool;
-            CreateTaskProperty = RemoteCreateTask;
-            CreateTaskBoolProperty = RemoteCreateTaskBool;
-            CreateVoid1Property = RemoteCreateVoid1;
-            CreateBool1Property = RemoteCreateBool1;
-            CreateTask1Property = RemoteCreateTask1;
-            CreateTaskBool1Property = RemoteCreateTaskBool1;
-            CreateTaskBoolFalseProperty = RemoteCreateTaskBoolFalse;
-            CreateVoidDepProperty = RemoteCreateVoidDep;
-            CreateBoolTrueDepProperty = RemoteCreateBoolTrueDep;
-            CreateBoolFalseDepProperty = RemoteCreateBoolFalseDep;
-            CreateTaskDepProperty = RemoteCreateTaskDep;
-            CreateTaskBoolDepProperty = RemoteCreateTaskBoolDep;
-            CreateTaskBoolFalseDepProperty = RemoteCreateTaskBoolFalseDep;
-            CreateVoidDep1Property = RemoteCreateVoidDep1;
-            CreateBoolTrueDep1Property = RemoteCreateBoolTrueDep1;
-            CreateBoolFalseDep1Property = RemoteCreateBoolFalseDep1;
-            CreateTaskDep1Property = RemoteCreateTaskDep1;
-            CreateTaskBoolDep1Property = RemoteCreateTaskBoolDep1;
-            FetchVoidProperty = RemoteFetchVoid;
-            FetchBoolProperty = RemoteFetchBool;
-            FetchTaskProperty = RemoteFetchTask;
-            FetchTaskBoolProperty = RemoteFetchTaskBool;
-            FetchVoid1Property = RemoteFetchVoid1;
-            FetchBool1Property = RemoteFetchBool1;
-            FetchTask1Property = RemoteFetchTask1;
-            FetchTaskBool1Property = RemoteFetchTaskBool1;
-            FetchVoidDepProperty = RemoteFetchVoidDep;
-            FetchBoolTrueDepProperty = RemoteFetchBoolTrueDep;
-            FetchBoolFalseDepProperty = RemoteFetchBoolFalseDep;
-            FetchTaskDepProperty = RemoteFetchTaskDep;
-            FetchTaskBoolDepProperty = RemoteFetchTaskBoolDep;
-            FetchVoidDep1Property = RemoteFetchVoidDep1;
-            FetchBoolTrueDep1Property = RemoteFetchBoolTrueDep1;
-            FetchBoolFalseDep1Property = RemoteFetchBoolFalseDep1;
-            FetchTaskDep1Property = RemoteFetchTaskDep1;
-            FetchTaskBoolDep1Property = RemoteFetchTaskBoolDep1;
-            FetchTaskBoolFalseDepProperty = RemoteFetchTaskBoolFalseDep;
-        }
-
-        public virtual Task<RemoteReadDataMapper> CreateVoid()
-        {
-            return CreateVoidProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoid()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper> LocalCreateVoid()
@@ -246,30 +75,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid()));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBool()
-        {
-            return CreateBoolProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBool()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateBool()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool()));
-        }
-
-        public virtual Task<RemoteReadDataMapper> CreateTask()
-        {
-            return CreateTaskProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTask()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper> LocalCreateTask()
@@ -278,30 +87,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask());
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBool()
-        {
-            return CreateTaskBoolProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBool()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateTaskBool()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool());
-        }
-
-        public virtual Task<RemoteReadDataMapper> CreateVoid(int? param)
-        {
-            return CreateVoid1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoid1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoid1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper> LocalCreateVoid1(int? param)
@@ -310,30 +99,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid(param)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBool(int? param)
-        {
-            return CreateBool1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBool1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBool1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateBool1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool(param)));
-        }
-
-        public virtual Task<RemoteReadDataMapper> CreateTask(int? param)
-        {
-            return CreateTask1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTask1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTask1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper> LocalCreateTask1(int? param)
@@ -342,46 +111,16 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask(param));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBool(int? param)
-        {
-            return CreateTaskBool1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBool1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBool1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateTaskBool1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool(param));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolFalse(int? param)
-        {
-            return CreateTaskBoolFalseProperty(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolFalse(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolFalseDelegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateTaskBoolFalse(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalse(param));
-        }
-
-        public virtual Task<RemoteReadDataMapper> CreateVoidDep()
-        {
-            return CreateVoidDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoidDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDepDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper> LocalCreateVoidDep()
@@ -391,31 +130,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBoolTrueDep()
-        {
-            return CreateBoolTrueDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolTrueDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolTrueDepDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateBoolTrueDep()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(service)));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> CreateBoolFalseDep()
-        {
-            return CreateBoolFalseDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolFalseDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolFalseDepDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalCreateBoolFalseDep()
@@ -425,31 +144,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateTaskDep()
-        {
-            return CreateTaskDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTaskDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDepDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalCreateTaskDep()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(service));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolDep()
-        {
-            return CreateTaskBoolDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDepDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalCreateTaskBoolDep()
@@ -459,31 +158,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolFalseDep()
-        {
-            return CreateTaskBoolFalseDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolFalseDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolFalseDepDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateTaskBoolFalseDep()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalseDep(service));
-        }
-
-        public virtual Task<RemoteReadDataMapper> CreateVoidDep(int? param)
-        {
-            return CreateVoidDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoidDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDep1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper> LocalCreateVoidDep1(int? param)
@@ -493,31 +172,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBoolTrueDep(int? param)
-        {
-            return CreateBoolTrueDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolTrueDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolTrueDep1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalCreateBoolTrueDep1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(param, service)));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> CreateBoolFalseDep(int? param)
-        {
-            return CreateBoolFalseDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolFalseDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolFalseDep1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalCreateBoolFalseDep1(int? param)
@@ -527,31 +186,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateTaskDep(int? param)
-        {
-            return CreateTaskDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTaskDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDep1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalCreateTaskDep1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(param, service));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolDep(int? param)
-        {
-            return CreateTaskBoolDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDep1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalCreateTaskBoolDep1(int? param)
@@ -561,30 +200,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(param, service));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchVoid()
-        {
-            return FetchVoidProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoid()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalFetchVoid()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid()));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> FetchBool()
-        {
-            return FetchBoolProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBool()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalFetchBool()
@@ -593,30 +212,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool()));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchTask()
-        {
-            return FetchTaskProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTask()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalFetchTask()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask());
-        }
-
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBool()
-        {
-            return FetchTaskBoolProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBool()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalFetchTaskBool()
@@ -625,30 +224,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool());
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchVoid(int? param)
-        {
-            return FetchVoid1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoid1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoid1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalFetchVoid1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid(param)));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> FetchBool(int? param)
-        {
-            return FetchBool1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBool1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBool1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalFetchBool1(int? param)
@@ -657,46 +236,16 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool(param)));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchTask(int? param)
-        {
-            return FetchTask1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTask1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTask1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalFetchTask1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask(param));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBool(int? param)
-        {
-            return FetchTaskBool1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBool1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBool1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalFetchTaskBool1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool(param));
-        }
-
-        public virtual Task<RemoteReadDataMapper> FetchVoidDep()
-        {
-            return FetchVoidDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoidDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDepDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper> LocalFetchVoidDep()
@@ -706,31 +255,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBoolTrueDep()
-        {
-            return FetchBoolTrueDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolTrueDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolTrueDepDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalFetchBoolTrueDep()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(service)));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> FetchBoolFalseDep()
-        {
-            return FetchBoolFalseDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolFalseDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolFalseDepDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalFetchBoolFalseDep()
@@ -740,31 +269,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchTaskDep()
-        {
-            return FetchTaskDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTaskDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDepDelegate), []))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalFetchTaskDep()
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(service));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolDep()
-        {
-            return FetchTaskBoolDepProperty();
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolDep()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDepDelegate), []))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalFetchTaskBoolDep()
@@ -774,31 +283,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(service));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchVoidDep(int? param)
-        {
-            return FetchVoidDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoidDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDep1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper> LocalFetchVoidDep1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(param, service)));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> FetchBoolTrueDep(int? param)
-        {
-            return FetchBoolTrueDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolTrueDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolTrueDep1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalFetchBoolTrueDep1(int? param)
@@ -808,31 +297,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBoolFalseDep(int? param)
-        {
-            return FetchBoolFalseDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolFalseDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolFalseDep1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalFetchBoolFalseDep1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(param, service)));
-        }
-
-        public virtual Task<RemoteReadDataMapper> FetchTaskDep(int? param)
-        {
-            return FetchTaskDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTaskDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDep1Delegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper> LocalFetchTaskDep1(int? param)
@@ -842,31 +311,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(param, service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolDep(int? param)
-        {
-            return FetchTaskBoolDep1Property(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolDep1(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDep1Delegate), [param]))!;
-        }
-
         public Task<RemoteReadDataMapper?> LocalFetchTaskBoolDep1(int? param)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(param, service));
-        }
-
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolFalseDep(int? param)
-        {
-            return FetchTaskBoolFalseDepProperty(param);
-        }
-
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolFalseDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolFalseDepDelegate), [param]))!;
         }
 
         public Task<RemoteReadDataMapper?> LocalFetchTaskBoolFalseDep(int? param)

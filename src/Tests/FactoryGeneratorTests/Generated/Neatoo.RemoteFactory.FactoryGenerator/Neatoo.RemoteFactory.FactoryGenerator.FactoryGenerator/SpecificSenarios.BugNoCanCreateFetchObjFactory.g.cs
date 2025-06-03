@@ -26,12 +26,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         Authorized CanSave();
     }
 
-    internal class BugNoCanCreateFetchObjFactory : FactorySaveBase<BugNoCanCreateFetchObj>, IFactorySave<BugNoCanCreateFetchObj>, IBugNoCanCreateFetchObjFactory
+    internal class BugNoCanCreateFetchObjFactory : FactorySaveBase<BugNoCanCreateFetchObj>, IBugNoCanCreateFetchObjFactory, IFactorySave<BugNoCanCreateFetchObj>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public BugNoCanCreateFetchObjFactory(IServiceProvider serviceProvider, IFactoryCore<BugNoCanCreateFetchObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -40,7 +37,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         public BugNoCanCreateFetchObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<BugNoCanCreateFetchObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual BugNoCanCreateFetchObj? Create()
@@ -92,11 +88,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return LocalSave(target);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<BugNoCanCreateFetchObj>.Save(BugNoCanCreateFetchObj target)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
-        }
-
         public virtual Authorized<BugNoCanCreateFetchObj> LocalSave(BugNoCanCreateFetchObj target)
         {
             if (target.IsDeleted)
@@ -111,6 +102,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             {
                 throw new NotImplementedException();
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<BugNoCanCreateFetchObj>.Save(BugNoCanCreateFetchObj target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target));
         }
 
         public virtual Authorized CanCreate()

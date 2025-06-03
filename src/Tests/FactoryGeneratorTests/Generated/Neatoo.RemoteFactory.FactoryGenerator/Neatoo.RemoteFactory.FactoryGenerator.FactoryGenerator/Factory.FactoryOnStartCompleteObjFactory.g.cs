@@ -67,9 +67,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
     internal class FactoryOnStartCompleteObjFactory : FactoryBase<FactoryOnStartCompleteObj>, IFactoryOnStartCompleteObjFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public FactoryOnStartCompleteObjFactory(IServiceProvider serviceProvider, IFactoryCore<FactoryOnStartCompleteObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -78,7 +75,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         public FactoryOnStartCompleteObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<FactoryOnStartCompleteObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual FactoryOnStartCompleteObj Create()

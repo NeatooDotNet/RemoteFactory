@@ -8,8 +8,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
 public class RemoteReadTests
 {
+   private readonly (IServiceScope server, IServiceScope client, IServiceScope local) scopes;
 
-	[Factory]
+   [Factory]
 	public class RemoteReadDataMapper
 	{
 		public bool CreateCalled { get; set; }
@@ -364,31 +365,33 @@ public class RemoteReadTests
 	}
 
 
-	private IServiceScope clientScope;
-	private IServiceScope localScope;
-
 	public RemoteReadTests()
 	{
-		var scopes = ClientServerContainers.Scopes();
-		this.clientScope = scopes.client;
-		this.localScope = scopes.local;
+		this.scopes = ClientServerContainers.Scopes();
 	}
 
 	[Fact]
 	public Task RemoteReadFactoryTest_Client()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IRemoteReadDataMapperFactory>();
+		var readFactory = this.scopes.client.ServiceProvider.GetRequiredService<IRemoteReadDataMapperClientFactory>();
+		return this.RemoteRead(readFactory);
+	}
+
+	[Fact]
+	public Task RemoteReadFactoryTest_Server()
+	{
+		var readFactory = this.scopes.server.ServiceProvider.GetRequiredService<IRemoteReadDataMapperFactory>();
 		return this.RemoteRead(readFactory);
 	}
 
 	[Fact]
 	public Task RemoteReadFactoryTest_Local()
 	{
-		var readFactory = this.localScope.ServiceProvider.GetRequiredService<IRemoteReadDataMapperFactory>();
+		var readFactory = this.scopes.local.ServiceProvider.GetRequiredService<IRemoteReadDataMapperFactory>();
 		return this.RemoteRead(readFactory);
 	}
 
-	private async Task RemoteRead(IRemoteReadDataMapperFactory readFactory)
+	private async Task RemoteRead(object readFactory)
 	{
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch")).ToList();
 

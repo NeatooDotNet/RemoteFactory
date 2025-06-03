@@ -137,18 +137,23 @@ using Neatoo.RemoteFactory;
 
 //[assembly: FactoryHintNameLength(50)]
 
-namespace NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name.NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name.NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name.NeatooLibrary.This.Is.Way.Too.Long.Of.A.Namespace.Name {
-
+namespace NeatooLibrary;
 
 [Factory]
-internal class ObjObjObjObjObjObjObjObjObj {
+internal class Obj {
 
-	[Insert]
-public int InsertMethod(){}
+[Insert]
+[Remote]
+public void Insert(){}
+
 [Update]
-	public string Update(){}
-	[Delete]
-	public void Delete(){}
+[Remote]
+public void Update(){}
+
+[Delete]
+[Remote]
+public void Delete(){}
+
 
 }
 ";

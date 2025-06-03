@@ -324,19 +324,19 @@ public class ReadAuthTests
 
 	}
 
-	private IServiceScope clientScope;
+	private IServiceScope serverScope;
 
 	public ReadAuthTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
-		this.clientScope = scopes.client;
+		this.serverScope = scopes.server;
 	}
 
 	[Fact]
 	public async Task ReadAuthTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
-		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
+		var readFactory = this.serverScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
+		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
@@ -437,8 +437,8 @@ public class ReadAuthTests
 	[Fact]
 	public async Task ReadAuthTaskTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthTaskObjectFactory>();
-		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuthTask>();
+		var readFactory = this.serverScope.ServiceProvider.GetRequiredService<IReadAuthTaskObjectFactory>();
+		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadAuthTask>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
@@ -536,8 +536,8 @@ public class ReadAuthTests
 	[Fact]
 	public async Task ReadAuthBoolFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
-		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
+		var readFactory = this.serverScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
+		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
@@ -591,8 +591,8 @@ public class ReadAuthTests
 	[Fact]
 	public async Task ReadAuthStringFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
-		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
+		var readFactory = this.serverScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
+		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name == "CanCreateVoid").ToList(); // m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 

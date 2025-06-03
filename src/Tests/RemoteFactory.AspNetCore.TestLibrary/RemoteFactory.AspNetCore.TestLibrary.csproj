@@ -12,5 +12,8 @@
 	
 	<ItemGroup>
 		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+		<Compile Include="..\RemoteFactory.AspNetCore.TestServerLibrary\Generated\Neatoo.RemoteFactory.FactoryGenerator\Neatoo.RemoteFactory.FactoryGenerator.FactoryGenerator\*ClientFactory.g.cs"
+				 Link="TestServerLibrary" />
+		<InternalsVisibleTo Include="RemoteFactory.AspNetCore.TestServerLibrary" />
 	</ItemGroup>
 </Project>

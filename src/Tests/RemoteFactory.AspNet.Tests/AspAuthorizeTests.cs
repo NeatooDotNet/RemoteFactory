@@ -1,15 +1,15 @@
 ﻿using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.AspNetCore.TestLibrary;
+using Neatoo.RemoteFactory.AspNetCore.TestClientLibrary;
 
 namespace RemoteFactory.AspNetCore.Tests;
 
 public class AspAuthorizeTests : IClassFixture<ContainerFixture>
 {
-	private readonly IAspAuthorizeTestObjFactory factory;
+	private readonly IAspAuthorizeTestObjClientFactory factory;
 
 	public AspAuthorizeTests(ContainerFixture container)
 	{
-		this.factory = container.CreateScope.ServiceProvider.GetRequiredService<IAspAuthorizeTestObjFactory>();
+		this.factory = container.CreateScope.ServiceProvider.GetRequiredService<IAspAuthorizeTestObjClientFactory>();
 	}
 
 	[Fact]

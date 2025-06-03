@@ -31,4 +31,7 @@
 		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
 	</ItemGroup>
 
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+		<Exec Command="del /s /q $(CompilerGeneratedFilesOutputPath)" />
+	</Target>
 </Project>

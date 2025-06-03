@@ -26,7 +26,7 @@ public class FactoryCoreForTarget : FactoryCore<FactoryCoreTarget>
 	public void FactoryCore_Should_Call_DoFactoryMethodCall()
 	{
 		var factoryCoreTarget = this.factory.Create();
-		var factoryCoreForTarget = (FactoryCoreForTarget) this.clientScope.GetRequiredService<IFactoryCore<FactoryCoreTarget>>();
+		var factoryCoreForTarget = (FactoryCoreForTarget) this.serverScope.GetRequiredService<IFactoryCore<FactoryCoreTarget>>();
 		Assert.True(factoryCoreForTarget.Called);
 	}
 }

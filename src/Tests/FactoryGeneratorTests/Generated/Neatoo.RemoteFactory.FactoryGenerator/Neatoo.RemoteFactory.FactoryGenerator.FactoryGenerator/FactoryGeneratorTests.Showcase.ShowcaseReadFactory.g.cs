@@ -10,7 +10,7 @@ using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
-    public interface IShowcaseReadFactory
+    public interface IShowcaseReadFactory : IShowcaseReadClientFactory
     {
         IShowcaseRead Create(List<int> intList);
         IShowcaseRead CreateVoid(List<int> intList);
@@ -19,31 +19,21 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         Task<IShowcaseRead?> CreateTaskBool(List<int> intList);
         Task<IShowcaseRead> CreateService(List<int> intList);
         Task<IShowcaseRead> CreateStatic(List<int> intList);
-        Task<IShowcaseRead> CreateRemote(List<int> intList);
-        Task<IShowcaseRead> CreateRemoteClientFail(List<int> intList);
         IShowcaseRead FetchVoid(int id);
     }
 
-    internal class ShowcaseReadFactory : FactoryBase<IShowcaseRead>, IShowcaseReadFactory
+    internal class ShowcaseReadFactory : ShowcaseReadClientFactory, IShowcaseReadFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<IShowcaseRead> CreateRemoteDelegate(List<int> intList);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public CreateRemoteDelegate CreateRemoteProperty { get; }
-
         public ShowcaseReadFactory(IServiceProvider serviceProvider, IFactoryCore<IShowcaseRead> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
             CreateRemoteProperty = LocalCreateRemote;
         }
 
-        public ShowcaseReadFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcaseRead> factoryCore) : base(factoryCore)
+        public ShowcaseReadFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcaseRead> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            CreateRemoteProperty = RemoteCreateRemote;
         }
 
         public virtual IShowcaseRead Create(List<int> intList)
@@ -124,33 +114,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return DoFactoryMethodCallAsync(FactoryOperation.Create, () => ShowcaseRead.CreateStatic(intList, service));
         }
 
-        public virtual Task<IShowcaseRead> CreateRemote(List<int> intList)
-        {
-            return CreateRemoteProperty(intList);
-        }
-
-        public virtual async Task<IShowcaseRead> RemoteCreateRemote(List<int> intList)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<IShowcaseRead>(typeof(CreateRemoteDelegate), [intList]))!;
-        }
-
         public Task<IShowcaseRead> LocalCreateRemote(List<int> intList)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             var service = ServiceProvider.GetRequiredService<IServerOnlyService>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemote(intList, service)));
-        }
-
-        public virtual Task<IShowcaseRead> CreateRemoteClientFail(List<int> intList)
-        {
-            return LocalCreateRemoteClientFail(intList);
-        }
-
-        public Task<IShowcaseRead> LocalCreateRemoteClientFail(List<int> intList)
-        {
-            var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
-            var service = ServiceProvider.GetRequiredService<IServerOnlyService>();
-            return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateRemoteClientFail(intList, service));
         }
 
         public virtual IShowcaseRead FetchVoid(int id)

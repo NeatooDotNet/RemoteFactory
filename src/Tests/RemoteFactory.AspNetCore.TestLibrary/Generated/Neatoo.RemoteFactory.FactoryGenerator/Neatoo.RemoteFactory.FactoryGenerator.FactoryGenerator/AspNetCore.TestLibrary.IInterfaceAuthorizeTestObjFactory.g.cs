@@ -25,10 +25,10 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
         public delegate Task<Authorized> CanHasAspAccessDelegate(bool hasAccess);
         public delegate Task<Authorized> CanNoAspAccessDelegate(bool hasAccess);
         // Delegate Properties to provide Local or Remote fork in execution
-        public HasAspAccessDelegate HasAspAccessProperty { get; }
-        public NoAspAccessDelegate NoAspAccessProperty { get; }
-        public CanHasAspAccessDelegate CanHasAspAccessProperty { get; }
-        public CanNoAspAccessDelegate CanNoAspAccessProperty { get; }
+        public HasAspAccessDelegate HasAspAccessProperty { get; protected set; }
+        public NoAspAccessDelegate NoAspAccessProperty { get; protected set; }
+        public CanHasAspAccessDelegate CanHasAspAccessProperty { get; protected set; }
+        public CanNoAspAccessDelegate CanNoAspAccessProperty { get; protected set; }
 
         public nterfaceAuthorizeTestObjFactory(IServiceProvider serviceProvider)
         {
@@ -59,22 +59,6 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return (await MakeRemoteDelegateRequest!.ForDelegate<bool>(typeof(HasAspAccessDelegate), [hasAccess]))!;
         }
 
-        public async Task<bool> LocalHasAspAccess(bool hasAccess)
-        {
-            Authorized authorized;
-            InterfaceAuthorizeTestObjAuth interfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<InterfaceAuthorizeTestObjAuth>();
-            authorized = interfaceauthorizetestobjauth.HasAccess(hasAccess);
-            if (!authorized.HasAccess)
-            {
-                throw new NotAuthorizedException(authorized);
-            }
-
-            var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
-            authorized = await aspAuthorized.Authorize([new AspAuthorizeData("TestPolicy") { Roles = "Test role" }], true);
-            var target = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObj>();
-            return await target.HasAspAccess(hasAccess);
-        }
-
         public virtual Task<bool> NoAspAccess(bool hasAccess)
         {
             return NoAspAccessProperty(hasAccess);
@@ -83,22 +67,6 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
         public virtual async Task<bool> RemoteNoAspAccess(bool hasAccess)
         {
             return (await MakeRemoteDelegateRequest!.ForDelegate<bool>(typeof(NoAspAccessDelegate), [hasAccess]))!;
-        }
-
-        public async Task<bool> LocalNoAspAccess(bool hasAccess)
-        {
-            Authorized authorized;
-            InterfaceAuthorizeTestObjAuth interfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<InterfaceAuthorizeTestObjAuth>();
-            authorized = interfaceauthorizetestobjauth.HasAccess(hasAccess);
-            if (!authorized.HasAccess)
-            {
-                throw new NotAuthorizedException(authorized);
-            }
-
-            var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
-            authorized = await aspAuthorized.Authorize([new AspAuthorizeData() { Roles = "Not Authorized" }], true);
-            var target = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObj>();
-            return await target.NoAspAccess(hasAccess);
         }
 
         public virtual Task<Authorized> CanHasAspAccess(bool hasAccess)
@@ -111,11 +79,53 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanHasAspAccessDelegate), [hasAccess]))!;
         }
 
+        public virtual Task<Authorized> CanNoAspAccess(bool hasAccess)
+        {
+            return CanNoAspAccessProperty(hasAccess);
+        }
+
+        public virtual async Task<Authorized> RemoteCanNoAspAccess(bool hasAccess)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanNoAspAccessDelegate), [hasAccess]))!;
+        }
+
+        public async Task<bool> LocalHasAspAccess(bool hasAccess)
+        {
+            Authorized authorized;
+            IInterfaceAuthorizeTestObjAuth iinterfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObjAuth>();
+            authorized = iinterfaceauthorizetestobjauth.HasAccess(hasAccess);
+            if (!authorized.HasAccess)
+            {
+                throw new NotAuthorizedException(authorized);
+            }
+
+            var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
+            authorized = await aspAuthorized.Authorize([new AspAuthorizeData("TestPolicy") { Roles = "Test role" }], true);
+            var target = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObj>();
+            return await target.HasAspAccess(hasAccess);
+        }
+
+        public async Task<bool> LocalNoAspAccess(bool hasAccess)
+        {
+            Authorized authorized;
+            IInterfaceAuthorizeTestObjAuth iinterfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObjAuth>();
+            authorized = iinterfaceauthorizetestobjauth.HasAccess(hasAccess);
+            if (!authorized.HasAccess)
+            {
+                throw new NotAuthorizedException(authorized);
+            }
+
+            var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
+            authorized = await aspAuthorized.Authorize([new AspAuthorizeData() { Roles = "Not Authorized" }], true);
+            var target = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObj>();
+            return await target.NoAspAccess(hasAccess);
+        }
+
         public async Task<Authorized> LocalCanHasAspAccess(bool hasAccess)
         {
             Authorized authorized;
-            InterfaceAuthorizeTestObjAuth interfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<InterfaceAuthorizeTestObjAuth>();
-            authorized = interfaceauthorizetestobjauth.HasAccess(hasAccess);
+            IInterfaceAuthorizeTestObjAuth iinterfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObjAuth>();
+            authorized = iinterfaceauthorizetestobjauth.HasAccess(hasAccess);
             if (!authorized.HasAccess)
             {
                 return authorized;
@@ -131,21 +141,11 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanNoAspAccess(bool hasAccess)
-        {
-            return CanNoAspAccessProperty(hasAccess);
-        }
-
-        public virtual async Task<Authorized> RemoteCanNoAspAccess(bool hasAccess)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanNoAspAccessDelegate), [hasAccess]))!;
-        }
-
         public async Task<Authorized> LocalCanNoAspAccess(bool hasAccess)
         {
             Authorized authorized;
-            InterfaceAuthorizeTestObjAuth interfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<InterfaceAuthorizeTestObjAuth>();
-            authorized = interfaceauthorizetestobjauth.HasAccess(hasAccess);
+            IInterfaceAuthorizeTestObjAuth iinterfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<IInterfaceAuthorizeTestObjAuth>();
+            authorized = iinterfaceauthorizetestobjauth.HasAccess(hasAccess);
             if (!authorized.HasAccess)
             {
                 return authorized;
@@ -161,16 +161,14 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
+        public static void ClientFactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+        {
+            services.AddScoped<IInterfaceAuthorizeTestObj, nterfaceAuthorizeTestObjFactory>();
+            services.AddScoped<IInterfaceAuthorizeTestObjFactory, nterfaceAuthorizeTestObjFactory>();
+        }
+
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
-            // On the client the Factory is registered
-            // All method calls lead to a remote call
-            if (remoteLocal == NeatooFactory.Remote)
-            {
-                services.AddScoped<IInterfaceAuthorizeTestObj, nterfaceAuthorizeTestObjFactory>();
-                services.AddScoped<IInterfaceAuthorizeTestObjFactory, nterfaceAuthorizeTestObjFactory>();
-            }
-
             // On the server the Delegates are registered
             // nterfaceAuthorizeTestObjFactory is not used
             // IInterfaceAuthorizeTestObj must be registered to actual implementation

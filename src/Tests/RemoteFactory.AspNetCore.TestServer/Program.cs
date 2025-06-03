@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.AspNetCore;
-using Neatoo.RemoteFactory.AspNetCore.TestLibrary;
+using Neatoo.RemoteFactory.AspNetCore.TestClientLibrary;
+using Neatoo.RemoteFactory.AspNetCore.TestServerLibrary;
 using RemoteFactory.AspNetCore;
 using RemoteFactory.AspNetCore.TestServer;
 
@@ -13,6 +14,7 @@ builder.Services.AddNeatooAspNetCore(typeof(AspAuthorizeTestObj).Assembly);
 builder.Services.AddSingleton<AspAuthorizeTestObjAuth>();
 builder.Services.AddSingleton<InterfaceAuthorizeTestObjAuth>();
 builder.Services.AddTransient<IInterfaceAuthorizeTestObj, InterfaceAuthorizeTestObj>();
+builder.Services.AddTransient<IInterfaceAuthorizeTestObjAuth, InterfaceAuthorizeTestObjAuth>();
 
 // Add services to the container.
 

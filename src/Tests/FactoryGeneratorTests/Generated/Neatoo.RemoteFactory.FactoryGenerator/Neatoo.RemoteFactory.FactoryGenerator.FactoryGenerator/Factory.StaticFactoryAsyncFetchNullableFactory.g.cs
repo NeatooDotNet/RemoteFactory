@@ -19,9 +19,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
     internal class StaticFactoryAsyncFetchNullableFactory : FactoryBase<StaticFactoryAsyncFetchNullable>, IStaticFactoryAsyncFetchNullableFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public StaticFactoryAsyncFetchNullableFactory(IServiceProvider serviceProvider, IFactoryCore<StaticFactoryAsyncFetchNullable> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -30,7 +27,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         public StaticFactoryAsyncFetchNullableFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<StaticFactoryAsyncFetchNullable> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual Task<StaticFactoryAsyncFetchNullable?> Fetch(int? a)

@@ -19,9 +19,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
     internal class StaticFactoryAsyncFetchObjectFactory : FactoryBase<StaticFactoryAsyncFetchObject>, IStaticFactoryAsyncFetchObjectFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public StaticFactoryAsyncFetchObjectFactory(IServiceProvider serviceProvider, IFactoryCore<StaticFactoryAsyncFetchObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -30,7 +27,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         public StaticFactoryAsyncFetchObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<StaticFactoryAsyncFetchObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual Task<StaticFactoryAsyncFetchObject> Fetch()

@@ -27,8 +27,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
         public delegate Task<bool> BoolMethodDelegate(bool a, string b);
         public delegate Task<System.Collections.Generic.List<string>> StringListMethodDelegate(List<string> a, int b);
         // Delegate Properties to provide Local or Remote fork in execution
-        public BoolMethodDelegate BoolMethodProperty { get; }
-        public StringListMethodDelegate StringListMethodProperty { get; }
+        public BoolMethodDelegate BoolMethodProperty { get; protected set; }
+        public StringListMethodDelegate StringListMethodProperty { get; protected set; }
 
         public ExecuteMethodsFactory(IServiceProvider serviceProvider)
         {
@@ -55,12 +55,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
             return (await MakeRemoteDelegateRequest!.ForDelegate<bool>(typeof(BoolMethodDelegate), [a, b]))!;
         }
 
-        public Task<bool> LocalBoolMethod(bool a, string b)
-        {
-            var target = ServiceProvider.GetRequiredService<IExecuteMethods>();
-            return target.BoolMethod(a, b);
-        }
-
         public virtual Task<System.Collections.Generic.List<string>> StringListMethod(List<string> a, int b)
         {
             return StringListMethodProperty(a, b);
@@ -71,22 +65,26 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
             return (await MakeRemoteDelegateRequest!.ForDelegate<System.Collections.Generic.List<string>>(typeof(StringListMethodDelegate), [a, b]))!;
         }
 
+        public Task<bool> LocalBoolMethod(bool a, string b)
+        {
+            var target = ServiceProvider.GetRequiredService<IExecuteMethods>();
+            return target.BoolMethod(a, b);
+        }
+
         public Task<System.Collections.Generic.List<string>> LocalStringListMethod(List<string> a, int b)
         {
             var target = ServiceProvider.GetRequiredService<IExecuteMethods>();
             return target.StringListMethod(a, b);
         }
 
+        public static void ClientFactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+        {
+            services.AddScoped<IExecuteMethods, ExecuteMethodsFactory>();
+            services.AddScoped<IExecuteMethodsFactory, ExecuteMethodsFactory>();
+        }
+
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
-            // On the client the Factory is registered
-            // All method calls lead to a remote call
-            if (remoteLocal == NeatooFactory.Remote)
-            {
-                services.AddScoped<IExecuteMethods, ExecuteMethodsFactory>();
-                services.AddScoped<IExecuteMethodsFactory, ExecuteMethodsFactory>();
-            }
-
             // On the server the Delegates are registered
             // ExecuteMethodsFactory is not used
             // IExecuteMethods must be registered to actual implementation

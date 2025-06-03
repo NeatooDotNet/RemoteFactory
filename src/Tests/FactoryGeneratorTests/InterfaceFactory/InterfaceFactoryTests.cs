@@ -1,4 +1,5 @@
-﻿using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,6 +38,11 @@ public class ExecuteMethods : IExecuteMethods
 	{
 		Assert.NotNull(this.serverOnlyService); 
 		return Task.FromResult(a);
+	}
+
+	public static void FactoryServiceRegistrar(IServiceCollection collection, NeatooFactory neatooFactory)
+	{
+		collection.AddScoped<IExecuteMethods, ExecuteMethods>();
 	}
 }
 

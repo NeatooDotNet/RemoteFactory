@@ -14,77 +14,13 @@ using Xunit;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
-    public interface IRemoteWriteObjectFactory
+    public interface IRemoteWriteObjectFactory : IRemoteWriteObjectClientFactory
     {
-        Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskBoolFalseDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskBoolFalse(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, int? param);
     }
 
-    internal class RemoteWriteObjectFactory : FactorySaveBase<RemoteWriteObject>, IFactorySave<RemoteWriteObject>, IRemoteWriteObjectFactory
+    internal class RemoteWriteObjectFactory : RemoteWriteObjectClientFactory, IRemoteWriteObjectFactory, IFactorySave<RemoteWriteObject>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<RemoteWriteObject?> SaveVoidDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveBoolDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveVoidDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveBoolTrueDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveBoolFalseDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolFalseDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveVoid1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveBool1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTask1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskBool1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolFalseDelegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveVoidDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveBoolTrueDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveBoolFalseDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolDep1Delegate(RemoteWriteObject target, int? param);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public SaveVoidDelegate SaveVoidProperty { get; }
-        public SaveBoolDelegate SaveBoolProperty { get; }
-        public SaveTaskDelegate SaveTaskProperty { get; }
-        public SaveTaskBoolDelegate SaveTaskBoolProperty { get; }
-        public SaveVoidDepDelegate SaveVoidDepProperty { get; }
-        public SaveBoolTrueDepDelegate SaveBoolTrueDepProperty { get; }
-        public SaveBoolFalseDepDelegate SaveBoolFalseDepProperty { get; }
-        public SaveTaskDepDelegate SaveTaskDepProperty { get; }
-        public SaveTaskBoolDepDelegate SaveTaskBoolDepProperty { get; }
-        public SaveTaskBoolFalseDepDelegate SaveTaskBoolFalseDepProperty { get; }
-        public SaveVoid1Delegate SaveVoid1Property { get; }
-        public SaveBool1Delegate SaveBool1Property { get; }
-        public SaveTask1Delegate SaveTask1Property { get; }
-        public SaveTaskBool1Delegate SaveTaskBool1Property { get; }
-        public SaveTaskBoolFalseDelegate SaveTaskBoolFalseProperty { get; }
-        public SaveVoidDep1Delegate SaveVoidDep1Property { get; }
-        public SaveBoolTrueDep1Delegate SaveBoolTrueDep1Property { get; }
-        public SaveBoolFalseDep1Delegate SaveBoolFalseDep1Property { get; }
-        public SaveTaskDep1Delegate SaveTaskDep1Property { get; }
-        public SaveTaskBoolDep1Delegate SaveTaskBoolDep1Property { get; }
-
         public RemoteWriteObjectFactory(IServiceProvider serviceProvider, IFactoryCore<RemoteWriteObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -110,30 +46,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             SaveTaskBoolDep1Property = LocalSaveTaskBoolDep1;
         }
 
-        public RemoteWriteObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<RemoteWriteObject> factoryCore) : base(factoryCore)
+        public RemoteWriteObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<RemoteWriteObject> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            SaveVoidProperty = RemoteSaveVoid;
-            SaveBoolProperty = RemoteSaveBool;
-            SaveTaskProperty = RemoteSaveTask;
-            SaveTaskBoolProperty = RemoteSaveTaskBool;
-            SaveVoidDepProperty = RemoteSaveVoidDep;
-            SaveBoolTrueDepProperty = RemoteSaveBoolTrueDep;
-            SaveBoolFalseDepProperty = RemoteSaveBoolFalseDep;
-            SaveTaskDepProperty = RemoteSaveTaskDep;
-            SaveTaskBoolDepProperty = RemoteSaveTaskBoolDep;
-            SaveTaskBoolFalseDepProperty = RemoteSaveTaskBoolFalseDep;
-            SaveVoid1Property = RemoteSaveVoid1;
-            SaveBool1Property = RemoteSaveBool1;
-            SaveTask1Property = RemoteSaveTask1;
-            SaveTaskBool1Property = RemoteSaveTaskBool1;
-            SaveTaskBoolFalseProperty = RemoteSaveTaskBoolFalse;
-            SaveVoidDep1Property = RemoteSaveVoidDep1;
-            SaveBoolTrueDep1Property = RemoteSaveBoolTrueDep1;
-            SaveBoolFalseDep1Property = RemoteSaveBoolFalseDep1;
-            SaveTaskDep1Property = RemoteSaveTaskDep1;
-            SaveTaskBoolDep1Property = RemoteSaveTaskBoolDep1;
         }
 
         public Task<RemoteWriteObject> LocalInsertVoid(RemoteWriteObject target)
@@ -529,21 +444,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(param, service));
         }
 
-        public virtual Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target)
-        {
-            return SaveVoidProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoid(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDelegate), [target]))!;
-        }
-
-        async Task<IFactorySaveMeta?> IFactorySave<RemoteWriteObject>.Save(RemoteWriteObject target)
-        {
-            return (IFactorySaveMeta? )await SaveVoid(target);
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveVoid(RemoteWriteObject target)
         {
             if (target.IsDeleted)
@@ -565,14 +465,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target)
+        async Task<IFactorySaveMeta?> IFactorySave<RemoteWriteObject>.Save(RemoteWriteObject target)
         {
-            return SaveBoolProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBool(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolDelegate), [target]))!;
+            return (IFactorySaveMeta? )await SaveVoid(target);
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveBool(RemoteWriteObject target)
@@ -596,16 +491,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target)
-        {
-            return SaveTaskProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTask(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDelegate), [target]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveTask(RemoteWriteObject target)
         {
             if (target.IsDeleted)
@@ -625,16 +510,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateTask(target);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target)
-        {
-            return SaveTaskBoolProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBool(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDelegate), [target]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskBool(RemoteWriteObject target)
@@ -658,16 +533,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target)
-        {
-            return SaveVoidDepProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoidDep(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDepDelegate), [target]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveVoidDep(RemoteWriteObject target)
         {
             if (target.IsDeleted)
@@ -687,16 +552,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateVoidDep(target);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target)
-        {
-            return SaveBoolTrueDepProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolTrueDep(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolTrueDepDelegate), [target]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveBoolTrueDep(RemoteWriteObject target)
@@ -720,16 +575,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target)
-        {
-            return SaveBoolFalseDepProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolFalseDep(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolFalseDepDelegate), [target]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveBoolFalseDep(RemoteWriteObject target)
         {
             if (target.IsDeleted)
@@ -749,16 +594,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateBoolFalseDep(target);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target)
-        {
-            return SaveTaskDepProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskDep(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDepDelegate), [target]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskDep(RemoteWriteObject target)
@@ -782,16 +617,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target)
-        {
-            return SaveTaskBoolDepProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolDep(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDepDelegate), [target]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolDep(RemoteWriteObject target)
         {
             if (target.IsDeleted)
@@ -811,16 +636,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateTaskBoolDep(target);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolFalseDep(RemoteWriteObject target)
-        {
-            return SaveTaskBoolFalseDepProperty(target);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolFalseDep(RemoteWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolFalseDepDelegate), [target]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolFalseDep(RemoteWriteObject target)
@@ -844,16 +659,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, int? param)
-        {
-            return SaveVoid1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoid1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoid1Delegate), [target, param]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveVoid1(RemoteWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -873,16 +678,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateVoid1(target, param);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, int? param)
-        {
-            return SaveBool1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBool1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBool1Delegate), [target, param]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveBool1(RemoteWriteObject target, int? param)
@@ -906,16 +701,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, int? param)
-        {
-            return SaveTask1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTask1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTask1Delegate), [target, param]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveTask1(RemoteWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -935,16 +720,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateTask1(target, param);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, int? param)
-        {
-            return SaveTaskBool1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBool1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBool1Delegate), [target, param]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskBool1(RemoteWriteObject target, int? param)
@@ -968,16 +743,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolFalse(RemoteWriteObject target, int? param)
-        {
-            return SaveTaskBoolFalseProperty(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolFalse(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolFalseDelegate), [target, param]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolFalse(RemoteWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -997,16 +762,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateTaskBoolFalse(target, param);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, int? param)
-        {
-            return SaveVoidDep1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoidDep1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDep1Delegate), [target, param]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveVoidDep1(RemoteWriteObject target, int? param)
@@ -1030,16 +785,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, int? param)
-        {
-            return SaveBoolTrueDep1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolTrueDep1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolTrueDep1Delegate), [target, param]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveBoolTrueDep1(RemoteWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -1059,16 +804,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateBoolTrueDep1(target, param);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, int? param)
-        {
-            return SaveBoolFalseDep1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolFalseDep1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolFalseDep1Delegate), [target, param]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveBoolFalseDep1(RemoteWriteObject target, int? param)
@@ -1092,16 +827,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, int? param)
-        {
-            return SaveTaskDep1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskDep1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDep1Delegate), [target, param]))!;
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskDep1(RemoteWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -1121,16 +846,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateTaskDep1(target, param);
             }
-        }
-
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, int? param)
-        {
-            return SaveTaskBoolDep1Property(target, param);
-        }
-
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolDep1(RemoteWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDep1Delegate), [target, param]))!;
         }
 
         public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolDep1(RemoteWriteObject target, int? param)

@@ -334,6 +334,31 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public List<WriteFactoryMethod> WriteFactoryMethods { get; }
 
+		public override void AddFactoryText(FactoryText classText)
+		{
+			base.AddFactoryText(classText);
+
+
+			if (this.IsDefault)
+			{
+				var methodBuilder = new StringBuilder();
+				methodBuilder.AppendLine($"async Task<IFactorySaveMeta?> IFactorySave<{this.ImplementationType}>.Save({this.ImplementationType} target)");
+				methodBuilder.AppendLine("{");
+
+				if (this.IsTask)
+				{
+					methodBuilder.AppendLine($"return (IFactorySaveMeta?) await {this.Name}(target);");
+				}
+				else
+				{
+					methodBuilder.AppendLine($"return await Task.FromResult((IFactorySaveMeta?) {this.Name}(target));");
+				}
+				methodBuilder.AppendLine("}");
+
+				classText.MethodsBuilder.Append(methodBuilder);
+			}
+		}
+
 		public override StringBuilder PublicMethod(bool? overrideHasAuth = null)
 		{
 			if (!(overrideHasAuth ?? this.HasAuth))
@@ -385,22 +410,6 @@ public class FactoryGenerator : IIncrementalGenerator
 		public override StringBuilder LocalMethod()
 		{
 			var methodBuilder = new StringBuilder();
-
-			if (this.IsDefault)
-			{
-				methodBuilder.AppendLine($"async Task<IFactorySaveMeta?> IFactorySave<{this.ImplementationType}>.Save({this.ImplementationType} target)");
-				methodBuilder.AppendLine("{");
-
-				if (this.IsTask)
-				{
-					methodBuilder.AppendLine($"return (IFactorySaveMeta?) await {this.Name}(target);");
-				}
-				else
-				{
-					methodBuilder.AppendLine($"return await Task.FromResult((IFactorySaveMeta?) {this.Name}(target));");
-				}
-				methodBuilder.AppendLine("}");
-			}
 
 			methodBuilder.AppendLine($@"public virtual {this.AsyncKeyword} {this.ReturnType()} Local{this.UniqueName}({this.ParameterDeclarationsText()})
                                             {{");
@@ -574,7 +583,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.AspForbid = true;
 		}
 
-		public override StringBuilder ServiceRegistrations()
+		public override StringBuilder DelegateRegistrations()
 		{
 			return new StringBuilder().AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
                                                     var factory = cc.GetRequiredService<{this.ImplementationType}Factory>();
@@ -735,23 +744,28 @@ public class FactoryGenerator : IIncrementalGenerator
 
 		public virtual void AddFactoryText(FactoryText classText)
 		{
-			classText.InterfaceMethods.Append(this.InterfaceMethods());
-
 			if (this.IsRemote)
 			{
+				classText.ClientInterfaceMethods.Append(this.InterfaceMethods());
 				classText.Delegates.Append(this.Delegates());
 				classText.PropertyDeclarations.Append(this.PropertyDeclarations());
 				classText.ConstructorPropertyAssignmentsLocal.Append(this.ConstructorPropertyAssignmentsLocal());
-				classText.ConstructorPropertyAssignmentsRemote.Append(this.ConstructorPropertyAssignmentsRemote());
-				classText.ServiceRegistrations.Append(this.ServiceRegistrations());
+				classText.ConstructorPropertyAssignmentsClient.Append(this.ConstructorPropertyAssignmentsRemote());
+				classText.ServiceRegistrations.Append(this.DelegateRegistrations());
+
+				var remoteMethodBuilder = new StringBuilder();
+				remoteMethodBuilder.Append(this.PublicMethod());
+				remoteMethodBuilder.Append(this.RemoteMethod());
+				classText.RemoteMethodsBuilder.Append(remoteMethodBuilder);
+
+			}
+			else
+			{
+				classText.InterfaceMethods.Append(this.InterfaceMethods());
+				classText.MethodsBuilder.Append(this.PublicMethod());
 			}
 
-			var methodBuilder = new StringBuilder();
-			methodBuilder.Append(this.PublicMethod());
-			methodBuilder.Append(this.RemoteMethod());
-			methodBuilder.Append(this.LocalMethod());
-
-			classText.MethodsBuilder.Append(methodBuilder);
+			classText.MethodsBuilder.Append(this.LocalMethod());
 		}
 
 		public virtual StringBuilder InterfaceMethods()
@@ -767,7 +781,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		public virtual StringBuilder PropertyDeclarations()
 		{
 			var propertyBuilder = new StringBuilder();
-			propertyBuilder.AppendLine($"public {this.DelegateName} {this.UniqueName}Property {{ get; }}");
+			propertyBuilder.AppendLine($"public {this.DelegateName} {this.UniqueName}Property {{ get; protected set; }}");
 			return propertyBuilder;
 		}
 
@@ -788,7 +802,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			return methodBuilder;
 		}
 
-		public virtual StringBuilder ServiceRegistrations()
+		public virtual StringBuilder DelegateRegistrations()
 		{
 			return new StringBuilder().AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
                                                     var factory = cc.GetRequiredService<{this.ImplementationType}Factory>();
@@ -956,11 +970,12 @@ public class FactoryGenerator : IIncrementalGenerator
 	{
 		public StringBuilder Delegates { get; set; } = new();
 		public StringBuilder ConstructorPropertyAssignmentsLocal { get; set; } = new();
-		public StringBuilder ConstructorPropertyAssignmentsRemote { get; set; } = new();
+		public StringBuilder ConstructorPropertyAssignmentsClient { get; set; } = new();
 		public StringBuilder PropertyDeclarations { get; set; } = new();
 		public StringBuilder MethodsBuilder { get; set; } = new();
-		public StringBuilder SaveMethods { get; set; } = new();
+		public StringBuilder RemoteMethodsBuilder { get; set; } = new();
 		public StringBuilder InterfaceMethods { get; set; } = new();
+		public StringBuilder ClientInterfaceMethods { get; set; } = new();
 		public StringBuilder ServiceRegistrations { get; set; } = new();
 	}
 
@@ -1008,6 +1023,7 @@ public class FactoryGenerator : IIncrementalGenerator
 				var typeAuthMethods = TypeAuthMethods(semanticModel, concreteSymbol, messages);
 
 				var factoryMethods = new List<FactoryMethod>();
+				var remoteFactoryMethods = new List<FactoryMethod>();
 
 				MatchAuthMethods(typeFactoryMethods, typeAuthMethods, messages);
 
@@ -1124,6 +1140,76 @@ public class FactoryGenerator : IIncrementalGenerator
 					factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{targetClassName}>, {targetClassName}Factory>();");
 				}
 
+				var safeHintName = SafeHintName(semanticModel, $"{namespaceName}.{targetClassName}");
+				var remoteFactoryInterface = string.Empty;
+				var baseClassText = $"Factory{editText}Base<{targetType}>";
+				var baseConstructorText = $"base(factoryCore)";
+
+				if (factoryText.ClientInterfaceMethods.Length > 0)
+				{
+					source = $@"
+						  #nullable enable
+#if !EXCLUDECLIENTFACTORIES
+
+
+                    {WithStringBuilder(usingDirectives)}
+
+/*
+							READONLY - DO NOT EDIT!!!!
+							Generated by Neatoo.RemoteFactory
+*/
+                    namespace {namespaceName}
+                    {{
+
+                        public interface I{targetClassName}ClientFactory
+                        {{
+                    {factoryText.ClientInterfaceMethods}
+                        }}
+
+								internal class {targetClassName}ClientFactory : {baseClassText}, I{targetClassName}ClientFactory
+                        {{
+
+                            protected readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
+
+								  // Delegates
+								  {factoryText.Delegates}
+								  // Delegate Properties to provide Local or Remote fork in execution
+								  {factoryText.PropertyDeclarations}
+
+                            public {targetClassName}ClientFactory(IFactoryCore<{targetType}> factoryCore) : base(factoryCore)
+                            {{
+                                    {factoryText.ConstructorPropertyAssignmentsClient}
+                            }}
+
+                            public {targetClassName}ClientFactory(IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetType}> factoryCore) : this(factoryCore)
+                            {{
+                                    this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+                            }}
+
+                    {factoryText.RemoteMethodsBuilder}
+
+                            public static void ClientFactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+                            {{
+                                services.AddScoped<I{targetClassName}ClientFactory, {targetClassName}ClientFactory>();
+                            }}
+                        }}
+							}}
+
+#endif
+
+";
+					source = source.Replace("[, ", "[");
+					source = source.Replace("(, ", "(");
+					source = source.Replace(", )", ")");
+					source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().SyntaxTree.GetText().ToString();
+
+					context.AddSource($"{safeHintName}ClientFactory.g.cs", source);
+
+					remoteFactoryInterface = $": I{targetClassName}ClientFactory";
+					baseClassText = $"{targetClassName}ClientFactory";
+					baseConstructorText = $"base(remoteMethodDelegate, factoryCore)";
+				}
+
 				source = $@"
 						  #nullable enable
 
@@ -1136,21 +1222,15 @@ public class FactoryGenerator : IIncrementalGenerator
                     namespace {namespaceName}
                     {{
 
-                        public interface I{targetClassName}Factory
-                        {{
-                    {factoryText.InterfaceMethods}
-                        }}
+								public interface I{targetClassName}Factory {remoteFactoryInterface} {{
+									{factoryText.InterfaceMethods}
+								}}
 
-                        internal class {targetClassName}Factory : Factory{editText}Base<{targetType}>{(hasDefaultSave ? $", IFactorySave<{targetClassName}>" : "")}, I{targetClassName}Factory
+                        internal class {targetClassName}Factory : {baseClassText}, I{targetClassName}Factory{(hasDefaultSave ? $", IFactorySave <{ targetClassName}> " : "")}
                         {{
 
                             private readonly IServiceProvider ServiceProvider;  
-                            private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
 
-                    // Delegates
-                    {factoryText.Delegates}
-                    // Delegate Properties to provide Local or Remote fork in execution
-                    {factoryText.PropertyDeclarations}
 
                             public {targetClassName}Factory(IServiceProvider serviceProvider, IFactoryCore<{targetType}> factoryCore) : base(factoryCore)
                             {{
@@ -1158,15 +1238,12 @@ public class FactoryGenerator : IIncrementalGenerator
                                     {factoryText.ConstructorPropertyAssignmentsLocal}
                             }}
 
-                            public {targetClassName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetType}> factoryCore) : base(factoryCore)
+                            public {targetClassName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{targetType}> factoryCore) : {baseConstructorText}
                             {{
                                     this.ServiceProvider = serviceProvider;
-                                    this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-                                    {factoryText.ConstructorPropertyAssignmentsRemote}
                             }}
 
                     {factoryText.MethodsBuilder}
-                    {factoryText.SaveMethods}
 
                             public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
                             {{
@@ -1181,17 +1258,13 @@ public class FactoryGenerator : IIncrementalGenerator
 				source = source.Replace("(, ", "(");
 				source = source.Replace(", )", ")");
 				source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().SyntaxTree.GetText().ToString();
+				context.AddSource($"{safeHintName}Factory.g.cs", source);
 			}
 			catch (Exception ex)
 			{
-				source = @$"/* Error: {ex.GetType().FullName} {ex.Message} 
-
-	{WithStringBuilder(messages)}
-*/";
-
+				context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0005", "Error", ex.Message, "FactoryGenerator.GenerateFactory", DiagnosticSeverity.Error, true), Location.None));
 			}
 
-			context.AddSource($"{SafeHintName(semanticModel, $"{namespaceName}.{targetClassName}")}Factory.g.cs", source);
 		}
 		catch (Exception ex)
 		{
@@ -1374,7 +1447,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		}
 		catch (Exception ex)
 		{
-			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0002", "Error", ex.Message, "FactoryGenerator.GenerateExecute", DiagnosticSeverity.Error, true), Location.None));
+			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0003", "Error", ex.Message, "FactoryGenerator.GenerateExecute", DiagnosticSeverity.Error, true), Location.None));
 		}
 
 	}
@@ -1457,7 +1530,7 @@ public class FactoryGenerator : IIncrementalGenerator
 				                    {{
 												public interface {serviceTypeName}Factory : {serviceTypeName}
 												{{
-													 {factoryText.InterfaceMethods}
+													 {factoryText.ClientInterfaceMethods}
 												}}
 
 				                        internal class {implementationTypeName}Factory : {serviceTypeName}Factory
@@ -1481,21 +1554,20 @@ public class FactoryGenerator : IIncrementalGenerator
 													 {{
 																this.ServiceProvider = serviceProvider;
 																this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-																{factoryText.ConstructorPropertyAssignmentsRemote}
+																{factoryText.ConstructorPropertyAssignmentsClient}
 													 }}
 
+													{factoryText.RemoteMethodsBuilder}
 													{factoryText.MethodsBuilder}
+
+													 public static void ClientFactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+													 {{
+																	services.AddScoped<{serviceTypeName}, {implementationTypeName}Factory>();
+																	services.AddScoped<{serviceTypeName}Factory, {implementationTypeName}Factory>();
+													 }}
 
 				                            public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
 				                            {{
-															// On the client the Factory is registered
-															// All method calls lead to a remote call
-															if(remoteLocal == NeatooFactory.Remote)
-															{{
-																	services.AddScoped<{serviceTypeName}, {implementationTypeName}Factory>();
-																	services.AddScoped<{serviceTypeName}Factory, {implementationTypeName}Factory>();
-															}}
-
 															// On the server the Delegates are registered
 															// {implementationTypeName}Factory is not used
 															// {serviceTypeName} must be registered to actual implementation
@@ -1527,7 +1599,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		}
 		catch (Exception ex)
 		{
-			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0004", "Error", ex.Message, "FactoryGenerator.GenerateInterfaceFactory", DiagnosticSeverity.Error, true), Location.None));
+			context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("NT0002", "Error", ex.Message, "FactoryGenerator.GenerateInterfaceFactory", DiagnosticSeverity.Error, true), Location.None));
 		}
 	}
 	private static List<IMethodSymbol> GetMethodsRecursive(INamedTypeSymbol? symbol, bool includeConst = true)
@@ -1852,7 +1924,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	public static string SafeHintName(SemanticModel semanticModel, string hintName, int? maxLength = null)
 	{
-		if(maxLength == null)
+		if (maxLength == null)
 		{
 			var hintNameLengthAttribute = semanticModel.Compilation.Assembly.GetAttributes()
 				.Where(a => a.AttributeClass?.Name == "FactoryHintNameLengthAttribute")

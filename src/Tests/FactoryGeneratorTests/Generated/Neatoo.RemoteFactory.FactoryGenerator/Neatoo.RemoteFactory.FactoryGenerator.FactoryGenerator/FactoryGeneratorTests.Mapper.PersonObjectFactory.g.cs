@@ -21,9 +21,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Mapper
     internal class PersonObjectFactory : FactoryBase<IPersonObject>, IPersonObjectFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public PersonObjectFactory(IServiceProvider serviceProvider, IFactoryCore<IPersonObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -32,7 +29,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Mapper
         public PersonObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IPersonObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

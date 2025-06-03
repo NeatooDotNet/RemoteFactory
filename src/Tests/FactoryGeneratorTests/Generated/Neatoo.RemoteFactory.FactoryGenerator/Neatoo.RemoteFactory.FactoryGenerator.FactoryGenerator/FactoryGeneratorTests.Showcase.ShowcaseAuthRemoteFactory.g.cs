@@ -10,23 +10,13 @@ using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
-    public interface IShowcaseAuthRemoteFactory
+    public interface IShowcaseAuthRemoteFactory : IShowcaseAuthRemoteClientFactory
     {
-        Task<IShowcaseAuthRemote?> Create(List<int> intList);
-        Task<Authorized> CanCreate();
     }
 
-    internal class ShowcaseAuthRemoteFactory : FactoryBase<IShowcaseAuthRemote>, IShowcaseAuthRemoteFactory
+    internal class ShowcaseAuthRemoteFactory : ShowcaseAuthRemoteClientFactory, IShowcaseAuthRemoteFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<Authorized<IShowcaseAuthRemote>> CreateDelegate(List<int> intList);
-        public delegate Task<Authorized> CanCreateDelegate();
-        // Delegate Properties to provide Local or Remote fork in execution
-        public CreateDelegate CreateProperty { get; }
-        public CanCreateDelegate CanCreateProperty { get; }
-
         public ShowcaseAuthRemoteFactory(IServiceProvider serviceProvider, IFactoryCore<IShowcaseAuthRemote> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -34,22 +24,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             CanCreateProperty = LocalCanCreate;
         }
 
-        public ShowcaseAuthRemoteFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcaseAuthRemote> factoryCore) : base(factoryCore)
+        public ShowcaseAuthRemoteFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcaseAuthRemote> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            CreateProperty = RemoteCreate;
-            CanCreateProperty = RemoteCanCreate;
-        }
-
-        public virtual async Task<IShowcaseAuthRemote?> Create(List<int> intList)
-        {
-            return (await CreateProperty(intList)).Result;
-        }
-
-        public virtual async Task<Authorized<IShowcaseAuthRemote>> RemoteCreate(List<int> intList)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IShowcaseAuthRemote>>(typeof(CreateDelegate), [intList]))!;
         }
 
         public Task<Authorized<IShowcaseAuthRemote>> LocalCreate(List<int> intList)
@@ -64,16 +41,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 
             var target = ServiceProvider.GetRequiredService<ShowcaseAuthRemote>();
             return Task.FromResult(new Authorized<IShowcaseAuthRemote>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(intList))));
-        }
-
-        public virtual Task<Authorized> CanCreate()
-        {
-            return CanCreateProperty();
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreate()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateDelegate), []))!;
         }
 
         public Task<Authorized> LocalCanCreate()

@@ -60,9 +60,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
     internal class ReadAuthObjectFactory : FactoryBase<ReadAuthObject>, IReadAuthObjectFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public ReadAuthObjectFactory(IServiceProvider serviceProvider, IFactoryCore<ReadAuthObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -71,7 +68,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         public ReadAuthObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<ReadAuthObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual ReadAuthObject? CreateVoid(int? param)

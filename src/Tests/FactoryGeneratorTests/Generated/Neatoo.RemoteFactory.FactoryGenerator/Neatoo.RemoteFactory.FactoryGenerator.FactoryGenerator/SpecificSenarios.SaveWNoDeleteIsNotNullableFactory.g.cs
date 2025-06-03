@@ -21,12 +21,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         SaveWNoDeleteIsNotNullable Save(SaveWNoDeleteIsNotNullable target);
     }
 
-    internal class SaveWNoDeleteIsNotNullableFactory : FactorySaveBase<SaveWNoDeleteIsNotNullable>, IFactorySave<SaveWNoDeleteIsNotNullable>, ISaveWNoDeleteIsNotNullableFactory
+    internal class SaveWNoDeleteIsNotNullableFactory : FactorySaveBase<SaveWNoDeleteIsNotNullable>, ISaveWNoDeleteIsNotNullableFactory, IFactorySave<SaveWNoDeleteIsNotNullable>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public SaveWNoDeleteIsNotNullableFactory(IServiceProvider serviceProvider, IFactoryCore<SaveWNoDeleteIsNotNullable> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -35,7 +32,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         public SaveWNoDeleteIsNotNullableFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<SaveWNoDeleteIsNotNullable> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual SaveWNoDeleteIsNotNullable Create()
@@ -65,11 +61,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return LocalSave(target);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<SaveWNoDeleteIsNotNullable>.Save(SaveWNoDeleteIsNotNullable target)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
-        }
-
         public virtual SaveWNoDeleteIsNotNullable LocalSave(SaveWNoDeleteIsNotNullable target)
         {
             if (target.IsDeleted)
@@ -84,6 +75,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             {
                 return LocalUpdate(target);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<SaveWNoDeleteIsNotNullable>.Save(SaveWNoDeleteIsNotNullable target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target));
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

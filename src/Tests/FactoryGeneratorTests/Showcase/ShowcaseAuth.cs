@@ -1,4 +1,5 @@
-﻿using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
 
@@ -56,10 +57,18 @@ internal class ShowcaseAuthObj : IShowcaseAuthObj
 
 	[Delete]
 	public void Delete([Service] IService service) { }
+
+	public static void FactoryServiceRegistrar(IServiceCollection collection, NeatooFactory neatooFactory)
+	{
+		collection.AddScoped<IShowcaseAuthObj, ShowcaseAuthObj>();
+		collection.AddScoped<IShowcaseAuthorize, ShowcaseAuthorize>();
+	}
 }
 
 public class ShowcaseAuthTests : FactoryTestBase<IShowcaseAuthObjFactory>
 {
+
+
 	[Fact]
 	public void ShowcaseAuth_CanCreate()
 	{

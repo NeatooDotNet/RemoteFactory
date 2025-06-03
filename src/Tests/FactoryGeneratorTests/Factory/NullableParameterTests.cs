@@ -33,27 +33,39 @@ public class NullableParameterTests
 		}
 	}
 
+	private IServiceScope serverScope;
 	private IServiceScope clientScope;
-	private INullableParameterFactory factory;
 
 	public NullableParameterTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
 		this.clientScope = scopes.client;
-		this.factory = this.clientScope.ServiceProvider.GetRequiredService<INullableParameterFactory>();
+		this.serverScope = scopes.server;
 	}
 
 	[Fact]
 	public void NullableParameterTest()
 	{
-		var obj = this.factory.Create(null);
+		var factory = this.serverScope.ServiceProvider.GetRequiredService<INullableParameterFactory>();
+		var obj = factory.Create(null);
 		Assert.True(obj.CreateCalled);
 	}
 
 	[Fact]
 	public async Task NullableParameterTest_CreateRemote()
 	{
-		var obj = await this.factory.CreateRemote(null);
+		var factory = this.serverScope.ServiceProvider.GetRequiredService<INullableParameterFactory>();
+
+		var obj = await factory.CreateRemote(null);
+		Assert.True(obj.CreateCalled);
+	}
+
+	[Fact]
+	public async Task NullableParameterTest_ClientFactory_CreateRemote()
+	{
+		var factory = this.clientScope.ServiceProvider.GetRequiredService<INullableParameterClientFactory>();
+
+		var obj = await factory.CreateRemote(null);
 		Assert.True(obj.CreateCalled);
 	}
 }

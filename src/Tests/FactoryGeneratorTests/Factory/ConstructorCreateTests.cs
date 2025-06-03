@@ -20,18 +20,18 @@ public class ConstructorCreateTests
 		public string NullablePropertiesAreOk { get; set; }
 	}
 
-	private IServiceScope clientScope;
+	private IServiceScope serverScope;
 
 	public ConstructorCreateTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
-		this.clientScope = scopes.client;
+		this.serverScope = scopes.server;
 	}
 
 	[Fact]
 	public void ConstructorCreateObjectTest_ConstructorCreateObject()
 	{
-		var factory = this.clientScope.GetRequiredService<IConstructorCreateObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IConstructorCreateObjectFactory>();
 		var obj = factory.Create();
 		Assert.NotNull(obj);
 	}
@@ -54,7 +54,7 @@ public class ConstructorCreateTests
 	[Fact]
 	public void ConstructorCreateObjectTest_ConstructorCreateObjectDep()
 	{
-		var factory = this.clientScope.GetRequiredService<IConstructorCreateObjectDepFactory>();
+		var factory = this.serverScope.GetRequiredService<IConstructorCreateObjectDepFactory>();
 		var obj = factory.Create();
 		Assert.NotNull(obj);
 	}
@@ -78,7 +78,7 @@ public class ConstructorCreateTests
 	[Fact]
 	public void ConstructorCreateObjectTest_ConstructorCreateObjectParamsDep()
 	{
-		var factory = this.clientScope.GetRequiredService<IConstructorCreateObjectParamsDepFactory>();
+		var factory = this.serverScope.GetRequiredService<IConstructorCreateObjectParamsDepFactory>();
 		var obj = factory.Create(Guid.NewGuid());
 		Assert.NotNull(obj);
 	}

@@ -15,12 +15,9 @@ using System.Runtime.CompilerServices;
 */
 namespace Person.DomainModel
 {
-    public interface IPersonModelFactory
+    public interface IPersonModelFactory : IPersonModelClientFactory
     {
         IPersonModel? Create();
-        Task<IPersonModel?> Fetch();
-        Task<IPersonModel?> Save(IPersonModel target);
-        Task<Authorized<IPersonModel>> TrySave(IPersonModel target);
         Authorized CanCreate();
         Authorized CanFetch();
         Authorized CanUpsert();
@@ -28,17 +25,9 @@ namespace Person.DomainModel
         Authorized CanSave();
     }
 
-    internal class PersonModelFactory : FactorySaveBase<IPersonModel>, IFactorySave<PersonModel>, IPersonModelFactory
+    internal class PersonModelFactory : PersonModelClientFactory, IPersonModelFactory, IFactorySave<PersonModel>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<Authorized<IPersonModel>> FetchDelegate();
-        public delegate Task<Authorized<IPersonModel>> SaveDelegate(IPersonModel target);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public FetchDelegate FetchProperty { get; }
-        public SaveDelegate SaveProperty { get; }
-
         public PersonModelFactory(IServiceProvider serviceProvider, IFactoryCore<IPersonModel> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -46,12 +35,9 @@ namespace Person.DomainModel
             SaveProperty = LocalSave;
         }
 
-        public PersonModelFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IPersonModel> factoryCore) : base(factoryCore)
+        public PersonModelFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IPersonModel> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            FetchProperty = RemoteFetch;
-            SaveProperty = RemoteSave;
         }
 
         public virtual IPersonModel? Create()
@@ -76,16 +62,6 @@ namespace Person.DomainModel
             }
 
             return new Authorized<IPersonModel>(DoFactoryMethodCall(FactoryOperation.Create, () => new PersonModel()));
-        }
-
-        public virtual async Task<IPersonModel?> Fetch()
-        {
-            return (await FetchProperty()).Result;
-        }
-
-        public virtual async Task<Authorized<IPersonModel>> RemoteFetch()
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IPersonModel>>(typeof(FetchDelegate), []))!;
         }
 
         public async Task<Authorized<IPersonModel>> LocalFetch()
@@ -166,32 +142,6 @@ namespace Person.DomainModel
             return new Authorized<IPersonModel>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.Delete(personContext)));
         }
 
-        public virtual async Task<IPersonModel?> Save(IPersonModel target)
-        {
-            var authorized = (await SaveProperty(target));
-            if (!authorized.HasAccess)
-            {
-                throw new NotAuthorizedException(authorized);
-            }
-
-            return authorized.Result;
-        }
-
-        public virtual async Task<Authorized<IPersonModel>> TrySave(IPersonModel target)
-        {
-            return await SaveProperty(target);
-        }
-
-        public virtual async Task<Authorized<IPersonModel>> RemoteSave(IPersonModel target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IPersonModel>>(typeof(SaveDelegate), [target]))!;
-        }
-
-        async Task<IFactorySaveMeta?> IFactorySave<PersonModel>.Save(PersonModel target)
-        {
-            return (IFactorySaveMeta? )await Save(target);
-        }
-
         public virtual async Task<Authorized<IPersonModel>> LocalSave(IPersonModel target)
         {
             if (target.IsDeleted)
@@ -211,6 +161,11 @@ namespace Person.DomainModel
             {
                 return await LocalUpsert(target);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<PersonModel>.Save(PersonModel target)
+        {
+            return (IFactorySaveMeta? )await Save(target);
         }
 
         public virtual Authorized CanCreate()

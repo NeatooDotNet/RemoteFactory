@@ -1,16 +1,13 @@
-﻿namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary;
+﻿namespace Neatoo.RemoteFactory.AspNetCore.TestClientLibrary;
 
-public class InterfaceAuthorizeTestObjAuth
+public interface IInterfaceAuthorizeTestObjAuth
 {
 	[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
-	public bool HasAccess(bool hasAccess)
-	{
-		return hasAccess;
-	}
+	bool HasAccess(bool hasAccess);
 }
 
 [Factory]
-[AuthorizeFactory<InterfaceAuthorizeTestObjAuth>]
+[AuthorizeFactory<IInterfaceAuthorizeTestObjAuth>]
 public interface IInterfaceAuthorizeTestObj
 {
 	[AspAuthorize("TestPolicy", Roles = "Test role")]
@@ -18,15 +15,4 @@ public interface IInterfaceAuthorizeTestObj
 
 	[AspAuthorize(Roles = "Not Authorized")]
 	public Task<bool> NoAspAccess(bool hasAccess);
-}
-
-
-public class InterfaceAuthorizeTestObj : IInterfaceAuthorizeTestObj
-{
-	public Task<bool> HasAspAccess(bool hasAccess)
-	{
-		return Task.FromResult(hasAccess);
-	}
-
-	public Task<bool> NoAspAccess(bool hasAccess) => throw new NotImplementedException();
 }

@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.AspNetCore.TestLibrary;
+using Neatoo.RemoteFactory.AspNetCore.TestClientLibrary;
 
 namespace RemoteFactory.AspNetCore.Tests;
 

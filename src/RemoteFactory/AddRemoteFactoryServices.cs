@@ -90,9 +90,16 @@ public static partial class RemoteFactoryServices
 
 	private static void RegisterFactories(this IServiceCollection services, NeatooFactory remoteLocal, params Assembly[] assemblies)
 	{
+		var methodName = "FactoryServiceRegistrar";
+
+		if (remoteLocal == NeatooFactory.Remote)
+		{
+			methodName = "ClientFactoryServiceRegistrar";
+		}
+
 		foreach (var assembly in assemblies)
 		{
-			var methods = assembly.GetTypes().Select(t => t.GetMethod("FactoryServiceRegistrar", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
+			var methods = assembly.GetTypes().Select(t => t.GetMethod(methodName, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
 				.Where(m => m != null).ToList();
 
 			foreach (var m in methods)

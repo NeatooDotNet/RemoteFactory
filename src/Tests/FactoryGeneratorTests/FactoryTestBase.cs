@@ -21,6 +21,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
 		var scopes = ClientServerContainers.Scopes();
 		this.clientScope = scopes.client;
 		this.serverScope = scopes.server;
-		this.factory = this.clientScope.ServiceProvider.GetRequiredService<TFactory>();
+		this.factory = this.serverScope.ServiceProvider.GetRequiredService<TFactory>();
 	}
 }

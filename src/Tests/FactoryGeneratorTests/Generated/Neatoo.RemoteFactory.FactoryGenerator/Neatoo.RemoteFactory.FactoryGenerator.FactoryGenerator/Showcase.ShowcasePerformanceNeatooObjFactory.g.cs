@@ -24,9 +24,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
     internal class ShowcasePerformanceNeatooObjFactory : FactoryBase<IShowcasePerformanceNeatooObj>, IShowcasePerformanceNeatooObjFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public ShowcasePerformanceNeatooObjFactory(IServiceProvider serviceProvider, IFactoryCore<IShowcasePerformanceNeatooObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -35,7 +32,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         public ShowcasePerformanceNeatooObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcasePerformanceNeatooObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual IShowcasePerformanceNeatooObj Create()

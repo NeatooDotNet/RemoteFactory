@@ -1,4 +1,4 @@
-﻿namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary;
+﻿namespace Neatoo.RemoteFactory.AspNetCore.TestClientLibrary;
 
 public class AspAuthorizeTestObjAuth
 {

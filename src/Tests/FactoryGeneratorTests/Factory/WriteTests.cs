@@ -497,18 +497,18 @@ public class WriteTests
 		}
 	}
 
-	private IServiceScope clientScope;
+	private IServiceScope serverScope;
 
 	public WriteTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
-		this.clientScope = scopes.client;
+		this.serverScope = scopes.server;
 	}
 
 	[Fact]
 	public async Task WriteDataMapperTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IWriteDataMapperFactory>();
+		var readFactory = this.serverScope.ServiceProvider.GetRequiredService<IWriteDataMapperFactory>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
 

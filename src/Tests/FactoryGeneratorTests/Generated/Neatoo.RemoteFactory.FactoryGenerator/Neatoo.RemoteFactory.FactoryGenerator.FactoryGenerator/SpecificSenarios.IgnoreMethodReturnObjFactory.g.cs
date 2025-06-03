@@ -17,12 +17,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         IgnoreMethodReturnObj Save(IgnoreMethodReturnObj target);
     }
 
-    internal class IgnoreMethodReturnObjFactory : FactorySaveBase<IgnoreMethodReturnObj>, IFactorySave<IgnoreMethodReturnObj>, IIgnoreMethodReturnObjFactory
+    internal class IgnoreMethodReturnObjFactory : FactorySaveBase<IgnoreMethodReturnObj>, IIgnoreMethodReturnObjFactory, IFactorySave<IgnoreMethodReturnObj>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public IgnoreMethodReturnObjFactory(IServiceProvider serviceProvider, IFactoryCore<IgnoreMethodReturnObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -31,7 +28,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         public IgnoreMethodReturnObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IgnoreMethodReturnObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual IgnoreMethodReturnObj Create()
@@ -61,11 +57,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return LocalSave(target);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<IgnoreMethodReturnObj>.Save(IgnoreMethodReturnObj target)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
-        }
-
         public virtual IgnoreMethodReturnObj LocalSave(IgnoreMethodReturnObj target)
         {
             if (target.IsDeleted)
@@ -80,6 +71,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             {
                 return LocalUpdate(target);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<IgnoreMethodReturnObj>.Save(IgnoreMethodReturnObj target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target));
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

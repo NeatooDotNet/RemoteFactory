@@ -78,19 +78,20 @@ internal static class ClientServerContainers
 				var localCollection = new ServiceCollection();
 
 				RegisterIfAttribute(serverCollection);
-				RegisterIfAttribute(clientCollection);
+				//RegisterIfAttribute(clientCollection);
 				RegisterIfAttribute(localCollection);
 
 				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, Assembly.GetExecutingAssembly());
 				serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
 				serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
-				serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+				//serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+				serverCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
+				serverCollection.AddSingleton<IService, Service>();
 
 				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
 				clientCollection.AddScoped<ServerServiceProvider>();
 				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
-				clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
-				clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+				//clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
 
 				localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, Assembly.GetExecutingAssembly());
 				localCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());

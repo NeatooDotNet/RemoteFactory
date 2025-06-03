@@ -21,9 +21,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Mapper
     internal class MapperIgnoreAttributeObjFactory : FactoryBase<MapperIgnoreAttributeObj>, IMapperIgnoreAttributeObjFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public MapperIgnoreAttributeObjFactory(IServiceProvider serviceProvider, IFactoryCore<MapperIgnoreAttributeObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -32,7 +29,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Mapper
         public MapperIgnoreAttributeObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<MapperIgnoreAttributeObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

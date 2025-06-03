@@ -6,12 +6,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
  public class StaticFactoryMethodTests
  {
 
-	private IServiceScope clientScope;
+	private IServiceScope serverScope;
 
 	public StaticFactoryMethodTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
-		this.clientScope = scopes.client;
+		this.serverScope = scopes.server;
 	}
 
 	[Factory]
@@ -38,7 +38,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
 	public void StaticFactoryCreateObjectTest_StaticFactoryCreateObject()
 	{
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryCreateObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryCreateObjectFactory>();
 		var obj = factory.Create();
 		Assert.NotNull(obj);
 		Assert.True(obj.UsedStaticMethod);
@@ -68,7 +68,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
    public async Task StaticFactoryCreateObjectTest_StaticFactoryAsyncFetchObject()
    {
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryAsyncFetchObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryAsyncFetchObjectFactory>();
 		var obj = await factory.Fetch();
 		Assert.NotNull(obj);
 		Assert.True(obj.UsedStaticMethod);
@@ -98,7 +98,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
 	public async Task StaticFactoryCreateObjectTest_StaticFactoryAsyncFetchParamObject()
 	{
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryAsyncFetchParamObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryAsyncFetchParamObjectFactory>();
 		var obj = await factory.Fetch(1);
 		Assert.NotNull(obj);
 		Assert.True(obj.UsedStaticMethod);
@@ -144,7 +144,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
 	public async Task StaticFactoryCreateObjectTest_StaticFactoryAsyncFetchParamAuthObject()
 	{
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
 		var obj = await factory.Fetch(1);
 		Assert.NotNull(obj);
 		Assert.True(obj.UsedStaticMethod);
@@ -153,7 +153,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
 	public async Task StaticFactoryCreateObjectTest_StaticFactoryAsyncFetchParamAuthObject_CanFetch()
 	{
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
 		var obj = await factory.Fetch(10);
 		Assert.NotNull(obj);
 		Assert.True(obj.UsedStaticMethod);
@@ -162,7 +162,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
 	public async Task StaticFactoryCreateObjectTest_StaticFactoryAsyncFetchParamAuthObject_CanFetch_Fail()
 	{
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
 		var obj = await factory.Fetch(20);
 		Assert.Null(obj);
 	}
@@ -199,7 +199,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
 	public async Task StaticFactoryCreateObjectTest_StaticFactoryAsyncFetchNullable_Fetch()
 	{
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
 		var obj = await factory.Fetch(10);
 		Assert.NotNull(obj);
 		Assert.True(obj.UsedStaticMethod);
@@ -208,7 +208,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 	[Fact]
 	public async Task StaticFactoryCreateObjectTest_StaticFactoryAsyncFetchNullable_Fetch_Null()
 	{
-		var factory = this.clientScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
+		var factory = this.serverScope.GetRequiredService<IStaticFactoryAsyncFetchParamAuthObjectFactory>();
 		var obj = await factory.Fetch(20);
 		Assert.Null(obj);
 	}

@@ -286,7 +286,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjClientFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
@@ -374,7 +374,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthTaskTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthTaskObjFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthTaskObjClientFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
@@ -470,7 +470,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthBoolFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjClientFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
@@ -523,7 +523,7 @@ public class ReadRemoteAuthTests
 	[Fact]
 	public async Task ReadRemoteAuthStringFailTest()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
+		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjClientFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();

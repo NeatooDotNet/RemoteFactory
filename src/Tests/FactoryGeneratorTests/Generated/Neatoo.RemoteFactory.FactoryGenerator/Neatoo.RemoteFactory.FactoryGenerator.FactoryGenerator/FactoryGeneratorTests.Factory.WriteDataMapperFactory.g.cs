@@ -42,12 +42,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target, int? param);
     }
 
-    internal class WriteDataMapperFactory : FactorySaveBase<WriteDataMapper>, IFactorySave<WriteDataMapper>, IWriteDataMapperFactory
+    internal class WriteDataMapperFactory : FactorySaveBase<WriteDataMapper>, IWriteDataMapperFactory, IFactorySave<WriteDataMapper>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public WriteDataMapperFactory(IServiceProvider serviceProvider, IFactoryCore<WriteDataMapper> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -56,7 +53,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         public WriteDataMapperFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<WriteDataMapper> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public WriteDataMapper LocalInsertVoid(WriteDataMapper target)
@@ -457,11 +453,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return LocalSaveVoid(target);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<WriteDataMapper>.Save(WriteDataMapper target)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target));
-        }
-
         public virtual WriteDataMapper? LocalSaveVoid(WriteDataMapper target)
         {
             if (target.IsDeleted)
@@ -481,6 +472,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return LocalUpdateVoid(target);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<WriteDataMapper>.Save(WriteDataMapper target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target));
         }
 
         public virtual WriteDataMapper? SaveBool(WriteDataMapper target)

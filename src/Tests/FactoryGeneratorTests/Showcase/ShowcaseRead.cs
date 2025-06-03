@@ -69,13 +69,6 @@ internal class ShowcaseRead : IShowcaseRead
 		Assert.NotNull(service);
 	}
 
-	[Create]
-	public Task CreateRemoteClientFail(List<int> intList, [Service] IServerOnlyService service)
-	{
-		// Fails - Verifying that this cannot be called on the client	
-		Assert.Fail(); return Task.CompletedTask;
-	}
-
 	[Fetch]
 	public void FetchVoid(int id) {  }
 }
@@ -137,13 +130,6 @@ public class ShowcaseReadTests : FactoryTestBase<IShowcaseReadFactory>
 		var createStatic = await this.factory.CreateStatic(intList);
 		Assert.Equal(intList, createStatic.IntList);
 		Assert.Equal(intList, createStatic.InitProperty);
-	}
-
-	[Fact]
-	public async Task ShowcaseRead_CreateRemoteOnlyClientFail()
-	{
-		var intList = new List<int> { 1, 2, 3 };
-		await Assert.ThrowsAsync<InvalidOperationException>(() => this.factory.CreateRemoteClientFail(intList));
 	}
 
 	[Fact]

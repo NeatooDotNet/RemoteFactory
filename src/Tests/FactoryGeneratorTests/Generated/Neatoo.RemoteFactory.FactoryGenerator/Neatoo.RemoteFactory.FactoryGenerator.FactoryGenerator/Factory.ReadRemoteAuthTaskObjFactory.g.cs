@@ -13,137 +13,13 @@ using Xunit;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
-    public interface IReadRemoteAuthTaskObjFactory
+    public interface IReadRemoteAuthTaskObjFactory : IReadRemoteAuthTaskObjClientFactory
     {
-        Task<ReadRemoteAuthTaskObj?> CreateVoid(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTask(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskBoolFalse(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateVoidDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateBoolTrueDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateBoolFalseDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskBoolDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchVoid(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTask(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchVoidDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchBoolTrueDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchBoolFalseDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskBoolDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskBoolFalseDep(int? param);
-        Task<Authorized> CanCreateVoid(int? p);
-        Task<Authorized> CanCreateBool(int? p);
-        Task<Authorized> CanCreateTask(int? p);
-        Task<Authorized> CanCreateTaskBool(int? p);
-        Task<Authorized> CanCreateTaskBoolFalse(int? p);
-        Task<Authorized> CanCreateVoidDep(int? p);
-        Task<Authorized> CanCreateBoolTrueDep(int? p);
-        Task<Authorized> CanCreateBoolFalseDep(int? p);
-        Task<Authorized> CanCreateTaskDep(int? p);
-        Task<Authorized> CanCreateTaskBoolDep(int? p);
-        Task<Authorized> CanFetchVoid(int? p);
-        Task<Authorized> CanFetchBool(int? p);
-        Task<Authorized> CanFetchTask(int? p);
-        Task<Authorized> CanFetchTaskBool(int? p);
-        Task<Authorized> CanFetchVoidDep(int? p);
-        Task<Authorized> CanFetchBoolTrueDep(int? p);
-        Task<Authorized> CanFetchBoolFalseDep(int? p);
-        Task<Authorized> CanFetchTaskDep(int? p);
-        Task<Authorized> CanFetchTaskBoolDep(int? p);
-        Task<Authorized> CanFetchTaskBoolFalseDep(int? p);
     }
 
-    internal class ReadRemoteAuthTaskObjFactory : FactoryBase<ReadRemoteAuthTaskObj>, IReadRemoteAuthTaskObjFactory
+    internal class ReadRemoteAuthTaskObjFactory : ReadRemoteAuthTaskObjClientFactory, IReadRemoteAuthTaskObjFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateVoidDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolFalseDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateVoidDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolTrueDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolFalseDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchVoidDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchVoidDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolTrueDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolFalseDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolFalseDepDelegate(int? param);
-        public delegate Task<Authorized> CanCreateVoidDelegate(int? p);
-        public delegate Task<Authorized> CanCreateBoolDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskBoolDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskBoolFalseDelegate(int? p);
-        public delegate Task<Authorized> CanCreateVoidDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateBoolTrueDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateBoolFalseDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskBoolDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchVoidDelegate(int? p);
-        public delegate Task<Authorized> CanFetchBoolDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskBoolDelegate(int? p);
-        public delegate Task<Authorized> CanFetchVoidDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchBoolTrueDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchBoolFalseDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskBoolDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskBoolFalseDepDelegate(int? p);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public CreateVoidDelegate CreateVoidProperty { get; }
-        public CreateBoolDelegate CreateBoolProperty { get; }
-        public CreateTaskDelegate CreateTaskProperty { get; }
-        public CreateTaskBoolDelegate CreateTaskBoolProperty { get; }
-        public CreateTaskBoolFalseDelegate CreateTaskBoolFalseProperty { get; }
-        public CreateVoidDepDelegate CreateVoidDepProperty { get; }
-        public CreateBoolTrueDepDelegate CreateBoolTrueDepProperty { get; }
-        public CreateBoolFalseDepDelegate CreateBoolFalseDepProperty { get; }
-        public CreateTaskDepDelegate CreateTaskDepProperty { get; }
-        public CreateTaskBoolDepDelegate CreateTaskBoolDepProperty { get; }
-        public FetchVoidDelegate FetchVoidProperty { get; }
-        public FetchBoolDelegate FetchBoolProperty { get; }
-        public FetchTaskDelegate FetchTaskProperty { get; }
-        public FetchTaskBoolDelegate FetchTaskBoolProperty { get; }
-        public FetchVoidDepDelegate FetchVoidDepProperty { get; }
-        public FetchBoolTrueDepDelegate FetchBoolTrueDepProperty { get; }
-        public FetchBoolFalseDepDelegate FetchBoolFalseDepProperty { get; }
-        public FetchTaskDepDelegate FetchTaskDepProperty { get; }
-        public FetchTaskBoolDepDelegate FetchTaskBoolDepProperty { get; }
-        public FetchTaskBoolFalseDepDelegate FetchTaskBoolFalseDepProperty { get; }
-        public CanCreateVoidDelegate CanCreateVoidProperty { get; }
-        public CanCreateBoolDelegate CanCreateBoolProperty { get; }
-        public CanCreateTaskDelegate CanCreateTaskProperty { get; }
-        public CanCreateTaskBoolDelegate CanCreateTaskBoolProperty { get; }
-        public CanCreateTaskBoolFalseDelegate CanCreateTaskBoolFalseProperty { get; }
-        public CanCreateVoidDepDelegate CanCreateVoidDepProperty { get; }
-        public CanCreateBoolTrueDepDelegate CanCreateBoolTrueDepProperty { get; }
-        public CanCreateBoolFalseDepDelegate CanCreateBoolFalseDepProperty { get; }
-        public CanCreateTaskDepDelegate CanCreateTaskDepProperty { get; }
-        public CanCreateTaskBoolDepDelegate CanCreateTaskBoolDepProperty { get; }
-        public CanFetchVoidDelegate CanFetchVoidProperty { get; }
-        public CanFetchBoolDelegate CanFetchBoolProperty { get; }
-        public CanFetchTaskDelegate CanFetchTaskProperty { get; }
-        public CanFetchTaskBoolDelegate CanFetchTaskBoolProperty { get; }
-        public CanFetchVoidDepDelegate CanFetchVoidDepProperty { get; }
-        public CanFetchBoolTrueDepDelegate CanFetchBoolTrueDepProperty { get; }
-        public CanFetchBoolFalseDepDelegate CanFetchBoolFalseDepProperty { get; }
-        public CanFetchTaskDepDelegate CanFetchTaskDepProperty { get; }
-        public CanFetchTaskBoolDepDelegate CanFetchTaskBoolDepProperty { get; }
-        public CanFetchTaskBoolFalseDepDelegate CanFetchTaskBoolFalseDepProperty { get; }
-
         public ReadRemoteAuthTaskObjFactory(IServiceProvider serviceProvider, IFactoryCore<ReadRemoteAuthTaskObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -189,60 +65,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             CanFetchTaskBoolFalseDepProperty = LocalCanFetchTaskBoolFalseDep;
         }
 
-        public ReadRemoteAuthTaskObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<ReadRemoteAuthTaskObj> factoryCore) : base(factoryCore)
+        public ReadRemoteAuthTaskObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<ReadRemoteAuthTaskObj> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            CreateVoidProperty = RemoteCreateVoid;
-            CreateBoolProperty = RemoteCreateBool;
-            CreateTaskProperty = RemoteCreateTask;
-            CreateTaskBoolProperty = RemoteCreateTaskBool;
-            CreateTaskBoolFalseProperty = RemoteCreateTaskBoolFalse;
-            CreateVoidDepProperty = RemoteCreateVoidDep;
-            CreateBoolTrueDepProperty = RemoteCreateBoolTrueDep;
-            CreateBoolFalseDepProperty = RemoteCreateBoolFalseDep;
-            CreateTaskDepProperty = RemoteCreateTaskDep;
-            CreateTaskBoolDepProperty = RemoteCreateTaskBoolDep;
-            FetchVoidProperty = RemoteFetchVoid;
-            FetchBoolProperty = RemoteFetchBool;
-            FetchTaskProperty = RemoteFetchTask;
-            FetchTaskBoolProperty = RemoteFetchTaskBool;
-            FetchVoidDepProperty = RemoteFetchVoidDep;
-            FetchBoolTrueDepProperty = RemoteFetchBoolTrueDep;
-            FetchBoolFalseDepProperty = RemoteFetchBoolFalseDep;
-            FetchTaskDepProperty = RemoteFetchTaskDep;
-            FetchTaskBoolDepProperty = RemoteFetchTaskBoolDep;
-            FetchTaskBoolFalseDepProperty = RemoteFetchTaskBoolFalseDep;
-            CanCreateVoidProperty = RemoteCanCreateVoid;
-            CanCreateBoolProperty = RemoteCanCreateBool;
-            CanCreateTaskProperty = RemoteCanCreateTask;
-            CanCreateTaskBoolProperty = RemoteCanCreateTaskBool;
-            CanCreateTaskBoolFalseProperty = RemoteCanCreateTaskBoolFalse;
-            CanCreateVoidDepProperty = RemoteCanCreateVoidDep;
-            CanCreateBoolTrueDepProperty = RemoteCanCreateBoolTrueDep;
-            CanCreateBoolFalseDepProperty = RemoteCanCreateBoolFalseDep;
-            CanCreateTaskDepProperty = RemoteCanCreateTaskDep;
-            CanCreateTaskBoolDepProperty = RemoteCanCreateTaskBoolDep;
-            CanFetchVoidProperty = RemoteCanFetchVoid;
-            CanFetchBoolProperty = RemoteCanFetchBool;
-            CanFetchTaskProperty = RemoteCanFetchTask;
-            CanFetchTaskBoolProperty = RemoteCanFetchTaskBool;
-            CanFetchVoidDepProperty = RemoteCanFetchVoidDep;
-            CanFetchBoolTrueDepProperty = RemoteCanFetchBoolTrueDep;
-            CanFetchBoolFalseDepProperty = RemoteCanFetchBoolFalseDep;
-            CanFetchTaskDepProperty = RemoteCanFetchTaskDep;
-            CanFetchTaskBoolDepProperty = RemoteCanFetchTaskBoolDep;
-            CanFetchTaskBoolFalseDepProperty = RemoteCanFetchTaskBoolFalseDep;
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateVoid(int? param)
-        {
-            return (await CreateVoidProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateVoid(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateVoidDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateVoid(int? param)
@@ -350,16 +175,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBool(int? param)
-        {
-            return (await CreateBoolProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBool(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBool(int? param)
         {
             Authorized authorized;
@@ -463,16 +278,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool(param)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTask(int? param)
-        {
-            return (await CreateTaskProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTask(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTask(int? param)
@@ -580,16 +385,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBool(int? param)
-        {
-            return (await CreateTaskBoolProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBool(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBool(int? param)
         {
             Authorized authorized;
@@ -695,16 +490,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBoolFalse(int? param)
-        {
-            return (await CreateTaskBoolFalseProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBoolFalse(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolFalseDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBoolFalse(int? param)
         {
             Authorized authorized;
@@ -808,16 +593,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalse(param)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateVoidDep(int? param)
-        {
-            return (await CreateVoidDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateVoidDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateVoidDepDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateVoidDep(int? param)
@@ -926,16 +701,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBoolTrueDep(int? param)
-        {
-            return (await CreateBoolTrueDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBoolTrueDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolTrueDepDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBoolTrueDep(int? param)
         {
             Authorized authorized;
@@ -1040,16 +805,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(param, service)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBoolFalseDep(int? param)
-        {
-            return (await CreateBoolFalseDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBoolFalseDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolFalseDepDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBoolFalseDep(int? param)
@@ -1158,16 +913,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskDep(int? param)
-        {
-            return (await CreateTaskDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskDepDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskDep(int? param)
         {
             Authorized authorized;
@@ -1272,16 +1017,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(param, service)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBoolDep(int? param)
-        {
-            return (await CreateTaskBoolDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBoolDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolDepDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBoolDep(int? param)
@@ -1390,16 +1125,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchVoid(int? param)
-        {
-            return (await FetchVoidProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchVoid(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchVoidDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchVoid(int? param)
         {
             Authorized authorized;
@@ -1503,16 +1228,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid(param)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBool(int? param)
-        {
-            return (await FetchBoolProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBool(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBool(int? param)
@@ -1620,16 +1335,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTask(int? param)
-        {
-            return (await FetchTaskProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTask(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTask(int? param)
         {
             Authorized authorized;
@@ -1735,16 +1440,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBool(int? param)
-        {
-            return (await FetchTaskBoolProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBool(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBool(int? param)
         {
             Authorized authorized;
@@ -1848,16 +1543,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool(param)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchVoidDep(int? param)
-        {
-            return (await FetchVoidDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchVoidDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchVoidDepDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchVoidDep(int? param)
@@ -1966,16 +1651,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBoolTrueDep(int? param)
-        {
-            return (await FetchBoolTrueDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBoolTrueDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolTrueDepDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBoolTrueDep(int? param)
         {
             Authorized authorized;
@@ -2080,16 +1755,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(param, service)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBoolFalseDep(int? param)
-        {
-            return (await FetchBoolFalseDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBoolFalseDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolFalseDepDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBoolFalseDep(int? param)
@@ -2198,16 +1863,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskDep(int? param)
-        {
-            return (await FetchTaskDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskDepDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskDep(int? param)
         {
             Authorized authorized;
@@ -2312,16 +1967,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             var target = ServiceProvider.GetRequiredService<ReadRemoteAuthTaskObj>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(param, service)));
-        }
-
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBoolDep(int? param)
-        {
-            return (await FetchTaskBoolDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBoolDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolDepDelegate), [param]))!;
         }
 
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBoolDep(int? param)
@@ -2430,16 +2075,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBoolFalseDep(int? param)
-        {
-            return (await FetchTaskBoolFalseDepProperty(param)).Result;
-        }
-
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBoolFalseDep(int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolFalseDepDelegate), [param]))!;
-        }
-
         public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBoolFalseDep(int? param)
         {
             Authorized authorized;
@@ -2546,16 +2181,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolFalseDep(param, service)));
         }
 
-        public virtual Task<Authorized> CanCreateVoid(int? p)
-        {
-            return CanCreateVoidProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateVoid(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateVoidDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanCreateVoid(int? p)
         {
             Authorized authorized;
@@ -2658,16 +2283,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateBool(int? p)
-        {
-            return CanCreateBoolProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateBool(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanCreateBool(int? p)
@@ -2774,16 +2389,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTask(int? p)
-        {
-            return CanCreateTaskProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateTask(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanCreateTask(int? p)
         {
             Authorized authorized;
@@ -2886,16 +2491,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateTaskBool(int? p)
-        {
-            return CanCreateTaskBoolProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateTaskBool(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanCreateTaskBool(int? p)
@@ -3002,16 +2597,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTaskBoolFalse(int? p)
-        {
-            return CanCreateTaskBoolFalseProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateTaskBoolFalse(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolFalseDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanCreateTaskBoolFalse(int? p)
         {
             Authorized authorized;
@@ -3114,16 +2699,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateVoidDep(int? p)
-        {
-            return CanCreateVoidDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateVoidDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateVoidDepDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanCreateVoidDep(int? p)
@@ -3230,16 +2805,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateBoolTrueDep(int? p)
-        {
-            return CanCreateBoolTrueDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateBoolTrueDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolTrueDepDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanCreateBoolTrueDep(int? p)
         {
             Authorized authorized;
@@ -3342,16 +2907,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateBoolFalseDep(int? p)
-        {
-            return CanCreateBoolFalseDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateBoolFalseDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolFalseDepDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanCreateBoolFalseDep(int? p)
@@ -3458,16 +3013,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTaskDep(int? p)
-        {
-            return CanCreateTaskDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateTaskDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskDepDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanCreateTaskDep(int? p)
         {
             Authorized authorized;
@@ -3570,16 +3115,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateTaskBoolDep(int? p)
-        {
-            return CanCreateTaskBoolDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateTaskBoolDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolDepDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanCreateTaskBoolDep(int? p)
@@ -3686,16 +3221,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchVoid(int? p)
-        {
-            return CanFetchVoidProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchVoid(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchVoidDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanFetchVoid(int? p)
         {
             Authorized authorized;
@@ -3798,16 +3323,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchBool(int? p)
-        {
-            return CanFetchBoolProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchBool(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanFetchBool(int? p)
@@ -3914,16 +3429,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTask(int? p)
-        {
-            return CanFetchTaskProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchTask(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanFetchTask(int? p)
         {
             Authorized authorized;
@@ -4026,16 +3531,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchTaskBool(int? p)
-        {
-            return CanFetchTaskBoolProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchTaskBool(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanFetchTaskBool(int? p)
@@ -4142,16 +3637,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchVoidDep(int? p)
-        {
-            return CanFetchVoidDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchVoidDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchVoidDepDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanFetchVoidDep(int? p)
         {
             Authorized authorized;
@@ -4254,16 +3739,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchBoolTrueDep(int? p)
-        {
-            return CanFetchBoolTrueDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchBoolTrueDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolTrueDepDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanFetchBoolTrueDep(int? p)
@@ -4370,16 +3845,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchBoolFalseDep(int? p)
-        {
-            return CanFetchBoolFalseDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchBoolFalseDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolFalseDepDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanFetchBoolFalseDep(int? p)
         {
             Authorized authorized;
@@ -4482,16 +3947,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchTaskDep(int? p)
-        {
-            return CanFetchTaskDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchTaskDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskDepDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanFetchTaskDep(int? p)
@@ -4598,16 +4053,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTaskBoolDep(int? p)
-        {
-            return CanFetchTaskBoolDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchTaskBoolDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolDepDelegate), [p]))!;
-        }
-
         public async Task<Authorized> LocalCanFetchTaskBoolDep(int? p)
         {
             Authorized authorized;
@@ -4710,16 +4155,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchTaskBoolFalseDep(int? p)
-        {
-            return CanFetchTaskBoolFalseDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchTaskBoolFalseDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolFalseDepDelegate), [p]))!;
         }
 
         public async Task<Authorized> LocalCanFetchTaskBoolFalseDep(int? p)

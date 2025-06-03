@@ -15,6 +15,14 @@ public sealed class FactoryAttribute : Attribute
 	}
 }
 
+[System.AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+public sealed class FactoryAttribute<T> : Attribute
+{
+	public FactoryAttribute()
+	{
+	}
+}
+
 [System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
 public sealed class SuppressFactoryAttribute : Attribute
 {

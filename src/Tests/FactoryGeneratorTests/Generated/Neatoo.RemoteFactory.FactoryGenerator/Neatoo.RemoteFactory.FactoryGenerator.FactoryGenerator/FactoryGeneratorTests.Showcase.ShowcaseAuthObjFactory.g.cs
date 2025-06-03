@@ -24,12 +24,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         Authorized CanSave();
     }
 
-    internal class ShowcaseAuthObjFactory : FactorySaveBase<IShowcaseAuthObj>, IFactorySave<ShowcaseAuthObj>, IShowcaseAuthObjFactory
+    internal class ShowcaseAuthObjFactory : FactorySaveBase<IShowcaseAuthObj>, IShowcaseAuthObjFactory, IFactorySave<ShowcaseAuthObj>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public ShowcaseAuthObjFactory(IServiceProvider serviceProvider, IFactoryCore<IShowcaseAuthObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -38,7 +35,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         public ShowcaseAuthObjFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcaseAuthObj> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public virtual IShowcaseAuthObj? Fetch()
@@ -170,11 +166,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return LocalSave(target);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseAuthObj>.Save(ShowcaseAuthObj target)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
-        }
-
         public virtual Authorized<IShowcaseAuthObj> LocalSave(IShowcaseAuthObj target)
         {
             if (target.IsDeleted)
@@ -194,6 +185,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             {
                 return LocalUpdate(target);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseAuthObj>.Save(ShowcaseAuthObj target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target));
         }
 
         public virtual Authorized CanFetch()

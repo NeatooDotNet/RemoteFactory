@@ -12,51 +12,26 @@ using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
-    public interface IMixedWriteObjectFactory
+    public interface IMixedWriteObjectFactory : IMixedWriteObjectClientFactory
     {
         MixedWriteObject? SaveVoid(MixedWriteObject target);
         Task<MixedWriteObject?> SaveBool(MixedWriteObject target);
         Task<MixedWriteObject?> SaveTask(MixedWriteObject target);
         Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target);
         MixedWriteObject? SaveBoolFalseDep(MixedWriteObject target);
         Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target);
         Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target);
         Task<MixedWriteObject?> SaveTaskBoolFalseDep(MixedWriteObject target);
         MixedWriteObject? SaveVoid(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param);
         Task<MixedWriteObject?> SaveTask(MixedWriteObject target, int? param);
         Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, int? param);
         Task<MixedWriteObject?> SaveTaskBoolFalse(MixedWriteObject target, int? param);
         Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param);
     }
 
-    internal class MixedWriteObjectFactory : FactorySaveBase<MixedWriteObject>, IFactorySave<MixedWriteObject>, IMixedWriteObjectFactory
+    internal class MixedWriteObjectFactory : MixedWriteObjectClientFactory, IMixedWriteObjectFactory, IFactorySave<MixedWriteObject>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<MixedWriteObject?> SaveVoidDepDelegate(MixedWriteObject target);
-        public delegate Task<MixedWriteObject?> SaveBoolTrueDepDelegate(MixedWriteObject target);
-        public delegate Task<MixedWriteObject?> SaveBool1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveBoolTrueDep1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveBoolFalseDep1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveTaskDep1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveTaskBoolDep1Delegate(MixedWriteObject target, int? param);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public SaveVoidDepDelegate SaveVoidDepProperty { get; }
-        public SaveBoolTrueDepDelegate SaveBoolTrueDepProperty { get; }
-        public SaveBool1Delegate SaveBool1Property { get; }
-        public SaveBoolTrueDep1Delegate SaveBoolTrueDep1Property { get; }
-        public SaveBoolFalseDep1Delegate SaveBoolFalseDep1Property { get; }
-        public SaveTaskDep1Delegate SaveTaskDep1Property { get; }
-        public SaveTaskBoolDep1Delegate SaveTaskBoolDep1Property { get; }
-
         public MixedWriteObjectFactory(IServiceProvider serviceProvider, IFactoryCore<MixedWriteObject> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -69,17 +44,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             SaveTaskBoolDep1Property = LocalSaveTaskBoolDep1;
         }
 
-        public MixedWriteObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<MixedWriteObject> factoryCore) : base(factoryCore)
+        public MixedWriteObjectFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<MixedWriteObject> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            SaveVoidDepProperty = RemoteSaveVoidDep;
-            SaveBoolTrueDepProperty = RemoteSaveBoolTrueDep;
-            SaveBool1Property = RemoteSaveBool1;
-            SaveBoolTrueDep1Property = RemoteSaveBoolTrueDep1;
-            SaveBoolFalseDep1Property = RemoteSaveBoolFalseDep1;
-            SaveTaskDep1Property = RemoteSaveTaskDep1;
-            SaveTaskBoolDep1Property = RemoteSaveTaskBoolDep1;
         }
 
         public MixedWriteObject LocalInsertVoid(MixedWriteObject target)
@@ -480,11 +447,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return LocalSaveVoid(target);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<MixedWriteObject>.Save(MixedWriteObject target)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target));
-        }
-
         public virtual MixedWriteObject? LocalSaveVoid(MixedWriteObject target)
         {
             if (target.IsDeleted)
@@ -504,6 +466,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return LocalUpdateVoid(target);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<MixedWriteObject>.Save(MixedWriteObject target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target));
         }
 
         public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target)
@@ -584,16 +551,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target)
-        {
-            return SaveVoidDepProperty(target);
-        }
-
-        public virtual async Task<MixedWriteObject?> RemoteSaveVoidDep(MixedWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveVoidDepDelegate), [target]))!;
-        }
-
         public virtual async Task<MixedWriteObject?> LocalSaveVoidDep(MixedWriteObject target)
         {
             if (target.IsDeleted)
@@ -613,16 +570,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return LocalUpdateVoidDep(target);
             }
-        }
-
-        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target)
-        {
-            return SaveBoolTrueDepProperty(target);
-        }
-
-        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep(MixedWriteObject target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolTrueDepDelegate), [target]))!;
         }
 
         public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep(MixedWriteObject target)
@@ -776,16 +723,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param)
-        {
-            return SaveBool1Property(target, param);
-        }
-
-        public virtual async Task<MixedWriteObject?> RemoteSaveBool1(MixedWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBool1Delegate), [target, param]))!;
-        }
-
         public virtual async Task<MixedWriteObject?> LocalSaveBool1(MixedWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -911,16 +848,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param)
-        {
-            return SaveBoolTrueDep1Property(target, param);
-        }
-
-        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep1(MixedWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolTrueDep1Delegate), [target, param]))!;
-        }
-
         public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep1(MixedWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -940,16 +867,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateBoolTrueDep1(target, param);
             }
-        }
-
-        public virtual Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param)
-        {
-            return SaveBoolFalseDep1Property(target, param);
-        }
-
-        public virtual async Task<MixedWriteObject?> RemoteSaveBoolFalseDep1(MixedWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolFalseDep1Delegate), [target, param]))!;
         }
 
         public virtual async Task<MixedWriteObject?> LocalSaveBoolFalseDep1(MixedWriteObject target, int? param)
@@ -973,16 +890,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param)
-        {
-            return SaveTaskDep1Property(target, param);
-        }
-
-        public virtual async Task<MixedWriteObject?> RemoteSaveTaskDep1(MixedWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveTaskDep1Delegate), [target, param]))!;
-        }
-
         public virtual async Task<MixedWriteObject?> LocalSaveTaskDep1(MixedWriteObject target, int? param)
         {
             if (target.IsDeleted)
@@ -1002,16 +909,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateTaskDep1(target, param);
             }
-        }
-
-        public virtual Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param)
-        {
-            return SaveTaskBoolDep1Property(target, param);
-        }
-
-        public virtual async Task<MixedWriteObject?> RemoteSaveTaskBoolDep1(MixedWriteObject target, int? param)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveTaskBoolDep1Delegate), [target, param]))!;
         }
 
         public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolDep1(MixedWriteObject target, int? param)

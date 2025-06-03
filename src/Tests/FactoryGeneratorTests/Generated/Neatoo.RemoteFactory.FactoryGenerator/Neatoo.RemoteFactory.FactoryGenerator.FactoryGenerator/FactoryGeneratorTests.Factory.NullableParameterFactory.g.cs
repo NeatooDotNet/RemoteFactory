@@ -17,32 +17,23 @@ using Xunit;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
-    public interface INullableParameterFactory
+    public interface INullableParameterFactory : INullableParameterClientFactory
     {
         NullableParameter Create(int? p);
-        Task<NullableParameter> CreateRemote(int? p);
     }
 
-    internal class NullableParameterFactory : FactoryBase<NullableParameter>, INullableParameterFactory
+    internal class NullableParameterFactory : NullableParameterClientFactory, INullableParameterFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<NullableParameter> CreateRemoteDelegate(int? p);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public CreateRemoteDelegate CreateRemoteProperty { get; }
-
         public NullableParameterFactory(IServiceProvider serviceProvider, IFactoryCore<NullableParameter> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
             CreateRemoteProperty = LocalCreateRemote;
         }
 
-        public NullableParameterFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<NullableParameter> factoryCore) : base(factoryCore)
+        public NullableParameterFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<NullableParameter> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            CreateRemoteProperty = RemoteCreateRemote;
         }
 
         public virtual NullableParameter Create(int? p)
@@ -54,16 +45,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         {
             var target = ServiceProvider.GetRequiredService<NullableParameter>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(p));
-        }
-
-        public virtual Task<NullableParameter> CreateRemote(int? p)
-        {
-            return CreateRemoteProperty(p);
-        }
-
-        public virtual async Task<NullableParameter> RemoteCreateRemote(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<NullableParameter>(typeof(CreateRemoteDelegate), [p]))!;
         }
 
         public Task<NullableParameter> LocalCreateRemote(int? p)

@@ -395,20 +395,20 @@ public class ReadTests
 		}
 	}
 
-	private IServiceScope clientScope;
+	private IServiceScope serverScope;
 	private IServiceScope localScope;
 
 	public ReadTests()
 	{
 		var scopes = ClientServerContainers.Scopes();
-	  this.clientScope = scopes.client;
+	  this.serverScope = scopes.server;
 		this.localScope = scopes.local;
 	}
 
 	[Fact]
-	public Task ReadFactoryTest_Client()
+	public Task ReadFactoryTest_Server()
 	{
-		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadObjectFactory>();
+		var readFactory = this.serverScope.ServiceProvider.GetRequiredService<IReadObjectFactory>();
 		return this.ReadFactory(readFactory);
 	}
 

@@ -22,9 +22,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
     internal class BaseClassFactory : FactoryBase<BaseClass>, IBaseClassFactory
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        // Delegate Properties to provide Local or Remote fork in execution
         public BaseClassFactory(IServiceProvider serviceProvider, IFactoryCore<BaseClass> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
@@ -33,7 +30,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         public BaseClassFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<BaseClass> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

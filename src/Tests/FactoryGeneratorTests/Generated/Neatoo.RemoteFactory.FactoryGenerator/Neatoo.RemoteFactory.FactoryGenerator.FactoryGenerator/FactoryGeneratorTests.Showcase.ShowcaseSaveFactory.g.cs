@@ -15,36 +15,27 @@ using System.Threading.Tasks;
 */
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
-    public interface IShowcaseSaveFactory
+    public interface IShowcaseSaveFactory : IShowcaseSaveClientFactory
     {
         IShowcaseSave Create();
         IShowcaseSave? Save(IShowcaseSave target);
         IShowcaseSave SaveNoDeleteNotNullable(IShowcaseSave target);
         Task<IShowcaseSave?> SaveTask(IShowcaseSave target);
-        Task<IShowcaseSave> SaveRemote(IShowcaseSave target);
         IShowcaseSave? SaveMatchedByParamType(IShowcaseSave target, int a);
     }
 
-    internal class ShowcaseSaveFactory : FactorySaveBase<IShowcaseSave>, IFactorySave<ShowcaseSave>, IShowcaseSaveFactory
+    internal class ShowcaseSaveFactory : ShowcaseSaveClientFactory, IShowcaseSaveFactory, IFactorySave<ShowcaseSave>
     {
         private readonly IServiceProvider ServiceProvider;
-        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
-        // Delegates
-        public delegate Task<IShowcaseSave> SaveRemoteDelegate(IShowcaseSave target);
-        // Delegate Properties to provide Local or Remote fork in execution
-        public SaveRemoteDelegate SaveRemoteProperty { get; }
-
         public ShowcaseSaveFactory(IServiceProvider serviceProvider, IFactoryCore<IShowcaseSave> factoryCore) : base(factoryCore)
         {
             this.ServiceProvider = serviceProvider;
             SaveRemoteProperty = LocalSaveRemote;
         }
 
-        public ShowcaseSaveFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcaseSave> factoryCore) : base(factoryCore)
+        public ShowcaseSaveFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<IShowcaseSave> factoryCore) : base(remoteMethodDelegate, factoryCore)
         {
             this.ServiceProvider = serviceProvider;
-            this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-            SaveRemoteProperty = RemoteSaveRemote;
         }
 
         public virtual IShowcaseSave Create()
@@ -145,11 +136,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return LocalSave(target);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseSave>.Save(ShowcaseSave target)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
-        }
-
         public virtual IShowcaseSave? LocalSave(IShowcaseSave target)
         {
             if (target.IsDeleted)
@@ -169,6 +155,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             {
                 return LocalUpdate(target);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseSave>.Save(ShowcaseSave target)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target));
         }
 
         public virtual IShowcaseSave SaveNoDeleteNotNullable(IShowcaseSave target)
@@ -216,16 +207,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             {
                 return await LocalUpdateTask(target);
             }
-        }
-
-        public virtual Task<IShowcaseSave> SaveRemote(IShowcaseSave target)
-        {
-            return SaveRemoteProperty(target);
-        }
-
-        public virtual async Task<IShowcaseSave> RemoteSaveRemote(IShowcaseSave target)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<IShowcaseSave>(typeof(SaveRemoteDelegate), [target]))!;
         }
 
         public virtual async Task<IShowcaseSave> LocalSaveRemote(IShowcaseSave target)

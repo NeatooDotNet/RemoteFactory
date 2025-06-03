@@ -36,7 +36,7 @@ public class ExecuteTests
 
    public ExecuteTests()
 	{
-		this.scope = ClientServerContainers.Scopes().client;
+		this.scope = ClientServerContainers.Scopes().server;
 	}
 
 
