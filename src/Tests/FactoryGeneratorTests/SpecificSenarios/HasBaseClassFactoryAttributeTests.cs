@@ -10,13 +10,15 @@ public class HasBaseClassFactoryAttributeTestsBase
 {
 	[Factory]
 	public class BaseClass
-	 {
-		  public int BaseProperty { get; set; }
-	 }
-	 public partial class DerivedClass : BaseClass
-	 {
-		  public int DerivedProperty { get; set; }
-	 }
+	{
+		public int BaseProperty { get; set; }
+	}
+
+	[Factory]
+	public partial class DerivedClass : BaseClass
+	{
+		public int DerivedProperty { get; set; }
+	}
 }
 
 public class HasBaseClassFactoryAttributeTests

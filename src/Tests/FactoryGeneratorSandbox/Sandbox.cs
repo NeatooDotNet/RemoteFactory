@@ -77,7 +77,7 @@ public void Update(){
 ";
 
 		// Pass the source code to our helper and snapshot test the output
-		TestHelper.Verify(source, source2);
+		TestHelper.Verify<FactoryGenerator>(source, source2);
 	}
 
 	[Fact]
@@ -121,7 +121,7 @@ public static Obj Create() {
 ";
 
 		// Pass the source code to our helper and snapshot test the output
-		TestHelper.Verify(source, source2);
+		TestHelper.Verify<FactoryGenerator>(source, source2);
 	}
 
 
@@ -155,7 +155,7 @@ public int InsertMethod(){}
 
 
 		// Pass the source code to our helper and snapshot test the output
-		TestHelper.Verify(source);
+		TestHelper.Verify<FactoryGenerator>(source);
 	}
 
 	[Fact]
@@ -202,7 +202,7 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify(source);
+		TestHelper.Verify<FactoryGenerator>(source);
 	}
 
 	private sealed class AuthedClass
@@ -239,7 +239,7 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify(source);
+		TestHelper.Verify<FactoryGenerator>(source);
 	}
 
 
@@ -271,7 +271,7 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify(source);
+		TestHelper.Verify<FactoryGenerator>(source);
 	}
 
 	[Fact]
@@ -303,6 +303,41 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify(source);
+		TestHelper.Verify<FactoryGenerator>(source);
+	}
+
+	[Fact]
+	public void MapperClass()
+	{
+		// The source code to test
+		var source = @"
+using Neatoo.RemoteFactory;
+using Neatoo.RemoteFactory.AspNetCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
+
+namespace FactoryGeneratorSandbox;
+
+public class MapperAbstractGenericDto
+{
+	public int Value { get; set; }
+	public int Number { get; set; }
+}
+
+[Factory]
+public abstract partial class MapperAbstractGenericObj<T>
+{
+	public int Value { get; set; }
+
+	public int Number { get; set; }
+
+	public partial void MapTo(MapperAbstractGenericDto mapperIgnoreAttributeDto);
+	public partial void MapFrom(MapperAbstractGenericDto mapperIgnoreAttributeDto);
+}
+
+
+";
+
+		TestHelper.Verify<MapperGenerator>(source);
 	}
 }
