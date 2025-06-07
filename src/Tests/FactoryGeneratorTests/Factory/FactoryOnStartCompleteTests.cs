@@ -9,6 +9,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 
 public class FactoryOnStartCompleteTests : FactoryTestBase<IFactoryOnStartCompleteObjFactory>
 {
+	[Factory]
 	public class FactoryOnStartCompleteObj : ReadObject, IFactoryOnStart, IFactoryOnStartAsync, IFactoryOnComplete, IFactoryOnCompleteAsync
 	{
 		[Create]
