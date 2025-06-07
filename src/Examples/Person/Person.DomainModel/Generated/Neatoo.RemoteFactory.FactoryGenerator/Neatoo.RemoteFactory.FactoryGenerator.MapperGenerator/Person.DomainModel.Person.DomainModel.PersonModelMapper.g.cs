@@ -28,8 +28,8 @@ internal partial class PersonModel
 
     public partial void MapTo(PersonEntity personEntity)
     {
-        personEntity.FirstName = this.FirstName ?? throw new NullReferenceException("PersonModel.FirstName");
-        personEntity.LastName = this.LastName ?? throw new NullReferenceException("PersonModel.LastName");
+        personEntity.FirstName = this.FirstName ?? throw new NullReferenceException("Person.DomainModel.PersonModel.FirstName");
+        personEntity.LastName = this.LastName ?? throw new NullReferenceException("Person.DomainModel.PersonModel.LastName");
         personEntity.Email = this.Email;
         personEntity.Phone = this.Phone;
         personEntity.Notes = this.Notes;

@@ -10,8 +10,8 @@ namespace Neatoo.RemoteFactory.FactoryGenerator;
 
 public static class TestHelper
 {
-    public static void Verify(string source, string? source2 = null)
-    {
+    public static void Verify<T>(string source, string? source2 = null) where T : IIncrementalGenerator, new()
+	{
         // Parse the provided string into a C# syntax tree
         var syntaxTrees = new List<SyntaxTree>() { CSharpSyntaxTree.ParseText(source), CSharpSyntaxTree.ParseText(SourceAttributes)};
 
@@ -38,7 +38,7 @@ public static class TestHelper
 				}));
 
 		// Create an instance of our EnumGenerator incremental source generator
-		var generator = new FactoryGenerator();
+		var generator = new T();
 
         // The GeneratorDriver is used to run our generator against a compilation
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);

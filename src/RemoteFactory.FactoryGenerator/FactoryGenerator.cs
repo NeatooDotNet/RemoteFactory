@@ -72,6 +72,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	private static List<FactoryOperation> factorySaveOperationAttributes = [.. Enum.GetValues(typeof(FactoryOperation)).Cast<FactoryOperation>().Where(v => ((int)v & (int)AuthorizeFactoryOperation.Write) != 0)];
 
+
 	internal record TypeInfo
 	{
 		public TypeInfo(TypeDeclarationSyntax syntax, INamedTypeSymbol symbol, SemanticModel semanticModel)
@@ -138,9 +139,12 @@ public class FactoryGenerator : IIncrementalGenerator
 		public IReadOnlyList<string> UsingStatements { get; } = [];
 		public List<TypeFactoryMethodInfo> FactoryMethods { get; set; } = [];
 		public List<TypeAuthMethodInfo> AuthMethods { get; set; } = [];
-
+	
 		public string SafeHintName { get; }
 	}
+
+
+
 
 	internal record TypeFactoryMethodInfo : MethodInfo
 	{
@@ -344,6 +348,8 @@ public class FactoryGenerator : IIncrementalGenerator
 		}
 
 	}
+
+
 
 	public record AspAuthorizeInfo
 	{

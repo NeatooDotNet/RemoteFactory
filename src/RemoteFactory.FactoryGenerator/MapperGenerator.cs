@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
 using System.Text;
 
 namespace Neatoo.RemoteFactory.FactoryGenerator;
@@ -9,221 +10,256 @@ namespace Neatoo.RemoteFactory.FactoryGenerator;
 [Generator(LanguageNames.CSharp)]
 public class MapperGenerator : IIncrementalGenerator
 {
-	public void Initialize(IncrementalGeneratorInitializationContext context) =>
-			// Register the source output
-			context.RegisterSourceOutput(context.SyntaxProvider.CreateSyntaxProvider(
-				predicate: static (s, _) => IsSyntaxTargetForGeneration(s),
-				transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
-				.Where(static m => m is not null),
-				static (ctx, source) => Execute(ctx, source!.Value.classDeclaration, source.Value.semanticModel));
+	public void Initialize(IncrementalGeneratorInitializationContext context)
+	{
+
+		var classesToGenerate = context.SyntaxProvider.ForAttributeWithMetadataName("Neatoo.RemoteFactory.FactoryAttribute",
+			predicate: static (s, _) => IsSyntaxTargetForGeneration(s),
+			transform: static (ctx, _) =>
+			{
+				var classDeclaration = (ClassDeclarationSyntax)ctx.TargetNode;
+				var semanticModel = ctx.SemanticModel;
+				return Transform(classDeclaration, semanticModel);
+			});
+
+		context.RegisterSourceOutput(classesToGenerate, static (spc, typeInfo) =>
+		{
+			if (typeInfo == null)
+			{
+				return;
+			}
+			Execute(spc, typeInfo);
+		});
+	}
 
 	public static bool IsSyntaxTargetForGeneration(SyntaxNode node) => node is ClassDeclarationSyntax classDeclarationSyntax
-				&& !(classDeclarationSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.Name.ToString() == "SuppressFactory"));
+				&& !(classDeclarationSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.Name.ToString() == "SuppressFactory"))
+				&& classDeclarationSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword))
+				&& classDeclarationSyntax.Members.Any(m => m is MethodDeclarationSyntax methodDeclarationSyntax
+					&& (methodDeclarationSyntax.Identifier.Text == "MapTo" || methodDeclarationSyntax.Identifier.Text == "MapFrom")
+					&& methodDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword));
 
-	public static (ClassDeclarationSyntax classDeclaration, SemanticModel semanticModel)? GetSemanticTargetForGeneration(GeneratorSyntaxContext context)
+	private static MapperInfo? Transform(ClassDeclarationSyntax syntax, SemanticModel semanticModel)
 	{
-		var classDeclaration = (ClassDeclarationSyntax)context.Node;
-
-		var classNamedTypeSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-
-		if (classNamedTypeSymbol == null)
+		if (semanticModel.GetDeclaredSymbol(syntax) is INamedTypeSymbol symbol)
 		{
-			return null;
+			return new MapperInfo(syntax, symbol, semanticModel);
 		}
 
-		if (ClassOrBaseClassHasAttribute(classNamedTypeSymbol, "SuppressFactory") != null)
-		{
-			return null;
-		}
+		return null;
+	}
 
-		if (ClassOrBaseClassHasAttribute(classNamedTypeSymbol, "FactoryAttribute") != null)
+	internal record MapperInfo
+	{
+		public MapperInfo(TypeDeclarationSyntax syntax, INamedTypeSymbol symbol, SemanticModel semanticModel)
 		{
-			if (classDeclaration != null && classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+
+			this.Type = new(symbol);
+			this.Signature = syntax.ToFullString().Substring(syntax.Modifiers.FullSpan.Start - syntax.FullSpan.Start, syntax.Identifier.FullSpan.End - syntax.Modifiers.FullSpan.Start);
+			this.Namespace = FactoryGenerator.FindNamespace(syntax) ?? "MissingNamespace";
+			this.SafeHintName = FactoryGenerator.SafeHintName(semanticModel, $"{this.Namespace}.{this.Type.Name}");
+
+			List<string> usingStatements = new();
+			FactoryGenerator.UsingStatements(usingStatements, syntax, semanticModel, this.Namespace, []);
+			this.UsingStatements = usingStatements;
+
+			if (syntax.TypeParameterList != null)
 			{
-				return (classDeclaration, context.SemanticModel);
+				this.Signature = syntax.ToFullString().Substring(syntax.Modifiers.FullSpan.Start - syntax.FullSpan.Start, syntax.TypeParameterList.FullSpan.End - syntax.Modifiers.FullSpan.Start);
+			}
+
+			var methods = syntax.Members.OfType<MethodDeclarationSyntax>()
+				.Where(m => m.Modifiers.Any(SyntaxKind.PartialKeyword) && (m.Identifier.Text == "MapTo" || m.Identifier.Text == "MapFrom"))
+				.Select(m => new { Syntax = m, Symbol = semanticModel.GetDeclaredSymbol(m) as IMethodSymbol })
+				.Where(m => m.Symbol != null)
+				.ToList();
+
+			foreach (var method in methods)
+			{
+				var parameterSymbol = method.Symbol!.Parameters.SingleOrDefault();
+
+				if (parameterSymbol == null)
+				{
+					continue;
+				}
+
+				this.MethodInfos.Add(new MapperMethodInfo(method.Syntax, parameterSymbol.Type));
 			}
 		}
 
-		return null;
+		public MapperTypeInfo Type { get; }
+		public string Signature { get; }
+		public string Namespace { get; }
+		public string SafeHintName { get; }
+		public IReadOnlyList<string> UsingStatements { get; } = [];
+		public List<MapperMethodInfo> MethodInfos { get; } = [];
 	}
 
-	private static AttributeData? ClassOrBaseClassHasAttribute(INamedTypeSymbol namedTypeSymbol, string attributeName)
+
+	internal record MapperTypeInfo
 	{
-		var attribute = namedTypeSymbol.GetAttributes().FirstOrDefault(a => (a.AttributeClass?.Name ?? "") == attributeName);
+		public MapperTypeInfo(ITypeSymbol symbol)
+		{
+			this.Properties = GetPropertiesRecursive(symbol).Select(p => new PropertyInfo(p)).ToList();
+			this.Name = symbol.Name;
+		}
+		public string Name { get; }
+		public List<PropertyInfo> Properties { get; set; } = [];
 
-		if (attribute != null)
+		private static List<IPropertySymbol> GetPropertiesRecursive(ITypeSymbol? typeSymbol)
 		{
-			return attribute;
+			var properties = typeSymbol?.GetMembers().OfType<IPropertySymbol>().ToList() ?? [];
+			if (typeSymbol?.BaseType != null)
+			{
+				properties.AddRange(GetPropertiesRecursive(typeSymbol.BaseType));
+			}
+			return properties;
 		}
-		if (namedTypeSymbol.BaseType != null)
-		{
-			return ClassOrBaseClassHasAttribute(namedTypeSymbol.BaseType, attributeName);
-		}
-		return null;
 	}
 
-	private static void Execute(SourceProductionContext context, ClassDeclarationSyntax classDeclarationSyntax, SemanticModel semanticModel)
+	internal sealed class MapperMethodInfo
+	{
+		public MapperMethodInfo(MethodDeclarationSyntax syntax, ITypeSymbol toFromType)
+		{
+			this.ToFromType = new MapperTypeInfo(toFromType);
+			this.Signature = syntax.ToString().TrimEnd(';');
+			this.MapTo = syntax.Identifier.Text == "MapTo";
+			this.MapFrom = syntax.Identifier.Text == "MapFrom";
+			this.ParameterIdentifier = syntax.ParameterList.Parameters.Single().Identifier.Text;
+		}
+
+		public MapperTypeInfo ToFromType { get; }
+		public string ParameterIdentifier { get; }
+		public string Signature { get; }
+		public bool MapTo { get; }
+		public bool MapFrom { get; }
+	}
+
+
+	internal sealed record PropertyInfo
+	{
+		public PropertyInfo(IPropertySymbol propertySymbol)
+		{
+			this.Name = propertySymbol.Name;
+			this.Type = propertySymbol.Type.ToDisplayString().TrimEnd('?');
+			this.IsNullable = propertySymbol.Type.NullableAnnotation == NullableAnnotation.Annotated;
+			this.IsReadOnly = propertySymbol.IsReadOnly;
+			this.HasMapperIgnore = propertySymbol.GetAttributes().Any(a => a.AttributeClass?.Name == "MapperIgnoreAttribute");
+		}
+
+		public string Name { get; }
+		public string Type { get; }
+		public bool IsNullable { get; }
+		public bool IsReadOnly { get; }
+		public bool HasMapperIgnore { get; }
+	}
+
+
+	private static void Execute(SourceProductionContext context, MapperInfo inType)
 	{
 		List<string> messages = [];
-		List<string> usingDirectives = [];
 
 		var mapperMethods = new StringBuilder();
 		try
 		{
-			var classSymbol = semanticModel.GetDeclaredSymbol(classDeclarationSyntax);
-			var className = classDeclarationSyntax.Identifier.Text;
-			if (classSymbol == null)
-			{
-				messages.Add("Class symbol is null");
-			}
-
-			var namespaceName = FactoryGenerator.FindNamespace(classDeclarationSyntax) ?? "MissingNamespace";
-
-			FactoryGenerator.UsingStatements(usingDirectives, classDeclarationSyntax, semanticModel, namespaceName, messages);
-
-			var classProperties = GetPropertiesRecursive(classSymbol);
-
-			classProperties.ForEach(p =>
-			{
-				messages.Add($"Class Property {p.Name} {p.Type} found");
-			});
-
-			var classMethods = classSymbol?.GetMembers().OfType<IMethodSymbol>().ToList() ?? [];
-
-			foreach (var classMethod in classMethods)
+			foreach (var method in inType.MethodInfos)
 			{
 				var methodBuilder = new StringBuilder();
 
-				if (classMethod.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax classSyntax)
+				methodBuilder.AppendLine(method.Signature);
+				methodBuilder.AppendLine("{");
+
+				var propertiesMatched = false;
+
+				foreach (var toFromProperty in method.ToFromType.Properties)
 				{
-					var mapTo = classSyntax.Identifier.Text == "MapTo";
-					var mapFrom = classSyntax.Identifier.Text == "MapFrom";
-					if ((mapTo || mapFrom) && classSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+					var inTypeProperty = inType.Type.Properties.FirstOrDefault(p => p.Name == toFromProperty.Name);
+
+					if (inTypeProperty != null)
 					{
-						messages.Add($"Method {classMethod.Name} is a Match");
-
-						methodBuilder.AppendLine($"{classSyntax.ToFullString().Trim().TrimEnd(';')}");
-						methodBuilder.AppendLine("{");
-
-						var parameterSymbol = classMethod.Parameters.SingleOrDefault();
-						if (parameterSymbol == null)
+						if (inTypeProperty.HasMapperIgnore)
 						{
-							messages.Add($"Single parameter not found for {classMethod.Name}");
-							break;
-						}
-						else
-						{
-							messages.Add($"Parameter {parameterSymbol.Name} {parameterSymbol.Type} found for {classMethod.Name}");
+							messages.Add($"Property {inTypeProperty.Name} ignored has MapperIgnore attribute");
+							continue;
 						}
 
-						var parameterSyntax = classSyntax.ParameterList.Parameters.First();
-						var parameterIdentifier = parameterSyntax.Identifier.Text;
+						propertiesMatched = true;
 
-						var parameterProperties = GetPropertiesRecursive(parameterSymbol?.Type as INamedTypeSymbol);
-						parameterProperties.ForEach(p =>
+						var typesMatch = toFromProperty.Type == inTypeProperty.Type;
+
+						if (!typesMatch)
 						{
-							messages.Add($"Parameter Property {p.Name} {p.Type} found");
-						});
+							messages.Add($"Warning: Property {toFromProperty.Name}'s type of {toFromProperty.Type} does not match {inTypeProperty.Type}");
+						}
 
-						var propertiesMatched = false;
+						var nullException = string.Empty;
+						var typeCast = string.Empty;
 
-						foreach (var parameterProperty in parameterProperties)
+						if (method.MapTo)
 						{
-							var classProperty = classProperties.FirstOrDefault(p => p.Name == parameterProperty.Name);
-
-							if (classProperty != null)
+							if (inTypeProperty.IsNullable && !toFromProperty.IsNullable)
 							{
-								if (classProperty.GetAttributes().Any(a => a.AttributeClass?.Name == "MapperIgnoreAttribute"))
-								{
-									messages.Add($"Property {classProperty.ToDisplayString()} ignored has MapperIgnore attribute");
-									continue;
-								}
-
-								propertiesMatched = true;
-
-								var typesMatch = classProperty.Type.ToDisplayString().Trim('?') == parameterProperty.Type.ToDisplayString().Trim('?');
-								if (!typesMatch)
-								{
-									messages.Add($"Warning: Property {classProperty.Name}'s type of {classProperty.Type.ToDisplayString()} does not match {parameterProperty.Type.ToDisplayString()}");
-								}
-
-								var nullException = string.Empty;
-								var typeCast = string.Empty;
-
-								if (mapTo)
-								{
-									if (classProperty.NullableAnnotation == NullableAnnotation.Annotated
-											&& parameterProperty.NullableAnnotation != NullableAnnotation.Annotated)
-									{
-										nullException = $"?? throw new NullReferenceException(\"{classSymbol?.ToDisplayString()}.{classProperty.Name}\")";
-									}
-
-									if (!typesMatch)
-									{
-										typeCast = $"({parameterProperty.Type.ToDisplayString()}{(nullException.Length > 0 ? "?" : "")}) ";
-									}
-
-									methodBuilder.AppendLine($"{parameterIdentifier}.{parameterProperty.Name} = {typeCast} this.{classProperty.Name}{nullException};");
-								}
-								else if (mapFrom)
-								{
-									if (parameterProperty.NullableAnnotation == NullableAnnotation.Annotated
-											&& classProperty.NullableAnnotation != NullableAnnotation.Annotated)
-									{
-										nullException = $"?? throw new NullReferenceException(\"{parameterSymbol?.Type.ToDisplayString()}.{parameterProperty.Name}\")";
-									}
-
-									if (!typesMatch)
-									{
-										typeCast = $"({classProperty.Type.ToDisplayString()}{(nullException.Length > 0 ? "?" : "")}) ";
-									}
-
-									methodBuilder.Append($"this.{classProperty.Name} = {typeCast} {parameterIdentifier}.{parameterProperty.Name}{nullException};");
-								}
+								nullException = $"?? throw new NullReferenceException(\"{inType.Type.Name}.{inTypeProperty.Name}\")";
 							}
+
+							if (!typesMatch)
+							{
+								typeCast = $"({toFromProperty.Type}{(nullException.Length > 0 ? "?" : "")}) ";
+							}
+
+							methodBuilder.AppendLine($"{method.ParameterIdentifier}.{toFromProperty.Name} = {typeCast} this.{inTypeProperty.Name}{nullException};");
 						}
-
-						methodBuilder.AppendLine("}");
-
-						if (propertiesMatched)
+						else if (method.MapFrom)
 						{
-							mapperMethods.Append(methodBuilder);
+							if (!inTypeProperty.IsNullable && toFromProperty.IsNullable)
+							{
+								nullException = $"?? throw new NullReferenceException(\"{method.ToFromType.Name}.{toFromProperty.Name}\")";
+							}
+
+							if (!typesMatch)
+							{
+								typeCast = $"({inTypeProperty.Type}{(inTypeProperty.IsNullable ? "?" : "")}) ";
+							}
+
+							methodBuilder.Append($"this.{inTypeProperty.Name} = {typeCast} {method.ParameterIdentifier}.{toFromProperty.Name}{nullException};");
 						}
 					}
 				}
+
+				methodBuilder.AppendLine("}");
+
+				if (propertiesMatched)
+				{
+					mapperMethods.Append(methodBuilder);
+				}
+
 			}
 
-			var classDeclaration = classDeclarationSyntax.ToFullString().Substring(classDeclarationSyntax.Modifiers.FullSpan.Start - classDeclarationSyntax.FullSpan.Start, classDeclarationSyntax.Identifier.FullSpan.End - classDeclarationSyntax.Modifiers.FullSpan.Start);
-
-			if (classDeclarationSyntax.TypeParameterList != null)
-			{
-				classDeclaration = classDeclarationSyntax.ToFullString().Substring(classDeclarationSyntax.Modifiers.FullSpan.Start - classDeclarationSyntax.FullSpan.Start, classDeclarationSyntax.TypeParameterList.FullSpan.End - classDeclarationSyntax.Modifiers.FullSpan.Start);
-			}
 
 			if (mapperMethods.Length > 0)
 			{
 				var source = $@"
-						  #nullable enable
+									  #nullable enable
 
-                    using Neatoo.RemoteFactory.Internal;
-{FactoryGenerator.WithStringBuilder(usingDirectives)}
-namespace {namespaceName};
+			                    using Neatoo.RemoteFactory.Internal;
+			{FactoryGenerator.WithStringBuilder(inType.UsingStatements)}
+			namespace {inType.Namespace};
 
-/*
-READONLY CODE DO NOT MODIFY!!
-This code is generated by the Neatoo.RemoteFactory.MapperGenerator.
-*/
+			/*
+			READONLY CODE DO NOT MODIFY!!
+			This code is generated by the Neatoo.RemoteFactory.MapperGenerator.
+			*/
 
-{classDeclaration}
-{{
-{mapperMethods}
-}}
+			{inType.Signature}
+			{{
+			{mapperMethods}
+			}}
 
 
-";
+			";
 				source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().SyntaxTree.GetText().ToString();
 
-				context.AddSource($"{FactoryGenerator.SafeHintName(semanticModel, $"{namespaceName}.{className}")}Mapper.g.cs", source);
+				context.AddSource($"{inType.SafeHintName}Mapper.g.cs", source);
 			}
 		}
 
@@ -233,13 +269,5 @@ This code is generated by the Neatoo.RemoteFactory.MapperGenerator.
 		}
 	}
 
-	public static List<IPropertySymbol> GetPropertiesRecursive(INamedTypeSymbol? classNamedSymbol)
-	{
-		var properties = classNamedSymbol?.GetMembers().OfType<IPropertySymbol>().ToList() ?? [];
-		if (classNamedSymbol?.BaseType != null)
-		{
-			properties.AddRange(GetPropertiesRecursive(classNamedSymbol.BaseType));
-		}
-		return properties;
-	}
+
 }
