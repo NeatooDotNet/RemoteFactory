@@ -132,6 +132,7 @@
     <PackageVersion Include="StackExchange.Redis" Version="2.8.24" />
     <PackageVersion Include="Stateless" Version="5.17.0" />
     <PackageVersion Include="Stripe.net" Version="47.4.0" />
+    <PackageVersion Include="StronglyTypedId" Version="0.2.1" />
     <PackageVersion Include="Sylvan.Data.Csv" Version="1.4.0" />
     <PackageVersion Include="System.Interactive.Async" Version="6.0.1" />
     <PackageVersion Include="System.IO.Abstractions" Version="22.0.10" />

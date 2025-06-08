@@ -5,7 +5,7 @@
 		<AssemblyName>Neatoo.RemoteFactory</AssemblyName>
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 		<DebugType>embedded</DebugType>
-		<Description>A 2-Tier Client/Server Data Mapper for .NET Domain Models powered by Roslyn source generators</Description>
+		<Description>A 3-Tier Client/Server Data Mapper for .NET Domain Models powered by Roslyn source generators</Description>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 		<EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>

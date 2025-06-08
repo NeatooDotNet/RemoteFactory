@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios;
 public class BugNoCanCreateFetch : FactoryTestBase<IBugNoCanCreateFetchObjFactory>
 {
-
    public class BugNoCanCreateFetchAuth
 	{
 		[AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
@@ -39,7 +38,6 @@ public class BugNoCanCreateFetch : FactoryTestBase<IBugNoCanCreateFetchObjFactor
 		}
 	}
 
-
 	[Fact]
 	public void BugNoCanCreateFetchTest()
 	{
@@ -47,5 +45,4 @@ public class BugNoCanCreateFetch : FactoryTestBase<IBugNoCanCreateFetchObjFactor
 		var result = this.factory.CanCreate();
 		Assert.True(result, "CanCreate should be true");
 	}
-
 }

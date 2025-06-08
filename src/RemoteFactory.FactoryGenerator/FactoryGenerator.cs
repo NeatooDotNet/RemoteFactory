@@ -110,7 +110,7 @@ public class FactoryGenerator : IIncrementalGenerator
 																 "using Microsoft.Extensions.DependencyInjection;" };
 
 			UsingStatements(usingStatements, syntax, semanticModel, this.Namespace, debugMessages);
-			this.UsingStatements = usingStatements.AsReadOnly();
+			this.UsingStatements = new EquatableArray<string>([.. usingStatements.Distinct()]);
 
 			var methodSymbols = GetMethodsRecursive(symbol);
 
@@ -123,7 +123,7 @@ public class FactoryGenerator : IIncrementalGenerator
 				defaultFactoryOperations.Add(FactoryOperation.Execute);
 			}
 
-			this.FactoryMethods = TypeFactoryMethods(serviceSymbol, methodSymbols, defaultFactoryOperations, this.AuthMethods, debugMessages);
+			this.FactoryMethods = new EquatableArray<TypeFactoryMethodInfo>([.. TypeFactoryMethods(serviceSymbol, methodSymbols, defaultFactoryOperations, this.AuthMethods.ToList(), debugMessages)]);
 
 			this.SafeHintName = SafeHintName(semanticModel, $"{this.Namespace}.{this.Name}");
 		}
@@ -136,9 +136,9 @@ public class FactoryGenerator : IIncrementalGenerator
 		public string ServiceTypeName { get; }
 		public string ImplementationTypeName { get; }
 		public string Namespace { get; }
-		public IReadOnlyList<string> UsingStatements { get; } = [];
-		public List<TypeFactoryMethodInfo> FactoryMethods { get; set; } = [];
-		public List<TypeAuthMethodInfo> AuthMethods { get; set; } = [];
+		public EquatableArray<string> UsingStatements { get; } = [];
+		public EquatableArray<TypeFactoryMethodInfo> FactoryMethods { get; set; } = [];
+		public EquatableArray<TypeAuthMethodInfo> AuthMethods { get; set; } = [];
 	
 		public string SafeHintName { get; }
 	}
@@ -167,16 +167,19 @@ public class FactoryGenerator : IIncrementalGenerator
 				this.IsNullable = false;
 			}
 
+			List<TypeAuthMethodInfo> authMethodInfos = [];
+
 			foreach (var authMethod in authMethods)
 			{
 				if (((int?)authMethod.AuthorizeFactoryOperation & (int)this.FactoryOperation) != 0)
 				{
-					this.AuthMethodInfos.Add(authMethod);
+					authMethodInfos.Add(authMethod);
 				}
 			}
+			this.AuthMethodInfos = new EquatableArray<TypeAuthMethodInfo>([.. authMethodInfos]);
 		}
 
-		public List<TypeAuthMethodInfo> AuthMethodInfos { get; set; } = [];
+		public EquatableArray<TypeAuthMethodInfo> AuthMethodInfos { get; set; } = [];
 		public override string NamePostfix => this.Name.Replace(this.FactoryOperation.ToString() ?? "", "");
 		public bool IsConstructor { get; set; } = false;
 		public FactoryOperation FactoryOperation { get; private set; }
@@ -203,7 +206,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 				declaredParameters.RemoveAll(p => p.IsTarget);
 
-				var callParameter = this.Parameters.GetEnumerator();
+				var callParameter = this.Parameters.ToList().GetEnumerator();
 				var declaredParameter = declaredParameters.GetEnumerator();
 				var parameters = new List<string>();
 
@@ -300,7 +303,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 			if (methodSyntax.ParameterList is ParameterListSyntax parameterListSyntax)
 			{
-				this.Parameters = [.. parameterListSyntax.Parameters.Select(p => new MethodParameterInfo(p, methodSymbol))];
+				this.Parameters = new EquatableArray<MethodParameterInfo>([.. parameterListSyntax.Parameters.Select(p => new MethodParameterInfo(p, methodSymbol))]);
 			}
 			else
 			{
@@ -315,8 +318,8 @@ public class FactoryGenerator : IIncrementalGenerator
 		public bool IsTask { get; private set; }
 		public bool IsRemote { get; protected set; }
 		public string? ReturnType { get; protected set; }
-		public List<MethodParameterInfo> Parameters { get; private set; }
-		public List<AspAuthorizeInfo> AspAuthorizeCalls { get; set; } = [];
+		public EquatableArray<MethodParameterInfo> Parameters { get; private set; }
+		public EquatableArray<AspAuthorizeInfo> AspAuthorizeCalls { get; set; } = [];
 	}
 
 	internal sealed record MethodParameterInfo
@@ -353,25 +356,31 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	public record AspAuthorizeInfo
 	{
-		List<string> ConstructorArguments = [];
-		List<string> NamedArguments = [];
+		EquatableArray<string> ConstructorArguments = [];
+		EquatableArray<string> NamedArguments = [];
 
 		public AspAuthorizeInfo(AttributeData attribute)
 		{
 			var attributeSyntax = attribute.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
+
+			List<string> namedArguments = [];
+			List<string> constructorArguments = [];
 
 			foreach (var attributeArgument in attributeSyntax?.ArgumentList?.Arguments ?? [])
 			{
 				var argumentText = attributeArgument.ToString();
 				if (argumentText.Contains("="))
 				{
-					this.NamedArguments.Add(argumentText);
+					namedArguments.Add(argumentText);
 				}
 				else
 				{
-					this.ConstructorArguments.Add(argumentText);
+					constructorArguments.Add(argumentText);
 				}
 			}
+
+			this.NamedArguments = new EquatableArray<string>([.. namedArguments]);
+			this.ConstructorArguments = new EquatableArray<string>([.. constructorArguments]);
 		}
 
 		public string ToAspAuthorizedDataText()
@@ -596,9 +605,9 @@ public class FactoryGenerator : IIncrementalGenerator
 			this.UniqueName = callMethod.Name;
 			this.NamePostfix = callMethod.NamePostfix;
 			this.FactoryOperation = callMethod.FactoryOperation;
-			this.Parameters = callMethod.Parameters;
+			this.Parameters = callMethod.Parameters.ToList();
 			this.AuthMethodInfos.AddRange(callMethod.AuthMethodInfos);
-			this.AspAuthorizeInfo = callMethod.AspAuthorizeCalls;
+			this.AspAuthorizeInfo = callMethod.AspAuthorizeCalls.ToList();
 		}
 		public override bool IsSave => this.CallMethod.IsSave;
 		public override bool IsBool => this.CallMethod.IsBool;
@@ -1359,7 +1368,7 @@ public class FactoryGenerator : IIncrementalGenerator
 
 	private static void GenerateInterfaceFactory(SourceProductionContext context, TypeInfo typeInfo)
 	{
-		var messages = new List<string>();
+		var messages = new EquatableArray<string>();
 		var source = string.Empty;
 
 		try
@@ -1588,7 +1597,7 @@ public class FactoryGenerator : IIncrementalGenerator
 					factoryMethod.Parameters.Where(p => p.Name == targetParam.Name).ToList().ForEach(p => p.IsTarget = true);
 				}
 
-				factoryMethod.AspAuthorizeCalls = aspAuthorizeCalls;
+				factoryMethod.AspAuthorizeCalls = new EquatableArray<AspAuthorizeInfo>([.. aspAuthorizeCalls]);
 
 				callFactoryMethods.Add(factoryMethod);
 			}
@@ -1596,7 +1605,7 @@ public class FactoryGenerator : IIncrementalGenerator
 		return callFactoryMethods;
 	}
 
-	private static List<TypeAuthMethodInfo> TypeAuthMethods(SemanticModel semanticModel, INamedTypeSymbol typeSymbol, List<string> messages)
+	private static EquatableArray<TypeAuthMethodInfo> TypeAuthMethods(SemanticModel semanticModel, INamedTypeSymbol typeSymbol, List<string> messages)
 	{
 
 		var authorizeAttribute = ClassOrBaseClassHasAttribute(typeSymbol, "AuthorizeFactoryAttribute");
@@ -1696,7 +1705,7 @@ public class FactoryGenerator : IIncrementalGenerator
 			messages.Add("No AuthorizeFactoryAttribute");
 		}
 
-		return callAuthMethods;
+		return new EquatableArray<TypeAuthMethodInfo>([.. callAuthMethods]);
 	}
 
 	public static void UsingStatements(List<string> usingDirectives, TypeDeclarationSyntax syntax, SemanticModel semanticModel, string namespaceName, List<string> messages)

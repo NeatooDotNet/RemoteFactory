@@ -61,7 +61,7 @@ public class MapperGenerator : IIncrementalGenerator
 
 			List<string> usingStatements = new();
 			FactoryGenerator.UsingStatements(usingStatements, syntax, semanticModel, this.Namespace, []);
-			this.UsingStatements = usingStatements;
+			this.UsingStatements = new EquatableArray<string>([.. usingStatements]);
 
 			if (syntax.TypeParameterList != null)
 			{
@@ -74,6 +74,8 @@ public class MapperGenerator : IIncrementalGenerator
 				.Where(m => m.Symbol != null)
 				.ToList();
 
+			List<MapperMethodInfo> methodInfos = new();
+
 			foreach (var method in methods)
 			{
 				var parameterSymbol = method.Symbol!.Parameters.SingleOrDefault();
@@ -83,16 +85,18 @@ public class MapperGenerator : IIncrementalGenerator
 					continue;
 				}
 
-				this.MethodInfos.Add(new MapperMethodInfo(method.Syntax, parameterSymbol.Type));
+				methodInfos.Add(new MapperMethodInfo(method.Syntax, parameterSymbol.Type));
 			}
+
+			this.MethodInfos = new EquatableArray<MapperMethodInfo>([.. methodInfos]);
 		}
 
 		public MapperTypeInfo Type { get; }
 		public string Signature { get; }
 		public string Namespace { get; }
 		public string SafeHintName { get; }
-		public IReadOnlyList<string> UsingStatements { get; } = [];
-		public List<MapperMethodInfo> MethodInfos { get; } = [];
+		public EquatableArray<string> UsingStatements { get; } = [];
+		public EquatableArray<MapperMethodInfo> MethodInfos { get; } = [];
 	}
 
 
@@ -100,11 +104,11 @@ public class MapperGenerator : IIncrementalGenerator
 	{
 		public MapperTypeInfo(ITypeSymbol symbol)
 		{
-			this.Properties = GetPropertiesRecursive(symbol).Select(p => new PropertyInfo(p)).ToList();
+			this.Properties = new EquatableArray<PropertyInfo>([.. GetPropertiesRecursive(symbol).Select(p => new PropertyInfo(p))]);
 			this.Name = symbol.Name;
 		}
 		public string Name { get; }
-		public List<PropertyInfo> Properties { get; set; } = [];
+		public EquatableArray<PropertyInfo> Properties { get; set; } = [];
 
 		private static List<IPropertySymbol> GetPropertiesRecursive(ITypeSymbol? typeSymbol)
 		{
@@ -117,7 +121,7 @@ public class MapperGenerator : IIncrementalGenerator
 		}
 	}
 
-	internal sealed class MapperMethodInfo
+	internal sealed record MapperMethodInfo
 	{
 		public MapperMethodInfo(MethodDeclarationSyntax syntax, ITypeSymbol toFromType)
 		{
