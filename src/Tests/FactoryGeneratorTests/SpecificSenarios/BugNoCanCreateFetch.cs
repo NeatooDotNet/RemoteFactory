@@ -1,4 +1,5 @@
 ﻿using Neatoo.RemoteFactory.FactoryGeneratorTests.Mapper;
+using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using Neatoo.RemoteFactory.Internal;
 using System;
 using System.Collections.Generic;
@@ -27,14 +28,15 @@ public class BugNoCanCreateFetch : FactoryTestBase<IBugNoCanCreateFetchObjFactor
 	  public bool IsNew => throw new NotImplementedException();
 
 	  [Create]
-		public void Create()
+		public void Create([Service] IServerOnlyService service)
 		{
-
+			ArgumentNullException.ThrowIfNull(service, nameof(service));
 		}
 
 		[Insert]
 		public void Insert()
 		{
+
 		}
 	}
 
@@ -44,5 +46,6 @@ public class BugNoCanCreateFetch : FactoryTestBase<IBugNoCanCreateFetchObjFactor
 		// In an effort to not have CanInsert was missing CanCreate
 		var result = this.factory.CanCreate();
 		Assert.True(result, "CanCreate should be true");
+		Assert.True(this.factory.CanInsert(), "CanInsert should be true");
 	}
 }

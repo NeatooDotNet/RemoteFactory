@@ -1,87 +1,125 @@
-﻿@page "/"
+@page "/"
 
 @using Person.DomainModel
 @inject IPersonModelFactory PersonModelFactory
 @inject IUser User
+@inject ISnackbar Snackbar
 
-<div class="h3">User Role:</div>
-<div class="row">
-    <div class="row">
-        <div class="col">
-            <InputRadioGroup @bind-Value="selectedRole" class="form-check-inline">
-                <div class="form-check-inline">
-                    <InputRadio id="create" class="form-check-input" Value="Role.None" />
-                    <label for="create" class="form-check-label">None</label>
-                </div>
-                <div class="form-check-inline">
-                    <InputRadio id="create" class="form-check-input" Value="Role.Create" />
-                    <label for="create" class="form-check-label">Create</label>
-                </div>
-                <div class="form-check-inline">
-                    <InputRadio id="fetch" class="form-check-input" Value="Role.Fetch" />
-                    <label for="fetch" class="form-check-label">Fetch</label>
-                </div>
-                <div class="form-check-inline">
-                    <InputRadio id="save" class="form-check-input" Value="Role.Update" />
-                    <label for="save" class="form-check-label">Update</label>
-                </div>
-                <div class="form-check-inline">
-                    <InputRadio id="delete" class="form-check-input" Value="Role.Delete" />
-                    <label for="delete" class="form-check-label">Delete</label>
-                </div>
-            </InputRadioGroup>
-        </div>
-    </div>
-</div>
+<MudText Typo="Typo.h4" Class="mb-4">User Role</MudText>
 
-<div class="h3">Person</div>
+<MudPaper Elevation="2" Class="pa-4 mb-6">
+    <MudRadioGroup T="Role" @bind-Value="selectedRole">
+        <MudRadio T="Role" Value="Role.None" Color="Color.Default">None</MudRadio>
+        <MudRadio T="Role" Value="Role.Create" Color="Color.Primary">Create</MudRadio>
+        <MudRadio T="Role" Value="Role.Fetch" Color="Color.Primary">Fetch</MudRadio>
+        <MudRadio T="Role" Value="Role.Update" Color="Color.Primary">Update</MudRadio>
+        <MudRadio T="Role" Value="Role.Delete" Color="Color.Primary">Delete</MudRadio>
+    </MudRadioGroup>
+</MudPaper>
+
+<MudText Typo="Typo.h4" Class="mb-4">Person</MudText>
 
 @if (PersonModel == null)
 {
-    <div class="h4">
-        <p>Not loaded</p>
-    </div>
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        Not loaded - Select a role and use the buttons below to create or fetch a person.
+    </MudAlert>
 }
 else
 {
-    <EditForm Model="PersonModel" OnValidSubmit="HandleValidSubmit">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <EditForm Model="PersonModel" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
 
-        <div class="mb-3">
-            <label for="firstName" class="form-label">First Name</label>
-            <InputText id="firstName" class="form-control" @bind-Value="PersonModel.FirstName" />
-            <ValidationMessage For="@(() => PersonModel.FirstName)" />
-        </div>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="First Name"
+                                  @bind-Value="PersonModel.FirstName"
+                                  For="@(() => PersonModel.FirstName)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Required="true"
+                                  RequiredError="First Name is required" />
+                </MudItem>
 
-        <div class="mb-3">
-            <label for="lastName" class="form-label">Last Name</label>
-            <InputText id="lastName" class="form-control" @bind-Value="PersonModel.LastName" />
-            <ValidationMessage For="@(() => PersonModel.LastName)" />
-        </div>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="Last Name"
+                                  @bind-Value="PersonModel.LastName"
+                                  For="@(() => PersonModel.LastName)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Required="true"
+                                  RequiredError="Last Name is required" />
+                </MudItem>
 
-        <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <InputText id="email" class="form-control" @bind-Value="PersonModel.Email" />
-        </div>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="Email"
+                                  @bind-Value="PersonModel.Email"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  InputType="InputType.Email"
+                                  HelperText="Enter a valid email address" />
+                </MudItem>
 
-        <div class="mb-3">
-            <label for="phone" class="form-label">Phone</label>
-            <InputText id="phone" class="form-control" @bind-Value="PersonModel.Phone" />
-        </div>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="Phone"
+                                  @bind-Value="PersonModel.Phone"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  HelperText="Enter phone number" />
+                </MudItem>
 
-        <div class="mb-3">
-            <label for="notes" class="form-label">Notes</label>
-            <InputTextArea id="notes" class="form-control" @bind-Value="PersonModel.Notes" />
-        </div>
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  Label="Notes"
+                                  @bind-Value="PersonModel.Notes"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Lines="3" />
+                </MudItem>
 
-        <button type="submit" class="btn btn-primary" disabled="@(!CanUpdate)">Update</button>
-    </EditForm>
+                <MudItem xs="12">
+                    <MudButton ButtonType="ButtonType.Submit"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="@(!CanUpdate)"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               Class="mr-2">
+                        Update
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudPaper>
 }
 
-<button type="button" class="btn btn-primary" @onclick="Create" disabled="@(!CanCreate)">Create</button>
-<button type="button" class="btn btn-primary" @onclick="Fetch" disabled="@(!CanFetch)">Fetch</button>
-<button type="button" class="btn btn-primary" @onclick="Delete" disabled="@(!CanDelete)">Delete</button>
+<MudPaper Elevation="0" Class="d-flex gap-2">
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="Create"
+               Disabled="@(!CanCreate)"
+               StartIcon="@Icons.Material.Filled.Add">
+        Create
+    </MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Secondary"
+               OnClick="Fetch"
+               Disabled="@(!CanFetch)"
+               StartIcon="@Icons.Material.Filled.Download">
+        Fetch
+    </MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Error"
+               OnClick="Delete"
+               Disabled="@(!CanDelete)"
+               StartIcon="@Icons.Material.Filled.Delete">
+        Delete
+    </MudButton>
+</MudPaper>
 
 @code {
 
@@ -112,26 +150,56 @@ else
 
     private async Task HandleValidSubmit()
     {
-        // Handle the form submission, e.g., save the data to the database
-        PersonModel = await PersonModelFactory.Save(PersonModel!);
+        try
+        {
+            PersonModel = await PersonModelFactory.Save(PersonModel!);
+            Snackbar.Add("Person saved successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving person: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task Fetch()
     {
-        // Fetch the person data, e.g., from a database
-        PersonModel = await PersonModelFactory.Fetch();
+        try
+        {
+            PersonModel = await PersonModelFactory.Fetch();
+            Snackbar.Add("Person fetched successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error fetching person: {ex.Message}", Severity.Error);
+        }
     }
 
     private void Create()
     {
-        PersonModel = PersonModelFactory.Create();
+        try
+        {
+            PersonModel = PersonModelFactory.Create();
+            Snackbar.Add("New person created!", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating person: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task Delete()
     {
-        this.PersonModel!.IsDeleted = true;
-        await PersonModelFactory.Save(PersonModel!);
-        this.PersonModel = null;
+        try
+        {
+            this.PersonModel!.IsDeleted = true;
+            await PersonModelFactory.Save(PersonModel!);
+            this.PersonModel = null;
+            Snackbar.Add("Person deleted successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting person: {ex.Message}", Severity.Error);
+        }
     }
 
     private void UserRoleChanged()
@@ -154,6 +222,7 @@ else
         catch (Exception ex)
         {
             Console.WriteLine(ex);
+            Snackbar.Add($"Error changing role: {ex.Message}", Severity.Error);
         }
     }
 

@@ -1,13 +1,5 @@
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
-}
-
-.invalid {
-    outline: 1px solid red;
-}
-
-.validation-message {
-    color: red;
+html, body {
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 #blazor-error-ui {
@@ -56,7 +48,7 @@
     }
 
         .loading-progress circle:last-child {
-            stroke: #1b6ec2;
+            stroke: #594ae2;
             stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
             transition: stroke-dasharray 0.05s ease-in-out;
         }
@@ -71,7 +63,3 @@
     .loading-progress-text:after {
         content: var(--blazor-load-percentage-text, "Loading");
     }
-
-code {
-    color: #c02d76;
-}
