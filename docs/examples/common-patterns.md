@@ -18,13 +18,16 @@ Combine Insert and Update into a single method to reduce code duplication.
 
 ```csharp
 [Factory]
-public class ProductModel : IProductModel, IFactorySaveMeta
+public partial class ProductModel : IProductModel, IFactorySaveMeta
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public decimal Price { get; set; }
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
+
+    // Partial method for generated mapper
+    public partial void MapTo(ProductEntity entity);
 
     [Remote]
     [Insert][Update]  // Both attributes on same method
@@ -77,7 +80,7 @@ Implement logical deletion instead of physical deletion.
 
 ```csharp
 [Factory]
-public class CustomerModel : ICustomerModel, IFactorySaveMeta
+public partial class CustomerModel : ICustomerModel, IFactorySaveMeta
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -86,6 +89,9 @@ public class CustomerModel : ICustomerModel, IFactorySaveMeta
 
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }  // From IFactorySaveMeta
+
+    // Partial method for generated mapper
+    public partial void MapFrom(CustomerEntity entity);
 
     [Remote]
     [Fetch]
@@ -188,7 +194,7 @@ public class OrderEntity
 
 ```csharp
 [Factory]
-public class OrderModel : IOrderModel, IFactorySaveMeta
+public partial class OrderModel : IOrderModel, IFactorySaveMeta
 {
     public int Id { get; set; }
     public string Description { get; set; } = "";
@@ -197,6 +203,9 @@ public class OrderModel : IOrderModel, IFactorySaveMeta
 
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
+
+    // Partial method for generated mapper
+    public partial void MapTo(OrderEntity entity);
 
     [Remote]
     [Update]
@@ -261,7 +270,7 @@ Handle aggregate roots with child collections.
 
 ```csharp
 [Factory]
-public class InvoiceModel : IInvoiceModel, IFactorySaveMeta
+public partial class InvoiceModel : IInvoiceModel, IFactorySaveMeta
 {
     public int Id { get; set; }
     public string InvoiceNumber { get; set; } = "";
@@ -272,6 +281,10 @@ public class InvoiceModel : IInvoiceModel, IFactorySaveMeta
 
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
+
+    // Partial methods for generated mapper
+    public partial void MapFrom(InvoiceEntity entity);
+    public partial void MapTo(InvoiceEntity entity);
 
     [Create]
     public InvoiceModel()

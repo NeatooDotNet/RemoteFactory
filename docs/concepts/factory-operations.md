@@ -113,6 +113,10 @@ public partial class PersonModel
     public int Id { get; private set; }
     public bool IsNew { get; set; } = true;
 
+    // Partial methods for generated mapper
+    public partial void MapFrom(PersonEntity entity);
+    public partial void MapTo(PersonEntity entity);
+
     [Create]
     public PersonModel() { }
 
@@ -183,10 +187,13 @@ The `[Insert]` attribute marks methods that create new records:
 
 ```csharp
 [Factory]
-public class PersonModel : IPersonModel, IFactorySaveMeta
+public partial class PersonModel : IPersonModel, IFactorySaveMeta
 {
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
+
+    // Partial method for generated mapper
+    public partial void MapTo(PersonEntity entity);
 
     [Remote]
     [Insert]
@@ -209,8 +216,11 @@ The `[Update]` attribute marks methods that modify existing records:
 
 ```csharp
 [Factory]
-public class PersonModel : IPersonModel, IFactorySaveMeta
+public partial class PersonModel : IPersonModel, IFactorySaveMeta
 {
+    // Partial method for generated mapper
+    public partial void MapTo(PersonEntity entity);
+
     [Remote]
     [Update]
     public async Task Update([Service] IPersonContext context)

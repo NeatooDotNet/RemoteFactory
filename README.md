@@ -40,6 +40,10 @@ public partial class PersonModel : IPersonModel
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
+    // Partial methods for generated mapper
+    public partial void MapFrom(PersonEntity entity);
+    public partial void MapTo(PersonEntity entity);
+
     // This runs on the server - [Service] parameters are injected
     [Remote]
     [Fetch]

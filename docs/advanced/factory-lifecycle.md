@@ -91,10 +91,13 @@ public enum FactoryOperation
 
 ```csharp
 [Factory]
-public class OrderModel : IOrderModel, IFactoryOnStart, IFactoryOnComplete
+public partial class OrderModel : IOrderModel, IFactoryOnStart, IFactoryOnComplete
 {
     public int Id { get; set; }
     public string Status { get; set; }
+
+    // Partial method for generated mapper
+    public partial void MapFrom(OrderEntity entity);
 
     public void FactoryStart(FactoryOperation operation)
     {
