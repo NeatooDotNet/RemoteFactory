@@ -76,14 +76,27 @@ The lifecycle methods receive a `FactoryOperation` parameter indicating which op
 public enum FactoryOperation
 {
     None = 0,
-    Execute,
-    Create,
-    Fetch,
-    Insert,
-    Update,
-    Delete
+    Execute = AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Execute,
+    Create = AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Read,
+    Fetch = AuthorizeFactoryOperation.Fetch | AuthorizeFactoryOperation.Read,
+    Insert = AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Write,
+    Update = AuthorizeFactoryOperation.Update | AuthorizeFactoryOperation.Write,
+    Delete = AuthorizeFactoryOperation.Delete | AuthorizeFactoryOperation.Write
 }
 ```
+
+Each `FactoryOperation` value is a composite of `AuthorizeFactoryOperation` flags:
+
+| Operation | Includes | Authorization Check |
+|-----------|----------|---------------------|
+| `Create` | Create + Read | Read operations |
+| `Fetch` | Fetch + Read | Read operations |
+| `Execute` | Execute + Read | Read operations |
+| `Insert` | Insert + Write | Write operations |
+| `Update` | Update + Write | Write operations |
+| `Delete` | Delete + Write | Write operations |
+
+This composition enables authorization methods marked with `AuthorizeFactoryOperation.Read` to cover Create, Fetch, and Execute operations, while `AuthorizeFactoryOperation.Write` covers Insert, Update, and Delete.
 
 ## Basic Usage
 

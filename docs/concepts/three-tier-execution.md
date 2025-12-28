@@ -62,6 +62,32 @@ var app = builder.Build();
 app.UseNeatoo();
 ```
 
+### Server Registration Methods
+
+There are two ways to register RemoteFactory on the server:
+
+**1. `AddNeatooAspNetCore`** (recommended for ASP.NET Core):
+```csharp
+builder.Services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly);
+```
+- Internally uses `NeatooFactory.Server` mode
+- Registers `IAspAuthorize` for `[AspAuthorize]` policy-based authorization
+- Designed for use with `UseNeatoo()` endpoint mapping
+- Located in `Neatoo.RemoteFactory.AspNetCore` namespace
+
+**2. `AddNeatooRemoteFactory(NeatooFactory.Server, ...)`**:
+```csharp
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(IPersonModel).Assembly);
+```
+- Lower-level registration without ASP.NET Core authorization integration
+- Does not register `IAspAuthorize` - `[AspAuthorize]` attributes won't work
+- Use when not using ASP.NET Core or need custom authorization setup
+- Located in `Neatoo.RemoteFactory` namespace
+
+**When to use which:**
+- Use `AddNeatooAspNetCore` for standard ASP.NET Core web APIs
+- Use `AddNeatooRemoteFactory(Server, ...)` for non-ASP.NET Core hosts or custom scenarios
+
 ### What Happens in Server Mode
 
 1. **Factory Registration**: All generated factories are registered with DI
@@ -106,6 +132,42 @@ builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IPersonMode
 builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 {
     return new HttpClient { BaseAddress = new Uri("https://your-server.com/") };
+});
+```
+
+### HTTP Client Configuration
+
+Remote mode requires an `HttpClient` registered with a specific key:
+
+```csharp
+// The key constant - value is "NeatooHttpClient"
+RemoteFactoryServices.HttpClientKey
+
+// Register using keyed services (.NET 8+)
+builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+{
+    var client = new HttpClient
+    {
+        BaseAddress = new Uri("https://your-api.com/")
+    };
+    // Optional: Add default headers
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+    return client;
+});
+```
+
+**Using IHttpClientFactory (recommended for production):**
+
+```csharp
+builder.Services.AddHttpClient(RemoteFactoryServices.HttpClientKey, client =>
+{
+    client.BaseAddress = new Uri("https://your-api.com/");
+});
+
+builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    return factory.CreateClient(RemoteFactoryServices.HttpClientKey);
 });
 ```
 

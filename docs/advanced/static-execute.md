@@ -1,14 +1,134 @@
 ---
 layout: default
-title: "Static Execute"
-description: "Using [Execute] with static classes for remote procedure calls"
+title: "Commands, Queries & Static Execute"
+description: "Simple request-response patterns using [Execute] for commands, queries, and remote procedure calls"
 parent: Advanced
 nav_order: 3
 ---
 
-# Static Execute Operations
+# Commands, Queries & Static Execute
 
-RemoteFactory supports `[Execute]` operations on static classes, enabling remote procedure calls without domain model instances. This is useful for query operations, batch processing, and utility functions.
+RemoteFactory supports `[Execute]` operations on static classes, enabling **commands** (actions) and **queries** (data retrieval) without domain model instances. This is ideal for simple request-response patterns where you don't need a full object graph.
+
+## Terminology
+
+| Term | Description | Example |
+|------|-------------|---------|
+| **Command** | An action that may change state | `DeactivateUser(userId)` |
+| **Query** | A request for data that doesn't change state | `GetUserById(userId)` |
+| **Request/Criteria** | The input value object | `SearchCriteria`, `GetUserQuery` |
+| **Response/Result** | The output value object | `SearchResults`, `UserResult` |
+
+All of these patterns use `[Execute]` on static partial classes.
+
+## Simple Command/Query Pattern
+
+The most common use case: send a request object, get a response object back.
+
+### Query Example
+
+```csharp
+// Request (criteria value object)
+public class GetUserQuery
+{
+    public int UserId { get; set; }
+}
+
+// Response (result value object)
+public class UserResult
+{
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public bool IsActive { get; set; }
+}
+
+// The query handler
+[Factory]
+public static partial class UserQueries
+{
+    [Remote]
+    [Execute]
+    public static async Task<UserResult?> GetUser(
+        GetUserQuery query,
+        [Service] IUserContext ctx)
+    {
+        var user = await ctx.Users.FindAsync(query.UserId);
+        if (user == null) return null;
+
+        return new UserResult
+        {
+            Name = user.Name,
+            Email = user.Email,
+            IsActive = user.IsActive
+        };
+    }
+}
+```
+
+**Generated factory:**
+
+```csharp
+public interface IUserQueriesFactory
+{
+    Task<UserResult?> GetUser(GetUserQuery query);
+}
+```
+
+**Usage in Blazor:**
+
+```csharp
+@inject IUserQueriesFactory UserQueries
+
+@code {
+    private UserResult? _user;
+
+    private async Task LoadUser(int userId)
+    {
+        _user = await UserQueries.GetUser(new GetUserQuery { UserId = userId });
+    }
+}
+```
+
+### Command Example
+
+```csharp
+// Command request
+public class DeactivateUserCommand
+{
+    public int UserId { get; set; }
+    public string Reason { get; set; }
+}
+
+// Command result
+public class CommandResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+}
+
+[Factory]
+public static partial class UserCommands
+{
+    [Remote]
+    [Execute]
+    public static async Task<CommandResult> DeactivateUser(
+        DeactivateUserCommand command,
+        [Service] IUserContext ctx)
+    {
+        var user = await ctx.Users.FindAsync(command.UserId);
+        if (user == null)
+        {
+            return new CommandResult { Success = false, Message = "User not found" };
+        }
+
+        user.IsActive = false;
+        user.DeactivationReason = command.Reason;
+        await ctx.SaveChangesAsync();
+
+        return new CommandResult { Success = true, Message = "User deactivated" };
+    }
+}
+```
 
 ## When to Use Static Execute
 

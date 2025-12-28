@@ -305,6 +305,45 @@ services.AddNeatooRemoteFactory(mode, typeof(IPersonModel).Assembly);
 - Single-tier desktop apps
 - Prototype/demo applications
 
+## Helper Methods
+
+### RegisterMatchingName
+
+Auto-registers interface-to-implementation pairs where names follow the `I{Name}` convention:
+
+```csharp
+// Register types following naming convention
+services.RegisterMatchingName(typeof(IPersonModel).Assembly);
+```
+
+**Matching rules:**
+- Interface name must start with `I`
+- Implementation must have same name without `I` prefix
+- Both must be in the same assembly
+- Implementation must be a non-abstract class
+
+**Example registrations:**
+
+| Interface | Implementation | Registered? |
+|-----------|----------------|-------------|
+| `IPersonService` | `PersonService` | Yes |
+| `IOrderRepository` | `OrderRepository` | Yes |
+| `ILogger` | `FileLogger` | No (names don't match) |
+| `IAbstractBase` | `AbstractBase` (abstract) | No |
+
+```csharp
+// Before (manual registration)
+services.AddTransient<IPersonService, PersonService>();
+services.AddTransient<IOrderService, OrderService>();
+services.AddTransient<ICustomerService, CustomerService>();
+// ... many more
+
+// After (automatic registration)
+services.RegisterMatchingName(typeof(IPersonService).Assembly);
+```
+
+**Note:** This is a convenience method for domain services. Factory interfaces and implementations are automatically registered by `AddNeatooRemoteFactory`.
+
 ## Next Steps
 
 - **[Three-Tier Execution](../concepts/three-tier-execution.md)**: Detailed execution flow

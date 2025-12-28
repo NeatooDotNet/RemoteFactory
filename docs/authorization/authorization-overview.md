@@ -282,11 +282,33 @@ public enum AuthorizeFactoryOperation
     Insert = 4,      // Insert operations
     Update = 8,      // Update operations
     Delete = 16,     // Delete operations
-    Read = 64,       // All read ops (Create, Fetch)
+    Read = 64,       // All read ops (Create, Fetch, Execute)
     Write = 128,     // All write ops (Insert, Update, Delete)
     Execute = 256    // Execute operations
 }
 ```
+
+### Flag Composition
+
+The `Read` and `Write` flags are **meta-flags** that cover multiple operations:
+
+| Meta-Flag | Value | Covers These Operations |
+|-----------|-------|------------------------|
+| `Read` | 64 | Create, Fetch, Execute |
+| `Write` | 128 | Insert, Update, Delete |
+
+The `FactoryOperation` enum values are themselves composites of these flags:
+
+| FactoryOperation | Composed Of |
+|------------------|-------------|
+| `Create` | `AuthorizeFactoryOperation.Create \| AuthorizeFactoryOperation.Read` |
+| `Fetch` | `AuthorizeFactoryOperation.Fetch \| AuthorizeFactoryOperation.Read` |
+| `Execute` | `AuthorizeFactoryOperation.Execute \| AuthorizeFactoryOperation.Read` |
+| `Insert` | `AuthorizeFactoryOperation.Insert \| AuthorizeFactoryOperation.Write` |
+| `Update` | `AuthorizeFactoryOperation.Update \| AuthorizeFactoryOperation.Write` |
+| `Delete` | `AuthorizeFactoryOperation.Delete \| AuthorizeFactoryOperation.Write` |
+
+**Practical implication:** An authorization method marked with `AuthorizeFactoryOperation.Read` will be checked for Create, Fetch, and Execute operations. Similarly, `AuthorizeFactoryOperation.Write` covers Insert, Update, and Delete.
 
 ### Common Patterns
 

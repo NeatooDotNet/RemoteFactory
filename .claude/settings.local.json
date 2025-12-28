@@ -16,7 +16,15 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
       "Bash(powershell -Command \"Get-ChildItem -Directory -Recurse | Where-Object { $_.FullName -notmatch ''\\\\\\\\\\\\\\(bin|obj|Generated\\)\\\\\\\\'' } | Select-Object -ExpandProperty FullName | Sort-Object\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "WebFetch(domain:docs.github.com)",
+      "Bash(echo:*)",
+      "Bash(wc:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:andrewlock.net)",
+      "WebFetch(domain:www.thinktecture.com)",
+      "Bash(cat:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

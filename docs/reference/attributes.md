@@ -339,6 +339,30 @@ public PersonModel()
 | Remote | Calls server via HTTP | Executes locally |
 | Logical | Executes locally (serialized) | Executes locally |
 
+**Inheritance:**
+
+The `[Remote]` attribute has `Inherited = true`, meaning:
+- Methods in derived classes inherit the `[Remote]` behavior from base class methods
+- If a base class method is marked `[Remote]`, overriding methods in derived classes will also execute remotely
+- This allows base classes to define remote behavior that derived classes automatically inherit
+
+```csharp
+[Factory]
+public class BaseModel
+{
+    [Remote]
+    [Fetch]
+    public virtual async Task<bool> Fetch([Service] IContext ctx) { ... }
+}
+
+[Factory]
+public class DerivedModel : BaseModel
+{
+    // This override inherits [Remote] from base - executes on server
+    public override async Task<bool> Fetch([Service] IContext ctx) { ... }
+}
+```
+
 ---
 
 ### [AspAuthorize]

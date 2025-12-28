@@ -137,6 +137,7 @@ public class PersonComponent
 
 - **[Architecture Overview](concepts/architecture-overview.md)**: Understand how RemoteFactory works
 - **[Factory Operations](concepts/factory-operations.md)**: Create, Fetch, Insert, Update, Delete, and Execute
+- **[Commands & Queries](concepts/factory-operations.md#commands--queries-pattern)**: Simple request-response patterns
 - **[Three-Tier Execution](concepts/three-tier-execution.md)**: Server, Remote, and Logical modes
 - **[Service Injection](concepts/service-injection.md)**: Using `[Service]` for dependency injection
 
@@ -152,6 +153,7 @@ public class PersonComponent
 - **[How It Works](source-generation/how-it-works.md)**: High-level understanding of code generation
 - **[Factory Generator](source-generation/factory-generator.md)**: Factory generation details
 - **[Mapper Generator](source-generation/mapper-generator.md)**: MapTo/MapFrom generation
+- **[Troubleshooting](source-generation/how-it-works.md#troubleshooting)**: Common issues and solutions
 
 ## Reference
 

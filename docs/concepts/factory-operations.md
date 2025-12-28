@@ -391,6 +391,179 @@ public interface IPersonOperationsFactory
 }
 ```
 
+## Commands & Queries Pattern
+
+For simple **request-response** operations that don't involve domain object graphs, use `[Execute]` with static classes. This pattern is ideal for:
+
+- **Queries**: Fetch data without loading a full domain model
+- **Commands**: Perform actions that return simple results
+- **Lookups**: Get dropdown options, validate codes, check availability
+- **Reports**: Generate aggregated data or summaries
+
+### Simple Query Example
+
+```csharp
+// Request (criteria value object)
+public class GetUserQuery
+{
+    public int UserId { get; set; }
+}
+
+// Response (result value object)
+public class UserResult
+{
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public bool IsActive { get; set; }
+}
+
+// The query handler
+[Factory]
+public static partial class UserQueries
+{
+    [Remote]
+    [Execute]
+    public static async Task<UserResult?> GetUser(
+        GetUserQuery query,
+        [Service] IUserContext ctx)
+    {
+        var user = await ctx.Users.FindAsync(query.UserId);
+        if (user == null) return null;
+
+        return new UserResult
+        {
+            Name = user.Name,
+            Email = user.Email,
+            IsActive = user.IsActive
+        };
+    }
+}
+```
+
+**Generated factory:**
+
+```csharp
+public interface IUserQueriesFactory
+{
+    Task<UserResult?> GetUser(GetUserQuery query);
+}
+```
+
+**Usage in Blazor:**
+
+```csharp
+@inject IUserQueriesFactory UserQueries
+
+@code {
+    private UserResult? _user;
+
+    private async Task LoadUser(int userId)
+    {
+        _user = await UserQueries.GetUser(new GetUserQuery { UserId = userId });
+    }
+}
+```
+
+### Simple Command Example
+
+```csharp
+// Command request
+public class DeactivateUserCommand
+{
+    public int UserId { get; set; }
+    public string Reason { get; set; }
+}
+
+// Command result
+public class CommandResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+}
+
+[Factory]
+public static partial class UserCommands
+{
+    [Remote]
+    [Execute]
+    public static async Task<CommandResult> DeactivateUser(
+        DeactivateUserCommand command,
+        [Service] IUserContext ctx)
+    {
+        var user = await ctx.Users.FindAsync(command.UserId);
+        if (user == null)
+        {
+            return new CommandResult { Success = false, Message = "User not found" };
+        }
+
+        user.IsActive = false;
+        user.DeactivationReason = command.Reason;
+        await ctx.SaveChangesAsync();
+
+        return new CommandResult { Success = true, Message = "User deactivated" };
+    }
+}
+```
+
+### Search with Criteria
+
+```csharp
+public class ProductSearchCriteria
+{
+    public string? Keyword { get; set; }
+    public decimal? MinPrice { get; set; }
+    public decimal? MaxPrice { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+}
+
+public class ProductSearchResults
+{
+    public List<ProductDto> Products { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
+}
+
+[Factory]
+public static partial class ProductSearch
+{
+    [Remote]
+    [Execute]
+    public static async Task<ProductSearchResults> Search(
+        ProductSearchCriteria criteria,
+        [Service] IProductContext ctx)
+    {
+        var query = ctx.Products.AsQueryable();
+
+        if (!string.IsNullOrEmpty(criteria.Keyword))
+            query = query.Where(p => p.Name.Contains(criteria.Keyword));
+
+        if (criteria.MinPrice.HasValue)
+            query = query.Where(p => p.Price >= criteria.MinPrice.Value);
+
+        if (criteria.MaxPrice.HasValue)
+            query = query.Where(p => p.Price <= criteria.MaxPrice.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var products = await query
+            .Skip((criteria.Page - 1) * criteria.PageSize)
+            .Take(criteria.PageSize)
+            .Select(p => new ProductDto { Id = p.Id, Name = p.Name, Price = p.Price })
+            .ToListAsync();
+
+        return new ProductSearchResults
+        {
+            Products = products,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)criteria.PageSize)
+        };
+    }
+}
+```
+
+For more advanced patterns including authorization, multiple methods per class, and error handling, see **[Commands, Queries & Static Execute](../advanced/static-execute.md)**.
+
 ## The Remote Attribute
 
 The `[Remote]` attribute indicates a method should execute on the server in Remote mode:
