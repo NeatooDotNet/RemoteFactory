@@ -55,11 +55,11 @@ public class FactoryCore<T> : IFactoryCore<T>
 		return target;
 	}
 
-	public virtual Task<T?> DoFactoryMethodCallAsyncNullable(FactoryOperation operation, Func<Task<T?>> factoryMethodCall)
+	public virtual async Task<T?> DoFactoryMethodCallAsyncNullable(FactoryOperation operation, Func<Task<T?>> factoryMethodCall)
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var target = factoryMethodCall();
+		var target = await factoryMethodCall();
 
 		if (target is IFactoryOnComplete factoryOnComplete)
 		{
