@@ -59,7 +59,7 @@ jobs:
       - name: Extract version
         id: version
         run: |
-          VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/Directory.Build.props)
+          VERSION=$(grep -oP '(?<=<PackageVersion>)[^<]+' src/Directory.Build.props)
           SUFFIX="${{ inputs.nuget_version_suffix }}"
           if [ -n "$SUFFIX" ]; then
             FULL_VERSION="${VERSION}-${SUFFIX}"
