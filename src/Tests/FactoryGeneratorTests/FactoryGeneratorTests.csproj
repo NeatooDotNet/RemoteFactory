@@ -32,7 +32,7 @@
 	</ItemGroup>
 
 	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-		<Exec Command="del /Q $(CompilerGeneratedFilesOutputPath)" />
+		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>
 	
 </Project>
