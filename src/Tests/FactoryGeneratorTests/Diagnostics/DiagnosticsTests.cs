@@ -40,21 +40,26 @@ public class DiagnosticsTests
     private static string? FindGeneratorAssembly(string startDir)
     {
         var dir = new DirectoryInfo(startDir);
+        var configurations = new[] { "Debug", "Release" };
+
         while (dir != null)
         {
-            // Check src folder structure
-            var srcDir = Path.Combine(dir.FullName, "src", "Generator", "bin", "Debug", "netstandard2.0");
-            var candidatePath = Path.Combine(srcDir, "Neatoo.Generator.dll");
-            if (File.Exists(candidatePath))
+            foreach (var config in configurations)
             {
-                return candidatePath;
-            }
+                // Check src folder structure
+                var srcDir = Path.Combine(dir.FullName, "src", "Generator", "bin", config, "netstandard2.0");
+                var candidatePath = Path.Combine(srcDir, "Neatoo.Generator.dll");
+                if (File.Exists(candidatePath))
+                {
+                    return candidatePath;
+                }
 
-            // Also check direct child
-            candidatePath = Path.Combine(dir.FullName, "Generator", "bin", "Debug", "netstandard2.0", "Neatoo.Generator.dll");
-            if (File.Exists(candidatePath))
-            {
-                return candidatePath;
+                // Also check direct child
+                candidatePath = Path.Combine(dir.FullName, "Generator", "bin", config, "netstandard2.0", "Neatoo.Generator.dll");
+                if (File.Exists(candidatePath))
+                {
+                    return candidatePath;
+                }
             }
 
             dir = dir.Parent;
