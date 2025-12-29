@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<TargetFrameworks></TargetFrameworks>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<AssemblyName>Neatoo.Generator</AssemblyName>
+		<!-- Suppress RS2008: Enable analyzer release tracking - not required for source generators -->
+		<NoWarn>$(NoWarn);RS2008</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Include="..\RemoteFactory\AuthorizeFactoryOperation.cs" Link="AuthorizeFactoryOperation.cs" />
+	  <Compile Include="..\RemoteFactory\FactoryAttributes.cs" Link="FactoryAttributes.cs" />
+	  <Compile Include="..\RemoteFactory\FactoryOperation.cs" Link="FactoryOperation.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" PrivateAssets="all" />
+	</ItemGroup>
+
+</Project>

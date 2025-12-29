@@ -22,7 +22,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" />
+	  <ProjectReference Include="..\..\Generator\Generator.csproj" />
 	  <ProjectReference Include="..\..\RemoteFactory\RemoteFactory.csproj" />
 	</ItemGroup>
   <ItemGroup>

@@ -1,4 +1,4 @@
-﻿using Neatoo.RemoteFactory.FactoryGenerator;
+﻿using Neatoo.RemoteFactory;
 using System;
 using System.Collections.Generic;
 using System.Linq;

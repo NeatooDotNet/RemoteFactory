@@ -15,7 +15,7 @@
 	</ItemGroup>
 	
 	<ItemGroup>
-	  <ProjectReference Include="..\..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" OutputItemType="Analyzer" />
+	  <ProjectReference Include="..\..\..\Generator\Generator.csproj" OutputItemType="Analyzer" />
 	  <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
 	  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
 	</ItemGroup>

@@ -1,5 +1,6 @@
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.FactoryGenerator;
+using Neatoo;
 
 namespace FactoryGeneratorSandbox;
 
@@ -77,7 +78,7 @@ public void Update(){
 ";
 
 		// Pass the source code to our helper and snapshot test the output
-		TestHelper.Verify<FactoryGenerator>(source, source2);
+		TestHelper.Verify<Factory>(source, source2);
 	}
 
 	[Fact]
@@ -121,7 +122,7 @@ public static Obj Create() {
 ";
 
 		// Pass the source code to our helper and snapshot test the output
-		TestHelper.Verify<FactoryGenerator>(source, source2);
+		TestHelper.Verify<Factory>(source, source2);
 	}
 
 
@@ -155,7 +156,7 @@ public int InsertMethod(){}
 
 
 		// Pass the source code to our helper and snapshot test the output
-		TestHelper.Verify<FactoryGenerator>(source);
+		TestHelper.Verify<Factory>(source);
 	}
 
 	[Fact]
@@ -202,7 +203,7 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify<FactoryGenerator>(source);
+		TestHelper.Verify<Factory>(source);
 	}
 
 	private sealed class AuthedClass
@@ -239,7 +240,7 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify<FactoryGenerator>(source);
+		TestHelper.Verify<Factory>(source);
 	}
 
 
@@ -271,7 +272,7 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify<FactoryGenerator>(source);
+		TestHelper.Verify<Factory>(source);
 	}
 
 	[Fact]
@@ -303,7 +304,7 @@ namespace FactoryGeneratorSandbox;
 
 ";
 
-		TestHelper.Verify<FactoryGenerator>(source);
+		TestHelper.Verify<Factory>(source);
 	}
 
 	[Fact]
@@ -338,6 +339,6 @@ public abstract partial class MapperAbstractGenericObj<T>
 
 ";
 
-		TestHelper.Verify<MapperGenerator>(source);
+		TestHelper.Verify<Mapper>(source);
 	}
 }

@@ -17,9 +17,9 @@
 	  <None Include="..\..\README.md" Pack="true" PackagePath="" />
 	  <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
 	  <None Include="..\..\neatoo_icon.png" Pack="true" PackagePath="" Visible="false" />
-	  <None Include="$(OutputPath)\net9.0\$(AssemblyName).FactoryGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+	  <None Include="$(OutputPath)\net9.0\Neatoo.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" PrivateAssets="all"  />
+    <ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all"  />
   </ItemGroup>
 </Project>

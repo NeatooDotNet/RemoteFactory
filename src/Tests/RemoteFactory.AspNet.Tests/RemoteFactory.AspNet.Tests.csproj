@@ -24,7 +24,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
 		<ProjectReference Include="..\..\RemoteFactory\RemoteFactory.csproj" />
-		<ProjectReference Include="..\..\RemoteFactory.FactoryGenerator\RemoteFactory.FactoryGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="..\RemoteFactory.AspNetCore.TestServer\RemoteFactory.AspNetCore.TestServer.csproj" />
 	</ItemGroup>
 	
