@@ -43,7 +43,6 @@ docs/
 ├── source-generation/
 │   ├── how-it-works.md             # High-level understanding (what you need to know)
 │   ├── factory-generator.md        # Factory generation explained
-│   ├── mapper-generator.md         # MapTo/MapFrom generation explained
 │   └── appendix-internals.md       # Technical appendix (deep dive for curious readers)
 │
 ├── reference/
@@ -393,7 +392,6 @@ docs/
    - Factory interface (IPersonModelFactory)
    - Factory implementation (PersonModelFactory)
    - DI registrations (FactoryServiceRegistrar)
-   - Mapper methods (if partial MapTo/MapFrom exist)
 
 2. **Where to Find Generated Code**
    - Generated folder under project
@@ -427,28 +425,6 @@ docs/
    - Return types (nullable, Task, bool)
    - Parameter handling
    - Service injection
-
----
-
-#### `source-generation/mapper-generator.md`
-
-**Purpose:** MapTo/MapFrom generation
-
-**Outline:**
-1. **Enabling Mapper Generation**
-   - Partial class requirement
-   - Partial void MapTo/MapFrom methods
-
-2. **Property Matching**
-   - Same name matching
-   - [MapperIgnore] attribute
-
-3. **Type Handling**
-   - Nullable to non-nullable (throws NullReferenceException)
-   - Type mismatches (casts with warnings)
-
-4. **Generated Code Example**
-   - PersonModel to PersonEntity mapping
 
 ---
 
@@ -503,10 +479,7 @@ docs/
 3. **Parameter Attributes**
    - [Service] - DI injection marker
 
-4. **Property Attributes**
-   - [MapperIgnore] - Exclude from mapping
-
-5. **Assembly Attributes**
+4. **Assembly Attributes**
    - [FactoryHintNameLength] - Control generated file naming
 
 ---
@@ -922,7 +895,6 @@ docs/
 | Authorization | authorization-overview, custom-authorization, can-methods |
 | Source generation | how-it-works, factory-generator |
 | DI integration | service-injection, installation |
-| Mapper generation | mapper-generator |
 | Remote execution | three-tier-execution, factory-operations |
 
 ### Feature Deep-Dives
@@ -933,7 +905,6 @@ docs/
 | IsNew/IsDeleted | interfaces |
 | CanCreate/CanFetch | can-methods |
 | [Remote] attribute | factory-operations |
-| MapTo/MapFrom | mapper-generator |
 | NeatooFactory modes | factory-modes |
 | Lifecycle hooks | factory-lifecycle |
 
@@ -957,9 +928,8 @@ docs/
 3. `authorization/authorization-overview.md`
 4. `authorization/custom-authorization.md`
 5. `source-generation/factory-generator.md`
-6. `source-generation/mapper-generator.md`
-7. `reference/interfaces.md`
-8. `examples/blazor-app.md`
+6. `reference/interfaces.md`
+7. `examples/blazor-app.md`
 
 ### Phase 3: Comparison (High Value)
 1. `comparison/vs-csla.md`

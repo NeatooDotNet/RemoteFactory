@@ -191,14 +191,6 @@ FactoryGeneratorTests/
 |   +-- FactoryCoreTests.cs       # FactoryCore extensibility
 |   +-- FactoryOnStartCompleteTests.cs  # Lifecycle hooks
 |
-+-- Mapper/                       # Mapper generator tests
-|   +-- MapperTests.cs            # Basic MapTo/MapFrom
-|   +-- MapperEnumTests.cs        # Enum type mapping
-|   +-- MapperIgnoreAttribute.cs  # [MapperIgnore] attribute
-|   +-- MapperNullableBang.cs     # Nullable handling
-|   +-- MapperAbstractGenericTests.cs
-|   +-- PersonMapperTests.cs
-|
 +-- InterfaceFactory/             # Interface-based factories
 |   +-- InterfaceFactoryTests.cs  # [Factory] on interface
 |
@@ -222,7 +214,6 @@ FactoryGeneratorTests/
 |
 +-- Generated/                    # Generator output (auto-created)
     +-- ...Factory.g.cs           # Generated factory code
-    +-- ...Mapper.g.cs            # Generated mapper code
 ```
 
 ---
@@ -460,16 +451,6 @@ public void DerivedClass_ShouldHaveFactoryGeneratedCode()
 | Return type handling | `IgnoreWriteMethodReturn.cs` |
 | Inheritance chains | `HasBaseClassFactoryAttributeTests.cs` |
 | Non-nullable Save | `SaveWNoDeleteIsNotNullableTests.cs` |
-
-### Mapper Generator Coverage
-
-| Feature | Test File(s) |
-|---------|-------------|
-| Basic MapTo/MapFrom | `MapperTests.cs` |
-| Enum mapping | `MapperEnumTests.cs` |
-| MapperIgnore attribute | `MapperIgnoreAttribute.cs` |
-| Nullable handling | `MapperNullableBang.cs` |
-| Abstract generic classes | `MapperAbstractGenericTests.cs` |
 
 ### Execution Modes Tested
 

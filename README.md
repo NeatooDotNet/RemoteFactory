@@ -27,7 +27,7 @@ Traditional 3-tier architectures require extensive boilerplate: DTOs that mirror
 ```csharp
 [Factory]
 [AuthorizeFactory<IPersonModelAuth>]
-public partial class PersonModel : IPersonModel
+public class PersonModel : IPersonModel
 {
     [Create]
     public PersonModel()
@@ -40,10 +40,6 @@ public partial class PersonModel : IPersonModel
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Partial methods for generated mapper
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-
     // This runs on the server - [Service] parameters are injected
     [Remote]
     [Fetch]
@@ -51,7 +47,8 @@ public partial class PersonModel : IPersonModel
     {
         var entity = await context.Persons.FirstOrDefaultAsync();
         if (entity == null) return false;
-        this.MapFrom(entity);  // Generated mapper
+        this.FirstName = entity.FirstName;
+        this.LastName = entity.LastName;
         this.IsNew = false;
         return true;
     }
@@ -88,7 +85,6 @@ public interface IPersonModelFactory
 - **Generated Factories**: Full CRUD with automatic DI registration
 - **Built-in Authorization**: Declarative access control with generated `Can*` methods
 - **Source Generators**: Compile-time generation, no runtime reflection
-- **Mapper Generation**: Automatic `MapTo`/`MapFrom` for entity mapping
 - **Async/Await Centric**: First-class async support throughout
 
 ## Getting Started

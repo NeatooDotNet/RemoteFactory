@@ -105,34 +105,6 @@ public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFa
 }
 ```
 
-### 4. Mapper Methods (Optional)
-
-If your class has partial `MapTo` or `MapFrom` methods, they're generated:
-
-```csharp
-// Your class
-public partial class PersonModel
-{
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-}
-
-// Generated mapper
-public partial void MapFrom(PersonEntity entity)
-{
-    this.FirstName = entity.FirstName;
-    this.LastName = entity.LastName;
-    this.Email = entity.Email;
-}
-
-public partial void MapTo(PersonEntity entity)
-{
-    entity.FirstName = this.FirstName;
-    entity.LastName = this.LastName;
-    entity.Email = this.Email;
-}
-```
-
 ## Where to Find Generated Code
 
 ### Visual Studio
@@ -154,10 +126,8 @@ YourProject/
         └── net8.0/
             └── generated/
                 └── Neatoo.RemoteFactory.FactoryGenerator/
-                    ├── Neatoo.RemoteFactory.FactoryGenerator.FactoryGenerator/
-                    │   └── YourNamespace.PersonModelFactory.g.cs
-                    └── Neatoo.RemoteFactory.FactoryGenerator.MapperGenerator/
-                        └── YourNamespace.PersonModelMapper.g.cs
+                    └── Neatoo.RemoteFactory.FactoryGenerator.FactoryGenerator/
+                        └── YourNamespace.PersonModelFactory.g.cs
 ```
 
 ### JetBrains Rider
@@ -182,15 +152,10 @@ For the `[Factory]` attribute to work, your class must be:
 
 - **Concrete**: Not abstract
 - **Non-generic**: Generic classes aren't supported
-- **Partial** (optional): Required only for mapper generation
-
 ```csharp
 // Valid
 [Factory]
 public class PersonModel { }
-
-[Factory]
-public partial class PersonModel { }
 
 [Factory]
 internal class PersonModel { }
@@ -271,25 +236,6 @@ This is useful for base classes that shouldn't have their own factories.
    - Check NuGet package reference
    - Try removing and re-adding the package
 
-### Mapper Not Generated
-
-**Symptoms:** `MapTo` or `MapFrom` shows "not implemented"
-
-**Causes and solutions:**
-
-1. **Class not partial**
-   ```csharp
-   [Factory]
-   public partial class PersonModel  // Add 'partial'
-   {
-       public partial void MapFrom(PersonEntity entity);
-   }
-   ```
-
-2. **Method signature mismatch**
-   - Parameter type must be accessible
-   - Return type must be `void`
-
 ### Stale Generated Code
 
 **Symptoms:** Generated code doesn't match source
@@ -360,5 +306,4 @@ Large projects should see minimal build time impact from generation.
 ## Next Steps
 
 - **[Factory Generator](factory-generator.md)**: Deep dive into factory generation
-- **[Mapper Generator](mapper-generator.md)**: Understanding MapTo/MapFrom generation
 - **[Appendix: Internals](appendix-internals.md)**: Technical deep dive for curious engineers

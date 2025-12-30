@@ -395,7 +395,6 @@ public class PersonEntity
 public class PersonModel : IPersonModel
 {
     // Business-focused concerns
-    public partial void MapFrom(PersonEntity entity);
 }
 ```
 

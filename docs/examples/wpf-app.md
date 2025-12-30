@@ -164,7 +164,10 @@ public partial class PersonModel : IPersonModel, INotifyPropertyChanged
         var entity = await ctx.Persons.FindAsync(id);
         if (entity == null) return false;
 
-        MapFrom(entity);
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
         IsNew = false;
         return true;
     }
@@ -186,7 +189,9 @@ public partial class PersonModel : IPersonModel, INotifyPropertyChanged
                 ?? throw new Exception($"Person {Id} not found");
         }
 
-        MapTo(entity);
+        entity.FirstName = FirstName;
+        entity.LastName = LastName;
+        entity.Email = Email;
         await ctx.SaveChangesAsync();
         Id = entity.Id;
         IsNew = false;
@@ -203,10 +208,6 @@ public partial class PersonModel : IPersonModel, INotifyPropertyChanged
             await ctx.SaveChangesAsync();
         }
     }
-
-    // Mapper methods
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
 }
 ```
 

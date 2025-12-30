@@ -212,64 +212,6 @@ static void GenerateFactoryInterface(StringBuilder sb, FactoryInfo info)
 }
 ```
 
-## MapperGenerator
-
-The mapper generator handles `MapTo`/`MapFrom` partial methods:
-
-```csharp
-[Generator]
-public class MapperGenerator : IIncrementalGenerator
-{
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
-        var partialMethods = context.SyntaxProvider
-            .CreateSyntaxProvider(
-                predicate: static (node, _) => IsPartialMapperMethod(node),
-                transform: static (ctx, _) => GetMapperInfo(ctx))
-            .Where(static info => info is not null);
-
-        context.RegisterSourceOutput(partialMethods,
-            static (ctx, info) => GenerateMapper(ctx, info));
-    }
-}
-```
-
-### Property Matching
-
-```csharp
-static void GenerateMapperBody(StringBuilder sb, MapperInfo info)
-{
-    var sourceProps = GetProperties(info.SourceType);
-    var targetProps = GetProperties(info.TargetType);
-
-    foreach (var sourceProp in sourceProps)
-    {
-        // Skip if [MapperIgnore]
-        if (HasMapperIgnoreAttribute(sourceProp)) continue;
-
-        // Find matching target property
-        var targetProp = targetProps.FirstOrDefault(p => p.Name == sourceProp.Name);
-        if (targetProp == null) continue;
-
-        // Check if target is writable
-        if (!targetProp.SetMethod?.IsAccessible) continue;
-
-        // Generate assignment
-        if (IsNullableToNonNullable(sourceProp.Type, targetProp.Type))
-        {
-            sb.AppendLine($"        {info.TargetParam}.{targetProp.Name} = " +
-                $"this.{sourceProp.Name} ?? throw new NullReferenceException(" +
-                $"\"{info.ClassName}.{sourceProp.Name}\");");
-        }
-        else
-        {
-            sb.AppendLine($"        {info.TargetParam}.{targetProp.Name} = " +
-                $"this.{sourceProp.Name};");
-        }
-    }
-}
-```
-
 ## Performance Considerations
 
 ### Avoiding Symbol Usage After Transform
@@ -447,7 +389,6 @@ Solutions:
 │                                                                 │
 │  PersonModelFactory.g.cs                                        │
 │  OrderModelFactory.g.cs                                         │
-│  PersonModelMapper.g.cs                                         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -455,4 +396,3 @@ Solutions:
 
 - **[How It Works](how-it-works.md)**: High-level overview
 - **[Factory Generator](factory-generator.md)**: Factory generation details
-- **[Mapper Generator](mapper-generator.md)**: Mapper generation details

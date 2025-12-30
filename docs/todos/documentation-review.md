@@ -19,7 +19,7 @@ Fixed the enum to show actual composite flag values and added explanation table 
 ### 2. Empty `MapperAttributes.cs` File - COMPLETED
 **File:** `src/RemoteFactory/MapperAttributes.cs`
 
-Deleted the empty file. The `[MapperIgnore]` attribute is defined in `FactoryAttributes.cs`.
+Deleted the empty file. The mapper feature has been removed from RemoteFactory.
 
 ---
 

@@ -108,14 +108,13 @@ The `[Fetch]` attribute marks methods that load existing data, typically from a 
 
 ```csharp
 [Factory]
-public partial class PersonModel
+public class PersonModel
 {
     public int Id { get; private set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
     public bool IsNew { get; set; } = true;
-
-    // Partial methods for generated mapper
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
 
     [Create]
     public PersonModel() { }
@@ -128,7 +127,10 @@ public partial class PersonModel
         var entity = await context.Persons.FindAsync(id);
         if (entity == null) return false;
 
-        MapFrom(entity);
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
         IsNew = false;
         return true;
     }
@@ -142,7 +144,10 @@ public partial class PersonModel
             .FirstOrDefaultAsync(p => p.Email == email);
         if (entity == null) return false;
 
-        MapFrom(entity);
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
         IsNew = false;
         return true;
     }
@@ -187,20 +192,21 @@ The `[Insert]` attribute marks methods that create new records:
 
 ```csharp
 [Factory]
-public partial class PersonModel : IPersonModel, IFactorySaveMeta
+public class PersonModel : IPersonModel, IFactorySaveMeta
 {
+    public int Id { get; private set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
-
-    // Partial method for generated mapper
-    public partial void MapTo(PersonEntity entity);
 
     [Remote]
     [Insert]
     public async Task Insert([Service] IPersonContext context)
     {
         var entity = new PersonEntity();
-        MapTo(entity);
+        entity.FirstName = FirstName;
+        entity.LastName = LastName;
         context.Persons.Add(entity);
         await context.SaveChangesAsync();
 
@@ -216,10 +222,13 @@ The `[Update]` attribute marks methods that modify existing records:
 
 ```csharp
 [Factory]
-public partial class PersonModel : IPersonModel, IFactorySaveMeta
+public class PersonModel : IPersonModel, IFactorySaveMeta
 {
-    // Partial method for generated mapper
-    public partial void MapTo(PersonEntity entity);
+    public int Id { get; private set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public bool IsNew { get; set; } = true;
+    public bool IsDeleted { get; set; }
 
     [Remote]
     [Update]
@@ -228,7 +237,8 @@ public partial class PersonModel : IPersonModel, IFactorySaveMeta
         var entity = await context.Persons.FindAsync(Id)
             ?? throw new InvalidOperationException("Person not found");
 
-        MapTo(entity);
+        entity.FirstName = FirstName;
+        entity.LastName = LastName;
         await context.SaveChangesAsync();
     }
 }
@@ -257,7 +267,8 @@ public async Task Save([Service] IPersonContext context)
             ?? throw new InvalidOperationException("Person not found");
     }
 
-    MapTo(entity);
+    entity.FirstName = FirstName;
+    entity.LastName = LastName;
     await context.SaveChangesAsync();
 
     Id = entity.Id;

@@ -173,7 +173,9 @@ public async Task<bool> Fetch(int id, [Service] IPersonContext context)
     var entity = await context.Persons.FindAsync(id);
     if (entity == null) return false;
 
-    MapFrom(entity);
+    Id = entity.Id;
+    FirstName = entity.FirstName;
+    LastName = entity.LastName;
     IsNew = false;
     return true;
 }
@@ -201,7 +203,8 @@ Marks a method as an Insert operation for saving new records.
 public async Task Insert([Service] IPersonContext context)
 {
     var entity = new PersonEntity();
-    MapTo(entity);
+    entity.FirstName = FirstName;
+    entity.LastName = LastName;
     context.Persons.Add(entity);
     await context.SaveChangesAsync();
     Id = entity.Id;
@@ -229,7 +232,8 @@ Marks a method as an Update operation for modifying existing records.
 public async Task Update([Service] IPersonContext context)
 {
     var entity = await context.Persons.FindAsync(Id);
-    MapTo(entity);
+    entity.FirstName = FirstName;
+    entity.LastName = LastName;
     await context.SaveChangesAsync();
 }
 ```
@@ -487,47 +491,6 @@ Task<IPersonModel?> Fetch(int id);
 
 ---
 
-## Property Attributes
-
-### [MapperIgnore]
-
-Excludes a property from generated MapTo/MapFrom methods.
-
-**Target:** Property
-
-**Usage:**
-
-```csharp
-[Factory]
-public partial class PersonModel
-{
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-
-    [MapperIgnore]  // Not included in mapping
-    public string FullName => $"{FirstName} {LastName}";
-
-    [MapperIgnore]  // Not included in mapping
-    public bool IsDirty { get; set; }
-
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-}
-```
-
-**Generated Mapper:**
-
-```csharp
-public partial void MapFrom(PersonEntity entity)
-{
-    this.FirstName = entity.FirstName;
-    this.LastName = entity.LastName;
-    // FullName and IsDirty are not mapped
-}
-```
-
----
-
 ## Assembly Attributes
 
 ### [FactoryHintNameLength]
@@ -569,7 +532,6 @@ Controls the maximum length of generated file names (hint names).
 | `[AspAuthorize]` | Method | ASP.NET Core authorization |
 | `[AuthorizeFactory]` | Method | Authorization method marker |
 | `[Service]` | Parameter | DI resolution marker |
-| `[MapperIgnore]` | Property | Exclude from mapping |
 | `[FactoryHintNameLength]` | Assembly | Control file name length |
 
 ## Next Steps

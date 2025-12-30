@@ -44,7 +44,9 @@ public class OrderModel : IOrderModel, IFactorySaveMeta
     {
         var entity = await ctx.Orders.FindAsync(id);
         if (entity == null) return false;
-        MapFrom(entity);
+        Id = entity.Id;
+        Description = entity.Description;
+        Total = entity.Total;
         return true;
     }
 }

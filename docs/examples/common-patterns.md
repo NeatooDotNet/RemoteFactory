@@ -26,9 +26,6 @@ public partial class ProductModel : IProductModel, IFactorySaveMeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Partial method for generated mapper
-    public partial void MapTo(ProductEntity entity);
-
     [Remote]
     [Insert][Update]  // Both attributes on same method
     public async Task Upsert([Service] IProductContext ctx)
@@ -46,7 +43,8 @@ public partial class ProductModel : IProductModel, IFactorySaveMeta
                 ?? throw new InvalidOperationException($"Product {Id} not found");
         }
 
-        MapTo(entity);
+        entity.Name = Name;
+        entity.Price = Price;
         await ctx.SaveChangesAsync();
 
         // Update ID from database-generated value
@@ -90,9 +88,6 @@ public partial class CustomerModel : ICustomerModel, IFactorySaveMeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }  // From IFactorySaveMeta
 
-    // Partial method for generated mapper
-    public partial void MapFrom(CustomerEntity entity);
-
     [Remote]
     [Fetch]
     public async Task<bool> Fetch(int id, [Service] ICustomerContext ctx)
@@ -104,7 +99,10 @@ public partial class CustomerModel : ICustomerModel, IFactorySaveMeta
 
         if (entity == null) return false;
 
-        MapFrom(entity);
+        Id = entity.Id;
+        Name = entity.Name;
+        IsActive = entity.IsActive;
+        DeletedAt = entity.DeletedAt;
         IsNew = false;
         return true;
     }
@@ -204,9 +202,6 @@ public partial class OrderModel : IOrderModel, IFactorySaveMeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Partial method for generated mapper
-    public partial void MapTo(OrderEntity entity);
-
     [Remote]
     [Update]
     public async Task Update([Service] IOrderContext ctx)
@@ -221,7 +216,8 @@ public partial class OrderModel : IOrderModel, IFactorySaveMeta
                 "This record was modified by another user. Please reload and try again.");
         }
 
-        MapTo(entity);
+        entity.Description = Description;
+        entity.Total = Total;
         await ctx.SaveChangesAsync();
 
         // Update with new row version
@@ -282,10 +278,6 @@ public partial class InvoiceModel : IInvoiceModel, IFactorySaveMeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Partial methods for generated mapper
-    public partial void MapFrom(InvoiceEntity entity);
-    public partial void MapTo(InvoiceEntity entity);
-
     [Create]
     public InvoiceModel()
     {
@@ -302,7 +294,9 @@ public partial class InvoiceModel : IInvoiceModel, IFactorySaveMeta
 
         if (entity == null) return false;
 
-        MapFrom(entity);
+        Id = entity.Id;
+        InvoiceNumber = entity.InvoiceNumber;
+        Date = entity.Date;
         Lines = entity.Lines.Select(l => new InvoiceLineModel
         {
             Id = l.Id,
@@ -334,7 +328,8 @@ public partial class InvoiceModel : IInvoiceModel, IFactorySaveMeta
                 .FirstAsync(i => i.Id == Id);
         }
 
-        MapTo(entity);
+        entity.InvoiceNumber = InvoiceNumber;
+        entity.Date = Date;
 
         // Handle lines
         SyncLines(entity, ctx);

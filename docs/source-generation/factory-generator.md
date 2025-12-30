@@ -469,6 +469,5 @@ Files appear in: `obj/Debug/net8.0/generated/`
 
 ## Next Steps
 
-- **[Mapper Generator](mapper-generator.md)**: MapTo/MapFrom generation
 - **[Appendix: Internals](appendix-internals.md)**: Technical deep dive
 - **[Generated Code Reference](../reference/generated-code.md)**: Understanding factory structure

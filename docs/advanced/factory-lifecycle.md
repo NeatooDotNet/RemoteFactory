@@ -104,13 +104,10 @@ This composition enables authorization methods marked with `AuthorizeFactoryOper
 
 ```csharp
 [Factory]
-public partial class OrderModel : IOrderModel, IFactoryOnStart, IFactoryOnComplete
+public class OrderModel : IOrderModel, IFactoryOnStart, IFactoryOnComplete
 {
     public int Id { get; set; }
     public string Status { get; set; }
-
-    // Partial method for generated mapper
-    public partial void MapFrom(OrderEntity entity);
 
     public void FactoryStart(FactoryOperation operation)
     {
@@ -132,7 +129,8 @@ public partial class OrderModel : IOrderModel, IFactoryOnStart, IFactoryOnComple
         // FactoryStart called before this
         var entity = await ctx.Orders.FindAsync(id);
         if (entity == null) return false;
-        MapFrom(entity);
+        Id = entity.Id;
+        Status = entity.Status;
         return true;
         // FactoryComplete called after this (if successful)
     }

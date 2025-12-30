@@ -173,6 +173,10 @@ Fetch methods are async and invoke your `[Fetch]` methods:
 [Factory]
 public class PersonModel : IPersonModel
 {
+    public int Id { get; private set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+
     [Remote]
     [Fetch]
     public async Task<bool> Fetch(int id, [Service] IPersonContext ctx)
@@ -180,7 +184,9 @@ public class PersonModel : IPersonModel
         var entity = await ctx.Persons.FindAsync(id);
         if (entity == null) return false;
 
-        MapFrom(entity);
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
         return true;
     }
 }

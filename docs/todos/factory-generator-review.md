@@ -35,7 +35,6 @@ The RemoteFactory source generator is a well-architected incremental generator t
 
 3. **Clean Separation of Concerns**
    - `FactoryGenerator` handles class/interface factories
-   - `MapperGenerator` handles MapTo/MapFrom generation
    - Runtime types (`FactoryBase`, `FactoryCore`) are decoupled from generation
 
 4. **Comprehensive Feature Set**

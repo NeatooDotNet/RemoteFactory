@@ -113,10 +113,6 @@ public partial class PersonModel : IPersonModel
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Partial methods for generated mapper
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-
     [Create]
     public PersonModel() { }
 
@@ -126,7 +122,8 @@ public partial class PersonModel : IPersonModel
     {
         var entity = await context.Persons.FindAsync(id);
         if (entity == null) return false;
-        MapFrom(entity);
+        Id = entity.Id;
+        Name = entity.Name;
         IsNew = false;
         return true;
     }
@@ -136,7 +133,7 @@ public partial class PersonModel : IPersonModel
     public async Task Insert([Service] IPersonContext context)
     {
         var entity = new PersonEntity();
-        MapTo(entity);
+        entity.Name = Name;
         context.Persons.Add(entity);
         await context.SaveChangesAsync();
         Id = entity.Id;
@@ -244,9 +241,6 @@ public partial class PersonModel : IPersonModel, IFactorySaveMeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-
     [Create]
     public PersonModel() { }
 
@@ -256,7 +250,10 @@ public partial class PersonModel : IPersonModel, IFactorySaveMeta
     {
         var entity = await context.Persons.FindAsync(id);
         if (entity == null) return false;
-        MapFrom(entity);
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
         IsNew = false;
         return true;
     }

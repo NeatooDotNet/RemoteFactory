@@ -17,7 +17,6 @@ RemoteFactory is a code generation framework that eliminates the repetitive infr
 - **Factory interfaces and implementations** for CRUD operations
 - **Delegate types** for remote method invocation
 - **DI registrations** for all generated components
-- **Mapper methods** for entity-to-model transformations
 
 ## Key Benefits
 
@@ -35,7 +34,7 @@ Define your domain model with a few attributes:
 ```csharp
 [Factory]
 [AuthorizeFactory<IPersonModelAuth>]
-public partial class PersonModel : IPersonModel
+public class PersonModel : IPersonModel
 {
     [Create]
     public PersonModel()
@@ -48,17 +47,14 @@ public partial class PersonModel : IPersonModel
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Partial methods for generated mapper
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-
     [Remote]
     [Fetch]
     public async Task<bool> Fetch([Service] IPersonContext personContext)
     {
         var entity = await personContext.Persons.FirstOrDefaultAsync();
         if (entity == null) return false;
-        this.MapFrom(entity);
+        this.FirstName = entity.FirstName;
+        this.LastName = entity.LastName;
         this.IsNew = false;
         return true;
     }
@@ -70,7 +66,8 @@ public partial class PersonModel : IPersonModel
     {
         var entity = await personContext.Persons.FirstOrDefaultAsync()
             ?? new PersonEntity();
-        this.MapTo(entity);
+        entity.FirstName = this.FirstName;
+        entity.LastName = this.LastName;
         await personContext.SaveChangesAsync();
     }
 }
@@ -152,7 +149,6 @@ public class PersonComponent
 
 - **[How It Works](source-generation/how-it-works.md)**: High-level understanding of code generation
 - **[Factory Generator](source-generation/factory-generator.md)**: Factory generation details
-- **[Mapper Generator](source-generation/mapper-generator.md)**: MapTo/MapFrom generation
 - **[Troubleshooting](source-generation/how-it-works.md#troubleshooting)**: Common issues and solutions
 
 ## Reference

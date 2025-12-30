@@ -107,14 +107,6 @@ public sealed class AuthorizeFactoryAttribute : Attribute
 	}
 }
 
-[System.AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-public sealed class MapperIgnoreAttribute : Attribute
-{
-	public MapperIgnoreAttribute()
-	{
-	}
-}
-
 [System.AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = false)]
 public sealed class FactoryHintNameLengthAttribute : Attribute
 {

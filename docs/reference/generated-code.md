@@ -497,41 +497,6 @@ internal class ReportServiceFactory : IReportServiceFactory
 }
 ```
 
-## Mapper Generation
-
-For partial `MapTo`/`MapFrom` methods:
-
-```csharp
-// Your partial method
-public partial class PersonModel
-{
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-}
-
-// Generated implementation
-public partial class PersonModel
-{
-    public partial void MapFrom(PersonEntity entity)
-    {
-        this.Id = entity.Id;
-        this.FirstName = entity.FirstName;
-        this.LastName = entity.LastName;
-        this.Email = entity.Email;
-    }
-
-    public partial void MapTo(PersonEntity entity)
-    {
-        entity.Id = this.Id;
-        entity.FirstName = this.FirstName
-            ?? throw new NullReferenceException("PersonModel.FirstName");
-        entity.LastName = this.LastName
-            ?? throw new NullReferenceException("PersonModel.LastName");
-        entity.Email = this.Email;
-    }
-}
-```
-
 ## Common Generated Patterns
 
 ### Authorization Check Pattern

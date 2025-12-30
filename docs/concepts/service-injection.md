@@ -102,11 +102,8 @@ The most common use case is injecting your database context:
 
 ```csharp
 [Factory]
-public partial class OrderModel
+public class OrderModel
 {
-    // Partial method for generated mapper
-    public partial void MapFrom(OrderEntity entity);
-
     [Remote]
     [Fetch]
     public async Task<bool> Fetch(Guid orderId, [Service] IOrderContext context)
@@ -116,7 +113,9 @@ public partial class OrderModel
             .FirstOrDefaultAsync(o => o.Id == orderId);
 
         if (entity == null) return false;
-        MapFrom(entity);
+        // Map entity properties
+        Id = entity.Id;
+        // ... map other properties
         return true;
     }
 
@@ -170,8 +169,6 @@ public async Task<bool> Fetch(int id, [Service] ILogger<PersonModel> logger)
 You can inject multiple services:
 
 ```csharp
-// Assume partial method is declared: public partial void MapTo(PersonEntity entity);
-
 [Remote]
 [Insert]
 public async Task Insert(
@@ -182,7 +179,9 @@ public async Task Insert(
 {
     // Create entity
     var entity = new PersonEntity();
-    MapTo(entity);  // Generated mapper
+    entity.FirstName = FirstName;
+    entity.LastName = LastName;
+    entity.Email = Email;
     context.Persons.Add(entity);
     await context.SaveChangesAsync();
 

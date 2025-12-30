@@ -100,10 +100,6 @@ internal partial class PersonModel : IPersonModel
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    // Mapper method declarations
-    public partial void MapFrom(PersonEntity personEntity);
-    public partial void MapTo(PersonEntity personEntity);
-
     [Remote]
     [Fetch]
     public async Task<bool> Fetch([Service] IPersonContext personContext)
@@ -113,7 +109,13 @@ internal partial class PersonModel : IPersonModel
         {
             return false;
         }
-        this.MapFrom(personEntity);
+        this.FirstName = personEntity.FirstName;
+        this.LastName = personEntity.LastName;
+        this.Email = personEntity.Email;
+        this.Phone = personEntity.Phone;
+        this.Notes = personEntity.Notes;
+        this.Created = personEntity.Created;
+        this.Modified = personEntity.Modified;
         this.IsNew = false;
         return true;
     }
@@ -130,7 +132,13 @@ internal partial class PersonModel : IPersonModel
             personContext.Persons.Add(personEntity);
         }
         this.Modified = DateTime.Now;
-        this.MapTo(personEntity);
+        personEntity.FirstName = this.FirstName;
+        personEntity.LastName = this.LastName;
+        personEntity.Email = this.Email;
+        personEntity.Phone = this.Phone;
+        personEntity.Notes = this.Notes;
+        personEntity.Created = this.Created;
+        personEntity.Modified = this.Modified;
         await personContext.SaveChangesAsync();
     }
 

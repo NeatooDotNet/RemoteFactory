@@ -244,9 +244,6 @@ public partial class PersonModel : IPersonModel, IFactorySaveMeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-
     [Create]
     public PersonModel()
     {
@@ -260,7 +257,12 @@ public partial class PersonModel : IPersonModel, IFactorySaveMeta
     {
         var entity = await context.Persons.FindAsync(id);
         if (entity == null) return false;
-        MapFrom(entity);
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
+        Created = entity.Created;
+        Modified = entity.Modified;
         IsNew = false;
         return true;
     }
@@ -281,7 +283,11 @@ public partial class PersonModel : IPersonModel, IFactorySaveMeta
             entity = await context.Persons.FindAsync(Id)!;
         }
         Modified = DateTime.UtcNow;
-        MapTo(entity);
+        entity.FirstName = FirstName!;
+        entity.LastName = LastName!;
+        entity.Email = Email;
+        entity.Created = Created;
+        entity.Modified = Modified;
         await context.SaveChangesAsync();
         Id = entity.Id;
         IsNew = false;

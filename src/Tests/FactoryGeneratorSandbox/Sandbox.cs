@@ -307,38 +307,4 @@ namespace FactoryGeneratorSandbox;
 		TestHelper.Verify<Factory>(source);
 	}
 
-	[Fact]
-	public void MapperClass()
-	{
-		// The source code to test
-		var source = @"
-using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.AspNetCore;
-using Microsoft.AspNetCore.Authorization;
-using System.Threading.Tasks;
-
-namespace FactoryGeneratorSandbox;
-
-public class MapperAbstractGenericDto
-{
-	public int Value { get; set; }
-	public int Number { get; set; }
-}
-
-[Factory]
-public abstract partial class MapperAbstractGenericObj<T>
-{
-	public int Value { get; set; }
-
-	public int Number { get; set; }
-
-	public partial void MapTo(MapperAbstractGenericDto mapperIgnoreAttributeDto);
-	public partial void MapFrom(MapperAbstractGenericDto mapperIgnoreAttributeDto);
-}
-
-
-";
-
-		TestHelper.Verify<Mapper>(source);
-	}
 }

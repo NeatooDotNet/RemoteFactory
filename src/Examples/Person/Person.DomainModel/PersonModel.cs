@@ -22,7 +22,7 @@ public interface IPersonModel : INotifyPropertyChanged, IFactorySaveMeta
 
 [Factory]
 [AuthorizeFactory<IPersonModelAuth>]
-internal partial class PersonModel : IPersonModel
+internal class PersonModel : IPersonModel
 {
 	[Create]
 	public PersonModel()
@@ -51,9 +51,6 @@ internal partial class PersonModel : IPersonModel
 		this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 	}
 
-	public partial void MapFrom(PersonEntity personEntity);
-	public partial void MapTo(PersonEntity personEntity);
-
 	[Remote]
 	[Fetch]
 	public async Task<bool> Fetch([Service] IPersonContext personContext)
@@ -63,7 +60,13 @@ internal partial class PersonModel : IPersonModel
 		{
 			return false;
 		}
-		this.MapFrom(personEntity);
+		this.FirstName = personEntity.FirstName;
+		this.LastName = personEntity.LastName;
+		this.Email = personEntity.Email;
+		this.Phone = personEntity.Phone;
+		this.Notes = personEntity.Notes;
+		this.Created = personEntity.Created;
+		this.Modified = personEntity.Modified;
 		this.IsNew = false;
 		return true;
 	}
@@ -79,7 +82,13 @@ internal partial class PersonModel : IPersonModel
 			personEntity = new PersonEntity();
 			personContext.Persons.Add(personEntity);
 		}
-		this.MapTo(personEntity);
+		personEntity.FirstName = this.FirstName ?? throw new InvalidOperationException("PersonModel.FirstName is required");
+		personEntity.LastName = this.LastName ?? throw new InvalidOperationException("PersonModel.LastName is required");
+		personEntity.Email = this.Email;
+		personEntity.Phone = this.Phone;
+		personEntity.Notes = this.Notes;
+		personEntity.Created = this.Created;
+		personEntity.Modified = this.Modified;
 		await personContext.SaveChangesAsync();
 	}
 

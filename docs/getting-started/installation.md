@@ -266,7 +266,6 @@ builder.Services.AddNeatooAspNetCore(
 
 1. **Class must not be abstract**: The `[Factory]` attribute requires a concrete class
 2. **Class must not be generic**: Generic classes are not supported
-3. **Partial classes for mappers**: If using `MapTo`/`MapFrom`, the class must be `partial`
 
 ## Next Steps
 

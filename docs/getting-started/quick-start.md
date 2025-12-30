@@ -64,7 +64,7 @@ public interface IPersonModel : IFactorySaveMeta
 
 // The [Factory] attribute triggers code generation
 [Factory]
-public partial class PersonModel : IPersonModel
+public class PersonModel : IPersonModel
 {
     // [Create] marks this constructor for the Create factory method
     [Create]
@@ -80,10 +80,6 @@ public partial class PersonModel : IPersonModel
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Partial methods for generated mapper
-    public partial void MapFrom(PersonEntity entity);
-    public partial void MapTo(PersonEntity entity);
-
     // [Remote] indicates this method executes on the server
     // [Fetch] marks this as the Fetch factory method
     [Remote]
@@ -93,7 +89,11 @@ public partial class PersonModel : IPersonModel
         var entity = await context.Persons.FindAsync(id);
         if (entity == null) return false;
 
-        MapFrom(entity);
+        // Map entity properties to domain model
+        this.Id = entity.Id;
+        this.FirstName = entity.FirstName;
+        this.LastName = entity.LastName;
+        this.Email = entity.Email;
         IsNew = false;
         return true;
     }
@@ -117,7 +117,10 @@ public partial class PersonModel : IPersonModel
                 ?? throw new InvalidOperationException("Person not found");
         }
 
-        MapTo(entity);
+        // Map domain model properties to entity
+        entity.FirstName = this.FirstName;
+        entity.LastName = this.LastName;
+        entity.Email = this.Email;
         await context.SaveChangesAsync();
 
         Id = entity.Id;
@@ -372,25 +375,6 @@ The implementation includes:
 - **Local methods** that execute on the server
 - **Remote methods** that serialize calls over HTTP
 - **Delegate registration** for the remote invocation system
-
-### Generated Mapper
-
-```csharp
-public partial void MapFrom(PersonEntity entity)
-{
-    this.Id = entity.Id;
-    this.FirstName = entity.FirstName;
-    this.LastName = entity.LastName;
-    this.Email = entity.Email;
-}
-
-public partial void MapTo(PersonEntity entity)
-{
-    entity.FirstName = this.FirstName;
-    entity.LastName = this.LastName;
-    entity.Email = this.Email;
-}
-```
 
 ## Key Takeaways
 
