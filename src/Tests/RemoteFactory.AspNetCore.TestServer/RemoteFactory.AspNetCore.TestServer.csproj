@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0</TargetFrameworks>
+    <!-- Inherits TargetFrameworks from Directory.Build.props (net8.0;net9.0;net10.0) -->
   </PropertyGroup>
 
   <ItemGroup>

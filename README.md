@@ -6,6 +6,16 @@
 [![NuGet](https://img.shields.io/nuget/v/Neatoo.RemoteFactory)](https://www.nuget.org/packages/Neatoo.RemoteFactory)
 [![Discord](https://img.shields.io/discord/your-discord-id)](https://discord.gg/M3dVuZkG)
 
+## Supported Frameworks
+
+| Framework | Support |
+|-----------|---------|
+| .NET 8.0 | LTS (Long Term Support) |
+| .NET 9.0 | STS (Standard Term Support) |
+| .NET 10.0 | LTS (Long Term Support) |
+
+All three frameworks are included in the NuGet packages.
+
 ## Why RemoteFactory?
 
 Traditional 3-tier architectures require extensive boilerplate: DTOs that mirror your domain models, controllers for each entity, manual mapping code, and scattered authorization logic. RemoteFactory eliminates all of this.

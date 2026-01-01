@@ -12,9 +12,19 @@ This guide covers installing the RemoteFactory NuGet packages and configuring yo
 
 ## Prerequisites
 
-- **.NET 8.0 or later** (including .NET 9.0)
+- **.NET 8.0**, **.NET 9.0**, or **.NET 10.0**
 - **Visual Studio 2022**, **JetBrains Rider**, or **VS Code** with C# Dev Kit
 - Basic familiarity with dependency injection in .NET
+
+### Supported Frameworks
+
+| Framework | Support |
+|-----------|---------|
+| .NET 8.0 | LTS (Long Term Support) |
+| .NET 9.0 | STS (Standard Term Support) |
+| .NET 10.0 | LTS (Long Term Support) |
+
+All three frameworks are included in the NuGet packages.
 
 ## NuGet Packages
 
@@ -63,7 +73,8 @@ Enable nullable reference types and implicit usings in your project files:
 
 ```xml
 <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- Use any supported framework: net8.0, net9.0, or net10.0 -->
+    <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 </PropertyGroup>
@@ -75,7 +86,7 @@ The RemoteFactory source generator works automatically when you install the NuGe
 
 Generated code appears in:
 - **Visual Studio**: Dependencies > Analyzers > Neatoo.RemoteFactory.FactoryGenerator
-- **File System**: `obj/Debug/net8.0/generated/Neatoo.RemoteFactory.FactoryGenerator/`
+- **File System**: `obj/Debug/{tfm}/generated/Neatoo.RemoteFactory.FactoryGenerator/` (where `{tfm}` is net8.0, net9.0, or net10.0)
 
 ## Verify Installation
 
@@ -260,7 +271,7 @@ builder.Services.AddNeatooAspNetCore(
 
 1. **Restart Visual Studio or Rider**: IDE caches may be stale
 2. **Clear NuGet caches**: `dotnet nuget locals all --clear`
-3. **Check SDK version**: Ensure you're using .NET 8.0 SDK or later
+3. **Check SDK version**: Ensure you're using .NET 8.0, 9.0, or 10.0 SDK
 
 ### Build Errors with Generated Code
 

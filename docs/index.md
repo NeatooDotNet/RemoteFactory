@@ -18,6 +18,16 @@ RemoteFactory is a code generation framework that eliminates the repetitive infr
 - **Delegate types** for remote method invocation
 - **DI registrations** for all generated components
 
+## Supported Frameworks
+
+| Framework | Support |
+|-----------|---------|
+| .NET 8.0 | LTS (Long Term Support) |
+| .NET 9.0 | STS (Standard Term Support) |
+| .NET 10.0 | LTS (Long Term Support) |
+
+All three frameworks are included in the NuGet packages.
+
 ## Key Benefits
 
 - **Zero DTOs Required**: Your domain objects serialize directly between client and server

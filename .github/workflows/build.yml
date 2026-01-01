@@ -43,7 +43,11 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+          dotnet-quality: 'preview'  # Required for .NET 10
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -149,7 +153,11 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+          dotnet-quality: 'preview'  # Required for .NET 10
 
       - name: List packages to publish
         run: |
