@@ -185,6 +185,7 @@ Comprehensive documentation is available in the [docs folder](docs/index.md):
 - [Authorization](docs/authorization/authorization-overview.md)
 - [Source Generation](docs/source-generation/how-it-works.md)
 - [Complete Attribute Reference](docs/reference/attributes.md)
+- [Release Notes](docs/release-notes/index.md)
 
 ## Framework Comparison
 

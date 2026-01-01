@@ -189,6 +189,10 @@ public class PersonComponent
 - **[JSON Serialization](advanced/json-serialization.md)**: Custom serialization configuration
 - **[Extending FactoryCore](advanced/extending-factory-core.md)**: Custom IFactoryCore implementations
 
+## Release Notes
+
+- **[Release Notes](release-notes/index.md)**: Version history and changelog
+
 ## Resources
 
 - [GitHub Repository](https://github.com/NeatooDotNet/RemoteFactory)

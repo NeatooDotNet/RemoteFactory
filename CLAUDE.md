@@ -107,6 +107,19 @@ Documentation is in `/docs/` using Jekyll format:
 - `docs/concepts/` - Architecture, factory operations, service injection
 - `docs/authorization/` - Authorization approaches
 - `docs/reference/` - Attributes, interfaces, generated code
+- `docs/release-notes/` - Version history and release notes
+
+### Release Notes Maintenance
+
+When creating a new release:
+
+1. **Create release notes file**: `docs/release-notes/vX.Y.Z.md` using the template in `docs/release-notes/index.md`
+2. **Update index page** (`docs/release-notes/index.md`):
+   - **Highlights table**: Add if the release has new features, breaking changes, or bug fixes
+   - **All Releases list**: Always add (newest at top)
+3. **Adjust nav_order**: Increment existing release page nav_orders, new release gets `nav_order: 1`
+4. **Required sections**: Overview, What's New, Breaking Changes, Bug Fixes, Migration Guide (if applicable), Commits
+5. **Timing**: Create release notes before tagging the version
 
 ## CI/CD
 
