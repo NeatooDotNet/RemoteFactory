@@ -39,6 +39,20 @@ public partial class Factory
 			this.IsInterface = syntax is InterfaceDeclarationSyntax;
 			this.IsStatic = symbol.IsStatic;
 
+			// Detect record types and primary constructors
+			this.IsRecord = syntax is RecordDeclarationSyntax;
+			bool isRecordStruct = false;
+			ParameterListSyntax? primaryConstructorParameters = null;
+
+			if (syntax is RecordDeclarationSyntax recordSyntax)
+			{
+				// Detect record struct (record with struct keyword)
+				isRecordStruct = recordSyntax.ClassOrStructKeyword.IsKind(SyntaxKind.StructKeyword);
+				// Check for primary constructor parameters
+				primaryConstructorParameters = recordSyntax.ParameterList;
+				this.HasPrimaryConstructor = primaryConstructorParameters?.Parameters.Count > 0;
+			}
+
 			// Store class identifier location for diagnostics (NF0101)
 			var classLocation = syntax.Identifier.GetLocation();
 			var classLineSpan = classLocation.GetLineSpan();
@@ -49,6 +63,21 @@ public partial class Factory
 			this.ClassEndColumn = classLineSpan.EndLinePosition.Character;
 			this.ClassTextSpanStart = classLocation.SourceSpan.Start;
 			this.ClassTextSpanLength = classLocation.SourceSpan.Length;
+
+			// NF0206: record struct is not supported
+			if (isRecordStruct)
+			{
+				diagnostics.Add(new DiagnosticInfo(
+					"NF0206",
+					this.ClassFilePath,
+					this.ClassStartLine,
+					this.ClassStartColumn,
+					this.ClassEndLine,
+					this.ClassEndColumn,
+					this.ClassTextSpanStart,
+					this.ClassTextSpanLength,
+					this.Name));
+			}
 
 			if (!this.IsInterface)
 			{
@@ -86,7 +115,62 @@ public partial class Factory
 				defaultFactoryOperations.Add(FactoryOperation.Execute);
 			}
 
-			this.FactoryMethods = new EquatableArray<TypeFactoryMethodInfo>([.. TypeFactoryMethods(serviceSymbol, methodSymbols, defaultFactoryOperations, this.AuthMethods.ToList(), debugMessages, diagnostics)]);
+			// Check for [Create] attribute on the type declaration
+			var typeAttributes = syntax.AttributeLists.SelectMany(a => a.Attributes).ToList();
+			var createAttributeOnType = typeAttributes.FirstOrDefault(a =>
+				a.Name.ToString() == "Create" || a.Name.ToString() == "CreateAttribute");
+
+			List<TypeFactoryMethodInfo> factoryMethodsList = [];
+
+			if (createAttributeOnType != null)
+			{
+				// [Create] is on the type - this is only valid for records with primary constructors
+				if (this.IsRecord && this.HasPrimaryConstructor && primaryConstructorParameters != null)
+				{
+					// Create a TypeFactoryMethodInfo for the primary constructor
+					var primaryConstructor = symbol.Constructors.FirstOrDefault(c =>
+						c.Parameters.Length == primaryConstructorParameters.Parameters.Count &&
+						!c.IsImplicitlyDeclared);
+
+					if (primaryConstructor != null)
+					{
+						// Find the constructor's syntax - for records, we need to handle the primary constructor differently
+						// The primary constructor's syntax is the record's parameter list
+						var constructorSyntax = primaryConstructor.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+
+						if (constructorSyntax is RecordDeclarationSyntax recordDeclSyntax)
+						{
+							// Create a factory method for the primary constructor
+							var factoryMethodInfo = CreatePrimaryConstructorFactoryMethod(
+								primaryConstructor,
+								recordDeclSyntax,
+								this.AuthMethods.ToList());
+							factoryMethodsList.Add(factoryMethodInfo);
+						}
+					}
+				}
+				else
+				{
+					// NF0205: [Create] on type requires record with primary constructor
+					var createAttrLocation = createAttributeOnType.GetLocation();
+					var createAttrLineSpan = createAttrLocation.GetLineSpan();
+					diagnostics.Add(new DiagnosticInfo(
+						"NF0205",
+						createAttrLineSpan.Path ?? "",
+						createAttrLineSpan.StartLinePosition.Line,
+						createAttrLineSpan.StartLinePosition.Character,
+						createAttrLineSpan.EndLinePosition.Line,
+						createAttrLineSpan.EndLinePosition.Character,
+						createAttrLocation.SourceSpan.Start,
+						createAttrLocation.SourceSpan.Length,
+						this.Name));
+				}
+			}
+
+			// Add factory methods from explicit methods/constructors
+			factoryMethodsList.AddRange(TypeFactoryMethods(serviceSymbol, methodSymbols, defaultFactoryOperations, this.AuthMethods.ToList(), debugMessages, diagnostics));
+
+			this.FactoryMethods = new EquatableArray<TypeFactoryMethodInfo>([.. factoryMethodsList]);
 
 			var hintNameResult = SafeHintName(semanticModel, $"{this.Namespace}.{this.Name}");
 			this.SafeHintName = hintNameResult.ResultName;
@@ -113,11 +197,28 @@ public partial class Factory
 			this.Diagnostics = new EquatableArray<DiagnosticInfo>([.. diagnostics]);
 		}
 
+		/// <summary>
+		/// Creates a TypeFactoryMethodInfo for a record's primary constructor.
+		/// </summary>
+		private static TypeFactoryMethodInfo CreatePrimaryConstructorFactoryMethod(
+			IMethodSymbol constructorSymbol,
+			RecordDeclarationSyntax recordSyntax,
+			List<TypeAuthMethodInfo> authMethods)
+		{
+			return new TypeFactoryMethodInfo(
+				FactoryOperation.Create,
+				constructorSymbol,
+				recordSyntax,
+				authMethods);
+		}
+
 		public string Name { get; }
 		public bool IsPartial { get; }
 		public string SignatureText { get; }
 		public bool IsInterface { get; }
 		public bool IsStatic { get; }
+		public bool IsRecord { get; }
+		public bool HasPrimaryConstructor { get; }
 		public string ServiceTypeName { get; }
 		public string ImplementationTypeName { get; }
 		public string Namespace { get; }
@@ -181,6 +282,42 @@ public partial class Factory
 			{
 				this.IsNullable = false;
 			}
+
+			List<TypeAuthMethodInfo> authMethodInfos = [];
+
+			foreach (var authMethod in authMethods)
+			{
+				if (((int?)authMethod.AuthorizeFactoryOperation & (int)this.FactoryOperation) != 0)
+				{
+					authMethodInfos.Add(authMethod);
+				}
+			}
+			this.AuthMethodInfos = new EquatableArray<TypeAuthMethodInfo>([.. authMethodInfos]);
+		}
+
+		/// <summary>
+		/// Constructor for record primary constructors where the syntax is the RecordDeclarationSyntax.
+		/// Used when [Create] is placed on the record type declaration.
+		/// </summary>
+		public TypeFactoryMethodInfo(FactoryOperation factoryOperation, IMethodSymbol constructorSymbol, RecordDeclarationSyntax recordSyntax, IEnumerable<TypeAuthMethodInfo> authMethods) : base(constructorSymbol, recordSyntax)
+		{
+			this.FactoryOperation = factoryOperation;
+			this.IsConstructor = true;
+			this.Name = factoryOperation.ToString();
+			this.IsSave = factorySaveOperationAttributes.Contains(factoryOperation);
+			this.IsStaticFactory = false; // Primary constructors are not static
+			this.IsRemote = this.IsRemote || factoryOperation == FactoryOperation.Execute;
+
+			// Store location for diagnostics - use the record's identifier
+			var methodLocation = recordSyntax.Identifier.GetLocation();
+			var methodLineSpan = methodLocation.GetLineSpan();
+			this.MethodFilePath = methodLineSpan.Path ?? "";
+			this.MethodStartLine = methodLineSpan.StartLinePosition.Line;
+			this.MethodStartColumn = methodLineSpan.StartLinePosition.Character;
+			this.MethodEndLine = methodLineSpan.EndLinePosition.Line;
+			this.MethodEndColumn = methodLineSpan.EndLinePosition.Character;
+			this.MethodTextSpanStart = methodLocation.SourceSpan.Start;
+			this.MethodTextSpanLength = methodLocation.SourceSpan.Length;
 
 			List<TypeAuthMethodInfo> authMethodInfos = [];
 
@@ -340,6 +477,33 @@ public partial class Factory
 				this.Parameters = [];
 			}
 		}
+
+		/// <summary>
+		/// Constructor for record primary constructors where the syntax is the RecordDeclarationSyntax.
+		/// </summary>
+		protected MethodInfo(IMethodSymbol constructorSymbol, RecordDeclarationSyntax recordSyntax)
+		{
+			var otherAttributes = constructorSymbol.GetAttributes().Select(a => a.AttributeClass?.Name.Replace("Attribute", "")).Where(a => a != null).ToList();
+
+			this.Name = constructorSymbol.Name;
+			this.ClassName = constructorSymbol.ContainingType.Name;
+			this.IsBool = false; // Constructors don't return bool
+			this.IsRemote = otherAttributes.Any(a => a == "Remote");
+
+			this.ReturnType = constructorSymbol.ContainingType.ToDisplayString();
+			this.IsNullable = false; // Constructor return is not nullable
+
+			// For records, the primary constructor parameters are in the RecordDeclarationSyntax.ParameterList
+			if (recordSyntax.ParameterList is ParameterListSyntax parameterListSyntax)
+			{
+				this.Parameters = new EquatableArray<MethodParameterInfo>([.. parameterListSyntax.Parameters.Select(p => new MethodParameterInfo(p, constructorSymbol))]);
+			}
+			else
+			{
+				this.Parameters = [];
+			}
+		}
+
 		public string Name { get; set; }
 		public string ClassName { get; set; }
 		public virtual string NamePostfix => this.Name;

@@ -18,14 +18,15 @@ public partial class Factory : IIncrementalGenerator
 	{
 
 		var classesToGenerate = context.SyntaxProvider.ForAttributeWithMetadataName("Neatoo.RemoteFactory.FactoryAttribute",
-			predicate: static (s, _) => s is ClassDeclarationSyntax classDeclarationSyntax
-				&& !(classDeclarationSyntax.TypeParameterList?.Parameters.Any() ?? false || classDeclarationSyntax.Modifiers.Any(SyntaxKind.AbstractKeyword))
-				&& !(classDeclarationSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.Name.ToString() == "SuppressFactory")),
+			predicate: static (s, _) => s is TypeDeclarationSyntax typeDecl
+				&& typeDecl is (ClassDeclarationSyntax or RecordDeclarationSyntax)
+				&& !(typeDecl.TypeParameterList?.Parameters.Any() ?? false || typeDecl.Modifiers.Any(SyntaxKind.AbstractKeyword))
+				&& !(typeDecl.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.Name.ToString() == "SuppressFactory")),
 			transform: static (ctx, _) =>
 			{
-				var classDeclaration = (ClassDeclarationSyntax)ctx.TargetNode;
+				var typeDeclaration = (TypeDeclarationSyntax)ctx.TargetNode;
 				var semanticModel = ctx.SemanticModel;
-				return TransformClassFactory(classDeclaration, semanticModel);
+				return TransformTypeFactory(typeDeclaration, semanticModel);
 			});
 
 		context.RegisterSourceOutput(classesToGenerate, static (spc, typeInfo) =>
@@ -490,6 +491,8 @@ public partial class Factory : IIncrementalGenerator
 			"NF0202" => DiagnosticDescriptors.AuthMethodWrongReturnType,
 			"NF0203" => DiagnosticDescriptors.AmbiguousSaveOperations,
 			"NF0204" => DiagnosticDescriptors.WriteReturnsTargetType,
+			"NF0205" => DiagnosticDescriptors.CreateOnTypeRequiresRecordWithPrimaryConstructor,
+			"NF0206" => DiagnosticDescriptors.RecordStructNotSupported,
 			"NF0301" => DiagnosticDescriptors.MethodSkippedNoAttribute,
 			_ => throw new ArgumentException($"Unknown diagnostic ID: {diagnosticId}")
 		};

@@ -1,25 +1,23 @@
 ---
 layout: default
-title: "Factory Pattern"
-description: "How factories work in RemoteFactory - generated interfaces and implementations"
+title: "Generated Factories"
+description: "How RemoteFactory generates factory interfaces and implementations at compile time"
 parent: Concepts
 nav_order: 2
 ---
 
-# Factory Pattern
+# Generated Factories
 
-RemoteFactory generates factory classes that encapsulate object creation, retrieval, and persistence. This document explains how factories work, what gets generated, and how to use them effectively.
+RemoteFactory generates factory classes at compile time from your `[Factory]`-attributed types. This document explains the generated factory structure and how to use factories effectively.
 
-## What is a Factory in RemoteFactory?
+## Factory Capabilities
 
-A factory in RemoteFactory is a generated class that:
+Each generated factory provides:
 
-1. **Creates domain model instances** - via `Create()` methods
-2. **Retrieves data from persistence** - via `Fetch()` methods
-3. **Saves changes** - via `Save()` methods that route to Insert, Update, or Delete
-4. **Checks authorization** - via `Can*()` methods
-
-Unlike manually written factories, RemoteFactory factories are generated at compile time from your domain model classes, eliminating boilerplate while ensuring type safety.
+1. **Create methods** - Synchronous instance creation via `Create()`
+2. **Fetch methods** - Async data retrieval via `Fetch()`
+3. **Save methods** - State-based operation routing via `Save()` (routes to Insert, Update, or Delete)
+4. **Authorization methods** - Permission checking via `Can*()` methods
 
 ## Generated Components
 

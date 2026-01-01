@@ -8,11 +8,11 @@ nav_order: 3
 
 # Common Patterns
 
-This guide presents reusable patterns and recipes for common scenarios in RemoteFactory applications.
+This guide presents reusable RemoteFactory implementations for common scenarios.
 
-## Upsert Pattern
+## Upsert with [Insert][Update]
 
-Combine Insert and Update into a single method to reduce code duplication.
+Apply both `[Insert]` and `[Update]` attributes to a single method. RemoteFactory routes based on `IsNew` state.
 
 ### Domain Model
 
@@ -70,9 +70,9 @@ else
 }
 ```
 
-## Soft Delete Pattern
+## Soft Delete with [Delete]
 
-Implement logical deletion instead of physical deletion.
+Implement the `[Delete]` method to mark records as inactive rather than removing them.
 
 ### Domain Model
 
@@ -170,9 +170,9 @@ public class CustomerQueries : ICustomerQueries
 }
 ```
 
-## Optimistic Concurrency
+## Concurrency Checking in [Update]
 
-Handle concurrent modifications with row versioning.
+Validate row versions in your `[Update]` method to detect concurrent modifications.
 
 ### Entity with RowVersion
 
@@ -258,9 +258,9 @@ public class ConcurrencyException : Exception
 }
 ```
 
-## Parent-Child Relationships
+## Parent-Child Save with Collections
 
-Handle aggregate roots with child collections.
+Manage child collections within the parent's `[Insert][Update]` method.
 
 ### Models
 
@@ -426,9 +426,9 @@ public class InvoiceLineModel
 }
 ```
 
-## Lookup/Reference Data
+## Reference Data with [Execute]
 
-Load reference data through Execute operations.
+Use interface factories with `[Execute]` methods for lookup data retrieval.
 
 ### Interface Factory for Lookups
 
@@ -521,9 +521,9 @@ public class LookupService : ILookupService
 }
 ```
 
-## Paged Data Loading
+## Pagination with [Execute]
 
-Implement pagination for large datasets.
+Return paged results from `[Execute]` methods using request/response DTOs.
 
 ### Page Request/Response DTOs
 
@@ -613,9 +613,9 @@ public class ProductSearch : IProductSearch
 }
 ```
 
-## Validation Pattern
+## Validation with IFactoryOnStart
 
-Validate before saving with detailed error messages.
+Use the `IFactoryOnStart` lifecycle hook to validate before Save operations execute.
 
 ### Validation Result
 
@@ -738,11 +738,11 @@ public class ValidationException : Exception
 </div>
 ```
 
-## Caching Pattern
+## Caching with IFactoryOnCompleteAsync
 
-Cache frequently accessed data.
+Use the `IFactoryOnCompleteAsync` lifecycle hook to invalidate caches after modifications.
 
-### With IFactoryOnComplete
+### Implementation
 
 ```csharp
 [Factory]

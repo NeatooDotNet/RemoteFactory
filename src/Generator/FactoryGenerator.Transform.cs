@@ -32,9 +32,10 @@ public partial class Factory
 	}
 
 	/// <summary>
-	/// Transforms a class declaration with [Factory] attribute into a TypeInfo model.
+	/// Transforms a class or record declaration with [Factory] attribute into a TypeInfo model.
+	/// Handles both ClassDeclarationSyntax and RecordDeclarationSyntax.
 	/// </summary>
-	private static TypeInfo TransformClassFactory(ClassDeclarationSyntax syntax, SemanticModel semanticModel)
+	private static TypeInfo TransformTypeFactory(TypeDeclarationSyntax syntax, SemanticModel semanticModel)
 	{
 		var symbol = semanticModel.GetDeclaredSymbol(syntax) ?? throw new Exception($"Cannot get named symbol for {syntax}");
 

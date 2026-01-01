@@ -113,6 +113,30 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Insert, Update, Delete, and Execute operations should not return the target type. Only Fetch and Create operations can return the target type.");
 
+    /// <summary>
+    /// NF0205: [Create] on type requires record with primary constructor.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CreateOnTypeRequiresRecordWithPrimaryConstructor = new(
+        id: "NF0205",
+        title: "[Create] on type requires record with primary constructor",
+        messageFormat: "[Create] attribute on type '{0}' requires a record with a primary constructor. Either add a primary constructor to the record, use [Create] on an explicit constructor, or remove [Create] from the type declaration.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "When [Create] is placed on a type declaration rather than a constructor, the type must be a record with a primary constructor (e.g., 'record Address(string Street, string City)'). This allows the generator to use the primary constructor for factory creation.");
+
+    /// <summary>
+    /// NF0206: record struct not supported.
+    /// </summary>
+    public static readonly DiagnosticDescriptor RecordStructNotSupported = new(
+        id: "NF0206",
+        title: "record struct not supported",
+        messageFormat: "Type '{0}' is a record struct, which is not supported by RemoteFactory. Value types cannot be used with RemoteFactory due to serialization and reference tracking limitations. Use 'record class' or 'record' instead.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "RemoteFactory does not support record struct (value types) because: 1) Value types are copied on assignment, breaking identity tracking. 2) Interface boxing loses type fidelity. 3) JSON $ref reference preservation doesn't work with value types. 4) Factory operations expect nullable return types. Use 'record class' or 'record' instead.");
+
     // ============================================================================
     // Info Diagnostics (NF0300 range) - Opt-in for debugging
     // ============================================================================

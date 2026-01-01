@@ -281,7 +281,7 @@ MyApp.Client/
 
 | Item | Project |
 |------|---------|
-| Domain models (`[Factory]`) | DomainModel |
+| Factory-enabled types (`[Factory]`) | DomainModel |
 | Domain interfaces | DomainModel |
 | Authorization interfaces | DomainModel |
 | Authorization implementations | DomainModel or Server |

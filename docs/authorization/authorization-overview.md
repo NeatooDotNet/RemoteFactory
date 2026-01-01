@@ -10,17 +10,12 @@ nav_order: 1
 
 RemoteFactory provides two complementary approaches to authorization: custom authorization rules with `[AuthorizeFactory<T>]` and ASP.NET Core policy integration with `[AspAuthorize]`. Both approaches generate `Can*` methods on the factory for client-side authorization checking.
 
-## Why Factory-Level Authorization?
-
-Traditional authorization is often:
-- **Scattered**: Authorization checks spread across controllers, services, and UI
-- **Inconsistent**: Different enforcement at different layers
-- **Duplicated**: Same logic repeated in multiple places
+## RemoteFactory Authorization Benefits
 
 RemoteFactory centralizes authorization at the factory level:
 - **Single point of enforcement**: All operations go through the factory
 - **Consistent**: Server always checks before execution
-- **Client-aware**: Generated `Can*` methods enable smart UI
+- **Client-aware**: Generated `Can*` methods enable permission-driven UI
 
 ## Two Authorization Approaches
 

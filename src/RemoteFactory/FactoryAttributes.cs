@@ -50,7 +50,7 @@ public sealed class ServiceAttribute : Attribute
 	}
 }
 
-[System.AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor, Inherited = false, AllowMultiple = false)]
+[System.AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class CreateAttribute : Attribute
 {
 	public FactoryOperation Operation { get; }

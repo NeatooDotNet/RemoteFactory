@@ -117,6 +117,11 @@ internal static class ClientServerContainers
 		{
 			if (!t.GenericTypeArguments.Any() && !t.IsAbstract && t.GetCustomAttribute<FactoryAttribute>() != null)
 			{
+				// Don't register records as DI services - they are value objects
+				// Records have a compiler-generated <Clone>$ method
+				if (t.GetMethod("<Clone>$") != null)
+					continue;
+
 				services.AddScoped(t);
 			}
 			

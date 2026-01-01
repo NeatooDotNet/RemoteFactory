@@ -72,6 +72,33 @@ Tests run against all three target frameworks (net8.0, net9.0, net10.0):
 - **FactoryGeneratorTests**: Unit tests for the Roslyn source generator
 - **RemoteFactory.AspNet.Tests**: Integration tests with ASP.NET Core
 
+### Two DI Container Testing Pattern
+
+This project uses a **client/server container simulation** for testing remote operations:
+- `ClientServerContainers.Scopes()` creates three isolated DI containers: client, server, and local
+- The client container serializes requests through `NeatooJsonSerializer`
+- The server container deserializes requests, executes methods, and serializes responses
+- This validates the full round-trip without requiring HTTP
+
+Key test files demonstrating this pattern:
+- `src/Tests/FactoryGeneratorTests/ClientServerContainers.cs` - Container setup
+- `src/Tests/FactoryGeneratorTests/FactoryTestBase.cs` - Base class for factory tests
+- `src/Tests/FactoryGeneratorTests/Factory/RemoteWriteTests.cs` - Example using Theory/MemberData
+
+## Planning Guidelines
+
+When creating implementation plans for this project, **always evaluate** whether the following testing is applicable:
+
+1. **Comprehensive Unit Tests**: Cover all code paths, edge cases, and error conditions
+2. **Serialization Round-Trip Tests**: If the feature involves objects that cross the client/server boundary, include tests using the two DI container approach to validate serialization
+3. **Diagnostic Tests**: If adding new Roslyn diagnostics, include tests that verify they are emitted correctly
+4. **Integration Tests**: If the feature affects HTTP endpoints, include ASP.NET Core integration tests
+
+Test plans should follow the existing patterns in `FactoryGeneratorTests/` using:
+- `FactoryTestBase<TFactory>` for client/server container setup
+- `Theory/MemberData` for parameterized testing across containers
+- Reflection-based validation for generated factory methods
+
 ## Documentation
 
 Documentation is in `/docs/` using Jekyll format:
