@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -36,7 +36,7 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 		{
 			if (reader.TokenType == JsonTokenType.EndObject)
 			{
-				if(result == null)
+				if (result == null)
 				{
 					throw new JsonException($"Unexpected end object");
 				}
@@ -61,12 +61,13 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 			var propertyName = reader.GetString();
 			reader.Read();
 
-			if (propertyName == "$type")
+			// Support both full and shortened property names for reading
+			if (propertyName == "$type" || propertyName == "$t")
 			{
 				var typeName = reader.GetString() ?? throw new JsonException("Expecting string value for $type");
 				concreteType = this.serviceAssemblies.FindType(typeName) ?? throw new JsonException($"Could not load {typeName}");
 			}
-			else if (propertyName == "$value")
+			else if (propertyName == "$value" || propertyName == "$v")
 			{
 				if (concreteType == null)
 				{
@@ -78,12 +79,13 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 
 		throw new JsonException();
 	}
+
 	public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
 	{
 		ArgumentNullException.ThrowIfNull(writer, nameof(writer));
 		ArgumentNullException.ThrowIfNull(options, nameof(options));
 
-		if(value == null) { return; }
+		if (value == null) { return; }
 
 		writer.WriteStartObject();
 
@@ -92,6 +94,8 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 		writer.WriteStringValue(type);
 
 		writer.WritePropertyName("$value");
+		// The ordinal converter factory in the options will handle ordinal serialization
+		// if the concrete type implements IOrdinalSerializable and format is Ordinal
 		JsonSerializer.Serialize(writer, value, value.GetType(), options);
 
 		writer.WriteEndObject();

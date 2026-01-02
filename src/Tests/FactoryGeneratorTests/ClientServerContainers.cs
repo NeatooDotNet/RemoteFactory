@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
 using Neatoo.RemoteFactory.Internal;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -62,52 +63,75 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
 internal static class ClientServerContainers
 {
-	private static object lockContainer = new object();
-	static IServiceProvider serverContainer = null!;
-	static IServiceProvider clientContainer = null!;
-	static IServiceProvider localContainer = null!;
+	private static readonly object lockContainer = new object();
 
+	// Thread-safe cache for format-specific containers
+	private static readonly ConcurrentDictionary<SerializationFormat, (IServiceProvider server, IServiceProvider client, IServiceProvider local)> formatContainers = new();
+
+	/// <summary>
+	/// Creates scopes using the Ordinal serialization format (production default).
+	/// </summary>
+	/// <remarks>
+	/// This test helper uses Ordinal format to match production defaults.
+	/// Tests that specifically need to verify named serialization behavior should use
+	/// <see cref="Scopes(SerializationFormat)"/> with <see cref="SerializationFormat.Named"/>.
+	/// </remarks>
 	public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes()
 	{
+		return Scopes(SerializationFormat.Ordinal);
+	}
+
+	/// <summary>
+	/// Creates scopes using the specified serialization format.
+	/// </summary>
+	public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes(SerializationFormat format)
+	{
+		var containers = formatContainers.GetOrAdd(format, CreateContainers);
+
+		var serverScope = containers.server.CreateScope();
+		var clientScope = containers.client.CreateScope();
+		var localScope = containers.local.CreateScope();
+
+		// This must be done under lock since we're modifying mutable state
 		lock (lockContainer)
 		{
-			if (serverContainer == null)
-			{
-				var serverCollection = new ServiceCollection();
-				var clientCollection = new ServiceCollection();
-				var localCollection = new ServiceCollection();
-
-				RegisterIfAttribute(serverCollection);
-				RegisterIfAttribute(clientCollection);
-				RegisterIfAttribute(localCollection);
-
-				serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, Assembly.GetExecutingAssembly());
-				serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
-				serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
-				serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
-
-				clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, Assembly.GetExecutingAssembly());
-				clientCollection.AddScoped<ServerServiceProvider>();
-				clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
-				clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
-				clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
-
-				localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, Assembly.GetExecutingAssembly());
-				localCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
-
-				serverContainer = serverCollection.BuildServiceProvider();
-				clientContainer = clientCollection.BuildServiceProvider();
-				localContainer = localCollection.BuildServiceProvider();
-			}
+			clientScope.GetRequiredService<ServerServiceProvider>().serverProvider = serverScope.ServiceProvider;
 		}
 
-		var serverScope = serverContainer.CreateScope();
-		var clientScope = clientContainer.CreateScope();
-		var localScope = localContainer.CreateScope();
-
-		clientScope.GetRequiredService<ServerServiceProvider>().serverProvider = serverScope.ServiceProvider;
-
 		return (serverScope, clientScope, localScope);
+	}
+
+	private static (IServiceProvider server, IServiceProvider client, IServiceProvider local) CreateContainers(SerializationFormat format)
+	{
+		var serializationOptions = new NeatooSerializationOptions { Format = format };
+
+		var serverCollection = new ServiceCollection();
+		var clientCollection = new ServiceCollection();
+		var localCollection = new ServiceCollection();
+
+		RegisterIfAttribute(serverCollection);
+		RegisterIfAttribute(clientCollection);
+		RegisterIfAttribute(localCollection);
+
+		serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, Assembly.GetExecutingAssembly());
+		serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
+		serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
+		serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+
+		clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, serializationOptions, Assembly.GetExecutingAssembly());
+		clientCollection.AddScoped<ServerServiceProvider>();
+		clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
+		clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>(); // Test that DI does what I expect and injects this override of IFactoryCore
+		clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+
+		localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, serializationOptions, Assembly.GetExecutingAssembly());
+		localCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+
+		return (
+			serverCollection.BuildServiceProvider(),
+			clientCollection.BuildServiceProvider(),
+			localCollection.BuildServiceProvider()
+		);
 	}
 
 	private static void RegisterIfAttribute(this IServiceCollection services)

@@ -29,9 +29,21 @@ public static partial class RemoteFactoryServices
 {
 	public const string HttpClientKey = "NeatooHttpClient";
 
+	/// <summary>
+	/// Adds Neatoo RemoteFactory services with default serialization options (Ordinal format).
+	/// </summary>
 	public static IServiceCollection AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory remoteLocal, params Assembly[] assemblies)
 	{
+		return AddNeatooRemoteFactory(services, remoteLocal, new NeatooSerializationOptions(), assemblies);
+	}
+
+	/// <summary>
+	/// Adds Neatoo RemoteFactory services with custom serialization options.
+	/// </summary>
+	public static IServiceCollection AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory remoteLocal, NeatooSerializationOptions serializationOptions, params Assembly[] assemblies)
+	{
 		ArgumentNullException.ThrowIfNull(services, nameof(services));
+		ArgumentNullException.ThrowIfNull(serializationOptions, nameof(serializationOptions));
 		ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
 
 		if (assemblies.Length == 0)
@@ -39,13 +51,26 @@ public static partial class RemoteFactoryServices
 			assemblies = [Assembly.GetExecutingAssembly()!];
 		}
 
+		// Register serialization options as singleton
+		services.AddSingleton(serializationOptions);
+
 		services.AddSingleton<IServiceAssemblies>(new ServiceAssemblies(assemblies));
-		services.AddScopedSelf<INeatooJsonSerializer, NeatooJsonSerializer>();
 		services.AddScoped<NeatooJsonTypeInfoResolver>();
 		services.AddTransient<NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
 		services.AddSingleton(typeof(IFactoryCore<>), typeof(FactoryCore<>));
+
+		// Register NeatooJsonSerializer with serialization options
+		services.AddScoped<INeatooJsonSerializer>(sp =>
+		{
+			var converterFactories = sp.GetServices<NeatooJsonConverterFactory>();
+			var serviceAssemblies = sp.GetRequiredService<IServiceAssemblies>();
+			var typeInfoResolver = sp.GetRequiredService<NeatooJsonTypeInfoResolver>();
+			var options = sp.GetRequiredService<NeatooSerializationOptions>();
+			return new NeatooJsonSerializer(converterFactories, serviceAssemblies, typeInfoResolver, options);
+		});
+		services.AddScoped(sp => (NeatooJsonSerializer)sp.GetRequiredService<INeatooJsonSerializer>());
 
 		if (remoteLocal == NeatooFactory.Remote)
 		{

@@ -16,10 +16,11 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| *No highlight releases yet* | | |
+| [v10.2.0](v10.2.0.md) | 2026-01-01 | Ordinal serialization (40-50% smaller payloads), breaking: default format changed |
 
 ## All Releases
 
+- [v10.2.0](v10.2.0.md) - 2026-01-01 - Ordinal serialization
 - [v10.1.1](v10.1.1.md) - 2026-01-01 - Version metadata fix
 
 ---

@@ -111,15 +111,68 @@ Documentation is in `/docs/` using Jekyll format:
 
 ### Release Notes Maintenance
 
-When creating a new release:
+#### Commit Conventions
 
-1. **Create release notes file**: `docs/release-notes/vX.Y.Z.md` using the template in `docs/release-notes/index.md`
-2. **Update index page** (`docs/release-notes/index.md`):
-   - **Highlights table**: Add if the release has new features, breaking changes, or bug fixes
+Use conventional commits for automatic categorization:
+
+| Prefix | Release Notes Section | Version Impact |
+|--------|----------------------|----------------|
+| `feat:` | What's New | Minor bump |
+| `fix:` | Bug Fixes | Patch bump |
+| `perf:` | What's New | Minor bump |
+| `feat!:` or `BREAKING CHANGE:` | Breaking Changes | Major bump |
+| `docs:`, `chore:`, `test:` | Omit from notes | None |
+
+#### Creating a New Release
+
+1. **Analyze commits since last release**:
+   ```bash
+   git describe --tags --abbrev=0  # Find last tag
+   git log <last-tag>..HEAD --oneline
+   git log <last-tag>..HEAD --format="%s" | findstr "^feat:"
+   git log <last-tag>..HEAD --format="%s" | findstr "^fix:"
+   ```
+
+2. **Determine version bump**:
+   - `BREAKING CHANGE:` or `!` suffix → Major (e.g., 10.0.0 → 11.0.0)
+   - `feat:` or `perf:` → Minor (e.g., 10.1.0 → 10.2.0)
+   - `fix:` only → Patch (e.g., 10.1.0 → 10.1.1)
+
+3. **Create release notes file**: `docs/release-notes/vX.Y.Z.md`
+   - Use template from `docs/release-notes/index.md`
+   - Required sections: Overview, What's New, Breaking Changes, Bug Fixes, Commits
+   - Include Migration Guide if breaking changes exist
+
+4. **Update index page** (`docs/release-notes/index.md`):
+   - **Highlights table**: Add if release has new features, breaking changes, or notable fixes
    - **All Releases list**: Always add (newest at top)
-3. **Adjust nav_order**: Increment existing release page nav_orders, new release gets `nav_order: 1`
-4. **Required sections**: Overview, What's New, Breaking Changes, Bug Fixes, Migration Guide (if applicable), Commits
-5. **Timing**: Create release notes before tagging the version
+
+5. **Adjust nav_order**: Increment existing release page nav_orders, new release gets `nav_order: 1`
+
+6. **Update version** in `src/Directory.Build.props`:
+   ```xml
+   <VersionPrefix>X.Y.Z</VersionPrefix>
+   ```
+
+7. **Commit and tag**:
+   ```bash
+   git add .
+   git commit -m "chore: Prepare vX.Y.Z release"
+   git tag -a vX.Y.Z -m "vX.Y.Z - Short description"
+   git push origin main --tags
+   ```
+
+8. **Create GitHub release** (optional):
+   ```bash
+   gh release create vX.Y.Z --title "vX.Y.Z - Title" --notes-file docs/release-notes/vX.Y.Z.md
+   ```
+
+#### NuGet Package Links
+
+Use this format in release notes:
+```markdown
+**NuGet:** [Neatoo.RemoteFactory X.Y.Z](https://nuget.org/packages/Neatoo.RemoteFactory/X.Y.Z)
+```
 
 ## CI/CD
 

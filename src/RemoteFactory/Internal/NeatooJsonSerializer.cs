@@ -8,6 +8,11 @@ namespace Neatoo.RemoteFactory.Internal;
 
 public interface INeatooJsonSerializer
 {
+	/// <summary>
+	/// Gets the current serialization format.
+	/// </summary>
+	SerializationFormat Format { get; }
+
 	string? Serialize(object? target);
 	string? Serialize(object? target, Type targetType);
 	T? Deserialize<T>(string json);
@@ -21,22 +26,42 @@ public interface INeatooJsonSerializer
 public class NeatooJsonSerializer : INeatooJsonSerializer
 {
 	private readonly IServiceAssemblies serviceAssemblies;
+	private readonly NeatooSerializationOptions serializationOptions;
 
 	JsonSerializerOptions Options { get; }
 
 	private NeatooReferenceHandler ReferenceHandler { get; } = new NeatooReferenceHandler();
 
+	/// <summary>
+	/// Gets the current serialization format.
+	/// </summary>
+	public SerializationFormat Format => serializationOptions.Format;
+
 	public NeatooJsonSerializer(IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver)
+		: this(neatooJsonConverterFactories, serviceAssemblies, neatooDefaultJsonTypeInfoResolver, new NeatooSerializationOptions())
+	{
+	}
+
+	public NeatooJsonSerializer(IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver, NeatooSerializationOptions serializationOptions)
 	{
 		ArgumentNullException.ThrowIfNull(neatooJsonConverterFactories, nameof(neatooJsonConverterFactories));
+		ArgumentNullException.ThrowIfNull(serializationOptions, nameof(serializationOptions));
+
+		this.serializationOptions = serializationOptions;
 
 		this.Options = new JsonSerializerOptions
 		{
 			ReferenceHandler = this.ReferenceHandler,
 			TypeInfoResolver = neatooDefaultJsonTypeInfoResolver,
-			WriteIndented = true,
+			WriteIndented = serializationOptions.Format == SerializationFormat.Named, // Only indent for named format (debugging)
 			IncludeFields = true
 		};
+
+		// Add ordinal converter factory first if using ordinal format
+		if (serializationOptions.Format == SerializationFormat.Ordinal)
+		{
+			this.Options.Converters.Add(new NeatooOrdinalConverterFactory(serializationOptions));
+		}
 
 		foreach (var neatooJsonConverterFactory in neatooJsonConverterFactories)
 		{
@@ -212,13 +237,4 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		return this.Deserialize(objectTypeJson.Json, targetType);
 	}
 
-}
-
-
-[Serializable]
-public class MissingDelegateException : Exception
-{
-	public MissingDelegateException() { }
-	public MissingDelegateException(string message) : base(message) { }
-	public MissingDelegateException(string message, Exception inner) : base(message, inner) { }
 }

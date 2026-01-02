@@ -137,6 +137,18 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "RemoteFactory does not support record struct (value types) because: 1) Value types are copied on assignment, breaking identity tracking. 2) Interface boxing loses type fidelity. 3) JSON $ref reference preservation doesn't work with value types. 4) Factory operations expect nullable return types. Use 'record class' or 'record' instead.");
 
+    /// <summary>
+    /// NF0207: Nested type skipped for ordinal serialization.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NestedTypeOrdinalSkipped = new(
+        id: "NF0207",
+        title: "Nested type skipped for ordinal serialization",
+        messageFormat: "Nested type '{0}' will not have ordinal serialization generated. Move the type to the namespace level to enable compact JSON serialization.",
+        category: CategoryConfiguration,
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "Ordinal serialization generates IOrdinalSerializable and IOrdinalSerializationMetadata implementations for types with the [Factory] attribute. Nested types are skipped because the generated partial class structure requires top-level types. To enable ordinal serialization for this type, move it to the namespace level.");
+
     // ============================================================================
     // Info Diagnostics (NF0300 range) - Opt-in for debugging
     // ============================================================================

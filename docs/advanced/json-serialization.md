@@ -10,6 +10,75 @@ nav_order: 4
 
 RemoteFactory uses System.Text.Json for serializing objects between client and server. This document covers how serialization works and how to customize it.
 
+## Serialization Formats
+
+RemoteFactory supports two JSON serialization formats for domain objects.
+
+### Ordinal Format (Default)
+
+Compact array-based format that eliminates property names. Properties are serialized in alphabetical order, with base class properties first.
+
+```json
+["John", 42, true]
+```
+
+This format reduces payload sizes by 40-50% compared to named format.
+
+### Named Format
+
+Verbose object-based format with property names:
+
+```json
+{"Active":true,"Age":42,"Name":"John"}
+```
+
+Use this format for debugging or backward compatibility.
+
+### Configuring the Format
+
+Configure serialization format when registering RemoteFactory:
+
+```csharp
+// Server - use named format for debugging
+services.AddNeatooRemoteFactory(
+    NeatooFactory.Server,
+    new NeatooSerializationOptions { Format = SerializationFormat.Named },
+    typeof(MyModel).Assembly);
+
+// Client - typically matches server
+services.AddNeatooRemoteFactory(
+    NeatooFactory.Remote,
+    new NeatooSerializationOptions { Format = SerializationFormat.Named },
+    typeof(MyModel).Assembly);
+```
+
+### Format Negotiation
+
+The server communicates its preferred format via the `X-Neatoo-Format` HTTP header:
+
+```
+X-Neatoo-Format: ordinal
+```
+
+- Server always accepts both formats (detects by first character: `[` = ordinal, `{` = named)
+- Server responds in its configured format
+- Clients adapt based on the response header
+
+### IOrdinalSerializable Interface
+
+The source generator implements `IOrdinalSerializable` on `[Factory]` types:
+
+```csharp
+public interface IOrdinalSerializable
+{
+    object?[] ToOrdinalArray();
+}
+```
+
+This interface enables efficient ordinal serialization without reflection.
+
+---
+
 ## Default Serialization
 
 ### NeatooJsonSerializer

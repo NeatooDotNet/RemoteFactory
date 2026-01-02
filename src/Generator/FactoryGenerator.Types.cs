@@ -21,6 +21,25 @@ public partial class Factory
 	private static List<FactoryOperation> factorySaveOperationAttributes = [.. Enum.GetValues(typeof(FactoryOperation)).Cast<FactoryOperation>().Where(v => ((int)v & (int)AuthorizeFactoryOperation.Write) != 0)];
 
 	/// <summary>
+	/// Information about a serializable property for ordinal serialization.
+	/// </summary>
+	internal record OrdinalPropertyInfo
+	{
+		public string Name { get; }
+		public string Type { get; }
+		public bool IsNullable { get; }
+		public int InheritanceDepth { get; }
+
+		public OrdinalPropertyInfo(string name, string type, bool isNullable, int inheritanceDepth)
+		{
+			Name = name;
+			Type = type;
+			IsNullable = isNullable;
+			InheritanceDepth = inheritanceDepth;
+		}
+	}
+
+	/// <summary>
 	/// Contains all information about a type that has the [Factory] attribute.
 	/// This record is populated during the transform phase and consumed during generation.
 	/// </summary>
@@ -38,6 +57,7 @@ public partial class Factory
 			this.SignatureText = syntax.ToFullString().Substring(syntax.Modifiers.FullSpan.Start - syntax.FullSpan.Start, syntax.Identifier.FullSpan.End - syntax.Modifiers.FullSpan.Start).Trim();
 			this.IsInterface = syntax is InterfaceDeclarationSyntax;
 			this.IsStatic = symbol.IsStatic;
+			this.IsNested = symbol.ContainingType != null;
 
 			// Detect record types and primary constructors
 			this.IsRecord = syntax is RecordDeclarationSyntax;
@@ -172,6 +192,12 @@ public partial class Factory
 
 			this.FactoryMethods = new EquatableArray<TypeFactoryMethodInfo>([.. factoryMethodsList]);
 
+			// Collect properties for ordinal serialization (only for non-interface, non-static types)
+			if (!this.IsInterface && !this.IsStatic)
+			{
+				this.OrdinalProperties = new EquatableArray<OrdinalPropertyInfo>([.. CollectOrdinalProperties(symbol)]);
+			}
+
 			var hintNameResult = SafeHintName(semanticModel, $"{this.Namespace}.{this.Name}");
 			this.SafeHintName = hintNameResult.ResultName;
 
@@ -226,12 +252,80 @@ public partial class Factory
 		public EquatableArray<TypeFactoryMethodInfo> FactoryMethods { get; set; } = [];
 		public EquatableArray<TypeAuthMethodInfo> AuthMethods { get; set; } = [];
 
+		/// <summary>
+		/// Indicates if this type is nested inside another type.
+		/// Nested types require special handling for code generation.
+		/// </summary>
+		public bool IsNested { get; }
+
 		public string SafeHintName { get; }
+
+		/// <summary>
+		/// Properties for ordinal serialization, sorted by inheritance depth then alphabetically.
+		/// </summary>
+		public EquatableArray<OrdinalPropertyInfo> OrdinalProperties { get; } = [];
 
 		/// <summary>
 		/// Diagnostics collected during the transform phase.
 		/// </summary>
 		public EquatableArray<DiagnosticInfo> Diagnostics { get; }
+
+		/// <summary>
+		/// Collects all public properties from a type and its base types for ordinal serialization.
+		/// Properties are sorted by inheritance depth (base first) then alphabetically by name.
+		/// </summary>
+		private static List<OrdinalPropertyInfo> CollectOrdinalProperties(INamedTypeSymbol symbol)
+		{
+			var properties = new List<OrdinalPropertyInfo>();
+			CollectPropertiesRecursive(symbol, properties, 0);
+
+			// Sort by inheritance depth (base classes first), then alphabetically by name
+			return properties
+				.OrderBy(p => p.InheritanceDepth)
+				.ThenBy(p => p.Name, StringComparer.Ordinal)
+				.ToList();
+		}
+
+		private static void CollectPropertiesRecursive(INamedTypeSymbol? symbol, List<OrdinalPropertyInfo> properties, int depth)
+		{
+			if (symbol == null || symbol.SpecialType == SpecialType.System_Object)
+			{
+				return;
+			}
+
+			// First collect from base type (will have higher depth value = processed first)
+			if (symbol.BaseType != null && symbol.BaseType.SpecialType != SpecialType.System_Object)
+			{
+				CollectPropertiesRecursive(symbol.BaseType, properties, depth + 1);
+			}
+
+			// Then collect from current type
+			foreach (var member in symbol.GetMembers())
+			{
+				if (member is IPropertySymbol propertySymbol &&
+					propertySymbol.DeclaredAccessibility == Accessibility.Public &&
+					!propertySymbol.IsStatic &&
+					!propertySymbol.IsIndexer &&
+					propertySymbol.GetMethod != null && // Must have a getter for serialization
+					propertySymbol.SetMethod != null)   // Must have a setter or init accessor for deserialization
+				{
+					// Skip if property is already collected from a base type (override)
+					if (properties.Any(p => p.Name == propertySymbol.Name))
+					{
+						continue;
+					}
+
+					var isNullable = propertySymbol.NullableAnnotation == NullableAnnotation.Annotated ||
+									 !propertySymbol.Type.IsValueType;
+
+					properties.Add(new OrdinalPropertyInfo(
+						propertySymbol.Name,
+						propertySymbol.Type.ToDisplayString(),
+						isNullable,
+						depth));
+				}
+			}
+		}
 
 		// Class location info for diagnostics (NF0101)
 		public string ClassFilePath { get; }
