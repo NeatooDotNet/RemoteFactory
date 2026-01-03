@@ -16,10 +16,12 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v10.3.0](v10.3.0.md) | 2026-01-03 | Comprehensive logging with CorrelationId for distributed tracing |
 | [v10.2.0](v10.2.0.md) | 2026-01-01 | Ordinal serialization (40-50% smaller payloads), breaking: default format changed |
 
 ## All Releases
 
+- [v10.3.0](v10.3.0.md) - 2026-01-03 - Logging with CorrelationId
 - [v10.2.0](v10.2.0.md) - 2026-01-01 - Ordinal serialization
 - [v10.1.1](v10.1.1.md) - 2026-01-01 - Version metadata fix
 

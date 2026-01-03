@@ -1,4 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<InternalsVisibleTo Include="FactoryGeneratorTests" />
+		<InternalsVisibleTo Include="Neatoo.RemoteFactory.AspNetCore" />
+	</ItemGroup>
 	<PropertyGroup>
 		<RootNamespace>Neatoo.RemoteFactory</RootNamespace>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -19,6 +23,13 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
       <!-- Use stable 9.x version for both net9.0 and net10.0 (9.x is compatible with net10.0) -->
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+  <!-- Logging abstractions for optional structured logging support -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="8.0.2" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
   <ItemGroup>
 	  <None Include="..\..\README.md" Pack="true" PackagePath="" />

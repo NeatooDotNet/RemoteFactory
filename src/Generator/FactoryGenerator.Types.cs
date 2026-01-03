@@ -71,6 +71,22 @@ public partial class Factory
 				// Check for primary constructor parameters
 				primaryConstructorParameters = recordSyntax.ParameterList;
 				this.HasPrimaryConstructor = primaryConstructorParameters?.Parameters.Count > 0;
+
+				// Collect constructor parameter names for ordinal serialization
+				if (this.HasPrimaryConstructor && primaryConstructorParameters != null)
+				{
+					var parameterNames = new List<string>();
+					foreach (var param in primaryConstructorParameters.Parameters)
+					{
+						// Get the property name (Pascal case) that corresponds to this parameter
+						// For records, the compiler auto-generates properties with the same name as parameters
+						var paramName = param.Identifier.Text;
+						// Record parameters automatically become properties with the same name
+						// (first letter is already the correct case as declared)
+						parameterNames.Add(paramName);
+					}
+					this.PrimaryConstructorParameterNames = new EquatableArray<string>([.. parameterNames]);
+				}
 			}
 
 			// Store class identifier location for diagnostics (NF0101)
@@ -266,6 +282,12 @@ public partial class Factory
 		public EquatableArray<OrdinalPropertyInfo> OrdinalProperties { get; } = [];
 
 		/// <summary>
+		/// Primary constructor parameter names in declaration order.
+		/// Used for records with primary constructors to generate constructor calls.
+		/// </summary>
+		public EquatableArray<string> PrimaryConstructorParameterNames { get; } = [];
+
+		/// <summary>
 		/// Diagnostics collected during the transform phase.
 		/// </summary>
 		public EquatableArray<DiagnosticInfo> Diagnostics { get; }
@@ -307,7 +329,8 @@ public partial class Factory
 					!propertySymbol.IsStatic &&
 					!propertySymbol.IsIndexer &&
 					propertySymbol.GetMethod != null && // Must have a getter for serialization
-					propertySymbol.SetMethod != null)   // Must have a setter or init accessor for deserialization
+					propertySymbol.SetMethod != null && // Must have a setter or init accessor for deserialization
+					IsSetterAccessibleForObjectInitializer(propertySymbol.SetMethod)) // Setter must be accessible
 				{
 					// Skip if property is already collected from a base type (override)
 					if (properties.Any(p => p.Name == propertySymbol.Name))
@@ -315,8 +338,10 @@ public partial class Factory
 						continue;
 					}
 
-					var isNullable = propertySymbol.NullableAnnotation == NullableAnnotation.Annotated ||
-									 !propertySymbol.Type.IsValueType;
+					// A property is nullable if it has the NullableAnnotation.Annotated
+					// For example: string? (annotated) vs string (not annotated)
+					// int? (annotated) vs int (not annotated)
+					var isNullable = propertySymbol.NullableAnnotation == NullableAnnotation.Annotated;
 
 					properties.Add(new OrdinalPropertyInfo(
 						propertySymbol.Name,
@@ -325,6 +350,25 @@ public partial class Factory
 						depth));
 				}
 			}
+		}
+
+		/// <summary>
+		/// Checks if a setter is accessible for object initializer syntax.
+		/// Object initializers can use public setters, internal setters (within same assembly),
+		/// or init-only setters.
+		/// </summary>
+		private static bool IsSetterAccessibleForObjectInitializer(IMethodSymbol setMethod)
+		{
+			// Init-only setters are always allowed in object initializers
+			if (setMethod.IsInitOnly)
+			{
+				return true;
+			}
+
+			// Public or internal setters are accessible
+			return setMethod.DeclaredAccessibility == Accessibility.Public ||
+				   setMethod.DeclaredAccessibility == Accessibility.Internal ||
+				   setMethod.DeclaredAccessibility == Accessibility.ProtectedOrInternal;
 		}
 
 		// Class location info for diagnostics (NF0101)

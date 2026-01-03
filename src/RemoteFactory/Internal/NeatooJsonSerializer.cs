@@ -1,8 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Neatoo.RemoteFactory.Internal;
 
@@ -27,6 +30,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 {
 	private readonly IServiceAssemblies serviceAssemblies;
 	private readonly NeatooSerializationOptions serializationOptions;
+	private readonly ILogger<NeatooJsonSerializer> logger;
 
 	JsonSerializerOptions Options { get; }
 
@@ -38,16 +42,28 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 	public SerializationFormat Format => serializationOptions.Format;
 
 	public NeatooJsonSerializer(IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver)
-		: this(neatooJsonConverterFactories, serviceAssemblies, neatooDefaultJsonTypeInfoResolver, new NeatooSerializationOptions())
+		: this(neatooJsonConverterFactories, serviceAssemblies, neatooDefaultJsonTypeInfoResolver, new NeatooSerializationOptions(), null)
 	{
 	}
 
 	public NeatooJsonSerializer(IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories, IServiceAssemblies serviceAssemblies, NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver, NeatooSerializationOptions serializationOptions)
+		: this(neatooJsonConverterFactories, serviceAssemblies, neatooDefaultJsonTypeInfoResolver, serializationOptions, null)
+	{
+	}
+
+	public NeatooJsonSerializer(
+		IEnumerable<NeatooJsonConverterFactory> neatooJsonConverterFactories,
+		IServiceAssemblies serviceAssemblies,
+		NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver,
+		NeatooSerializationOptions serializationOptions,
+		ILogger<NeatooJsonSerializer>? logger)
 	{
 		ArgumentNullException.ThrowIfNull(neatooJsonConverterFactories, nameof(neatooJsonConverterFactories));
 		ArgumentNullException.ThrowIfNull(serializationOptions, nameof(serializationOptions));
 
 		this.serializationOptions = serializationOptions;
+		this.serviceAssemblies = serviceAssemblies;
+		this.logger = logger ?? NullLogger<NeatooJsonSerializer>.Instance;
 
 		this.Options = new JsonSerializerOptions
 		{
@@ -67,8 +83,6 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		{
 			this.Options.Converters.Add(neatooJsonConverterFactory);
 		}
-
-		this.serviceAssemblies = serviceAssemblies;
 	}
 
 
@@ -79,25 +93,61 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			return null;
 		}
 
-		using var rr = new NeatooReferenceResolver();
+		var typeName = target.GetType().Name;
+		logger.SerializingObject(typeName, this.Format);
 
-		this.ReferenceHandler.ReferenceResolver.Value = rr;
+		var sw = Stopwatch.StartNew();
+		try
+		{
+			using var rr = new NeatooReferenceResolver();
+			this.ReferenceHandler.ReferenceResolver.Value = rr;
 
-		return JsonSerializer.Serialize(target, this.Options);
+			var result = JsonSerializer.Serialize(target, this.Options);
+
+			sw.Stop();
+			logger.SerializedObject(typeName, sw.ElapsedMilliseconds);
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			sw.Stop();
+			logger.SerializationFailed(typeName, ex.Message, ex);
+			throw;
+		}
 	}
 
 	public string? Serialize(object? target, Type targetType)
 	{
+		ArgumentNullException.ThrowIfNull(targetType);
+
 		if (target == null)
 		{
 			return null;
 		}
 
-		using var rr = new NeatooReferenceResolver();
+		var typeName = targetType.Name;
+		logger.SerializingObject(typeName, this.Format);
 
-		this.ReferenceHandler.ReferenceResolver.Value = rr;
+		var sw = Stopwatch.StartNew();
+		try
+		{
+			using var rr = new NeatooReferenceResolver();
+			this.ReferenceHandler.ReferenceResolver.Value = rr;
 
-		return JsonSerializer.Serialize(target, targetType, this.Options);
+			var result = JsonSerializer.Serialize(target, targetType, this.Options);
+
+			sw.Stop();
+			logger.SerializedObject(typeName, sw.ElapsedMilliseconds);
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			sw.Stop();
+			logger.SerializationFailed(typeName, ex.Message, ex);
+			throw;
+		}
 	}
 
 	public T? Deserialize<T>(string? json)
@@ -107,23 +157,59 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			return default;
 		}
 
-		using var rr = new NeatooReferenceResolver();
-		this.ReferenceHandler.ReferenceResolver.Value = rr;
+		var typeName = typeof(T).Name;
+		var sw = Stopwatch.StartNew();
 
-		return JsonSerializer.Deserialize<T>(json, this.Options);
+		try
+		{
+			using var rr = new NeatooReferenceResolver();
+			this.ReferenceHandler.ReferenceResolver.Value = rr;
+
+			var result = JsonSerializer.Deserialize<T>(json, this.Options);
+
+			sw.Stop();
+			logger.DeserializedObject(typeName, sw.ElapsedMilliseconds);
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			sw.Stop();
+			logger.DeserializationFailed(typeName, ex.Message, ex);
+			throw;
+		}
 	}
 
 	public object? Deserialize(string? json, Type type)
 	{
+		ArgumentNullException.ThrowIfNull(type);
+
 		if (string.IsNullOrEmpty(json))
 		{
 			return null;
 		}
 
-		using var rr = new NeatooReferenceResolver();
-		this.ReferenceHandler.ReferenceResolver.Value = rr;
+		var typeName = type.Name;
+		var sw = Stopwatch.StartNew();
 
-		return JsonSerializer.Deserialize(json, type, this.Options);
+		try
+		{
+			using var rr = new NeatooReferenceResolver();
+			this.ReferenceHandler.ReferenceResolver.Value = rr;
+
+			var result = JsonSerializer.Deserialize(json, type, this.Options);
+
+			sw.Stop();
+			logger.DeserializedObject(typeName, sw.ElapsedMilliseconds);
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			sw.Stop();
+			logger.DeserializationFailed(typeName, ex.Message, ex);
+			throw;
+		}
 	}
 
 	public RemoteRequestDto ToRemoteDelegateRequest(Type delegateType, params object?[]? parameters)
@@ -186,33 +272,50 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 	{
 		ArgumentNullException.ThrowIfNull(remoteDelegateRequest, nameof(remoteDelegateRequest));
 
-		object? target = null;
-		IReadOnlyCollection<object?>? parameters = null;
+		var delegateTypeName = remoteDelegateRequest.DelegateAssemblyType ?? "unknown";
+		logger.DeserializingRemoteRequest(delegateTypeName);
 
-		if (remoteDelegateRequest.Target != null && !string.IsNullOrEmpty(remoteDelegateRequest.Target.Json))
+		var sw = Stopwatch.StartNew();
+
+		try
 		{
-			target = this.FromObjectJson(remoteDelegateRequest.Target);
+			object? target = null;
+			IReadOnlyCollection<object?>? parameters = null;
+
+			if (remoteDelegateRequest.Target != null && !string.IsNullOrEmpty(remoteDelegateRequest.Target.Json))
+			{
+				target = this.FromObjectJson(remoteDelegateRequest.Target);
+			}
+			if (remoteDelegateRequest.Parameters != null)
+			{
+				parameters = remoteDelegateRequest.Parameters.Select(c => this.FromObjectJson(c)).ToImmutableList();
+			}
+
+			var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType!);
+
+			if (delegateType == null)
+			{
+				throw new MissingDelegateException($"Cannot find delegate type {remoteDelegateRequest.DelegateAssemblyType} in the registered assemblies");
+			}
+
+			var result = new RemoteRequest()
+			{
+				DelegateType = delegateType,
+				Parameters = parameters,
+				Target = target
+			};
+
+			sw.Stop();
+			logger.DeserializedObject(delegateTypeName, sw.ElapsedMilliseconds);
+
+			return result;
 		}
-		if (remoteDelegateRequest.Parameters != null)
+		catch (Exception ex)
 		{
-			parameters = remoteDelegateRequest.Parameters.Select(c => this.FromObjectJson(c)).ToImmutableList();
+			sw.Stop();
+			logger.DeserializationFailed(delegateTypeName, ex.Message, ex);
+			throw;
 		}
-
-		var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType);
-
-		if(delegateType == null)
-		{
-			throw new MissingDelegateException($"Cannot find delegate type {remoteDelegateRequest.DelegateAssemblyType} in the registered assemblies");
-		}
-
-		var result = new RemoteRequest()
-		{
-			DelegateType = delegateType,
-			Parameters = parameters,
-			Target = target
-		};
-
-		return result;
 	}
 
 	public T? DeserializeRemoteResponse<T>(RemoteResponseDto remoteResponse)

@@ -25,7 +25,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 /// </summary>
 [Factory]
 [Create]
-public record SimpleRecord(string Name, int Value);
+public partial record SimpleRecord(string Name, int Value);
 
 // ============================================================================
 // Record with service injection in primary constructor
@@ -37,7 +37,7 @@ public record SimpleRecord(string Name, int Value);
 /// </summary>
 [Factory]
 [Create]
-public record RecordWithService(string Name, [Service] IService Service);
+public partial record RecordWithService(string Name, [Service] IService Service);
 
 // ============================================================================
 // Record with Fetch operations
@@ -49,7 +49,7 @@ public record RecordWithService(string Name, [Service] IService Service);
 /// </summary>
 [Factory]
 [Create]
-public record FetchableRecord(string Id, string Data)
+public partial record FetchableRecord(string Id, string Data)
 {
     [Fetch]
     public static FetchableRecord FetchById(string id)
@@ -77,7 +77,7 @@ public record FetchableRecord(string Id, string Data)
 /// This is an alternative to [Create] on the type.
 /// </summary>
 [Factory]
-public record ExplicitConstructorRecord
+public partial record ExplicitConstructorRecord
 {
     public string Name { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
@@ -99,7 +99,7 @@ public record ExplicitConstructorRecord
 /// </summary>
 [Factory]
 [Create]
-public sealed record SealedRecord(string Value);
+public sealed partial record SealedRecord(string Value);
 
 // ============================================================================
 // Record with default parameter values
@@ -111,7 +111,7 @@ public sealed record SealedRecord(string Value);
 /// </summary>
 [Factory]
 [Create]
-public record RecordWithDefaults(string Name = "default", int Value = 42);
+public partial record RecordWithDefaults(string Name = "default", int Value = 42);
 
 // ============================================================================
 // Record with additional init properties beyond primary constructor
@@ -123,7 +123,7 @@ public record RecordWithDefaults(string Name = "default", int Value = 42);
 /// </summary>
 [Factory]
 [Create]
-public record RecordWithExtraProps(string Name)
+public partial record RecordWithExtraProps(string Name)
 {
     public string ComputedProp => $"Hello, {Name}";
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
@@ -139,7 +139,7 @@ public record RecordWithExtraProps(string Name)
 /// </summary>
 [Factory]
 [Create]
-public record RemoteRecord(string Name)
+public partial record RemoteRecord(string Name)
 {
     [Fetch]
     [Remote]
@@ -161,7 +161,7 @@ public record RemoteRecord(string Name)
 /// </summary>
 [Factory]
 [Create]
-public record RecordWithServiceFetch(string Id, string Data)
+public partial record RecordWithServiceFetch(string Id, string Data)
 {
     [Fetch]
     public static RecordWithServiceFetch FetchWithService(string id, [Service] IService service)
@@ -181,7 +181,7 @@ public record RecordWithServiceFetch(string Id, string Data)
 /// </summary>
 [Factory]
 [Create]
-public record InnerRecord(string InnerValue);
+public partial record InnerRecord(string InnerValue);
 
 /// <summary>
 /// Outer record containing an inner record.
@@ -189,7 +189,7 @@ public record InnerRecord(string InnerValue);
 /// </summary>
 [Factory]
 [Create]
-public record OuterRecord(string Name, InnerRecord Inner);
+public partial record OuterRecord(string Name, InnerRecord Inner);
 
 // ============================================================================
 // Record with collection property
@@ -201,7 +201,7 @@ public record OuterRecord(string Name, InnerRecord Inner);
 /// </summary>
 [Factory]
 [Create]
-public record RecordWithCollection(string Name, List<string> Items);
+public partial record RecordWithCollection(string Name, List<string> Items);
 
 // ============================================================================
 // Record with nullable property
@@ -212,7 +212,7 @@ public record RecordWithCollection(string Name, List<string> Items);
 /// </summary>
 [Factory]
 [Create]
-public record RecordWithNullable(string Name, string? Description);
+public partial record RecordWithNullable(string Name, string? Description);
 
 // ============================================================================
 // Record for value equality tests
@@ -223,7 +223,7 @@ public record RecordWithNullable(string Name, string? Description);
 /// </summary>
 [Factory]
 [Create]
-public record EqualityTestRecord(string Name, int Value, DateTime CreatedAt);
+public partial record EqualityTestRecord(string Name, int Value, DateTime CreatedAt);
 
 // ============================================================================
 // Complex record with multiple data types
@@ -234,7 +234,7 @@ public record EqualityTestRecord(string Name, int Value, DateTime CreatedAt);
 /// </summary>
 [Factory]
 [Create]
-public record ComplexRecord(
+public partial record ComplexRecord(
     string StringProp,
     int IntProp,
     long LongProp,

@@ -96,8 +96,8 @@ public interface IOrdinalConverterProvider<TSelf> where TSelf : class
 }
 ```
 
-- [ ] Create `IOrdinalConverterProvider.cs`
-- [ ] Add XML documentation
+- [x] Create `IOrdinalConverterProvider.cs`
+- [x] Add XML documentation
 
 ---
 
@@ -141,11 +141,11 @@ public class NeatooOrdinalConverterFactory : JsonConverterFactory
 }
 ```
 
-- [ ] Add `_registeredConverters` static dictionary
-- [ ] Add `RegisterConverter<T>()` method
-- [ ] Add `ClearRegistrations()` for testing
-- [ ] Modify `CreateConverter()` to check cache first
-- [ ] Keep existing reflection fallback for backward compatibility
+- [x] Add `_registeredConverters` static dictionary
+- [x] Add `RegisterConverter<T>()` method
+- [x] Add `ClearRegistrations()` for testing
+- [x] Modify `CreateConverter()` to check cache first
+- [x] Keep existing reflection fallback for backward compatibility
 
 ---
 
@@ -241,11 +241,11 @@ internal sealed class {typeName}OrdinalConverter : global::System.Text.Json.Seri
 }
 ```
 
-- [ ] Add `GenerateOrdinalConverter()` method
-- [ ] Handle all property types (primitives, objects, collections, nullables)
-- [ ] Handle inheritance (base class properties first)
-- [ ] Handle records with primary constructors
-- [ ] Generate fully-qualified type names to avoid using conflicts
+- [x] Add `GenerateOrdinalConverter()` method
+- [x] Handle all property types (primitives, objects, collections, nullables)
+- [x] Handle inheritance (base class properties first)
+- [x] Handle records with primary constructors
+- [x] Generate fully-qualified type names to avoid using conflicts
 
 ---
 
@@ -272,9 +272,9 @@ sb.AppendLine($@"
 ");
 ```
 
-- [ ] Add `IOrdinalConverterProvider<T>` to interface list
-- [ ] Generate `CreateOrdinalConverter()` static method
-- [ ] Ensure method returns the generated converter type
+- [x] Add `IOrdinalConverterProvider<T>` to interface list
+- [x] Generate `CreateOrdinalConverter()` static method
+- [x] Ensure method returns the generated converter type
 
 ---
 
@@ -293,9 +293,9 @@ sb.AppendLine($@"
 ");
 ```
 
-- [ ] Add converter registration to `FactoryServiceRegistrar`
-- [ ] Ensure registration happens before any serialization
-- [ ] Handle multiple types in same assembly
+- [x] Add converter registration to `FactoryServiceRegistrar`
+- [x] Ensure registration happens before any serialization
+- [x] Handle multiple types in same assembly
 
 ---
 
@@ -357,13 +357,13 @@ return new Person(
 );
 ```
 
-- [ ] Handle nullable value types
-- [ ] Handle nullable reference types
-- [ ] Handle nested Factory types
-- [ ] Handle collections (List, Array, etc.)
-- [ ] Handle interface-typed properties
-- [ ] Handle records with primary constructors
-- [ ] Handle inheritance (call base properties first)
+- [x] Handle nullable value types
+- [x] Handle nullable reference types
+- [x] Handle nested Factory types
+- [x] Handle collections (List, Array, etc.)
+- [x] Handle interface-typed properties
+- [x] Handle records with primary constructors
+- [x] Handle inheritance (call base properties first)
 
 ---
 
@@ -410,10 +410,10 @@ public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializer
 }
 ```
 
-- [ ] Add IOrdinalConverterProvider check as middle path
-- [ ] Cache converters from provider interface
-- [ ] Keep MakeGenericType fallback for non-generated types
-- [ ] Add logging/diagnostics for which path is used
+- [x] Add IOrdinalConverterProvider check as middle path
+- [x] Cache converters from provider interface
+- [x] Keep MakeGenericType fallback for non-generated types
+- [ ] Add logging/diagnostics for which path is used (deferred - not critical)
 
 ---
 
@@ -494,18 +494,18 @@ public class ReflectionFreeSerializationTests : FactoryTestBase<ISimpleRecordFac
 }
 ```
 
-- [ ] Create test file
-- [ ] Test converter registration
-- [ ] Test serialization correctness
-- [ ] Test deserialization correctness
-- [ ] Test null handling
-- [ ] Test nullable properties
-- [ ] Test nested types
-- [ ] Test collections
-- [ ] Test inheritance
-- [ ] Test client/server round-trip
-- [ ] Test record types
-- [ ] Test error cases (malformed JSON)
+- [x] Create test file
+- [x] Test converter registration
+- [x] Test serialization correctness
+- [x] Test deserialization correctness
+- [x] Test null handling
+- [x] Test nullable properties
+- [x] Test nested types
+- [x] Test collections
+- [x] Test inheritance
+- [x] Test client/server round-trip
+- [x] Test record types
+- [x] Test error cases (malformed JSON)
 
 ---
 
@@ -538,9 +538,9 @@ The source generator creates:
 - Compile-time validation of serialization logic
 ```
 
-- [ ] Update json-serialization.md with AOT section
-- [ ] Create release notes for this feature
-- [ ] Document any limitations
+- [ ] Update json-serialization.md with AOT section (deferred - documentation update)
+- [ ] Create release notes for this feature (deferred - will be done with release)
+- [ ] Document any limitations (deferred - documentation update)
 
 ---
 

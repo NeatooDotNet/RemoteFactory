@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Neatoo.RemoteFactory.Internal;
 using System.Runtime.CompilerServices;
 
 namespace Neatoo.RemoteFactory.AspNetCore;
@@ -11,17 +14,28 @@ public class AspAuthorize : IAspAuthorize
 	private readonly IAuthorizationPolicyProvider? policyProvider;
 	private readonly IPolicyEvaluator? policyEvaluator;
 	private readonly IHttpContextAccessor? httpContextAccessor;
+	private readonly ILogger<AspAuthorize> logger;
 
 	public AspAuthorize()
 	{
-
+		this.logger = NullLogger<AspAuthorize>.Instance;
 	}
 
 	public AspAuthorize(IAuthorizationPolicyProvider policyProvider, IPolicyEvaluator policyEvaluator, IHttpContextAccessor httpContextAccessor)
+		: this(policyProvider, policyEvaluator, httpContextAccessor, null)
+	{
+	}
+
+	public AspAuthorize(
+		IAuthorizationPolicyProvider policyProvider,
+		IPolicyEvaluator policyEvaluator,
+		IHttpContextAccessor httpContextAccessor,
+		ILogger<AspAuthorize>? logger)
 	{
 		this.policyProvider = policyProvider;
 		this.policyEvaluator = policyEvaluator;
 		this.httpContextAccessor = httpContextAccessor;
+		this.logger = logger ?? NullLogger<AspAuthorize>.Instance;
 	}
 
 	private sealed class AuthorizeData : IAuthorizeData
@@ -44,19 +58,25 @@ public class AspAuthorize : IAspAuthorize
 
 	public async Task<string?> Authorize(IEnumerable<AspAuthorizeData> authorizeData, bool forbid = false)
 	{
-		if(this.policyEvaluator == null || this.policyProvider == null || this.httpContextAccessor == null)
+		if (this.policyEvaluator == null || this.policyProvider == null || this.httpContextAccessor == null)
 		{
 			throw new InvalidOperationException("No AspCoreNet Authorization registered");
 		}
 
+		var correlationId = CorrelationContext.CorrelationId;
+		var policyNames = string.Join(", ", authorizeData.Select(a => a.Policy ?? a.Roles ?? "Default"));
+
+		logger.AuthorizationCheck(correlationId, policyNames, "AspAuthorize");
+
 		var context = this.GetHttpContext();
 
-		var policy = await this.GetAuthorizationPolicy(authorizeData.Select(a => new AuthorizeData() {  AuthenticationSchemes = a.AuthenticationSchemes, Policy = a.Policy, Roles = a.Roles }));
+		var policy = await this.GetAuthorizationPolicy(authorizeData.Select(a => new AuthorizeData() { AuthenticationSchemes = a.AuthenticationSchemes, Policy = a.Policy, Roles = a.Roles }));
 
 		var authenticateResult = await this.GetAuthenticateResult(policy, context!);
 
 		if (!authenticateResult.authenticateResult.Succeeded)
 		{
+			logger.AuthorizationDenied(correlationId, policyNames, "Authentication");
 			if (forbid)
 			{
 				await context.ForbidAsync();
@@ -70,6 +90,7 @@ public class AspAuthorize : IAspAuthorize
 
 		if (!authorizeResult.authorizationResult.Succeeded)
 		{
+			logger.AuthorizationDenied(correlationId, policyNames, "Authorization");
 			if (forbid)
 			{
 				await context.ForbidAsync();
@@ -78,6 +99,7 @@ public class AspAuthorize : IAspAuthorize
 			return authorizeResult.message ?? "Not Authorized";
 		}
 
+		logger.AuthorizationGranted(correlationId, policyNames, "AspAuthorize");
 		return string.Empty;
 	}
 

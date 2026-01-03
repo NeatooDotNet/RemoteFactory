@@ -1,4 +1,6 @@
+using FactoryGeneratorTests;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
@@ -79,6 +81,63 @@ internal static class ClientServerContainers
 	public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes()
 	{
 		return Scopes(SerializationFormat.Ordinal);
+	}
+
+	/// <summary>
+	/// Creates scopes with test logging support.
+	/// </summary>
+	/// <param name="loggerProvider">The test logger provider to capture log messages.</param>
+	/// <returns>Scopes along with the test logger provider.</returns>
+	public static (IServiceScope server, IServiceScope client, IServiceScope local) ScopesWithLogging(
+		out TestLoggerProvider loggerProvider)
+	{
+		var provider = new TestLoggerProvider();
+		loggerProvider = provider;
+		var format = SerializationFormat.Ordinal;
+
+		var serializationOptions = new NeatooSerializationOptions { Format = format };
+
+		var serverCollection = new ServiceCollection();
+		var clientCollection = new ServiceCollection();
+		var localCollection = new ServiceCollection();
+
+		// Add logging to all containers
+		serverCollection.AddLogging(builder => builder.AddProvider(provider).SetMinimumLevel(LogLevel.Trace));
+		clientCollection.AddLogging(builder => builder.AddProvider(provider).SetMinimumLevel(LogLevel.Trace));
+		localCollection.AddLogging(builder => builder.AddProvider(provider).SetMinimumLevel(LogLevel.Trace));
+
+		RegisterIfAttribute(serverCollection);
+		RegisterIfAttribute(clientCollection);
+		RegisterIfAttribute(localCollection);
+
+		serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, Assembly.GetExecutingAssembly());
+		serverCollection.AddSingleton<IServerOnlyService, ServerOnly>();
+		serverCollection.AddSingleton<IAuthRemote, AuthServerOnly>();
+		serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+
+		clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, serializationOptions, Assembly.GetExecutingAssembly());
+		clientCollection.AddScoped<ServerServiceProvider>();
+		clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
+		clientCollection.AddScoped<IFactoryCore<FactoryCoreTarget>, FactoryCoreForTarget>();
+		clientCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+
+		localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, serializationOptions, Assembly.GetExecutingAssembly());
+		localCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
+
+		var serverProvider = serverCollection.BuildServiceProvider();
+		var clientProvider = clientCollection.BuildServiceProvider();
+		var localProvider = localCollection.BuildServiceProvider();
+
+		// Configure ambient logging for static methods
+		NeatooLogging.SetLoggerFactory(serverProvider.GetRequiredService<ILoggerFactory>());
+
+		var serverScope = serverProvider.CreateScope();
+		var clientScope = clientProvider.CreateScope();
+		var localScope = localProvider.CreateScope();
+
+		clientScope.GetRequiredService<ServerServiceProvider>().serverProvider = serverScope.ServiceProvider;
+
+		return (serverScope, clientScope, localScope);
 	}
 
 	/// <summary>

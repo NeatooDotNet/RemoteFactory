@@ -1,11 +1,13 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Neatoo.RemoteFactory.Internal;
 
 namespace Neatoo.RemoteFactory.AspNetCore;
 
@@ -26,6 +28,15 @@ public static class ServiceCollectionExtensions
 	{
 		services.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, entityLibraries);
 		services.TryAddScoped<IAspAuthorize, AspAuthorize>();
+
+		// Register the HandleRemoteDelegateRequest with logger injection
+		services.AddScoped<HandleRemoteDelegateRequest>(sp =>
+		{
+			var loggerFactory = sp.GetService<ILoggerFactory>();
+			var logger = loggerFactory?.CreateLogger(NeatooLoggerCategories.Server);
+			return LocalServer.HandlePortalRequest(sp, logger);
+		});
+
 		return services;
 	}
 }

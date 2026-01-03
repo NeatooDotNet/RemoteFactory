@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory.Internal;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -61,14 +62,15 @@ public static partial class RemoteFactoryServices
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
 		services.AddSingleton(typeof(IFactoryCore<>), typeof(FactoryCore<>));
 
-		// Register NeatooJsonSerializer with serialization options
+		// Register NeatooJsonSerializer with serialization options and logging
 		services.AddScoped<INeatooJsonSerializer>(sp =>
 		{
 			var converterFactories = sp.GetServices<NeatooJsonConverterFactory>();
 			var serviceAssemblies = sp.GetRequiredService<IServiceAssemblies>();
 			var typeInfoResolver = sp.GetRequiredService<NeatooJsonTypeInfoResolver>();
 			var options = sp.GetRequiredService<NeatooSerializationOptions>();
-			return new NeatooJsonSerializer(converterFactories, serviceAssemblies, typeInfoResolver, options);
+			var logger = sp.GetService<ILogger<NeatooJsonSerializer>>();
+			return new NeatooJsonSerializer(converterFactories, serviceAssemblies, typeInfoResolver, options, logger);
 		});
 		services.AddScoped(sp => (NeatooJsonSerializer)sp.GetRequiredService<INeatooJsonSerializer>());
 
@@ -92,7 +94,11 @@ public static partial class RemoteFactoryServices
 		}
 		else
 		{
-			services.AddTransient<HandleRemoteDelegateRequest>(s => LocalServer.HandlePortalRequest(s));
+			services.AddTransient<HandleRemoteDelegateRequest>(s =>
+			{
+				var logger = s.GetService<ILoggerFactory>()?.CreateLogger(NeatooLoggerCategories.Server);
+				return LocalServer.HandlePortalRequest(s, logger);
+			});
 		}
 
 		services.AddSingleton<GetServiceImplementationTypes>(s =>

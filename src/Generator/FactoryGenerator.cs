@@ -232,6 +232,25 @@ public partial class Factory : IIncrementalGenerator
 					factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{typeInfo.ImplementationTypeName}>, {typeInfo.ImplementationTypeName}Factory>();");
 				}
 
+				// Register AOT-compatible ordinal converter if ordinal serialization was generated
+				// Must match the condition in GenerateOrdinalSerialization:
+				// - Has ordinal properties
+				// - Is partial
+				// - Not nested
+				// - If record, must have primary constructor
+				var shouldGenerateOrdinal = typeInfo.OrdinalProperties.Any() &&
+					typeInfo.IsPartial &&
+					!typeInfo.IsNested &&
+					(!typeInfo.IsRecord || typeInfo.HasPrimaryConstructor);
+
+				if (shouldGenerateOrdinal)
+				{
+					factoryText.ServiceRegistrations.AppendLine($@"
+								// Register AOT-compatible ordinal converter
+								global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(
+									{typeInfo.ImplementationTypeName}.CreateOrdinalConverter());");
+				}
+
 				source = $@"
 						  #nullable enable
 
@@ -657,6 +676,7 @@ public partial class Factory : IIncrementalGenerator
 	/// <summary>
 	/// Generates the IOrdinalSerializable implementation for a type.
 	/// This enables compact JSON serialization using arrays instead of objects with property names.
+	/// Also generates a strongly-typed ordinal converter to eliminate runtime reflection.
 	/// </summary>
 	private static void GenerateOrdinalSerialization(SourceProductionContext context, TypeInfo typeInfo)
 	{
@@ -688,22 +708,128 @@ public partial class Factory : IIncrementalGenerator
 		{
 			var properties = typeInfo.OrdinalProperties.ToList();
 			var propertyNamesArray = string.Join(", ", properties.Select(p => $"\"{p.Name}\""));
-			var propertyTypesArray = string.Join(", ", properties.Select(p => $"typeof({p.Type})"));
+			// Strip nullable annotation from types for typeof() operator (CS8639)
+			var propertyTypesArray = string.Join(", ", properties.Select(p =>
+			{
+				var typeName = p.Type;
+				if (typeName.EndsWith("?") && !typeName.Contains("<"))
+				{
+					// Simple nullable type like "string?" -> "string"
+					typeName = typeName.TrimEnd('?');
+				}
+				return $"typeof({typeName})";
+			}));
 			var toArrayValues = string.Join(", ", properties.Select(p => $"this.{p.Name}"));
+			var fullTypeName = $"{typeInfo.Namespace}.{typeInfo.Name}";
+			var constructorParams = typeInfo.PrimaryConstructorParameterNames.ToList();
+			var hasPrimaryConstructor = typeInfo.IsRecord && typeInfo.HasPrimaryConstructor && constructorParams.Count > 0;
 
-			// Generate FromOrdinalArray assignments
-			var fromArrayAssignments = new StringBuilder();
+			// For records without primary constructors, skip ordinal serialization
+			// (they have required constructor arguments that we can't populate)
+			if (typeInfo.IsRecord && !hasPrimaryConstructor)
+			{
+				return;
+			}
+
+			// Build a mapping from property name to ordinal index
+			var propertyToIndex = new Dictionary<string, int>();
+			for (int i = 0; i < properties.Count; i++)
+			{
+				propertyToIndex[properties[i].Name] = i;
+			}
+
+			// Build a mapping from property name to its info
+			var propertyByName = properties.ToDictionary(p => p.Name, p => p);
+
+			// Generate FromOrdinalArray code based on whether type has primary constructor
+			string fromArrayCode;
+			if (hasPrimaryConstructor)
+			{
+				// For records with primary constructors, use constructor syntax
+				// Arguments must be in constructor parameter order, not alphabetical order
+				var constructorArgs = new List<string>();
+				foreach (var paramName in constructorParams)
+				{
+					if (propertyToIndex.TryGetValue(paramName, out var idx))
+					{
+						var prop = properties[idx];
+						var cast = $"({prop.Type})";
+						var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
+						var nullForgiving = isEffectivelyNullable ? "" : "!";
+						constructorArgs.Add($"{cast}values[{idx}]{nullForgiving}");
+					}
+				}
+				fromArrayCode = $"return new {typeInfo.Name}({string.Join(", ", constructorArgs)});";
+			}
+			else
+			{
+				// For classes and records without primary constructors, use object initializer
+				var fromArrayAssignments = new StringBuilder();
+				for (int i = 0; i < properties.Count; i++)
+				{
+					var prop = properties[i];
+					var cast = $"({prop.Type})";
+					var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
+					var nullForgiving = isEffectivelyNullable ? "" : "!";
+					fromArrayAssignments.AppendLine($"\t\t\t\t{prop.Name} = {cast}values[{i}]{nullForgiving}{(i < properties.Count - 1 ? "," : "")}");
+				}
+				fromArrayCode = $@"return new {typeInfo.Name}
+			{{
+{fromArrayAssignments}
+			}};";
+			}
+
+			// Generate converter Read method property deserialization
+			var converterReadStatements = new StringBuilder();
 			for (int i = 0; i < properties.Count; i++)
 			{
 				var prop = properties[i];
-				// Type string from ToDisplayString() already includes "?" suffix for nullable types
-				// For casting, we just use the type as-is
-				var cast = $"({prop.Type})";
-				// Use null-forgiving operator for non-nullable types to avoid CS8605 warnings
-				// A type is effectively nullable if IsNullable is true OR the type string ends with "?"
-				var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
-				var nullForgiving = isEffectivelyNullable ? "" : "!";
-				fromArrayAssignments.AppendLine($"\t\t\t\t{prop.Name} = {cast}values[{i}]{nullForgiving}{(i < properties.Count - 1 ? "," : "")}");
+				converterReadStatements.AppendLine($"\t\t\t// {prop.Name} ({prop.Type}) - position {i}");
+				converterReadStatements.AppendLine($"\t\t\tvar prop{i} = global::System.Text.Json.JsonSerializer.Deserialize<{prop.Type}>(ref reader, options);");
+				converterReadStatements.AppendLine($"\t\t\treader.Read();");
+			}
+
+			// Generate converter object construction
+			string converterConstructCode;
+			if (hasPrimaryConstructor)
+			{
+				// For records with primary constructors, use constructor syntax
+				var constructorArgs = new List<string>();
+				foreach (var paramName in constructorParams)
+				{
+					if (propertyToIndex.TryGetValue(paramName, out var idx))
+					{
+						var prop = properties[idx];
+						var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
+						var nullForgiving = isEffectivelyNullable ? "" : "!";
+						constructorArgs.Add($"prop{idx}{nullForgiving}");
+					}
+				}
+				converterConstructCode = $"return new {fullTypeName}({string.Join(", ", constructorArgs)});";
+			}
+			else
+			{
+				// For classes and records without primary constructors, use object initializer
+				var converterConstructAssignments = new StringBuilder();
+				for (int i = 0; i < properties.Count; i++)
+				{
+					var prop = properties[i];
+					var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
+					var nullForgiving = isEffectivelyNullable ? "" : "!";
+					converterConstructAssignments.AppendLine($"\t\t\t\t\t{prop.Name} = prop{i}{nullForgiving}{(i < properties.Count - 1 ? "," : "")}");
+				}
+				converterConstructCode = $@"return new {fullTypeName}
+			{{
+{converterConstructAssignments}
+			}};";
+			}
+
+			// Generate converter Write method property serialization
+			var converterWriteStatements = new StringBuilder();
+			for (int i = 0; i < properties.Count; i++)
+			{
+				var prop = properties[i];
+				converterWriteStatements.AppendLine($"\t\t\tglobal::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options);");
 			}
 
 			var recordKeyword = typeInfo.IsRecord ? "record" : "class";
@@ -719,7 +845,51 @@ public partial class Factory : IIncrementalGenerator
 */
 namespace {typeInfo.Namespace}
 {{
-	partial {recordKeyword} {typeInfo.Name} : Neatoo.RemoteFactory.IOrdinalSerializable, Neatoo.RemoteFactory.IOrdinalSerializationMetadata
+	/// <summary>
+	/// Strongly-typed ordinal converter for {typeInfo.Name}. No reflection required.
+	/// </summary>
+	internal sealed class {typeInfo.Name}OrdinalConverter : global::System.Text.Json.Serialization.JsonConverter<{fullTypeName}>
+	{{
+		public override {fullTypeName}? Read(
+			ref global::System.Text.Json.Utf8JsonReader reader,
+			global::System.Type typeToConvert,
+			global::System.Text.Json.JsonSerializerOptions options)
+		{{
+			if (reader.TokenType == global::System.Text.Json.JsonTokenType.Null)
+				return null;
+
+			if (reader.TokenType != global::System.Text.Json.JsonTokenType.StartArray)
+				throw new global::System.Text.Json.JsonException(
+					$""Expected StartArray for {typeInfo.Name} ordinal format, got {{reader.TokenType}}"");
+
+			reader.Read(); // Move past StartArray
+
+{converterReadStatements}
+			if (reader.TokenType != global::System.Text.Json.JsonTokenType.EndArray)
+				throw new global::System.Text.Json.JsonException(
+					$""Too many values in ordinal array for {typeInfo.Name}. Expected {properties.Count}."");
+
+			{converterConstructCode}
+		}}
+
+		public override void Write(
+			global::System.Text.Json.Utf8JsonWriter writer,
+			{fullTypeName} value,
+			global::System.Text.Json.JsonSerializerOptions options)
+		{{
+			if (value == null)
+			{{
+				writer.WriteNullValue();
+				return;
+			}}
+
+			writer.WriteStartArray();
+{converterWriteStatements}
+			writer.WriteEndArray();
+		}}
+	}}
+
+	partial {recordKeyword} {typeInfo.Name} : global::Neatoo.RemoteFactory.IOrdinalSerializable, global::Neatoo.RemoteFactory.IOrdinalSerializationMetadata, global::Neatoo.RemoteFactory.IOrdinalConverterProvider<{fullTypeName}>
 	{{
 		/// <summary>
 		/// Property names in ordinal order (alphabetical, base properties first).
@@ -744,11 +914,14 @@ namespace {typeInfo.Namespace}
 		/// </summary>
 		public static object FromOrdinalArray(object?[] values)
 		{{
-			return new {typeInfo.Name}
-			{{
-{fromArrayAssignments}
-			}};
+			{fromArrayCode}
 		}}
+
+		/// <summary>
+		/// Creates an AOT-compatible ordinal converter for this type.
+		/// </summary>
+		public static global::System.Text.Json.Serialization.JsonConverter<{fullTypeName}> CreateOrdinalConverter()
+			=> new {typeInfo.Name}OrdinalConverter();
 	}}
 }}";
 

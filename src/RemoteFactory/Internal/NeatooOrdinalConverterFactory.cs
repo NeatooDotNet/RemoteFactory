@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace Neatoo.RemoteFactory.Internal;
 
@@ -11,6 +13,44 @@ namespace Neatoo.RemoteFactory.Internal;
 public class NeatooOrdinalConverterFactory : JsonConverterFactory
 {
 	private readonly NeatooSerializationOptions options;
+
+	/// <summary>
+	/// Static cache for registered converters (AOT path).
+	/// Converters registered here bypass reflection-based creation.
+	/// </summary>
+	private static readonly ConcurrentDictionary<Type, JsonConverter> _registeredConverters = new();
+
+	/// <summary>
+	/// Static logger for logging converter factory operations.
+	/// </summary>
+	private static ILogger Logger => NeatooLogging.GetLogger(NeatooLoggerCategory.Serialization);
+
+	/// <summary>
+	/// Registers a pre-compiled ordinal converter for a type.
+	/// This method is called at startup by generated factory code.
+	/// </summary>
+	/// <typeparam name="T">The type the converter handles.</typeparam>
+	/// <param name="converter">The strongly-typed converter instance.</param>
+	public static void RegisterConverter<T>(JsonConverter<T> converter) where T : class
+	{
+		if (_registeredConverters.TryAdd(typeof(T), converter))
+		{
+			Logger.ConverterRegistered(typeof(T).Name);
+		}
+	}
+
+	/// <summary>
+	/// Clears all registered converters. Used for testing purposes.
+	/// </summary>
+	internal static void ClearRegistrations()
+	{
+		_registeredConverters.Clear();
+	}
+
+	/// <summary>
+	/// Gets the number of registered converters. Used for testing purposes.
+	/// </summary>
+	internal static int RegisteredConverterCount => _registeredConverters.Count;
 
 	public NeatooOrdinalConverterFactory(NeatooSerializationOptions options)
 	{
@@ -31,8 +71,46 @@ public class NeatooOrdinalConverterFactory : JsonConverterFactory
 
 	public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
 	{
+		ArgumentNullException.ThrowIfNull(typeToConvert);
+
+		var typeName = typeToConvert.Name;
+
+		// AOT path: Try registered converters first (fastest path)
+		if (_registeredConverters.TryGetValue(typeToConvert, out var registered))
+		{
+			Logger.ConverterCacheHit(typeName);
+			return registered;
+		}
+
+		// Middle path: Check if type implements IOrdinalConverterProvider<T>
+		// and call its static CreateOrdinalConverter method (one-time reflection cost, then cached)
+		var providerInterface = typeToConvert.GetInterfaces()
+			.FirstOrDefault(i => i.IsGenericType &&
+							i.GetGenericTypeDefinition() == typeof(IOrdinalConverterProvider<>));
+
+		if (providerInterface != null)
+		{
+			var method = typeToConvert.GetMethod(
+				nameof(IOrdinalConverterProvider<object>.CreateOrdinalConverter),
+				BindingFlags.Public | BindingFlags.Static);
+
+			if (method != null)
+			{
+				Logger.CreatingConverter(typeName, "IOrdinalConverterProvider");
+				var converter = (JsonConverter)method.Invoke(null, null)!;
+				_registeredConverters.TryAdd(typeToConvert, converter);
+				return converter;
+			}
+		}
+
+		// Reflection fallback path (legacy/non-generated types)
+		Logger.ReflectionFallback(typeName);
+		Logger.CreatingConverter(typeName, "Reflection");
 		var converterType = typeof(NeatooOrdinalConverter<>).MakeGenericType(typeToConvert);
-		return (JsonConverter)Activator.CreateInstance(converterType)!;
+		var fallbackConverter = (JsonConverter)Activator.CreateInstance(converterType)!;
+		// Cache fallback converters too to avoid repeated reflection
+		_registeredConverters.TryAdd(typeToConvert, fallbackConverter);
+		return fallbackConverter;
 	}
 }
 
