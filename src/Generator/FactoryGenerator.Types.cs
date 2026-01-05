@@ -214,6 +214,13 @@ public partial class Factory
 				this.OrdinalProperties = new EquatableArray<OrdinalPropertyInfo>([.. CollectOrdinalProperties(symbol)]);
 			}
 
+			// Check if type requires DI to instantiate (can't use object initializer)
+			// Skip this check for records with primary constructors - they use constructor syntax
+			if (!this.IsInterface && !this.IsStatic && !(this.IsRecord && this.HasPrimaryConstructor))
+			{
+				this.RequiresServiceInstantiation = RequiresServiceInstantiationCheck(symbol);
+			}
+
 			var hintNameResult = SafeHintName(semanticModel, $"{this.Namespace}.{this.Name}");
 			this.SafeHintName = hintNameResult.ResultName;
 
@@ -286,6 +293,12 @@ public partial class Factory
 		/// Used for records with primary constructors to generate constructor calls.
 		/// </summary>
 		public EquatableArray<string> PrimaryConstructorParameterNames { get; } = [];
+
+		/// <summary>
+		/// Indicates if this type requires DI to instantiate (has constructors with non-service parameters).
+		/// Types that require DI cannot use object initializer syntax for ordinal deserialization.
+		/// </summary>
+		public bool RequiresServiceInstantiation { get; }
 
 		/// <summary>
 		/// Diagnostics collected during the transform phase.
@@ -369,6 +382,52 @@ public partial class Factory
 			return setMethod.DeclaredAccessibility == Accessibility.Public ||
 				   setMethod.DeclaredAccessibility == Accessibility.Internal ||
 				   setMethod.DeclaredAccessibility == Accessibility.ProtectedOrInternal;
+		}
+
+		/// <summary>
+		/// Checks if a type requires service (DI) instantiation.
+		/// Returns true if the type cannot be instantiated using object initializer syntax.
+		/// Object initializer syntax requires a parameterless constructor or a constructor
+		/// where all parameters have default values.
+		/// Note: [Service] parameters still count as required parameters because
+		/// the generated deserialization code cannot provide DI-resolved values.
+		/// </summary>
+		private static bool RequiresServiceInstantiationCheck(INamedTypeSymbol symbol)
+		{
+			// Abstract types can't be instantiated directly
+			if (symbol.IsAbstract)
+			{
+				return true;
+			}
+
+			var constructors = symbol.Constructors.Where(c => !c.IsStatic && !c.IsImplicitlyDeclared);
+
+			// If there are no explicit constructors, the implicit parameterless constructor is used
+			if (!constructors.Any())
+			{
+				return false;
+			}
+
+			// Check if there's at least one constructor that can be called with no arguments
+			// (i.e., parameterless or all parameters have default values)
+			foreach (var ctor in constructors)
+			{
+				// Parameterless constructor - can use object initializer
+				if (ctor.Parameters.Length == 0)
+				{
+					return false;
+				}
+
+				// Check if all parameters have default values
+				var allParamsHaveDefaults = ctor.Parameters.All(p => p.HasExplicitDefaultValue);
+				if (allParamsHaveDefaults)
+				{
+					return false;
+				}
+			}
+
+			// No constructor can be called without arguments
+			return true;
 		}
 
 		// Class location info for diagnostics (NF0101)

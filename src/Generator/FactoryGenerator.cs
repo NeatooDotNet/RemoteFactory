@@ -238,10 +238,12 @@ public partial class Factory : IIncrementalGenerator
 				// - Is partial
 				// - Not nested
 				// - If record, must have primary constructor
+				// - Does not require DI for instantiation
 				var shouldGenerateOrdinal = typeInfo.OrdinalProperties.Any() &&
 					typeInfo.IsPartial &&
 					!typeInfo.IsNested &&
-					(!typeInfo.IsRecord || typeInfo.HasPrimaryConstructor);
+					(!typeInfo.IsRecord || typeInfo.HasPrimaryConstructor) &&
+					!typeInfo.RequiresServiceInstantiation;
 
 				if (shouldGenerateOrdinal)
 				{
@@ -705,6 +707,13 @@ public partial class Factory : IIncrementalGenerator
 				typeInfo.ClassTextSpanLength,
 				typeInfo.Name);
 			ReportDiagnostic(context, diagnostic);
+			return;
+		}
+
+		// Skip types that require DI for instantiation (have constructors with non-service parameters)
+		// These types cannot be deserialized using object initializer syntax
+		if (typeInfo.RequiresServiceInstantiation)
+		{
 			return;
 		}
 

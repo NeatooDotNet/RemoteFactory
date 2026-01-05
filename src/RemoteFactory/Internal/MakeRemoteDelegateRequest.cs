@@ -13,6 +13,11 @@ public interface IMakeRemoteDelegateRequest
 	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 	Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 
+	// Backward-compatible overloads without CancellationToken
+	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
+		=> ForDelegate<T>(delegateType, parameters, default);
+	Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters)
+		=> ForDelegateNullable<T>(delegateType, parameters, default);
 }
 
 public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
