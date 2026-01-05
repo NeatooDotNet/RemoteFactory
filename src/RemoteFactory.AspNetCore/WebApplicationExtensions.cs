@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory.Internal;
 
@@ -12,6 +13,7 @@ public static class WebApplicationExtensions
 	/// Configures the Neatoo RemoteFactory endpoint for handling remote delegate requests.
 	/// Adds the X-Neatoo-Format response header to communicate the serialization format.
 	/// Automatically extracts correlation ID from request headers.
+	/// Supports cancellation via client disconnect and server shutdown.
 	/// </summary>
 	public static WebApplication UseNeatoo(this WebApplication app)
 	{
@@ -23,6 +25,9 @@ public static class WebApplicationExtensions
 		{
 			NeatooLogging.SetLoggerFactory(loggerFactory);
 		}
+
+		// Get the application lifetime for graceful shutdown support
+		var hostLifetime = app.Services.GetService<IHostApplicationLifetime>();
 
 		// Add middleware for correlation ID extraction
 		app.Use(async (context, next) =>
@@ -53,7 +58,32 @@ public static class WebApplicationExtensions
 				httpContext.Response.Headers[NeatooSerializationOptions.FormatHeaderName] = serializationOptions.FormatHeaderValue;
 			}
 
-			return await handleRemoteDelegateRequest(request);
+			// Create a linked cancellation token that fires on:
+			// 1. Client disconnect (HttpContext.RequestAborted)
+			// 2. Server graceful shutdown (ApplicationStopping)
+			CancellationToken cancellationToken;
+			CancellationTokenSource? linkedCts = null;
+
+			if (hostLifetime != null)
+			{
+				linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+					httpContext.RequestAborted,
+					hostLifetime.ApplicationStopping);
+				cancellationToken = linkedCts.Token;
+			}
+			else
+			{
+				cancellationToken = httpContext.RequestAborted;
+			}
+
+			try
+			{
+				return await handleRemoteDelegateRequest(request, cancellationToken);
+			}
+			finally
+			{
+				linkedCts?.Dispose();
+			}
 		});
 
 		return app;

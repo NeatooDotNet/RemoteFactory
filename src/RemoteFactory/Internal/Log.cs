@@ -185,6 +185,15 @@ internal static partial class Log
         string errorMessage,
         Exception? exception);
 
+    [LoggerMessage(
+        EventId = 3007,
+        Level = LogLevel.Information,
+        Message = "[{CorrelationId}] Remote delegate call cancelled: {DelegateType}")]
+    public static partial void RemoteCallCancelled(
+        this ILogger logger,
+        string correlationId,
+        string delegateType);
+
     // ===== Converter Factory (4xxx) =====
 
     [LoggerMessage(
@@ -337,4 +346,33 @@ internal static partial class Log
         this ILogger logger,
         string correlationId,
         string delegateType);
+
+    [LoggerMessage(
+        EventId = 7007,
+        Level = LogLevel.Information,
+        Message = "[{CorrelationId}] Remote request cancelled for delegate {DelegateType}")]
+    public static partial void RemoteRequestCancelled(
+        this ILogger logger,
+        string correlationId,
+        string delegateType);
+
+    // ===== Factory Lifecycle (8xxx) =====
+
+    [LoggerMessage(
+        EventId = 8001,
+        Level = LogLevel.Debug,
+        Message = "Invoking IFactoryOnCancelled for {TypeName}")]
+    public static partial void InvokingFactoryOnCancelled(
+        this ILogger logger,
+        string typeName);
+
+    [LoggerMessage(
+        EventId = 8002,
+        Level = LogLevel.Information,
+        Message = "[{CorrelationId}] Factory operation {Operation} cancelled for {TypeName}")]
+    public static partial void FactoryOperationCancelled(
+        this ILogger logger,
+        string? correlationId,
+        FactoryOperation operation,
+        string typeName);
 }

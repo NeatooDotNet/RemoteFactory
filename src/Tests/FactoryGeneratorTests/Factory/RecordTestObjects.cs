@@ -243,3 +243,45 @@ public partial record ComplexRecord(
     bool BoolProp,
     DateTime DateTimeProp,
     Guid GuidProp);
+
+// ============================================================================
+// Known Limitations - Documented for future work
+// ============================================================================
+
+// LIMITATION 1: Record Inheritance
+// The generator's ordinal serialization helpers (PropertyNames, PropertyTypes,
+// ToOrdinalArray, FromOrdinalArray, CreateOrdinalConverter) are generated as
+// instance members that hide the base class members without using the 'new'
+// keyword. This causes CS0108 warnings/errors.
+//
+// Example that doesn't work:
+//   [Factory]
+//   [Create]
+//   public partial record BaseRecord(string Name, int Value);
+//
+//   [Factory]
+//   [Create]
+//   public partial record DerivedRecord(string Name, int Value, string Extra)
+//       : BaseRecord(Name, Value);
+//
+// Workaround: Don't use [Factory] on both base and derived records.
+// Track this in a future generator enhancement.
+
+// LIMITATION 2: C# 11 Required Members
+// The generator doesn't handle C# 11 'required' members. When generating
+// the factory's Create method, it calls the constructor but doesn't set
+// required properties in an object initializer, causing CS9035.
+//
+// Example that doesn't work:
+//   [Factory]
+//   public partial record RecordWithRequired
+//   {
+//       public required string Name { get; init; }
+//       public required int Value { get; init; }
+//
+//       [Create]
+//       public RecordWithRequired() { }
+//   }
+//
+// Workaround: Use positional records or don't use 'required' members.
+// Track this in a future generator enhancement.

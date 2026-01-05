@@ -666,12 +666,18 @@ public partial class Factory
 			this.Name = parameterSyntax.Identifier.Text;
 			this.Type = parameterSyntax.Type!.ToFullString();
 			this.IsService = parameterSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.ToFullString() == "Service");
+
+			// Detect CancellationToken parameters - they should not be serialized for remote calls
+			var typeText = this.Type.Trim();
+			this.IsCancellationToken = typeText == "CancellationToken" ||
+									   typeText == "System.Threading.CancellationToken";
 		}
 
 		public string Name { get; set; } = null!;
 		public string Type { get; set; } = null!;
 		public bool IsService { get; set; }
 		public bool IsTarget { get; set; }
+		public bool IsCancellationToken { get; set; }
 
 		public bool Equals(MethodParameterInfo obj)
 		{
@@ -783,17 +789,34 @@ public partial class Factory
 
 			return returnType;
 		}
-		public string ParameterDeclarationsText(bool includeServices = false, bool includeTarget = true)
+		public string ParameterDeclarationsText(bool includeServices = false, bool includeTarget = true, bool includeCancellationToken = true)
 		{
-			return string.Join(", ", this.Parameters.Where(p => (includeServices || !p.IsService) && (includeTarget || !p.IsTarget)).Select(p => $"{p.Type} {p.Name}"));
+			return string.Join(", ", this.Parameters.Where(p => (includeServices || !p.IsService) && (includeTarget || !p.IsTarget) && (includeCancellationToken || !p.IsCancellationToken)).Select(p => $"{p.Type} {p.Name}"));
 		}
 
-		public string ParameterIdentifiersText(bool includeServices = false, bool includeTarget = true)
+		public string ParameterIdentifiersText(bool includeServices = false, bool includeTarget = true, bool includeCancellationToken = true)
 		{
-			var result = string.Join(", ", this.Parameters.Where(p => (includeServices || !p.IsService) && (includeTarget || !p.IsTarget)).Select(p => p.Name));
+			var result = string.Join(", ", this.Parameters.Where(p => (includeServices || !p.IsService) && (includeTarget || !p.IsTarget) && (includeCancellationToken || !p.IsCancellationToken)).Select(p => p.Name));
 
 			return result.TrimStart(',').TrimEnd(',');
 		}
+
+		/// <summary>
+		/// Gets the name of the CancellationToken parameter if one exists, otherwise returns "default".
+		/// </summary>
+		public string CancellationTokenParameterName
+		{
+			get
+			{
+				var ctParam = this.Parameters.FirstOrDefault(p => p.IsCancellationToken);
+				return ctParam?.Name ?? "default";
+			}
+		}
+
+		/// <summary>
+		/// Returns true if any parameter is a CancellationToken.
+		/// </summary>
+		public bool HasCancellationToken => this.Parameters.Any(p => p.IsCancellationToken);
 
 		public virtual void AddFactoryText(FactoryText classText)
 		{
@@ -896,9 +919,13 @@ public partial class Factory
 			{
 				var nullableText = this.ReturnType(includeTask: false).EndsWith("?") ? "Nullable" : "";
 
+				// Exclude CancellationToken from serialized parameters - it flows through HTTP layer instead
+				var serializedParamsText = this.ParameterIdentifiersText(includeCancellationToken: false);
+				var cancellationTokenParam = this.CancellationTokenParameterName;
+
 				methodBuilder.AppendLine($"public virtual async {this.ReturnType()} Remote{this.UniqueName}({this.ParameterDeclarationsText()})");
 				methodBuilder.AppendLine("{");
-				methodBuilder.AppendLine($" return (await MakeRemoteDelegateRequest!.ForDelegate{nullableText}<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{this.ParameterIdentifiersText()}]))!;");
+				methodBuilder.AppendLine($" return (await MakeRemoteDelegateRequest!.ForDelegate{nullableText}<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{serializedParamsText}], {cancellationTokenParam}))!;");
 				methodBuilder.AppendLine("}");
 				methodBuilder.AppendLine("");
 

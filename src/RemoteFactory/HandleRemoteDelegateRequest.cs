@@ -7,12 +7,46 @@ using Neatoo.RemoteFactory.Internal;
 
 namespace Neatoo.RemoteFactory;
 
-public delegate Task<RemoteResponseDto> HandleRemoteDelegateRequest(RemoteRequestDto portalRequest);
+public delegate Task<RemoteResponseDto> HandleRemoteDelegateRequest(RemoteRequestDto portalRequest, CancellationToken cancellationToken);
 
 
 public static class LocalServer
 {
 	private const string Result = "Result";
+
+	/// <summary>
+	/// Prepares invoke parameters by injecting CancellationToken where expected.
+	/// CancellationToken is excluded from serialized parameters but flows through the HTTP layer.
+	/// </summary>
+	private static object?[] PrepareInvokeParameters(
+		IReadOnlyCollection<object?>? serializedParams,
+		ParameterInfo[] methodParams,
+		CancellationToken cancellationToken)
+	{
+		var result = new object?[methodParams.Length];
+		var paramsList = serializedParams?.ToArray() ?? [];
+		var serializedIndex = 0;
+
+		for (int i = 0; i < methodParams.Length; i++)
+		{
+			if (methodParams[i].ParameterType == typeof(CancellationToken))
+			{
+				// Inject the CancellationToken from the HTTP layer
+				result[i] = cancellationToken;
+			}
+			else if (serializedIndex < paramsList.Length)
+			{
+				result[i] = paramsList[serializedIndex++];
+			}
+			else
+			{
+				// Use default for missing parameters
+				result[i] = methodParams[i].HasDefaultValue ? methodParams[i].DefaultValue : null;
+			}
+		}
+
+		return result;
+	}
 
 	public static HandleRemoteDelegateRequest HandlePortalRequest(IServiceProvider serviceProvider)
 	{
@@ -23,7 +57,7 @@ public static class LocalServer
 	{
 		var log = logger ?? NullLoggerFactory.Instance.CreateLogger(NeatooLoggerCategories.Server);
 
-		return async (portalRequest) =>
+		return async (portalRequest, cancellationToken) =>
 		{
 			var correlationId = CorrelationContext.CorrelationId ?? CorrelationContext.EnsureCorrelationId();
 			var delegateTypeName = portalRequest.DelegateAssemblyType ?? "unknown";
@@ -35,6 +69,9 @@ public static class LocalServer
 
 			try
 			{
+				// Check for cancellation before processing
+				cancellationToken.ThrowIfCancellationRequested();
+
 				var remoteRequest = serializer.DeserializeRemoteDelegateRequest(portalRequest);
 				var parameterCount = remoteRequest.Parameters?.Count ?? 0;
 				log.RemoteRequestDeserialized(correlationId, parameterCount);
@@ -43,13 +80,20 @@ public static class LocalServer
 
 				var method = (Delegate)serviceProvider.GetRequiredService(remoteRequest.DelegateType);
 
-				var result = method.DynamicInvoke(remoteRequest.Parameters?.ToArray());
+				// Prepare parameters, injecting CancellationToken if the method expects it
+				var methodParams = method.Method.GetParameters();
+				var invokeParams = PrepareInvokeParameters(remoteRequest.Parameters, methodParams, cancellationToken);
+
+				var result = method.DynamicInvoke(invokeParams);
 
 				if (result is Task task)
 				{
 					await task;
 					result = task.GetType()!.GetProperty(Result)!.GetValue(task);
 				}
+
+				// Check for cancellation before serializing response
+				cancellationToken.ThrowIfCancellationRequested();
 
 				// This is the return type the client is looking for
 				// If it is an Interface - match the interface
@@ -69,6 +113,12 @@ public static class LocalServer
 				log.RemoteRequestCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);
 
 				return portalResponse;
+			}
+			catch (OperationCanceledException)
+			{
+				sw.Stop();
+				log.RemoteRequestCancelled(correlationId, delegateTypeName);
+				throw;
 			}
 			catch (AspForbidException)
 			{

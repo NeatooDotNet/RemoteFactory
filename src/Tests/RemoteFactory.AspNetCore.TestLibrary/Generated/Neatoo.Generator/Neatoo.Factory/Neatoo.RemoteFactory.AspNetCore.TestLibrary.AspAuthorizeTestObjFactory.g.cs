@@ -100,7 +100,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreate(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized<AspAuthorizeTestObj>> LocalCreate(bool hasAccess)
@@ -131,7 +131,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreateNoAspAuth(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateNoAspAuthDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateNoAspAuthDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized<AspAuthorizeTestObj>> LocalCreateNoAspAuth(bool hasAccess)
@@ -162,7 +162,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreateMultiple(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateMultipleDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateMultipleDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized<AspAuthorizeTestObj>> LocalCreateMultiple(bool hasAccess)
@@ -246,7 +246,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteSave(AspAuthorizeTestObj target, bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveDelegate), [target, hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveDelegate), [target, hasAccess], default))!;
         }
 
         public virtual async Task<Authorized<AspAuthorizeTestObj>> LocalSave(AspAuthorizeTestObj target, bool hasAccess)
@@ -283,7 +283,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteSaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveNoAspAuthDelegate), [target, hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveNoAspAuthDelegate), [target, hasAccess], default))!;
         }
 
         public virtual async Task<Authorized<AspAuthorizeTestObj>> LocalSaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess)
@@ -309,7 +309,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanCreate(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanCreate(bool hasAccess)
@@ -339,7 +339,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanCreateNoAspAuth(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateNoAspAuthDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateNoAspAuthDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanCreateNoAspAuth(bool hasAccess)
@@ -369,7 +369,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanCreateMultiple(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateMultipleDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateMultipleDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanCreateMultiple(bool hasAccess)
@@ -399,7 +399,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanInsert(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanInsert(bool hasAccess)
@@ -429,7 +429,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanInsertNoAspAuth(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertNoAspAuthDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertNoAspAuthDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanInsertNoAspAuth(bool hasAccess)
@@ -459,7 +459,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanSave(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanSave(bool hasAccess)
@@ -489,7 +489,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanSaveNoAspAuth(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveNoAspAuthDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveNoAspAuthDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanSaveNoAspAuth(bool hasAccess)

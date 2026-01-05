@@ -56,7 +56,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<bool> RemoteHasAspAccess(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<bool>(typeof(HasAspAccessDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<bool>(typeof(HasAspAccessDelegate), [hasAccess], default))!;
         }
 
         public async Task<bool> LocalHasAspAccess(bool hasAccess)
@@ -82,7 +82,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<bool> RemoteNoAspAccess(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<bool>(typeof(NoAspAccessDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<bool>(typeof(NoAspAccessDelegate), [hasAccess], default))!;
         }
 
         public async Task<bool> LocalNoAspAccess(bool hasAccess)
@@ -108,7 +108,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanHasAspAccess(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanHasAspAccessDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanHasAspAccessDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanHasAspAccess(bool hasAccess)
@@ -138,7 +138,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 
         public virtual async Task<Authorized> RemoteCanNoAspAccess(bool hasAccess)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanNoAspAccessDelegate), [hasAccess]))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanNoAspAccessDelegate), [hasAccess], default))!;
         }
 
         public async Task<Authorized> LocalCanNoAspAccess(bool hasAccess)

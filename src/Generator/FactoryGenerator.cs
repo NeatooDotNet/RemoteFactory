@@ -413,6 +413,10 @@ public partial class Factory : IIncrementalGenerator
 						var parameterDeclarations = string.Join(", ", parameters.Where(p => !p.IsService)
 																		.Select(p => $"{p.Type} {p.Name}"));
 						var parameterIdentifiers = string.Join(", ", parameters.Where(p => !p.IsService).Select(p => p.Name));
+						// For serialization, exclude CancellationToken - it flows through HTTP layer instead
+						var serializedParameterIdentifiers = string.Join(", ", parameters.Where(p => !p.IsService && !p.IsCancellationToken).Select(p => p.Name));
+						// Get CancellationToken parameter name, or "default" if none exists
+						var cancellationTokenParam = parameters.FirstOrDefault(p => p.IsCancellationToken)?.Name ?? "default";
 						var allParameterIdentifiers = string.Join(", ", parameters.Select(p => p.Name));
 						var serviceAssignmentsText = WithStringBuilder(parameters.Where(p => p.IsService).Select(p => $"var {p.Name} = cc.GetRequiredService<{p.Type}>();"));
 
@@ -421,7 +425,7 @@ public partial class Factory : IIncrementalGenerator
 						remoteMethods.AppendLine(@$"
 						  services.AddTransient<{typeInfo.Name}.{delegateName}>(cc =>
 						  {{
-								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate{nullableText}<{method.ReturnType}>(typeof({typeInfo.Name}.{delegateName}), [{parameterIdentifiers}]);
+								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate{nullableText}<{method.ReturnType}>(typeof({typeInfo.Name}.{delegateName}), [{serializedParameterIdentifiers}], {cancellationTokenParam});
 						  }});");
 
 						localMethods.AppendLine(@$"

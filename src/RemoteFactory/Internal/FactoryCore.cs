@@ -250,6 +250,24 @@ public class FactoryCore<T> : IFactoryCore<T>
 			logger.FactoryOperationCompleted(correlationId, operation, TypeName, sw.ElapsedMilliseconds);
 			return target;
 		}
+		catch (OperationCanceledException)
+		{
+			sw.Stop();
+			logger.FactoryOperationCancelled(correlationId, operation, TypeName);
+
+			if (target is IFactoryOnCancelled factoryOnCancelled)
+			{
+				logger.InvokingFactoryOnCancelled(TypeName);
+				factoryOnCancelled.FactoryCancelled(operation);
+			}
+
+			if (target is IFactoryOnCancelledAsync factoryOnCancelledAsync)
+			{
+				await factoryOnCancelledAsync.FactoryCancelledAsync(operation);
+			}
+
+			throw;
+		}
 		catch (Exception ex)
 		{
 			sw.Stop();
@@ -302,6 +320,24 @@ public class FactoryCore<T> : IFactoryCore<T>
 			sw.Stop();
 			logger.FactoryOperationCompleted(correlationId, operation, TypeName, sw.ElapsedMilliseconds);
 			return target;
+		}
+		catch (OperationCanceledException)
+		{
+			sw.Stop();
+			logger.FactoryOperationCancelled(correlationId, operation, TypeName);
+
+			if (target is IFactoryOnCancelled factoryOnCancelled)
+			{
+				logger.InvokingFactoryOnCancelled(TypeName);
+				factoryOnCancelled.FactoryCancelled(operation);
+			}
+
+			if (target is IFactoryOnCancelledAsync factoryOnCancelledAsync)
+			{
+				await factoryOnCancelledAsync.FactoryCancelledAsync(operation);
+			}
+
+			throw;
 		}
 		catch (Exception ex)
 		{

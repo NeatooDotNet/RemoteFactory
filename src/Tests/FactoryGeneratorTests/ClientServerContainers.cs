@@ -31,9 +31,9 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 		this.NeatooJsonSerializer = neatooJsonSerializer;
 		this.serviceProvider = serviceProvider;
 	}
-	public async Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
+	public async Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
 	{
-		var result = await this.ForDelegateNullable<T>(delegateType, parameters);
+		var result = await this.ForDelegateNullable<T>(delegateType, parameters, cancellationToken);
 		if (result == null)
 		{
 			throw new InvalidOperationException($"The result of the remote delegate call was null, but a non-nullable type was expected.");
@@ -41,8 +41,11 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 		return result;
 	}
 
-	public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters)
+	public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
 	{
+		// Check for cancellation before processing
+		cancellationToken.ThrowIfCancellationRequested();
+
 		// Mimic all the steps of a Remote call except the actual http call
 
 		var remoteRequest = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
@@ -51,10 +54,10 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 		var json = JsonSerializer.Serialize(remoteRequest); //NeatooJsonSerializer.Serialize(remoteRequest);
 		var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!; // this.NeatooJsonSerializer.Deserialize<RemoteRequestDto>(json);
 
-		// Use the Server's container
+		// Use the Server's container - pass cancellation token to the handler
 		var remoteResponseOnServer = await this.serviceProvider.GetRequiredService<ServerServiceProvider>()
 																			 .serverProvider
-																			 .GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer);
+																			 .GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, cancellationToken);
 
 		json = JsonSerializer.Serialize(remoteResponseOnServer); // NeatooJsonSerializer.Serialize(remoteResponseOnServer);
 		var result = JsonSerializer.Deserialize<RemoteResponseDto>(json); // NeatooJsonSerializer.Deserialize<RemoteResponseDto>(json);

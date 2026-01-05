@@ -10,8 +10,8 @@ namespace Neatoo.RemoteFactory.Internal;
 
 public interface IMakeRemoteDelegateRequest
 {
-	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters);
-	Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters);
+	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
+	Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 
 }
 
@@ -36,9 +36,9 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		this.logger = logger ?? NullLogger<MakeRemoteDelegateRequest>.Instance;
 	}
 
-	public async Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
+	public async Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
 	{
-		var result = await this.ForDelegateNullable<T>(delegateType, parameters);
+		var result = await this.ForDelegateNullable<T>(delegateType, parameters, cancellationToken);
 
 		if (result == null)
 		{
@@ -48,7 +48,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		return result;
 	}
 
-	public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters)
+	public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
 	{
 		ArgumentNullException.ThrowIfNull(delegateType);
 
@@ -62,7 +62,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		{
 			var remoteDelegateRequest = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
 
-			var result = await this.MakeRemoteDelegateRequestCall(remoteDelegateRequest);
+			var result = await this.MakeRemoteDelegateRequestCall(remoteDelegateRequest, cancellationToken);
 
 			sw.Stop();
 			logger.RemoteCallCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);
@@ -73,6 +73,12 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 			}
 
 			return this.NeatooJsonSerializer.DeserializeRemoteResponse<T>(result);
+		}
+		catch (OperationCanceledException)
+		{
+			sw.Stop();
+			logger.RemoteCallCancelled(correlationId, delegateTypeName);
+			throw;
 		}
 		catch (Exception ex)
 		{

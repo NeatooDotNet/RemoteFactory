@@ -23,6 +23,8 @@ Warnings indicate potential issues that may cause unexpected behavior. Review an
 | [NF0202](NF0202.md) | Authorization method has invalid return type |
 | [NF0203](NF0203.md) | Ambiguous save operations |
 | [NF0204](NF0204.md) | Write operation should not return target type |
+| [NF0205](NF0205.md) | [Create] on type requires record with primary constructor *(Error)* |
+| [NF0206](NF0206.md) | record struct not supported *(Error)* |
 | [NF0207](NF0207.md) | Nested type skipped for ordinal serialization |
 
 ## Info Diagnostics (NF03xx)

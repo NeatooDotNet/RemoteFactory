@@ -32,9 +32,9 @@ internal sealed class MakeLocalSerializedDelegateRequest : IMakeRemoteDelegateRe
 		this.logger = logger ?? NullLogger<MakeLocalSerializedDelegateRequest>.Instance;
 	}
 
-	public async Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
+	public async Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
 	{
-		var result = await this.ForDelegateNullable<T>(delegateType, parameters);
+		var result = await this.ForDelegateNullable<T>(delegateType, parameters, cancellationToken);
 		if (result == null)
 		{
 			throw new InvalidOperationException($"The result of the remote delegate call was null, but a non-nullable type was expected.");
@@ -44,7 +44,7 @@ internal sealed class MakeLocalSerializedDelegateRequest : IMakeRemoteDelegateRe
 
 	private const string Result = "Result";
 
-	public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters)
+	public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
 	{
 		var correlationId = CorrelationContext.EnsureCorrelationId();
 		var delegateTypeName = delegateType.Name;
@@ -54,6 +54,9 @@ internal sealed class MakeLocalSerializedDelegateRequest : IMakeRemoteDelegateRe
 
 		try
 		{
+			// Check for cancellation before starting
+			cancellationToken.ThrowIfCancellationRequested();
+
 			// Serialize and Deserialize the request so that a different object is returned
 			var duplicatedRemoteRequestDto = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
 
@@ -73,6 +76,12 @@ internal sealed class MakeLocalSerializedDelegateRequest : IMakeRemoteDelegateRe
 			logger.RemoteCallCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);
 
 			return (T?)result;
+		}
+		catch (OperationCanceledException)
+		{
+			sw.Stop();
+			logger.RemoteCallCancelled(correlationId, delegateTypeName);
+			throw;
 		}
 		catch (Exception ex)
 		{

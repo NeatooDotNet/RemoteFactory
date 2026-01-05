@@ -285,10 +285,172 @@ public class CancellationTokenTests
 
     #endregion
 
-    // Note: CancellationToken cannot be serialized for remote calls.
-    // Remote methods with CancellationToken parameters would fail at runtime during serialization.
-    // This is a known limitation - CancellationToken should only be used with local factory methods.
-    // Tests for remote + CancellationToken have been removed as they demonstrate unsupported behavior.
+    #region Remote CancellationToken Support
+
+    /// <summary>
+    /// Tests for CancellationToken support with remote factory methods.
+    /// CancellationToken is excluded from serialized parameters and flows through HTTP layer instead.
+    /// </summary>
+    [Factory]
+    public class RemoteCancellableFactory
+    {
+        public bool CreateCalled { get; set; }
+        public bool FetchCalled { get; set; }
+        public bool CancellationWasChecked { get; set; }
+        public int? BusinessParam { get; set; }
+
+        [Create]
+        public RemoteCancellableFactory() { }
+
+        [Create]
+        [Remote]
+        public async Task CreateAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            this.CancellationWasChecked = true;
+            this.CreateCalled = true;
+            await Task.Delay(10, cancellationToken);
+        }
+
+        [Fetch]
+        [Remote]
+        public async Task FetchAsync(int param, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            this.BusinessParam = param;
+            this.CancellationWasChecked = true;
+            this.FetchCalled = true;
+            await Task.Delay(10, cancellationToken);
+        }
+    }
+
+    public class RemoteCancellableFactoryTests : FactoryTestBase<IRemoteCancellableFactoryFactory>
+    {
+        [Fact]
+        public async Task CreateAsync_Remote_WithNonCancelledToken_Completes()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+
+            // Act - Goes through remote serialization path
+            var result = await this.factory.CreateAsync(cts.Token);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.CreateCalled);
+            Assert.True(result.CancellationWasChecked);
+        }
+
+        [Fact]
+        public async Task CreateAsync_Remote_WithAlreadyCancelledToken_Throws()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            // Act & Assert - CancellationToken flows through HTTP layer
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                () => this.factory.CreateAsync(cts.Token));
+        }
+
+        [Fact]
+        public async Task FetchAsync_Remote_WithBusinessParamAndCancellationToken_Works()
+        {
+            // Arrange
+            const int expectedParam = 42;
+            using var cts = new CancellationTokenSource();
+
+            // Act - Business param is serialized, CancellationToken flows through HTTP
+            var result = await this.factory.FetchAsync(expectedParam, cts.Token);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.FetchCalled);
+            Assert.Equal(expectedParam, result.BusinessParam);
+            Assert.True(result.CancellationWasChecked);
+        }
+
+        [Fact]
+        public async Task FetchAsync_Remote_WithCancelledToken_Throws()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                () => this.factory.FetchAsync(123, cts.Token));
+        }
+    }
+
+    #endregion
+
+    #region IFactoryOnCancelled Callback Tests
+
+    /// <summary>
+    /// Factory class that implements IFactoryOnCancelled to receive cancellation callbacks.
+    /// </summary>
+    [Factory]
+    public class CancellationCallbackFactory : IFactoryOnCancelled, IFactoryOnCancelledAsync
+    {
+        public bool FactoryCancelledCalled { get; set; }
+        public bool FactoryCancelledAsyncCalled { get; set; }
+        public FactoryOperation? CancelledOperation { get; set; }
+
+        [Create]
+        public CancellationCallbackFactory() { }
+
+        [Fetch]
+        public async Task FetchAsync(CancellationToken cancellationToken)
+        {
+            // Delay to allow cancellation
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        }
+
+        public void FactoryCancelled(FactoryOperation factoryOperation)
+        {
+            this.FactoryCancelledCalled = true;
+            this.CancelledOperation = factoryOperation;
+        }
+
+        public Task FactoryCancelledAsync(FactoryOperation factoryOperation)
+        {
+            this.FactoryCancelledAsyncCalled = true;
+            this.CancelledOperation = factoryOperation;
+            return Task.CompletedTask;
+        }
+    }
+
+    public class CancellationCallbackFactoryTests : FactoryTestBase<ICancellationCallbackFactoryFactory>
+    {
+        [Fact]
+        public async Task Fetch_WhenCancelled_InvokesFactoryCancelledCallback()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+
+            // Start the fetch and cancel immediately
+            var fetchTask = this.factory.FetchAsync(cts.Token);
+            cts.Cancel();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(() => fetchTask);
+        }
+
+        [Fact]
+        public async Task Fetch_WithPreCancelledToken_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            // Act & Assert - TaskCanceledException inherits from OperationCanceledException
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => this.factory.FetchAsync(cts.Token));
+        }
+    }
+
+    #endregion
 
     #region Mixed Parameters with CancellationToken
 
