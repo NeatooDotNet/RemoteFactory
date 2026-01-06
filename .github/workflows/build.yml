@@ -97,6 +97,20 @@ jobs:
           path: ./test-results/*.trx
           retention-days: 7
 
+      - name: Build documentation samples
+        run: |
+          dotnet build docs/samples/RemoteFactory.Samples.DomainModel/RemoteFactory.Samples.DomainModel.csproj --configuration Release
+          dotnet build docs/samples/RemoteFactory.Samples.DomainModel.Tests/RemoteFactory.Samples.DomainModel.Tests.csproj --configuration Release
+          dotnet build docs/samples/RemoteFactory.Samples.Server/RemoteFactory.Samples.Server.csproj --configuration Release
+          dotnet build docs/samples/RemoteFactory.Samples.BlazorClient/RemoteFactory.Samples.BlazorClient.csproj --configuration Release
+
+      - name: Test documentation samples
+        run: |
+          dotnet test docs/samples/RemoteFactory.Samples.DomainModel.Tests/RemoteFactory.Samples.DomainModel.Tests.csproj --configuration Release --no-build
+
+      - name: Verify documentation snippets
+        run: pwsh ./scripts/extract-snippets.ps1 -Verify
+
       - name: Pack NuGet packages
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |

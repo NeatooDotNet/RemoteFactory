@@ -1,24 +1,16 @@
----
-layout: default
-title: "Service Injection"
-description: "Using the [Service] attribute for dependency injection in RemoteFactory"
-parent: Concepts
-nav_order: 4
----
+/// <summary>
+/// Code samples for docs/concepts/service-injection.md
+/// </summary>
 
-# Service Injection
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
-RemoteFactory integrates with Microsoft.Extensions.DependencyInjection to resolve services within factory methods. The `[Service]` attribute marks parameters that should be resolved from the DI container rather than passed by the caller.
+namespace RemoteFactory.Samples.DomainModel.ServiceInjection;
 
-## The [Service] Attribute
-
-Parameters marked with `[Service]` are:
-- Excluded from the generated factory method signature
-- Resolved from `IServiceProvider` at execution time
-- Resolved on the server for `[Remote]` methods
-
-<!-- snippet: docs:concepts/service-injection:service-attribute -->
-```csharp
+#region docs:concepts/service-injection:service-attribute
 [Factory]
 public class PersonServiceExample
 {
@@ -38,73 +30,16 @@ public class PersonServiceExample
         return entity != null;
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-**Generated Factory Interface:**
-
-```csharp
+// Note: The generated factory interface is shown in the docs as:
 // public interface IPersonServiceExampleFactory
 // {
 //     // Service parameters are not in the signature
 //     Task<IPersonServiceExample?> Fetch(int id);
 // }
-```
 
-## How Service Resolution Works
-
-### In Server Mode
-
-Services resolve directly from the request's `IServiceProvider`:
-
-```csharp
-// Generated factory code (simplified)
-public async Task<Authorized<IPersonModel>> LocalFetch(int id)
-{
-    var target = ServiceProvider.GetRequiredService<PersonModel>();
-
-    // Services are resolved from DI
-    var context = ServiceProvider.GetRequiredService<IPersonContext>();
-    var logger = ServiceProvider.GetRequiredService<ILogger<PersonModel>>();
-
-    return await target.Fetch(id, context, logger);
-}
-```
-
-### In Remote Mode
-
-On the client, the factory serializes non-service parameters and sends them to the server. The server then resolves services:
-
-```
-Client                                  Server
-  │                                       │
-  │ factory.Fetch(123)                    │
-  │     │                                 │
-  │     ▼                                 │
-  │ RemoteFetch(123)                      │
-  │     │                                 │
-  │     │ Serialize: { id: 123 }          │
-  │     │                                 │
-  │     └────────────────────────────────>│
-  │       HTTP POST /api/neatoo           │
-  │                                       │
-  │                                       │ Deserialize request
-  │                                       │ Resolve: IPersonContext
-  │                                       │ Resolve: ILogger
-  │                                       │ Call: Fetch(123, context, logger)
-  │                                       │
-  │<──────────────────────────────────────┤
-  │       Serialized PersonModel          │
-```
-
-## Common Patterns
-
-### Database Context
-
-The most common use case is injecting your database context:
-
-<!-- snippet: docs:concepts/service-injection:database-context-fetch -->
-```csharp
+#region docs:concepts/service-injection:database-context-fetch
 [Factory]
 public class OrderFetchExample : IFactorySaveMeta
 {
@@ -136,25 +71,9 @@ public class OrderFetchExample : IFactorySaveMeta
         await context.SaveChangesAsync();
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-**Server Registration:**
-
-```csharp
-// Program.cs
-builder.Services.AddDbContext<OrderContext>(options =>
-    options.UseSqlServer(connectionString));
-builder.Services.AddScoped<IOrderContext>(sp =>
-    sp.GetRequiredService<OrderContext>());
-```
-
-### Logging
-
-Inject loggers for diagnostics:
-
-<!-- snippet: docs:concepts/service-injection:logging -->
-```csharp
+#region docs:concepts/service-injection:logging
 [Factory]
 public class PersonWithLogging
 {
@@ -178,17 +97,9 @@ public class PersonWithLogging
         }
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-### Multiple Services
-
-You can inject multiple services:
-
-**Fetch with Multiple Services:**
-
-<!-- snippet: docs:concepts/service-injection:multiple-services -->
-```csharp
+#region docs:concepts/service-injection:multiple-services
 [Factory]
 public class OrderModel
 {
@@ -217,13 +128,9 @@ public class OrderModel
     public Guid OrderId { get; private set; }
     public decimal Total { get; private set; }
 }
-```
-<!-- /snippet -->
+#endregion
 
-**Insert with Multiple Services:**
-
-<!-- snippet: docs:concepts/service-injection:insert-multiple-services -->
-```csharp
+#region docs:concepts/service-injection:insert-multiple-services
 [Factory]
 public class PersonInsertExample : IFactorySaveMeta
 {
@@ -258,15 +165,9 @@ public class PersonInsertExample : IFactorySaveMeta
         logger.LogInformation("Person created: {Email}", Email);
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-### Custom Application Services
-
-Inject your own application services:
-
-<!-- snippet: docs:concepts/service-injection:custom-service -->
-```csharp
+#region docs:concepts/service-injection:custom-service
 public interface IPricingService
 {
     Task<decimal> CalculatePrice(IOrderModelSample order);
@@ -292,30 +193,20 @@ public class OrderWithPricing : IOrderModelSample, IFactorySaveMeta
         await context.SaveChangesAsync();
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-### User/Principal Access
+public interface IOrderModelSample { }
 
-Access the current user through a custom service:
-
-**Interface:**
-
-<!-- snippet: docs:concepts/service-injection:current-user-interface -->
-```csharp
+#region docs:concepts/service-injection:current-user-interface
 public interface ICurrentUser
 {
     string UserId { get; }
     string Email { get; }
     IEnumerable<string> Roles { get; }
 }
-```
-<!-- /snippet -->
+#endregion
 
-**Implementation:**
-
-<!-- snippet: docs:concepts/service-injection:current-user-implementation -->
-```csharp
+#region docs:concepts/service-injection:current-user-implementation
 public class CurrentUser : ICurrentUser
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -336,13 +227,9 @@ public class CurrentUser : ICurrentUser
             .Where(c => c.Type == ClaimTypes.Role)
             .Select(c => c.Value) ?? Enumerable.Empty<string>();
 }
-```
-<!-- /snippet -->
+#endregion
 
-**Usage in factory:**
-
-<!-- snippet: docs:concepts/service-injection:current-user-usage -->
-```csharp
+#region docs:concepts/service-injection:current-user-usage
 [Factory]
 public class PersonWithUserTracking : IFactorySaveMeta
 {
@@ -362,34 +249,9 @@ public class PersonWithUserTracking : IFactorySaveMeta
         await context.SaveChangesAsync();
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-## Service Lifetimes
-
-Services follow standard DI lifetime rules:
-
-| Lifetime | Behavior |
-|----------|----------|
-| Transient | New instance per resolution |
-| Scoped | Same instance within HTTP request |
-| Singleton | Same instance for application lifetime |
-
-```csharp
-// Server registration
-builder.Services.AddScoped<IPersonContext, PersonContext>();      // Per-request
-builder.Services.AddTransient<IEmailService, EmailService>();     // Per-resolution
-builder.Services.AddSingleton<ICacheService, CacheService>();     // Shared
-```
-
-**Recommendation:** Use `Scoped` for database contexts to ensure proper transaction handling per request.
-
-## Server-Only Services
-
-Some services should only exist on the server. RemoteFactory handles this automatically:
-
-<!-- snippet: docs:concepts/service-injection:server-only-services -->
-```csharp
+#region docs:concepts/service-injection:server-only-services
 [Factory]
 public class PersonServerOnly
 {
@@ -412,15 +274,9 @@ public class PersonServerOnly
         clientService.Initialize();
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-### What Happens Without [Remote]
-
-If you call a method without `[Remote]` that has server-only services:
-
-<!-- snippet: docs:concepts/service-injection:without-remote -->
-```csharp
+#region docs:concepts/service-injection:without-remote
 [Factory]
 public class BadPatternExample
 {
@@ -431,17 +287,9 @@ public class BadPatternExample
         // On server: works fine
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-**Solution:** Either add `[Remote]` or ensure the service is available on both client and server.
-
-## Optional Services
-
-Services should generally be required. If you need optional services, use a pattern like:
-
-<!-- snippet: docs:concepts/service-injection:optional-services -->
-```csharp
+#region docs:concepts/service-injection:optional-services
 public interface IOptionalService
 {
     void DoSomething();
@@ -463,36 +311,9 @@ public class PersonWithOptionalService : IFactorySaveMeta
         await context.SaveChangesAsync();
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-However, this is rarely needed. Design your services to always be available.
-
-## Errors and Troubleshooting
-
-### Service Not Registered
-
-**Error:** `InvalidOperationException: No service for type 'IPersonContext'`
-
-**Cause:** The service isn't registered in DI.
-
-**Solution:**
-
-```csharp
-// Ensure service is registered on server
-builder.Services.AddScoped<IPersonContext, PersonContext>();
-```
-
-### Wrong Execution Location
-
-**Error:** Method works on server but fails on client.
-
-**Cause:** `[Remote]` attribute missing on method with server-only services.
-
-**Solution:**
-
-<!-- snippet: docs:concepts/service-injection:error-wrong-location -->
-```csharp
+#region docs:concepts/service-injection:error-wrong-location
 [Factory]
 public class FixWrongLocationExample
 {
@@ -505,25 +326,9 @@ public class FixWrongLocationExample
         return true;
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-### Service Lifetime Mismatch
-
-**Error:** `Cannot consume scoped service from singleton`
-
-**Cause:** Injecting a scoped service into a singleton.
-
-**Solution:** Adjust service lifetimes appropriately. Factory methods run in request scope, so scoped services work correctly.
-
-## Best Practices
-
-### 1. Use Interfaces
-
-Always inject interfaces, not concrete types:
-
-<!-- snippet: docs:concepts/service-injection:best-practice-interfaces -->
-```csharp
+#region docs:concepts/service-injection:best-practice-interfaces
 [Factory]
 public class BestPracticeInterfacesExample
 {
@@ -538,15 +343,9 @@ public class BestPracticeInterfacesExample
     // [Fetch]
     // public Task<bool> FetchBad([Service] PersonContext context)
 }
-```
-<!-- /snippet -->
+#endregion
 
-### 2. Keep Service Count Reasonable
-
-If a method needs many services, consider introducing a facade:
-
-<!-- snippet: docs:concepts/service-injection:best-practice-facade -->
-```csharp
+#region docs:concepts/service-injection:best-practice-facade
 // Instead of this
 // public Task Insert(
 //     [Service] IContext context,
@@ -578,15 +377,9 @@ public class PersonWithFacade : IPersonModel, IFactorySaveMeta
         await service.Insert(this);
     }
 }
-```
-<!-- /snippet -->
+#endregion
 
-### 3. Document Server-Only Services
-
-Make it clear which services are server-only:
-
-<!-- snippet: docs:concepts/service-injection:document-server-only -->
-```csharp
+#region docs:concepts/service-injection:document-server-only
 /// <summary>
 /// Server-only database context. Only use with [Remote] methods.
 /// </summary>
@@ -595,11 +388,79 @@ public interface IDocumentedPersonContext
     DbSet<PersonEntity> Persons { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
-```
-<!-- /snippet -->
+#endregion
 
-## Next Steps
+// Supporting interfaces and classes
+public interface IPersonContext
+{
+    DbSet<PersonEntity> Persons { get; }
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}
 
-- **[Architecture Overview](architecture-overview.md)**: Understanding the full system
-- **[Factory Operations](factory-operations.md)**: Using services in operations
-- **[Attributes Reference](../reference/attributes.md)**: Complete `[Service]` documentation
+public class PersonEntity
+{
+    public int Id { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+}
+
+public interface IOrderContext
+{
+    DbSet<OrderEntity> Orders { get; }
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}
+
+public class OrderEntity
+{
+    public Guid Id { get; set; }
+    public decimal TotalAmount { get; set; }
+    public List<OrderLineItem> LineItems { get; set; } = new();
+}
+
+public class OrderLineItem
+{
+    public int Id { get; set; }
+}
+
+public interface ICurrencyService
+{
+    decimal ConvertToDisplayCurrency(decimal amount);
+}
+
+public interface IEmailService
+{
+    Task SendWelcomeEmail(string? email);
+}
+
+public interface IAuditService
+{
+    Task Log(string message);
+}
+
+public interface IClientService
+{
+    void Initialize();
+}
+
+public interface IDbContext { }
+
+public interface IServerOnlyService { }
+
+public interface IHttpContextAccessor
+{
+    HttpContext? HttpContext { get; }
+}
+
+public class HttpContext
+{
+    public ClaimsPrincipal? User { get; set; }
+}
+
+public interface IPersonModel
+{
+    int Id { get; }
+    string? FirstName { get; set; }
+    string? LastName { get; set; }
+    string? Email { get; set; }
+}

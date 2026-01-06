@@ -48,19 +48,33 @@ Use Server mode in your ASP.NET Core application. This mode registers delegates 
 
 ### Configuration
 
+<!-- snippet: docs:concepts/three-tier-execution:server-setup -->
 ```csharp
-using Neatoo.RemoteFactory.AspNetCore;
+// Add CORS for Blazor client
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 
-var builder = WebApplication.CreateBuilder(args);
-
-// AddNeatooAspNetCore uses Server mode internally
+// Add RemoteFactory services - pass the domain model assembly
 builder.Services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly);
+
+// Register your application services
+// builder.Services.AddScoped<IPersonContext, PersonContext>();
 
 var app = builder.Build();
 
-// Maps the /api/neatoo endpoint
+app.UseCors();
+
+// Add the RemoteFactory endpoint at /api/neatoo
 app.UseNeatoo();
 ```
+<!-- /snippet -->
 
 ### Server Registration Methods
 
@@ -120,20 +134,19 @@ Use Remote mode in client applications like Blazor WebAssembly or WPF. Factory m
 
 ### Configuration
 
+<!-- snippet: docs:concepts/three-tier-execution:client-setup -->
 ```csharp
-using Neatoo.RemoteFactory;
-
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-
-// Register factories in Remote mode
+// Add RemoteFactory in Remote mode
 builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IPersonModel).Assembly);
 
 // Configure HTTP client for remote calls
 builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 {
-    return new HttpClient { BaseAddress = new Uri("https://your-server.com/") };
+    // Update this URL to match your server
+    return new HttpClient { BaseAddress = new Uri("https://localhost:5001/") };
 });
 ```
+<!-- /snippet -->
 
 ### HTTP Client Configuration
 

@@ -43,15 +43,10 @@ dotnet add PersonDemo.Server package Microsoft.EntityFrameworkCore.Sqlite
 
 ## Step 2: Create the Domain Model
 
-Create `PersonDemo.DomainModel/PersonModel.cs`:
+Create `PersonDemo.DomainModel/IPersonModel.cs` - the interface:
 
+<!-- snippet: docs:getting-started/quick-start:person-interface -->
 ```csharp
-using Neatoo.RemoteFactory;
-using Microsoft.EntityFrameworkCore;
-
-namespace PersonDemo.DomainModel;
-
-// Interface for the domain model (used by factory)
 public interface IPersonModel : IFactorySaveMeta
 {
     int Id { get; }
@@ -61,112 +56,58 @@ public interface IPersonModel : IFactorySaveMeta
     new bool IsNew { get; set; }
     new bool IsDeleted { get; set; }
 }
+```
+<!-- /snippet -->
 
-// The [Factory] attribute triggers code generation
+Create `PersonDemo.DomainModel/PersonModel.cs` - the implementation:
+
+<!-- snippet: docs:getting-started/quick-start:person-model-full -->
+```csharp
 [Factory]
 public class PersonModel : IPersonModel
 {
-    // [Create] marks this constructor for the Create factory method
+    #region docs:concepts/factory-operations:create-constructor
     [Create]
     public PersonModel()
     {
         IsNew = true;
     }
-
-    public int Id { get; private set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Email { get; set; }
-    public bool IsNew { get; set; } = true;
-    public bool IsDeleted { get; set; }
-
-    // [Remote] indicates this method executes on the server
-    // [Fetch] marks this as the Fetch factory method
-    [Remote]
-    [Fetch]
-    public async Task<bool> Fetch(int id, [Service] IPersonContext context)
-    {
-        var entity = await context.Persons.FindAsync(id);
-        if (entity == null) return false;
-
-        // Map entity properties to domain model
-        this.Id = entity.Id;
-        this.FirstName = entity.FirstName;
-        this.LastName = entity.LastName;
-        this.Email = entity.Email;
-        IsNew = false;
-        return true;
-    }
-
-    // Combined Insert and Update - [Service] parameters are injected
-    [Remote]
-    [Insert]
-    [Update]
-    public async Task Save([Service] IPersonContext context)
-    {
-        PersonEntity entity;
-
-        if (IsNew)
-        {
-            entity = new PersonEntity();
-            context.Persons.Add(entity);
-        }
-        else
-        {
-            entity = await context.Persons.FindAsync(Id)
-                ?? throw new InvalidOperationException("Person not found");
-        }
-
-        // Map domain model properties to entity
-        entity.FirstName = this.FirstName;
-        entity.LastName = this.LastName;
-        entity.Email = this.Email;
-        await context.SaveChangesAsync();
-
-        Id = entity.Id;
-        IsNew = false;
-    }
-
-    // Delete operation
-    [Remote]
-    [Delete]
-    public async Task Delete([Service] IPersonContext context)
-    {
-        var entity = await context.Persons.FindAsync(Id);
-        if (entity != null)
-        {
-            context.Persons.Remove(entity);
-            await context.SaveChangesAsync();
-        }
-    }
-}
 ```
+<!-- /snippet -->
 
 ## Step 3: Create the Entity and DbContext
 
 Create `PersonDemo.DomainModel/PersonEntity.cs`:
 
+**Entity:**
+
+<!-- snippet: docs:getting-started/quick-start:person-entity -->
 ```csharp
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-
-namespace PersonDemo.DomainModel;
-
 public class PersonEntity
 {
-    [Key]
     public int Id { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Email { get; set; }
 }
+```
+<!-- /snippet -->
 
+**Context Interface:**
+
+<!-- snippet: docs:getting-started/quick-start:person-context -->
+```csharp
 public interface IPersonContext
 {
     DbSet<PersonEntity> Persons { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
+```
+<!-- /snippet -->
 
+**Context Implementation:**
+
+```csharp
 public class PersonContext : DbContext, IPersonContext
 {
     public DbSet<PersonEntity> Persons { get; set; } = null!;
