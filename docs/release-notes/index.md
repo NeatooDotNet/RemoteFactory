@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v10.6.0](v10.6.0.md) | 2026-01-07 | Fire-and-forget domain events with [Event] attribute |
 | [v10.5.0](v10.5.0.md) | 2026-01-04 | Constructor injection compatibility, AOT documentation |
 | [v10.4.0](v10.4.0.md) | 2026-01-04 | CancellationToken support with IFactoryOnCancelled lifecycle hooks |
 | [v10.3.0](v10.3.0.md) | 2026-01-03 | Comprehensive logging with CorrelationId for distributed tracing |
@@ -23,6 +24,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v10.6.0](v10.6.0.md) - 2026-01-07 - Fire-and-forget domain events
 - [v10.5.0](v10.5.0.md) - 2026-01-04 - Constructor injection compatibility
 - [v10.4.0](v10.4.0.md) - 2026-01-04 - CancellationToken support
 - [v10.3.0](v10.3.0.md) - 2026-01-03 - Logging with CorrelationId
