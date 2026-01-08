@@ -168,6 +168,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<ComplexParamReadObjectFactory>();
             services.AddScoped<IComplexParamReadObjectFactory, ComplexParamReadObjectFactory>();
             services.AddTransient<ComplexParamReadObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

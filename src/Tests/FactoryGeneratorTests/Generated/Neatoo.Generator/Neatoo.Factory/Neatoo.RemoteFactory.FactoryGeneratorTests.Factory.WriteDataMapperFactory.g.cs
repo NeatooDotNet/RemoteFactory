@@ -983,6 +983,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<IWriteDataMapperFactory, WriteDataMapperFactory>();
             services.AddTransient<WriteDataMapper>();
             services.AddScoped<IFactorySave<WriteDataMapper>, WriteDataMapperFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

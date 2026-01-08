@@ -375,4 +375,76 @@ internal static partial class Log
         string? correlationId,
         FactoryOperation operation,
         string typeName);
+
+    // ===== Event Tracking (9xxx) =====
+
+    [LoggerMessage(
+        EventId = 9001,
+        Level = LogLevel.Information,
+        Message = "Waiting for {PendingCount} pending event(s) to complete")]
+    public static partial void WaitingForPendingEvents(
+        this ILogger logger,
+        int pendingCount);
+
+    [LoggerMessage(
+        EventId = 9002,
+        Level = LogLevel.Warning,
+        Message = "Wait for pending events was cancelled with {PendingCount} event(s) still pending")]
+    public static partial void PendingEventsCancelled(
+        this ILogger logger,
+        int pendingCount);
+
+    [LoggerMessage(
+        EventId = 9003,
+        Level = LogLevel.Warning,
+        Message = "Some event tasks failed during shutdown")]
+    public static partial void PendingEventsShutdownFailed(
+        this ILogger logger,
+        Exception? exception);
+
+    [LoggerMessage(
+        EventId = 9004,
+        Level = LogLevel.Error,
+        Message = "Event handler failed")]
+    public static partial void EventHandlerFailed(
+        this ILogger logger,
+        Exception? exception);
+
+    [LoggerMessage(
+        EventId = 9005,
+        Level = LogLevel.Debug,
+        Message = "No pending events to wait for during shutdown")]
+    public static partial void NoPendingEventsAtShutdown(
+        this ILogger logger);
+
+    [LoggerMessage(
+        EventId = 9006,
+        Level = LogLevel.Information,
+        Message = "Waiting for {PendingCount} pending event(s) to complete during shutdown")]
+    public static partial void WaitingForPendingEventsAtShutdown(
+        this ILogger logger,
+        int pendingCount);
+
+    [LoggerMessage(
+        EventId = 9007,
+        Level = LogLevel.Information,
+        Message = "All pending events completed successfully")]
+    public static partial void AllPendingEventsCompleted(
+        this ILogger logger);
+
+    [LoggerMessage(
+        EventId = 9008,
+        Level = LogLevel.Warning,
+        Message = "Shutdown timeout reached with {PendingCount} event(s) still pending")]
+    public static partial void ShutdownTimeoutReached(
+        this ILogger logger,
+        int pendingCount);
+
+    [LoggerMessage(
+        EventId = 9009,
+        Level = LogLevel.Error,
+        Message = "Error waiting for pending events during shutdown")]
+    public static partial void ShutdownWaitError(
+        this ILogger logger,
+        Exception? exception);
 }

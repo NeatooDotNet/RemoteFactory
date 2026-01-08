@@ -35,6 +35,17 @@ Info diagnostics are opt-in and help debug "why didn't my method generate?" scen
 |----|-------------|
 | [NF0301](NF0301.md) | Method has no factory operation attribute (opt-in) |
 
+## Event Diagnostics (NF04xx)
+
+Diagnostics related to `[Event]` attribute usage.
+
+| ID | Severity | Description |
+|----|----------|-------------|
+| [NF0401](NF0401.md) | Error | Event method must return void or Task |
+| [NF0402](NF0402.md) | Error | Event method must be in Factory class |
+| [NF0403](NF0403.md) | Warning | Event method has no data parameters |
+| [NF0404](NF0404.md) | Error | Event method must have CancellationToken as final parameter |
+
 ## Configuring Diagnostics
 
 Use `.editorconfig` to customize diagnostic behavior:

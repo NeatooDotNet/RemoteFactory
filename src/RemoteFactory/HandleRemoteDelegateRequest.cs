@@ -89,7 +89,17 @@ public static class LocalServer
 				if (result is Task task)
 				{
 					await task;
-					result = task.GetType()!.GetProperty(Result)!.GetValue(task);
+					// Only get result for Task<T>, not for non-generic Task (events, void methods)
+					var resultProperty = task.GetType().GetProperty(Result);
+					if (resultProperty != null && resultProperty.PropertyType != typeof(void) &&
+						resultProperty.PropertyType.Name != "VoidTaskResult")
+					{
+						result = resultProperty.GetValue(task);
+					}
+					else
+					{
+						result = null;
+					}
 				}
 
 				// Check for cancellation before serializing response
@@ -102,9 +112,17 @@ public static class LocalServer
 
 				var returnType = method.GetMethodInfo().ReturnType;
 
-				if (returnType.GetGenericTypeDefinition() == typeof(Task<>))
+				// Handle Task<T> return types - extract the inner type
+				// For non-generic Task (events) or void, serialize null with object type
+				if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
 				{
 					returnType = returnType.GetGenericArguments()[0];
+				}
+				else if (returnType == typeof(Task) || returnType == typeof(void))
+				{
+					// For non-generic Task (events) or void methods, serialize null as object
+					result = null;
+					returnType = typeof(object);
 				}
 
 				var portalResponse = new RemoteResponseDto(serializer.Serialize(result, returnType));

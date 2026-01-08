@@ -93,6 +93,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             services.AddScoped<IUpdateDeleteOnlyFactory, UpdateDeleteOnlyFactory>();
             services.AddTransient<UpdateDeleteOnly>();
             services.AddScoped<IFactorySave<UpdateDeleteOnly>, UpdateDeleteOnlyFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

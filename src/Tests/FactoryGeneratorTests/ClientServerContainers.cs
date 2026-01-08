@@ -1,6 +1,9 @@
 using FactoryGeneratorTests;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Neatoo.RemoteFactory.FactoryGeneratorTests.Events;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Shared;
 using Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase;
@@ -19,6 +22,22 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests;
 public class ServerServiceProvider
 {
 	public IServiceProvider serverProvider { get; set; } = null!;
+}
+
+/// <summary>
+/// Test implementation of IHostApplicationLifetime for event testing.
+/// </summary>
+internal sealed class TestHostApplicationLifetime : IHostApplicationLifetime
+{
+	private readonly CancellationTokenSource _startedSource = new();
+	private readonly CancellationTokenSource _stoppingSource = new();
+	private readonly CancellationTokenSource _stoppedSource = new();
+
+	public CancellationToken ApplicationStarted => _startedSource.Token;
+	public CancellationToken ApplicationStopping => _stoppingSource.Token;
+	public CancellationToken ApplicationStopped => _stoppedSource.Token;
+
+	public void StopApplication() => _stoppingSource.Cancel();
 }
 
 internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDelegateRequest
@@ -63,6 +82,21 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 		var result = JsonSerializer.Deserialize<RemoteResponseDto>(json); // NeatooJsonSerializer.Deserialize<RemoteResponseDto>(json);
 
 		return this.NeatooJsonSerializer.DeserializeRemoteResponse<T>(result!);
+	}
+
+	public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+	{
+		// Mimic all the steps of a Remote call except the actual http call
+		var remoteRequest = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
+
+		// Mimic real life - use standard ASP.NET Core JSON serialization
+		var json = JsonSerializer.Serialize(remoteRequest);
+		var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!;
+
+		// Use the Server's container
+		await this.serviceProvider.GetRequiredService<ServerServiceProvider>()
+			.serverProvider
+			.GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, default);
 	}
 }
 
@@ -170,6 +204,18 @@ internal static class ClientServerContainers
 		var serverCollection = new ServiceCollection();
 		var clientCollection = new ServiceCollection();
 		var localCollection = new ServiceCollection();
+
+		// Add logging and IHostApplicationLifetime for event support
+		serverCollection.AddLogging(builder => builder.AddProvider(NullLoggerProvider.Instance));
+		serverCollection.AddSingleton<IHostApplicationLifetime, TestHostApplicationLifetime>();
+		clientCollection.AddLogging(builder => builder.AddProvider(NullLoggerProvider.Instance));
+		clientCollection.AddSingleton<IHostApplicationLifetime, TestHostApplicationLifetime>();
+		localCollection.AddLogging(builder => builder.AddProvider(NullLoggerProvider.Instance));
+		localCollection.AddSingleton<IHostApplicationLifetime, TestHostApplicationLifetime>();
+
+		// Register test services as singleton for event tracking across scopes
+		serverCollection.AddSingleton<IEventTestService, EventTestService>();
+		localCollection.AddSingleton<IEventTestService, EventTestService>();
 
 		RegisterIfAttribute(serverCollection);
 		RegisterIfAttribute(clientCollection);

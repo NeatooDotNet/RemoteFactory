@@ -206,6 +206,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return () => factory.LocalCreateRemoteWithTwoServicesBoolAsync();
             });
             services.AddTransient<MultiServiceRemoteObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

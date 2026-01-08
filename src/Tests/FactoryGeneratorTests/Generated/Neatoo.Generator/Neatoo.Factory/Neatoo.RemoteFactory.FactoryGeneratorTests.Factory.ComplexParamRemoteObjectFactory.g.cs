@@ -323,6 +323,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return (SimpleDto dto) => factory.LocalFetchRemoteWithDto(dto);
             });
             services.AddTransient<ComplexParamRemoteObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

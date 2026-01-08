@@ -174,6 +174,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             services.AddScoped<IBugNoCanCreateFetchObjFactory, BugNoCanCreateFetchObjFactory>();
             services.AddTransient<BugNoCanCreateFetchObj>();
             services.AddScoped<IFactorySave<BugNoCanCreateFetchObj>, BugNoCanCreateFetchObjFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

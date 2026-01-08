@@ -82,6 +82,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return (int? p) => factory.LocalCreateRemote(p);
             });
             services.AddTransient<NullableParameter>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

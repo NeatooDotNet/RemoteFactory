@@ -49,6 +49,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<ICtorTestDtoWithExplicitCtorFactory, CtorTestDtoWithExplicitCtorFactory>();
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(CtorTestDtoWithExplicitCtor.CreateOrdinalConverter());
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

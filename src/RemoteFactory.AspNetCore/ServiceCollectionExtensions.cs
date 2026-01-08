@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory.Internal;
 
@@ -35,6 +36,15 @@ public static class ServiceCollectionExtensions
 			var loggerFactory = sp.GetService<ILoggerFactory>();
 			var logger = loggerFactory?.CreateLogger(NeatooLoggerCategories.Server);
 			return LocalServer.HandlePortalRequest(sp, logger);
+		});
+
+		// Register EventTrackerHostedService for graceful shutdown of pending events
+		services.AddSingleton<IHostedService>(sp =>
+		{
+			var eventTracker = sp.GetRequiredService<IEventTracker>();
+			var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();
+			var logger = sp.GetRequiredService<ILogger<EventTrackerHostedService>>();
+			return new EventTrackerHostedService(eventTracker, lifetime, logger);
 		});
 
 		return services;

@@ -2033,6 +2033,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<WriteAuthObjectFactory>();
             services.AddScoped<IWriteAuthObjectFactory, WriteAuthObjectFactory>();
             services.AddTransient<WriteAuthObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

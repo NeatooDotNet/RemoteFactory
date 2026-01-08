@@ -282,6 +282,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             services.AddTransient<ShowcaseSave>();
             services.AddTransient<IShowcaseSave, ShowcaseSave>();
             services.AddScoped<IFactorySave<ShowcaseSave>, ShowcaseSaveFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

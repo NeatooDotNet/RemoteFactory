@@ -91,6 +91,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             services.AddScoped<ISaveNotNullableNoDeleteObjFactory, SaveNotNullableNoDeleteObjFactory>();
             services.AddTransient<SaveNotNullableNoDeleteObj>();
             services.AddScoped<IFactorySave<SaveNotNullableNoDeleteObj>, SaveNotNullableNoDeleteObjFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

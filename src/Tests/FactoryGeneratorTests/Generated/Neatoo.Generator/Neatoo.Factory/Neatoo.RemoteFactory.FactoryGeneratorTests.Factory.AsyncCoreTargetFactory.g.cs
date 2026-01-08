@@ -85,6 +85,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<AsyncCoreTargetFactory>();
             services.AddScoped<IAsyncCoreTargetFactory, AsyncCoreTargetFactory>();
             services.AddTransient<AsyncCoreTarget>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

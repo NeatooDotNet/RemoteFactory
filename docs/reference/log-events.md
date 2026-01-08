@@ -76,6 +76,28 @@ Complete reference for all log events emitted by Neatoo RemoteFactory.
 | 7004 | Information | [{CorrelationId}] Remote request completed for delegate {DelegateType} in {ElapsedMs}ms | Server handling completed |
 | 7005 | Error | [{CorrelationId}] Remote request failed for delegate {DelegateType}: {ErrorMessage} | Server-side error |
 | 7006 | Warning | [{CorrelationId}] Authorization forbidden for delegate {DelegateType} | Server auth denied |
+| 7007 | Information | [{CorrelationId}] Remote request cancelled for delegate {DelegateType} | Request cancelled |
+
+## Factory Lifecycle Events (8xxx)
+
+| Event ID | Level | Message Template | Description |
+|----------|-------|------------------|-------------|
+| 8001 | Debug | Invoking IFactoryOnCancelled for {TypeName} | Cancellation hook invoked |
+| 8002 | Information | [{CorrelationId}] Factory operation {Operation} cancelled for {TypeName} | Operation cancelled |
+
+## Event Tracker Events (9xxx)
+
+| Event ID | Level | Message Template | Description |
+|----------|-------|------------------|-------------|
+| 9001 | Information | Waiting for {PendingCount} pending event(s) to complete | Wait started |
+| 9002 | Warning | Wait for pending events was cancelled with {PendingCount} event(s) still pending | Wait cancelled |
+| 9003 | Warning | Some event tasks failed during shutdown | Shutdown failure |
+| 9004 | Error | Event handler failed | Event error |
+| 9005 | Debug | No pending events to wait for during shutdown | Shutdown clean |
+| 9006 | Information | Waiting for {PendingCount} pending event(s) to complete during shutdown | Shutdown wait |
+| 9007 | Information | All pending events completed successfully | Shutdown complete |
+| 9008 | Warning | Shutdown timeout reached with {PendingCount} event(s) still pending | Shutdown timeout |
+| 9009 | Error | Error waiting for pending events during shutdown | Shutdown error |
 
 ## Filtering Examples
 

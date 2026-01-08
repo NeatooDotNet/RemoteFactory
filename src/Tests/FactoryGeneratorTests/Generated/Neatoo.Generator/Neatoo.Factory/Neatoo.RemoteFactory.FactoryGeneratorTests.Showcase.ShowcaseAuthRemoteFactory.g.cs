@@ -105,6 +105,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             });
             services.AddTransient<ShowcaseAuthRemote>();
             services.AddTransient<IShowcaseAuthRemote, ShowcaseAuthRemote>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

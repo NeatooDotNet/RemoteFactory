@@ -1958,6 +1958,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return (int? p) => factory.LocalCanSaveTask(p);
             });
             services.AddTransient<RemoteWriteAuthAsyncObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

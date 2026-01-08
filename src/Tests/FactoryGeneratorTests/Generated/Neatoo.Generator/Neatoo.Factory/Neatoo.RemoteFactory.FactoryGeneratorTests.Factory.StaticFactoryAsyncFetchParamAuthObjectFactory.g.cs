@@ -75,6 +75,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         {
             services.AddScoped<StaticFactoryAsyncFetchParamAuthObjectFactory>();
             services.AddScoped<IStaticFactoryAsyncFetchParamAuthObjectFactory, StaticFactoryAsyncFetchParamAuthObjectFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

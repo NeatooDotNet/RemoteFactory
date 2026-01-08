@@ -60,6 +60,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             services.AddScoped<SimpleNestedFactoryFactory>();
             services.AddScoped<ISimpleNestedFactoryFactory, SimpleNestedFactoryFactory>();
             services.AddTransient<SimpleNestedFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

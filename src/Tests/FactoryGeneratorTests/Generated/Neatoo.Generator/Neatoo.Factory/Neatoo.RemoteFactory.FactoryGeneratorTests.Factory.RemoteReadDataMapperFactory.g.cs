@@ -1076,6 +1076,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return (int? param) => factory.LocalFetchTaskBoolFalseDep(param);
             });
             services.AddTransient<RemoteReadDataMapper>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

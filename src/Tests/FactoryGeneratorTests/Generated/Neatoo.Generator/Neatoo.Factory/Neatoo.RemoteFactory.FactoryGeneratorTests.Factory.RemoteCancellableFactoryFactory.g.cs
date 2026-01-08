@@ -101,6 +101,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return (int param, CancellationToken cancellationToken) => factory.LocalFetchAsync(param, cancellationToken);
             });
             services.AddTransient<RemoteCancellableFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

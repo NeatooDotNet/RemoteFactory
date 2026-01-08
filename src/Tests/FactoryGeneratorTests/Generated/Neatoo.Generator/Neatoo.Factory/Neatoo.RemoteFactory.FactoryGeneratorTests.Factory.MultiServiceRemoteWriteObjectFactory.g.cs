@@ -153,6 +153,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             });
             services.AddTransient<MultiServiceRemoteWriteObject>();
             services.AddScoped<IFactorySave<MultiServiceRemoteWriteObject>, MultiServiceRemoteWriteObjectFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

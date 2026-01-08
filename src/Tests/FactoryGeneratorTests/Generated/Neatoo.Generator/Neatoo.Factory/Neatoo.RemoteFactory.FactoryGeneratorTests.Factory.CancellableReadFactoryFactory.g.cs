@@ -84,6 +84,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CancellableReadFactoryFactory>();
             services.AddScoped<ICancellableReadFactoryFactory, CancellableReadFactoryFactory>();
             services.AddTransient<CancellableReadFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

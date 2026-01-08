@@ -60,6 +60,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<DefaultCancellableFactoryFactory>();
             services.AddScoped<IDefaultCancellableFactoryFactory, DefaultCancellableFactoryFactory>();
             services.AddTransient<DefaultCancellableFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

@@ -216,6 +216,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return (ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto) => factory.LocalSaveRemoteWithComplexParamsAsync(target, tags, dto);
             });
             services.AddTransient<ComplexParamRemoteWriteObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

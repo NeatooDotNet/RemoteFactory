@@ -59,6 +59,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         {
             services.AddScoped<CtorTestNeatooStyleEntityFactory>();
             services.AddScoped<ICtorTestNeatooStyleEntityFactory, CtorTestNeatooStyleEntityFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

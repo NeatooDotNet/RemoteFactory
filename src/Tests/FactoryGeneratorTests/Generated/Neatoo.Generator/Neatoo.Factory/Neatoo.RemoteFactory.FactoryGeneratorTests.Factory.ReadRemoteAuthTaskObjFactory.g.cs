@@ -5031,6 +5031,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return (int? p) => factory.LocalCanFetchTaskBoolFalseDep(p);
             });
             services.AddTransient<ReadRemoteAuthTaskObj>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

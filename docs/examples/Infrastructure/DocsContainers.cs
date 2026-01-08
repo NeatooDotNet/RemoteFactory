@@ -61,6 +61,21 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
 		return this.NeatooJsonSerializer.DeserializeRemoteResponse<T>(result!);
 	}
+
+	public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+	{
+		// Mimic all the steps of a Remote call except the actual HTTP call
+		var remoteRequest = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
+
+		// Use standard ASP.NET Core JSON serialization (mimics real HTTP transport)
+		var json = JsonSerializer.Serialize(remoteRequest);
+		var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!;
+
+		// Execute on the Server's container
+		await this.serviceProvider.GetRequiredService<ServerServiceProvider>()
+			.serverProvider
+			.GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, default);
+	}
 }
 
 /// <summary>

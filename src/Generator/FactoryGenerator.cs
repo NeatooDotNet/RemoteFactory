@@ -77,9 +77,27 @@ public partial class Factory : IIncrementalGenerator
 				}
 
 				var factoryMethods = new List<FactoryMethod>();
+				var eventDelegates = new StringBuilder();
+				var eventRegistrations = new StringBuilder();
+				var remoteEventRegistrations = new StringBuilder();
+				bool hasEvents = false;
 
 				foreach (var targetCallMethod in typeInfo.FactoryMethods)
 				{
+					// Handle [Event] methods separately
+					if (targetCallMethod.FactoryOperation == FactoryOperation.Event)
+					{
+						var eventResult = GenerateEventMethodForNonStatic(context, typeInfo, targetCallMethod, messages);
+						if (!eventResult.HasError)
+						{
+							hasEvents = true;
+							eventDelegates.AppendLine(eventResult.DelegateDeclaration);
+							eventRegistrations.AppendLine(eventResult.EventRegistration);
+							remoteEventRegistrations.AppendLine(eventResult.RemoteRegistration);
+						}
+						continue;
+					}
+
 					if (targetCallMethod.IsSave)
 					{
 						factoryMethods.Add(new WriteFactoryMethod(typeInfo.ServiceTypeName, typeInfo.ImplementationTypeName, targetCallMethod));
@@ -253,10 +271,25 @@ public partial class Factory : IIncrementalGenerator
 									{typeInfo.ImplementationTypeName}.CreateOrdinalConverter());");
 				}
 
+				// Generate event partial class if there are events
+				var eventPartialClass = "";
+				var hostingUsing = "";
+				if (hasEvents && typeInfo.IsPartial)
+				{
+					hostingUsing = "using Microsoft.Extensions.Hosting;";
+					eventPartialClass = $@"
+                        // Event delegates for {typeInfo.ImplementationTypeName}
+                        public partial class {typeInfo.ImplementationTypeName}
+                        {{
+{eventDelegates}
+                        }}";
+				}
+
 				source = $@"
 						  #nullable enable
 
                     {WithStringBuilder(typeInfo.UsingStatements)}
+					{hostingUsing}
 
 /*
 							READONLY - DO NOT EDIT!!!!
@@ -264,6 +297,7 @@ public partial class Factory : IIncrementalGenerator
 */
                     namespace {typeInfo.Namespace}
                     {{
+{eventPartialClass}
 
                         public interface I{typeInfo.ImplementationTypeName}Factory
                         {{
@@ -273,7 +307,7 @@ public partial class Factory : IIncrementalGenerator
                         internal class {typeInfo.ImplementationTypeName}Factory : Factory{editText}Base<{typeInfo.ServiceTypeName}>{(hasDefaultSave ? $", IFactorySave<{typeInfo.ImplementationTypeName}>" : "")}, I{typeInfo.ImplementationTypeName}Factory
                         {{
 
-                            private readonly IServiceProvider ServiceProvider;  
+                            private readonly IServiceProvider ServiceProvider;
                             private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
 
                     // Delegates
@@ -302,6 +336,16 @@ public partial class Factory : IIncrementalGenerator
                                 services.AddScoped<{typeInfo.ImplementationTypeName}Factory>();
                                 services.AddScoped<I{typeInfo.ImplementationTypeName}Factory, {typeInfo.ImplementationTypeName}Factory>();
                     {factoryText.ServiceRegistrations}
+
+                                // Event registrations
+                                if(remoteLocal == NeatooFactory.Remote)
+                                {{
+{remoteEventRegistrations}
+                                }}
+                                if(remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+                                {{
+{eventRegistrations}
+                                }}
                             }}
 
                         }}
@@ -341,6 +385,7 @@ public partial class Factory : IIncrementalGenerator
 			var delegates = new StringBuilder();
 			var remoteMethods = new StringBuilder();
 			var localMethods = new StringBuilder();
+			var eventMethods = new StringBuilder();
 
 			try
 			{
@@ -440,6 +485,20 @@ public partial class Factory : IIncrementalGenerator
 						  }});");
 
 					}
+					else if (method.FactoryOperation == FactoryOperation.Event)
+					{
+						// Generate event delegate with scope isolation
+						var eventResult = GenerateEventMethod(context, typeInfo, method, messages);
+						if (eventResult.HasError)
+						{
+							hasErrors = true;
+							continue;
+						}
+
+						delegates.AppendLine(eventResult.DelegateDeclaration);
+						eventMethods.AppendLine(eventResult.EventRegistration);
+						remoteMethods.AppendLine(eventResult.RemoteRegistration);
+					}
 				}
 
 				// Skip code generation if there are errors
@@ -448,12 +507,15 @@ public partial class Factory : IIncrementalGenerator
 					return;
 				}
 
-				var partialClassSignature =
+				// Add hosting using only if there are event methods
+				var hasEventMethods = typeInfo.FactoryMethods.Any(m => m.FactoryOperation == FactoryOperation.Event);
+				var hostingUsing = hasEventMethods ? "using Microsoft.Extensions.Hosting;" : "";
 
 				source = $@"
 						  #nullable enable
 
                     {WithStringBuilder(typeInfo.UsingStatements)}
+					{hostingUsing}
 
 /*
 							READONLY - DO NOT EDIT!!!!
@@ -476,6 +538,7 @@ public partial class Factory : IIncrementalGenerator
 						if(remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
 						  {{
 {localMethods}
+{eventMethods}
                             }}
 
 	                        }}
@@ -506,6 +569,382 @@ public partial class Factory : IIncrementalGenerator
 
 	}
 
+	/// <summary>
+	/// Result of generating an event method.
+	/// </summary>
+	private readonly struct EventMethodResult
+	{
+		public bool HasError { get; }
+		public string DelegateDeclaration { get; }
+		public string EventRegistration { get; }
+		public string RemoteRegistration { get; }
+
+		private EventMethodResult(bool hasError, string delegateDeclaration = "", string eventRegistration = "", string remoteRegistration = "")
+		{
+			HasError = hasError;
+			DelegateDeclaration = delegateDeclaration;
+			EventRegistration = eventRegistration;
+			RemoteRegistration = remoteRegistration;
+		}
+
+		public static EventMethodResult Error() => new(true);
+		public static EventMethodResult Success(string delegateDeclaration, string eventRegistration, string remoteRegistration)
+			=> new(false, delegateDeclaration, eventRegistration, remoteRegistration);
+	}
+
+	/// <summary>
+	/// Generates event delegate and registration code for a method with [Event] attribute in a non-static class.
+	/// Events use scope isolation and fire-and-forget semantics.
+	/// </summary>
+	private static EventMethodResult GenerateEventMethodForNonStatic(
+		SourceProductionContext context,
+		TypeInfo typeInfo,
+		TypeFactoryMethodInfo method,
+		List<string> messages)
+	{
+		var parameters = method.Parameters;
+		var returnType = method.ReturnType ?? "void";
+
+		// For event methods, valid returns are:
+		// - void: isVoid=true, isTask=false, returnType="void"
+		// - Task (non-generic): isTask=true, returnType could be "void", "Task", or full Task type name
+		// - Invalid: Task<T> where returnType is T, or any other non-void/non-Task type
+		var isVoidOrTaskReturn = returnType == "void" ||
+								 string.IsNullOrEmpty(returnType) ||
+								 returnType == "Task" ||
+								 returnType.EndsWith("Task") ||
+								 returnType == "System.Threading.Tasks.Task";
+		var isTask = method.IsTask;
+		var isVoid = !isTask; // If not async Task, it must be void (validated below)
+
+		// NF0401: Event method must return void or Task (not Task<T> or ValueTask)
+		// If isTask is true but returnType is not a recognized Task pattern, it's Task<T>
+		if (isTask && !isVoidOrTaskReturn)
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0401",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name,
+				$"Task<{returnType}>");
+			ReportDiagnostic(context, diagnostic);
+			messages.Add($"{method.Name} skipped. Event methods must return void or Task, not Task<{returnType}>");
+			return EventMethodResult.Error();
+		}
+
+		// If not a Task and not void, it's an invalid return type
+		if (!isTask && !isVoidOrTaskReturn)
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0401",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name,
+				returnType);
+			ReportDiagnostic(context, diagnostic);
+			messages.Add($"{method.Name} skipped. Event methods must return void or Task, not {returnType}");
+			return EventMethodResult.Error();
+		}
+
+		// NF0404: Event method must have CancellationToken as final parameter
+		var lastParam = parameters.LastOrDefault();
+		if (lastParam == null || !lastParam.IsCancellationToken)
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0404",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name);
+			ReportDiagnostic(context, diagnostic);
+			messages.Add($"{method.Name} skipped. Event methods must have CancellationToken as final parameter");
+			return EventMethodResult.Error();
+		}
+
+		// NF0403: Warning if no non-service parameters (excluding CancellationToken)
+		var dataParameters = parameters.Where(p => !p.IsService && !p.IsCancellationToken).ToList();
+		if (!dataParameters.Any())
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0403",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name);
+			ReportDiagnostic(context, diagnostic);
+			// This is just a warning, don't return error
+		}
+
+		// Generate delegate name with Event suffix
+		var delegateName = method.Name;
+		if (!delegateName.EndsWith("Event"))
+		{
+			delegateName = $"{delegateName}Event";
+		}
+
+		// Parameter declarations for delegate (exclude [Service] and CancellationToken)
+		var delegateParameterDeclarations = string.Join(", ", parameters
+			.Where(p => !p.IsService && !p.IsCancellationToken)
+			.Select(p => $"{p.Type} {p.Name}"));
+
+		// Parameter identifiers for delegate invocation
+		var delegateParameterIdentifiers = string.Join(", ", parameters
+			.Where(p => !p.IsService && !p.IsCancellationToken)
+			.Select(p => p.Name));
+
+		// All parameter identifiers for actual method call (including services and CT)
+		var allParameterIdentifiers = string.Join(", ", parameters.Select(p => p.Name));
+
+		// Service assignments in the isolated scope
+		var serviceAssignmentsText = WithStringBuilder(parameters
+			.Where(p => p.IsService)
+			.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
+
+		// Method invocation - handle void vs Task
+		string methodInvocation;
+		if (isVoid)
+		{
+			methodInvocation = $@"handler.{method.Name}({allParameterIdentifiers});";
+		}
+		else
+		{
+			methodInvocation = $@"await handler.{method.Name}({allParameterIdentifiers});";
+		}
+
+		// Generate delegate declaration
+		var delegateDeclaration = $"public delegate Task {delegateName}({delegateParameterDeclarations});";
+
+		// Generate event registration with scope isolation
+		var eventRegistration = $@"
+						  services.AddScoped<{typeInfo.ImplementationTypeName}.{delegateName}>(sp =>
+						  {{
+								var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+								var tracker = sp.GetRequiredService<IEventTracker>();
+								var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();
+								return ({delegateParameterIdentifiers}) =>
+								{{
+									var task = Task.Run(async () =>
+									{{
+										using var scope = scopeFactory.CreateScope();
+										var ct = lifetime.ApplicationStopping;
+										var handler = scope.ServiceProvider.GetRequiredService<{typeInfo.ImplementationTypeName}>();
+										{serviceAssignmentsText}
+										{methodInvocation}
+									}});
+									tracker.Track(task);
+									return task;
+								}};
+						  }});";
+
+		// For serialization, exclude CancellationToken - it flows through HTTP layer instead
+		var serializedParameterIdentifiers = string.Join(", ", parameters
+			.Where(p => !p.IsService && !p.IsCancellationToken)
+			.Select(p => p.Name));
+
+		// Generate remote registration
+		var remoteRegistration = $@"
+						  services.AddTransient<{typeInfo.ImplementationTypeName}.{delegateName}>(cc =>
+						  {{
+								return ({delegateParameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateEvent(typeof({typeInfo.ImplementationTypeName}.{delegateName}), [{serializedParameterIdentifiers}]);
+						  }});";
+
+		return EventMethodResult.Success(delegateDeclaration, eventRegistration, remoteRegistration);
+	}
+
+	/// <summary>
+	/// Generates event delegate and registration code for a method with [Event] attribute.
+	/// Events use scope isolation and fire-and-forget semantics.
+	/// </summary>
+	private static EventMethodResult GenerateEventMethod(
+		SourceProductionContext context,
+		TypeInfo typeInfo,
+		TypeFactoryMethodInfo method,
+		List<string> messages)
+	{
+		var parameters = method.Parameters;
+		var returnType = method.ReturnType ?? "void";
+
+		// For event methods, valid returns are:
+		// - void: isVoid=true, isTask=false, returnType="void"
+		// - Task (non-generic): isTask=true, returnType could be "void", "Task", or full Task type name
+		// - Invalid: Task<T> where returnType is T, or any other non-void/non-Task type
+		var isVoidOrTaskReturn = returnType == "void" ||
+								 string.IsNullOrEmpty(returnType) ||
+								 returnType == "Task" ||
+								 returnType.EndsWith("Task") ||
+								 returnType == "System.Threading.Tasks.Task";
+		var isTask = method.IsTask;
+		var isVoid = !isTask; // If not async Task, it must be void (validated below)
+
+		// NF0401: Event method must return void or Task (not Task<T> or ValueTask)
+		// If isTask is true but returnType is not a recognized Task pattern, it's Task<T>
+		if (isTask && !isVoidOrTaskReturn)
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0401",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name,
+				$"Task<{returnType}>");
+			ReportDiagnostic(context, diagnostic);
+			messages.Add($"{method.Name} skipped. Event methods must return void or Task, not Task<{returnType}>");
+			return EventMethodResult.Error();
+		}
+
+		// If not a Task and not void, it's an invalid return type
+		if (!isTask && !isVoidOrTaskReturn)
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0401",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name,
+				returnType);
+			ReportDiagnostic(context, diagnostic);
+			messages.Add($"{method.Name} skipped. Event methods must return void or Task, not {returnType}");
+			return EventMethodResult.Error();
+		}
+
+		// NF0404: Event method must have CancellationToken as final parameter
+		var lastParam = parameters.LastOrDefault();
+		if (lastParam == null || !lastParam.IsCancellationToken)
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0404",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name);
+			ReportDiagnostic(context, diagnostic);
+			messages.Add($"{method.Name} skipped. Event methods must have CancellationToken as final parameter");
+			return EventMethodResult.Error();
+		}
+
+		// NF0403: Warning if no non-service parameters (excluding CancellationToken)
+		var dataParameters = parameters.Where(p => !p.IsService && !p.IsCancellationToken).ToList();
+		if (!dataParameters.Any())
+		{
+			var diagnostic = new DiagnosticInfo(
+				"NF0403",
+				method.MethodFilePath,
+				method.MethodStartLine,
+				method.MethodStartColumn,
+				method.MethodEndLine,
+				method.MethodEndColumn,
+				method.MethodTextSpanStart,
+				method.MethodTextSpanLength,
+				method.Name);
+			ReportDiagnostic(context, diagnostic);
+			// This is just a warning, don't return error
+		}
+
+		// Generate delegate name with Event suffix
+		var delegateName = method.Name;
+		if (!delegateName.EndsWith("Event"))
+		{
+			delegateName = $"{delegateName}Event";
+		}
+
+		// Parameter declarations for delegate (exclude [Service] and CancellationToken)
+		var delegateParameterDeclarations = string.Join(", ", parameters
+			.Where(p => !p.IsService && !p.IsCancellationToken)
+			.Select(p => $"{p.Type} {p.Name}"));
+
+		// Parameter identifiers for delegate invocation
+		var delegateParameterIdentifiers = string.Join(", ", parameters
+			.Where(p => !p.IsService && !p.IsCancellationToken)
+			.Select(p => p.Name));
+
+		// All parameter identifiers for actual method call (including services and CT)
+		var allParameterIdentifiers = string.Join(", ", parameters.Select(p => p.Name));
+
+		// Service assignments in the isolated scope
+		var serviceAssignmentsText = WithStringBuilder(parameters
+			.Where(p => p.IsService)
+			.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
+
+		// Method invocation for static classes - call directly on type, not via handler instance
+		string methodInvocation;
+		if (isVoid)
+		{
+			methodInvocation = $@"{typeInfo.Name}.{method.Name}({allParameterIdentifiers});";
+		}
+		else
+		{
+			methodInvocation = $@"await {typeInfo.Name}.{method.Name}({allParameterIdentifiers});";
+		}
+
+		// Generate delegate declaration
+		var delegateDeclaration = $"public delegate Task {delegateName}({delegateParameterDeclarations});";
+
+		// Generate event registration with scope isolation (no handler resolution for static class)
+		var eventRegistration = $@"
+						  services.AddScoped<{typeInfo.Name}.{delegateName}>(sp =>
+						  {{
+								var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+								var tracker = sp.GetRequiredService<IEventTracker>();
+								var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();
+								return ({delegateParameterIdentifiers}) =>
+								{{
+									var task = Task.Run(async () =>
+									{{
+										using var scope = scopeFactory.CreateScope();
+										var ct = lifetime.ApplicationStopping;
+										{serviceAssignmentsText}
+										{methodInvocation}
+									}});
+									tracker.Track(task);
+									return task;
+								}};
+						  }});";
+
+		// For serialization, exclude CancellationToken - it flows through HTTP layer instead
+		var serializedParameterIdentifiers = string.Join(", ", parameters
+			.Where(p => !p.IsService && !p.IsCancellationToken)
+			.Select(p => p.Name));
+
+		// Generate remote registration
+		var remoteRegistration = $@"
+						  services.AddTransient<{typeInfo.Name}.{delegateName}>(cc =>
+						  {{
+								return ({delegateParameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateEvent(typeof({typeInfo.Name}.{delegateName}), [{serializedParameterIdentifiers}]);
+						  }});";
+
+		return EventMethodResult.Success(delegateDeclaration, eventRegistration, remoteRegistration);
+	}
+
 	private static DiagnosticDescriptor GetDescriptor(string diagnosticId)
 	{
 		return diagnosticId switch
@@ -522,6 +961,10 @@ public partial class Factory : IIncrementalGenerator
 			"NF0206" => DiagnosticDescriptors.RecordStructNotSupported,
 			"NF0207" => DiagnosticDescriptors.NestedTypeOrdinalSkipped,
 			"NF0301" => DiagnosticDescriptors.MethodSkippedNoAttribute,
+			"NF0401" => DiagnosticDescriptors.EventMustReturnVoidOrTask,
+			"NF0402" => DiagnosticDescriptors.EventRequiresFactoryClass,
+			"NF0403" => DiagnosticDescriptors.EventNoNonServiceParameters,
+			"NF0404" => DiagnosticDescriptors.EventMustHaveCancellationToken,
 			_ => throw new ArgumentException($"Unknown diagnostic ID: {diagnosticId}")
 		};
 	}

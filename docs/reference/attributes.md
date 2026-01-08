@@ -312,6 +312,75 @@ public interface IPersonOperationsFactory
 
 ---
 
+### [Event]
+
+Marks a method as a fire-and-forget event handler with scope isolation.
+
+**Target:** Method (static or instance)
+
+**Usage in Instance Class:**
+
+```csharp
+[Factory]
+public partial class OrderModel
+{
+    [Event]
+    public Task SendOrderConfirmation(
+        Guid orderId,
+        [Service] IEmailService emailService,
+        CancellationToken ct)
+    {
+        return emailService.SendOrderConfirmationAsync(orderId, ct);
+    }
+}
+```
+
+**Usage in Static Class:**
+
+```csharp
+[Factory]
+public static partial class NotificationHandler
+{
+    [Event]
+    public static Task NotifyWarehouse(
+        Guid orderId,
+        [Service] IAuditService auditService,
+        CancellationToken ct)
+    {
+        return auditService.LogEventAsync("WarehouseNotified", orderId, ct);
+    }
+}
+```
+
+**Generated Delegate:**
+
+```csharp
+// Generated as a nested delegate type
+public partial class OrderModel
+{
+    public delegate Task SendOrderConfirmationEvent(Guid orderId);
+}
+```
+
+**Key Characteristics:**
+
+| Aspect | Behavior |
+|--------|----------|
+| Return type | Always `Task` (even for `void` methods) |
+| Scope | Runs in isolated DI scope |
+| Exceptions | Logged but not thrown to caller |
+| CancellationToken | Receives `ApplicationStopping` token |
+| Graceful shutdown | Tracked by `IEventTracker` |
+
+**Requirements:**
+- Method must return `void` or `Task` (not `Task<T>`)
+- Last parameter must be `CancellationToken`
+- Should have at least one non-service parameter
+
+**See Also:** [Events Concept Guide](../concepts/events.md)
+
+---
+
 ### [Remote]
 
 Indicates that a method should execute on the server when called from a Remote mode client.
@@ -449,6 +518,7 @@ public interface IPersonModelAuth
 | `Read` | 64 | All read operations (Create, Fetch) |
 | `Write` | 128 | All write operations (Insert, Update, Delete) |
 | `Execute` | 256 | Execute operations |
+| `Event` | 512 | Event operations |
 
 ---
 
@@ -528,6 +598,7 @@ Controls the maximum length of generated file names (hint names).
 | `[Update]` | Method | Mark as Update operation |
 | `[Delete]` | Method | Mark as Delete operation |
 | `[Execute]` | Static Method | Mark as Execute operation |
+| `[Event]` | Method | Fire-and-forget event handler |
 | `[Remote]` | Method | Execute on server |
 | `[AspAuthorize]` | Method | ASP.NET Core authorization |
 | `[AuthorizeFactory]` | Method | Authorization method marker |

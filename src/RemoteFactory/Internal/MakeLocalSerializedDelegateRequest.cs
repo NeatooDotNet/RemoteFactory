@@ -90,4 +90,41 @@ internal sealed class MakeLocalSerializedDelegateRequest : IMakeRemoteDelegateRe
 			throw;
 		}
 	}
+
+	/// <inheritdoc />
+	public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+	{
+		var correlationId = CorrelationContext.EnsureCorrelationId();
+		var delegateTypeName = delegateType.Name;
+
+		logger.RemoteCallStarted(correlationId, delegateTypeName);
+		var sw = Stopwatch.StartNew();
+
+		try
+		{
+			// Serialize and Deserialize the request so that a different object is returned
+			var duplicatedRemoteRequestDto = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
+
+			var duplicatedRemoteRequest = this.NeatooJsonSerializer.DeserializeRemoteDelegateRequest(duplicatedRemoteRequestDto);
+
+			var method = (Delegate)this.serviceProvider.GetRequiredService(delegateType);
+
+			var result = method.DynamicInvoke(duplicatedRemoteRequest.Parameters?.ToArray());
+
+			// For events, we await the task to complete (fire-and-forget is at the caller level)
+			if (result is Task task)
+			{
+				await task;
+			}
+
+			sw.Stop();
+			logger.RemoteCallCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);
+		}
+		catch (Exception ex)
+		{
+			sw.Stop();
+			logger.RemoteCallError(correlationId, delegateTypeName, ex.Message, ex);
+			throw;
+		}
+	}
 }

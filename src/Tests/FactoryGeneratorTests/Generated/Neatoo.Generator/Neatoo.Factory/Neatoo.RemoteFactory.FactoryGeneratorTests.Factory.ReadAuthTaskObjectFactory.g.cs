@@ -6390,6 +6390,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<ReadAuthTaskObjectFactory>();
             services.AddScoped<IReadAuthTaskObjectFactory, ReadAuthTaskObjectFactory>();
             services.AddTransient<ReadAuthTaskObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

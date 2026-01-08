@@ -166,4 +166,56 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: false,  // Opt-in only
         description: "This diagnostic helps debug why a method is not included in factory generation. Enable it via .editorconfig when troubleshooting.");
+
+    // ============================================================================
+    // Event Diagnostics (NF0400 range)
+    // ============================================================================
+
+    /// <summary>
+    /// NF0401: Event method must return void or Task.
+    /// </summary>
+    public static readonly DiagnosticDescriptor EventMustReturnVoidOrTask = new(
+        id: "NF0401",
+        title: "Event method must return void or Task",
+        messageFormat: "Event method '{0}' must return void or Task, not '{1}'. ValueTask is not supported for events.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Event operations are designed for fire-and-forget scenarios with scope isolation. They must return void or Task. ValueTask is not supported because Task.Run overhead makes ValueTask optimization meaningless for events.");
+
+    /// <summary>
+    /// NF0402: Event method must be in a class with [Factory] attribute.
+    /// </summary>
+    public static readonly DiagnosticDescriptor EventRequiresFactoryClass = new(
+        id: "NF0402",
+        title: "Event method requires [Factory] class",
+        messageFormat: "Event method '{0}' must be in a class with [Factory] attribute",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Event methods are only discovered within classes that have the [Factory] attribute. This is a performance optimization for the source generator.");
+
+    /// <summary>
+    /// NF0403: Event method has no non-service parameters.
+    /// </summary>
+    public static readonly DiagnosticDescriptor EventNoNonServiceParameters = new(
+        id: "NF0403",
+        title: "Event method has no data parameters",
+        messageFormat: "Event method '{0}' has no non-service parameters. This is unusual - events typically carry data.",
+        category: CategoryConfiguration,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Event methods typically carry data to the handler. A method with only [Service] parameters might indicate a design issue.");
+
+    /// <summary>
+    /// NF0404: Event method must have CancellationToken as final parameter.
+    /// </summary>
+    public static readonly DiagnosticDescriptor EventMustHaveCancellationToken = new(
+        id: "NF0404",
+        title: "Event method must have CancellationToken as final parameter",
+        messageFormat: "Event method '{0}' must have CancellationToken as its final parameter for graceful shutdown support",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Event handlers run in isolated scopes and support fire-and-forget semantics. The CancellationToken parameter receives ApplicationStopping for graceful shutdown.");
 }

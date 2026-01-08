@@ -90,6 +90,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return () => factory.LocalFetchAsync();
             });
             services.AddTransient<RemoteAsyncCoreTarget>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

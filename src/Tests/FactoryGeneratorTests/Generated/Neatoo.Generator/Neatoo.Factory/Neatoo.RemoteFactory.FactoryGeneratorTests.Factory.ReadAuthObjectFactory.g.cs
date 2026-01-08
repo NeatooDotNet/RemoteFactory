@@ -3470,6 +3470,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<ReadAuthObjectFactory>();
             services.AddScoped<IReadAuthObjectFactory, ReadAuthObjectFactory>();
             services.AddTransient<ReadAuthObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

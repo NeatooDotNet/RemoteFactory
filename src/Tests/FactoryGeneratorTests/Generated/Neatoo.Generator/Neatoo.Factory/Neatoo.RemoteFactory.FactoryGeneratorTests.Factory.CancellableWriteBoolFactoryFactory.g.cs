@@ -82,6 +82,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CancellableWriteBoolFactoryFactory>();
             services.AddScoped<ICancellableWriteBoolFactoryFactory, CancellableWriteBoolFactoryFactory>();
             services.AddTransient<CancellableWriteBoolFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

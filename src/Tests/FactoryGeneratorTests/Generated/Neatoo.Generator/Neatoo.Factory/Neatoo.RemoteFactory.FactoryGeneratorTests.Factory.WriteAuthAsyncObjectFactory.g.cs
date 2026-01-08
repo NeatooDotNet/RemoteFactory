@@ -1817,6 +1817,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<WriteAuthAsyncObjectFactory>();
             services.AddScoped<IWriteAuthAsyncObjectFactory, WriteAuthAsyncObjectFactory>();
             services.AddTransient<WriteAuthAsyncObject>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

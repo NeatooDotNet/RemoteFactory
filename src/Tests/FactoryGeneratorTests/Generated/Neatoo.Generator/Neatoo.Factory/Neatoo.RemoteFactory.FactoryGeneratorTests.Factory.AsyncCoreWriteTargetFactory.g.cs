@@ -144,6 +144,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<IAsyncCoreWriteTargetFactory, AsyncCoreWriteTargetFactory>();
             services.AddTransient<AsyncCoreWriteTarget>();
             services.AddScoped<IFactorySave<AsyncCoreWriteTarget>, AsyncCoreWriteTargetFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

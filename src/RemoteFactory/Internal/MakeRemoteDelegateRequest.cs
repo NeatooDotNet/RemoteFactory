@@ -13,6 +13,13 @@ public interface IMakeRemoteDelegateRequest
 	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 	Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 
+	/// <summary>
+	/// Sends an event to the server. Client awaits HTTP acknowledgment (delivery confirmation).
+	/// Server handles the event in a new scope with fire-and-forget semantics.
+	/// Handler failures are invisible to the client.
+	/// </summary>
+	Task ForDelegateEvent(Type delegateType, object?[]? parameters);
+
 	// Backward-compatible overloads without CancellationToken
 	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
 		=> ForDelegate<T>(delegateType, parameters, default);
@@ -84,6 +91,36 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 			sw.Stop();
 			logger.RemoteCallCancelled(correlationId, delegateTypeName);
 			throw;
+		}
+		catch (Exception ex)
+		{
+			sw.Stop();
+			logger.RemoteCallError(correlationId, delegateTypeName, ex.Message, ex);
+			throw;
+		}
+	}
+
+	/// <inheritdoc />
+	public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+	{
+		ArgumentNullException.ThrowIfNull(delegateType);
+
+		var correlationId = CorrelationContext.EnsureCorrelationId();
+		var delegateTypeName = delegateType.Name;
+
+		logger.RemoteCallStarted(correlationId, delegateTypeName);
+		var sw = Stopwatch.StartNew();
+
+		try
+		{
+			var remoteDelegateRequest = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
+
+			// For events, we only await HTTP acknowledgment - we don't care about the response content
+			// The server will handle the event in a new scope (fire-and-forget at handler level)
+			await this.MakeRemoteDelegateRequestCall(remoteDelegateRequest, default);
+
+			sw.Stop();
+			logger.RemoteCallCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);
 		}
 		catch (Exception ex)
 		{

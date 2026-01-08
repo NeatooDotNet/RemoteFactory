@@ -99,6 +99,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<MixedParamCancellableFactoryFactory>();
             services.AddScoped<IMixedParamCancellableFactoryFactory, MixedParamCancellableFactoryFactory>();
             services.AddTransient<MixedParamCancellableFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

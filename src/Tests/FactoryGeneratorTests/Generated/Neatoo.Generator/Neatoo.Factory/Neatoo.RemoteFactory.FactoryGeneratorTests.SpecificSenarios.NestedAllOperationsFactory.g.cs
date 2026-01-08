@@ -111,6 +111,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             services.AddScoped<INestedAllOperationsFactory, NestedAllOperationsFactory>();
             services.AddTransient<NestedAllOperations>();
             services.AddScoped<IFactorySave<NestedAllOperations>, NestedAllOperationsFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

@@ -557,6 +557,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<FactoryOnStartCompleteObjFactory>();
             services.AddScoped<IFactoryOnStartCompleteObjFactory, FactoryOnStartCompleteObjFactory>();
             services.AddTransient<FactoryOnStartCompleteObj>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }
