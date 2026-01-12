@@ -47,7 +47,7 @@
 	</ItemGroup>
 
 	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
+		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" Condition="Exists('$(CompilerGeneratedFilesOutputPath)')" />
 	</Target>
 
 </Project>
