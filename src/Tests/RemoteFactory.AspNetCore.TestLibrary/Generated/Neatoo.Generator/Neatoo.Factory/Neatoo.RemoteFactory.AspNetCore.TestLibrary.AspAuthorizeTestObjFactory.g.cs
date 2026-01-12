@@ -577,6 +577,14 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
                 return (bool hasAccess) => factory.LocalCanSaveNoAspAuth(hasAccess);
             });
             services.AddTransient<AspAuthorizeTestObj>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

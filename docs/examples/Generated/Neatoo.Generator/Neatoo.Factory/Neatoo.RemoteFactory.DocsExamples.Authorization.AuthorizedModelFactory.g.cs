@@ -304,6 +304,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             services.AddTransient<AuthorizedModel>();
             services.AddTransient<IAuthorizedModel, AuthorizedModel>();
             services.AddScoped<IFactorySave<AuthorizedModel>, AuthorizedModelFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

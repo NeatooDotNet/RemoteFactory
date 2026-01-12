@@ -103,6 +103,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddTransient<InsertUpdateExample>();
             services.AddTransient<IInsertUpdateExample, InsertUpdateExample>();
             services.AddScoped<IFactorySave<InsertUpdateExample>, InsertUpdateExampleFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

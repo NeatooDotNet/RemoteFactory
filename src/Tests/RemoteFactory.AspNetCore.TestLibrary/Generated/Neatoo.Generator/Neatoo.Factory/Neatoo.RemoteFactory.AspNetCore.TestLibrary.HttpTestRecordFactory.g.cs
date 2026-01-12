@@ -47,6 +47,14 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             services.AddScoped<IHttpTestRecordFactory, HttpTestRecordFactory>();
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(HttpTestRecord.CreateOrdinalConverter());
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

@@ -144,6 +144,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.GettingStarted
             services.AddTransient<PersonModel>();
             services.AddTransient<IPersonModel, PersonModel>();
             services.AddScoped<IFactorySave<PersonModel>, PersonModelFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

@@ -215,6 +215,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             services.AddTransient<DeniedModel>();
             services.AddTransient<IDeniedModel, DeniedModel>();
             services.AddScoped<IFactorySave<DeniedModel>, DeniedModelFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

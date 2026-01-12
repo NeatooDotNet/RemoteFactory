@@ -120,6 +120,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddTransient<CurrentUserExample>();
             services.AddTransient<ICurrentUserExample, CurrentUserExample>();
             services.AddScoped<IFactorySave<CurrentUserExample>, CurrentUserExampleFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

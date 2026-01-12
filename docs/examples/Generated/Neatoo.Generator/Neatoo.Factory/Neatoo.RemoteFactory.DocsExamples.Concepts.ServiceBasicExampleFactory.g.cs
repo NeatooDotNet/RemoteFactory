@@ -78,6 +78,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             });
             services.AddTransient<ServiceBasicExample>();
             services.AddTransient<IServiceBasicExample, ServiceBasicExample>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

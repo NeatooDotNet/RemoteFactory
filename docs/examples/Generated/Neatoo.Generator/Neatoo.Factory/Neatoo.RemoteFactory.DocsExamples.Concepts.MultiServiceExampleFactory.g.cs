@@ -123,6 +123,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddTransient<MultiServiceExample>();
             services.AddTransient<IMultiServiceExample, MultiServiceExample>();
             services.AddScoped<IFactorySave<MultiServiceExample>, MultiServiceExampleFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

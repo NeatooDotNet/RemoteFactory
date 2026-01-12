@@ -74,6 +74,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             });
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(RemoteFetchRecordExample.CreateOrdinalConverter());
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

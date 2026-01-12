@@ -140,6 +140,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddTransient<DeleteExample>();
             services.AddTransient<IDeleteExample, DeleteExample>();
             services.AddScoped<IFactorySave<DeleteExample>, DeleteExampleFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

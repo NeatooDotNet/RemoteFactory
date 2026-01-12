@@ -74,6 +74,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
                 return (int id) => factory.LocalFetch(id);
             });
             services.AddTransient<FetchBoolExample>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

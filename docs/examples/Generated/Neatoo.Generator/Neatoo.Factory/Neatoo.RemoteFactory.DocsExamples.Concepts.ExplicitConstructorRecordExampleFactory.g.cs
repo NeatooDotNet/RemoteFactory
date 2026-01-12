@@ -46,6 +46,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         {
             services.AddScoped<ExplicitConstructorRecordExampleFactory>();
             services.AddScoped<IExplicitConstructorRecordExampleFactory, ExplicitConstructorRecordExampleFactory>();
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }

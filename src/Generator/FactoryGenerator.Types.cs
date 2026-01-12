@@ -723,7 +723,8 @@ public partial class Factory
 		public MethodParameterInfo(ParameterSyntax parameterSyntax, IMethodSymbol methodSymbol)
 		{
 			this.Name = parameterSyntax.Identifier.Text;
-			this.Type = parameterSyntax.Type!.ToFullString();
+			// Trim whitespace trivia to ensure consistent grouping regardless of source formatting
+			this.Type = parameterSyntax.Type!.ToFullString().Trim();
 			this.IsService = parameterSyntax.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.ToFullString() == "Service");
 
 			// Detect CancellationToken parameters - they should not be serialized for remote calls

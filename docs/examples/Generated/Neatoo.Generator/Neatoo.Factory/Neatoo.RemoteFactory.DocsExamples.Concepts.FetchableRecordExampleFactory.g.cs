@@ -70,6 +70,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<IFetchableRecordExampleFactory, FetchableRecordExampleFactory>();
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(FetchableRecordExample.CreateOrdinalConverter());
+            // Event registrations
+            if (remoteLocal == NeatooFactory.Remote)
+            {
+            }
+
+            if (remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)
+            {
+            }
         }
     }
 }
