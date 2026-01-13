@@ -17,12 +17,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
     public interface IShowcaseSaveFactory
     {
-        IShowcaseSave Create();
-        IShowcaseSave? Save(IShowcaseSave target);
-        IShowcaseSave SaveNoDeleteNotNullable(IShowcaseSave target);
-        Task<IShowcaseSave?> SaveTask(IShowcaseSave target);
-        Task<IShowcaseSave> SaveRemote(IShowcaseSave target);
-        IShowcaseSave? SaveMatchedByParamType(IShowcaseSave target, int a);
+        IShowcaseSave Create(CancellationToken cancellationToken = default);
+        IShowcaseSave? Save(IShowcaseSave target, CancellationToken cancellationToken = default);
+        IShowcaseSave SaveNoDeleteNotNullable(IShowcaseSave target, CancellationToken cancellationToken = default);
+        Task<IShowcaseSave?> SaveTask(IShowcaseSave target, CancellationToken cancellationToken = default);
+        Task<IShowcaseSave> SaveRemote(IShowcaseSave target, CancellationToken cancellationToken = default);
+        IShowcaseSave? SaveMatchedByParamType(IShowcaseSave target, int a, CancellationToken cancellationToken = default);
     }
 
     internal class ShowcaseSaveFactory : FactorySaveBase<IShowcaseSave>, IFactorySave<ShowcaseSave>, IShowcaseSaveFactory
@@ -30,7 +30,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<IShowcaseSave> SaveRemoteDelegate(IShowcaseSave target);
+        public delegate Task<IShowcaseSave> SaveRemoteDelegate(IShowcaseSave target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveRemoteDelegate SaveRemoteProperty { get; }
 
@@ -47,110 +47,110 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             SaveRemoteProperty = RemoteSaveRemote;
         }
 
-        public virtual IShowcaseSave Create()
+        public virtual IShowcaseSave Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public IShowcaseSave LocalCreate()
+        public IShowcaseSave LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ShowcaseSave());
         }
 
-        public IShowcaseSave LocalInsert(IShowcaseSave target)
+        public IShowcaseSave LocalInsert(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert(service));
         }
 
-        public IShowcaseSave LocalUpdate(IShowcaseSave target)
+        public IShowcaseSave LocalUpdate(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update(service));
         }
 
-        public IShowcaseSave LocalDelete(IShowcaseSave target)
+        public IShowcaseSave LocalDelete(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.Delete(service));
         }
 
-        public IShowcaseSave LocalInsertMatchedByParamType(IShowcaseSave target, int a)
+        public IShowcaseSave LocalInsertMatchedByParamType(IShowcaseSave target, int a, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertMatchedByParamType(a));
         }
 
-        public IShowcaseSave LocalUpdateMatchedByParamType(IShowcaseSave target, int b)
+        public IShowcaseSave LocalUpdateMatchedByParamType(IShowcaseSave target, int b, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateMatchedByParamType(b));
         }
 
-        public IShowcaseSave LocalDeleteMatchedByParamType(IShowcaseSave target, int c)
+        public IShowcaseSave LocalDeleteMatchedByParamType(IShowcaseSave target, int c, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteMatchedByParamType(c));
         }
 
-        public IShowcaseSave LocalInsertNoDeleteNotNullable(IShowcaseSave target)
+        public IShowcaseSave LocalInsertNoDeleteNotNullable(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertNoDeleteNotNullable());
         }
 
-        public IShowcaseSave LocalUpdateNoDeleteNotNullable(IShowcaseSave target)
+        public IShowcaseSave LocalUpdateNoDeleteNotNullable(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateNoDeleteNotNullable());
         }
 
-        public Task<IShowcaseSave> LocalInsertTask(IShowcaseSave target)
+        public Task<IShowcaseSave> LocalInsertTask(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask());
         }
 
-        public Task<IShowcaseSave> LocalUpdateTask(IShowcaseSave target)
+        public Task<IShowcaseSave> LocalUpdateTask(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask());
         }
 
-        public Task<IShowcaseSave> LocalDeleteTask(IShowcaseSave target)
+        public Task<IShowcaseSave> LocalDeleteTask(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask());
         }
 
-        public Task<IShowcaseSave> LocalInsertRemote(IShowcaseSave target)
+        public Task<IShowcaseSave> LocalInsertRemote(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             var service = ServiceProvider.GetRequiredService<IServerOnlyService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertRemote(service)));
         }
 
-        public Task<IShowcaseSave> LocalUpdateRemote(IShowcaseSave target)
+        public Task<IShowcaseSave> LocalUpdateRemote(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ShowcaseSave)target ?? throw new Exception("IShowcaseSave must implement ShowcaseSave");
             var service = ServiceProvider.GetRequiredService<IServerOnlyService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateRemote(service)));
         }
 
-        public virtual IShowcaseSave? Save(IShowcaseSave target)
+        public virtual IShowcaseSave? Save(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseSave>.Save(ShowcaseSave target)
+        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseSave>.Save(ShowcaseSave target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual IShowcaseSave? LocalSave(IShowcaseSave target)
+        public virtual IShowcaseSave? LocalSave(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -159,24 +159,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
                     return default(IShowcaseSave);
                 }
 
-                return LocalDelete(target);
+                return LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 
-        public virtual IShowcaseSave SaveNoDeleteNotNullable(IShowcaseSave target)
+        public virtual IShowcaseSave SaveNoDeleteNotNullable(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveNoDeleteNotNullable(target);
+            return LocalSaveNoDeleteNotNullable(target, cancellationToken);
         }
 
-        public virtual IShowcaseSave LocalSaveNoDeleteNotNullable(IShowcaseSave target)
+        public virtual IShowcaseSave LocalSaveNoDeleteNotNullable(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -184,20 +184,20 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             }
             else if (target.IsNew)
             {
-                return LocalInsertNoDeleteNotNullable(target);
+                return LocalInsertNoDeleteNotNullable(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateNoDeleteNotNullable(target);
+                return LocalUpdateNoDeleteNotNullable(target, cancellationToken);
             }
         }
 
-        public virtual Task<IShowcaseSave?> SaveTask(IShowcaseSave target)
+        public virtual Task<IShowcaseSave?> SaveTask(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTask(target);
+            return LocalSaveTask(target, cancellationToken);
         }
 
-        public virtual async Task<IShowcaseSave?> LocalSaveTask(IShowcaseSave target)
+        public virtual async Task<IShowcaseSave?> LocalSaveTask(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -206,29 +206,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
                     return default(IShowcaseSave);
                 }
 
-                return await LocalDeleteTask(target);
+                return await LocalDeleteTask(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask(target);
+                return await LocalInsertTask(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask(target);
+                return await LocalUpdateTask(target, cancellationToken);
             }
         }
 
-        public virtual Task<IShowcaseSave> SaveRemote(IShowcaseSave target)
+        public virtual Task<IShowcaseSave> SaveRemote(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
-            return SaveRemoteProperty(target);
+            return SaveRemoteProperty(target, cancellationToken);
         }
 
-        public virtual async Task<IShowcaseSave> RemoteSaveRemote(IShowcaseSave target)
+        public virtual async Task<IShowcaseSave> RemoteSaveRemote(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<IShowcaseSave>(typeof(SaveRemoteDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<IShowcaseSave>(typeof(SaveRemoteDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<IShowcaseSave> LocalSaveRemote(IShowcaseSave target)
+        public virtual async Task<IShowcaseSave> LocalSaveRemote(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -236,20 +236,20 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             }
             else if (target.IsNew)
             {
-                return await LocalInsertRemote(target);
+                return await LocalInsertRemote(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateRemote(target);
+                return await LocalUpdateRemote(target, cancellationToken);
             }
         }
 
-        public virtual IShowcaseSave? SaveMatchedByParamType(IShowcaseSave target, int a)
+        public virtual IShowcaseSave? SaveMatchedByParamType(IShowcaseSave target, int a, CancellationToken cancellationToken = default)
         {
-            return LocalSaveMatchedByParamType(target, a);
+            return LocalSaveMatchedByParamType(target, a, cancellationToken);
         }
 
-        public virtual IShowcaseSave? LocalSaveMatchedByParamType(IShowcaseSave target, int a)
+        public virtual IShowcaseSave? LocalSaveMatchedByParamType(IShowcaseSave target, int a, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -258,15 +258,15 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
                     return default(IShowcaseSave);
                 }
 
-                return LocalDeleteMatchedByParamType(target, a);
+                return LocalDeleteMatchedByParamType(target, a, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertMatchedByParamType(target, a);
+                return LocalInsertMatchedByParamType(target, a, cancellationToken);
             }
             else
             {
-                return LocalUpdateMatchedByParamType(target, a);
+                return LocalUpdateMatchedByParamType(target, a, cancellationToken);
             }
         }
 
@@ -277,7 +277,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             services.AddScoped<SaveRemoteDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ShowcaseSaveFactory>();
-                return (IShowcaseSave target) => factory.LocalSaveRemote(target);
+                return (IShowcaseSave target, CancellationToken cancellationToken = default) => factory.LocalSaveRemote(target, cancellationToken);
             });
             services.AddTransient<ShowcaseSave>();
             services.AddTransient<IShowcaseSave, ShowcaseSave>();

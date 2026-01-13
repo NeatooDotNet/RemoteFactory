@@ -13,10 +13,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICancellableReadFactoryFactory
     {
-        CancellableReadFactory Create();
-        Task<CancellableReadFactory> CreateAsync(CancellationToken cancellationToken);
-        Task<CancellableReadFactory> FetchAsync(CancellationToken cancellationToken);
-        Task<CancellableReadFactory?> FetchBoolAsync(CancellationToken cancellationToken);
+        CancellableReadFactory Create(CancellationToken cancellationToken = default);
+        Task<CancellableReadFactory> CreateAsync(CancellationToken cancellationToken = default);
+        Task<CancellableReadFactory> FetchAsync(CancellationToken cancellationToken = default);
+        Task<CancellableReadFactory?> FetchBoolAsync(CancellationToken cancellationToken = default);
     }
 
     internal class CancellableReadFactoryFactory : FactoryBase<CancellableReadFactory>, ICancellableReadFactoryFactory
@@ -36,44 +36,44 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CancellableReadFactory Create()
+        public virtual CancellableReadFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CancellableReadFactory LocalCreate()
+        public CancellableReadFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CancellableReadFactory());
         }
 
-        public virtual Task<CancellableReadFactory> CreateAsync(CancellationToken cancellationToken)
+        public virtual Task<CancellableReadFactory> CreateAsync(CancellationToken cancellationToken = default)
         {
             return LocalCreateAsync(cancellationToken);
         }
 
-        public Task<CancellableReadFactory> LocalCreateAsync(CancellationToken cancellationToken)
+        public Task<CancellableReadFactory> LocalCreateAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<CancellableReadFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateAsync(cancellationToken));
         }
 
-        public virtual Task<CancellableReadFactory> FetchAsync(CancellationToken cancellationToken)
+        public virtual Task<CancellableReadFactory> FetchAsync(CancellationToken cancellationToken = default)
         {
             return LocalFetchAsync(cancellationToken);
         }
 
-        public Task<CancellableReadFactory> LocalFetchAsync(CancellationToken cancellationToken)
+        public Task<CancellableReadFactory> LocalFetchAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<CancellableReadFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchAsync(cancellationToken));
         }
 
-        public virtual Task<CancellableReadFactory?> FetchBoolAsync(CancellationToken cancellationToken)
+        public virtual Task<CancellableReadFactory?> FetchBoolAsync(CancellationToken cancellationToken = default)
         {
             return LocalFetchBoolAsync(cancellationToken);
         }
 
-        public Task<CancellableReadFactory?> LocalFetchBoolAsync(CancellationToken cancellationToken)
+        public Task<CancellableReadFactory?> LocalFetchBoolAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<CancellableReadFactory>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchBoolAsync(cancellationToken));

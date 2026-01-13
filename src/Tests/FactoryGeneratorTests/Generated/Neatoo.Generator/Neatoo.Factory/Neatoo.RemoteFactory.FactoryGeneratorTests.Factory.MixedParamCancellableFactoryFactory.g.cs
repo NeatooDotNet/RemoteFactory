@@ -13,11 +13,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IMixedParamCancellableFactoryFactory
     {
-        MixedParamCancellableFactory Create();
-        Task<MixedParamCancellableFactory> CreateAsync(int param, CancellationToken cancellationToken);
-        Task<MixedParamCancellableFactory> FetchAsync(int param, CancellationToken cancellationToken);
-        Task<MixedParamCancellableFactory> CreateWithServiceAsync(CancellationToken cancellationToken);
-        Task<MixedParamCancellableFactory> FetchComplexAsync(int intParam, string stringParam, CancellationToken cancellationToken);
+        MixedParamCancellableFactory Create(CancellationToken cancellationToken = default);
+        Task<MixedParamCancellableFactory> CreateAsync(int param, CancellationToken cancellationToken = default);
+        Task<MixedParamCancellableFactory> FetchAsync(int param, CancellationToken cancellationToken = default);
+        Task<MixedParamCancellableFactory> CreateWithServiceAsync(CancellationToken cancellationToken = default);
+        Task<MixedParamCancellableFactory> FetchComplexAsync(int intParam, string stringParam, CancellationToken cancellationToken = default);
     }
 
     internal class MixedParamCancellableFactoryFactory : FactoryBase<MixedParamCancellableFactory>, IMixedParamCancellableFactoryFactory
@@ -37,57 +37,57 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual MixedParamCancellableFactory Create()
+        public virtual MixedParamCancellableFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public MixedParamCancellableFactory LocalCreate()
+        public MixedParamCancellableFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new MixedParamCancellableFactory());
         }
 
-        public virtual Task<MixedParamCancellableFactory> CreateAsync(int param, CancellationToken cancellationToken)
+        public virtual Task<MixedParamCancellableFactory> CreateAsync(int param, CancellationToken cancellationToken = default)
         {
             return LocalCreateAsync(param, cancellationToken);
         }
 
-        public Task<MixedParamCancellableFactory> LocalCreateAsync(int param, CancellationToken cancellationToken)
+        public Task<MixedParamCancellableFactory> LocalCreateAsync(int param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MixedParamCancellableFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateAsync(param, cancellationToken));
         }
 
-        public virtual Task<MixedParamCancellableFactory> FetchAsync(int param, CancellationToken cancellationToken)
+        public virtual Task<MixedParamCancellableFactory> FetchAsync(int param, CancellationToken cancellationToken = default)
         {
             return LocalFetchAsync(param, cancellationToken);
         }
 
-        public Task<MixedParamCancellableFactory> LocalFetchAsync(int param, CancellationToken cancellationToken)
+        public Task<MixedParamCancellableFactory> LocalFetchAsync(int param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MixedParamCancellableFactory>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchAsync(param, cancellationToken, service));
         }
 
-        public virtual Task<MixedParamCancellableFactory> CreateWithServiceAsync(CancellationToken cancellationToken)
+        public virtual Task<MixedParamCancellableFactory> CreateWithServiceAsync(CancellationToken cancellationToken = default)
         {
             return LocalCreateWithServiceAsync(cancellationToken);
         }
 
-        public Task<MixedParamCancellableFactory> LocalCreateWithServiceAsync(CancellationToken cancellationToken)
+        public Task<MixedParamCancellableFactory> LocalCreateWithServiceAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MixedParamCancellableFactory>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateWithServiceAsync(service, cancellationToken));
         }
 
-        public virtual Task<MixedParamCancellableFactory> FetchComplexAsync(int intParam, string stringParam, CancellationToken cancellationToken)
+        public virtual Task<MixedParamCancellableFactory> FetchComplexAsync(int intParam, string stringParam, CancellationToken cancellationToken = default)
         {
             return LocalFetchComplexAsync(intParam, stringParam, cancellationToken);
         }
 
-        public Task<MixedParamCancellableFactory> LocalFetchComplexAsync(int intParam, string stringParam, CancellationToken cancellationToken)
+        public Task<MixedParamCancellableFactory> LocalFetchComplexAsync(int intParam, string stringParam, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MixedParamCancellableFactory>();
             var service = ServiceProvider.GetRequiredService<IService>();

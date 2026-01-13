@@ -12,14 +12,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IMultiServiceReadObjectFactory
     {
-        MultiServiceReadObject CreateWithTwoServices();
-        MultiServiceReadObject CreateWithThreeServices();
-        MultiServiceReadObject CreateWithParamsAndTwoServices(int id, string name);
-        Task<MultiServiceReadObject> CreateWithTwoServicesAsync();
-        Task<MultiServiceReadObject?> CreateWithTwoServicesBoolAsync();
-        MultiServiceReadObject FetchWithTwoServices();
-        MultiServiceReadObject FetchWithThreeServices();
-        MultiServiceReadObject FetchWithParamsAndTwoServices(Guid id);
+        MultiServiceReadObject CreateWithTwoServices(CancellationToken cancellationToken = default);
+        MultiServiceReadObject CreateWithThreeServices(CancellationToken cancellationToken = default);
+        MultiServiceReadObject CreateWithParamsAndTwoServices(int id, string name, CancellationToken cancellationToken = default);
+        Task<MultiServiceReadObject> CreateWithTwoServicesAsync(CancellationToken cancellationToken = default);
+        Task<MultiServiceReadObject?> CreateWithTwoServicesBoolAsync(CancellationToken cancellationToken = default);
+        MultiServiceReadObject FetchWithTwoServices(CancellationToken cancellationToken = default);
+        MultiServiceReadObject FetchWithThreeServices(CancellationToken cancellationToken = default);
+        MultiServiceReadObject FetchWithParamsAndTwoServices(Guid id, CancellationToken cancellationToken = default);
     }
 
     internal class MultiServiceReadObjectFactory : FactoryBase<MultiServiceReadObject>, IMultiServiceReadObjectFactory
@@ -39,12 +39,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual MultiServiceReadObject CreateWithTwoServices()
+        public virtual MultiServiceReadObject CreateWithTwoServices(CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithTwoServices();
+            return LocalCreateWithTwoServices(cancellationToken);
         }
 
-        public MultiServiceReadObject LocalCreateWithTwoServices()
+        public MultiServiceReadObject LocalCreateWithTwoServices(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -52,12 +52,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithTwoServices(service1, service2));
         }
 
-        public virtual MultiServiceReadObject CreateWithThreeServices()
+        public virtual MultiServiceReadObject CreateWithThreeServices(CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithThreeServices();
+            return LocalCreateWithThreeServices(cancellationToken);
         }
 
-        public MultiServiceReadObject LocalCreateWithThreeServices()
+        public MultiServiceReadObject LocalCreateWithThreeServices(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -66,12 +66,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithThreeServices(service1, service2, service3));
         }
 
-        public virtual MultiServiceReadObject CreateWithParamsAndTwoServices(int id, string name)
+        public virtual MultiServiceReadObject CreateWithParamsAndTwoServices(int id, string name, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithParamsAndTwoServices(id, name);
+            return LocalCreateWithParamsAndTwoServices(id, name, cancellationToken);
         }
 
-        public MultiServiceReadObject LocalCreateWithParamsAndTwoServices(int id, string name)
+        public MultiServiceReadObject LocalCreateWithParamsAndTwoServices(int id, string name, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -79,12 +79,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithParamsAndTwoServices(id, name, service1, service2));
         }
 
-        public virtual Task<MultiServiceReadObject> CreateWithTwoServicesAsync()
+        public virtual Task<MultiServiceReadObject> CreateWithTwoServicesAsync(CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithTwoServicesAsync();
+            return LocalCreateWithTwoServicesAsync(cancellationToken);
         }
 
-        public Task<MultiServiceReadObject> LocalCreateWithTwoServicesAsync()
+        public Task<MultiServiceReadObject> LocalCreateWithTwoServicesAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -92,12 +92,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateWithTwoServicesAsync(service1, service2));
         }
 
-        public virtual Task<MultiServiceReadObject?> CreateWithTwoServicesBoolAsync()
+        public virtual Task<MultiServiceReadObject?> CreateWithTwoServicesBoolAsync(CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithTwoServicesBoolAsync();
+            return LocalCreateWithTwoServicesBoolAsync(cancellationToken);
         }
 
-        public Task<MultiServiceReadObject?> LocalCreateWithTwoServicesBoolAsync()
+        public Task<MultiServiceReadObject?> LocalCreateWithTwoServicesBoolAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -105,12 +105,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateWithTwoServicesBoolAsync(service1, service2));
         }
 
-        public virtual MultiServiceReadObject FetchWithTwoServices()
+        public virtual MultiServiceReadObject FetchWithTwoServices(CancellationToken cancellationToken = default)
         {
-            return LocalFetchWithTwoServices();
+            return LocalFetchWithTwoServices(cancellationToken);
         }
 
-        public MultiServiceReadObject LocalFetchWithTwoServices()
+        public MultiServiceReadObject LocalFetchWithTwoServices(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -118,12 +118,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchWithTwoServices(service1, service2));
         }
 
-        public virtual MultiServiceReadObject FetchWithThreeServices()
+        public virtual MultiServiceReadObject FetchWithThreeServices(CancellationToken cancellationToken = default)
         {
-            return LocalFetchWithThreeServices();
+            return LocalFetchWithThreeServices(cancellationToken);
         }
 
-        public MultiServiceReadObject LocalFetchWithThreeServices()
+        public MultiServiceReadObject LocalFetchWithThreeServices(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -132,12 +132,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchWithThreeServices(service1, service2, service3));
         }
 
-        public virtual MultiServiceReadObject FetchWithParamsAndTwoServices(Guid id)
+        public virtual MultiServiceReadObject FetchWithParamsAndTwoServices(Guid id, CancellationToken cancellationToken = default)
         {
-            return LocalFetchWithParamsAndTwoServices(id);
+            return LocalFetchWithParamsAndTwoServices(id, cancellationToken);
         }
 
-        public MultiServiceReadObject LocalFetchWithParamsAndTwoServices(Guid id)
+        public MultiServiceReadObject LocalFetchWithParamsAndTwoServices(Guid id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceReadObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();

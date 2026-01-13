@@ -12,14 +12,14 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
 {
     public static partial class UserCommandsExample
     {
-        public delegate Task<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.CommandResult> DeactivateUser(DeactivateUserCommand command);
+        public delegate Task<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.CommandResult> DeactivateUser(DeactivateUserCommand command, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<UserCommandsExample.DeactivateUser>(cc =>
                 {
-                    return (command) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.CommandResult>(typeof(UserCommandsExample.DeactivateUser), [command], default);
+                    return (command, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.CommandResult>(typeof(UserCommandsExample.DeactivateUser), [command], cancellationToken);
                 });
             }
 
@@ -27,7 +27,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
             {
                 services.AddTransient<UserCommandsExample.DeactivateUser>(cc =>
                 {
-                    return (DeactivateUserCommand command) =>
+                    return (DeactivateUserCommand command, CancellationToken cancellationToken = default) =>
                     {
                         var ctx = cc.GetRequiredService<IUserContext>();
                         return UserCommandsExample._DeactivateUser(command, ctx);

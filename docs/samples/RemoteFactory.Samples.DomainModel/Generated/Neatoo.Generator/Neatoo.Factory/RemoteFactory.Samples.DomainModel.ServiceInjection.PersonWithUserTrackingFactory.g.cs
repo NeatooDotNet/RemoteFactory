@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IPersonWithUserTrackingFactory
     {
-        Task<PersonWithUserTracking> Save(PersonWithUserTracking target);
+        Task<PersonWithUserTracking> Save(PersonWithUserTracking target, CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithUserTrackingFactory : FactorySaveBase<PersonWithUserTracking>, IFactorySave<PersonWithUserTracking>, IPersonWithUserTrackingFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonWithUserTracking> SaveDelegate(PersonWithUserTracking target);
+        public delegate Task<PersonWithUserTracking> SaveDelegate(PersonWithUserTracking target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveDelegate SaveProperty { get; }
 
@@ -39,7 +39,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             SaveProperty = RemoteSave;
         }
 
-        public Task<PersonWithUserTracking> LocalInsert(PersonWithUserTracking target)
+        public Task<PersonWithUserTracking> LocalInsert(PersonWithUserTracking target, CancellationToken cancellationToken = default)
         {
             var cTarget = (PersonWithUserTracking)target ?? throw new Exception("PersonWithUserTracking must implement PersonWithUserTracking");
             var user = ServiceProvider.GetRequiredService<ICurrentUser>();
@@ -47,22 +47,22 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Insert(user, context));
         }
 
-        public virtual Task<PersonWithUserTracking> Save(PersonWithUserTracking target)
+        public virtual Task<PersonWithUserTracking> Save(PersonWithUserTracking target, CancellationToken cancellationToken = default)
         {
-            return SaveProperty(target);
+            return SaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<PersonWithUserTracking> RemoteSave(PersonWithUserTracking target)
+        public virtual async Task<PersonWithUserTracking> RemoteSave(PersonWithUserTracking target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonWithUserTracking>(typeof(SaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonWithUserTracking>(typeof(SaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<PersonWithUserTracking>.Save(PersonWithUserTracking target)
+        async Task<IFactorySaveMeta?> IFactorySave<PersonWithUserTracking>.Save(PersonWithUserTracking target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<PersonWithUserTracking> LocalSave(PersonWithUserTracking target)
+        public virtual async Task<PersonWithUserTracking> LocalSave(PersonWithUserTracking target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -70,7 +70,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             }
             else if (target.IsNew)
             {
-                return await LocalInsert(target);
+                return await LocalInsert(target, cancellationToken);
             }
             else
             {
@@ -85,7 +85,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<SaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonWithUserTrackingFactory>();
-                return (PersonWithUserTracking target) => factory.LocalSave(target);
+                return (PersonWithUserTracking target, CancellationToken cancellationToken = default) => factory.LocalSave(target, cancellationToken);
             });
             services.AddTransient<PersonWithUserTracking>();
             services.AddScoped<IFactorySave<PersonWithUserTracking>, PersonWithUserTrackingFactory>();

@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRecordWithServiceFetchFactory
     {
-        RecordWithServiceFetch Create(string Id, string Data);
-        RecordWithServiceFetch FetchWithService(string id);
+        RecordWithServiceFetch Create(string Id, string Data, CancellationToken cancellationToken = default);
+        RecordWithServiceFetch FetchWithService(string id, CancellationToken cancellationToken = default);
     }
 
     internal class RecordWithServiceFetchFactory : FactoryBase<RecordWithServiceFetch>, IRecordWithServiceFetchFactory
@@ -33,22 +33,22 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual RecordWithServiceFetch Create(string Id, string Data)
+        public virtual RecordWithServiceFetch Create(string Id, string Data, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Id, Data);
+            return LocalCreate(Id, Data, cancellationToken);
         }
 
-        public RecordWithServiceFetch LocalCreate(string Id, string Data)
+        public RecordWithServiceFetch LocalCreate(string Id, string Data, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new RecordWithServiceFetch(Id, Data));
         }
 
-        public virtual RecordWithServiceFetch FetchWithService(string id)
+        public virtual RecordWithServiceFetch FetchWithService(string id, CancellationToken cancellationToken = default)
         {
-            return LocalFetchWithService(id);
+            return LocalFetchWithService(id, cancellationToken);
         }
 
-        public RecordWithServiceFetch LocalFetchWithService(string id)
+        public RecordWithServiceFetch LocalFetchWithService(string id, CancellationToken cancellationToken = default)
         {
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(FactoryOperation.Fetch, () => RecordWithServiceFetch.FetchWithService(id, service));

@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IBoolInsertUpdateOnlyFactory
     {
-        BoolInsertUpdateOnly Create();
-        BoolInsertUpdateOnly? Save(BoolInsertUpdateOnly target);
+        BoolInsertUpdateOnly Create(CancellationToken cancellationToken = default);
+        BoolInsertUpdateOnly? Save(BoolInsertUpdateOnly target, CancellationToken cancellationToken = default);
     }
 
     internal class BoolInsertUpdateOnlyFactory : FactorySaveBase<BoolInsertUpdateOnly>, IFactorySave<BoolInsertUpdateOnly>, IBoolInsertUpdateOnlyFactory
@@ -34,39 +34,39 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual BoolInsertUpdateOnly Create()
+        public virtual BoolInsertUpdateOnly Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public BoolInsertUpdateOnly LocalCreate()
+        public BoolInsertUpdateOnly LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new BoolInsertUpdateOnly());
         }
 
-        public BoolInsertUpdateOnly? LocalInsert(BoolInsertUpdateOnly target)
+        public BoolInsertUpdateOnly? LocalInsert(BoolInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (BoolInsertUpdateOnly)target ?? throw new Exception("BoolInsertUpdateOnly must implement BoolInsertUpdateOnly");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.Insert());
         }
 
-        public BoolInsertUpdateOnly? LocalUpdate(BoolInsertUpdateOnly target)
+        public BoolInsertUpdateOnly? LocalUpdate(BoolInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (BoolInsertUpdateOnly)target ?? throw new Exception("BoolInsertUpdateOnly must implement BoolInsertUpdateOnly");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.Update());
         }
 
-        public virtual BoolInsertUpdateOnly? Save(BoolInsertUpdateOnly target)
+        public virtual BoolInsertUpdateOnly? Save(BoolInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<BoolInsertUpdateOnly>.Save(BoolInsertUpdateOnly target)
+        async Task<IFactorySaveMeta?> IFactorySave<BoolInsertUpdateOnly>.Save(BoolInsertUpdateOnly target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual BoolInsertUpdateOnly? LocalSave(BoolInsertUpdateOnly target)
+        public virtual BoolInsertUpdateOnly? LocalSave(BoolInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -74,11 +74,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 

@@ -422,6 +422,7 @@ public class ReadTests
 	private async Task ReadFactory(IReadObjectFactory readFactory)
 	{
 		
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.Contains("Create") || m.Name.Contains("Fetch")).ToList();
 
 		foreach (var method in methods)
@@ -429,13 +430,15 @@ public class ReadTests
 			object? result;
 			var methodName = method.Name;
 
-			if (method.GetParameters().Any())
+			// Exclude CancellationToken from meaningful parameter count
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.Any())
 			{
-				result = method.Invoke(readFactory, new object[] { 1 });
+				result = method.Invoke(readFactory, new object[] { 1, default(CancellationToken) });
 			}
 			else
 			{
-				result = method.Invoke(readFactory, null);
+				result = method.Invoke(readFactory, new object[] { default(CancellationToken) });
 			}
 
 			if (result is Task<ReadObject?> task)

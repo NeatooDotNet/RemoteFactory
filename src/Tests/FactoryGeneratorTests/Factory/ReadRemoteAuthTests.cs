@@ -289,6 +289,7 @@ public class ReadRemoteAuthTests
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
@@ -297,14 +298,16 @@ public class ReadRemoteAuthTests
 			var methodName = method.Name;
 
 			var expect = 2;
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			// Exclude CancellationToken when checking for meaningful parameters
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 1 });
+				result = method.Invoke(readFactory, new object[] { 1, default(CancellationToken) });
 				expect = 4;
 			}
 			else
 			{
-				result = method.Invoke(readFactory, null);
+				result = method.Invoke(readFactory, new object[] { default(CancellationToken) });
 			}
 
 			if (result is Task<ReadRemoteAuthObj?> task)
@@ -377,6 +380,7 @@ public class ReadRemoteAuthTests
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthTaskObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
@@ -385,14 +389,16 @@ public class ReadRemoteAuthTests
 			var methodName = method.Name;
 
 			var expect = 2;
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			// Exclude CancellationToken when checking for meaningful parameters
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 1 });
+				result = method.Invoke(readFactory, new object[] { 1, default(CancellationToken) });
 				expect = 4;
 			}
 			else
 			{
-				result = method.Invoke(readFactory, null);
+				result = method.Invoke(readFactory, new object[] { default(CancellationToken) });
 			}
 
 			if (result is Task<ReadRemoteAuthTaskObj?> task)
@@ -473,6 +479,7 @@ public class ReadRemoteAuthTests
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
@@ -480,9 +487,11 @@ public class ReadRemoteAuthTests
 			object? result;
 			var methodName = method.Name;
 
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			// Exclude CancellationToken when checking for meaningful parameters
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 10 }); // Fail
+				result = method.Invoke(readFactory, new object[] { 10, default(CancellationToken) }); // Fail
 			}
 			else
 			{
@@ -526,6 +535,7 @@ public class ReadRemoteAuthTests
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadRemoteAuthObjFactory>();
 		var authorized = this.serverScope.ServiceProvider.GetRequiredService<ReadRemoteAuth>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
@@ -533,9 +543,11 @@ public class ReadRemoteAuthTests
 			object? result;
 			var methodName = method.Name;
 
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			// Exclude CancellationToken when checking for meaningful parameters
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 20 }); // Fail
+				result = method.Invoke(readFactory, new object[] { 20, default(CancellationToken) }); // Fail
 			}
 			else
 			{

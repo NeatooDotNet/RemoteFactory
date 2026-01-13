@@ -12,19 +12,19 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public static partial class CalculationService
     {
-        public delegate Task<int> CalculateSum(int a, int b);
-        public delegate Task<string> FormatMessage(string template, string value);
+        public delegate Task<int> CalculateSum(int a, int b, CancellationToken cancellationToken = default);
+        public delegate Task<string> FormatMessage(string template, string value, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<CalculationService.CalculateSum>(cc =>
                 {
-                    return (a, b) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(CalculationService.CalculateSum), [a, b], default);
+                    return (a, b, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(CalculationService.CalculateSum), [a, b], cancellationToken);
                 });
                 services.AddTransient<CalculationService.FormatMessage>(cc =>
                 {
-                    return (template, value) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(CalculationService.FormatMessage), [template, value], default);
+                    return (template, value, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(CalculationService.FormatMessage), [template, value], cancellationToken);
                 });
             }
 
@@ -32,14 +32,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             {
                 services.AddTransient<CalculationService.CalculateSum>(cc =>
                 {
-                    return (int a, int b) =>
+                    return (int a, int b, CancellationToken cancellationToken = default) =>
                     {
                         return CalculationService._CalculateSum(a, b);
                     };
                 });
                 services.AddTransient<CalculationService.FormatMessage>(cc =>
                 {
-                    return (string template, string value) =>
+                    return (string template, string value, CancellationToken cancellationToken = default) =>
                     {
                         return CalculationService._FormatMessage(template, value);
                     };

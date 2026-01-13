@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IIgnoreMethodReturnObjFactory
     {
-        IgnoreMethodReturnObj Create();
-        IgnoreMethodReturnObj Save(IgnoreMethodReturnObj target);
+        IgnoreMethodReturnObj Create(CancellationToken cancellationToken = default);
+        IgnoreMethodReturnObj Save(IgnoreMethodReturnObj target, CancellationToken cancellationToken = default);
     }
 
     internal class IgnoreMethodReturnObjFactory : FactorySaveBase<IgnoreMethodReturnObj>, IFactorySave<IgnoreMethodReturnObj>, IIgnoreMethodReturnObjFactory
@@ -33,39 +33,39 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual IgnoreMethodReturnObj Create()
+        public virtual IgnoreMethodReturnObj Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public IgnoreMethodReturnObj LocalCreate()
+        public IgnoreMethodReturnObj LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new IgnoreMethodReturnObj());
         }
 
-        public IgnoreMethodReturnObj LocalInsert(IgnoreMethodReturnObj target)
+        public IgnoreMethodReturnObj LocalInsert(IgnoreMethodReturnObj target, CancellationToken cancellationToken = default)
         {
             var cTarget = (IgnoreMethodReturnObj)target ?? throw new Exception("IgnoreMethodReturnObj must implement IgnoreMethodReturnObj");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert());
         }
 
-        public IgnoreMethodReturnObj LocalUpdate(IgnoreMethodReturnObj target)
+        public IgnoreMethodReturnObj LocalUpdate(IgnoreMethodReturnObj target, CancellationToken cancellationToken = default)
         {
             var cTarget = (IgnoreMethodReturnObj)target ?? throw new Exception("IgnoreMethodReturnObj must implement IgnoreMethodReturnObj");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update());
         }
 
-        public virtual IgnoreMethodReturnObj Save(IgnoreMethodReturnObj target)
+        public virtual IgnoreMethodReturnObj Save(IgnoreMethodReturnObj target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<IgnoreMethodReturnObj>.Save(IgnoreMethodReturnObj target)
+        async Task<IFactorySaveMeta?> IFactorySave<IgnoreMethodReturnObj>.Save(IgnoreMethodReturnObj target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual IgnoreMethodReturnObj LocalSave(IgnoreMethodReturnObj target)
+        public virtual IgnoreMethodReturnObj LocalSave(IgnoreMethodReturnObj target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -73,11 +73,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 

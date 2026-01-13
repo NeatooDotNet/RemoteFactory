@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface ICreateStaticExampleFactory
     {
-        CreateStaticExample Create();
-        CreateStaticExample FromSource(string source);
+        CreateStaticExample Create(CancellationToken cancellationToken = default);
+        CreateStaticExample FromSource(string source, CancellationToken cancellationToken = default);
     }
 
     internal class CreateStaticExampleFactory : FactoryBase<CreateStaticExample>, ICreateStaticExampleFactory
@@ -33,22 +33,22 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CreateStaticExample Create()
+        public virtual CreateStaticExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CreateStaticExample LocalCreate()
+        public CreateStaticExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CreateStaticExample());
         }
 
-        public virtual CreateStaticExample FromSource(string source)
+        public virtual CreateStaticExample FromSource(string source, CancellationToken cancellationToken = default)
         {
-            return LocalFromSource(source);
+            return LocalFromSource(source, cancellationToken);
         }
 
-        public CreateStaticExample LocalFromSource(string source)
+        public CreateStaticExample LocalFromSource(string source, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => CreateStaticExample.FromSource(source));
         }

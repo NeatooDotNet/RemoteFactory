@@ -17,8 +17,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
     public interface IShowcasePerformanceNeatooObjFactory
     {
-        IShowcasePerformanceNeatooObj Create();
-        IShowcasePerformanceNeatooObj Create(int id);
+        IShowcasePerformanceNeatooObj Create(CancellationToken cancellationToken = default);
+        IShowcasePerformanceNeatooObj Create(int id, CancellationToken cancellationToken = default);
     }
 
     internal class ShowcasePerformanceNeatooObjFactory : FactoryBase<IShowcasePerformanceNeatooObj>, IShowcasePerformanceNeatooObjFactory
@@ -38,24 +38,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual IShowcasePerformanceNeatooObj Create()
+        public virtual IShowcasePerformanceNeatooObj Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public IShowcasePerformanceNeatooObj LocalCreate()
+        public IShowcasePerformanceNeatooObj LocalCreate(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcasePerformanceNeatooObj>();
             var factory = ServiceProvider.GetRequiredService<IShowcasePerformanceNeatooObjFactory>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(factory));
         }
 
-        public virtual IShowcasePerformanceNeatooObj Create(int id)
+        public virtual IShowcasePerformanceNeatooObj Create(int id, CancellationToken cancellationToken = default)
         {
-            return LocalCreate1(id);
+            return LocalCreate1(id, cancellationToken);
         }
 
-        public IShowcasePerformanceNeatooObj LocalCreate1(int id)
+        public IShowcasePerformanceNeatooObj LocalCreate1(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcasePerformanceNeatooObj>();
             var factory = ServiceProvider.GetRequiredService<IShowcasePerformanceNeatooObjFactory>();

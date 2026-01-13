@@ -14,6 +14,7 @@ public interface IFactorySave<T>
     /// Insert (IsNew), Update (!IsNew and !IsDeleted), or Delete (IsDeleted).
     /// </summary>
     /// <param name="entity">The entity to save.</param>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>The saved entity, or null if the operation was not authorized or the entity was not found.</returns>
-    Task<IFactorySaveMeta?> Save(T entity);
+    Task<IFactorySaveMeta?> Save(T entity, CancellationToken cancellationToken = default);
 }

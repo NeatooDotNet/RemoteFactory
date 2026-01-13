@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface IFetchBoolExampleFactory
     {
-        FetchBoolExample Create();
-        Task<FetchBoolExample?> Fetch(int id);
+        FetchBoolExample Create(CancellationToken cancellationToken = default);
+        Task<FetchBoolExample?> Fetch(int id, CancellationToken cancellationToken = default);
     }
 
     internal class FetchBoolExampleFactory : FactoryBase<FetchBoolExample>, IFetchBoolExampleFactory
@@ -21,7 +21,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<FetchBoolExample?> FetchDelegate(int id);
+        public delegate Task<FetchBoolExample?> FetchDelegate(int id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -38,27 +38,27 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             FetchProperty = RemoteFetch;
         }
 
-        public virtual FetchBoolExample Create()
+        public virtual FetchBoolExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public FetchBoolExample LocalCreate()
+        public FetchBoolExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new FetchBoolExample());
         }
 
-        public virtual Task<FetchBoolExample?> Fetch(int id)
+        public virtual Task<FetchBoolExample?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<FetchBoolExample?> RemoteFetch(int id)
+        public virtual async Task<FetchBoolExample?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<FetchBoolExample?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<FetchBoolExample?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<FetchBoolExample?> LocalFetch(int id)
+        public Task<FetchBoolExample?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<FetchBoolExample>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.Fetch(id));
@@ -71,7 +71,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<FetchBoolExampleFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddTransient<FetchBoolExample>();
             // Event registrations

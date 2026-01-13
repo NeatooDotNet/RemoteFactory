@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IDefaultCancellableFactoryFactory
     {
-        DefaultCancellableFactory Create();
-        Task<DefaultCancellableFactory> CreateAsync(CancellationToken cancellationToken);
+        DefaultCancellableFactory Create(CancellationToken cancellationToken = default);
+        Task<DefaultCancellableFactory> CreateAsync(CancellationToken cancellationToken = default);
     }
 
     internal class DefaultCancellableFactoryFactory : FactoryBase<DefaultCancellableFactory>, IDefaultCancellableFactoryFactory
@@ -34,22 +34,22 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual DefaultCancellableFactory Create()
+        public virtual DefaultCancellableFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public DefaultCancellableFactory LocalCreate()
+        public DefaultCancellableFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new DefaultCancellableFactory());
         }
 
-        public virtual Task<DefaultCancellableFactory> CreateAsync(CancellationToken cancellationToken)
+        public virtual Task<DefaultCancellableFactory> CreateAsync(CancellationToken cancellationToken = default)
         {
             return LocalCreateAsync(cancellationToken);
         }
 
-        public Task<DefaultCancellableFactory> LocalCreateAsync(CancellationToken cancellationToken)
+        public Task<DefaultCancellableFactory> LocalCreateAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<DefaultCancellableFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateAsync(cancellationToken));

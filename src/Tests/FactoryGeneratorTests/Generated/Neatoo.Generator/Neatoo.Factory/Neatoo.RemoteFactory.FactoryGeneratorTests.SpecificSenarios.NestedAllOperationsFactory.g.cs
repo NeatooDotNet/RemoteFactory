@@ -13,9 +13,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface INestedAllOperationsFactory
     {
-        NestedAllOperations Create();
-        NestedAllOperations Fetch();
-        NestedAllOperations? Save(NestedAllOperations target);
+        NestedAllOperations Create(CancellationToken cancellationToken = default);
+        NestedAllOperations Fetch(CancellationToken cancellationToken = default);
+        NestedAllOperations? Save(NestedAllOperations target, CancellationToken cancellationToken = default);
     }
 
     internal class NestedAllOperationsFactory : FactorySaveBase<NestedAllOperations>, IFactorySave<NestedAllOperations>, INestedAllOperationsFactory
@@ -35,56 +35,56 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual NestedAllOperations Create()
+        public virtual NestedAllOperations Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public NestedAllOperations LocalCreate()
+        public NestedAllOperations LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new NestedAllOperations());
         }
 
-        public virtual NestedAllOperations Fetch()
+        public virtual NestedAllOperations Fetch(CancellationToken cancellationToken = default)
         {
-            return LocalFetch();
+            return LocalFetch(cancellationToken);
         }
 
-        public NestedAllOperations LocalFetch()
+        public NestedAllOperations LocalFetch(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedAllOperations>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.Fetch());
         }
 
-        public NestedAllOperations LocalInsert(NestedAllOperations target)
+        public NestedAllOperations LocalInsert(NestedAllOperations target, CancellationToken cancellationToken = default)
         {
             var cTarget = (NestedAllOperations)target ?? throw new Exception("NestedAllOperations must implement NestedAllOperations");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert());
         }
 
-        public NestedAllOperations LocalUpdate(NestedAllOperations target)
+        public NestedAllOperations LocalUpdate(NestedAllOperations target, CancellationToken cancellationToken = default)
         {
             var cTarget = (NestedAllOperations)target ?? throw new Exception("NestedAllOperations must implement NestedAllOperations");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update());
         }
 
-        public NestedAllOperations LocalDelete(NestedAllOperations target)
+        public NestedAllOperations LocalDelete(NestedAllOperations target, CancellationToken cancellationToken = default)
         {
             var cTarget = (NestedAllOperations)target ?? throw new Exception("NestedAllOperations must implement NestedAllOperations");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.Delete());
         }
 
-        public virtual NestedAllOperations? Save(NestedAllOperations target)
+        public virtual NestedAllOperations? Save(NestedAllOperations target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<NestedAllOperations>.Save(NestedAllOperations target)
+        async Task<IFactorySaveMeta?> IFactorySave<NestedAllOperations>.Save(NestedAllOperations target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual NestedAllOperations? LocalSave(NestedAllOperations target)
+        public virtual NestedAllOperations? LocalSave(NestedAllOperations target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -93,15 +93,15 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
                     return default(NestedAllOperations);
                 }
 
-                return LocalDelete(target);
+                return LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 

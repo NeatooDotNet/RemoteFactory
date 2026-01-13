@@ -12,9 +12,9 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface IFetchableRecordExampleFactory
     {
-        FetchableRecordExample Create(string Id, string Data);
-        FetchableRecordExample FetchById(string id);
-        Task<FetchableRecordExample> FetchByIdAsync(string id);
+        FetchableRecordExample Create(string Id, string Data, CancellationToken cancellationToken = default);
+        FetchableRecordExample FetchById(string id, CancellationToken cancellationToken = default);
+        Task<FetchableRecordExample> FetchByIdAsync(string id, CancellationToken cancellationToken = default);
     }
 
     internal class FetchableRecordExampleFactory : FactoryBase<FetchableRecordExample>, IFetchableRecordExampleFactory
@@ -34,32 +34,32 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual FetchableRecordExample Create(string Id, string Data)
+        public virtual FetchableRecordExample Create(string Id, string Data, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Id, Data);
+            return LocalCreate(Id, Data, cancellationToken);
         }
 
-        public FetchableRecordExample LocalCreate(string Id, string Data)
+        public FetchableRecordExample LocalCreate(string Id, string Data, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new FetchableRecordExample(Id, Data));
         }
 
-        public virtual FetchableRecordExample FetchById(string id)
+        public virtual FetchableRecordExample FetchById(string id, CancellationToken cancellationToken = default)
         {
-            return LocalFetchById(id);
+            return LocalFetchById(id, cancellationToken);
         }
 
-        public FetchableRecordExample LocalFetchById(string id)
+        public FetchableRecordExample LocalFetchById(string id, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Fetch, () => FetchableRecordExample.FetchById(id));
         }
 
-        public virtual Task<FetchableRecordExample> FetchByIdAsync(string id)
+        public virtual Task<FetchableRecordExample> FetchByIdAsync(string id, CancellationToken cancellationToken = default)
         {
-            return LocalFetchByIdAsync(id);
+            return LocalFetchByIdAsync(id, cancellationToken);
         }
 
-        public Task<FetchableRecordExample> LocalFetchByIdAsync(string id)
+        public Task<FetchableRecordExample> LocalFetchByIdAsync(string id, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCallAsync(FactoryOperation.Fetch, () => FetchableRecordExample.FetchByIdAsync(id));
         }

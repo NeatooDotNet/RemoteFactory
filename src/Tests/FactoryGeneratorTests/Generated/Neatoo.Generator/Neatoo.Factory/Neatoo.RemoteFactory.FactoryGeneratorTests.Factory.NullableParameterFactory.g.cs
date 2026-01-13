@@ -19,8 +19,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface INullableParameterFactory
     {
-        NullableParameter Create(int? p);
-        Task<NullableParameter> CreateRemote(int? p);
+        NullableParameter Create(int? p, CancellationToken cancellationToken = default);
+        Task<NullableParameter> CreateRemote(int? p, CancellationToken cancellationToken = default);
     }
 
     internal class NullableParameterFactory : FactoryBase<NullableParameter>, INullableParameterFactory
@@ -28,7 +28,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<NullableParameter> CreateRemoteDelegate(int? p);
+        public delegate Task<NullableParameter> CreateRemoteDelegate(int? p, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateRemoteDelegate CreateRemoteProperty { get; }
 
@@ -45,28 +45,28 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             CreateRemoteProperty = RemoteCreateRemote;
         }
 
-        public virtual NullableParameter Create(int? p)
+        public virtual NullableParameter Create(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(p);
+            return LocalCreate(p, cancellationToken);
         }
 
-        public NullableParameter LocalCreate(int? p)
+        public NullableParameter LocalCreate(int? p, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NullableParameter>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(p));
         }
 
-        public virtual Task<NullableParameter> CreateRemote(int? p)
+        public virtual Task<NullableParameter> CreateRemote(int? p, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteProperty(p);
+            return CreateRemoteProperty(p, cancellationToken);
         }
 
-        public virtual async Task<NullableParameter> RemoteCreateRemote(int? p)
+        public virtual async Task<NullableParameter> RemoteCreateRemote(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<NullableParameter>(typeof(CreateRemoteDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<NullableParameter>(typeof(CreateRemoteDelegate), [p], cancellationToken))!;
         }
 
-        public Task<NullableParameter> LocalCreateRemote(int? p)
+        public Task<NullableParameter> LocalCreateRemote(int? p, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NullableParameter>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemote(p)));
@@ -79,7 +79,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CreateRemoteDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<NullableParameterFactory>();
-                return (int? p) => factory.LocalCreateRemote(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCreateRemote(p, cancellationToken);
             });
             services.AddTransient<NullableParameter>();
             // Event registrations

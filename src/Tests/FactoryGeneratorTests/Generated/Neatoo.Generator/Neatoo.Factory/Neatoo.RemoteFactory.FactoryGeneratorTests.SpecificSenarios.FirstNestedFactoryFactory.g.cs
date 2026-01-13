@@ -13,7 +13,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IFirstNestedFactoryFactory
     {
-        FirstNestedFactory Create();
+        FirstNestedFactory Create(CancellationToken cancellationToken = default);
     }
 
     internal class FirstNestedFactoryFactory : FactoryBase<FirstNestedFactory>, IFirstNestedFactoryFactory
@@ -33,12 +33,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual FirstNestedFactory Create()
+        public virtual FirstNestedFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public FirstNestedFactory LocalCreate()
+        public FirstNestedFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new FirstNestedFactory());
         }

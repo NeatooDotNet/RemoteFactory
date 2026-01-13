@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface INestedServiceFactoryFactory
     {
-        NestedServiceFactory Create();
-        NestedServiceFactory CreateWithService();
+        NestedServiceFactory Create(CancellationToken cancellationToken = default);
+        NestedServiceFactory CreateWithService(CancellationToken cancellationToken = default);
     }
 
     internal class NestedServiceFactoryFactory : FactoryBase<NestedServiceFactory>, INestedServiceFactoryFactory
@@ -34,22 +34,22 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual NestedServiceFactory Create()
+        public virtual NestedServiceFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public NestedServiceFactory LocalCreate()
+        public NestedServiceFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new NestedServiceFactory());
         }
 
-        public virtual NestedServiceFactory CreateWithService()
+        public virtual NestedServiceFactory CreateWithService(CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithService();
+            return LocalCreateWithService(cancellationToken);
         }
 
-        public NestedServiceFactory LocalCreateWithService()
+        public NestedServiceFactory LocalCreateWithService(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedServiceFactory>();
             var service = ServiceProvider.GetRequiredService<IService>();

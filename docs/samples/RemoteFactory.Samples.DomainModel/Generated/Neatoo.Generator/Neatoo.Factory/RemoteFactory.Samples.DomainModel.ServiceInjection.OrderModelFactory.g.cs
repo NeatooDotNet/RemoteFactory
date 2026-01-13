@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IOrderModelFactory
     {
-        Task<OrderModel?> Fetch(Guid id);
+        Task<OrderModel?> Fetch(Guid id, CancellationToken cancellationToken = default);
     }
 
     internal class OrderModelFactory : FactoryBase<OrderModel>, IOrderModelFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<OrderModel?> FetchDelegate(Guid id);
+        public delegate Task<OrderModel?> FetchDelegate(Guid id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -39,17 +39,17 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             FetchProperty = RemoteFetch;
         }
 
-        public virtual Task<OrderModel?> Fetch(Guid id)
+        public virtual Task<OrderModel?> Fetch(Guid id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<OrderModel?> RemoteFetch(Guid id)
+        public virtual async Task<OrderModel?> RemoteFetch(Guid id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderModel?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderModel?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<OrderModel?> LocalFetch(Guid id)
+        public Task<OrderModel?> LocalFetch(Guid id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<OrderModel>();
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
@@ -65,7 +65,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<OrderModelFactory>();
-                return (Guid id) => factory.LocalFetch(id);
+                return (Guid id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddTransient<OrderModel>();
             // Event registrations

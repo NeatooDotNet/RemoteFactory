@@ -16,8 +16,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface ISaveNotNullableNoDeleteObjFactory
     {
-        SaveNotNullableNoDeleteObj Create();
-        SaveNotNullableNoDeleteObj Save(SaveNotNullableNoDeleteObj target);
+        SaveNotNullableNoDeleteObj Create(CancellationToken cancellationToken = default);
+        SaveNotNullableNoDeleteObj Save(SaveNotNullableNoDeleteObj target, CancellationToken cancellationToken = default);
     }
 
     internal class SaveNotNullableNoDeleteObjFactory : FactorySaveBase<SaveNotNullableNoDeleteObj>, IFactorySave<SaveNotNullableNoDeleteObj>, ISaveNotNullableNoDeleteObjFactory
@@ -37,39 +37,39 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual SaveNotNullableNoDeleteObj Create()
+        public virtual SaveNotNullableNoDeleteObj Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public SaveNotNullableNoDeleteObj LocalCreate()
+        public SaveNotNullableNoDeleteObj LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new SaveNotNullableNoDeleteObj());
         }
 
-        public SaveNotNullableNoDeleteObj LocalInsert(SaveNotNullableNoDeleteObj target)
+        public SaveNotNullableNoDeleteObj LocalInsert(SaveNotNullableNoDeleteObj target, CancellationToken cancellationToken = default)
         {
             var cTarget = (SaveNotNullableNoDeleteObj)target ?? throw new Exception("SaveNotNullableNoDeleteObj must implement SaveNotNullableNoDeleteObj");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert());
         }
 
-        public SaveNotNullableNoDeleteObj LocalUpdate(SaveNotNullableNoDeleteObj target)
+        public SaveNotNullableNoDeleteObj LocalUpdate(SaveNotNullableNoDeleteObj target, CancellationToken cancellationToken = default)
         {
             var cTarget = (SaveNotNullableNoDeleteObj)target ?? throw new Exception("SaveNotNullableNoDeleteObj must implement SaveNotNullableNoDeleteObj");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update());
         }
 
-        public virtual SaveNotNullableNoDeleteObj Save(SaveNotNullableNoDeleteObj target)
+        public virtual SaveNotNullableNoDeleteObj Save(SaveNotNullableNoDeleteObj target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<SaveNotNullableNoDeleteObj>.Save(SaveNotNullableNoDeleteObj target)
+        async Task<IFactorySaveMeta?> IFactorySave<SaveNotNullableNoDeleteObj>.Save(SaveNotNullableNoDeleteObj target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual SaveNotNullableNoDeleteObj LocalSave(SaveNotNullableNoDeleteObj target)
+        public virtual SaveNotNullableNoDeleteObj LocalSave(SaveNotNullableNoDeleteObj target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -77,11 +77,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 

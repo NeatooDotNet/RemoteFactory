@@ -12,14 +12,14 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
 {
     public interface IAuthorizedModelFactory
     {
-        IAuthorizedModel? Create();
-        Task<IAuthorizedModel?> Fetch(int id);
-        Task<IAuthorizedModel?> Save(IAuthorizedModel target);
-        Task<Authorized<IAuthorizedModel>> TrySave(IAuthorizedModel target);
-        Authorized CanCreate();
-        Authorized CanFetch();
-        Authorized CanSave();
-        Authorized CanDelete();
+        IAuthorizedModel? Create(CancellationToken cancellationToken = default);
+        Task<IAuthorizedModel?> Fetch(int id, CancellationToken cancellationToken = default);
+        Task<IAuthorizedModel?> Save(IAuthorizedModel target, CancellationToken cancellationToken = default);
+        Task<Authorized<IAuthorizedModel>> TrySave(IAuthorizedModel target, CancellationToken cancellationToken = default);
+        Authorized CanCreate(CancellationToken cancellationToken = default);
+        Authorized CanFetch(CancellationToken cancellationToken = default);
+        Authorized CanSave(CancellationToken cancellationToken = default);
+        Authorized CanDelete(CancellationToken cancellationToken = default);
     }
 
     internal class AuthorizedModelFactory : FactorySaveBase<IAuthorizedModel>, IFactorySave<AuthorizedModel>, IAuthorizedModelFactory
@@ -27,8 +27,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<Authorized<IAuthorizedModel>> FetchDelegate(int id);
-        public delegate Task<Authorized<IAuthorizedModel>> Save2Delegate(IAuthorizedModel target);
+        public delegate Task<Authorized<IAuthorizedModel>> FetchDelegate(int id, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<IAuthorizedModel>> Save2Delegate(IAuthorizedModel target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
         public Save2Delegate Save2Property { get; }
@@ -48,12 +48,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             Save2Property = RemoteSave2;
         }
 
-        public virtual IAuthorizedModel? Create()
+        public virtual IAuthorizedModel? Create(CancellationToken cancellationToken = default)
         {
-            return (LocalCreate()).Result;
+            return (LocalCreate(cancellationToken)).Result;
         }
 
-        public Authorized<IAuthorizedModel> LocalCreate()
+        public Authorized<IAuthorizedModel> LocalCreate(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -72,17 +72,17 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized<IAuthorizedModel>(DoFactoryMethodCall(FactoryOperation.Create, () => new AuthorizedModel()));
         }
 
-        public virtual async Task<IAuthorizedModel?> Fetch(int id)
+        public virtual async Task<IAuthorizedModel?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await FetchProperty(id)).Result;
+            return (await FetchProperty(id, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<IAuthorizedModel>> RemoteFetch(int id)
+        public virtual async Task<Authorized<IAuthorizedModel>> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IAuthorizedModel>>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IAuthorizedModel>>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public async Task<Authorized<IAuthorizedModel>> LocalFetch(int id)
+        public async Task<Authorized<IAuthorizedModel>> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -102,7 +102,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized<IAuthorizedModel>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.Fetch(id)));
         }
 
-        public async Task<Authorized<IAuthorizedModel>> LocalSave(IAuthorizedModel target)
+        public async Task<Authorized<IAuthorizedModel>> LocalSave(IAuthorizedModel target, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -116,7 +116,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized<IAuthorizedModel>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Save()));
         }
 
-        public async Task<Authorized<IAuthorizedModel>> LocalSave1(IAuthorizedModel target)
+        public async Task<Authorized<IAuthorizedModel>> LocalSave1(IAuthorizedModel target, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -130,7 +130,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized<IAuthorizedModel>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.Save()));
         }
 
-        public async Task<Authorized<IAuthorizedModel>> LocalDelete(IAuthorizedModel target)
+        public async Task<Authorized<IAuthorizedModel>> LocalDelete(IAuthorizedModel target, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -150,9 +150,9 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized<IAuthorizedModel>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.Delete()));
         }
 
-        public virtual async Task<IAuthorizedModel?> Save(IAuthorizedModel target)
+        public virtual async Task<IAuthorizedModel?> Save(IAuthorizedModel target, CancellationToken cancellationToken = default)
         {
-            var authorized = (await Save2Property(target));
+            var authorized = (await Save2Property(target, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -161,22 +161,22 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return authorized.Result;
         }
 
-        public virtual async Task<Authorized<IAuthorizedModel>> TrySave(IAuthorizedModel target)
+        public virtual async Task<Authorized<IAuthorizedModel>> TrySave(IAuthorizedModel target, CancellationToken cancellationToken = default)
         {
-            return await Save2Property(target);
+            return await Save2Property(target, cancellationToken);
         }
 
-        public virtual async Task<Authorized<IAuthorizedModel>> RemoteSave2(IAuthorizedModel target)
+        public virtual async Task<Authorized<IAuthorizedModel>> RemoteSave2(IAuthorizedModel target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IAuthorizedModel>>(typeof(Save2Delegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IAuthorizedModel>>(typeof(Save2Delegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<AuthorizedModel>.Save(AuthorizedModel target)
+        async Task<IFactorySaveMeta?> IFactorySave<AuthorizedModel>.Save(AuthorizedModel target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<Authorized<IAuthorizedModel>> LocalSave2(IAuthorizedModel target)
+        public virtual async Task<Authorized<IAuthorizedModel>> LocalSave2(IAuthorizedModel target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -185,24 +185,24 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
                     return new Authorized<IAuthorizedModel>();
                 }
 
-                return await LocalDelete(target);
+                return await LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalSave(target);
+                return await LocalSave(target, cancellationToken);
             }
             else
             {
-                return await LocalSave1(target);
+                return await LocalSave1(target, cancellationToken);
             }
         }
 
-        public virtual Authorized CanCreate()
+        public virtual Authorized CanCreate(CancellationToken cancellationToken = default)
         {
-            return LocalCanCreate();
+            return LocalCanCreate(cancellationToken);
         }
 
-        public Authorized LocalCanCreate()
+        public Authorized LocalCanCreate(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -221,12 +221,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized(true);
         }
 
-        public virtual Authorized CanFetch()
+        public virtual Authorized CanFetch(CancellationToken cancellationToken = default)
         {
-            return LocalCanFetch();
+            return LocalCanFetch(cancellationToken);
         }
 
-        public Authorized LocalCanFetch()
+        public Authorized LocalCanFetch(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -245,12 +245,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized(true);
         }
 
-        public virtual Authorized CanSave()
+        public virtual Authorized CanSave(CancellationToken cancellationToken = default)
         {
-            return LocalCanSave();
+            return LocalCanSave(cancellationToken);
         }
 
-        public Authorized LocalCanSave()
+        public Authorized LocalCanSave(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -263,12 +263,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             return new Authorized(true);
         }
 
-        public virtual Authorized CanDelete()
+        public virtual Authorized CanDelete(CancellationToken cancellationToken = default)
         {
-            return LocalCanDelete();
+            return LocalCanDelete(cancellationToken);
         }
 
-        public Authorized LocalCanDelete()
+        public Authorized LocalCanDelete(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthorizedModelAuth iauthorizedmodelauth = ServiceProvider.GetRequiredService<IAuthorizedModelAuth>();
@@ -294,12 +294,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Authorization
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AuthorizedModelFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddScoped<Save2Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AuthorizedModelFactory>();
-                return (IAuthorizedModel target) => factory.LocalSave2(target);
+                return (IAuthorizedModel target, CancellationToken cancellationToken = default) => factory.LocalSave2(target, cancellationToken);
             });
             services.AddTransient<AuthorizedModel>();
             services.AddTransient<IAuthorizedModel, AuthorizedModel>();

@@ -510,6 +510,7 @@ public class WriteTests
 	{
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IWriteDataMapperFactory>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
 
 		foreach (var method in methods)
@@ -519,13 +520,15 @@ public class WriteTests
 
 			async Task<WriteDataMapper?> doSave(WriteDataMapper writeDataMapper)
 			{
-				if (method.GetParameters().Count() == 2)
+				// Exclude CancellationToken from meaningful parameter count
+				var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+				if (meaningfulParams.Count == 2)
 				{
-					result = method.Invoke(readFactory, [writeDataMapper, 1]);
+					result = method.Invoke(readFactory, [writeDataMapper, 1, default(CancellationToken)]);
 				}
 				else
 				{
-					result = method.Invoke(readFactory, [writeDataMapper]);
+					result = method.Invoke(readFactory, [writeDataMapper, default(CancellationToken)]);
 				}
 
 				if (result is Task<WriteDataMapper?> taskBool)

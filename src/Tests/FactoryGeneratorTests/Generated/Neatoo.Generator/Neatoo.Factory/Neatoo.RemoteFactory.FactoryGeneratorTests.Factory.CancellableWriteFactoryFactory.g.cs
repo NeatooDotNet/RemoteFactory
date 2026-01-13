@@ -13,11 +13,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICancellableWriteFactoryFactory
     {
-        CancellableWriteFactory Create();
-        Task<CancellableWriteFactory?> SaveAsync(CancellableWriteFactory target, CancellationToken cancellationToken);
+        CancellableWriteFactory Create(CancellationToken cancellationToken = default);
+        Task<CancellableWriteFactory?> SaveAsync(CancellableWriteFactory target, CancellationToken cancellationToken = default);
     }
 
-    internal class CancellableWriteFactoryFactory : FactoryBase<CancellableWriteFactory>, ICancellableWriteFactoryFactory
+    internal class CancellableWriteFactoryFactory : FactorySaveBase<CancellableWriteFactory>, IFactorySave<CancellableWriteFactory>, ICancellableWriteFactoryFactory
     {
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
@@ -34,40 +34,45 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CancellableWriteFactory Create()
+        public virtual CancellableWriteFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CancellableWriteFactory LocalCreate()
+        public CancellableWriteFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CancellableWriteFactory());
         }
 
-        public Task<CancellableWriteFactory> LocalInsertAsync(CancellableWriteFactory target, CancellationToken cancellationToken)
+        public Task<CancellableWriteFactory> LocalInsertAsync(CancellableWriteFactory target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CancellableWriteFactory)target ?? throw new Exception("CancellableWriteFactory must implement CancellableWriteFactory");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertAsync(cancellationToken));
         }
 
-        public Task<CancellableWriteFactory> LocalUpdateAsync(CancellableWriteFactory target, CancellationToken cancellationToken)
+        public Task<CancellableWriteFactory> LocalUpdateAsync(CancellableWriteFactory target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CancellableWriteFactory)target ?? throw new Exception("CancellableWriteFactory must implement CancellableWriteFactory");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateAsync(cancellationToken));
         }
 
-        public Task<CancellableWriteFactory> LocalDeleteAsync(CancellableWriteFactory target, CancellationToken cancellationToken)
+        public Task<CancellableWriteFactory> LocalDeleteAsync(CancellableWriteFactory target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CancellableWriteFactory)target ?? throw new Exception("CancellableWriteFactory must implement CancellableWriteFactory");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteAsync(cancellationToken));
         }
 
-        public virtual Task<CancellableWriteFactory?> SaveAsync(CancellableWriteFactory target, CancellationToken cancellationToken)
+        public virtual Task<CancellableWriteFactory?> SaveAsync(CancellableWriteFactory target, CancellationToken cancellationToken = default)
         {
             return LocalSaveAsync(target, cancellationToken);
         }
 
-        public virtual async Task<CancellableWriteFactory?> LocalSaveAsync(CancellableWriteFactory target, CancellationToken cancellationToken)
+        async Task<IFactorySaveMeta?> IFactorySave<CancellableWriteFactory>.Save(CancellableWriteFactory target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
+        }
+
+        public virtual async Task<CancellableWriteFactory?> LocalSaveAsync(CancellableWriteFactory target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -93,6 +98,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CancellableWriteFactoryFactory>();
             services.AddScoped<ICancellableWriteFactoryFactory, CancellableWriteFactoryFactory>();
             services.AddTransient<CancellableWriteFactory>();
+            services.AddScoped<IFactorySave<CancellableWriteFactory>, CancellableWriteFactoryFactory>();
             // Event registrations
             if (remoteLocal == NeatooFactory.Remote)
             {

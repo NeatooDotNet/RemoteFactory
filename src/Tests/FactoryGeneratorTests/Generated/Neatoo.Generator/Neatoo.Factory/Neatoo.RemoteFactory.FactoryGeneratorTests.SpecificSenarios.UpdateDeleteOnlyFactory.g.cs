@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IUpdateDeleteOnlyFactory
     {
-        UpdateDeleteOnly Fetch();
-        UpdateDeleteOnly? Save(UpdateDeleteOnly target);
+        UpdateDeleteOnly Fetch(CancellationToken cancellationToken = default);
+        UpdateDeleteOnly? Save(UpdateDeleteOnly target, CancellationToken cancellationToken = default);
     }
 
     internal class UpdateDeleteOnlyFactory : FactorySaveBase<UpdateDeleteOnly>, IFactorySave<UpdateDeleteOnly>, IUpdateDeleteOnlyFactory
@@ -34,39 +34,39 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual UpdateDeleteOnly Fetch()
+        public virtual UpdateDeleteOnly Fetch(CancellationToken cancellationToken = default)
         {
-            return LocalFetch();
+            return LocalFetch(cancellationToken);
         }
 
-        public UpdateDeleteOnly LocalFetch()
+        public UpdateDeleteOnly LocalFetch(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Fetch, () => new UpdateDeleteOnly());
         }
 
-        public UpdateDeleteOnly LocalUpdate(UpdateDeleteOnly target)
+        public UpdateDeleteOnly LocalUpdate(UpdateDeleteOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (UpdateDeleteOnly)target ?? throw new Exception("UpdateDeleteOnly must implement UpdateDeleteOnly");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update());
         }
 
-        public UpdateDeleteOnly LocalDelete(UpdateDeleteOnly target)
+        public UpdateDeleteOnly LocalDelete(UpdateDeleteOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (UpdateDeleteOnly)target ?? throw new Exception("UpdateDeleteOnly must implement UpdateDeleteOnly");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.Delete());
         }
 
-        public virtual UpdateDeleteOnly? Save(UpdateDeleteOnly target)
+        public virtual UpdateDeleteOnly? Save(UpdateDeleteOnly target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<UpdateDeleteOnly>.Save(UpdateDeleteOnly target)
+        async Task<IFactorySaveMeta?> IFactorySave<UpdateDeleteOnly>.Save(UpdateDeleteOnly target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual UpdateDeleteOnly? LocalSave(UpdateDeleteOnly target)
+        public virtual UpdateDeleteOnly? LocalSave(UpdateDeleteOnly target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -75,7 +75,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
                     return default(UpdateDeleteOnly);
                 }
 
-                return LocalDelete(target);
+                return LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
@@ -83,7 +83,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 

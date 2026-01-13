@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface ICreateConstructorExampleFactory
     {
-        CreateConstructorExample Create();
+        CreateConstructorExample Create(CancellationToken cancellationToken = default);
     }
 
     internal class CreateConstructorExampleFactory : FactoryBase<CreateConstructorExample>, ICreateConstructorExampleFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CreateConstructorExample Create()
+        public virtual CreateConstructorExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CreateConstructorExample LocalCreate()
+        public CreateConstructorExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CreateConstructorExample());
         }

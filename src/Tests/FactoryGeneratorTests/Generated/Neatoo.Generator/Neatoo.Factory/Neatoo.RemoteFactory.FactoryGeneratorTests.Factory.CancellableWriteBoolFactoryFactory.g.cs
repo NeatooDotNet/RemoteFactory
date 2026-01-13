@@ -13,11 +13,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICancellableWriteBoolFactoryFactory
     {
-        CancellableWriteBoolFactory Create();
-        Task<CancellableWriteBoolFactory?> SaveBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken);
+        CancellableWriteBoolFactory Create(CancellationToken cancellationToken = default);
+        Task<CancellableWriteBoolFactory?> SaveBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken = default);
     }
 
-    internal class CancellableWriteBoolFactoryFactory : FactoryBase<CancellableWriteBoolFactory>, ICancellableWriteBoolFactoryFactory
+    internal class CancellableWriteBoolFactoryFactory : FactorySaveBase<CancellableWriteBoolFactory>, IFactorySave<CancellableWriteBoolFactory>, ICancellableWriteBoolFactoryFactory
     {
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
@@ -34,34 +34,39 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CancellableWriteBoolFactory Create()
+        public virtual CancellableWriteBoolFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CancellableWriteBoolFactory LocalCreate()
+        public CancellableWriteBoolFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CancellableWriteBoolFactory());
         }
 
-        public Task<CancellableWriteBoolFactory?> LocalInsertBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken)
+        public Task<CancellableWriteBoolFactory?> LocalInsertBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CancellableWriteBoolFactory)target ?? throw new Exception("CancellableWriteBoolFactory must implement CancellableWriteBoolFactory");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolAsync(cancellationToken));
         }
 
-        public Task<CancellableWriteBoolFactory?> LocalUpdateBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken)
+        public Task<CancellableWriteBoolFactory?> LocalUpdateBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CancellableWriteBoolFactory)target ?? throw new Exception("CancellableWriteBoolFactory must implement CancellableWriteBoolFactory");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolAsync(cancellationToken));
         }
 
-        public virtual Task<CancellableWriteBoolFactory?> SaveBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken)
+        public virtual Task<CancellableWriteBoolFactory?> SaveBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken = default)
         {
             return LocalSaveBoolAsync(target, cancellationToken);
         }
 
-        public virtual async Task<CancellableWriteBoolFactory?> LocalSaveBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken)
+        async Task<IFactorySaveMeta?> IFactorySave<CancellableWriteBoolFactory>.Save(CancellableWriteBoolFactory target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await SaveBoolAsync(target, cancellationToken);
+        }
+
+        public virtual async Task<CancellableWriteBoolFactory?> LocalSaveBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -82,6 +87,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CancellableWriteBoolFactoryFactory>();
             services.AddScoped<ICancellableWriteBoolFactoryFactory, CancellableWriteBoolFactoryFactory>();
             services.AddTransient<CancellableWriteBoolFactory>();
+            services.AddScoped<IFactorySave<CancellableWriteBoolFactory>, CancellableWriteBoolFactoryFactory>();
             // Event registrations
             if (remoteLocal == NeatooFactory.Remote)
             {

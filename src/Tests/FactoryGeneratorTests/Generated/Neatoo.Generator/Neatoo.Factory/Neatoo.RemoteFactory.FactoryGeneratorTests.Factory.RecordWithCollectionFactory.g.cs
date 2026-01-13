@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRecordWithCollectionFactory
     {
-        RecordWithCollection Create(string Name, List<string> Items);
+        RecordWithCollection Create(string Name, List<string> Items, CancellationToken cancellationToken = default);
     }
 
     internal class RecordWithCollectionFactory : FactoryBase<RecordWithCollection>, IRecordWithCollectionFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual RecordWithCollection Create(string Name, List<string> Items)
+        public virtual RecordWithCollection Create(string Name, List<string> Items, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name, Items);
+            return LocalCreate(Name, Items, cancellationToken);
         }
 
-        public RecordWithCollection LocalCreate(string Name, List<string> Items)
+        public RecordWithCollection LocalCreate(string Name, List<string> Items, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new RecordWithCollection(Name, Items));
         }

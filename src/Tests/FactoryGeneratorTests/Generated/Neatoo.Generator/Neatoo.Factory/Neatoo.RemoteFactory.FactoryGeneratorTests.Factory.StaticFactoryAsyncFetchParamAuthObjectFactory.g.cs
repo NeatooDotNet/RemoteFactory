@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IStaticFactoryAsyncFetchParamAuthObjectFactory
     {
-        Task<StaticFactoryAsyncFetchParamAuthObject?> Fetch(int? a);
-        Authorized CanFetch(int? a);
+        Task<StaticFactoryAsyncFetchParamAuthObject?> Fetch(int? a, CancellationToken cancellationToken = default);
+        Authorized CanFetch(int? a, CancellationToken cancellationToken = default);
     }
 
     internal class StaticFactoryAsyncFetchParamAuthObjectFactory : FactoryBase<StaticFactoryAsyncFetchParamAuthObject>, IStaticFactoryAsyncFetchParamAuthObjectFactory
@@ -34,12 +34,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual async Task<StaticFactoryAsyncFetchParamAuthObject?> Fetch(int? a)
+        public virtual async Task<StaticFactoryAsyncFetchParamAuthObject?> Fetch(int? a, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetch(a)).Result;
+            return (await LocalFetch(a, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<StaticFactoryAsyncFetchParamAuthObject>> LocalFetch(int? a)
+        public async Task<Authorized<StaticFactoryAsyncFetchParamAuthObject>> LocalFetch(int? a, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AuthorizeStaticFactoryAsyncFetchParamAuthObject authorizestaticfactoryasyncfetchparamauthobject = ServiceProvider.GetRequiredService<AuthorizeStaticFactoryAsyncFetchParamAuthObject>();
@@ -53,12 +53,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<StaticFactoryAsyncFetchParamAuthObject>(await DoFactoryMethodCallAsync(FactoryOperation.Fetch, () => StaticFactoryAsyncFetchParamAuthObject.Fetch(a, service)));
         }
 
-        public virtual Authorized CanFetch(int? a)
+        public virtual Authorized CanFetch(int? a, CancellationToken cancellationToken = default)
         {
-            return LocalCanFetch(a);
+            return LocalCanFetch(a, cancellationToken);
         }
 
-        public Authorized LocalCanFetch(int? a)
+        public Authorized LocalCanFetch(int? a, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AuthorizeStaticFactoryAsyncFetchParamAuthObject authorizestaticfactoryasyncfetchparamauthobject = ServiceProvider.GetRequiredService<AuthorizeStaticFactoryAsyncFetchParamAuthObject>();

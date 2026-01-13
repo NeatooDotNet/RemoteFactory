@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface ICreateMethodExampleFactory
     {
-        CreateMethodExample Create();
-        CreateMethodExample Initialize(string value);
+        CreateMethodExample Create(CancellationToken cancellationToken = default);
+        CreateMethodExample Initialize(string value, CancellationToken cancellationToken = default);
     }
 
     internal class CreateMethodExampleFactory : FactoryBase<CreateMethodExample>, ICreateMethodExampleFactory
@@ -33,22 +33,22 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CreateMethodExample Create()
+        public virtual CreateMethodExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CreateMethodExample LocalCreate()
+        public CreateMethodExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CreateMethodExample());
         }
 
-        public virtual CreateMethodExample Initialize(string value)
+        public virtual CreateMethodExample Initialize(string value, CancellationToken cancellationToken = default)
         {
-            return LocalInitialize(value);
+            return LocalInitialize(value, cancellationToken);
         }
 
-        public CreateMethodExample LocalInitialize(string value)
+        public CreateMethodExample LocalInitialize(string value, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<CreateMethodExample>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Initialize(value));

@@ -11,7 +11,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.CreateExamples
 {
     public interface IPersonWithStaticCreateFactory
     {
-        Task<PersonWithStaticCreate> CreateWithDefaults();
+        Task<PersonWithStaticCreate> CreateWithDefaults(CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithStaticCreateFactory : FactoryBase<PersonWithStaticCreate>, IPersonWithStaticCreateFactory
@@ -31,12 +31,12 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.CreateExamples
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual Task<PersonWithStaticCreate> CreateWithDefaults()
+        public virtual Task<PersonWithStaticCreate> CreateWithDefaults(CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithDefaults();
+            return LocalCreateWithDefaults(cancellationToken);
         }
 
-        public Task<PersonWithStaticCreate> LocalCreateWithDefaults()
+        public Task<PersonWithStaticCreate> LocalCreateWithDefaults(CancellationToken cancellationToken = default)
         {
             var defaults = ServiceProvider.GetRequiredService<IDefaultsService>();
             return DoFactoryMethodCallAsync(FactoryOperation.Create, () => PersonWithStaticCreate.CreateWithDefaults(defaults));

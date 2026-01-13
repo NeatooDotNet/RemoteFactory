@@ -16,26 +16,26 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRemoteWriteObjectFactory
     {
-        Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveTaskBoolFalseDep(RemoteWriteObject target);
-        Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskBoolFalse(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, int? param);
-        Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, int? param);
+        Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskBoolFalse(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
     }
 
     internal class RemoteWriteObjectFactory : FactorySaveBase<RemoteWriteObject>, IFactorySave<RemoteWriteObject>, IRemoteWriteObjectFactory
@@ -43,26 +43,26 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<RemoteWriteObject?> SaveVoidDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveBoolDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveVoidDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveBoolTrueDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveBoolFalseDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolFalseDepDelegate(RemoteWriteObject target);
-        public delegate Task<RemoteWriteObject?> SaveVoid1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveBool1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTask1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskBool1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolFalseDelegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveVoidDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveBoolTrueDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveBoolFalseDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskDep1Delegate(RemoteWriteObject target, int? param);
-        public delegate Task<RemoteWriteObject?> SaveTaskBoolDep1Delegate(RemoteWriteObject target, int? param);
+        public delegate Task<RemoteWriteObject?> SaveVoidDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveBoolDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskBoolDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveVoidDepDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveBoolTrueDepDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveBoolFalseDepDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskDepDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskBoolDepDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskBoolFalseDepDelegate(RemoteWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveVoid1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveBool1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTask1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskBool1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskBoolFalseDelegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveVoidDep1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveBoolTrueDep1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveBoolFalseDep1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskDep1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteWriteObject?> SaveTaskBoolDep1Delegate(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveVoidDelegate SaveVoidProperty { get; }
         public SaveBoolDelegate SaveBoolProperty { get; }
@@ -136,415 +136,415 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             SaveTaskBoolDep1Property = RemoteSaveTaskBoolDep1;
         }
 
-        public Task<RemoteWriteObject> LocalInsertVoid(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalInsertVoid(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid()));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertBool(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalInsertBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool()));
         }
 
-        public Task<RemoteWriteObject> LocalInsertTask(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalInsertTask(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask());
         }
 
-        public Task<RemoteWriteObject?> LocalInsertTaskBool(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalInsertTaskBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool());
         }
 
-        public Task<RemoteWriteObject> LocalInsertVoid1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalInsertVoid1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid(param)));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertBool1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalInsertBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool(param)));
         }
 
-        public Task<RemoteWriteObject> LocalInsertTask1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalInsertTask1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask(param));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertTaskBool1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalInsertTaskBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool(param));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertTaskBoolFalse(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalInsertTaskBoolFalse(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalse(param));
         }
 
-        public Task<RemoteWriteObject> LocalInsertVoidDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalInsertVoidDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(service)));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertBoolTrueDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalInsertBoolTrueDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(service)));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertBoolFalseDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalInsertBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(service)));
         }
 
-        public Task<RemoteWriteObject> LocalInsertTaskDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalInsertTaskDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(service));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertTaskBoolDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalInsertTaskBoolDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(service));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertTaskBoolFalseDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalInsertTaskBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalseDep(service));
         }
 
-        public Task<RemoteWriteObject> LocalInsertVoidDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalInsertVoidDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(param, service)));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertBoolTrueDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalInsertBoolTrueDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(param, service)));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertBoolFalseDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalInsertBoolFalseDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(param, service)));
         }
 
-        public Task<RemoteWriteObject> LocalInsertTaskDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalInsertTaskDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(param, service));
         }
 
-        public Task<RemoteWriteObject?> LocalInsertTaskBoolDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalInsertTaskBoolDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(param, service));
         }
 
-        public Task<RemoteWriteObject> LocalUpdateVoid(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalUpdateVoid(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid()));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateBool(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalUpdateBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool()));
         }
 
-        public Task<RemoteWriteObject> LocalUpdateTask(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalUpdateTask(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask());
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateTaskBool(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalUpdateTaskBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool());
         }
 
-        public Task<RemoteWriteObject> LocalUpdateVoid1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalUpdateVoid1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid(param)));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateBool1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalUpdateBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool(param)));
         }
 
-        public Task<RemoteWriteObject> LocalUpdateTask1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalUpdateTask1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask(param));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateTaskBool1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalUpdateTaskBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool(param));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateTaskBoolFalse(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalUpdateTaskBoolFalse(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalse(param));
         }
 
-        public Task<RemoteWriteObject> LocalUpdateVoidDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalUpdateVoidDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(service)));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateBoolTrueDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalUpdateBoolTrueDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(service)));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateBoolFalseDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalUpdateBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(service)));
         }
 
-        public Task<RemoteWriteObject> LocalUpdateTaskDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalUpdateTaskDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(service));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateTaskBoolDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalUpdateTaskBoolDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(service));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateTaskBoolFalseDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalUpdateTaskBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalseDep(service));
         }
 
-        public Task<RemoteWriteObject> LocalUpdateVoidDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalUpdateVoidDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(param, service)));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateBoolTrueDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalUpdateBoolTrueDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(param, service)));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateBoolFalseDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalUpdateBoolFalseDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(param, service)));
         }
 
-        public Task<RemoteWriteObject> LocalUpdateTaskDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalUpdateTaskDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(param, service));
         }
 
-        public Task<RemoteWriteObject?> LocalUpdateTaskBoolDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalUpdateTaskBoolDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(param, service));
         }
 
-        public Task<RemoteWriteObject> LocalDeleteVoid(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalDeleteVoid(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid()));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteBool(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalDeleteBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool()));
         }
 
-        public Task<RemoteWriteObject> LocalDeleteTask(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalDeleteTask(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask());
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteTaskBool(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalDeleteTaskBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool());
         }
 
-        public Task<RemoteWriteObject> LocalDeleteVoid1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalDeleteVoid1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid(param)));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteBool1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalDeleteBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool(param)));
         }
 
-        public Task<RemoteWriteObject> LocalDeleteTask1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalDeleteTask1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask(param));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteTaskBool1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalDeleteTaskBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool(param));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteTaskBoolFalse(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalDeleteTaskBoolFalse(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalse(param));
         }
 
-        public Task<RemoteWriteObject> LocalDeleteVoidDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalDeleteVoidDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(service)));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteBoolTrueDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalDeleteBoolTrueDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(service)));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteBoolFalseDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalDeleteBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(service)));
         }
 
-        public Task<RemoteWriteObject> LocalDeleteTaskDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject> LocalDeleteTaskDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(service));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteTaskBoolDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalDeleteTaskBoolDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(service));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteTaskBoolFalseDep(RemoteWriteObject target)
+        public Task<RemoteWriteObject?> LocalDeleteTaskBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalseDep(service));
         }
 
-        public Task<RemoteWriteObject> LocalDeleteVoidDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalDeleteVoidDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(param, service)));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteBoolTrueDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalDeleteBoolTrueDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(param, service)));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteBoolFalseDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalDeleteBoolFalseDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(param, service)));
         }
 
-        public Task<RemoteWriteObject> LocalDeleteTaskDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject> LocalDeleteTaskDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(param, service));
         }
 
-        public Task<RemoteWriteObject?> LocalDeleteTaskBoolDep1(RemoteWriteObject target, int? param)
+        public Task<RemoteWriteObject?> LocalDeleteTaskBoolDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteWriteObject)target ?? throw new Exception("RemoteWriteObject must implement RemoteWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(param, service));
         }
 
-        public virtual Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveVoidProperty(target);
+            return SaveVoidProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoid(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveVoid(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<RemoteWriteObject>.Save(RemoteWriteObject target)
+        async Task<IFactorySaveMeta?> IFactorySave<RemoteWriteObject>.Save(RemoteWriteObject target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await SaveVoid(target);
+            return (IFactorySaveMeta? )await SaveVoid(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveVoid(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveVoid(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -553,29 +553,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteVoid(target);
+                return await LocalDeleteVoid(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertVoid(target);
+                return await LocalInsertVoid(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateVoid(target);
+                return await LocalUpdateVoid(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveBoolProperty(target);
+            return SaveBoolProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBool(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveBool(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -584,29 +584,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteBool(target);
+                return await LocalDeleteBool(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertBool(target);
+                return await LocalInsertBool(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBool(target);
+                return await LocalUpdateBool(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveTaskProperty(target);
+            return SaveTaskProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTask(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTask(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTask(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTask(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -615,29 +615,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTask(target);
+                return await LocalDeleteTask(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask(target);
+                return await LocalInsertTask(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask(target);
+                return await LocalUpdateTask(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveTaskBoolProperty(target);
+            return SaveTaskBoolProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBool(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBool(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBool(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -646,29 +646,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskBool(target);
+                return await LocalDeleteTaskBool(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBool(target);
+                return await LocalInsertTaskBool(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBool(target);
+                return await LocalUpdateTaskBool(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveVoidDepProperty(target);
+            return SaveVoidDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoidDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveVoidDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveVoidDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveVoidDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -677,29 +677,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteVoidDep(target);
+                return await LocalDeleteVoidDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertVoidDep(target);
+                return await LocalInsertVoidDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateVoidDep(target);
+                return await LocalUpdateVoidDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveBoolTrueDepProperty(target);
+            return SaveBoolTrueDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolTrueDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolTrueDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolTrueDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolTrueDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveBoolTrueDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveBoolTrueDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -708,29 +708,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteBoolTrueDep(target);
+                return await LocalDeleteBoolTrueDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertBoolTrueDep(target);
+                return await LocalInsertBoolTrueDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolTrueDep(target);
+                return await LocalUpdateBoolTrueDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveBoolFalseDepProperty(target);
+            return SaveBoolFalseDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolFalseDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolFalseDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolFalseDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveBoolFalseDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -739,29 +739,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteBoolFalseDep(target);
+                return await LocalDeleteBoolFalseDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertBoolFalseDep(target);
+                return await LocalInsertBoolFalseDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolFalseDep(target);
+                return await LocalUpdateBoolFalseDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveTaskDepProperty(target);
+            return SaveTaskDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -770,29 +770,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskDep(target);
+                return await LocalDeleteTaskDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskDep(target);
+                return await LocalInsertTaskDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskDep(target);
+                return await LocalUpdateTaskDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveTaskBoolDepProperty(target);
+            return SaveTaskBoolDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -801,29 +801,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskBoolDep(target);
+                return await LocalDeleteTaskBoolDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolDep(target);
+                return await LocalInsertTaskBoolDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolDep(target);
+                return await LocalUpdateTaskBoolDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolFalseDep(RemoteWriteObject target)
+        public virtual Task<RemoteWriteObject?> SaveTaskBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveTaskBoolFalseDepProperty(target);
+            return SaveTaskBoolFalseDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolFalseDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolFalseDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolFalseDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolFalseDep(RemoteWriteObject target)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolFalseDep(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -832,29 +832,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskBoolFalseDep(target);
+                return await LocalDeleteTaskBoolFalseDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolFalseDep(target);
+                return await LocalInsertTaskBoolFalseDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolFalseDep(target);
+                return await LocalUpdateTaskBoolFalseDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveVoid(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveVoid1Property(target, param);
+            return SaveVoid1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoid1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveVoid1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoid1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoid1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveVoid1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveVoid1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -863,29 +863,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteVoid1(target, param);
+                return await LocalDeleteVoid1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertVoid1(target, param);
+                return await LocalInsertVoid1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateVoid1(target, param);
+                return await LocalUpdateVoid1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveBool1Property(target, param);
+            return SaveBool1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBool1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBool1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBool1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveBool1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -894,29 +894,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteBool1(target, param);
+                return await LocalDeleteBool1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertBool1(target, param);
+                return await LocalInsertBool1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBool1(target, param);
+                return await LocalUpdateBool1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveTask(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveTask1Property(target, param);
+            return SaveTask1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTask1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTask1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTask1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTask1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTask1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTask1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -925,29 +925,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTask1(target, param);
+                return await LocalDeleteTask1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask1(target, param);
+                return await LocalInsertTask1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask1(target, param);
+                return await LocalUpdateTask1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveTaskBool(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveTaskBool1Property(target, param);
+            return SaveTaskBool1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBool1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBool1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBool1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBool1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBool1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -956,29 +956,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskBool1(target, param);
+                return await LocalDeleteTaskBool1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBool1(target, param);
+                return await LocalInsertTaskBool1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBool1(target, param);
+                return await LocalUpdateTaskBool1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolFalse(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveTaskBoolFalse(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveTaskBoolFalseProperty(target, param);
+            return SaveTaskBoolFalseProperty(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolFalse(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolFalse(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolFalseDelegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolFalseDelegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolFalse(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolFalse(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -987,29 +987,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskBoolFalse(target, param);
+                return await LocalDeleteTaskBoolFalse(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolFalse(target, param);
+                return await LocalInsertTaskBoolFalse(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolFalse(target, param);
+                return await LocalUpdateTaskBoolFalse(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveVoidDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveVoidDep1Property(target, param);
+            return SaveVoidDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveVoidDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveVoidDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveVoidDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveVoidDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -1018,29 +1018,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteVoidDep1(target, param);
+                return await LocalDeleteVoidDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertVoidDep1(target, param);
+                return await LocalInsertVoidDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateVoidDep1(target, param);
+                return await LocalUpdateVoidDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveBoolTrueDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveBoolTrueDep1Property(target, param);
+            return SaveBoolTrueDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolTrueDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolTrueDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolTrueDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolTrueDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveBoolTrueDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveBoolTrueDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -1049,29 +1049,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteBoolTrueDep1(target, param);
+                return await LocalDeleteBoolTrueDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertBoolTrueDep1(target, param);
+                return await LocalInsertBoolTrueDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolTrueDep1(target, param);
+                return await LocalUpdateBoolTrueDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveBoolFalseDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveBoolFalseDep1Property(target, param);
+            return SaveBoolFalseDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolFalseDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveBoolFalseDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolFalseDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveBoolFalseDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveBoolFalseDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveBoolFalseDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -1080,29 +1080,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteBoolFalseDep1(target, param);
+                return await LocalDeleteBoolFalseDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertBoolFalseDep1(target, param);
+                return await LocalInsertBoolFalseDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolFalseDep1(target, param);
+                return await LocalUpdateBoolFalseDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveTaskDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveTaskDep1Property(target, param);
+            return SaveTaskDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -1111,29 +1111,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskDep1(target, param);
+                return await LocalDeleteTaskDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskDep1(target, param);
+                return await LocalInsertTaskDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskDep1(target, param);
+                return await LocalUpdateTaskDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, int? param)
+        public virtual Task<RemoteWriteObject?> SaveTaskBoolDep(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveTaskBoolDep1Property(target, param);
+            return SaveTaskBoolDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> RemoteSaveTaskBoolDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveTaskBoolDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolDep1(RemoteWriteObject target, int? param)
+        public virtual async Task<RemoteWriteObject?> LocalSaveTaskBoolDep1(RemoteWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -1142,15 +1142,15 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(RemoteWriteObject);
                 }
 
-                return await LocalDeleteTaskBoolDep1(target, param);
+                return await LocalDeleteTaskBoolDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolDep1(target, param);
+                return await LocalInsertTaskBoolDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolDep1(target, param);
+                return await LocalUpdateTaskBoolDep1(target, param, cancellationToken);
             }
         }
 
@@ -1161,102 +1161,102 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<SaveVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveVoid(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveVoid(target, cancellationToken);
             });
             services.AddScoped<SaveBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveBool(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveBool(target, cancellationToken);
             });
             services.AddScoped<SaveTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveTask(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveTask(target, cancellationToken);
             });
             services.AddScoped<SaveTaskBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveTaskBool(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveTaskBool(target, cancellationToken);
             });
             services.AddScoped<SaveVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveVoidDep(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveVoidDep(target, cancellationToken);
             });
             services.AddScoped<SaveBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveBoolTrueDep(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveBoolTrueDep(target, cancellationToken);
             });
             services.AddScoped<SaveBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveBoolFalseDep(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveBoolFalseDep(target, cancellationToken);
             });
             services.AddScoped<SaveTaskDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveTaskDep(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveTaskDep(target, cancellationToken);
             });
             services.AddScoped<SaveTaskBoolDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveTaskBoolDep(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveTaskBoolDep(target, cancellationToken);
             });
             services.AddScoped<SaveTaskBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target) => factory.LocalSaveTaskBoolFalseDep(target);
+                return (RemoteWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveTaskBoolFalseDep(target, cancellationToken);
             });
             services.AddScoped<SaveVoid1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveVoid1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveVoid1(target, param, cancellationToken);
             });
             services.AddScoped<SaveBool1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveBool1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveBool1(target, param, cancellationToken);
             });
             services.AddScoped<SaveTask1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveTask1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTask1(target, param, cancellationToken);
             });
             services.AddScoped<SaveTaskBool1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveTaskBool1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTaskBool1(target, param, cancellationToken);
             });
             services.AddScoped<SaveTaskBoolFalseDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveTaskBoolFalse(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTaskBoolFalse(target, param, cancellationToken);
             });
             services.AddScoped<SaveVoidDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveVoidDep1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveVoidDep1(target, param, cancellationToken);
             });
             services.AddScoped<SaveBoolTrueDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveBoolTrueDep1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveBoolTrueDep1(target, param, cancellationToken);
             });
             services.AddScoped<SaveBoolFalseDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveBoolFalseDep1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveBoolFalseDep1(target, param, cancellationToken);
             });
             services.AddScoped<SaveTaskDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveTaskDep1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTaskDep1(target, param, cancellationToken);
             });
             services.AddScoped<SaveTaskBoolDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteObjectFactory>();
-                return (RemoteWriteObject target, int? param) => factory.LocalSaveTaskBoolDep1(target, param);
+                return (RemoteWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTaskBoolDep1(target, param, cancellationToken);
             });
             services.AddTransient<RemoteWriteObject>();
             services.AddScoped<IFactorySave<RemoteWriteObject>, RemoteWriteObjectFactory>();

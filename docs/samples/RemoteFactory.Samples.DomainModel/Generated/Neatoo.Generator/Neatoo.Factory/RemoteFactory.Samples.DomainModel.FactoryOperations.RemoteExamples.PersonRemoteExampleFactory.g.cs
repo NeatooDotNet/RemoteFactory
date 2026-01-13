@@ -11,8 +11,8 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
 {
     public interface IPersonRemoteExampleFactory
     {
-        PersonRemoteExample Create();
-        Task<PersonRemoteExample?> Fetch(int id);
+        PersonRemoteExample Create(CancellationToken cancellationToken = default);
+        Task<PersonRemoteExample?> Fetch(int id, CancellationToken cancellationToken = default);
     }
 
     internal class PersonRemoteExampleFactory : FactoryBase<PersonRemoteExample>, IPersonRemoteExampleFactory
@@ -20,7 +20,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonRemoteExample?> FetchDelegate(int id);
+        public delegate Task<PersonRemoteExample?> FetchDelegate(int id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -37,27 +37,27 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
             FetchProperty = RemoteFetch;
         }
 
-        public virtual PersonRemoteExample Create()
+        public virtual PersonRemoteExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public PersonRemoteExample LocalCreate()
+        public PersonRemoteExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new PersonRemoteExample());
         }
 
-        public virtual Task<PersonRemoteExample?> Fetch(int id)
+        public virtual Task<PersonRemoteExample?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<PersonRemoteExample?> RemoteFetch(int id)
+        public virtual async Task<PersonRemoteExample?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonRemoteExample?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonRemoteExample?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<PersonRemoteExample?> LocalFetch(int id)
+        public Task<PersonRemoteExample?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonRemoteExample>();
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
@@ -71,7 +71,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonRemoteExampleFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddTransient<PersonRemoteExample>();
             // Event registrations

@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IAsyncInsertUpdateOnlyFactory
     {
-        AsyncInsertUpdateOnly Create();
-        Task<AsyncInsertUpdateOnly> SaveAsync(AsyncInsertUpdateOnly target);
+        AsyncInsertUpdateOnly Create(CancellationToken cancellationToken = default);
+        Task<AsyncInsertUpdateOnly> SaveAsync(AsyncInsertUpdateOnly target, CancellationToken cancellationToken = default);
     }
 
     internal class AsyncInsertUpdateOnlyFactory : FactorySaveBase<AsyncInsertUpdateOnly>, IFactorySave<AsyncInsertUpdateOnly>, IAsyncInsertUpdateOnlyFactory
@@ -34,39 +34,39 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual AsyncInsertUpdateOnly Create()
+        public virtual AsyncInsertUpdateOnly Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public AsyncInsertUpdateOnly LocalCreate()
+        public AsyncInsertUpdateOnly LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new AsyncInsertUpdateOnly());
         }
 
-        public Task<AsyncInsertUpdateOnly> LocalInsertAsync(AsyncInsertUpdateOnly target)
+        public Task<AsyncInsertUpdateOnly> LocalInsertAsync(AsyncInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncInsertUpdateOnly)target ?? throw new Exception("AsyncInsertUpdateOnly must implement AsyncInsertUpdateOnly");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertAsync());
         }
 
-        public Task<AsyncInsertUpdateOnly> LocalUpdateAsync(AsyncInsertUpdateOnly target)
+        public Task<AsyncInsertUpdateOnly> LocalUpdateAsync(AsyncInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncInsertUpdateOnly)target ?? throw new Exception("AsyncInsertUpdateOnly must implement AsyncInsertUpdateOnly");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateAsync());
         }
 
-        public virtual Task<AsyncInsertUpdateOnly> SaveAsync(AsyncInsertUpdateOnly target)
+        public virtual Task<AsyncInsertUpdateOnly> SaveAsync(AsyncInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveAsync(target);
+            return LocalSaveAsync(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<AsyncInsertUpdateOnly>.Save(AsyncInsertUpdateOnly target)
+        async Task<IFactorySaveMeta?> IFactorySave<AsyncInsertUpdateOnly>.Save(AsyncInsertUpdateOnly target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await SaveAsync(target);
+            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
         }
 
-        public virtual async Task<AsyncInsertUpdateOnly> LocalSaveAsync(AsyncInsertUpdateOnly target)
+        public virtual async Task<AsyncInsertUpdateOnly> LocalSaveAsync(AsyncInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -74,11 +74,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return await LocalInsertAsync(target);
+                return await LocalInsertAsync(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateAsync(target);
+                return await LocalUpdateAsync(target, cancellationToken);
             }
         }
 

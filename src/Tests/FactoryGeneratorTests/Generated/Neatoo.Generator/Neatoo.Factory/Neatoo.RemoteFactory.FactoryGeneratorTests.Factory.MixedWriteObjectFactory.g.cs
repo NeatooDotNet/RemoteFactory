@@ -14,26 +14,26 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IMixedWriteObjectFactory
     {
-        MixedWriteObject? SaveVoid(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveBool(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveTask(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target);
-        MixedWriteObject? SaveBoolFalseDep(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target);
-        Task<MixedWriteObject?> SaveTaskBoolFalseDep(MixedWriteObject target);
-        MixedWriteObject? SaveVoid(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveTask(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveTaskBoolFalse(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param);
-        Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param);
+        MixedWriteObject? SaveVoid(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveBool(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTask(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, CancellationToken cancellationToken = default);
+        MixedWriteObject? SaveBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default);
+        MixedWriteObject? SaveVoid(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTask(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskBoolFalse(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
     }
 
     internal class MixedWriteObjectFactory : FactorySaveBase<MixedWriteObject>, IFactorySave<MixedWriteObject>, IMixedWriteObjectFactory
@@ -41,13 +41,13 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<MixedWriteObject?> SaveVoidDepDelegate(MixedWriteObject target);
-        public delegate Task<MixedWriteObject?> SaveBoolTrueDepDelegate(MixedWriteObject target);
-        public delegate Task<MixedWriteObject?> SaveBool1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveBoolTrueDep1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveBoolFalseDep1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveTaskDep1Delegate(MixedWriteObject target, int? param);
-        public delegate Task<MixedWriteObject?> SaveTaskBoolDep1Delegate(MixedWriteObject target, int? param);
+        public delegate Task<MixedWriteObject?> SaveVoidDepDelegate(MixedWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<MixedWriteObject?> SaveBoolTrueDepDelegate(MixedWriteObject target, CancellationToken cancellationToken = default);
+        public delegate Task<MixedWriteObject?> SaveBool1Delegate(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<MixedWriteObject?> SaveBoolTrueDep1Delegate(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<MixedWriteObject?> SaveBoolFalseDep1Delegate(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<MixedWriteObject?> SaveTaskDep1Delegate(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<MixedWriteObject?> SaveTaskBoolDep1Delegate(MixedWriteObject target, int? param, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveVoidDepDelegate SaveVoidDepProperty { get; }
         public SaveBoolTrueDepDelegate SaveBoolTrueDepProperty { get; }
@@ -82,410 +82,410 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             SaveTaskBoolDep1Property = RemoteSaveTaskBoolDep1;
         }
 
-        public MixedWriteObject LocalInsertVoid(MixedWriteObject target)
+        public MixedWriteObject LocalInsertVoid(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid());
         }
 
-        public MixedWriteObject? LocalInsertBool(MixedWriteObject target)
+        public MixedWriteObject? LocalInsertBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool());
         }
 
-        public Task<MixedWriteObject> LocalInsertTask(MixedWriteObject target)
+        public Task<MixedWriteObject> LocalInsertTask(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask());
         }
 
-        public Task<MixedWriteObject?> LocalInsertTaskBool(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalInsertTaskBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool());
         }
 
-        public MixedWriteObject LocalInsertVoid1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalInsertVoid1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid(param));
         }
 
-        public MixedWriteObject? LocalInsertBool1(MixedWriteObject target, int? param)
+        public MixedWriteObject? LocalInsertBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool(param));
         }
 
-        public Task<MixedWriteObject> LocalInsertTask1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject> LocalInsertTask1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask(param));
         }
 
-        public Task<MixedWriteObject?> LocalInsertTaskBool1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalInsertTaskBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool(param));
         }
 
-        public Task<MixedWriteObject?> LocalInsertTaskBoolFalse(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalInsertTaskBoolFalse(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalse(param));
         }
 
-        public MixedWriteObject LocalInsertVoidDep(MixedWriteObject target)
+        public MixedWriteObject LocalInsertVoidDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(service));
         }
 
-        public MixedWriteObject? LocalInsertBoolTrueDep(MixedWriteObject target)
+        public MixedWriteObject? LocalInsertBoolTrueDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(service));
         }
 
-        public MixedWriteObject? LocalInsertBoolFalseDep(MixedWriteObject target)
+        public MixedWriteObject? LocalInsertBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(service));
         }
 
-        public Task<MixedWriteObject> LocalInsertTaskDep(MixedWriteObject target)
+        public Task<MixedWriteObject> LocalInsertTaskDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(service));
         }
 
-        public Task<MixedWriteObject?> LocalInsertTaskBoolDep(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalInsertTaskBoolDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(service));
         }
 
-        public Task<MixedWriteObject?> LocalInsertTaskBoolFalseDep(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalInsertTaskBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalseDep(service));
         }
 
-        public MixedWriteObject LocalInsertVoidDep1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalInsertVoidDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(param, service));
         }
 
-        public MixedWriteObject? LocalInsertBoolTrueDep1(MixedWriteObject target, int? param)
+        public MixedWriteObject? LocalInsertBoolTrueDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(param, service));
         }
 
-        public MixedWriteObject? LocalInsertBoolFalseDep1(MixedWriteObject target, int? param)
+        public MixedWriteObject? LocalInsertBoolFalseDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(param, service));
         }
 
-        public Task<MixedWriteObject> LocalInsertTaskDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject> LocalInsertTaskDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(param, service));
         }
 
-        public Task<MixedWriteObject?> LocalInsertTaskBoolDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalInsertTaskBoolDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(param, service));
         }
 
-        public MixedWriteObject LocalUpdateVoid(MixedWriteObject target)
+        public MixedWriteObject LocalUpdateVoid(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid());
         }
 
-        public Task<MixedWriteObject?> LocalUpdateBool(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalUpdateBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool());
         }
 
-        public Task<MixedWriteObject> LocalUpdateTask(MixedWriteObject target)
+        public Task<MixedWriteObject> LocalUpdateTask(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask());
         }
 
-        public Task<MixedWriteObject?> LocalUpdateTaskBool(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalUpdateTaskBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool());
         }
 
-        public MixedWriteObject LocalUpdateVoid1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalUpdateVoid1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid(param));
         }
 
-        public MixedWriteObject LocalUpdateBool1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalUpdateBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool(param));
         }
 
-        public MixedWriteObject LocalUpdateTask1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalUpdateTask1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask(param));
         }
 
-        public MixedWriteObject LocalUpdateTaskBool1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalUpdateTaskBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool(param));
         }
 
-        public MixedWriteObject LocalUpdateTaskBoolFalse(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalUpdateTaskBoolFalse(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalse(param));
         }
 
-        public MixedWriteObject LocalUpdateVoidDep(MixedWriteObject target)
+        public MixedWriteObject LocalUpdateVoidDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(service));
         }
 
-        public Task<MixedWriteObject?> LocalUpdateBoolTrueDep(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalUpdateBoolTrueDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(service)));
         }
 
-        public MixedWriteObject? LocalUpdateBoolFalseDep(MixedWriteObject target)
+        public MixedWriteObject? LocalUpdateBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(service));
         }
 
-        public Task<MixedWriteObject> LocalUpdateTaskDep(MixedWriteObject target)
+        public Task<MixedWriteObject> LocalUpdateTaskDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(service));
         }
 
-        public MixedWriteObject LocalUpdateTaskBoolDep(MixedWriteObject target)
+        public MixedWriteObject LocalUpdateTaskBoolDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(service));
         }
 
-        public Task<MixedWriteObject?> LocalUpdateTaskBoolFalseDep(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalUpdateTaskBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalseDep(service));
         }
 
-        public MixedWriteObject LocalUpdateVoidDep1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalUpdateVoidDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(param, service));
         }
 
-        public Task<MixedWriteObject?> LocalUpdateBoolTrueDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalUpdateBoolTrueDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(param, service)));
         }
 
-        public Task<MixedWriteObject?> LocalUpdateBoolFalseDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalUpdateBoolFalseDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(param, service));
         }
 
-        public Task<MixedWriteObject> LocalUpdateTaskDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject> LocalUpdateTaskDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(param, service));
         }
 
-        public Task<MixedWriteObject?> LocalUpdateTaskBoolDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalUpdateTaskBoolDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(param, service));
         }
 
-        public MixedWriteObject LocalDeleteVoid(MixedWriteObject target)
+        public MixedWriteObject LocalDeleteVoid(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid());
         }
 
-        public MixedWriteObject? LocalDeleteBool(MixedWriteObject target)
+        public MixedWriteObject? LocalDeleteBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool());
         }
 
-        public Task<MixedWriteObject> LocalDeleteTask(MixedWriteObject target)
+        public Task<MixedWriteObject> LocalDeleteTask(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask());
         }
 
-        public Task<MixedWriteObject?> LocalDeleteTaskBool(MixedWriteObject target)
+        public Task<MixedWriteObject?> LocalDeleteTaskBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool());
         }
 
-        public MixedWriteObject LocalDeleteVoid1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalDeleteVoid1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid(param));
         }
 
-        public Task<MixedWriteObject?> LocalDeleteBool1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalDeleteBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool(param)));
         }
 
-        public MixedWriteObject LocalDeleteTask1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalDeleteTask1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask(param));
         }
 
-        public Task<MixedWriteObject> LocalDeleteTaskBool1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject> LocalDeleteTaskBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool(param));
         }
 
-        public Task<MixedWriteObject?> LocalDeleteTaskBoolFalse(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalDeleteTaskBoolFalse(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalse(param));
         }
 
-        public Task<MixedWriteObject> LocalDeleteVoidDep(MixedWriteObject target)
+        public Task<MixedWriteObject> LocalDeleteVoidDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(service)));
         }
 
-        public MixedWriteObject? LocalDeleteBoolTrueDep(MixedWriteObject target)
+        public MixedWriteObject? LocalDeleteBoolTrueDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(service));
         }
 
-        public MixedWriteObject? LocalDeleteBoolFalseDep(MixedWriteObject target)
+        public MixedWriteObject? LocalDeleteBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(service));
         }
 
-        public Task<MixedWriteObject> LocalDeleteTaskDep(MixedWriteObject target)
+        public Task<MixedWriteObject> LocalDeleteTaskDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(service));
         }
 
-        public MixedWriteObject? LocalDeleteTaskBoolDep(MixedWriteObject target)
+        public MixedWriteObject? LocalDeleteTaskBoolDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(service));
         }
 
-        public MixedWriteObject LocalDeleteTaskBoolFalseDep(MixedWriteObject target)
+        public MixedWriteObject LocalDeleteTaskBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalseDep(service));
         }
 
-        public Task<MixedWriteObject?> LocalDeleteVoidDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalDeleteVoidDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(param, service));
         }
 
-        public MixedWriteObject LocalDeleteBoolTrueDep1(MixedWriteObject target, int? param)
+        public MixedWriteObject LocalDeleteBoolTrueDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(param, service));
         }
 
-        public Task<MixedWriteObject?> LocalDeleteBoolFalseDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject?> LocalDeleteBoolFalseDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(param, service)));
         }
 
-        public Task<MixedWriteObject> LocalDeleteTaskDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject> LocalDeleteTaskDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(param, service));
         }
 
-        public Task<MixedWriteObject> LocalDeleteTaskBoolDep1(MixedWriteObject target, int? param)
+        public Task<MixedWriteObject> LocalDeleteTaskBoolDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (MixedWriteObject)target ?? throw new Exception("MixedWriteObject must implement MixedWriteObject");
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(param, service)));
         }
 
-        public virtual MixedWriteObject? SaveVoid(MixedWriteObject target)
+        public virtual MixedWriteObject? SaveVoid(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoid(target);
+            return LocalSaveVoid(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<MixedWriteObject>.Save(MixedWriteObject target)
+        async Task<IFactorySaveMeta?> IFactorySave<MixedWriteObject>.Save(MixedWriteObject target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target));
+            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target, cancellationToken));
         }
 
-        public virtual MixedWriteObject? LocalSaveVoid(MixedWriteObject target)
+        public virtual MixedWriteObject? LocalSaveVoid(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -494,24 +494,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteVoid(target);
+                return LocalDeleteVoid(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoid(target);
+                return LocalInsertVoid(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoid(target);
+                return LocalUpdateVoid(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBool(target);
+            return LocalSaveBool(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveBool(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -520,24 +520,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteBool(target);
+                return LocalDeleteBool(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBool(target);
+                return LocalInsertBool(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBool(target);
+                return await LocalUpdateBool(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTask(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveTask(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTask(target);
+            return LocalSaveTask(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTask(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveTask(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -546,24 +546,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteTask(target);
+                return await LocalDeleteTask(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask(target);
+                return await LocalInsertTask(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask(target);
+                return await LocalUpdateTask(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBool(target);
+            return LocalSaveTaskBool(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskBool(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBool(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -572,29 +572,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteTaskBool(target);
+                return await LocalDeleteTaskBool(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBool(target);
+                return await LocalInsertTaskBool(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBool(target);
+                return await LocalUpdateTaskBool(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveVoidDepProperty(target);
+            return SaveVoidDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> RemoteSaveVoidDep(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> RemoteSaveVoidDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveVoidDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveVoidDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveVoidDep(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveVoidDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -603,29 +603,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteVoidDep(target);
+                return await LocalDeleteVoidDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoidDep(target);
+                return LocalInsertVoidDep(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoidDep(target);
+                return LocalUpdateVoidDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return SaveBoolTrueDepProperty(target);
+            return SaveBoolTrueDepProperty(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolTrueDepDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolTrueDepDelegate), [target], cancellationToken))!;
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -634,24 +634,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteBoolTrueDep(target);
+                return LocalDeleteBoolTrueDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolTrueDep(target);
+                return LocalInsertBoolTrueDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolTrueDep(target);
+                return await LocalUpdateBoolTrueDep(target, cancellationToken);
             }
         }
 
-        public virtual MixedWriteObject? SaveBoolFalseDep(MixedWriteObject target)
+        public virtual MixedWriteObject? SaveBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBoolFalseDep(target);
+            return LocalSaveBoolFalseDep(target, cancellationToken);
         }
 
-        public virtual MixedWriteObject? LocalSaveBoolFalseDep(MixedWriteObject target)
+        public virtual MixedWriteObject? LocalSaveBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -660,24 +660,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteBoolFalseDep(target);
+                return LocalDeleteBoolFalseDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolFalseDep(target);
+                return LocalInsertBoolFalseDep(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateBoolFalseDep(target);
+                return LocalUpdateBoolFalseDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskDep(target);
+            return LocalSaveTaskDep(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskDep(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -686,24 +686,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteTaskDep(target);
+                return await LocalDeleteTaskDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskDep(target);
+                return await LocalInsertTaskDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskDep(target);
+                return await LocalUpdateTaskDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBoolDep(target);
+            return LocalSaveTaskBoolDep(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolDep(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -712,24 +712,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteTaskBoolDep(target);
+                return LocalDeleteTaskBoolDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolDep(target);
+                return await LocalInsertTaskBoolDep(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateTaskBoolDep(target);
+                return LocalUpdateTaskBoolDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskBoolFalseDep(MixedWriteObject target)
+        public virtual Task<MixedWriteObject?> SaveTaskBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBoolFalseDep(target);
+            return LocalSaveTaskBoolFalseDep(target, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolFalseDep(MixedWriteObject target)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolFalseDep(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -738,24 +738,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteTaskBoolFalseDep(target);
+                return LocalDeleteTaskBoolFalseDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolFalseDep(target);
+                return await LocalInsertTaskBoolFalseDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolFalseDep(target);
+                return await LocalUpdateTaskBoolFalseDep(target, cancellationToken);
             }
         }
 
-        public virtual MixedWriteObject? SaveVoid(MixedWriteObject target, int? param)
+        public virtual MixedWriteObject? SaveVoid(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoid1(target, param);
+            return LocalSaveVoid1(target, param, cancellationToken);
         }
 
-        public virtual MixedWriteObject? LocalSaveVoid1(MixedWriteObject target, int? param)
+        public virtual MixedWriteObject? LocalSaveVoid1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -764,29 +764,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteVoid1(target, param);
+                return LocalDeleteVoid1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoid1(target, param);
+                return LocalInsertVoid1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoid1(target, param);
+                return LocalUpdateVoid1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveBool1Property(target, param);
+            return SaveBool1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> RemoteSaveBool1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> RemoteSaveBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBool1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBool1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveBool1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -795,24 +795,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteBool1(target, param);
+                return await LocalDeleteBool1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBool1(target, param);
+                return LocalInsertBool1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateBool1(target, param);
+                return LocalUpdateBool1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTask(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveTask(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTask1(target, param);
+            return LocalSaveTask1(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTask1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveTask1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -821,24 +821,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteTask1(target, param);
+                return LocalDeleteTask1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask1(target, param);
+                return await LocalInsertTask1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateTask1(target, param);
+                return LocalUpdateTask1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveTaskBool(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBool1(target, param);
+            return LocalSaveTaskBool1(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskBool1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBool1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -847,24 +847,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteTaskBool1(target, param);
+                return await LocalDeleteTaskBool1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBool1(target, param);
+                return await LocalInsertTaskBool1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateTaskBool1(target, param);
+                return LocalUpdateTaskBool1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskBoolFalse(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveTaskBoolFalse(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBoolFalse(target, param);
+            return LocalSaveTaskBoolFalse(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolFalse(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolFalse(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -873,24 +873,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteTaskBoolFalse(target, param);
+                return await LocalDeleteTaskBoolFalse(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolFalse(target, param);
+                return await LocalInsertTaskBoolFalse(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateTaskBoolFalse(target, param);
+                return LocalUpdateTaskBoolFalse(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveVoidDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoidDep1(target, param);
+            return LocalSaveVoidDep1(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveVoidDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveVoidDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -899,29 +899,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteVoidDep1(target, param);
+                return await LocalDeleteVoidDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoidDep1(target, param);
+                return LocalInsertVoidDep1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoidDep1(target, param);
+                return LocalUpdateVoidDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveBoolTrueDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveBoolTrueDep1Property(target, param);
+            return SaveBoolTrueDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> RemoteSaveBoolTrueDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolTrueDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolTrueDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveBoolTrueDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -930,29 +930,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return LocalDeleteBoolTrueDep1(target, param);
+                return LocalDeleteBoolTrueDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolTrueDep1(target, param);
+                return LocalInsertBoolTrueDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolTrueDep1(target, param);
+                return await LocalUpdateBoolTrueDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveBoolFalseDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveBoolFalseDep1Property(target, param);
+            return SaveBoolFalseDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> RemoteSaveBoolFalseDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> RemoteSaveBoolFalseDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolFalseDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveBoolFalseDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveBoolFalseDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveBoolFalseDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -961,29 +961,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteBoolFalseDep1(target, param);
+                return await LocalDeleteBoolFalseDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolFalseDep1(target, param);
+                return LocalInsertBoolFalseDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolFalseDep1(target, param);
+                return await LocalUpdateBoolFalseDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveTaskDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveTaskDep1Property(target, param);
+            return SaveTaskDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> RemoteSaveTaskDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> RemoteSaveTaskDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveTaskDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveTaskDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -992,29 +992,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteTaskDep1(target, param);
+                return await LocalDeleteTaskDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskDep1(target, param);
+                return await LocalInsertTaskDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskDep1(target, param);
+                return await LocalUpdateTaskDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param)
+        public virtual Task<MixedWriteObject?> SaveTaskBoolDep(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return SaveTaskBoolDep1Property(target, param);
+            return SaveTaskBoolDep1Property(target, param, cancellationToken);
         }
 
-        public virtual async Task<MixedWriteObject?> RemoteSaveTaskBoolDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> RemoteSaveTaskBoolDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveTaskBoolDep1Delegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MixedWriteObject?>(typeof(SaveTaskBoolDep1Delegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolDep1(MixedWriteObject target, int? param)
+        public virtual async Task<MixedWriteObject?> LocalSaveTaskBoolDep1(MixedWriteObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -1023,15 +1023,15 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MixedWriteObject);
                 }
 
-                return await LocalDeleteTaskBoolDep1(target, param);
+                return await LocalDeleteTaskBoolDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolDep1(target, param);
+                return await LocalInsertTaskBoolDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolDep1(target, param);
+                return await LocalUpdateTaskBoolDep1(target, param, cancellationToken);
             }
         }
 
@@ -1042,37 +1042,37 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<SaveVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
-                return (MixedWriteObject target) => factory.LocalSaveVoidDep(target);
+                return (MixedWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveVoidDep(target, cancellationToken);
             });
             services.AddScoped<SaveBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
-                return (MixedWriteObject target) => factory.LocalSaveBoolTrueDep(target);
+                return (MixedWriteObject target, CancellationToken cancellationToken = default) => factory.LocalSaveBoolTrueDep(target, cancellationToken);
             });
             services.AddScoped<SaveBool1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
-                return (MixedWriteObject target, int? param) => factory.LocalSaveBool1(target, param);
+                return (MixedWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveBool1(target, param, cancellationToken);
             });
             services.AddScoped<SaveBoolTrueDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
-                return (MixedWriteObject target, int? param) => factory.LocalSaveBoolTrueDep1(target, param);
+                return (MixedWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveBoolTrueDep1(target, param, cancellationToken);
             });
             services.AddScoped<SaveBoolFalseDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
-                return (MixedWriteObject target, int? param) => factory.LocalSaveBoolFalseDep1(target, param);
+                return (MixedWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveBoolFalseDep1(target, param, cancellationToken);
             });
             services.AddScoped<SaveTaskDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
-                return (MixedWriteObject target, int? param) => factory.LocalSaveTaskDep1(target, param);
+                return (MixedWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTaskDep1(target, param, cancellationToken);
             });
             services.AddScoped<SaveTaskBoolDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MixedWriteObjectFactory>();
-                return (MixedWriteObject target, int? param) => factory.LocalSaveTaskBoolDep1(target, param);
+                return (MixedWriteObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTaskBoolDep1(target, param, cancellationToken);
             });
             services.AddTransient<MixedWriteObject>();
             services.AddScoped<IFactorySave<MixedWriteObject>, MixedWriteObjectFactory>();

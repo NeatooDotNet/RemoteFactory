@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IOuterRecordFactory
     {
-        OuterRecord Create(string Name, InnerRecord Inner);
+        OuterRecord Create(string Name, InnerRecord Inner, CancellationToken cancellationToken = default);
     }
 
     internal class OuterRecordFactory : FactoryBase<OuterRecord>, IOuterRecordFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual OuterRecord Create(string Name, InnerRecord Inner)
+        public virtual OuterRecord Create(string Name, InnerRecord Inner, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name, Inner);
+            return LocalCreate(Name, Inner, cancellationToken);
         }
 
-        public OuterRecord LocalCreate(string Name, InnerRecord Inner)
+        public OuterRecord LocalCreate(string Name, InnerRecord Inner, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new OuterRecord(Name, Inner));
         }

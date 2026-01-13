@@ -14,8 +14,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface IServiceBasicExampleFactory
     {
-        IServiceBasicExample Create();
-        Task<IServiceBasicExample?> Fetch(int id);
+        IServiceBasicExample Create(CancellationToken cancellationToken = default);
+        Task<IServiceBasicExample?> Fetch(int id, CancellationToken cancellationToken = default);
     }
 
     internal class ServiceBasicExampleFactory : FactoryBase<IServiceBasicExample>, IServiceBasicExampleFactory
@@ -23,7 +23,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<IServiceBasicExample?> FetchDelegate(int id);
+        public delegate Task<IServiceBasicExample?> FetchDelegate(int id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -40,27 +40,27 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             FetchProperty = RemoteFetch;
         }
 
-        public virtual IServiceBasicExample Create()
+        public virtual IServiceBasicExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public IServiceBasicExample LocalCreate()
+        public IServiceBasicExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ServiceBasicExample());
         }
 
-        public virtual Task<IServiceBasicExample?> Fetch(int id)
+        public virtual Task<IServiceBasicExample?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<IServiceBasicExample?> RemoteFetch(int id)
+        public virtual async Task<IServiceBasicExample?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IServiceBasicExample?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IServiceBasicExample?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<IServiceBasicExample?> LocalFetch(int id)
+        public Task<IServiceBasicExample?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ServiceBasicExample>();
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
@@ -74,7 +74,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ServiceBasicExampleFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddTransient<ServiceBasicExample>();
             services.AddTransient<IServiceBasicExample, ServiceBasicExample>();

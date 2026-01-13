@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IComplexRecordFactory
     {
-        ComplexRecord Create(string StringProp, int IntProp, long LongProp, double DoubleProp, decimal DecimalProp, bool BoolProp, DateTime DateTimeProp, Guid GuidProp);
+        ComplexRecord Create(string StringProp, int IntProp, long LongProp, double DoubleProp, decimal DecimalProp, bool BoolProp, DateTime DateTimeProp, Guid GuidProp, CancellationToken cancellationToken = default);
     }
 
     internal class ComplexRecordFactory : FactoryBase<ComplexRecord>, IComplexRecordFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual ComplexRecord Create(string StringProp, int IntProp, long LongProp, double DoubleProp, decimal DecimalProp, bool BoolProp, DateTime DateTimeProp, Guid GuidProp)
+        public virtual ComplexRecord Create(string StringProp, int IntProp, long LongProp, double DoubleProp, decimal DecimalProp, bool BoolProp, DateTime DateTimeProp, Guid GuidProp, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(StringProp, IntProp, LongProp, DoubleProp, DecimalProp, BoolProp, DateTimeProp, GuidProp);
+            return LocalCreate(StringProp, IntProp, LongProp, DoubleProp, DecimalProp, BoolProp, DateTimeProp, GuidProp, cancellationToken);
         }
 
-        public ComplexRecord LocalCreate(string StringProp, int IntProp, long LongProp, double DoubleProp, decimal DecimalProp, bool BoolProp, DateTime DateTimeProp, Guid GuidProp)
+        public ComplexRecord LocalCreate(string StringProp, int IntProp, long LongProp, double DoubleProp, decimal DecimalProp, bool BoolProp, DateTime DateTimeProp, Guid GuidProp, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ComplexRecord(StringProp, IntProp, LongProp, DoubleProp, DecimalProp, BoolProp, DateTimeProp, GuidProp));
         }

@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ISealedRecordFactory
     {
-        SealedRecord Create(string Value);
+        SealedRecord Create(string Value, CancellationToken cancellationToken = default);
     }
 
     internal class SealedRecordFactory : FactoryBase<SealedRecord>, ISealedRecordFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual SealedRecord Create(string Value)
+        public virtual SealedRecord Create(string Value, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Value);
+            return LocalCreate(Value, cancellationToken);
         }
 
-        public SealedRecord LocalCreate(string Value)
+        public SealedRecord LocalCreate(string Value, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new SealedRecord(Value));
         }

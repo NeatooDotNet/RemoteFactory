@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRemoteAsyncCoreTargetFactory
     {
-        Task<RemoteAsyncCoreTarget> CreateAsync();
-        Task<RemoteAsyncCoreTarget> FetchAsync();
+        Task<RemoteAsyncCoreTarget> CreateAsync(CancellationToken cancellationToken = default);
+        Task<RemoteAsyncCoreTarget> FetchAsync(CancellationToken cancellationToken = default);
     }
 
     internal class RemoteAsyncCoreTargetFactory : FactoryBase<RemoteAsyncCoreTarget>, IRemoteAsyncCoreTargetFactory
@@ -22,8 +22,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<RemoteAsyncCoreTarget> CreateAsyncDelegate();
-        public delegate Task<RemoteAsyncCoreTarget> FetchAsyncDelegate();
+        public delegate Task<RemoteAsyncCoreTarget> CreateAsyncDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteAsyncCoreTarget> FetchAsyncDelegate(CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateAsyncDelegate CreateAsyncProperty { get; }
         public FetchAsyncDelegate FetchAsyncProperty { get; }
@@ -43,33 +43,33 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             FetchAsyncProperty = RemoteFetchAsync;
         }
 
-        public virtual Task<RemoteAsyncCoreTarget> CreateAsync()
+        public virtual Task<RemoteAsyncCoreTarget> CreateAsync(CancellationToken cancellationToken = default)
         {
-            return CreateAsyncProperty();
+            return CreateAsyncProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteAsyncCoreTarget> RemoteCreateAsync()
+        public virtual async Task<RemoteAsyncCoreTarget> RemoteCreateAsync(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteAsyncCoreTarget>(typeof(CreateAsyncDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteAsyncCoreTarget>(typeof(CreateAsyncDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteAsyncCoreTarget> LocalCreateAsync()
+        public Task<RemoteAsyncCoreTarget> LocalCreateAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteAsyncCoreTarget>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateAsync());
         }
 
-        public virtual Task<RemoteAsyncCoreTarget> FetchAsync()
+        public virtual Task<RemoteAsyncCoreTarget> FetchAsync(CancellationToken cancellationToken = default)
         {
-            return FetchAsyncProperty();
+            return FetchAsyncProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteAsyncCoreTarget> RemoteFetchAsync()
+        public virtual async Task<RemoteAsyncCoreTarget> RemoteFetchAsync(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteAsyncCoreTarget>(typeof(FetchAsyncDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteAsyncCoreTarget>(typeof(FetchAsyncDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteAsyncCoreTarget> LocalFetchAsync()
+        public Task<RemoteAsyncCoreTarget> LocalFetchAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteAsyncCoreTarget>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchAsync());
@@ -82,12 +82,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CreateAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteAsyncCoreTargetFactory>();
-                return () => factory.LocalCreateAsync();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateAsync(cancellationToken);
             });
             services.AddScoped<FetchAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteAsyncCoreTargetFactory>();
-                return () => factory.LocalFetchAsync();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchAsync(cancellationToken);
             });
             services.AddTransient<RemoteAsyncCoreTarget>();
             // Event registrations

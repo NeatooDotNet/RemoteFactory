@@ -15,46 +15,46 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IReadRemoteAuthTaskObjFactory
     {
-        Task<ReadRemoteAuthTaskObj?> CreateVoid(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTask(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskBoolFalse(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateVoidDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateBoolTrueDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateBoolFalseDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> CreateTaskBoolDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchVoid(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTask(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskBool(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchVoidDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchBoolTrueDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchBoolFalseDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskBoolDep(int? param);
-        Task<ReadRemoteAuthTaskObj?> FetchTaskBoolFalseDep(int? param);
-        Task<Authorized> CanCreateVoid(int? p);
-        Task<Authorized> CanCreateBool(int? p);
-        Task<Authorized> CanCreateTask(int? p);
-        Task<Authorized> CanCreateTaskBool(int? p);
-        Task<Authorized> CanCreateTaskBoolFalse(int? p);
-        Task<Authorized> CanCreateVoidDep(int? p);
-        Task<Authorized> CanCreateBoolTrueDep(int? p);
-        Task<Authorized> CanCreateBoolFalseDep(int? p);
-        Task<Authorized> CanCreateTaskDep(int? p);
-        Task<Authorized> CanCreateTaskBoolDep(int? p);
-        Task<Authorized> CanFetchVoid(int? p);
-        Task<Authorized> CanFetchBool(int? p);
-        Task<Authorized> CanFetchTask(int? p);
-        Task<Authorized> CanFetchTaskBool(int? p);
-        Task<Authorized> CanFetchVoidDep(int? p);
-        Task<Authorized> CanFetchBoolTrueDep(int? p);
-        Task<Authorized> CanFetchBoolFalseDep(int? p);
-        Task<Authorized> CanFetchTaskDep(int? p);
-        Task<Authorized> CanFetchTaskBoolDep(int? p);
-        Task<Authorized> CanFetchTaskBoolFalseDep(int? p);
+        Task<ReadRemoteAuthTaskObj?> CreateVoid(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateTask(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateTaskBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateVoidDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchVoid(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchTask(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchTaskBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchVoidDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadRemoteAuthTaskObj?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTask(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskBoolFalse(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateVoidDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateBoolTrueDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateBoolFalseDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskBoolDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTask(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchVoidDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchBoolTrueDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchBoolFalseDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskBoolDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskBoolFalseDep(int? p, CancellationToken cancellationToken = default);
     }
 
     internal class ReadRemoteAuthTaskObjFactory : FactoryBase<ReadRemoteAuthTaskObj>, IReadRemoteAuthTaskObjFactory
@@ -62,46 +62,46 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateVoidDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolFalseDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateVoidDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolTrueDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolFalseDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchVoidDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchVoidDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolTrueDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolFalseDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolDepDelegate(int? param);
-        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolFalseDepDelegate(int? param);
-        public delegate Task<Authorized> CanCreateVoidDelegate(int? p);
-        public delegate Task<Authorized> CanCreateBoolDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskBoolDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskBoolFalseDelegate(int? p);
-        public delegate Task<Authorized> CanCreateVoidDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateBoolTrueDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateBoolFalseDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskDepDelegate(int? p);
-        public delegate Task<Authorized> CanCreateTaskBoolDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchVoidDelegate(int? p);
-        public delegate Task<Authorized> CanFetchBoolDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskBoolDelegate(int? p);
-        public delegate Task<Authorized> CanFetchVoidDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchBoolTrueDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchBoolFalseDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskBoolDepDelegate(int? p);
-        public delegate Task<Authorized> CanFetchTaskBoolFalseDepDelegate(int? p);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateVoidDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolFalseDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateVoidDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolTrueDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateBoolFalseDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> CreateTaskBoolDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchVoidDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchVoidDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolTrueDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchBoolFalseDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<ReadRemoteAuthTaskObj>> FetchTaskBoolFalseDepDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateVoidDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateBoolDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateTaskDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateTaskBoolDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateTaskBoolFalseDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateVoidDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateBoolTrueDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateBoolFalseDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateTaskDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateTaskBoolDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchVoidDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchBoolDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchTaskDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchTaskBoolDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchVoidDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchBoolTrueDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchBoolFalseDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchTaskDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchTaskBoolDepDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchTaskBoolFalseDepDelegate(int? p, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateVoidDelegate CreateVoidProperty { get; }
         public CreateBoolDelegate CreateBoolProperty { get; }
@@ -235,17 +235,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             CanFetchTaskBoolFalseDepProperty = RemoteCanFetchTaskBoolFalseDep;
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateVoid(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateVoidProperty(param)).Result;
+            return (await CreateVoidProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateVoid(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateVoidDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateVoidDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateVoid(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateVoid(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -350,17 +350,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBool(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateBoolProperty(param)).Result;
+            return (await CreateBoolProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBool(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBool(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -465,17 +465,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTask(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTask(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateTaskProperty(param)).Result;
+            return (await CreateTaskProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTask(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTask(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTask(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTask(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -580,17 +580,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBool(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateTaskBoolProperty(param)).Result;
+            return (await CreateTaskBoolProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBool(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBool(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -695,17 +695,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBoolFalse(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateTaskBoolFalseProperty(param)).Result;
+            return (await CreateTaskBoolFalseProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBoolFalse(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolFalseDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolFalseDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBoolFalse(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -810,17 +810,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalse(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateVoidDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateVoidDepProperty(param)).Result;
+            return (await CreateVoidDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateVoidDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateVoidDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateVoidDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateVoidDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateVoidDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -926,17 +926,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBoolTrueDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateBoolTrueDepProperty(param)).Result;
+            return (await CreateBoolTrueDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBoolTrueDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolTrueDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolTrueDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBoolTrueDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1042,17 +1042,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBoolFalseDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateBoolFalseDepProperty(param)).Result;
+            return (await CreateBoolFalseDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBoolFalseDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolFalseDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateBoolFalseDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBoolFalseDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1158,17 +1158,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateTaskDepProperty(param)).Result;
+            return (await CreateTaskDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1274,17 +1274,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBoolDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await CreateTaskBoolDepProperty(param)).Result;
+            return (await CreateTaskBoolDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBoolDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteCreateTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(CreateTaskBoolDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBoolDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalCreateTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1390,17 +1390,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchVoid(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchVoidProperty(param)).Result;
+            return (await FetchVoidProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchVoid(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchVoidDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchVoidDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchVoid(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchVoid(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1505,17 +1505,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBool(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchBoolProperty(param)).Result;
+            return (await FetchBoolProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBool(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBool(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1620,17 +1620,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTask(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTask(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchTaskProperty(param)).Result;
+            return (await FetchTaskProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTask(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTask(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTask(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTask(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1735,17 +1735,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBool(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchTaskBoolProperty(param)).Result;
+            return (await FetchTaskBoolProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBool(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBool(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1850,17 +1850,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool(param)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchVoidDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchVoidDepProperty(param)).Result;
+            return (await FetchVoidDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchVoidDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchVoidDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchVoidDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchVoidDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchVoidDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -1966,17 +1966,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBoolTrueDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchBoolTrueDepProperty(param)).Result;
+            return (await FetchBoolTrueDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBoolTrueDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolTrueDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolTrueDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBoolTrueDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -2082,17 +2082,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBoolFalseDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchBoolFalseDepProperty(param)).Result;
+            return (await FetchBoolFalseDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBoolFalseDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolFalseDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchBoolFalseDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBoolFalseDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -2198,17 +2198,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchTaskDepProperty(param)).Result;
+            return (await FetchTaskDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -2314,17 +2314,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBoolDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchTaskBoolDepProperty(param)).Result;
+            return (await FetchTaskBoolDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBoolDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBoolDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -2430,17 +2430,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(param, service)));
         }
 
-        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBoolFalseDep(int? param)
+        public virtual async Task<ReadRemoteAuthTaskObj?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await FetchTaskBoolFalseDepProperty(param)).Result;
+            return (await FetchTaskBoolFalseDepProperty(param, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBoolFalseDep(int? param)
+        public virtual async Task<Authorized<ReadRemoteAuthTaskObj>> RemoteFetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolFalseDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<ReadRemoteAuthTaskObj>>(typeof(FetchTaskBoolFalseDepDelegate), [param], cancellationToken))!;
         }
 
-        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBoolFalseDep(int? param)
+        public async Task<Authorized<ReadRemoteAuthTaskObj>> LocalFetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -2546,131 +2546,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadRemoteAuthTaskObj>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolFalseDep(param, service)));
         }
 
-        public virtual Task<Authorized> CanCreateVoid(int? p)
+        public virtual Task<Authorized> CanCreateVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return CanCreateVoidProperty(p);
+            return CanCreateVoidProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreateVoid(int? p)
+        public virtual async Task<Authorized> RemoteCanCreateVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateVoidDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateVoidDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreateVoid(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateBool(int? p)
-        {
-            return CanCreateBoolProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateBool(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanCreateBool(int? p)
+        public async Task<Authorized> LocalCanCreateVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -2774,131 +2660,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTask(int? p)
+        public virtual Task<Authorized> CanCreateBool(int? p, CancellationToken cancellationToken = default)
         {
-            return CanCreateTaskProperty(p);
+            return CanCreateBoolProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreateTask(int? p)
+        public virtual async Task<Authorized> RemoteCanCreateBool(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreateTask(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateTaskBool(int? p)
-        {
-            return CanCreateTaskBoolProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateTaskBool(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanCreateTaskBool(int? p)
+        public async Task<Authorized> LocalCanCreateBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -3002,131 +2774,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTaskBoolFalse(int? p)
+        public virtual Task<Authorized> CanCreateTask(int? p, CancellationToken cancellationToken = default)
         {
-            return CanCreateTaskBoolFalseProperty(p);
+            return CanCreateTaskProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreateTaskBoolFalse(int? p)
+        public virtual async Task<Authorized> RemoteCanCreateTask(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolFalseDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreateTaskBoolFalse(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateVoidDep(int? p)
-        {
-            return CanCreateVoidDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateVoidDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateVoidDepDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanCreateVoidDep(int? p)
+        public async Task<Authorized> LocalCanCreateTask(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -3230,131 +2888,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateBoolTrueDep(int? p)
+        public virtual Task<Authorized> CanCreateTaskBool(int? p, CancellationToken cancellationToken = default)
         {
-            return CanCreateBoolTrueDepProperty(p);
+            return CanCreateTaskBoolProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreateBoolTrueDep(int? p)
+        public virtual async Task<Authorized> RemoteCanCreateTaskBool(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolTrueDepDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreateBoolTrueDep(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateBoolFalseDep(int? p)
-        {
-            return CanCreateBoolFalseDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateBoolFalseDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolFalseDepDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanCreateBoolFalseDep(int? p)
+        public async Task<Authorized> LocalCanCreateTaskBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -3458,131 +3002,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTaskDep(int? p)
+        public virtual Task<Authorized> CanCreateTaskBoolFalse(int? p, CancellationToken cancellationToken = default)
         {
-            return CanCreateTaskDepProperty(p);
+            return CanCreateTaskBoolFalseProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreateTaskDep(int? p)
+        public virtual async Task<Authorized> RemoteCanCreateTaskBoolFalse(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskDepDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolFalseDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreateTaskDep(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateTaskBoolDep(int? p)
-        {
-            return CanCreateTaskBoolDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanCreateTaskBoolDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolDepDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanCreateTaskBoolDep(int? p)
+        public async Task<Authorized> LocalCanCreateTaskBoolFalse(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -3686,17 +3116,587 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchVoid(int? p)
+        public virtual Task<Authorized> CanCreateVoidDep(int? p, CancellationToken cancellationToken = default)
         {
-            return CanFetchVoidProperty(p);
+            return CanCreateVoidDepProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchVoid(int? p)
+        public virtual async Task<Authorized> RemoteCanCreateVoidDep(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchVoidDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateVoidDepDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchVoid(int? p)
+        public async Task<Authorized> LocalCanCreateVoidDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateBoolTrueDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanCreateBoolTrueDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanCreateBoolTrueDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolTrueDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanCreateBoolTrueDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanCreateBoolFalseDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanCreateBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateBoolFalseDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanCreateBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanCreateTaskDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanCreateTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanCreateTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanCreateTaskBoolDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanCreateTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateTaskBoolDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanCreateTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanFetchVoidProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanFetchVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchVoidDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanFetchVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -3800,131 +3800,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchBool(int? p)
+        public virtual Task<Authorized> CanFetchBool(int? p, CancellationToken cancellationToken = default)
         {
-            return CanFetchBoolProperty(p);
+            return CanFetchBoolProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchBool(int? p)
+        public virtual async Task<Authorized> RemoteCanFetchBool(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchBool(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchTask(int? p)
-        {
-            return CanFetchTaskProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchTask(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanFetchTask(int? p)
+        public async Task<Authorized> LocalCanFetchBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -4028,131 +3914,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTaskBool(int? p)
+        public virtual Task<Authorized> CanFetchTask(int? p, CancellationToken cancellationToken = default)
         {
-            return CanFetchTaskBoolProperty(p);
+            return CanFetchTaskProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchTaskBool(int? p)
+        public virtual async Task<Authorized> RemoteCanFetchTask(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchTaskBool(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchVoidDep(int? p)
-        {
-            return CanFetchVoidDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchVoidDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchVoidDepDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanFetchVoidDep(int? p)
+        public async Task<Authorized> LocalCanFetchTask(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -4256,131 +4028,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchBoolTrueDep(int? p)
+        public virtual Task<Authorized> CanFetchTaskBool(int? p, CancellationToken cancellationToken = default)
         {
-            return CanFetchBoolTrueDepProperty(p);
+            return CanFetchTaskBoolProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchBoolTrueDep(int? p)
+        public virtual async Task<Authorized> RemoteCanFetchTaskBool(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolTrueDepDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchBoolTrueDep(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchBoolFalseDep(int? p)
-        {
-            return CanFetchBoolFalseDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchBoolFalseDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolFalseDepDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanFetchBoolFalseDep(int? p)
+        public async Task<Authorized> LocalCanFetchTaskBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -4484,131 +4142,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTaskDep(int? p)
+        public virtual Task<Authorized> CanFetchVoidDep(int? p, CancellationToken cancellationToken = default)
         {
-            return CanFetchTaskDepProperty(p);
+            return CanFetchVoidDepProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchTaskDep(int? p)
+        public virtual async Task<Authorized> RemoteCanFetchVoidDep(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskDepDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchVoidDepDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchTaskDep(int? p)
-        {
-            Authorized authorized;
-            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
-            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
-            authorized = readremoteauth.CanReadRemoteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanReadRemoteStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readremoteauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchTaskBoolDep(int? p)
-        {
-            return CanFetchTaskBoolDepProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanFetchTaskBoolDep(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolDepDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanFetchTaskBoolDep(int? p)
+        public async Task<Authorized> LocalCanFetchVoidDep(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -4712,17 +4256,473 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTaskBoolFalseDep(int? p)
+        public virtual Task<Authorized> CanFetchBoolTrueDep(int? p, CancellationToken cancellationToken = default)
         {
-            return CanFetchTaskBoolFalseDepProperty(p);
+            return CanFetchBoolTrueDepProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchTaskBoolFalseDep(int? p)
+        public virtual async Task<Authorized> RemoteCanFetchBoolTrueDep(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolFalseDepDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolTrueDepDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchTaskBoolFalseDep(int? p)
+        public async Task<Authorized> LocalCanFetchBoolTrueDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanFetchBoolFalseDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanFetchBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchBoolFalseDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanFetchBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanFetchTaskDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanFetchTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanFetchTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanFetchTaskBoolDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanFetchTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanFetchTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
+            authorized = await readremoteauthtask.CanReadRemoteBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanReadRemoteStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readremoteauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadRemoteAuth readremoteauth = ServiceProvider.GetRequiredService<ReadRemoteAuth>();
+            authorized = readremoteauth.CanReadRemoteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanReadRemoteStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readremoteauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchTaskBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanFetchTaskBoolFalseDepProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanFetchTaskBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchTaskBoolFalseDepDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanFetchTaskBoolFalseDep(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadRemoteAuthTask readremoteauthtask = ServiceProvider.GetRequiredService<ReadRemoteAuthTask>();
@@ -4833,202 +4833,202 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CreateVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateVoid(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateVoid(param, cancellationToken);
             });
             services.AddScoped<CreateBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateBool(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateBool(param, cancellationToken);
             });
             services.AddScoped<CreateTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateTask(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTask(param, cancellationToken);
             });
             services.AddScoped<CreateTaskBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateTaskBool(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskBool(param, cancellationToken);
             });
             services.AddScoped<CreateTaskBoolFalseDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateTaskBoolFalse(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskBoolFalse(param, cancellationToken);
             });
             services.AddScoped<CreateVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateVoidDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateVoidDep(param, cancellationToken);
             });
             services.AddScoped<CreateBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateBoolTrueDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateBoolTrueDep(param, cancellationToken);
             });
             services.AddScoped<CreateBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateBoolFalseDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateBoolFalseDep(param, cancellationToken);
             });
             services.AddScoped<CreateTaskDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateTaskDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskDep(param, cancellationToken);
             });
             services.AddScoped<CreateTaskBoolDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalCreateTaskBoolDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskBoolDep(param, cancellationToken);
             });
             services.AddScoped<FetchVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchVoid(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchVoid(param, cancellationToken);
             });
             services.AddScoped<FetchBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchBool(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchBool(param, cancellationToken);
             });
             services.AddScoped<FetchTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchTask(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTask(param, cancellationToken);
             });
             services.AddScoped<FetchTaskBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchTaskBool(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskBool(param, cancellationToken);
             });
             services.AddScoped<FetchVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchVoidDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchVoidDep(param, cancellationToken);
             });
             services.AddScoped<FetchBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchBoolTrueDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchBoolTrueDep(param, cancellationToken);
             });
             services.AddScoped<FetchBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchBoolFalseDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchBoolFalseDep(param, cancellationToken);
             });
             services.AddScoped<FetchTaskDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchTaskDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskDep(param, cancellationToken);
             });
             services.AddScoped<FetchTaskBoolDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchTaskBoolDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskBoolDep(param, cancellationToken);
             });
             services.AddScoped<FetchTaskBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? param) => factory.LocalFetchTaskBoolFalseDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskBoolFalseDep(param, cancellationToken);
             });
             services.AddScoped<CanCreateVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateVoid(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateVoid(p, cancellationToken);
             });
             services.AddScoped<CanCreateBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateBool(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateBool(p, cancellationToken);
             });
             services.AddScoped<CanCreateTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateTask(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateTask(p, cancellationToken);
             });
             services.AddScoped<CanCreateTaskBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateTaskBool(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateTaskBool(p, cancellationToken);
             });
             services.AddScoped<CanCreateTaskBoolFalseDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateTaskBoolFalse(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateTaskBoolFalse(p, cancellationToken);
             });
             services.AddScoped<CanCreateVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateVoidDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateVoidDep(p, cancellationToken);
             });
             services.AddScoped<CanCreateBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateBoolTrueDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateBoolTrueDep(p, cancellationToken);
             });
             services.AddScoped<CanCreateBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateBoolFalseDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateBoolFalseDep(p, cancellationToken);
             });
             services.AddScoped<CanCreateTaskDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateTaskDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateTaskDep(p, cancellationToken);
             });
             services.AddScoped<CanCreateTaskBoolDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanCreateTaskBoolDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanCreateTaskBoolDep(p, cancellationToken);
             });
             services.AddScoped<CanFetchVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchVoid(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchVoid(p, cancellationToken);
             });
             services.AddScoped<CanFetchBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchBool(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchBool(p, cancellationToken);
             });
             services.AddScoped<CanFetchTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchTask(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchTask(p, cancellationToken);
             });
             services.AddScoped<CanFetchTaskBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchTaskBool(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchTaskBool(p, cancellationToken);
             });
             services.AddScoped<CanFetchVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchVoidDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchVoidDep(p, cancellationToken);
             });
             services.AddScoped<CanFetchBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchBoolTrueDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchBoolTrueDep(p, cancellationToken);
             });
             services.AddScoped<CanFetchBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchBoolFalseDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchBoolFalseDep(p, cancellationToken);
             });
             services.AddScoped<CanFetchTaskDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchTaskDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchTaskDep(p, cancellationToken);
             });
             services.AddScoped<CanFetchTaskBoolDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchTaskBoolDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchTaskBoolDep(p, cancellationToken);
             });
             services.AddScoped<CanFetchTaskBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ReadRemoteAuthTaskObjFactory>();
-                return (int? p) => factory.LocalCanFetchTaskBoolFalseDep(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanFetchTaskBoolFalseDep(p, cancellationToken);
             });
             services.AddTransient<ReadRemoteAuthTaskObj>();
             // Event registrations

@@ -12,9 +12,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IComplexParamWriteObjectFactory
     {
-        ComplexParamWriteObject? SaveWithIntList(ComplexParamWriteObject target, List<int> ids);
-        ComplexParamWriteObject SaveWithDto(ComplexParamWriteObject target, SimpleDto dto);
-        ComplexParamWriteObject SaveWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data);
+        ComplexParamWriteObject? SaveWithIntList(ComplexParamWriteObject target, List<int> ids, CancellationToken cancellationToken = default);
+        ComplexParamWriteObject SaveWithDto(ComplexParamWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default);
+        ComplexParamWriteObject SaveWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default);
     }
 
     internal class ComplexParamWriteObjectFactory : FactoryBase<ComplexParamWriteObject>, IComplexParamWriteObjectFactory
@@ -34,42 +34,42 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public ComplexParamWriteObject LocalInsertWithIntList(ComplexParamWriteObject target, List<int> ids)
+        public ComplexParamWriteObject LocalInsertWithIntList(ComplexParamWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamWriteObject)target ?? throw new Exception("ComplexParamWriteObject must implement ComplexParamWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertWithIntList(ids));
         }
 
-        public ComplexParamWriteObject LocalInsertWithDto(ComplexParamWriteObject target, SimpleDto dto)
+        public ComplexParamWriteObject LocalInsertWithDto(ComplexParamWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamWriteObject)target ?? throw new Exception("ComplexParamWriteObject must implement ComplexParamWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertWithDto(dto));
         }
 
-        public ComplexParamWriteObject LocalUpdateWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data)
+        public ComplexParamWriteObject LocalUpdateWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamWriteObject)target ?? throw new Exception("ComplexParamWriteObject must implement ComplexParamWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateWithDictionary(data));
         }
 
-        public ComplexParamWriteObject LocalUpdateWithDto(ComplexParamWriteObject target, SimpleDto dto)
+        public ComplexParamWriteObject LocalUpdateWithDto(ComplexParamWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamWriteObject)target ?? throw new Exception("ComplexParamWriteObject must implement ComplexParamWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateWithDto(dto));
         }
 
-        public ComplexParamWriteObject LocalDeleteWithIntList(ComplexParamWriteObject target, List<int> ids)
+        public ComplexParamWriteObject LocalDeleteWithIntList(ComplexParamWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamWriteObject)target ?? throw new Exception("ComplexParamWriteObject must implement ComplexParamWriteObject");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteWithIntList(ids));
         }
 
-        public virtual ComplexParamWriteObject? SaveWithIntList(ComplexParamWriteObject target, List<int> ids)
+        public virtual ComplexParamWriteObject? SaveWithIntList(ComplexParamWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
-            return LocalSaveWithIntList(target, ids);
+            return LocalSaveWithIntList(target, ids, cancellationToken);
         }
 
-        public virtual ComplexParamWriteObject? LocalSaveWithIntList(ComplexParamWriteObject target, List<int> ids)
+        public virtual ComplexParamWriteObject? LocalSaveWithIntList(ComplexParamWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -78,11 +78,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(ComplexParamWriteObject);
                 }
 
-                return LocalDeleteWithIntList(target, ids);
+                return LocalDeleteWithIntList(target, ids, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertWithIntList(target, ids);
+                return LocalInsertWithIntList(target, ids, cancellationToken);
             }
             else
             {
@@ -90,12 +90,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual ComplexParamWriteObject SaveWithDto(ComplexParamWriteObject target, SimpleDto dto)
+        public virtual ComplexParamWriteObject SaveWithDto(ComplexParamWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return LocalSaveWithDto(target, dto);
+            return LocalSaveWithDto(target, dto, cancellationToken);
         }
 
-        public virtual ComplexParamWriteObject LocalSaveWithDto(ComplexParamWriteObject target, SimpleDto dto)
+        public virtual ComplexParamWriteObject LocalSaveWithDto(ComplexParamWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -103,20 +103,20 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
             else if (target.IsNew)
             {
-                return LocalInsertWithDto(target, dto);
+                return LocalInsertWithDto(target, dto, cancellationToken);
             }
             else
             {
-                return LocalUpdateWithDto(target, dto);
+                return LocalUpdateWithDto(target, dto, cancellationToken);
             }
         }
 
-        public virtual ComplexParamWriteObject SaveWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data)
+        public virtual ComplexParamWriteObject SaveWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return LocalSaveWithDictionary(target, data);
+            return LocalSaveWithDictionary(target, data, cancellationToken);
         }
 
-        public virtual ComplexParamWriteObject LocalSaveWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data)
+        public virtual ComplexParamWriteObject LocalSaveWithDictionary(ComplexParamWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -128,7 +128,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
             else
             {
-                return LocalUpdateWithDictionary(target, data);
+                return LocalUpdateWithDictionary(target, data, cancellationToken);
             }
         }
 

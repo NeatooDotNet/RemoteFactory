@@ -12,14 +12,14 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
 {
     public static partial class ProductSearchExample
     {
-        public delegate Task<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.ProductSearchResults> Search(ProductSearchCriteria criteria);
+        public delegate Task<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.ProductSearchResults> Search(ProductSearchCriteria criteria, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<ProductSearchExample.Search>(cc =>
                 {
-                    return (criteria) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.ProductSearchResults>(typeof(ProductSearchExample.Search), [criteria], default);
+                    return (criteria, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.ProductSearchResults>(typeof(ProductSearchExample.Search), [criteria], cancellationToken);
                 });
             }
 
@@ -27,7 +27,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
             {
                 services.AddTransient<ProductSearchExample.Search>(cc =>
                 {
-                    return (ProductSearchCriteria criteria) =>
+                    return (ProductSearchCriteria criteria, CancellationToken cancellationToken = default) =>
                     {
                         var ctx = cc.GetRequiredService<IProductContext>();
                         return ProductSearchExample._Search(criteria, ctx);

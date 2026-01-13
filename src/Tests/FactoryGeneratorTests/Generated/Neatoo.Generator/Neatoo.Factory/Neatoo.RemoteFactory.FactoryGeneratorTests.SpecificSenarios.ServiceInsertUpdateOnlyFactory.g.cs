@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IServiceInsertUpdateOnlyFactory
     {
-        ServiceInsertUpdateOnly Create();
-        ServiceInsertUpdateOnly Save(ServiceInsertUpdateOnly target);
+        ServiceInsertUpdateOnly Create(CancellationToken cancellationToken = default);
+        ServiceInsertUpdateOnly Save(ServiceInsertUpdateOnly target, CancellationToken cancellationToken = default);
     }
 
     internal class ServiceInsertUpdateOnlyFactory : FactorySaveBase<ServiceInsertUpdateOnly>, IFactorySave<ServiceInsertUpdateOnly>, IServiceInsertUpdateOnlyFactory
@@ -34,41 +34,41 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual ServiceInsertUpdateOnly Create()
+        public virtual ServiceInsertUpdateOnly Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public ServiceInsertUpdateOnly LocalCreate()
+        public ServiceInsertUpdateOnly LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ServiceInsertUpdateOnly());
         }
 
-        public ServiceInsertUpdateOnly LocalInsert(ServiceInsertUpdateOnly target)
+        public ServiceInsertUpdateOnly LocalInsert(ServiceInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ServiceInsertUpdateOnly)target ?? throw new Exception("ServiceInsertUpdateOnly must implement ServiceInsertUpdateOnly");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert(service));
         }
 
-        public ServiceInsertUpdateOnly LocalUpdate(ServiceInsertUpdateOnly target)
+        public ServiceInsertUpdateOnly LocalUpdate(ServiceInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (ServiceInsertUpdateOnly)target ?? throw new Exception("ServiceInsertUpdateOnly must implement ServiceInsertUpdateOnly");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update(service));
         }
 
-        public virtual ServiceInsertUpdateOnly Save(ServiceInsertUpdateOnly target)
+        public virtual ServiceInsertUpdateOnly Save(ServiceInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ServiceInsertUpdateOnly>.Save(ServiceInsertUpdateOnly target)
+        async Task<IFactorySaveMeta?> IFactorySave<ServiceInsertUpdateOnly>.Save(ServiceInsertUpdateOnly target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual ServiceInsertUpdateOnly LocalSave(ServiceInsertUpdateOnly target)
+        public virtual ServiceInsertUpdateOnly LocalSave(ServiceInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -76,11 +76,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 

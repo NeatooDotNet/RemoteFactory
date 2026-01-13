@@ -13,7 +13,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IConstructorCreateObjectFactory
     {
-        ConstructorCreateObject Create();
+        ConstructorCreateObject Create(CancellationToken cancellationToken = default);
     }
 
     internal class ConstructorCreateObjectFactory : FactoryBase<ConstructorCreateObject>, IConstructorCreateObjectFactory
@@ -33,12 +33,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual ConstructorCreateObject Create()
+        public virtual ConstructorCreateObject Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public ConstructorCreateObject LocalCreate()
+        public ConstructorCreateObject LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ConstructorCreateObject());
         }

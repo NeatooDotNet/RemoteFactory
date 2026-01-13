@@ -12,19 +12,19 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public static partial class ExecuteNullableWithService
     {
-        public delegate Task<string?> GetNullableResult(bool returnNull);
-        public delegate Task<string?> GetNullableResultRemote(bool returnNull);
+        public delegate Task<string?> GetNullableResult(bool returnNull, CancellationToken cancellationToken = default);
+        public delegate Task<string?> GetNullableResultRemote(bool returnNull, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<ExecuteNullableWithService.GetNullableResult>(cc =>
                 {
-                    return (returnNull) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<string?>(typeof(ExecuteNullableWithService.GetNullableResult), [returnNull], default);
+                    return (returnNull, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<string?>(typeof(ExecuteNullableWithService.GetNullableResult), [returnNull], cancellationToken);
                 });
                 services.AddTransient<ExecuteNullableWithService.GetNullableResultRemote>(cc =>
                 {
-                    return (returnNull) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<string?>(typeof(ExecuteNullableWithService.GetNullableResultRemote), [returnNull], default);
+                    return (returnNull, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<string?>(typeof(ExecuteNullableWithService.GetNullableResultRemote), [returnNull], cancellationToken);
                 });
             }
 
@@ -32,7 +32,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 services.AddTransient<ExecuteNullableWithService.GetNullableResult>(cc =>
                 {
-                    return (bool returnNull) =>
+                    return (bool returnNull, CancellationToken cancellationToken = default) =>
                     {
                         var service = cc.GetRequiredService<IService>();
                         return ExecuteNullableWithService._GetNullableResult(returnNull, service);
@@ -40,7 +40,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 });
                 services.AddTransient<ExecuteNullableWithService.GetNullableResultRemote>(cc =>
                 {
-                    return (bool returnNull) =>
+                    return (bool returnNull, CancellationToken cancellationToken = default) =>
                     {
                         var service = cc.GetRequiredService<IService>();
                         return ExecuteNullableWithService._GetNullableResultRemote(returnNull, service);

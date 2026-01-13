@@ -20,26 +20,26 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IWriteDataMapperFactory
     {
-        WriteDataMapper? SaveVoid(WriteDataMapper target);
-        WriteDataMapper? SaveBool(WriteDataMapper target);
-        Task<WriteDataMapper?> SaveTask(WriteDataMapper target);
-        Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target);
-        WriteDataMapper? SaveVoidDep(WriteDataMapper target);
-        WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target);
-        WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target);
-        Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target);
-        Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target);
-        Task<WriteDataMapper?> SaveTaskBoolFalseDep(WriteDataMapper target);
-        WriteDataMapper? SaveVoid(WriteDataMapper target, int? param);
-        WriteDataMapper? SaveBool(WriteDataMapper target, int? param);
-        Task<WriteDataMapper?> SaveTask(WriteDataMapper target, int? param);
-        Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target, int? param);
-        Task<WriteDataMapper?> SaveTaskBoolFalse(WriteDataMapper target, int? param);
-        WriteDataMapper? SaveVoidDep(WriteDataMapper target, int? param);
-        WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target, int? param);
-        WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target, int? param);
-        Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target, int? param);
-        Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target, int? param);
+        WriteDataMapper? SaveVoid(WriteDataMapper target, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveBool(WriteDataMapper target, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTask(WriteDataMapper target, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveVoidDep(WriteDataMapper target, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveVoid(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveBool(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTask(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskBoolFalse(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveVoidDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
+        Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default);
     }
 
     internal class WriteDataMapperFactory : FactorySaveBase<WriteDataMapper>, IFactorySave<WriteDataMapper>, IWriteDataMapperFactory
@@ -59,410 +59,410 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public WriteDataMapper LocalInsertVoid(WriteDataMapper target)
+        public WriteDataMapper LocalInsertVoid(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid());
         }
 
-        public WriteDataMapper? LocalInsertBool(WriteDataMapper target)
+        public WriteDataMapper? LocalInsertBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool());
         }
 
-        public Task<WriteDataMapper> LocalInsertTask(WriteDataMapper target)
+        public Task<WriteDataMapper> LocalInsertTask(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask());
         }
 
-        public Task<WriteDataMapper?> LocalInsertTaskBool(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalInsertTaskBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool());
         }
 
-        public WriteDataMapper LocalInsertVoid1(WriteDataMapper target, int? param)
+        public WriteDataMapper LocalInsertVoid1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid(param));
         }
 
-        public WriteDataMapper? LocalInsertBool1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalInsertBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool(param));
         }
 
-        public Task<WriteDataMapper> LocalInsertTask1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper> LocalInsertTask1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask(param));
         }
 
-        public Task<WriteDataMapper?> LocalInsertTaskBool1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalInsertTaskBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool(param));
         }
 
-        public Task<WriteDataMapper?> LocalInsertTaskBoolFalse(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalInsertTaskBoolFalse(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalse(param));
         }
 
-        public WriteDataMapper LocalInsertVoidDep(WriteDataMapper target)
+        public WriteDataMapper LocalInsertVoidDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(service));
         }
 
-        public WriteDataMapper? LocalInsertBoolTrueDep(WriteDataMapper target)
+        public WriteDataMapper? LocalInsertBoolTrueDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(service));
         }
 
-        public WriteDataMapper? LocalInsertBoolFalseDep(WriteDataMapper target)
+        public WriteDataMapper? LocalInsertBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(service));
         }
 
-        public Task<WriteDataMapper> LocalInsertTaskDep(WriteDataMapper target)
+        public Task<WriteDataMapper> LocalInsertTaskDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(service));
         }
 
-        public Task<WriteDataMapper?> LocalInsertTaskBoolDep(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalInsertTaskBoolDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(service));
         }
 
-        public Task<WriteDataMapper?> LocalInsertTaskBoolFalseDep(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalInsertTaskBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolFalseDep(service));
         }
 
-        public WriteDataMapper LocalInsertVoidDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper LocalInsertVoidDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoidDep(param, service));
         }
 
-        public WriteDataMapper? LocalInsertBoolTrueDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalInsertBoolTrueDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolTrueDep(param, service));
         }
 
-        public WriteDataMapper? LocalInsertBoolFalseDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalInsertBoolFalseDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolFalseDep(param, service));
         }
 
-        public Task<WriteDataMapper> LocalInsertTaskDep1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper> LocalInsertTaskDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskDep(param, service));
         }
 
-        public Task<WriteDataMapper?> LocalInsertTaskBoolDep1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalInsertTaskBoolDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBoolDep(param, service));
         }
 
-        public WriteDataMapper LocalUpdateVoid(WriteDataMapper target)
+        public WriteDataMapper LocalUpdateVoid(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid());
         }
 
-        public WriteDataMapper? LocalUpdateBool(WriteDataMapper target)
+        public WriteDataMapper? LocalUpdateBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool());
         }
 
-        public Task<WriteDataMapper> LocalUpdateTask(WriteDataMapper target)
+        public Task<WriteDataMapper> LocalUpdateTask(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask());
         }
 
-        public Task<WriteDataMapper?> LocalUpdateTaskBool(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalUpdateTaskBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool());
         }
 
-        public WriteDataMapper LocalUpdateVoid1(WriteDataMapper target, int? param)
+        public WriteDataMapper LocalUpdateVoid1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid(param));
         }
 
-        public WriteDataMapper? LocalUpdateBool1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalUpdateBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool(param));
         }
 
-        public Task<WriteDataMapper> LocalUpdateTask1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper> LocalUpdateTask1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask(param));
         }
 
-        public Task<WriteDataMapper?> LocalUpdateTaskBool1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalUpdateTaskBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool(param));
         }
 
-        public Task<WriteDataMapper?> LocalUpdateTaskBoolFalse(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalUpdateTaskBoolFalse(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalse(param));
         }
 
-        public WriteDataMapper LocalUpdateVoidDep(WriteDataMapper target)
+        public WriteDataMapper LocalUpdateVoidDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(service));
         }
 
-        public WriteDataMapper? LocalUpdateBoolTrueDep(WriteDataMapper target)
+        public WriteDataMapper? LocalUpdateBoolTrueDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(service));
         }
 
-        public WriteDataMapper? LocalUpdateBoolFalseDep(WriteDataMapper target)
+        public WriteDataMapper? LocalUpdateBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(service));
         }
 
-        public Task<WriteDataMapper> LocalUpdateTaskDep(WriteDataMapper target)
+        public Task<WriteDataMapper> LocalUpdateTaskDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(service));
         }
 
-        public Task<WriteDataMapper?> LocalUpdateTaskBoolDep(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalUpdateTaskBoolDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(service));
         }
 
-        public Task<WriteDataMapper?> LocalUpdateTaskBoolFalseDep(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalUpdateTaskBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolFalseDep(service));
         }
 
-        public WriteDataMapper LocalUpdateVoidDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper LocalUpdateVoidDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoidDep(param, service));
         }
 
-        public WriteDataMapper? LocalUpdateBoolTrueDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalUpdateBoolTrueDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolTrueDep(param, service));
         }
 
-        public WriteDataMapper? LocalUpdateBoolFalseDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalUpdateBoolFalseDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolFalseDep(param, service));
         }
 
-        public Task<WriteDataMapper> LocalUpdateTaskDep1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper> LocalUpdateTaskDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskDep(param, service));
         }
 
-        public Task<WriteDataMapper?> LocalUpdateTaskBoolDep1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalUpdateTaskBoolDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBoolDep(param, service));
         }
 
-        public WriteDataMapper LocalDeleteVoid(WriteDataMapper target)
+        public WriteDataMapper LocalDeleteVoid(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid());
         }
 
-        public WriteDataMapper? LocalDeleteBool(WriteDataMapper target)
+        public WriteDataMapper? LocalDeleteBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool());
         }
 
-        public Task<WriteDataMapper> LocalDeleteTask(WriteDataMapper target)
+        public Task<WriteDataMapper> LocalDeleteTask(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask());
         }
 
-        public Task<WriteDataMapper?> LocalDeleteTaskBool(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalDeleteTaskBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool());
         }
 
-        public WriteDataMapper LocalDeleteVoid1(WriteDataMapper target, int? param)
+        public WriteDataMapper LocalDeleteVoid1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid(param));
         }
 
-        public WriteDataMapper? LocalDeleteBool1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalDeleteBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool(param));
         }
 
-        public Task<WriteDataMapper> LocalDeleteTask1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper> LocalDeleteTask1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask(param));
         }
 
-        public Task<WriteDataMapper?> LocalDeleteTaskBool1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalDeleteTaskBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool(param));
         }
 
-        public Task<WriteDataMapper?> LocalDeleteTaskBoolFalse(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalDeleteTaskBoolFalse(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalse(param));
         }
 
-        public WriteDataMapper LocalDeleteVoidDep(WriteDataMapper target)
+        public WriteDataMapper LocalDeleteVoidDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(service));
         }
 
-        public WriteDataMapper? LocalDeleteBoolTrueDep(WriteDataMapper target)
+        public WriteDataMapper? LocalDeleteBoolTrueDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(service));
         }
 
-        public WriteDataMapper? LocalDeleteBoolFalseDep(WriteDataMapper target)
+        public WriteDataMapper? LocalDeleteBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(service));
         }
 
-        public Task<WriteDataMapper> LocalDeleteTaskDep(WriteDataMapper target)
+        public Task<WriteDataMapper> LocalDeleteTaskDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(service));
         }
 
-        public Task<WriteDataMapper?> LocalDeleteTaskBoolDep(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalDeleteTaskBoolDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(service));
         }
 
-        public Task<WriteDataMapper?> LocalDeleteTaskBoolFalseDep(WriteDataMapper target)
+        public Task<WriteDataMapper?> LocalDeleteTaskBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolFalseDep(service));
         }
 
-        public WriteDataMapper LocalDeleteVoidDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper LocalDeleteVoidDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoidDep(param, service));
         }
 
-        public WriteDataMapper? LocalDeleteBoolTrueDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalDeleteBoolTrueDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolTrueDep(param, service));
         }
 
-        public WriteDataMapper? LocalDeleteBoolFalseDep1(WriteDataMapper target, int? param)
+        public WriteDataMapper? LocalDeleteBoolFalseDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolFalseDep(param, service));
         }
 
-        public Task<WriteDataMapper> LocalDeleteTaskDep1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper> LocalDeleteTaskDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskDep(param, service));
         }
 
-        public Task<WriteDataMapper?> LocalDeleteTaskBoolDep1(WriteDataMapper target, int? param)
+        public Task<WriteDataMapper?> LocalDeleteTaskBoolDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             var cTarget = (WriteDataMapper)target ?? throw new Exception("WriteDataMapper must implement WriteDataMapper");
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBoolDep(param, service));
         }
 
-        public virtual WriteDataMapper? SaveVoid(WriteDataMapper target)
+        public virtual WriteDataMapper? SaveVoid(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoid(target);
+            return LocalSaveVoid(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<WriteDataMapper>.Save(WriteDataMapper target)
+        async Task<IFactorySaveMeta?> IFactorySave<WriteDataMapper>.Save(WriteDataMapper target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target));
+            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target, cancellationToken));
         }
 
-        public virtual WriteDataMapper? LocalSaveVoid(WriteDataMapper target)
+        public virtual WriteDataMapper? LocalSaveVoid(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -471,24 +471,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteVoid(target);
+                return LocalDeleteVoid(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoid(target);
+                return LocalInsertVoid(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoid(target);
+                return LocalUpdateVoid(target, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveBool(WriteDataMapper target)
+        public virtual WriteDataMapper? SaveBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBool(target);
+            return LocalSaveBool(target, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveBool(WriteDataMapper target)
+        public virtual WriteDataMapper? LocalSaveBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -497,24 +497,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteBool(target);
+                return LocalDeleteBool(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBool(target);
+                return LocalInsertBool(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateBool(target);
+                return LocalUpdateBool(target, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTask(WriteDataMapper target)
+        public virtual Task<WriteDataMapper?> SaveTask(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTask(target);
+            return LocalSaveTask(target, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTask(WriteDataMapper target)
+        public virtual async Task<WriteDataMapper?> LocalSaveTask(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -523,24 +523,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTask(target);
+                return await LocalDeleteTask(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask(target);
+                return await LocalInsertTask(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask(target);
+                return await LocalUpdateTask(target, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target)
+        public virtual Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBool(target);
+            return LocalSaveTaskBool(target, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskBool(WriteDataMapper target)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskBool(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -549,24 +549,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskBool(target);
+                return await LocalDeleteTaskBool(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBool(target);
+                return await LocalInsertTaskBool(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBool(target);
+                return await LocalUpdateTaskBool(target, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveVoidDep(WriteDataMapper target)
+        public virtual WriteDataMapper? SaveVoidDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoidDep(target);
+            return LocalSaveVoidDep(target, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveVoidDep(WriteDataMapper target)
+        public virtual WriteDataMapper? LocalSaveVoidDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -575,24 +575,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteVoidDep(target);
+                return LocalDeleteVoidDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoidDep(target);
+                return LocalInsertVoidDep(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoidDep(target);
+                return LocalUpdateVoidDep(target, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target)
+        public virtual WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBoolTrueDep(target);
+            return LocalSaveBoolTrueDep(target, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveBoolTrueDep(WriteDataMapper target)
+        public virtual WriteDataMapper? LocalSaveBoolTrueDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -601,24 +601,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteBoolTrueDep(target);
+                return LocalDeleteBoolTrueDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolTrueDep(target);
+                return LocalInsertBoolTrueDep(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateBoolTrueDep(target);
+                return LocalUpdateBoolTrueDep(target, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target)
+        public virtual WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBoolFalseDep(target);
+            return LocalSaveBoolFalseDep(target, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveBoolFalseDep(WriteDataMapper target)
+        public virtual WriteDataMapper? LocalSaveBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -627,24 +627,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteBoolFalseDep(target);
+                return LocalDeleteBoolFalseDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolFalseDep(target);
+                return LocalInsertBoolFalseDep(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateBoolFalseDep(target);
+                return LocalUpdateBoolFalseDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target)
+        public virtual Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskDep(target);
+            return LocalSaveTaskDep(target, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskDep(WriteDataMapper target)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -653,24 +653,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskDep(target);
+                return await LocalDeleteTaskDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskDep(target);
+                return await LocalInsertTaskDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskDep(target);
+                return await LocalUpdateTaskDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target)
+        public virtual Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBoolDep(target);
+            return LocalSaveTaskBoolDep(target, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolDep(WriteDataMapper target)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -679,24 +679,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskBoolDep(target);
+                return await LocalDeleteTaskBoolDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolDep(target);
+                return await LocalInsertTaskBoolDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolDep(target);
+                return await LocalUpdateTaskBoolDep(target, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskBoolFalseDep(WriteDataMapper target)
+        public virtual Task<WriteDataMapper?> SaveTaskBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBoolFalseDep(target);
+            return LocalSaveTaskBoolFalseDep(target, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolFalseDep(WriteDataMapper target)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolFalseDep(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -705,24 +705,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskBoolFalseDep(target);
+                return await LocalDeleteTaskBoolFalseDep(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolFalseDep(target);
+                return await LocalInsertTaskBoolFalseDep(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolFalseDep(target);
+                return await LocalUpdateTaskBoolFalseDep(target, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveVoid(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? SaveVoid(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoid1(target, param);
+            return LocalSaveVoid1(target, param, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveVoid1(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? LocalSaveVoid1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -731,24 +731,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteVoid1(target, param);
+                return LocalDeleteVoid1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoid1(target, param);
+                return LocalInsertVoid1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoid1(target, param);
+                return LocalUpdateVoid1(target, param, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveBool(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? SaveBool(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBool1(target, param);
+            return LocalSaveBool1(target, param, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveBool1(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? LocalSaveBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -757,24 +757,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteBool1(target, param);
+                return LocalDeleteBool1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBool1(target, param);
+                return LocalInsertBool1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateBool1(target, param);
+                return LocalUpdateBool1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTask(WriteDataMapper target, int? param)
+        public virtual Task<WriteDataMapper?> SaveTask(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTask1(target, param);
+            return LocalSaveTask1(target, param, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTask1(WriteDataMapper target, int? param)
+        public virtual async Task<WriteDataMapper?> LocalSaveTask1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -783,24 +783,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTask1(target, param);
+                return await LocalDeleteTask1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask1(target, param);
+                return await LocalInsertTask1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask1(target, param);
+                return await LocalUpdateTask1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target, int? param)
+        public virtual Task<WriteDataMapper?> SaveTaskBool(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBool1(target, param);
+            return LocalSaveTaskBool1(target, param, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskBool1(WriteDataMapper target, int? param)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskBool1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -809,24 +809,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskBool1(target, param);
+                return await LocalDeleteTaskBool1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBool1(target, param);
+                return await LocalInsertTaskBool1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBool1(target, param);
+                return await LocalUpdateTaskBool1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskBoolFalse(WriteDataMapper target, int? param)
+        public virtual Task<WriteDataMapper?> SaveTaskBoolFalse(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBoolFalse(target, param);
+            return LocalSaveTaskBoolFalse(target, param, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolFalse(WriteDataMapper target, int? param)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolFalse(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -835,24 +835,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskBoolFalse(target, param);
+                return await LocalDeleteTaskBoolFalse(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolFalse(target, param);
+                return await LocalInsertTaskBoolFalse(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolFalse(target, param);
+                return await LocalUpdateTaskBoolFalse(target, param, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveVoidDep(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? SaveVoidDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoidDep1(target, param);
+            return LocalSaveVoidDep1(target, param, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveVoidDep1(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? LocalSaveVoidDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -861,24 +861,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteVoidDep1(target, param);
+                return LocalDeleteVoidDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoidDep1(target, param);
+                return LocalInsertVoidDep1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoidDep1(target, param);
+                return LocalUpdateVoidDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? SaveBoolTrueDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBoolTrueDep1(target, param);
+            return LocalSaveBoolTrueDep1(target, param, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveBoolTrueDep1(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? LocalSaveBoolTrueDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -887,24 +887,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteBoolTrueDep1(target, param);
+                return LocalDeleteBoolTrueDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolTrueDep1(target, param);
+                return LocalInsertBoolTrueDep1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateBoolTrueDep1(target, param);
+                return LocalUpdateBoolTrueDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? SaveBoolFalseDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBoolFalseDep1(target, param);
+            return LocalSaveBoolFalseDep1(target, param, cancellationToken);
         }
 
-        public virtual WriteDataMapper? LocalSaveBoolFalseDep1(WriteDataMapper target, int? param)
+        public virtual WriteDataMapper? LocalSaveBoolFalseDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -913,24 +913,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return LocalDeleteBoolFalseDep1(target, param);
+                return LocalDeleteBoolFalseDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBoolFalseDep1(target, param);
+                return LocalInsertBoolFalseDep1(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateBoolFalseDep1(target, param);
+                return LocalUpdateBoolFalseDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target, int? param)
+        public virtual Task<WriteDataMapper?> SaveTaskDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskDep1(target, param);
+            return LocalSaveTaskDep1(target, param, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskDep1(WriteDataMapper target, int? param)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -939,24 +939,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskDep1(target, param);
+                return await LocalDeleteTaskDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskDep1(target, param);
+                return await LocalInsertTaskDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskDep1(target, param);
+                return await LocalUpdateTaskDep1(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target, int? param)
+        public virtual Task<WriteDataMapper?> SaveTaskBoolDep(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveTaskBoolDep1(target, param);
+            return LocalSaveTaskBoolDep1(target, param, cancellationToken);
         }
 
-        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolDep1(WriteDataMapper target, int? param)
+        public virtual async Task<WriteDataMapper?> LocalSaveTaskBoolDep1(WriteDataMapper target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -965,15 +965,15 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(WriteDataMapper);
                 }
 
-                return await LocalDeleteTaskBoolDep1(target, param);
+                return await LocalDeleteTaskBoolDep1(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBoolDep1(target, param);
+                return await LocalInsertTaskBoolDep1(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBoolDep1(target, param);
+                return await LocalUpdateTaskBoolDep1(target, param, cancellationToken);
             }
         }
 

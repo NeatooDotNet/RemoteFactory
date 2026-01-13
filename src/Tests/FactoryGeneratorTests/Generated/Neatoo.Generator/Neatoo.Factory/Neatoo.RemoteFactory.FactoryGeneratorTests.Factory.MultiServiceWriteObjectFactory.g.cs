@@ -12,10 +12,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IMultiServiceWriteObjectFactory
     {
-        MultiServiceWriteObject? SaveWithTwoServices(MultiServiceWriteObject target);
-        MultiServiceWriteObject? SaveWithThreeServices(MultiServiceWriteObject target);
-        Task<MultiServiceWriteObject> SaveWithTwoServicesAsync(MultiServiceWriteObject target);
-        Task<MultiServiceWriteObject?> SaveWithTwoServicesBoolAsync(MultiServiceWriteObject target);
+        MultiServiceWriteObject? SaveWithTwoServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default);
+        MultiServiceWriteObject? SaveWithThreeServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default);
+        Task<MultiServiceWriteObject> SaveWithTwoServicesAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default);
+        Task<MultiServiceWriteObject?> SaveWithTwoServicesBoolAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default);
     }
 
     internal class MultiServiceWriteObjectFactory : FactorySaveBase<MultiServiceWriteObject>, IFactorySave<MultiServiceWriteObject>, IMultiServiceWriteObjectFactory
@@ -35,7 +35,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public MultiServiceWriteObject LocalInsertWithTwoServices(MultiServiceWriteObject target)
+        public MultiServiceWriteObject LocalInsertWithTwoServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -43,7 +43,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertWithTwoServices(service1, service2));
         }
 
-        public MultiServiceWriteObject LocalInsertWithThreeServices(MultiServiceWriteObject target)
+        public MultiServiceWriteObject LocalInsertWithThreeServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -52,7 +52,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertWithThreeServices(service1, service2, service3));
         }
 
-        public MultiServiceWriteObject LocalUpdateWithTwoServices(MultiServiceWriteObject target)
+        public MultiServiceWriteObject LocalUpdateWithTwoServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -60,7 +60,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateWithTwoServices(service1, service2));
         }
 
-        public MultiServiceWriteObject LocalUpdateWithThreeServices(MultiServiceWriteObject target)
+        public MultiServiceWriteObject LocalUpdateWithThreeServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -69,7 +69,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateWithThreeServices(service1, service2, service3));
         }
 
-        public MultiServiceWriteObject LocalDeleteWithTwoServices(MultiServiceWriteObject target)
+        public MultiServiceWriteObject LocalDeleteWithTwoServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -77,7 +77,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteWithTwoServices(service1, service2));
         }
 
-        public MultiServiceWriteObject LocalDeleteWithThreeServices(MultiServiceWriteObject target)
+        public MultiServiceWriteObject LocalDeleteWithThreeServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -86,7 +86,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteWithThreeServices(service1, service2, service3));
         }
 
-        public Task<MultiServiceWriteObject> LocalInsertWithTwoServicesAsync(MultiServiceWriteObject target)
+        public Task<MultiServiceWriteObject> LocalInsertWithTwoServicesAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -94,7 +94,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertWithTwoServicesAsync(service1, service2));
         }
 
-        public Task<MultiServiceWriteObject?> LocalUpdateWithTwoServicesBoolAsync(MultiServiceWriteObject target)
+        public Task<MultiServiceWriteObject?> LocalUpdateWithTwoServicesBoolAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceWriteObject)target ?? throw new Exception("MultiServiceWriteObject must implement MultiServiceWriteObject");
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -102,17 +102,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateWithTwoServicesBoolAsync(service1, service2));
         }
 
-        public virtual MultiServiceWriteObject? SaveWithTwoServices(MultiServiceWriteObject target)
+        public virtual MultiServiceWriteObject? SaveWithTwoServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveWithTwoServices(target);
+            return LocalSaveWithTwoServices(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceWriteObject>.Save(MultiServiceWriteObject target)
+        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceWriteObject>.Save(MultiServiceWriteObject target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )SaveWithTwoServices(target));
+            return await Task.FromResult((IFactorySaveMeta? )SaveWithTwoServices(target, cancellationToken));
         }
 
-        public virtual MultiServiceWriteObject? LocalSaveWithTwoServices(MultiServiceWriteObject target)
+        public virtual MultiServiceWriteObject? LocalSaveWithTwoServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -121,24 +121,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MultiServiceWriteObject);
                 }
 
-                return LocalDeleteWithTwoServices(target);
+                return LocalDeleteWithTwoServices(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertWithTwoServices(target);
+                return LocalInsertWithTwoServices(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateWithTwoServices(target);
+                return LocalUpdateWithTwoServices(target, cancellationToken);
             }
         }
 
-        public virtual MultiServiceWriteObject? SaveWithThreeServices(MultiServiceWriteObject target)
+        public virtual MultiServiceWriteObject? SaveWithThreeServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveWithThreeServices(target);
+            return LocalSaveWithThreeServices(target, cancellationToken);
         }
 
-        public virtual MultiServiceWriteObject? LocalSaveWithThreeServices(MultiServiceWriteObject target)
+        public virtual MultiServiceWriteObject? LocalSaveWithThreeServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -147,24 +147,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(MultiServiceWriteObject);
                 }
 
-                return LocalDeleteWithThreeServices(target);
+                return LocalDeleteWithThreeServices(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertWithThreeServices(target);
+                return LocalInsertWithThreeServices(target, cancellationToken);
             }
             else
             {
-                return LocalUpdateWithThreeServices(target);
+                return LocalUpdateWithThreeServices(target, cancellationToken);
             }
         }
 
-        public virtual Task<MultiServiceWriteObject> SaveWithTwoServicesAsync(MultiServiceWriteObject target)
+        public virtual Task<MultiServiceWriteObject> SaveWithTwoServicesAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveWithTwoServicesAsync(target);
+            return LocalSaveWithTwoServicesAsync(target, cancellationToken);
         }
 
-        public virtual async Task<MultiServiceWriteObject> LocalSaveWithTwoServicesAsync(MultiServiceWriteObject target)
+        public virtual async Task<MultiServiceWriteObject> LocalSaveWithTwoServicesAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -172,7 +172,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
             else if (target.IsNew)
             {
-                return await LocalInsertWithTwoServicesAsync(target);
+                return await LocalInsertWithTwoServicesAsync(target, cancellationToken);
             }
             else
             {
@@ -180,12 +180,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<MultiServiceWriteObject?> SaveWithTwoServicesBoolAsync(MultiServiceWriteObject target)
+        public virtual Task<MultiServiceWriteObject?> SaveWithTwoServicesBoolAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveWithTwoServicesBoolAsync(target);
+            return LocalSaveWithTwoServicesBoolAsync(target, cancellationToken);
         }
 
-        public virtual async Task<MultiServiceWriteObject?> LocalSaveWithTwoServicesBoolAsync(MultiServiceWriteObject target)
+        public virtual async Task<MultiServiceWriteObject?> LocalSaveWithTwoServicesBoolAsync(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -197,7 +197,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
             else
             {
-                return await LocalUpdateWithTwoServicesBoolAsync(target);
+                return await LocalUpdateWithTwoServicesBoolAsync(target, cancellationToken);
             }
         }
 

@@ -12,9 +12,9 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.FetchExamples
 {
     public interface IPersonWithMultipleFetchFactory
     {
-        PersonWithMultipleFetch Create();
-        Task<PersonWithMultipleFetch?> Fetch(int id);
-        Task<PersonWithMultipleFetch?> FetchByEmail(string email);
+        PersonWithMultipleFetch Create(CancellationToken cancellationToken = default);
+        Task<PersonWithMultipleFetch?> Fetch(int id, CancellationToken cancellationToken = default);
+        Task<PersonWithMultipleFetch?> FetchByEmail(string email, CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithMultipleFetchFactory : FactoryBase<PersonWithMultipleFetch>, IPersonWithMultipleFetchFactory
@@ -22,8 +22,8 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.FetchExamples
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonWithMultipleFetch?> FetchDelegate(int id);
-        public delegate Task<PersonWithMultipleFetch?> FetchByEmailDelegate(string email);
+        public delegate Task<PersonWithMultipleFetch?> FetchDelegate(int id, CancellationToken cancellationToken = default);
+        public delegate Task<PersonWithMultipleFetch?> FetchByEmailDelegate(string email, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
         public FetchByEmailDelegate FetchByEmailProperty { get; }
@@ -43,44 +43,44 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.FetchExamples
             FetchByEmailProperty = RemoteFetchByEmail;
         }
 
-        public virtual PersonWithMultipleFetch Create()
+        public virtual PersonWithMultipleFetch Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public PersonWithMultipleFetch LocalCreate()
+        public PersonWithMultipleFetch LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new PersonWithMultipleFetch());
         }
 
-        public virtual Task<PersonWithMultipleFetch?> Fetch(int id)
+        public virtual Task<PersonWithMultipleFetch?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<PersonWithMultipleFetch?> RemoteFetch(int id)
+        public virtual async Task<PersonWithMultipleFetch?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonWithMultipleFetch?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonWithMultipleFetch?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<PersonWithMultipleFetch?> LocalFetch(int id)
+        public Task<PersonWithMultipleFetch?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonWithMultipleFetch>();
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.Fetch(id, context));
         }
 
-        public virtual Task<PersonWithMultipleFetch?> FetchByEmail(string email)
+        public virtual Task<PersonWithMultipleFetch?> FetchByEmail(string email, CancellationToken cancellationToken = default)
         {
-            return FetchByEmailProperty(email);
+            return FetchByEmailProperty(email, cancellationToken);
         }
 
-        public virtual async Task<PersonWithMultipleFetch?> RemoteFetchByEmail(string email)
+        public virtual async Task<PersonWithMultipleFetch?> RemoteFetchByEmail(string email, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonWithMultipleFetch?>(typeof(FetchByEmailDelegate), [email], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonWithMultipleFetch?>(typeof(FetchByEmailDelegate), [email], cancellationToken))!;
         }
 
-        public Task<PersonWithMultipleFetch?> LocalFetchByEmail(string email)
+        public Task<PersonWithMultipleFetch?> LocalFetchByEmail(string email, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonWithMultipleFetch>();
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
@@ -94,12 +94,12 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.FetchExamples
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonWithMultipleFetchFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddScoped<FetchByEmailDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonWithMultipleFetchFactory>();
-                return (string email) => factory.LocalFetchByEmail(email);
+                return (string email, CancellationToken cancellationToken = default) => factory.LocalFetchByEmail(email, cancellationToken);
             });
             services.AddTransient<PersonWithMultipleFetch>();
             // Event registrations

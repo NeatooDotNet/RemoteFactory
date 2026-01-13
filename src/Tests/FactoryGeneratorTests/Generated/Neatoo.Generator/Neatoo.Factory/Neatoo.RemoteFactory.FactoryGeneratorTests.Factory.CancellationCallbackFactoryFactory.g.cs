@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICancellationCallbackFactoryFactory
     {
-        CancellationCallbackFactory Create();
-        Task<CancellationCallbackFactory> FetchAsync(CancellationToken cancellationToken);
+        CancellationCallbackFactory Create(CancellationToken cancellationToken = default);
+        Task<CancellationCallbackFactory> FetchAsync(CancellationToken cancellationToken = default);
     }
 
     internal class CancellationCallbackFactoryFactory : FactoryBase<CancellationCallbackFactory>, ICancellationCallbackFactoryFactory
@@ -34,22 +34,22 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CancellationCallbackFactory Create()
+        public virtual CancellationCallbackFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CancellationCallbackFactory LocalCreate()
+        public CancellationCallbackFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CancellationCallbackFactory());
         }
 
-        public virtual Task<CancellationCallbackFactory> FetchAsync(CancellationToken cancellationToken)
+        public virtual Task<CancellationCallbackFactory> FetchAsync(CancellationToken cancellationToken = default)
         {
             return LocalFetchAsync(cancellationToken);
         }
 
-        public Task<CancellationCallbackFactory> LocalFetchAsync(CancellationToken cancellationToken)
+        public Task<CancellationCallbackFactory> LocalFetchAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<CancellationCallbackFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchAsync(cancellationToken));

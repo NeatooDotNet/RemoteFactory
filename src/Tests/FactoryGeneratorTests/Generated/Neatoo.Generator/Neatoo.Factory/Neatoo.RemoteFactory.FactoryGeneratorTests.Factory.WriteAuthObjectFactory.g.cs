@@ -13,30 +13,30 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IWriteAuthObjectFactory
     {
-        WriteAuthObject? SaveVoid(WriteAuthObject target, int? param);
-        Authorized<WriteAuthObject> TrySaveVoid(WriteAuthObject target, int? param);
-        WriteAuthObject? SaveBool(WriteAuthObject target, int? param);
-        Authorized<WriteAuthObject> TrySaveBool(WriteAuthObject target, int? param);
-        Task<WriteAuthObject?> SaveTask(WriteAuthObject target, int? param);
-        Task<Authorized<WriteAuthObject>> TrySaveTask(WriteAuthObject target, int? param);
-        Task<WriteAuthObject?> SaveTaskBool(WriteAuthObject target, int? param);
-        Task<Authorized<WriteAuthObject>> TrySaveTaskBool(WriteAuthObject target, int? param);
-        Authorized CanInsertVoid(int? p);
-        Authorized CanInsertBool(int? p);
-        Authorized CanInsertTask(int? p);
-        Authorized CanInsertTaskBool(int? p);
-        Authorized CanUpdateVoid(int? p);
-        Authorized CanUpdateBool(int? p);
-        Authorized CanUpdateTask(int? p);
-        Authorized CanUpdateTaskBool(int? p);
-        Authorized CanDeleteVoid(int? p);
-        Authorized CanDeleteBool(int? p);
-        Authorized CanDeleteTask(int? p);
-        Authorized CanDeleteTaskBool(int? p);
-        Authorized CanSaveVoid(int? p);
-        Authorized CanSaveBool(int? p);
-        Authorized CanSaveTask(int? p);
-        Authorized CanSaveTaskBool(int? p);
+        WriteAuthObject? SaveVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        Authorized<WriteAuthObject> TrySaveVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        WriteAuthObject? SaveBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        Authorized<WriteAuthObject> TrySaveBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        Task<WriteAuthObject?> SaveTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        Task<Authorized<WriteAuthObject>> TrySaveTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        Task<WriteAuthObject?> SaveTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        Task<Authorized<WriteAuthObject>> TrySaveTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default);
+        Authorized CanInsertVoid(int? p, CancellationToken cancellationToken = default);
+        Authorized CanInsertBool(int? p, CancellationToken cancellationToken = default);
+        Authorized CanInsertTask(int? p, CancellationToken cancellationToken = default);
+        Authorized CanInsertTaskBool(int? p, CancellationToken cancellationToken = default);
+        Authorized CanUpdateVoid(int? p, CancellationToken cancellationToken = default);
+        Authorized CanUpdateBool(int? p, CancellationToken cancellationToken = default);
+        Authorized CanUpdateTask(int? p, CancellationToken cancellationToken = default);
+        Authorized CanUpdateTaskBool(int? p, CancellationToken cancellationToken = default);
+        Authorized CanDeleteVoid(int? p, CancellationToken cancellationToken = default);
+        Authorized CanDeleteBool(int? p, CancellationToken cancellationToken = default);
+        Authorized CanDeleteTask(int? p, CancellationToken cancellationToken = default);
+        Authorized CanDeleteTaskBool(int? p, CancellationToken cancellationToken = default);
+        Authorized CanSaveVoid(int? p, CancellationToken cancellationToken = default);
+        Authorized CanSaveBool(int? p, CancellationToken cancellationToken = default);
+        Authorized CanSaveTask(int? p, CancellationToken cancellationToken = default);
+        Authorized CanSaveTaskBool(int? p, CancellationToken cancellationToken = default);
     }
 
     internal class WriteAuthObjectFactory : FactoryBase<WriteAuthObject>, IWriteAuthObjectFactory
@@ -56,7 +56,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public Authorized<WriteAuthObject> LocalInsertVoid(WriteAuthObject target, int? param)
+        public Authorized<WriteAuthObject> LocalInsertVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -112,7 +112,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid(param)));
         }
 
-        public Authorized<WriteAuthObject> LocalInsertBool(WriteAuthObject target, int? param)
+        public Authorized<WriteAuthObject> LocalInsertBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -168,7 +168,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(DoFactoryMethodCallBool(cTarget, FactoryOperation.Insert, () => cTarget.InsertBool(param)));
         }
 
-        public async Task<Authorized<WriteAuthObject>> LocalInsertTask(WriteAuthObject target, int? param)
+        public async Task<Authorized<WriteAuthObject>> LocalInsertTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -224,7 +224,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask(param)));
         }
 
-        public async Task<Authorized<WriteAuthObject>> LocalInsertTaskBool(WriteAuthObject target, int? param)
+        public async Task<Authorized<WriteAuthObject>> LocalInsertTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -280,7 +280,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(await DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTaskBool(param)));
         }
 
-        public Authorized<WriteAuthObject> LocalUpdateVoid(WriteAuthObject target, int? param)
+        public Authorized<WriteAuthObject> LocalUpdateVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -336,7 +336,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid(param)));
         }
 
-        public Authorized<WriteAuthObject> LocalUpdateBool(WriteAuthObject target, int? param)
+        public Authorized<WriteAuthObject> LocalUpdateBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -392,7 +392,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(DoFactoryMethodCallBool(cTarget, FactoryOperation.Update, () => cTarget.UpdateBool(param)));
         }
 
-        public async Task<Authorized<WriteAuthObject>> LocalUpdateTask(WriteAuthObject target, int? param)
+        public async Task<Authorized<WriteAuthObject>> LocalUpdateTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -448,7 +448,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask(param)));
         }
 
-        public async Task<Authorized<WriteAuthObject>> LocalUpdateTaskBool(WriteAuthObject target, int? param)
+        public async Task<Authorized<WriteAuthObject>> LocalUpdateTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -504,7 +504,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(await DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTaskBool(param)));
         }
 
-        public Authorized<WriteAuthObject> LocalDeleteVoid(WriteAuthObject target, int? param)
+        public Authorized<WriteAuthObject> LocalDeleteVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -560,7 +560,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid(param)));
         }
 
-        public Authorized<WriteAuthObject> LocalDeleteBool(WriteAuthObject target, int? param)
+        public Authorized<WriteAuthObject> LocalDeleteBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -616,7 +616,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(DoFactoryMethodCallBool(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBool(param)));
         }
 
-        public async Task<Authorized<WriteAuthObject>> LocalDeleteTask(WriteAuthObject target, int? param)
+        public async Task<Authorized<WriteAuthObject>> LocalDeleteTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -672,7 +672,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask(param)));
         }
 
-        public async Task<Authorized<WriteAuthObject>> LocalDeleteTaskBool(WriteAuthObject target, int? param)
+        public async Task<Authorized<WriteAuthObject>> LocalDeleteTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -728,9 +728,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<WriteAuthObject>(await DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTaskBool(param)));
         }
 
-        public virtual WriteAuthObject? SaveVoid(WriteAuthObject target, int? param)
+        public virtual WriteAuthObject? SaveVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            var authorized = (LocalSaveVoid(target, param));
+            var authorized = (LocalSaveVoid(target, param, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -739,12 +739,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return authorized.Result;
         }
 
-        public virtual Authorized<WriteAuthObject> TrySaveVoid(WriteAuthObject target, int? param)
+        public virtual Authorized<WriteAuthObject> TrySaveVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveVoid(target, param);
+            return LocalSaveVoid(target, param, cancellationToken);
         }
 
-        public virtual Authorized<WriteAuthObject> LocalSaveVoid(WriteAuthObject target, int? param)
+        public virtual Authorized<WriteAuthObject> LocalSaveVoid(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -753,21 +753,21 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return new Authorized<WriteAuthObject>();
                 }
 
-                return LocalDeleteVoid(target, param);
+                return LocalDeleteVoid(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertVoid(target, param);
+                return LocalInsertVoid(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateVoid(target, param);
+                return LocalUpdateVoid(target, param, cancellationToken);
             }
         }
 
-        public virtual WriteAuthObject? SaveBool(WriteAuthObject target, int? param)
+        public virtual WriteAuthObject? SaveBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            var authorized = (LocalSaveBool(target, param));
+            var authorized = (LocalSaveBool(target, param, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -776,12 +776,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return authorized.Result;
         }
 
-        public virtual Authorized<WriteAuthObject> TrySaveBool(WriteAuthObject target, int? param)
+        public virtual Authorized<WriteAuthObject> TrySaveBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBool(target, param);
+            return LocalSaveBool(target, param, cancellationToken);
         }
 
-        public virtual Authorized<WriteAuthObject> LocalSaveBool(WriteAuthObject target, int? param)
+        public virtual Authorized<WriteAuthObject> LocalSaveBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -790,21 +790,21 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return new Authorized<WriteAuthObject>();
                 }
 
-                return LocalDeleteBool(target, param);
+                return LocalDeleteBool(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsertBool(target, param);
+                return LocalInsertBool(target, param, cancellationToken);
             }
             else
             {
-                return LocalUpdateBool(target, param);
+                return LocalUpdateBool(target, param, cancellationToken);
             }
         }
 
-        public virtual async Task<WriteAuthObject?> SaveTask(WriteAuthObject target, int? param)
+        public virtual async Task<WriteAuthObject?> SaveTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            var authorized = (await LocalSaveTask(target, param));
+            var authorized = (await LocalSaveTask(target, param, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -813,12 +813,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return authorized.Result;
         }
 
-        public virtual async Task<Authorized<WriteAuthObject>> TrySaveTask(WriteAuthObject target, int? param)
+        public virtual async Task<Authorized<WriteAuthObject>> TrySaveTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return await LocalSaveTask(target, param);
+            return await LocalSaveTask(target, param, cancellationToken);
         }
 
-        public virtual async Task<Authorized<WriteAuthObject>> LocalSaveTask(WriteAuthObject target, int? param)
+        public virtual async Task<Authorized<WriteAuthObject>> LocalSaveTask(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -827,21 +827,21 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return new Authorized<WriteAuthObject>();
                 }
 
-                return await LocalDeleteTask(target, param);
+                return await LocalDeleteTask(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask(target, param);
+                return await LocalInsertTask(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask(target, param);
+                return await LocalUpdateTask(target, param, cancellationToken);
             }
         }
 
-        public virtual async Task<WriteAuthObject?> SaveTaskBool(WriteAuthObject target, int? param)
+        public virtual async Task<WriteAuthObject?> SaveTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            var authorized = (await LocalSaveTaskBool(target, param));
+            var authorized = (await LocalSaveTaskBool(target, param, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -850,12 +850,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return authorized.Result;
         }
 
-        public virtual async Task<Authorized<WriteAuthObject>> TrySaveTaskBool(WriteAuthObject target, int? param)
+        public virtual async Task<Authorized<WriteAuthObject>> TrySaveTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return await LocalSaveTaskBool(target, param);
+            return await LocalSaveTaskBool(target, param, cancellationToken);
         }
 
-        public virtual async Task<Authorized<WriteAuthObject>> LocalSaveTaskBool(WriteAuthObject target, int? param)
+        public virtual async Task<Authorized<WriteAuthObject>> LocalSaveTaskBool(WriteAuthObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -864,84 +864,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return new Authorized<WriteAuthObject>();
                 }
 
-                return await LocalDeleteTaskBool(target, param);
+                return await LocalDeleteTaskBool(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTaskBool(target, param);
+                return await LocalInsertTaskBool(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTaskBool(target, param);
+                return await LocalUpdateTaskBool(target, param, cancellationToken);
             }
         }
 
-        public virtual Authorized CanInsertVoid(int? p)
+        public virtual Authorized CanInsertVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanInsertVoid(p);
+            return LocalCanInsertVoid(p, cancellationToken);
         }
 
-        public Authorized LocalCanInsertVoid(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanInsertBool(int? p)
-        {
-            return LocalCanInsertBool(p);
-        }
-
-        public Authorized LocalCanInsertBool(int? p)
+        public Authorized LocalCanInsertVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -996,72 +936,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Authorized CanInsertTask(int? p)
+        public virtual Authorized CanInsertBool(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanInsertTask(p);
+            return LocalCanInsertBool(p, cancellationToken);
         }
 
-        public Authorized LocalCanInsertTask(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanInsertStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanInsertTaskBool(int? p)
-        {
-            return LocalCanInsertTaskBool(p);
-        }
-
-        public Authorized LocalCanInsertTaskBool(int? p)
+        public Authorized LocalCanInsertBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -1116,492 +996,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Authorized CanUpdateVoid(int? p)
+        public virtual Authorized CanInsertTask(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanUpdateVoid(p);
+            return LocalCanInsertTask(p, cancellationToken);
         }
 
-        public Authorized LocalCanUpdateVoid(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanUpdateBool(int? p)
-        {
-            return LocalCanUpdateBool(p);
-        }
-
-        public Authorized LocalCanUpdateBool(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanUpdateTask(int? p)
-        {
-            return LocalCanUpdateTask(p);
-        }
-
-        public Authorized LocalCanUpdateTask(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanUpdateTaskBool(int? p)
-        {
-            return LocalCanUpdateTaskBool(p);
-        }
-
-        public Authorized LocalCanUpdateTaskBool(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanUpdateStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanDeleteVoid(int? p)
-        {
-            return LocalCanDeleteVoid(p);
-        }
-
-        public Authorized LocalCanDeleteVoid(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanDeleteBool(int? p)
-        {
-            return LocalCanDeleteBool(p);
-        }
-
-        public Authorized LocalCanDeleteBool(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanDeleteTask(int? p)
-        {
-            return LocalCanDeleteTask(p);
-        }
-
-        public Authorized LocalCanDeleteTask(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanDeleteTaskBool(int? p)
-        {
-            return LocalCanDeleteTaskBool(p);
-        }
-
-        public Authorized LocalCanDeleteTaskBool(int? p)
-        {
-            Authorized authorized;
-            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
-            authorized = writeauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = writeauth.CanDeleteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanSaveVoid(int? p)
-        {
-            return LocalCanSaveVoid(p);
-        }
-
-        public Authorized LocalCanSaveVoid(int? p)
+        public Authorized LocalCanInsertTask(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -1653,6 +1053,102 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 return authorized;
             }
 
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanInsertTaskBool(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanInsertTaskBool(p, cancellationToken);
+        }
+
+        public Authorized LocalCanInsertTaskBool(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanUpdateVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanUpdateVoid(p, cancellationToken);
+        }
+
+        public Authorized LocalCanUpdateVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
             authorized = writeauth.CanUpdateBool();
             if (!authorized.HasAccess)
             {
@@ -1672,6 +1168,222 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
 
             authorized = writeauth.CanUpdateStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanUpdateBool(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanUpdateBool(p, cancellationToken);
+        }
+
+        public Authorized LocalCanUpdateBool(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanUpdateTask(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanUpdateTask(p, cancellationToken);
+        }
+
+        public Authorized LocalCanUpdateTask(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanUpdateTaskBool(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanUpdateTaskBool(p, cancellationToken);
+        }
+
+        public Authorized LocalCanUpdateTaskBool(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanDeleteVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanDeleteVoid(p, cancellationToken);
+        }
+
+        public Authorized LocalCanDeleteVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
             if (!authorized.HasAccess)
             {
                 return authorized;
@@ -1704,12 +1416,192 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Authorized CanSaveBool(int? p)
+        public virtual Authorized CanDeleteBool(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanSaveBool(p);
+            return LocalCanDeleteBool(p, cancellationToken);
         }
 
-        public Authorized LocalCanSaveBool(int? p)
+        public Authorized LocalCanDeleteBool(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanDeleteTask(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanDeleteTask(p, cancellationToken);
+        }
+
+        public Authorized LocalCanDeleteTask(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanDeleteTaskBool(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanDeleteTaskBool(p, cancellationToken);
+        }
+
+        public Authorized LocalCanDeleteTaskBool(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanSaveVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanSaveVoid(p, cancellationToken);
+        }
+
+        public Authorized LocalCanSaveVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -1812,12 +1704,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Authorized CanSaveTask(int? p)
+        public virtual Authorized CanSaveBool(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanSaveTask(p);
+            return LocalCanSaveBool(p, cancellationToken);
         }
 
-        public Authorized LocalCanSaveTask(int? p)
+        public Authorized LocalCanSaveBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
@@ -1920,12 +1812,120 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Authorized CanSaveTaskBool(int? p)
+        public virtual Authorized CanSaveTask(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanSaveTaskBool(p);
+            return LocalCanSaveTask(p, cancellationToken);
         }
 
-        public Authorized LocalCanSaveTaskBool(int? p)
+        public Authorized LocalCanSaveTask(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();
+            authorized = writeauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanInsertStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanUpdateStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = writeauth.CanDeleteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanSaveTaskBool(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanSaveTaskBool(p, cancellationToken);
+        }
+
+        public Authorized LocalCanSaveTaskBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             WriteAuth writeauth = ServiceProvider.GetRequiredService<WriteAuth>();

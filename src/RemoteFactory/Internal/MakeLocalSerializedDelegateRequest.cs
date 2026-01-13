@@ -64,7 +64,11 @@ internal sealed class MakeLocalSerializedDelegateRequest : IMakeRemoteDelegateRe
 
 			var method = (Delegate)this.serviceProvider.GetRequiredService(delegateType);
 
-			var result = method.DynamicInvoke(duplicatedRemoteRequest.Parameters?.ToArray());
+			// Append CancellationToken to parameters - it's excluded from serialization
+			// but delegates expect it as the last parameter
+			var paramsWithToken = duplicatedRemoteRequest.Parameters?.ToList() ?? new List<object?>();
+			paramsWithToken.Add(cancellationToken);
+			var result = method.DynamicInvoke(paramsWithToken.ToArray());
 
 			if (result is Task task)
 			{
@@ -109,7 +113,11 @@ internal sealed class MakeLocalSerializedDelegateRequest : IMakeRemoteDelegateRe
 
 			var method = (Delegate)this.serviceProvider.GetRequiredService(delegateType);
 
-			var result = method.DynamicInvoke(duplicatedRemoteRequest.Parameters?.ToArray());
+			// Append CancellationToken to parameters - it's excluded from serialization
+			// but delegates expect it as the last parameter
+			var paramsWithToken = duplicatedRemoteRequest.Parameters?.ToList() ?? new List<object?>();
+			paramsWithToken.Add(CancellationToken.None);
+			var result = method.DynamicInvoke(paramsWithToken.ToArray());
 
 			// For events, we await the task to complete (fire-and-forget is at the caller level)
 			if (result is Task task)

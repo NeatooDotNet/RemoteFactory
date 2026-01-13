@@ -15,49 +15,49 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IReadObjectFactory
     {
-        ReadObject Create();
-        ReadObject Fetch();
-        ReadObject Create(int? param);
-        ReadObject Fetch(int? param);
-        ReadObject CreateVoid();
-        ReadObject? CreateBool();
-        Task<ReadObject> CreateTask();
-        Task<ReadObject?> CreateTaskBool();
-        ReadObject CreateVoidDep();
-        ReadObject? CreateBoolTrueDep();
-        ReadObject? CreateBoolFalseDep();
-        Task<ReadObject> CreateTaskDep();
-        Task<ReadObject?> CreateTaskBoolDep();
-        Task<ReadObject?> CreateTaskBoolFalseDep();
-        ReadObject FetchVoid();
-        ReadObject? FetchBool();
-        Task<ReadObject> FetchTask();
-        Task<ReadObject?> FetchTaskBool();
-        ReadObject FetchVoidDep();
-        ReadObject? FetchBoolTrueDep();
-        ReadObject? FetchBoolFalseDep();
-        Task<ReadObject> FetchTaskDep();
-        Task<ReadObject?> FetchTaskBoolDep();
-        ReadObject CreateVoid(int? param);
-        ReadObject? CreateBool(int? param);
-        Task<ReadObject> CreateTask(int? param);
-        Task<ReadObject?> CreateTaskBool(int? param);
-        Task<ReadObject?> CreateTaskBoolFalse(int? param);
-        ReadObject CreateVoidDep(int? param);
-        ReadObject? CreateBoolTrueDep(int? param);
-        ReadObject? CreateBoolFalseDep(int? param);
-        Task<ReadObject> CreateTaskDep(int? param);
-        Task<ReadObject?> CreateTaskBoolDep(int? param);
-        ReadObject FetchVoid(int? param);
-        ReadObject? FetchBool(int? param);
-        Task<ReadObject> FetchTask(int? param);
-        Task<ReadObject?> FetchTaskBool(int? param);
-        ReadObject FetchVoidDep(int? param);
-        ReadObject? FetchBoolTrueDep(int? param);
-        ReadObject? FetchBoolFalseDep(int? param);
-        Task<ReadObject> FetchTaskDep(int? param);
-        Task<ReadObject?> FetchTaskBoolDep(int? param);
-        Task<ReadObject?> FetchTaskBoolFalseDep(int? param);
+        ReadObject Create(CancellationToken cancellationToken = default);
+        ReadObject Fetch(CancellationToken cancellationToken = default);
+        ReadObject Create(int? param, CancellationToken cancellationToken = default);
+        ReadObject Fetch(int? param, CancellationToken cancellationToken = default);
+        ReadObject CreateVoid(CancellationToken cancellationToken = default);
+        ReadObject? CreateBool(CancellationToken cancellationToken = default);
+        Task<ReadObject> CreateTask(CancellationToken cancellationToken = default);
+        Task<ReadObject?> CreateTaskBool(CancellationToken cancellationToken = default);
+        ReadObject CreateVoidDep(CancellationToken cancellationToken = default);
+        ReadObject? CreateBoolTrueDep(CancellationToken cancellationToken = default);
+        ReadObject? CreateBoolFalseDep(CancellationToken cancellationToken = default);
+        Task<ReadObject> CreateTaskDep(CancellationToken cancellationToken = default);
+        Task<ReadObject?> CreateTaskBoolDep(CancellationToken cancellationToken = default);
+        Task<ReadObject?> CreateTaskBoolFalseDep(CancellationToken cancellationToken = default);
+        ReadObject FetchVoid(CancellationToken cancellationToken = default);
+        ReadObject? FetchBool(CancellationToken cancellationToken = default);
+        Task<ReadObject> FetchTask(CancellationToken cancellationToken = default);
+        Task<ReadObject?> FetchTaskBool(CancellationToken cancellationToken = default);
+        ReadObject FetchVoidDep(CancellationToken cancellationToken = default);
+        ReadObject? FetchBoolTrueDep(CancellationToken cancellationToken = default);
+        ReadObject? FetchBoolFalseDep(CancellationToken cancellationToken = default);
+        Task<ReadObject> FetchTaskDep(CancellationToken cancellationToken = default);
+        Task<ReadObject?> FetchTaskBoolDep(CancellationToken cancellationToken = default);
+        ReadObject CreateVoid(int? param, CancellationToken cancellationToken = default);
+        ReadObject? CreateBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject> CreateTask(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject?> CreateTaskBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default);
+        ReadObject CreateVoidDep(int? param, CancellationToken cancellationToken = default);
+        ReadObject? CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        ReadObject? CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject> CreateTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        ReadObject FetchVoid(int? param, CancellationToken cancellationToken = default);
+        ReadObject? FetchBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject> FetchTask(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject?> FetchTaskBool(int? param, CancellationToken cancellationToken = default);
+        ReadObject FetchVoidDep(int? param, CancellationToken cancellationToken = default);
+        ReadObject? FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        ReadObject? FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject> FetchTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadObject?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default);
     }
 
     internal class ReadObjectFactory : FactoryBase<ReadObject>, IReadObjectFactory
@@ -77,491 +77,491 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual ReadObject Create()
+        public virtual ReadObject Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public ReadObject LocalCreate()
+        public ReadObject LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ReadObject());
         }
 
-        public virtual ReadObject Fetch()
+        public virtual ReadObject Fetch(CancellationToken cancellationToken = default)
         {
-            return LocalFetch();
+            return LocalFetch(cancellationToken);
         }
 
-        public ReadObject LocalFetch()
+        public ReadObject LocalFetch(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Fetch, () => new ReadObject());
         }
 
-        public virtual ReadObject Create(int? param)
+        public virtual ReadObject Create(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreate1(param);
+            return LocalCreate1(param, cancellationToken);
         }
 
-        public ReadObject LocalCreate1(int? param)
+        public ReadObject LocalCreate1(int? param, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ReadObject(param));
         }
 
-        public virtual ReadObject Fetch(int? param)
+        public virtual ReadObject Fetch(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetch1(param);
+            return LocalFetch1(param, cancellationToken);
         }
 
-        public ReadObject LocalFetch1(int? param)
+        public ReadObject LocalFetch1(int? param, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Fetch, () => new ReadObject(param));
         }
 
-        public virtual ReadObject CreateVoid()
+        public virtual ReadObject CreateVoid(CancellationToken cancellationToken = default)
         {
-            return LocalCreateVoid();
+            return LocalCreateVoid(cancellationToken);
         }
 
-        public ReadObject LocalCreateVoid()
+        public ReadObject LocalCreateVoid(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid());
         }
 
-        public virtual ReadObject? CreateBool()
+        public virtual ReadObject? CreateBool(CancellationToken cancellationToken = default)
         {
-            return LocalCreateBool();
+            return LocalCreateBool(cancellationToken);
         }
 
-        public ReadObject? LocalCreateBool()
+        public ReadObject? LocalCreateBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool());
         }
 
-        public virtual Task<ReadObject> CreateTask()
+        public virtual Task<ReadObject> CreateTask(CancellationToken cancellationToken = default)
         {
-            return LocalCreateTask();
+            return LocalCreateTask(cancellationToken);
         }
 
-        public Task<ReadObject> LocalCreateTask()
+        public Task<ReadObject> LocalCreateTask(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask());
         }
 
-        public virtual Task<ReadObject?> CreateTaskBool()
+        public virtual Task<ReadObject?> CreateTaskBool(CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskBool();
+            return LocalCreateTaskBool(cancellationToken);
         }
 
-        public Task<ReadObject?> LocalCreateTaskBool()
+        public Task<ReadObject?> LocalCreateTaskBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool());
         }
 
-        public virtual ReadObject CreateVoidDep()
+        public virtual ReadObject CreateVoidDep(CancellationToken cancellationToken = default)
         {
-            return LocalCreateVoidDep();
+            return LocalCreateVoidDep(cancellationToken);
         }
 
-        public ReadObject LocalCreateVoidDep()
+        public ReadObject LocalCreateVoidDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(service));
         }
 
-        public virtual ReadObject? CreateBoolTrueDep()
+        public virtual ReadObject? CreateBoolTrueDep(CancellationToken cancellationToken = default)
         {
-            return LocalCreateBoolTrueDep();
+            return LocalCreateBoolTrueDep(cancellationToken);
         }
 
-        public ReadObject? LocalCreateBoolTrueDep()
+        public ReadObject? LocalCreateBoolTrueDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(service));
         }
 
-        public virtual ReadObject? CreateBoolFalseDep()
+        public virtual ReadObject? CreateBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return LocalCreateBoolFalseDep();
+            return LocalCreateBoolFalseDep(cancellationToken);
         }
 
-        public ReadObject? LocalCreateBoolFalseDep()
+        public ReadObject? LocalCreateBoolFalseDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(service));
         }
 
-        public virtual Task<ReadObject> CreateTaskDep()
+        public virtual Task<ReadObject> CreateTaskDep(CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskDep();
+            return LocalCreateTaskDep(cancellationToken);
         }
 
-        public Task<ReadObject> LocalCreateTaskDep()
+        public Task<ReadObject> LocalCreateTaskDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(service));
         }
 
-        public virtual Task<ReadObject?> CreateTaskBoolDep()
+        public virtual Task<ReadObject?> CreateTaskBoolDep(CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskBoolDep();
+            return LocalCreateTaskBoolDep(cancellationToken);
         }
 
-        public Task<ReadObject?> LocalCreateTaskBoolDep()
+        public Task<ReadObject?> LocalCreateTaskBoolDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(service));
         }
 
-        public virtual Task<ReadObject?> CreateTaskBoolFalseDep()
+        public virtual Task<ReadObject?> CreateTaskBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskBoolFalseDep();
+            return LocalCreateTaskBoolFalseDep(cancellationToken);
         }
 
-        public Task<ReadObject?> LocalCreateTaskBoolFalseDep()
+        public Task<ReadObject?> LocalCreateTaskBoolFalseDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalseDep(service));
         }
 
-        public virtual ReadObject FetchVoid()
+        public virtual ReadObject FetchVoid(CancellationToken cancellationToken = default)
         {
-            return LocalFetchVoid();
+            return LocalFetchVoid(cancellationToken);
         }
 
-        public ReadObject LocalFetchVoid()
+        public ReadObject LocalFetchVoid(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid());
         }
 
-        public virtual ReadObject? FetchBool()
+        public virtual ReadObject? FetchBool(CancellationToken cancellationToken = default)
         {
-            return LocalFetchBool();
+            return LocalFetchBool(cancellationToken);
         }
 
-        public ReadObject? LocalFetchBool()
+        public ReadObject? LocalFetchBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool());
         }
 
-        public virtual Task<ReadObject> FetchTask()
+        public virtual Task<ReadObject> FetchTask(CancellationToken cancellationToken = default)
         {
-            return LocalFetchTask();
+            return LocalFetchTask(cancellationToken);
         }
 
-        public Task<ReadObject> LocalFetchTask()
+        public Task<ReadObject> LocalFetchTask(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask());
         }
 
-        public virtual Task<ReadObject?> FetchTaskBool()
+        public virtual Task<ReadObject?> FetchTaskBool(CancellationToken cancellationToken = default)
         {
-            return LocalFetchTaskBool();
+            return LocalFetchTaskBool(cancellationToken);
         }
 
-        public Task<ReadObject?> LocalFetchTaskBool()
+        public Task<ReadObject?> LocalFetchTaskBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool());
         }
 
-        public virtual ReadObject FetchVoidDep()
+        public virtual ReadObject FetchVoidDep(CancellationToken cancellationToken = default)
         {
-            return LocalFetchVoidDep();
+            return LocalFetchVoidDep(cancellationToken);
         }
 
-        public ReadObject LocalFetchVoidDep()
+        public ReadObject LocalFetchVoidDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(service));
         }
 
-        public virtual ReadObject? FetchBoolTrueDep()
+        public virtual ReadObject? FetchBoolTrueDep(CancellationToken cancellationToken = default)
         {
-            return LocalFetchBoolTrueDep();
+            return LocalFetchBoolTrueDep(cancellationToken);
         }
 
-        public ReadObject? LocalFetchBoolTrueDep()
+        public ReadObject? LocalFetchBoolTrueDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(service));
         }
 
-        public virtual ReadObject? FetchBoolFalseDep()
+        public virtual ReadObject? FetchBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return LocalFetchBoolFalseDep();
+            return LocalFetchBoolFalseDep(cancellationToken);
         }
 
-        public ReadObject? LocalFetchBoolFalseDep()
+        public ReadObject? LocalFetchBoolFalseDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(service));
         }
 
-        public virtual Task<ReadObject> FetchTaskDep()
+        public virtual Task<ReadObject> FetchTaskDep(CancellationToken cancellationToken = default)
         {
-            return LocalFetchTaskDep();
+            return LocalFetchTaskDep(cancellationToken);
         }
 
-        public Task<ReadObject> LocalFetchTaskDep()
+        public Task<ReadObject> LocalFetchTaskDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(service));
         }
 
-        public virtual Task<ReadObject?> FetchTaskBoolDep()
+        public virtual Task<ReadObject?> FetchTaskBoolDep(CancellationToken cancellationToken = default)
         {
-            return LocalFetchTaskBoolDep();
+            return LocalFetchTaskBoolDep(cancellationToken);
         }
 
-        public Task<ReadObject?> LocalFetchTaskBoolDep()
+        public Task<ReadObject?> LocalFetchTaskBoolDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(service));
         }
 
-        public virtual ReadObject CreateVoid(int? param)
+        public virtual ReadObject CreateVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateVoid1(param);
+            return LocalCreateVoid1(param, cancellationToken);
         }
 
-        public ReadObject LocalCreateVoid1(int? param)
+        public ReadObject LocalCreateVoid1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid(param));
         }
 
-        public virtual ReadObject? CreateBool(int? param)
+        public virtual ReadObject? CreateBool(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateBool1(param);
+            return LocalCreateBool1(param, cancellationToken);
         }
 
-        public ReadObject? LocalCreateBool1(int? param)
+        public ReadObject? LocalCreateBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool(param));
         }
 
-        public virtual Task<ReadObject> CreateTask(int? param)
+        public virtual Task<ReadObject> CreateTask(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateTask1(param);
+            return LocalCreateTask1(param, cancellationToken);
         }
 
-        public Task<ReadObject> LocalCreateTask1(int? param)
+        public Task<ReadObject> LocalCreateTask1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask(param));
         }
 
-        public virtual Task<ReadObject?> CreateTaskBool(int? param)
+        public virtual Task<ReadObject?> CreateTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskBool1(param);
+            return LocalCreateTaskBool1(param, cancellationToken);
         }
 
-        public Task<ReadObject?> LocalCreateTaskBool1(int? param)
+        public Task<ReadObject?> LocalCreateTaskBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool(param));
         }
 
-        public virtual Task<ReadObject?> CreateTaskBoolFalse(int? param)
+        public virtual Task<ReadObject?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskBoolFalse(param);
+            return LocalCreateTaskBoolFalse(param, cancellationToken);
         }
 
-        public Task<ReadObject?> LocalCreateTaskBoolFalse(int? param)
+        public Task<ReadObject?> LocalCreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalse(param));
         }
 
-        public virtual ReadObject CreateVoidDep(int? param)
+        public virtual ReadObject CreateVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateVoidDep1(param);
+            return LocalCreateVoidDep1(param, cancellationToken);
         }
 
-        public ReadObject LocalCreateVoidDep1(int? param)
+        public ReadObject LocalCreateVoidDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(param, service));
         }
 
-        public virtual ReadObject? CreateBoolTrueDep(int? param)
+        public virtual ReadObject? CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateBoolTrueDep1(param);
+            return LocalCreateBoolTrueDep1(param, cancellationToken);
         }
 
-        public ReadObject? LocalCreateBoolTrueDep1(int? param)
+        public ReadObject? LocalCreateBoolTrueDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(param, service));
         }
 
-        public virtual ReadObject? CreateBoolFalseDep(int? param)
+        public virtual ReadObject? CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateBoolFalseDep1(param);
+            return LocalCreateBoolFalseDep1(param, cancellationToken);
         }
 
-        public ReadObject? LocalCreateBoolFalseDep1(int? param)
+        public ReadObject? LocalCreateBoolFalseDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(param, service));
         }
 
-        public virtual Task<ReadObject> CreateTaskDep(int? param)
+        public virtual Task<ReadObject> CreateTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskDep1(param);
+            return LocalCreateTaskDep1(param, cancellationToken);
         }
 
-        public Task<ReadObject> LocalCreateTaskDep1(int? param)
+        public Task<ReadObject> LocalCreateTaskDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(param, service));
         }
 
-        public virtual Task<ReadObject?> CreateTaskBoolDep(int? param)
+        public virtual Task<ReadObject?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskBoolDep1(param);
+            return LocalCreateTaskBoolDep1(param, cancellationToken);
         }
 
-        public Task<ReadObject?> LocalCreateTaskBoolDep1(int? param)
+        public Task<ReadObject?> LocalCreateTaskBoolDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(param, service));
         }
 
-        public virtual ReadObject FetchVoid(int? param)
+        public virtual ReadObject FetchVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchVoid1(param);
+            return LocalFetchVoid1(param, cancellationToken);
         }
 
-        public ReadObject LocalFetchVoid1(int? param)
+        public ReadObject LocalFetchVoid1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid(param));
         }
 
-        public virtual ReadObject? FetchBool(int? param)
+        public virtual ReadObject? FetchBool(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchBool1(param);
+            return LocalFetchBool1(param, cancellationToken);
         }
 
-        public ReadObject? LocalFetchBool1(int? param)
+        public ReadObject? LocalFetchBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool(param));
         }
 
-        public virtual Task<ReadObject> FetchTask(int? param)
+        public virtual Task<ReadObject> FetchTask(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchTask1(param);
+            return LocalFetchTask1(param, cancellationToken);
         }
 
-        public Task<ReadObject> LocalFetchTask1(int? param)
+        public Task<ReadObject> LocalFetchTask1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask(param));
         }
 
-        public virtual Task<ReadObject?> FetchTaskBool(int? param)
+        public virtual Task<ReadObject?> FetchTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchTaskBool1(param);
+            return LocalFetchTaskBool1(param, cancellationToken);
         }
 
-        public Task<ReadObject?> LocalFetchTaskBool1(int? param)
+        public Task<ReadObject?> LocalFetchTaskBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool(param));
         }
 
-        public virtual ReadObject FetchVoidDep(int? param)
+        public virtual ReadObject FetchVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchVoidDep1(param);
+            return LocalFetchVoidDep1(param, cancellationToken);
         }
 
-        public ReadObject LocalFetchVoidDep1(int? param)
+        public ReadObject LocalFetchVoidDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(param, service));
         }
 
-        public virtual ReadObject? FetchBoolTrueDep(int? param)
+        public virtual ReadObject? FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchBoolTrueDep1(param);
+            return LocalFetchBoolTrueDep1(param, cancellationToken);
         }
 
-        public ReadObject? LocalFetchBoolTrueDep1(int? param)
+        public ReadObject? LocalFetchBoolTrueDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(param, service));
         }
 
-        public virtual ReadObject? FetchBoolFalseDep(int? param)
+        public virtual ReadObject? FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchBoolFalseDep1(param);
+            return LocalFetchBoolFalseDep1(param, cancellationToken);
         }
 
-        public ReadObject? LocalFetchBoolFalseDep1(int? param)
+        public ReadObject? LocalFetchBoolFalseDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(param, service));
         }
 
-        public virtual Task<ReadObject> FetchTaskDep(int? param)
+        public virtual Task<ReadObject> FetchTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchTaskDep1(param);
+            return LocalFetchTaskDep1(param, cancellationToken);
         }
 
-        public Task<ReadObject> LocalFetchTaskDep1(int? param)
+        public Task<ReadObject> LocalFetchTaskDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(param, service));
         }
 
-        public virtual Task<ReadObject?> FetchTaskBoolDep(int? param)
+        public virtual Task<ReadObject?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchTaskBoolDep1(param);
+            return LocalFetchTaskBoolDep1(param, cancellationToken);
         }
 
-        public Task<ReadObject?> LocalFetchTaskBoolDep1(int? param)
+        public Task<ReadObject?> LocalFetchTaskBoolDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(param, service));
         }
 
-        public virtual Task<ReadObject?> FetchTaskBoolFalseDep(int? param)
+        public virtual Task<ReadObject?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return LocalFetchTaskBoolFalseDep(param);
+            return LocalFetchTaskBoolFalseDep(param, cancellationToken);
         }
 
-        public Task<ReadObject?> LocalFetchTaskBoolFalseDep(int? param)
+        public Task<ReadObject?> LocalFetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ReadObject>();
             var service = ServiceProvider.GetRequiredService<IService>();

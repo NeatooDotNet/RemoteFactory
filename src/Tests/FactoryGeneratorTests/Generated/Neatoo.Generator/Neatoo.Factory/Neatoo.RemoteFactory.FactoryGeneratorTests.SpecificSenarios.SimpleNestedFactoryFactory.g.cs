@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface ISimpleNestedFactoryFactory
     {
-        SimpleNestedFactory Create();
-        SimpleNestedFactory Fetch();
+        SimpleNestedFactory Create(CancellationToken cancellationToken = default);
+        SimpleNestedFactory Fetch(CancellationToken cancellationToken = default);
     }
 
     internal class SimpleNestedFactoryFactory : FactoryBase<SimpleNestedFactory>, ISimpleNestedFactoryFactory
@@ -34,22 +34,22 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual SimpleNestedFactory Create()
+        public virtual SimpleNestedFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public SimpleNestedFactory LocalCreate()
+        public SimpleNestedFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new SimpleNestedFactory());
         }
 
-        public virtual SimpleNestedFactory Fetch()
+        public virtual SimpleNestedFactory Fetch(CancellationToken cancellationToken = default)
         {
-            return LocalFetch();
+            return LocalFetch(cancellationToken);
         }
 
-        public SimpleNestedFactory LocalFetch()
+        public SimpleNestedFactory LocalFetch(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<SimpleNestedFactory>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.Fetch());

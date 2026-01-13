@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
     public interface IShowcaseAuthRemoteFactory
     {
-        Task<IShowcaseAuthRemote?> Create(List<int> intList);
-        Task<Authorized> CanCreate();
+        Task<IShowcaseAuthRemote?> Create(List<int> intList, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreate(CancellationToken cancellationToken = default);
     }
 
     internal class ShowcaseAuthRemoteFactory : FactoryBase<IShowcaseAuthRemote>, IShowcaseAuthRemoteFactory
@@ -21,8 +21,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<Authorized<IShowcaseAuthRemote>> CreateDelegate(List<int> intList);
-        public delegate Task<Authorized> CanCreateDelegate();
+        public delegate Task<Authorized<IShowcaseAuthRemote>> CreateDelegate(List<int> intList, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateDelegate(CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateDelegate CreateProperty { get; }
         public CanCreateDelegate CanCreateProperty { get; }
@@ -42,17 +42,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             CanCreateProperty = RemoteCanCreate;
         }
 
-        public virtual async Task<IShowcaseAuthRemote?> Create(List<int> intList)
+        public virtual async Task<IShowcaseAuthRemote?> Create(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return (await CreateProperty(intList)).Result;
+            return (await CreateProperty(intList, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<IShowcaseAuthRemote>> RemoteCreate(List<int> intList)
+        public virtual async Task<Authorized<IShowcaseAuthRemote>> RemoteCreate(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IShowcaseAuthRemote>>(typeof(CreateDelegate), [intList], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IShowcaseAuthRemote>>(typeof(CreateDelegate), [intList], cancellationToken))!;
         }
 
-        public Task<Authorized<IShowcaseAuthRemote>> LocalCreate(List<int> intList)
+        public Task<Authorized<IShowcaseAuthRemote>> LocalCreate(List<int> intList, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthRemote iauthremote = ServiceProvider.GetRequiredService<IAuthRemote>();
@@ -66,17 +66,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return Task.FromResult(new Authorized<IShowcaseAuthRemote>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(intList))));
         }
 
-        public virtual Task<Authorized> CanCreate()
+        public virtual Task<Authorized> CanCreate(CancellationToken cancellationToken = default)
         {
-            return CanCreateProperty();
+            return CanCreateProperty(cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreate()
+        public virtual async Task<Authorized> RemoteCanCreate(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateDelegate), [], cancellationToken))!;
         }
 
-        public Task<Authorized> LocalCanCreate()
+        public Task<Authorized> LocalCanCreate(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IAuthRemote iauthremote = ServiceProvider.GetRequiredService<IAuthRemote>();
@@ -96,12 +96,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             services.AddScoped<CreateDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ShowcaseAuthRemoteFactory>();
-                return (List<int> intList) => factory.LocalCreate(intList);
+                return (List<int> intList, CancellationToken cancellationToken = default) => factory.LocalCreate(intList, cancellationToken);
             });
             services.AddScoped<CanCreateDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ShowcaseAuthRemoteFactory>();
-                return () => factory.LocalCanCreate();
+                return (CancellationToken cancellationToken = default) => factory.LocalCanCreate(cancellationToken);
             });
             services.AddTransient<ShowcaseAuthRemote>();
             services.AddTransient<IShowcaseAuthRemote, ShowcaseAuthRemote>();

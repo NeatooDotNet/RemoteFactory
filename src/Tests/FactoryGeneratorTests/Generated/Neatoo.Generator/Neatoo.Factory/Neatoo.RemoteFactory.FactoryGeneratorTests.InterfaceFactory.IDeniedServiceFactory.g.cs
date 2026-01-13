@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
 {
     public interface IDeniedServiceFactory : IDeniedService
     {
-        Authorized CanGetDeniedData();
+        Authorized CanGetDeniedData(CancellationToken cancellationToken = default);
     }
 
     internal class DeniedServiceFactory : IDeniedServiceFactory
@@ -67,12 +67,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
             return await target.GetDeniedData(id);
         }
 
-        public virtual Authorized CanGetDeniedData()
+        public virtual Authorized CanGetDeniedData(CancellationToken cancellationToken = default)
         {
-            return LocalCanGetDeniedData();
+            return LocalCanGetDeniedData(cancellationToken);
         }
 
-        public Authorized LocalCanGetDeniedData()
+        public Authorized LocalCanGetDeniedData(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             InterfaceAuthDeny interfaceauthdeny = ServiceProvider.GetRequiredService<InterfaceAuthDeny>();

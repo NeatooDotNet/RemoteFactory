@@ -12,12 +12,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IMultiServiceRemoteObjectFactory
     {
-        Task<MultiServiceRemoteObject> CreateRemoteWithTwoServices();
-        Task<MultiServiceRemoteObject> CreateRemoteWithThreeServices();
-        Task<MultiServiceRemoteObject> CreateRemoteWithParamsAndServices(int id, string name);
-        Task<MultiServiceRemoteObject> FetchRemoteWithTwoServices();
-        Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesAsync();
-        Task<MultiServiceRemoteObject?> CreateRemoteWithTwoServicesBoolAsync();
+        Task<MultiServiceRemoteObject> CreateRemoteWithTwoServices(CancellationToken cancellationToken = default);
+        Task<MultiServiceRemoteObject> CreateRemoteWithThreeServices(CancellationToken cancellationToken = default);
+        Task<MultiServiceRemoteObject> CreateRemoteWithParamsAndServices(int id, string name, CancellationToken cancellationToken = default);
+        Task<MultiServiceRemoteObject> FetchRemoteWithTwoServices(CancellationToken cancellationToken = default);
+        Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesAsync(CancellationToken cancellationToken = default);
+        Task<MultiServiceRemoteObject?> CreateRemoteWithTwoServicesBoolAsync(CancellationToken cancellationToken = default);
     }
 
     internal class MultiServiceRemoteObjectFactory : FactoryBase<MultiServiceRemoteObject>, IMultiServiceRemoteObjectFactory
@@ -25,12 +25,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesDelegate();
-        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithThreeServicesDelegate();
-        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithParamsAndServicesDelegate(int id, string name);
-        public delegate Task<MultiServiceRemoteObject> FetchRemoteWithTwoServicesDelegate();
-        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesAsyncDelegate();
-        public delegate Task<MultiServiceRemoteObject?> CreateRemoteWithTwoServicesBoolAsyncDelegate();
+        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithThreeServicesDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithParamsAndServicesDelegate(int id, string name, CancellationToken cancellationToken = default);
+        public delegate Task<MultiServiceRemoteObject> FetchRemoteWithTwoServicesDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesAsyncDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<MultiServiceRemoteObject?> CreateRemoteWithTwoServicesBoolAsyncDelegate(CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateRemoteWithTwoServicesDelegate CreateRemoteWithTwoServicesProperty { get; }
         public CreateRemoteWithThreeServicesDelegate CreateRemoteWithThreeServicesProperty { get; }
@@ -62,17 +62,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             CreateRemoteWithTwoServicesBoolAsyncProperty = RemoteCreateRemoteWithTwoServicesBoolAsync;
         }
 
-        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithTwoServices()
+        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithTwoServices(CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithTwoServicesProperty();
+            return CreateRemoteWithTwoServicesProperty(cancellationToken);
         }
 
-        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithTwoServices()
+        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithTwoServices(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithTwoServicesDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithTwoServicesDelegate), [], cancellationToken))!;
         }
 
-        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithTwoServices()
+        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithTwoServices(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceRemoteObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -80,17 +80,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithTwoServices(service1, service2)));
         }
 
-        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithThreeServices()
+        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithThreeServices(CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithThreeServicesProperty();
+            return CreateRemoteWithThreeServicesProperty(cancellationToken);
         }
 
-        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithThreeServices()
+        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithThreeServices(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithThreeServicesDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithThreeServicesDelegate), [], cancellationToken))!;
         }
 
-        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithThreeServices()
+        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithThreeServices(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceRemoteObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -99,17 +99,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithThreeServices(service1, service2, service3)));
         }
 
-        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithParamsAndServices(int id, string name)
+        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithParamsAndServices(int id, string name, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithParamsAndServicesProperty(id, name);
+            return CreateRemoteWithParamsAndServicesProperty(id, name, cancellationToken);
         }
 
-        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithParamsAndServices(int id, string name)
+        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithParamsAndServices(int id, string name, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithParamsAndServicesDelegate), [id, name], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithParamsAndServicesDelegate), [id, name], cancellationToken))!;
         }
 
-        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithParamsAndServices(int id, string name)
+        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithParamsAndServices(int id, string name, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceRemoteObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -117,17 +117,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithParamsAndServices(id, name, service1, service2)));
         }
 
-        public virtual Task<MultiServiceRemoteObject> FetchRemoteWithTwoServices()
+        public virtual Task<MultiServiceRemoteObject> FetchRemoteWithTwoServices(CancellationToken cancellationToken = default)
         {
-            return FetchRemoteWithTwoServicesProperty();
+            return FetchRemoteWithTwoServicesProperty(cancellationToken);
         }
 
-        public virtual async Task<MultiServiceRemoteObject> RemoteFetchRemoteWithTwoServices()
+        public virtual async Task<MultiServiceRemoteObject> RemoteFetchRemoteWithTwoServices(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(FetchRemoteWithTwoServicesDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(FetchRemoteWithTwoServicesDelegate), [], cancellationToken))!;
         }
 
-        public Task<MultiServiceRemoteObject> LocalFetchRemoteWithTwoServices()
+        public Task<MultiServiceRemoteObject> LocalFetchRemoteWithTwoServices(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceRemoteObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -135,17 +135,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchRemoteWithTwoServices(service1, service2)));
         }
 
-        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesAsync()
+        public virtual Task<MultiServiceRemoteObject> CreateRemoteWithTwoServicesAsync(CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithTwoServicesAsyncProperty();
+            return CreateRemoteWithTwoServicesAsyncProperty(cancellationToken);
         }
 
-        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithTwoServicesAsync()
+        public virtual async Task<MultiServiceRemoteObject> RemoteCreateRemoteWithTwoServicesAsync(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithTwoServicesAsyncDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<MultiServiceRemoteObject>(typeof(CreateRemoteWithTwoServicesAsyncDelegate), [], cancellationToken))!;
         }
 
-        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithTwoServicesAsync()
+        public Task<MultiServiceRemoteObject> LocalCreateRemoteWithTwoServicesAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceRemoteObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -153,17 +153,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateRemoteWithTwoServicesAsync(service1, service2));
         }
 
-        public virtual Task<MultiServiceRemoteObject?> CreateRemoteWithTwoServicesBoolAsync()
+        public virtual Task<MultiServiceRemoteObject?> CreateRemoteWithTwoServicesBoolAsync(CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithTwoServicesBoolAsyncProperty();
+            return CreateRemoteWithTwoServicesBoolAsyncProperty(cancellationToken);
         }
 
-        public virtual async Task<MultiServiceRemoteObject?> RemoteCreateRemoteWithTwoServicesBoolAsync()
+        public virtual async Task<MultiServiceRemoteObject?> RemoteCreateRemoteWithTwoServicesBoolAsync(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MultiServiceRemoteObject?>(typeof(CreateRemoteWithTwoServicesBoolAsyncDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MultiServiceRemoteObject?>(typeof(CreateRemoteWithTwoServicesBoolAsyncDelegate), [], cancellationToken))!;
         }
 
-        public Task<MultiServiceRemoteObject?> LocalCreateRemoteWithTwoServicesBoolAsync()
+        public Task<MultiServiceRemoteObject?> LocalCreateRemoteWithTwoServicesBoolAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<MultiServiceRemoteObject>();
             var service1 = ServiceProvider.GetRequiredService<IService>();
@@ -178,32 +178,32 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CreateRemoteWithTwoServicesDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MultiServiceRemoteObjectFactory>();
-                return () => factory.LocalCreateRemoteWithTwoServices();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithTwoServices(cancellationToken);
             });
             services.AddScoped<CreateRemoteWithThreeServicesDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MultiServiceRemoteObjectFactory>();
-                return () => factory.LocalCreateRemoteWithThreeServices();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithThreeServices(cancellationToken);
             });
             services.AddScoped<CreateRemoteWithParamsAndServicesDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MultiServiceRemoteObjectFactory>();
-                return (int id, string name) => factory.LocalCreateRemoteWithParamsAndServices(id, name);
+                return (int id, string name, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithParamsAndServices(id, name, cancellationToken);
             });
             services.AddScoped<FetchRemoteWithTwoServicesDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MultiServiceRemoteObjectFactory>();
-                return () => factory.LocalFetchRemoteWithTwoServices();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchRemoteWithTwoServices(cancellationToken);
             });
             services.AddScoped<CreateRemoteWithTwoServicesAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MultiServiceRemoteObjectFactory>();
-                return () => factory.LocalCreateRemoteWithTwoServicesAsync();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithTwoServicesAsync(cancellationToken);
             });
             services.AddScoped<CreateRemoteWithTwoServicesBoolAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MultiServiceRemoteObjectFactory>();
-                return () => factory.LocalCreateRemoteWithTwoServicesBoolAsync();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithTwoServicesBoolAsync(cancellationToken);
             });
             services.AddTransient<MultiServiceRemoteObject>();
             // Event registrations

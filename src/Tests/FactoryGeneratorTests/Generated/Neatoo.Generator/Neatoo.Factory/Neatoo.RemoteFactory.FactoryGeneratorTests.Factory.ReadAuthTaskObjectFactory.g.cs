@@ -15,46 +15,46 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IReadAuthTaskObjectFactory
     {
-        Task<ReadAuthTaskObject?> CreateVoid(int? param);
-        Task<ReadAuthTaskObject?> CreateBool(int? param);
-        Task<ReadAuthTaskObject?> CreateTask(int? param);
-        Task<ReadAuthTaskObject?> CreateTaskBool(int? param);
-        Task<ReadAuthTaskObject?> CreateTaskBoolFalse(int? param);
-        Task<ReadAuthTaskObject?> CreateVoidDep(int? param);
-        Task<ReadAuthTaskObject?> CreateBoolTrueDep(int? param);
-        Task<ReadAuthTaskObject?> CreateBoolFalseDep(int? param);
-        Task<ReadAuthTaskObject?> CreateTaskDep(int? param);
-        Task<ReadAuthTaskObject?> CreateTaskBoolDep(int? param);
-        Task<ReadAuthTaskObject?> FetchVoid(int? param);
-        Task<ReadAuthTaskObject?> FetchBool(int? param);
-        Task<ReadAuthTaskObject?> FetchTask(int? param);
-        Task<ReadAuthTaskObject?> FetchTaskBool(int? param);
-        Task<ReadAuthTaskObject?> FetchVoidDep(int? param);
-        Task<ReadAuthTaskObject?> FetchBoolTrueDep(int? param);
-        Task<ReadAuthTaskObject?> FetchBoolFalseDep(int? param);
-        Task<ReadAuthTaskObject?> FetchTaskDep(int? param);
-        Task<ReadAuthTaskObject?> FetchTaskBoolDep(int? param);
-        Task<ReadAuthTaskObject?> FetchTaskBoolFalseDep(int? param);
-        Task<Authorized> CanCreateVoid(int? p);
-        Task<Authorized> CanCreateBool(int? p);
-        Task<Authorized> CanCreateTask(int? p);
-        Task<Authorized> CanCreateTaskBool(int? p);
-        Task<Authorized> CanCreateTaskBoolFalse(int? p);
-        Task<Authorized> CanCreateVoidDep(int? p);
-        Task<Authorized> CanCreateBoolTrueDep(int? p);
-        Task<Authorized> CanCreateBoolFalseDep(int? p);
-        Task<Authorized> CanCreateTaskDep(int? p);
-        Task<Authorized> CanCreateTaskBoolDep(int? p);
-        Task<Authorized> CanFetchVoid(int? p);
-        Task<Authorized> CanFetchBool(int? p);
-        Task<Authorized> CanFetchTask(int? p);
-        Task<Authorized> CanFetchTaskBool(int? p);
-        Task<Authorized> CanFetchVoidDep(int? p);
-        Task<Authorized> CanFetchBoolTrueDep(int? p);
-        Task<Authorized> CanFetchBoolFalseDep(int? p);
-        Task<Authorized> CanFetchTaskDep(int? p);
-        Task<Authorized> CanFetchTaskBoolDep(int? p);
-        Task<Authorized> CanFetchTaskBoolFalseDep(int? p);
+        Task<ReadAuthTaskObject?> CreateVoid(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateTask(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateTaskBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateVoidDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchVoid(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchTask(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchTaskBool(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchVoidDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        Task<ReadAuthTaskObject?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTask(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskBoolFalse(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateVoidDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateBoolTrueDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateBoolFalseDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateTaskBoolDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTask(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskBool(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchVoidDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchBoolTrueDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchBoolFalseDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskBoolDep(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchTaskBoolFalseDep(int? p, CancellationToken cancellationToken = default);
     }
 
     internal class ReadAuthTaskObjectFactory : FactoryBase<ReadAuthTaskObject>, IReadAuthTaskObjectFactory
@@ -74,12 +74,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateVoid(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateVoid(param)).Result;
+            return (await LocalCreateVoid(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateVoid(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateVoid(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -232,12 +232,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateBool(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateBool(param)).Result;
+            return (await LocalCreateBool(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateBool(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -390,12 +390,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateTask(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateTask(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateTask(param)).Result;
+            return (await LocalCreateTask(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTask(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTask(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -548,12 +548,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateTaskBool(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateTaskBool(param)).Result;
+            return (await LocalCreateTaskBool(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskBool(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -706,12 +706,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateTaskBoolFalse(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateTaskBoolFalse(param)).Result;
+            return (await LocalCreateTaskBoolFalse(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskBoolFalse(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -864,12 +864,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalse(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateVoidDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateVoidDep(param)).Result;
+            return (await LocalCreateVoidDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateVoidDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateVoidDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -1023,12 +1023,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateBoolTrueDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateBoolTrueDep(param)).Result;
+            return (await LocalCreateBoolTrueDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateBoolTrueDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -1182,12 +1182,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateBoolFalseDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateBoolFalseDep(param)).Result;
+            return (await LocalCreateBoolFalseDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateBoolFalseDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -1341,12 +1341,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateTaskDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateTaskDep(param)).Result;
+            return (await LocalCreateTaskDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -1500,12 +1500,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> CreateTaskBoolDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalCreateTaskBoolDep(param)).Result;
+            return (await LocalCreateTaskBoolDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskBoolDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalCreateTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -1659,12 +1659,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchVoid(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchVoid(param)).Result;
+            return (await LocalFetchVoid(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchVoid(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchVoid(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -1817,12 +1817,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchBool(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchBool(param)).Result;
+            return (await LocalFetchBool(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchBool(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -1975,12 +1975,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchTask(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchTask(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchTask(param)).Result;
+            return (await LocalFetchTask(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTask(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTask(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -2133,12 +2133,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchTaskBool(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchTaskBool(param)).Result;
+            return (await LocalFetchTaskBool(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskBool(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskBool(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -2291,12 +2291,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool(param)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchVoidDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchVoidDep(param)).Result;
+            return (await LocalFetchVoidDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchVoidDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchVoidDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -2450,12 +2450,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchBoolTrueDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchBoolTrueDep(param)).Result;
+            return (await LocalFetchBoolTrueDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchBoolTrueDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -2609,12 +2609,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchBoolFalseDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchBoolFalseDep(param)).Result;
+            return (await LocalFetchBoolFalseDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchBoolFalseDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -2768,12 +2768,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchTaskDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchTaskDep(param)).Result;
+            return (await LocalFetchTaskDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -2927,12 +2927,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchTaskBoolDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchTaskBoolDep(param)).Result;
+            return (await LocalFetchTaskBoolDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskBoolDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -3086,12 +3086,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(param, service)));
         }
 
-        public virtual async Task<ReadAuthTaskObject?> FetchTaskBoolFalseDep(int? param)
+        public virtual async Task<ReadAuthTaskObject?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await LocalFetchTaskBoolFalseDep(param)).Result;
+            return (await LocalFetchTaskBoolFalseDep(param, cancellationToken)).Result;
         }
 
-        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskBoolFalseDep(int? param)
+        public async Task<Authorized<ReadAuthTaskObject>> LocalFetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -3245,169 +3245,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<ReadAuthTaskObject>(await DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolFalseDep(param, service)));
         }
 
-        public virtual Task<Authorized> CanCreateVoid(int? p)
+        public virtual Task<Authorized> CanCreateVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanCreateVoid(p);
+            return LocalCanCreateVoid(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanCreateVoid(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateBool(int? p)
-        {
-            return LocalCanCreateBool(p);
-        }
-
-        public async Task<Authorized> LocalCanCreateBool(int? p)
+        public async Task<Authorized> LocalCanCreateVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -3559,169 +3402,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTask(int? p)
+        public virtual Task<Authorized> CanCreateBool(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanCreateTask(p);
+            return LocalCanCreateBool(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanCreateTask(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateTaskBool(int? p)
-        {
-            return LocalCanCreateTaskBool(p);
-        }
-
-        public async Task<Authorized> LocalCanCreateTaskBool(int? p)
+        public async Task<Authorized> LocalCanCreateBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -3873,169 +3559,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTaskBoolFalse(int? p)
+        public virtual Task<Authorized> CanCreateTask(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanCreateTaskBoolFalse(p);
+            return LocalCanCreateTask(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanCreateTaskBoolFalse(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateVoidDep(int? p)
-        {
-            return LocalCanCreateVoidDep(p);
-        }
-
-        public async Task<Authorized> LocalCanCreateVoidDep(int? p)
+        public async Task<Authorized> LocalCanCreateTask(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -4187,169 +3716,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateBoolTrueDep(int? p)
+        public virtual Task<Authorized> CanCreateTaskBool(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanCreateBoolTrueDep(p);
+            return LocalCanCreateTaskBool(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanCreateBoolTrueDep(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateBoolFalseDep(int? p)
-        {
-            return LocalCanCreateBoolFalseDep(p);
-        }
-
-        public async Task<Authorized> LocalCanCreateBoolFalseDep(int? p)
+        public async Task<Authorized> LocalCanCreateTaskBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -4501,169 +3873,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateTaskDep(int? p)
+        public virtual Task<Authorized> CanCreateTaskBoolFalse(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanCreateTaskDep(p);
+            return LocalCanCreateTaskBoolFalse(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanCreateTaskDep(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanCreateStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanCreateStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanCreateTaskBoolDep(int? p)
-        {
-            return LocalCanCreateTaskBoolDep(p);
-        }
-
-        public async Task<Authorized> LocalCanCreateTaskBoolDep(int? p)
+        public async Task<Authorized> LocalCanCreateTaskBoolFalse(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -4815,12 +4030,797 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchVoid(int? p)
+        public virtual Task<Authorized> CanCreateVoidDep(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanFetchVoid(p);
+            return LocalCanCreateVoidDep(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanFetchVoid(int? p)
+        public async Task<Authorized> LocalCanCreateVoidDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateBoolTrueDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanCreateBoolTrueDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanCreateBoolTrueDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanCreateBoolFalseDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanCreateBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanCreateTaskDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanCreateTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanCreateTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanCreateTaskBoolDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanCreateTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanCreateStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanCreateStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanFetchVoid(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanFetchVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -4972,169 +4972,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchBool(int? p)
+        public virtual Task<Authorized> CanFetchBool(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanFetchBool(p);
+            return LocalCanFetchBool(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanFetchBool(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchTask(int? p)
-        {
-            return LocalCanFetchTask(p);
-        }
-
-        public async Task<Authorized> LocalCanFetchTask(int? p)
+        public async Task<Authorized> LocalCanFetchBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -5286,169 +5129,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTaskBool(int? p)
+        public virtual Task<Authorized> CanFetchTask(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanFetchTaskBool(p);
+            return LocalCanFetchTask(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanFetchTaskBool(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchVoidDep(int? p)
-        {
-            return LocalCanFetchVoidDep(p);
-        }
-
-        public async Task<Authorized> LocalCanFetchVoidDep(int? p)
+        public async Task<Authorized> LocalCanFetchTask(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -5600,169 +5286,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchBoolTrueDep(int? p)
+        public virtual Task<Authorized> CanFetchTaskBool(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanFetchBoolTrueDep(p);
+            return LocalCanFetchTaskBool(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanFetchBoolTrueDep(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchBoolFalseDep(int? p)
-        {
-            return LocalCanFetchBoolFalseDep(p);
-        }
-
-        public async Task<Authorized> LocalCanFetchBoolFalseDep(int? p)
+        public async Task<Authorized> LocalCanFetchTaskBool(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -5914,169 +5443,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTaskDep(int? p)
+        public virtual Task<Authorized> CanFetchVoidDep(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanFetchTaskDep(p);
+            return LocalCanFetchVoidDep(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanFetchTaskDep(int? p)
-        {
-            Authorized authorized;
-            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
-            authorized = await readauthtask.CanAnyBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanAnyStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanReadStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchBoolFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringTask();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await readauthtask.CanFetchStringFalseTask(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
-            authorized = readauth.CanAnyBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanAnyStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanReadStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchBoolFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = readauth.CanFetchStringFalse(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanFetchTaskBoolDep(int? p)
-        {
-            return LocalCanFetchTaskBoolDep(p);
-        }
-
-        public async Task<Authorized> LocalCanFetchTaskBoolDep(int? p)
+        public async Task<Authorized> LocalCanFetchVoidDep(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
@@ -6228,12 +5600,640 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchTaskBoolFalseDep(int? p)
+        public virtual Task<Authorized> CanFetchBoolTrueDep(int? p, CancellationToken cancellationToken = default)
         {
-            return LocalCanFetchTaskBoolFalseDep(p);
+            return LocalCanFetchBoolTrueDep(p, cancellationToken);
         }
 
-        public async Task<Authorized> LocalCanFetchTaskBoolFalseDep(int? p)
+        public async Task<Authorized> LocalCanFetchBoolTrueDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanFetchBoolFalseDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanFetchBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanFetchTaskDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanFetchTaskDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanFetchTaskBoolDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanFetchTaskBoolDep(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();
+            authorized = await readauthtask.CanAnyBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanAnyStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanReadStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchBoolFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringTask();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await readauthtask.CanFetchStringFalseTask(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            ReadAuth readauth = ServiceProvider.GetRequiredService<ReadAuth>();
+            authorized = readauth.CanAnyBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanAnyStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanReadStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchBoolFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = readauth.CanFetchStringFalse(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanFetchTaskBoolFalseDep(int? p, CancellationToken cancellationToken = default)
+        {
+            return LocalCanFetchTaskBoolFalseDep(p, cancellationToken);
+        }
+
+        public async Task<Authorized> LocalCanFetchTaskBoolFalseDep(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             ReadAuthTask readauthtask = ServiceProvider.GetRequiredService<ReadAuthTask>();

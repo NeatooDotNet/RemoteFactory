@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IFixWrongLocationExampleFactory
     {
-        Task<FixWrongLocationExample?> Fetch();
+        Task<FixWrongLocationExample?> Fetch(CancellationToken cancellationToken = default);
     }
 
     internal class FixWrongLocationExampleFactory : FactoryBase<FixWrongLocationExample>, IFixWrongLocationExampleFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<FixWrongLocationExample?> FetchDelegate();
+        public delegate Task<FixWrongLocationExample?> FetchDelegate(CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -39,17 +39,17 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             FetchProperty = RemoteFetch;
         }
 
-        public virtual Task<FixWrongLocationExample?> Fetch()
+        public virtual Task<FixWrongLocationExample?> Fetch(CancellationToken cancellationToken = default)
         {
-            return FetchProperty();
+            return FetchProperty(cancellationToken);
         }
 
-        public virtual async Task<FixWrongLocationExample?> RemoteFetch()
+        public virtual async Task<FixWrongLocationExample?> RemoteFetch(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<FixWrongLocationExample?>(typeof(FetchDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<FixWrongLocationExample?>(typeof(FetchDelegate), [], cancellationToken))!;
         }
 
-        public Task<FixWrongLocationExample?> LocalFetch()
+        public Task<FixWrongLocationExample?> LocalFetch(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<FixWrongLocationExample>();
             var svc = ServiceProvider.GetRequiredService<IServerOnlyService>();
@@ -63,7 +63,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<FixWrongLocationExampleFactory>();
-                return () => factory.LocalFetch();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetch(cancellationToken);
             });
             services.AddTransient<FixWrongLocationExample>();
             // Event registrations

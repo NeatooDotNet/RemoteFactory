@@ -12,17 +12,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IComplexParamReadObjectFactory
     {
-        ComplexParamReadObject CreateWithIntList(List<int> ids);
-        ComplexParamReadObject CreateWithStringList(List<string> names);
-        ComplexParamReadObject CreateWithDictionary(Dictionary<string, int> data);
-        ComplexParamReadObject CreateWithDto(SimpleDto dto);
-        ComplexParamReadObject CreateWithNestedDto(NestedDto dto);
-        ComplexParamReadObject CreateWithNullableList(List<int>? optionalIds);
-        ComplexParamReadObject CreateWithNullableDto(SimpleDto? optionalDto);
-        ComplexParamReadObject CreateWithMixedParams(int id, List<string> tags, SimpleDto dto);
-        Task<ComplexParamReadObject?> CreateWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data);
-        ComplexParamReadObject FetchWithIntList(List<int> ids);
-        ComplexParamReadObject FetchWithDto(SimpleDto dto);
+        ComplexParamReadObject CreateWithIntList(List<int> ids, CancellationToken cancellationToken = default);
+        ComplexParamReadObject CreateWithStringList(List<string> names, CancellationToken cancellationToken = default);
+        ComplexParamReadObject CreateWithDictionary(Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        ComplexParamReadObject CreateWithDto(SimpleDto dto, CancellationToken cancellationToken = default);
+        ComplexParamReadObject CreateWithNestedDto(NestedDto dto, CancellationToken cancellationToken = default);
+        ComplexParamReadObject CreateWithNullableList(List<int>? optionalIds, CancellationToken cancellationToken = default);
+        ComplexParamReadObject CreateWithNullableDto(SimpleDto? optionalDto, CancellationToken cancellationToken = default);
+        ComplexParamReadObject CreateWithMixedParams(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default);
+        Task<ComplexParamReadObject?> CreateWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        ComplexParamReadObject FetchWithIntList(List<int> ids, CancellationToken cancellationToken = default);
+        ComplexParamReadObject FetchWithDto(SimpleDto dto, CancellationToken cancellationToken = default);
     }
 
     internal class ComplexParamReadObjectFactory : FactoryBase<ComplexParamReadObject>, IComplexParamReadObjectFactory
@@ -42,122 +42,122 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual ComplexParamReadObject CreateWithIntList(List<int> ids)
+        public virtual ComplexParamReadObject CreateWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithIntList(ids);
+            return LocalCreateWithIntList(ids, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithIntList(List<int> ids)
+        public ComplexParamReadObject LocalCreateWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithIntList(ids));
         }
 
-        public virtual ComplexParamReadObject CreateWithStringList(List<string> names)
+        public virtual ComplexParamReadObject CreateWithStringList(List<string> names, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithStringList(names);
+            return LocalCreateWithStringList(names, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithStringList(List<string> names)
+        public ComplexParamReadObject LocalCreateWithStringList(List<string> names, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithStringList(names));
         }
 
-        public virtual ComplexParamReadObject CreateWithDictionary(Dictionary<string, int> data)
+        public virtual ComplexParamReadObject CreateWithDictionary(Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithDictionary(data);
+            return LocalCreateWithDictionary(data, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithDictionary(Dictionary<string, int> data)
+        public ComplexParamReadObject LocalCreateWithDictionary(Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithDictionary(data));
         }
 
-        public virtual ComplexParamReadObject CreateWithDto(SimpleDto dto)
+        public virtual ComplexParamReadObject CreateWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithDto(dto);
+            return LocalCreateWithDto(dto, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithDto(SimpleDto dto)
+        public ComplexParamReadObject LocalCreateWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithDto(dto));
         }
 
-        public virtual ComplexParamReadObject CreateWithNestedDto(NestedDto dto)
+        public virtual ComplexParamReadObject CreateWithNestedDto(NestedDto dto, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithNestedDto(dto);
+            return LocalCreateWithNestedDto(dto, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithNestedDto(NestedDto dto)
+        public ComplexParamReadObject LocalCreateWithNestedDto(NestedDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithNestedDto(dto));
         }
 
-        public virtual ComplexParamReadObject CreateWithNullableList(List<int>? optionalIds)
+        public virtual ComplexParamReadObject CreateWithNullableList(List<int>? optionalIds, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithNullableList(optionalIds);
+            return LocalCreateWithNullableList(optionalIds, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithNullableList(List<int>? optionalIds)
+        public ComplexParamReadObject LocalCreateWithNullableList(List<int>? optionalIds, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithNullableList(optionalIds));
         }
 
-        public virtual ComplexParamReadObject CreateWithNullableDto(SimpleDto? optionalDto)
+        public virtual ComplexParamReadObject CreateWithNullableDto(SimpleDto? optionalDto, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithNullableDto(optionalDto);
+            return LocalCreateWithNullableDto(optionalDto, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithNullableDto(SimpleDto? optionalDto)
+        public ComplexParamReadObject LocalCreateWithNullableDto(SimpleDto? optionalDto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithNullableDto(optionalDto));
         }
 
-        public virtual ComplexParamReadObject CreateWithMixedParams(int id, List<string> tags, SimpleDto dto)
+        public virtual ComplexParamReadObject CreateWithMixedParams(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithMixedParams(id, tags, dto);
+            return LocalCreateWithMixedParams(id, tags, dto, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalCreateWithMixedParams(int id, List<string> tags, SimpleDto dto)
+        public ComplexParamReadObject LocalCreateWithMixedParams(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateWithMixedParams(id, tags, dto));
         }
 
-        public virtual Task<ComplexParamReadObject?> CreateWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data)
+        public virtual Task<ComplexParamReadObject?> CreateWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return LocalCreateWithComplexParamsAsync(ids, data);
+            return LocalCreateWithComplexParamsAsync(ids, data, cancellationToken);
         }
 
-        public Task<ComplexParamReadObject?> LocalCreateWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data)
+        public Task<ComplexParamReadObject?> LocalCreateWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateWithComplexParamsAsync(ids, data));
         }
 
-        public virtual ComplexParamReadObject FetchWithIntList(List<int> ids)
+        public virtual ComplexParamReadObject FetchWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
-            return LocalFetchWithIntList(ids);
+            return LocalFetchWithIntList(ids, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalFetchWithIntList(List<int> ids)
+        public ComplexParamReadObject LocalFetchWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchWithIntList(ids));
         }
 
-        public virtual ComplexParamReadObject FetchWithDto(SimpleDto dto)
+        public virtual ComplexParamReadObject FetchWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return LocalFetchWithDto(dto);
+            return LocalFetchWithDto(dto, cancellationToken);
         }
 
-        public ComplexParamReadObject LocalFetchWithDto(SimpleDto dto)
+        public ComplexParamReadObject LocalFetchWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamReadObject>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchWithDto(dto));

@@ -12,29 +12,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public static partial class ExecuteWithMultipleServices
     {
-        public delegate Task<string> RunWithTwoServices(string input);
-        public delegate Task<string> RunWithThreeServices(string input);
-        public delegate Task<string> RunWithTwoServicesRemote(string input);
-        public delegate Task<string> RunWithThreeServicesRemote(string input);
+        public delegate Task<string> RunWithTwoServices(string input, CancellationToken cancellationToken = default);
+        public delegate Task<string> RunWithThreeServices(string input, CancellationToken cancellationToken = default);
+        public delegate Task<string> RunWithTwoServicesRemote(string input, CancellationToken cancellationToken = default);
+        public delegate Task<string> RunWithThreeServicesRemote(string input, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<ExecuteWithMultipleServices.RunWithTwoServices>(cc =>
                 {
-                    return (input) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithTwoServices), [input], default);
+                    return (input, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithTwoServices), [input], cancellationToken);
                 });
                 services.AddTransient<ExecuteWithMultipleServices.RunWithThreeServices>(cc =>
                 {
-                    return (input) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithThreeServices), [input], default);
+                    return (input, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithThreeServices), [input], cancellationToken);
                 });
                 services.AddTransient<ExecuteWithMultipleServices.RunWithTwoServicesRemote>(cc =>
                 {
-                    return (input) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithTwoServicesRemote), [input], default);
+                    return (input, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithTwoServicesRemote), [input], cancellationToken);
                 });
                 services.AddTransient<ExecuteWithMultipleServices.RunWithThreeServicesRemote>(cc =>
                 {
-                    return (input) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithThreeServicesRemote), [input], default);
+                    return (input, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithMultipleServices.RunWithThreeServicesRemote), [input], cancellationToken);
                 });
             }
 
@@ -42,7 +42,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 services.AddTransient<ExecuteWithMultipleServices.RunWithTwoServices>(cc =>
                 {
-                    return (string input) =>
+                    return (string input, CancellationToken cancellationToken = default) =>
                     {
                         var service1 = cc.GetRequiredService<IService>();
                         var service2 = cc.GetRequiredService<IService2>();
@@ -51,7 +51,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 });
                 services.AddTransient<ExecuteWithMultipleServices.RunWithThreeServices>(cc =>
                 {
-                    return (string input) =>
+                    return (string input, CancellationToken cancellationToken = default) =>
                     {
                         var service1 = cc.GetRequiredService<IService>();
                         var service2 = cc.GetRequiredService<IService2>();
@@ -61,7 +61,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 });
                 services.AddTransient<ExecuteWithMultipleServices.RunWithTwoServicesRemote>(cc =>
                 {
-                    return (string input) =>
+                    return (string input, CancellationToken cancellationToken = default) =>
                     {
                         var service1 = cc.GetRequiredService<IService>();
                         var service2 = cc.GetRequiredService<IService2>();
@@ -70,7 +70,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 });
                 services.AddTransient<ExecuteWithMultipleServices.RunWithThreeServicesRemote>(cc =>
                 {
-                    return (string input) =>
+                    return (string input, CancellationToken cancellationToken = default) =>
                     {
                         var service1 = cc.GetRequiredService<IService>();
                         var service2 = cc.GetRequiredService<IService2>();

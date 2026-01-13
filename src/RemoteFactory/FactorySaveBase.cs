@@ -16,7 +16,7 @@ public abstract class FactorySaveBase<T> : FactoryBase<T>, IFactorySave<T>
    {
    }
 
-   Task<IFactorySaveMeta?> IFactorySave<T>.Save(T target)
+   Task<IFactorySaveMeta?> IFactorySave<T>.Save(T target, CancellationToken cancellationToken)
 	{
 		throw new NotImplementedException("Save not implemented");
 	}

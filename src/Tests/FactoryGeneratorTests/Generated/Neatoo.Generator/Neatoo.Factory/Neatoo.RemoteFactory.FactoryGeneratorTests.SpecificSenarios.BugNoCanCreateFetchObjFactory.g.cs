@@ -18,12 +18,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IBugNoCanCreateFetchObjFactory
     {
-        BugNoCanCreateFetchObj? Create();
-        BugNoCanCreateFetchObj? Save(BugNoCanCreateFetchObj target);
-        Authorized<BugNoCanCreateFetchObj> TrySave(BugNoCanCreateFetchObj target);
-        Authorized CanCreate();
-        Authorized CanInsert();
-        Authorized CanSave();
+        BugNoCanCreateFetchObj? Create(CancellationToken cancellationToken = default);
+        BugNoCanCreateFetchObj? Save(BugNoCanCreateFetchObj target, CancellationToken cancellationToken = default);
+        Authorized<BugNoCanCreateFetchObj> TrySave(BugNoCanCreateFetchObj target, CancellationToken cancellationToken = default);
+        Authorized CanCreate(CancellationToken cancellationToken = default);
+        Authorized CanInsert(CancellationToken cancellationToken = default);
+        Authorized CanSave(CancellationToken cancellationToken = default);
     }
 
     internal class BugNoCanCreateFetchObjFactory : FactorySaveBase<BugNoCanCreateFetchObj>, IFactorySave<BugNoCanCreateFetchObj>, IBugNoCanCreateFetchObjFactory
@@ -43,12 +43,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual BugNoCanCreateFetchObj? Create()
+        public virtual BugNoCanCreateFetchObj? Create(CancellationToken cancellationToken = default)
         {
-            return (LocalCreate()).Result;
+            return (LocalCreate(cancellationToken)).Result;
         }
 
-        public Authorized<BugNoCanCreateFetchObj> LocalCreate()
+        public Authorized<BugNoCanCreateFetchObj> LocalCreate(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             BugNoCanCreateFetchAuth bugnocancreatefetchauth = ServiceProvider.GetRequiredService<BugNoCanCreateFetchAuth>();
@@ -63,7 +63,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return new Authorized<BugNoCanCreateFetchObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(service)));
         }
 
-        public Authorized<BugNoCanCreateFetchObj> LocalInsert(BugNoCanCreateFetchObj target)
+        public Authorized<BugNoCanCreateFetchObj> LocalInsert(BugNoCanCreateFetchObj target, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             BugNoCanCreateFetchAuth bugnocancreatefetchauth = ServiceProvider.GetRequiredService<BugNoCanCreateFetchAuth>();
@@ -77,9 +77,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return new Authorized<BugNoCanCreateFetchObj>(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert()));
         }
 
-        public virtual BugNoCanCreateFetchObj? Save(BugNoCanCreateFetchObj target)
+        public virtual BugNoCanCreateFetchObj? Save(BugNoCanCreateFetchObj target, CancellationToken cancellationToken = default)
         {
-            var authorized = (LocalSave(target));
+            var authorized = (LocalSave(target, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -88,17 +88,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return authorized.Result;
         }
 
-        public virtual Authorized<BugNoCanCreateFetchObj> TrySave(BugNoCanCreateFetchObj target)
+        public virtual Authorized<BugNoCanCreateFetchObj> TrySave(BugNoCanCreateFetchObj target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<BugNoCanCreateFetchObj>.Save(BugNoCanCreateFetchObj target)
+        async Task<IFactorySaveMeta?> IFactorySave<BugNoCanCreateFetchObj>.Save(BugNoCanCreateFetchObj target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual Authorized<BugNoCanCreateFetchObj> LocalSave(BugNoCanCreateFetchObj target)
+        public virtual Authorized<BugNoCanCreateFetchObj> LocalSave(BugNoCanCreateFetchObj target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -106,7 +106,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
@@ -114,30 +114,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
         }
 
-        public virtual Authorized CanCreate()
+        public virtual Authorized CanCreate(CancellationToken cancellationToken = default)
         {
-            return LocalCanCreate();
+            return LocalCanCreate(cancellationToken);
         }
 
-        public Authorized LocalCanCreate()
-        {
-            Authorized authorized;
-            BugNoCanCreateFetchAuth bugnocancreatefetchauth = ServiceProvider.GetRequiredService<BugNoCanCreateFetchAuth>();
-            authorized = bugnocancreatefetchauth.CanAccess();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanInsert()
-        {
-            return LocalCanInsert();
-        }
-
-        public Authorized LocalCanInsert()
+        public Authorized LocalCanCreate(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             BugNoCanCreateFetchAuth bugnocancreatefetchauth = ServiceProvider.GetRequiredService<BugNoCanCreateFetchAuth>();
@@ -150,12 +132,30 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return new Authorized(true);
         }
 
-        public virtual Authorized CanSave()
+        public virtual Authorized CanInsert(CancellationToken cancellationToken = default)
         {
-            return LocalCanSave();
+            return LocalCanInsert(cancellationToken);
         }
 
-        public Authorized LocalCanSave()
+        public Authorized LocalCanInsert(CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            BugNoCanCreateFetchAuth bugnocancreatefetchauth = ServiceProvider.GetRequiredService<BugNoCanCreateFetchAuth>();
+            authorized = bugnocancreatefetchauth.CanAccess();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanSave(CancellationToken cancellationToken = default)
+        {
+            return LocalCanSave(cancellationToken);
+        }
+
+        public Authorized LocalCanSave(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             BugNoCanCreateFetchAuth bugnocancreatefetchauth = ServiceProvider.GetRequiredService<BugNoCanCreateFetchAuth>();

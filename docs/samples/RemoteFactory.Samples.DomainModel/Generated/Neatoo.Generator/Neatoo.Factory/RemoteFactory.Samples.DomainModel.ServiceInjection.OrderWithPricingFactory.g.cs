@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IOrderWithPricingFactory
     {
-        Task<OrderWithPricing> SaveApplyPromoCode(OrderWithPricing target, string promoCode);
+        Task<OrderWithPricing> SaveApplyPromoCode(OrderWithPricing target, string promoCode, CancellationToken cancellationToken = default);
     }
 
     internal class OrderWithPricingFactory : FactoryBase<OrderWithPricing>, IOrderWithPricingFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<OrderWithPricing> SaveApplyPromoCodeDelegate(OrderWithPricing target, string promoCode);
+        public delegate Task<OrderWithPricing> SaveApplyPromoCodeDelegate(OrderWithPricing target, string promoCode, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveApplyPromoCodeDelegate SaveApplyPromoCodeProperty { get; }
 
@@ -39,7 +39,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             SaveApplyPromoCodeProperty = RemoteSaveApplyPromoCode;
         }
 
-        public Task<OrderWithPricing> LocalApplyPromoCode(OrderWithPricing target, string promoCode)
+        public Task<OrderWithPricing> LocalApplyPromoCode(OrderWithPricing target, string promoCode, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderWithPricing)target ?? throw new Exception("OrderWithPricing must implement OrderWithPricing");
             var pricingService = ServiceProvider.GetRequiredService<IPricingService>();
@@ -47,17 +47,17 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.ApplyPromoCode(promoCode, pricingService, context));
         }
 
-        public virtual Task<OrderWithPricing> SaveApplyPromoCode(OrderWithPricing target, string promoCode)
+        public virtual Task<OrderWithPricing> SaveApplyPromoCode(OrderWithPricing target, string promoCode, CancellationToken cancellationToken = default)
         {
-            return SaveApplyPromoCodeProperty(target, promoCode);
+            return SaveApplyPromoCodeProperty(target, promoCode, cancellationToken);
         }
 
-        public virtual async Task<OrderWithPricing> RemoteSaveApplyPromoCode(OrderWithPricing target, string promoCode)
+        public virtual async Task<OrderWithPricing> RemoteSaveApplyPromoCode(OrderWithPricing target, string promoCode, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<OrderWithPricing>(typeof(SaveApplyPromoCodeDelegate), [target, promoCode], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<OrderWithPricing>(typeof(SaveApplyPromoCodeDelegate), [target, promoCode], cancellationToken))!;
         }
 
-        public virtual async Task<OrderWithPricing> LocalSaveApplyPromoCode(OrderWithPricing target, string promoCode)
+        public virtual async Task<OrderWithPricing> LocalSaveApplyPromoCode(OrderWithPricing target, string promoCode, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -69,7 +69,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             }
             else
             {
-                return await LocalApplyPromoCode(target, promoCode);
+                return await LocalApplyPromoCode(target, promoCode, cancellationToken);
             }
         }
 
@@ -80,7 +80,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<SaveApplyPromoCodeDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<OrderWithPricingFactory>();
-                return (OrderWithPricing target, string promoCode) => factory.LocalSaveApplyPromoCode(target, promoCode);
+                return (OrderWithPricing target, string promoCode, CancellationToken cancellationToken = default) => factory.LocalSaveApplyPromoCode(target, promoCode, cancellationToken);
             });
             services.AddTransient<OrderWithPricing>();
             // Event registrations

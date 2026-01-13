@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IPersonWithLoggingFactory
     {
-        Task<PersonWithLogging?> Fetch(int id);
+        Task<PersonWithLogging?> Fetch(int id, CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithLoggingFactory : FactoryBase<PersonWithLogging>, IPersonWithLoggingFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonWithLogging?> FetchDelegate(int id);
+        public delegate Task<PersonWithLogging?> FetchDelegate(int id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -39,17 +39,17 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             FetchProperty = RemoteFetch;
         }
 
-        public virtual Task<PersonWithLogging?> Fetch(int id)
+        public virtual Task<PersonWithLogging?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<PersonWithLogging?> RemoteFetch(int id)
+        public virtual async Task<PersonWithLogging?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonWithLogging?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonWithLogging?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<PersonWithLogging?> LocalFetch(int id)
+        public Task<PersonWithLogging?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonWithLogging>();
             var logger = ServiceProvider.GetRequiredService<ILogger<PersonWithLogging>>();
@@ -64,7 +64,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonWithLoggingFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddTransient<PersonWithLogging>();
             // Event registrations

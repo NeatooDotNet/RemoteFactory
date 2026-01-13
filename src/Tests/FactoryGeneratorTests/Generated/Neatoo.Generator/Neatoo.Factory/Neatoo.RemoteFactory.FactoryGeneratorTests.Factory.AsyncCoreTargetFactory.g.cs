@@ -13,10 +13,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IAsyncCoreTargetFactory
     {
-        Task<AsyncCoreTarget> CreateAsync();
-        Task<AsyncCoreTarget> FetchAsync();
-        Task<AsyncCoreTarget?> CreateBoolAsync();
-        Task<AsyncCoreTarget?> FetchBoolAsync();
+        Task<AsyncCoreTarget> CreateAsync(CancellationToken cancellationToken = default);
+        Task<AsyncCoreTarget> FetchAsync(CancellationToken cancellationToken = default);
+        Task<AsyncCoreTarget?> CreateBoolAsync(CancellationToken cancellationToken = default);
+        Task<AsyncCoreTarget?> FetchBoolAsync(CancellationToken cancellationToken = default);
     }
 
     internal class AsyncCoreTargetFactory : FactoryBase<AsyncCoreTarget>, IAsyncCoreTargetFactory
@@ -36,45 +36,45 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual Task<AsyncCoreTarget> CreateAsync()
+        public virtual Task<AsyncCoreTarget> CreateAsync(CancellationToken cancellationToken = default)
         {
-            return LocalCreateAsync();
+            return LocalCreateAsync(cancellationToken);
         }
 
-        public Task<AsyncCoreTarget> LocalCreateAsync()
+        public Task<AsyncCoreTarget> LocalCreateAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<AsyncCoreTarget>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateAsync());
         }
 
-        public virtual Task<AsyncCoreTarget> FetchAsync()
+        public virtual Task<AsyncCoreTarget> FetchAsync(CancellationToken cancellationToken = default)
         {
-            return LocalFetchAsync();
+            return LocalFetchAsync(cancellationToken);
         }
 
-        public Task<AsyncCoreTarget> LocalFetchAsync()
+        public Task<AsyncCoreTarget> LocalFetchAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<AsyncCoreTarget>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchAsync());
         }
 
-        public virtual Task<AsyncCoreTarget?> CreateBoolAsync()
+        public virtual Task<AsyncCoreTarget?> CreateBoolAsync(CancellationToken cancellationToken = default)
         {
-            return LocalCreateBoolAsync();
+            return LocalCreateBoolAsync(cancellationToken);
         }
 
-        public Task<AsyncCoreTarget?> LocalCreateBoolAsync()
+        public Task<AsyncCoreTarget?> LocalCreateBoolAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<AsyncCoreTarget>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateBoolAsync());
         }
 
-        public virtual Task<AsyncCoreTarget?> FetchBoolAsync()
+        public virtual Task<AsyncCoreTarget?> FetchBoolAsync(CancellationToken cancellationToken = default)
         {
-            return LocalFetchBoolAsync();
+            return LocalFetchBoolAsync(cancellationToken);
         }
 
-        public Task<AsyncCoreTarget?> LocalFetchBoolAsync()
+        public Task<AsyncCoreTarget?> LocalFetchBoolAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<AsyncCoreTarget>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchBoolAsync());

@@ -484,6 +484,7 @@ public class WriteAuthTests
 		var factory = this.clientScope.ServiceProvider.GetRequiredService<IWriteAuthObjectFactory>();
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuth>();
 
+		// Reflection Approved
 		var methods = factory.GetType().GetMethods()
 			.Where(m => m.Name.StartsWith("Save") && !m.Name.Contains("Try") && !m.Name.Contains("Can"))
 			.ToList();
@@ -552,12 +553,16 @@ public class WriteAuthTests
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuth>();
 
 		// Find methods with int? parameter (these check p=10 for failure)
+		// Exclude CancellationToken from meaningful parameter count
 		var methods = factory.GetType().GetMethods()
 			.Where(m => m.Name.StartsWith("Save") &&
 			            !m.Name.Contains("Try") &&
-			            !m.Name.Contains("Can") &&
-			            m.GetParameters().Length == 2 &&
-			            m.GetParameters()[1].ParameterType == typeof(int?))
+			            !m.Name.Contains("Can"))
+			.Where(m =>
+			{
+				var meaningful = m.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
+				return meaningful.Length == 2 && meaningful[1].ParameterType == typeof(int?);
+			})
 			.ToList();
 
 		Assert.NotEmpty(methods);
@@ -591,12 +596,16 @@ public class WriteAuthTests
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuth>();
 
 		// Find methods with int? parameter
+		// Exclude CancellationToken from meaningful parameter count
 		var methods = factory.GetType().GetMethods()
 			.Where(m => m.Name.StartsWith("Save") &&
 			            !m.Name.Contains("Try") &&
-			            !m.Name.Contains("Can") &&
-			            m.GetParameters().Length == 2 &&
-			            m.GetParameters()[1].ParameterType == typeof(int?))
+			            !m.Name.Contains("Can"))
+			.Where(m =>
+			{
+				var meaningful = m.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
+				return meaningful.Length == 2 && meaningful[1].ParameterType == typeof(int?);
+			})
 			.ToList();
 
 		Assert.NotEmpty(methods);
@@ -643,13 +652,15 @@ public class WriteAuthTests
 			var methodName = method.Name;
 
 			object? result;
-			if (method.GetParameters().Any())
+			// Exclude CancellationToken from meaningful parameter count
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.Any())
 			{
-				result = method.Invoke(factory, new object[] { 1 }); // Pass valid param
+				result = method.Invoke(factory, new object[] { 1, default(CancellationToken) }); // Pass valid param
 			}
 			else
 			{
-				result = method.Invoke(factory, null);
+				result = method.Invoke(factory, new object[] { default(CancellationToken) });
 			}
 
 			// Can methods should return Authorized or Task<Authorized>
@@ -682,10 +693,14 @@ public class WriteAuthTests
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuth>();
 
 		// Find Can methods with int? parameter
+		// Exclude CancellationToken from meaningful parameter count
 		var canMethods = factory.GetType().GetMethods()
-			.Where(m => m.Name.StartsWith("Can") &&
-			            m.GetParameters().Length == 1 &&
-			            m.GetParameters()[0].ParameterType == typeof(int?))
+			.Where(m => m.Name.StartsWith("Can"))
+			.Where(m =>
+			{
+				var meaningful = m.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
+				return meaningful.Length == 1 && meaningful[0].ParameterType == typeof(int?);
+			})
 			.ToList();
 
 		Assert.NotEmpty(canMethods);
@@ -696,7 +711,7 @@ public class WriteAuthTests
 			var methodName = method.Name;
 
 			// Test with p=10 to trigger bool failure
-			var result = method.Invoke(factory, new object[] { 10 });
+			var result = method.Invoke(factory, new object[] { 10, default(CancellationToken) });
 
 			if (result is Task<Authorized> authTask)
 			{
@@ -733,9 +748,11 @@ public class WriteAuthTests
 
 			// Test successful authorization
 			var obj = new WriteAuthObject { IsNew = true };
-			object?[] parameters = method.GetParameters().Length == 2
-				? new object?[] { obj, 1 }
-				: new object?[] { obj };
+			// Exclude CancellationToken from meaningful parameter count
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			object?[] parameters = meaningfulParams.Count == 2
+				? new object?[] { obj, 1, default(CancellationToken) }
+				: new object?[] { obj, default(CancellationToken) };
 
 			var result = method.Invoke(factory, parameters);
 
@@ -763,10 +780,14 @@ public class WriteAuthTests
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuth>();
 
 		// Find TrySave methods with int? parameter
+		// Exclude CancellationToken from meaningful parameter count
 		var tryMethods = factory.GetType().GetMethods()
-			.Where(m => m.Name.StartsWith("TrySave") &&
-			            m.GetParameters().Length == 2 &&
-			            m.GetParameters()[1].ParameterType == typeof(int?))
+			.Where(m => m.Name.StartsWith("TrySave"))
+			.Where(m =>
+			{
+				var meaningful = m.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
+				return meaningful.Length == 2 && meaningful[1].ParameterType == typeof(int?);
+			})
 			.ToList();
 
 		Assert.NotEmpty(tryMethods);
@@ -778,7 +799,7 @@ public class WriteAuthTests
 
 			// Test with p=10 to trigger bool failure
 			var obj = new WriteAuthObject { IsNew = true };
-			var result = method.Invoke(factory, new object?[] { obj, 10 });
+			var result = method.Invoke(factory, new object?[] { obj, 10, default(CancellationToken) });
 
 			if (result is Task<Authorized<WriteAuthObject>> authTask)
 			{
@@ -804,10 +825,14 @@ public class WriteAuthTests
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuth>();
 
 		// Find TrySave methods with int? parameter
+		// Exclude CancellationToken from meaningful parameter count
 		var tryMethods = factory.GetType().GetMethods()
-			.Where(m => m.Name.StartsWith("TrySave") &&
-			            m.GetParameters().Length == 2 &&
-			            m.GetParameters()[1].ParameterType == typeof(int?))
+			.Where(m => m.Name.StartsWith("TrySave"))
+			.Where(m =>
+			{
+				var meaningful = m.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
+				return meaningful.Length == 2 && meaningful[1].ParameterType == typeof(int?);
+			})
 			.ToList();
 
 		Assert.NotEmpty(tryMethods);
@@ -819,7 +844,7 @@ public class WriteAuthTests
 
 			// Test with p=20 to trigger string failure
 			var obj = new WriteAuthObject { IsNew = true };
-			var result = method.Invoke(factory, new object?[] { obj, 20 });
+			var result = method.Invoke(factory, new object?[] { obj, 20, default(CancellationToken) });
 
 			if (result is Task<Authorized<WriteAuthObject>> authTask)
 			{
@@ -850,6 +875,7 @@ public class WriteAuthTests
 		var factory = this.clientScope.ServiceProvider.GetRequiredService<IWriteAuthAsyncObjectFactory>();
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuthAsync>();
 
+		// Reflection Approved
 		var methods = factory.GetType().GetMethods()
 			.Where(m => m.Name.StartsWith("Save") && !m.Name.Contains("Try") && !m.Name.Contains("Can"))
 			.ToList();
@@ -889,12 +915,16 @@ public class WriteAuthTests
 		var auth = this.clientScope.ServiceProvider.GetRequiredService<WriteAuthAsync>();
 
 		// Find methods with int? parameter
+		// Exclude CancellationToken from meaningful parameter count
 		var methods = factory.GetType().GetMethods()
 			.Where(m => m.Name.StartsWith("Save") &&
 			            !m.Name.Contains("Try") &&
-			            !m.Name.Contains("Can") &&
-			            m.GetParameters().Length == 2 &&
-			            m.GetParameters()[1].ParameterType == typeof(int?))
+			            !m.Name.Contains("Can"))
+			.Where(m =>
+			{
+				var meaningful = m.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
+				return meaningful.Length == 2 && meaningful[1].ParameterType == typeof(int?);
+			})
 			.ToList();
 
 		Assert.NotEmpty(methods);
@@ -927,13 +957,15 @@ public class WriteAuthTests
 		object? result;
 		try
 		{
-			if (method.GetParameters().Length == 2)
+			// Exclude CancellationToken from meaningful parameter count
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.Count == 2)
 			{
-				result = method.Invoke(factory, new object?[] { obj, 1 }); // Use valid param
+				result = method.Invoke(factory, new object?[] { obj, 1, default(CancellationToken) }); // Use valid param
 			}
 			else
 			{
-				result = method.Invoke(factory, new object?[] { obj });
+				result = method.Invoke(factory, new object?[] { obj, default(CancellationToken) });
 			}
 		}
 		catch (System.Reflection.TargetInvocationException ex)
@@ -958,7 +990,7 @@ public class WriteAuthTests
 		object? result;
 		try
 		{
-			result = method.Invoke(factory, new object?[] { obj, param });
+			result = method.Invoke(factory, new object?[] { obj, param, default(CancellationToken) });
 		}
 		catch (System.Reflection.TargetInvocationException ex)
 		{
@@ -998,13 +1030,15 @@ public class WriteAuthTests
 		object? result;
 		try
 		{
-			if (method.GetParameters().Length == 2)
+			// Exclude CancellationToken from meaningful parameter count
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.Count == 2)
 			{
-				result = method.Invoke(factory, new object?[] { obj, 1 });
+				result = method.Invoke(factory, new object?[] { obj, 1, default(CancellationToken) });
 			}
 			else
 			{
-				result = method.Invoke(factory, new object?[] { obj });
+				result = method.Invoke(factory, new object?[] { obj, default(CancellationToken) });
 			}
 		}
 		catch (System.Reflection.TargetInvocationException ex)
@@ -1029,7 +1063,7 @@ public class WriteAuthTests
 		object? result;
 		try
 		{
-			result = method.Invoke(factory, new object?[] { obj, param });
+			result = method.Invoke(factory, new object?[] { obj, param, default(CancellationToken) });
 		}
 		catch (System.Reflection.TargetInvocationException ex)
 		{

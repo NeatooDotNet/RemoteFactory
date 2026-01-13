@@ -11,8 +11,8 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
 {
     public interface IOrderModelWithMatchingFactory
     {
-        Task<OrderModelWithMatching?> Save(OrderModelWithMatching target);
-        Task<OrderModelWithMatching?> SaveWithAudit(OrderModelWithMatching target, string auditReason);
+        Task<OrderModelWithMatching?> Save(OrderModelWithMatching target, CancellationToken cancellationToken = default);
+        Task<OrderModelWithMatching?> SaveWithAudit(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default);
     }
 
     internal class OrderModelWithMatchingFactory : FactorySaveBase<OrderModelWithMatching>, IFactorySave<OrderModelWithMatching>, IOrderModelWithMatchingFactory
@@ -20,8 +20,8 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<OrderModelWithMatching?> SaveDelegate(OrderModelWithMatching target);
-        public delegate Task<OrderModelWithMatching?> SaveWithAuditDelegate(OrderModelWithMatching target, string auditReason);
+        public delegate Task<OrderModelWithMatching?> SaveDelegate(OrderModelWithMatching target, CancellationToken cancellationToken = default);
+        public delegate Task<OrderModelWithMatching?> SaveWithAuditDelegate(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveDelegate SaveProperty { get; }
         public SaveWithAuditDelegate SaveWithAuditProperty { get; }
@@ -41,64 +41,64 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
             SaveWithAuditProperty = RemoteSaveWithAudit;
         }
 
-        public Task<OrderModelWithMatching> LocalInsert(OrderModelWithMatching target)
+        public Task<OrderModelWithMatching> LocalInsert(OrderModelWithMatching target, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderModelWithMatching)target ?? throw new Exception("OrderModelWithMatching must implement OrderModelWithMatching");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert(context)));
         }
 
-        public Task<OrderModelWithMatching> LocalUpdate(OrderModelWithMatching target)
+        public Task<OrderModelWithMatching> LocalUpdate(OrderModelWithMatching target, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderModelWithMatching)target ?? throw new Exception("OrderModelWithMatching must implement OrderModelWithMatching");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update(context)));
         }
 
-        public Task<OrderModelWithMatching> LocalDelete(OrderModelWithMatching target)
+        public Task<OrderModelWithMatching> LocalDelete(OrderModelWithMatching target, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderModelWithMatching)target ?? throw new Exception("OrderModelWithMatching must implement OrderModelWithMatching");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.Delete(context)));
         }
 
-        public Task<OrderModelWithMatching> LocalInsertWithAudit(OrderModelWithMatching target, string auditReason)
+        public Task<OrderModelWithMatching> LocalInsertWithAudit(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderModelWithMatching)target ?? throw new Exception("OrderModelWithMatching must implement OrderModelWithMatching");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertWithAudit(auditReason, context)));
         }
 
-        public Task<OrderModelWithMatching> LocalUpdateWithAudit(OrderModelWithMatching target, string auditReason)
+        public Task<OrderModelWithMatching> LocalUpdateWithAudit(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderModelWithMatching)target ?? throw new Exception("OrderModelWithMatching must implement OrderModelWithMatching");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateWithAudit(auditReason, context)));
         }
 
-        public Task<OrderModelWithMatching> LocalDeleteWithAudit(OrderModelWithMatching target, string auditReason)
+        public Task<OrderModelWithMatching> LocalDeleteWithAudit(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderModelWithMatching)target ?? throw new Exception("OrderModelWithMatching must implement OrderModelWithMatching");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteWithAudit(auditReason, context)));
         }
 
-        public virtual Task<OrderModelWithMatching?> Save(OrderModelWithMatching target)
+        public virtual Task<OrderModelWithMatching?> Save(OrderModelWithMatching target, CancellationToken cancellationToken = default)
         {
-            return SaveProperty(target);
+            return SaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<OrderModelWithMatching?> RemoteSave(OrderModelWithMatching target)
+        public virtual async Task<OrderModelWithMatching?> RemoteSave(OrderModelWithMatching target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderModelWithMatching?>(typeof(SaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderModelWithMatching?>(typeof(SaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<OrderModelWithMatching>.Save(OrderModelWithMatching target)
+        async Task<IFactorySaveMeta?> IFactorySave<OrderModelWithMatching>.Save(OrderModelWithMatching target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<OrderModelWithMatching?> LocalSave(OrderModelWithMatching target)
+        public virtual async Task<OrderModelWithMatching?> LocalSave(OrderModelWithMatching target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -107,29 +107,29 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
                     return default(OrderModelWithMatching);
                 }
 
-                return await LocalDelete(target);
+                return await LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsert(target);
+                return await LocalInsert(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdate(target);
+                return await LocalUpdate(target, cancellationToken);
             }
         }
 
-        public virtual Task<OrderModelWithMatching?> SaveWithAudit(OrderModelWithMatching target, string auditReason)
+        public virtual Task<OrderModelWithMatching?> SaveWithAudit(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default)
         {
-            return SaveWithAuditProperty(target, auditReason);
+            return SaveWithAuditProperty(target, auditReason, cancellationToken);
         }
 
-        public virtual async Task<OrderModelWithMatching?> RemoteSaveWithAudit(OrderModelWithMatching target, string auditReason)
+        public virtual async Task<OrderModelWithMatching?> RemoteSaveWithAudit(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderModelWithMatching?>(typeof(SaveWithAuditDelegate), [target, auditReason], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderModelWithMatching?>(typeof(SaveWithAuditDelegate), [target, auditReason], cancellationToken))!;
         }
 
-        public virtual async Task<OrderModelWithMatching?> LocalSaveWithAudit(OrderModelWithMatching target, string auditReason)
+        public virtual async Task<OrderModelWithMatching?> LocalSaveWithAudit(OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -138,15 +138,15 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
                     return default(OrderModelWithMatching);
                 }
 
-                return await LocalDeleteWithAudit(target, auditReason);
+                return await LocalDeleteWithAudit(target, auditReason, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertWithAudit(target, auditReason);
+                return await LocalInsertWithAudit(target, auditReason, cancellationToken);
             }
             else
             {
-                return await LocalUpdateWithAudit(target, auditReason);
+                return await LocalUpdateWithAudit(target, auditReason, cancellationToken);
             }
         }
 
@@ -157,12 +157,12 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.RemoteExamples
             services.AddScoped<SaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<OrderModelWithMatchingFactory>();
-                return (OrderModelWithMatching target) => factory.LocalSave(target);
+                return (OrderModelWithMatching target, CancellationToken cancellationToken = default) => factory.LocalSave(target, cancellationToken);
             });
             services.AddScoped<SaveWithAuditDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<OrderModelWithMatchingFactory>();
-                return (OrderModelWithMatching target, string auditReason) => factory.LocalSaveWithAudit(target, auditReason);
+                return (OrderModelWithMatching target, string auditReason, CancellationToken cancellationToken = default) => factory.LocalSaveWithAudit(target, auditReason, cancellationToken);
             });
             services.AddTransient<OrderModelWithMatching>();
             services.AddScoped<IFactorySave<OrderModelWithMatching>, OrderModelWithMatchingFactory>();

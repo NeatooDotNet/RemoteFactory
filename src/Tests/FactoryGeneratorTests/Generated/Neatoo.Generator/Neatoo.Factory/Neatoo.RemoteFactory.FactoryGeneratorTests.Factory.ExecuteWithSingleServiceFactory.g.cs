@@ -12,19 +12,19 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public static partial class ExecuteWithSingleService
     {
-        public delegate Task<string> RunWithService(string input);
-        public delegate Task<string> RunWithServiceRemote(string input);
+        public delegate Task<string> RunWithService(string input, CancellationToken cancellationToken = default);
+        public delegate Task<string> RunWithServiceRemote(string input, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<ExecuteWithSingleService.RunWithService>(cc =>
                 {
-                    return (input) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithSingleService.RunWithService), [input], default);
+                    return (input, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithSingleService.RunWithService), [input], cancellationToken);
                 });
                 services.AddTransient<ExecuteWithSingleService.RunWithServiceRemote>(cc =>
                 {
-                    return (input) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithSingleService.RunWithServiceRemote), [input], default);
+                    return (input, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteWithSingleService.RunWithServiceRemote), [input], cancellationToken);
                 });
             }
 
@@ -32,7 +32,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 services.AddTransient<ExecuteWithSingleService.RunWithService>(cc =>
                 {
-                    return (string input) =>
+                    return (string input, CancellationToken cancellationToken = default) =>
                     {
                         var service = cc.GetRequiredService<IService>();
                         return ExecuteWithSingleService._RunWithService(input, service);
@@ -40,7 +40,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 });
                 services.AddTransient<ExecuteWithSingleService.RunWithServiceRemote>(cc =>
                 {
-                    return (string input) =>
+                    return (string input, CancellationToken cancellationToken = default) =>
                     {
                         var service = cc.GetRequiredService<IService>();
                         return ExecuteWithSingleService._RunWithServiceRemote(input, service);

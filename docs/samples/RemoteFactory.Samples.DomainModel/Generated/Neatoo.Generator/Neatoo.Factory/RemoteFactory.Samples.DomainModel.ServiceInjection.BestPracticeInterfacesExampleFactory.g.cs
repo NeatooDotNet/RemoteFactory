@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IBestPracticeInterfacesExampleFactory
     {
-        Task<BestPracticeInterfacesExample?> FetchGood();
+        Task<BestPracticeInterfacesExample?> FetchGood(CancellationToken cancellationToken = default);
     }
 
     internal class BestPracticeInterfacesExampleFactory : FactoryBase<BestPracticeInterfacesExample>, IBestPracticeInterfacesExampleFactory
@@ -34,12 +34,12 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual Task<BestPracticeInterfacesExample?> FetchGood()
+        public virtual Task<BestPracticeInterfacesExample?> FetchGood(CancellationToken cancellationToken = default)
         {
-            return LocalFetchGood();
+            return LocalFetchGood(cancellationToken);
         }
 
-        public Task<BestPracticeInterfacesExample?> LocalFetchGood()
+        public Task<BestPracticeInterfacesExample?> LocalFetchGood(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<BestPracticeInterfacesExample>();
             var context = ServiceProvider.GetRequiredService<IPersonContext>();

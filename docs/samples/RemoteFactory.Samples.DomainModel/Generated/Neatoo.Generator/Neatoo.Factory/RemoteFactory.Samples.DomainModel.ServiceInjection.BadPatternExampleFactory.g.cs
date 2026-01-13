@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IBadPatternExampleFactory
     {
-        BadPatternExample BadPattern();
+        BadPatternExample BadPattern(CancellationToken cancellationToken = default);
     }
 
     internal class BadPatternExampleFactory : FactoryBase<BadPatternExample>, IBadPatternExampleFactory
@@ -34,12 +34,12 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual BadPatternExample BadPattern()
+        public virtual BadPatternExample BadPattern(CancellationToken cancellationToken = default)
         {
-            return LocalBadPattern();
+            return LocalBadPattern(cancellationToken);
         }
 
-        public BadPatternExample LocalBadPattern()
+        public BadPatternExample LocalBadPattern(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<BadPatternExample>();
             var context = ServiceProvider.GetRequiredService<IDbContext>();

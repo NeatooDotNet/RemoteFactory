@@ -13,9 +13,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface INestedRemoteFactoryFactory
     {
-        NestedRemoteFactory Create();
-        Task<NestedRemoteFactory> FetchAsync();
-        Task<NestedRemoteFactory> SaveAsync(NestedRemoteFactory target);
+        NestedRemoteFactory Create(CancellationToken cancellationToken = default);
+        Task<NestedRemoteFactory> FetchAsync(CancellationToken cancellationToken = default);
+        Task<NestedRemoteFactory> SaveAsync(NestedRemoteFactory target, CancellationToken cancellationToken = default);
     }
 
     internal class NestedRemoteFactoryFactory : FactorySaveBase<NestedRemoteFactory>, IFactorySave<NestedRemoteFactory>, INestedRemoteFactoryFactory
@@ -23,8 +23,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<NestedRemoteFactory> FetchAsyncDelegate();
-        public delegate Task<NestedRemoteFactory> SaveAsyncDelegate(NestedRemoteFactory target);
+        public delegate Task<NestedRemoteFactory> FetchAsyncDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<NestedRemoteFactory> SaveAsyncDelegate(NestedRemoteFactory target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchAsyncDelegate FetchAsyncProperty { get; }
         public SaveAsyncDelegate SaveAsyncProperty { get; }
@@ -44,60 +44,60 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             SaveAsyncProperty = RemoteSaveAsync;
         }
 
-        public virtual NestedRemoteFactory Create()
+        public virtual NestedRemoteFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public NestedRemoteFactory LocalCreate()
+        public NestedRemoteFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new NestedRemoteFactory());
         }
 
-        public virtual Task<NestedRemoteFactory> FetchAsync()
+        public virtual Task<NestedRemoteFactory> FetchAsync(CancellationToken cancellationToken = default)
         {
-            return FetchAsyncProperty();
+            return FetchAsyncProperty(cancellationToken);
         }
 
-        public virtual async Task<NestedRemoteFactory> RemoteFetchAsync()
+        public virtual async Task<NestedRemoteFactory> RemoteFetchAsync(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<NestedRemoteFactory>(typeof(FetchAsyncDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<NestedRemoteFactory>(typeof(FetchAsyncDelegate), [], cancellationToken))!;
         }
 
-        public Task<NestedRemoteFactory> LocalFetchAsync()
+        public Task<NestedRemoteFactory> LocalFetchAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedRemoteFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchAsync());
         }
 
-        public Task<NestedRemoteFactory> LocalInsertAsync(NestedRemoteFactory target)
+        public Task<NestedRemoteFactory> LocalInsertAsync(NestedRemoteFactory target, CancellationToken cancellationToken = default)
         {
             var cTarget = (NestedRemoteFactory)target ?? throw new Exception("NestedRemoteFactory must implement NestedRemoteFactory");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertAsync());
         }
 
-        public Task<NestedRemoteFactory> LocalUpdateAsync(NestedRemoteFactory target)
+        public Task<NestedRemoteFactory> LocalUpdateAsync(NestedRemoteFactory target, CancellationToken cancellationToken = default)
         {
             var cTarget = (NestedRemoteFactory)target ?? throw new Exception("NestedRemoteFactory must implement NestedRemoteFactory");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateAsync());
         }
 
-        public virtual Task<NestedRemoteFactory> SaveAsync(NestedRemoteFactory target)
+        public virtual Task<NestedRemoteFactory> SaveAsync(NestedRemoteFactory target, CancellationToken cancellationToken = default)
         {
-            return SaveAsyncProperty(target);
+            return SaveAsyncProperty(target, cancellationToken);
         }
 
-        public virtual async Task<NestedRemoteFactory> RemoteSaveAsync(NestedRemoteFactory target)
+        public virtual async Task<NestedRemoteFactory> RemoteSaveAsync(NestedRemoteFactory target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<NestedRemoteFactory>(typeof(SaveAsyncDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<NestedRemoteFactory>(typeof(SaveAsyncDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<NestedRemoteFactory>.Save(NestedRemoteFactory target)
+        async Task<IFactorySaveMeta?> IFactorySave<NestedRemoteFactory>.Save(NestedRemoteFactory target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await SaveAsync(target);
+            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
         }
 
-        public virtual async Task<NestedRemoteFactory> LocalSaveAsync(NestedRemoteFactory target)
+        public virtual async Task<NestedRemoteFactory> LocalSaveAsync(NestedRemoteFactory target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -105,11 +105,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return await LocalInsertAsync(target);
+                return await LocalInsertAsync(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateAsync(target);
+                return await LocalUpdateAsync(target, cancellationToken);
             }
         }
 
@@ -120,12 +120,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             services.AddScoped<FetchAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<NestedRemoteFactoryFactory>();
-                return () => factory.LocalFetchAsync();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchAsync(cancellationToken);
             });
             services.AddScoped<SaveAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<NestedRemoteFactoryFactory>();
-                return (NestedRemoteFactory target) => factory.LocalSaveAsync(target);
+                return (NestedRemoteFactory target, CancellationToken cancellationToken = default) => factory.LocalSaveAsync(target, cancellationToken);
             });
             services.AddTransient<NestedRemoteFactory>();
             services.AddScoped<IFactorySave<NestedRemoteFactory>, NestedRemoteFactoryFactory>();

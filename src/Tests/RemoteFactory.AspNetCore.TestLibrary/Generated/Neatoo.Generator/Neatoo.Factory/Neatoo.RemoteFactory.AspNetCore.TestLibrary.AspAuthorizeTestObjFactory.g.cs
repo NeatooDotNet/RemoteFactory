@@ -11,20 +11,20 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 {
     public interface IAspAuthorizeTestObjFactory
     {
-        Task<AspAuthorizeTestObj?> Create(bool hasAccess);
-        Task<AspAuthorizeTestObj?> CreateNoAspAuth(bool hasAccess);
-        Task<AspAuthorizeTestObj?> CreateMultiple(bool hasAccess);
-        Task<AspAuthorizeTestObj?> Save(AspAuthorizeTestObj target, bool hasAccess);
-        Task<Authorized<AspAuthorizeTestObj>> TrySave(AspAuthorizeTestObj target, bool hasAccess);
-        Task<AspAuthorizeTestObj?> SaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess);
-        Task<Authorized<AspAuthorizeTestObj>> TrySaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess);
-        Task<Authorized> CanCreate(bool hasAccess);
-        Task<Authorized> CanCreateNoAspAuth(bool hasAccess);
-        Task<Authorized> CanCreateMultiple(bool hasAccess);
-        Task<Authorized> CanInsert(bool hasAccess);
-        Task<Authorized> CanInsertNoAspAuth(bool hasAccess);
-        Task<Authorized> CanSave(bool hasAccess);
-        Task<Authorized> CanSaveNoAspAuth(bool hasAccess);
+        Task<AspAuthorizeTestObj?> Create(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<AspAuthorizeTestObj?> CreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<AspAuthorizeTestObj?> CreateMultiple(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<AspAuthorizeTestObj?> Save(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized<AspAuthorizeTestObj>> TrySave(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default);
+        Task<AspAuthorizeTestObj?> SaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized<AspAuthorizeTestObj>> TrySaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreate(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanCreateMultiple(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanInsert(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanInsertNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanSave(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanSaveNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default);
     }
 
     internal class AspAuthorizeTestObjFactory : FactoryBase<AspAuthorizeTestObj>, IAspAuthorizeTestObjFactory
@@ -32,18 +32,18 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<Authorized<AspAuthorizeTestObj>> CreateDelegate(bool hasAccess);
-        public delegate Task<Authorized<AspAuthorizeTestObj>> CreateNoAspAuthDelegate(bool hasAccess);
-        public delegate Task<Authorized<AspAuthorizeTestObj>> CreateMultipleDelegate(bool hasAccess);
-        public delegate Task<Authorized<AspAuthorizeTestObj>> SaveDelegate(AspAuthorizeTestObj target, bool hasAccess);
-        public delegate Task<Authorized<AspAuthorizeTestObj>> SaveNoAspAuthDelegate(AspAuthorizeTestObj target, bool hasAccess);
-        public delegate Task<Authorized> CanCreateDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanCreateNoAspAuthDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanCreateMultipleDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanInsertDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanInsertNoAspAuthDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanSaveDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanSaveNoAspAuthDelegate(bool hasAccess);
+        public delegate Task<Authorized<AspAuthorizeTestObj>> CreateDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<AspAuthorizeTestObj>> CreateNoAspAuthDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<AspAuthorizeTestObj>> CreateMultipleDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<AspAuthorizeTestObj>> SaveDelegate(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<AspAuthorizeTestObj>> SaveNoAspAuthDelegate(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateNoAspAuthDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanCreateMultipleDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanInsertDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanInsertNoAspAuthDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanSaveDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanSaveNoAspAuthDelegate(bool hasAccess, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateDelegate CreateProperty { get; }
         public CreateNoAspAuthDelegate CreateNoAspAuthProperty { get; }
@@ -93,17 +93,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             CanSaveNoAspAuthProperty = RemoteCanSaveNoAspAuth;
         }
 
-        public virtual async Task<AspAuthorizeTestObj?> Create(bool hasAccess)
+        public virtual async Task<AspAuthorizeTestObj?> Create(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await CreateProperty(hasAccess)).Result;
+            return (await CreateProperty(hasAccess, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreate(bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreate(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized<AspAuthorizeTestObj>> LocalCreate(bool hasAccess)
+        public async Task<Authorized<AspAuthorizeTestObj>> LocalCreate(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -124,17 +124,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized<AspAuthorizeTestObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(hasAccess)));
         }
 
-        public virtual async Task<AspAuthorizeTestObj?> CreateNoAspAuth(bool hasAccess)
+        public virtual async Task<AspAuthorizeTestObj?> CreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await CreateNoAspAuthProperty(hasAccess)).Result;
+            return (await CreateNoAspAuthProperty(hasAccess, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreateNoAspAuth(bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateNoAspAuthDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateNoAspAuthDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized<AspAuthorizeTestObj>> LocalCreateNoAspAuth(bool hasAccess)
+        public async Task<Authorized<AspAuthorizeTestObj>> LocalCreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -155,17 +155,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized<AspAuthorizeTestObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateNoAspAuth(hasAccess)));
         }
 
-        public virtual async Task<AspAuthorizeTestObj?> CreateMultiple(bool hasAccess)
+        public virtual async Task<AspAuthorizeTestObj?> CreateMultiple(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await CreateMultipleProperty(hasAccess)).Result;
+            return (await CreateMultipleProperty(hasAccess, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreateMultiple(bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteCreateMultiple(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateMultipleDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(CreateMultipleDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized<AspAuthorizeTestObj>> LocalCreateMultiple(bool hasAccess)
+        public async Task<Authorized<AspAuthorizeTestObj>> LocalCreateMultiple(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -186,7 +186,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized<AspAuthorizeTestObj>(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateMultiple(hasAccess)));
         }
 
-        public async Task<Authorized<AspAuthorizeTestObj>> LocalInsert(AspAuthorizeTestObj target, bool hasAccess)
+        public async Task<Authorized<AspAuthorizeTestObj>> LocalInsert(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -207,7 +207,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized<AspAuthorizeTestObj>(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert(hasAccess)));
         }
 
-        public async Task<Authorized<AspAuthorizeTestObj>> LocalInsertNoAspAuth(AspAuthorizeTestObj target, bool hasAccess)
+        public async Task<Authorized<AspAuthorizeTestObj>> LocalInsertNoAspAuth(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -228,9 +228,9 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized<AspAuthorizeTestObj>(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertNoAspAuth(hasAccess)));
         }
 
-        public virtual async Task<AspAuthorizeTestObj?> Save(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<AspAuthorizeTestObj?> Save(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
-            var authorized = (await SaveProperty(target, hasAccess));
+            var authorized = (await SaveProperty(target, hasAccess, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -239,17 +239,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return authorized.Result;
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> TrySave(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> TrySave(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return await SaveProperty(target, hasAccess);
+            return await SaveProperty(target, hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteSave(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteSave(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveDelegate), [target, hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveDelegate), [target, hasAccess], cancellationToken))!;
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> LocalSave(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> LocalSave(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -257,7 +257,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             }
             else if (target.IsNew)
             {
-                return await LocalInsert(target, hasAccess);
+                return await LocalInsert(target, hasAccess, cancellationToken);
             }
             else
             {
@@ -265,9 +265,9 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             }
         }
 
-        public virtual async Task<AspAuthorizeTestObj?> SaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<AspAuthorizeTestObj?> SaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
-            var authorized = (await SaveNoAspAuthProperty(target, hasAccess));
+            var authorized = (await SaveNoAspAuthProperty(target, hasAccess, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -276,17 +276,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return authorized.Result;
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> TrySaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> TrySaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return await SaveNoAspAuthProperty(target, hasAccess);
+            return await SaveNoAspAuthProperty(target, hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteSaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> RemoteSaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveNoAspAuthDelegate), [target, hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<AspAuthorizeTestObj>>(typeof(SaveNoAspAuthDelegate), [target, hasAccess], cancellationToken))!;
         }
 
-        public virtual async Task<Authorized<AspAuthorizeTestObj>> LocalSaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess)
+        public virtual async Task<Authorized<AspAuthorizeTestObj>> LocalSaveNoAspAuth(AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -294,7 +294,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             }
             else if (target.IsNew)
             {
-                return await LocalInsertNoAspAuth(target, hasAccess);
+                return await LocalInsertNoAspAuth(target, hasAccess, cancellationToken);
             }
             else
             {
@@ -302,17 +302,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             }
         }
 
-        public virtual Task<Authorized> CanCreate(bool hasAccess)
+        public virtual Task<Authorized> CanCreate(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanCreateProperty(hasAccess);
+            return CanCreateProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreate(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanCreate(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreate(bool hasAccess)
+        public async Task<Authorized> LocalCanCreate(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -332,17 +332,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateNoAspAuth(bool hasAccess)
+        public virtual Task<Authorized> CanCreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanCreateNoAspAuthProperty(hasAccess);
+            return CanCreateNoAspAuthProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreateNoAspAuth(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanCreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateNoAspAuthDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateNoAspAuthDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreateNoAspAuth(bool hasAccess)
+        public async Task<Authorized> LocalCanCreateNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -362,17 +362,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanCreateMultiple(bool hasAccess)
+        public virtual Task<Authorized> CanCreateMultiple(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanCreateMultipleProperty(hasAccess);
+            return CanCreateMultipleProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanCreateMultiple(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanCreateMultiple(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateMultipleDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanCreateMultipleDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanCreateMultiple(bool hasAccess)
+        public async Task<Authorized> LocalCanCreateMultiple(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -392,17 +392,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanInsert(bool hasAccess)
+        public virtual Task<Authorized> CanInsert(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanInsertProperty(hasAccess);
+            return CanInsertProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanInsert(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanInsert(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanInsert(bool hasAccess)
+        public async Task<Authorized> LocalCanInsert(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -422,17 +422,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanInsertNoAspAuth(bool hasAccess)
+        public virtual Task<Authorized> CanInsertNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanInsertNoAspAuthProperty(hasAccess);
+            return CanInsertNoAspAuthProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanInsertNoAspAuth(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanInsertNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertNoAspAuthDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertNoAspAuthDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanInsertNoAspAuth(bool hasAccess)
+        public async Task<Authorized> LocalCanInsertNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -452,17 +452,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanSave(bool hasAccess)
+        public virtual Task<Authorized> CanSave(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanSaveProperty(hasAccess);
+            return CanSaveProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanSave(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanSave(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanSave(bool hasAccess)
+        public async Task<Authorized> LocalCanSave(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -482,17 +482,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanSaveNoAspAuth(bool hasAccess)
+        public virtual Task<Authorized> CanSaveNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanSaveNoAspAuthProperty(hasAccess);
+            return CanSaveNoAspAuthProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanSaveNoAspAuth(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanSaveNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveNoAspAuthDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveNoAspAuthDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanSaveNoAspAuth(bool hasAccess)
+        public async Task<Authorized> LocalCanSaveNoAspAuth(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             AspAuthorizeTestObjAuth aspauthorizetestobjauth = ServiceProvider.GetRequiredService<AspAuthorizeTestObjAuth>();
@@ -519,62 +519,62 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             services.AddScoped<CreateDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCreate(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCreate(hasAccess, cancellationToken);
             });
             services.AddScoped<CreateNoAspAuthDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCreateNoAspAuth(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCreateNoAspAuth(hasAccess, cancellationToken);
             });
             services.AddScoped<CreateMultipleDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCreateMultiple(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCreateMultiple(hasAccess, cancellationToken);
             });
             services.AddScoped<SaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (AspAuthorizeTestObj target, bool hasAccess) => factory.LocalSave(target, hasAccess);
+                return (AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalSave(target, hasAccess, cancellationToken);
             });
             services.AddScoped<SaveNoAspAuthDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (AspAuthorizeTestObj target, bool hasAccess) => factory.LocalSaveNoAspAuth(target, hasAccess);
+                return (AspAuthorizeTestObj target, bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalSaveNoAspAuth(target, hasAccess, cancellationToken);
             });
             services.AddScoped<CanCreateDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCanCreate(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanCreate(hasAccess, cancellationToken);
             });
             services.AddScoped<CanCreateNoAspAuthDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCanCreateNoAspAuth(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanCreateNoAspAuth(hasAccess, cancellationToken);
             });
             services.AddScoped<CanCreateMultipleDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCanCreateMultiple(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanCreateMultiple(hasAccess, cancellationToken);
             });
             services.AddScoped<CanInsertDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCanInsert(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanInsert(hasAccess, cancellationToken);
             });
             services.AddScoped<CanInsertNoAspAuthDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCanInsertNoAspAuth(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanInsertNoAspAuth(hasAccess, cancellationToken);
             });
             services.AddScoped<CanSaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCanSave(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanSave(hasAccess, cancellationToken);
             });
             services.AddScoped<CanSaveNoAspAuthDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<AspAuthorizeTestObjFactory>();
-                return (bool hasAccess) => factory.LocalCanSaveNoAspAuth(hasAccess);
+                return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanSaveNoAspAuth(hasAccess, cancellationToken);
             });
             services.AddTransient<AspAuthorizeTestObj>();
             // Event registrations

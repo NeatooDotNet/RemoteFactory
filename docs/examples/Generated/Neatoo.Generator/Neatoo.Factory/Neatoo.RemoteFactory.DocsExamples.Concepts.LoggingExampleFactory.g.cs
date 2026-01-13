@@ -14,8 +14,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface ILoggingExampleFactory
     {
-        ILoggingExample Create();
-        Task<ILoggingExample?> Fetch(int id);
+        ILoggingExample Create(CancellationToken cancellationToken = default);
+        Task<ILoggingExample?> Fetch(int id, CancellationToken cancellationToken = default);
     }
 
     internal class LoggingExampleFactory : FactoryBase<ILoggingExample>, ILoggingExampleFactory
@@ -23,7 +23,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<ILoggingExample?> FetchDelegate(int id);
+        public delegate Task<ILoggingExample?> FetchDelegate(int id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -40,27 +40,27 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             FetchProperty = RemoteFetch;
         }
 
-        public virtual ILoggingExample Create()
+        public virtual ILoggingExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public ILoggingExample LocalCreate()
+        public ILoggingExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new LoggingExample());
         }
 
-        public virtual Task<ILoggingExample?> Fetch(int id)
+        public virtual Task<ILoggingExample?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<ILoggingExample?> RemoteFetch(int id)
+        public virtual async Task<ILoggingExample?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ILoggingExample?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ILoggingExample?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<ILoggingExample?> LocalFetch(int id)
+        public Task<ILoggingExample?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<LoggingExample>();
             var logger = ServiceProvider.GetRequiredService<ILogger<LoggingExample>>();
@@ -74,7 +74,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<LoggingExampleFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddTransient<LoggingExample>();
             services.AddTransient<ILoggingExample, LoggingExample>();

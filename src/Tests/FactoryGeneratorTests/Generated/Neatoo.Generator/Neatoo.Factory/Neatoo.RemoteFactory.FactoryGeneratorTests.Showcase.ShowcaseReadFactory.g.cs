@@ -12,16 +12,16 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
     public interface IShowcaseReadFactory
     {
-        IShowcaseRead Create(List<int> intList);
-        IShowcaseRead CreateVoid(List<int> intList);
-        IShowcaseRead? CreateBool(List<int> intList);
-        Task<IShowcaseRead> CreateTask(List<int> intList);
-        Task<IShowcaseRead?> CreateTaskBool(List<int> intList);
-        Task<IShowcaseRead> CreateService(List<int> intList);
-        Task<IShowcaseRead> CreateStatic(List<int> intList);
-        Task<IShowcaseRead> CreateRemote(List<int> intList);
-        Task<IShowcaseRead> CreateRemoteClientFail(List<int> intList);
-        IShowcaseRead FetchVoid(int id);
+        IShowcaseRead Create(List<int> intList, CancellationToken cancellationToken = default);
+        IShowcaseRead CreateVoid(List<int> intList, CancellationToken cancellationToken = default);
+        IShowcaseRead? CreateBool(List<int> intList, CancellationToken cancellationToken = default);
+        Task<IShowcaseRead> CreateTask(List<int> intList, CancellationToken cancellationToken = default);
+        Task<IShowcaseRead?> CreateTaskBool(List<int> intList, CancellationToken cancellationToken = default);
+        Task<IShowcaseRead> CreateService(List<int> intList, CancellationToken cancellationToken = default);
+        Task<IShowcaseRead> CreateStatic(List<int> intList, CancellationToken cancellationToken = default);
+        Task<IShowcaseRead> CreateRemote(List<int> intList, CancellationToken cancellationToken = default);
+        Task<IShowcaseRead> CreateRemoteClientFail(List<int> intList, CancellationToken cancellationToken = default);
+        IShowcaseRead FetchVoid(int id, CancellationToken cancellationToken = default);
     }
 
     internal class ShowcaseReadFactory : FactoryBase<IShowcaseRead>, IShowcaseReadFactory
@@ -29,7 +29,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<IShowcaseRead> CreateRemoteDelegate(List<int> intList);
+        public delegate Task<IShowcaseRead> CreateRemoteDelegate(List<int> intList, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateRemoteDelegate CreateRemoteProperty { get; }
 
@@ -46,119 +46,119 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             CreateRemoteProperty = RemoteCreateRemote;
         }
 
-        public virtual IShowcaseRead Create(List<int> intList)
+        public virtual IShowcaseRead Create(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(intList);
+            return LocalCreate(intList, cancellationToken);
         }
 
-        public IShowcaseRead LocalCreate(List<int> intList)
+        public IShowcaseRead LocalCreate(List<int> intList, CancellationToken cancellationToken = default)
         {
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(FactoryOperation.Create, () => new ShowcaseRead(intList, service));
         }
 
-        public virtual IShowcaseRead CreateVoid(List<int> intList)
+        public virtual IShowcaseRead CreateVoid(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreateVoid(intList);
+            return LocalCreateVoid(intList, cancellationToken);
         }
 
-        public IShowcaseRead LocalCreateVoid(List<int> intList)
+        public IShowcaseRead LocalCreateVoid(List<int> intList, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid(intList));
         }
 
-        public virtual IShowcaseRead? CreateBool(List<int> intList)
+        public virtual IShowcaseRead? CreateBool(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreateBool(intList);
+            return LocalCreateBool(intList, cancellationToken);
         }
 
-        public IShowcaseRead? LocalCreateBool(List<int> intList)
+        public IShowcaseRead? LocalCreateBool(List<int> intList, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             return DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool(intList));
         }
 
-        public virtual Task<IShowcaseRead> CreateTask(List<int> intList)
+        public virtual Task<IShowcaseRead> CreateTask(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreateTask(intList);
+            return LocalCreateTask(intList, cancellationToken);
         }
 
-        public Task<IShowcaseRead> LocalCreateTask(List<int> intList)
+        public Task<IShowcaseRead> LocalCreateTask(List<int> intList, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask(intList));
         }
 
-        public virtual Task<IShowcaseRead?> CreateTaskBool(List<int> intList)
+        public virtual Task<IShowcaseRead?> CreateTaskBool(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreateTaskBool(intList);
+            return LocalCreateTaskBool(intList, cancellationToken);
         }
 
-        public Task<IShowcaseRead?> LocalCreateTaskBool(List<int> intList)
+        public Task<IShowcaseRead?> LocalCreateTaskBool(List<int> intList, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool(intList));
         }
 
-        public virtual Task<IShowcaseRead> CreateService(List<int> intList)
+        public virtual Task<IShowcaseRead> CreateService(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreateService(intList);
+            return LocalCreateService(intList, cancellationToken);
         }
 
-        public Task<IShowcaseRead> LocalCreateService(List<int> intList)
+        public Task<IShowcaseRead> LocalCreateService(List<int> intList, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateService(intList, service));
         }
 
-        public virtual Task<IShowcaseRead> CreateStatic(List<int> intList)
+        public virtual Task<IShowcaseRead> CreateStatic(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreateStatic(intList);
+            return LocalCreateStatic(intList, cancellationToken);
         }
 
-        public Task<IShowcaseRead> LocalCreateStatic(List<int> intList)
+        public Task<IShowcaseRead> LocalCreateStatic(List<int> intList, CancellationToken cancellationToken = default)
         {
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(FactoryOperation.Create, () => ShowcaseRead.CreateStatic(intList, service));
         }
 
-        public virtual Task<IShowcaseRead> CreateRemote(List<int> intList)
+        public virtual Task<IShowcaseRead> CreateRemote(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteProperty(intList);
+            return CreateRemoteProperty(intList, cancellationToken);
         }
 
-        public virtual async Task<IShowcaseRead> RemoteCreateRemote(List<int> intList)
+        public virtual async Task<IShowcaseRead> RemoteCreateRemote(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<IShowcaseRead>(typeof(CreateRemoteDelegate), [intList], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<IShowcaseRead>(typeof(CreateRemoteDelegate), [intList], cancellationToken))!;
         }
 
-        public Task<IShowcaseRead> LocalCreateRemote(List<int> intList)
+        public Task<IShowcaseRead> LocalCreateRemote(List<int> intList, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             var service = ServiceProvider.GetRequiredService<IServerOnlyService>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemote(intList, service)));
         }
 
-        public virtual Task<IShowcaseRead> CreateRemoteClientFail(List<int> intList)
+        public virtual Task<IShowcaseRead> CreateRemoteClientFail(List<int> intList, CancellationToken cancellationToken = default)
         {
-            return LocalCreateRemoteClientFail(intList);
+            return LocalCreateRemoteClientFail(intList, cancellationToken);
         }
 
-        public Task<IShowcaseRead> LocalCreateRemoteClientFail(List<int> intList)
+        public Task<IShowcaseRead> LocalCreateRemoteClientFail(List<int> intList, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             var service = ServiceProvider.GetRequiredService<IServerOnlyService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateRemoteClientFail(intList, service));
         }
 
-        public virtual IShowcaseRead FetchVoid(int id)
+        public virtual IShowcaseRead FetchVoid(int id, CancellationToken cancellationToken = default)
         {
-            return LocalFetchVoid(id);
+            return LocalFetchVoid(id, cancellationToken);
         }
 
-        public IShowcaseRead LocalFetchVoid(int id)
+        public IShowcaseRead LocalFetchVoid(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ShowcaseRead>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid(id));
@@ -171,7 +171,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             services.AddScoped<CreateRemoteDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ShowcaseReadFactory>();
-                return (List<int> intList) => factory.LocalCreateRemote(intList);
+                return (List<int> intList, CancellationToken cancellationToken = default) => factory.LocalCreateRemote(intList, cancellationToken);
             });
             services.AddTransient<ShowcaseRead>();
             services.AddTransient<IShowcaseRead, ShowcaseRead>();

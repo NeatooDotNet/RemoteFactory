@@ -12,19 +12,19 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
 {
     public static partial class PersonOperationsExample
     {
-        public delegate Task<int> GetPersonCount();
-        public delegate Task<System.Collections.Generic.List<string>> GetAllEmails();
+        public delegate Task<int> GetPersonCount(CancellationToken cancellationToken = default);
+        public delegate Task<System.Collections.Generic.List<string>> GetAllEmails(CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<PersonOperationsExample.GetPersonCount>(cc =>
                 {
-                    return () => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(PersonOperationsExample.GetPersonCount), [], default);
+                    return (cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(PersonOperationsExample.GetPersonCount), [], cancellationToken);
                 });
                 services.AddTransient<PersonOperationsExample.GetAllEmails>(cc =>
                 {
-                    return () => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<System.Collections.Generic.List<string>>(typeof(PersonOperationsExample.GetAllEmails), [], default);
+                    return (cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<System.Collections.Generic.List<string>>(typeof(PersonOperationsExample.GetAllEmails), [], cancellationToken);
                 });
             }
 
@@ -32,7 +32,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
             {
                 services.AddTransient<PersonOperationsExample.GetPersonCount>(cc =>
                 {
-                    return () =>
+                    return (CancellationToken cancellationToken = default) =>
                     {
                         var context = cc.GetRequiredService<IPersonContext>();
                         return PersonOperationsExample._GetPersonCount(context);
@@ -40,7 +40,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
                 });
                 services.AddTransient<PersonOperationsExample.GetAllEmails>(cc =>
                 {
-                    return () =>
+                    return (CancellationToken cancellationToken = default) =>
                     {
                         var context = cc.GetRequiredService<IPersonContext>();
                         return PersonOperationsExample._GetAllEmails(context);

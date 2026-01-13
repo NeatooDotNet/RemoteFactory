@@ -30,7 +30,7 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public void HttpPost_CreateRecord_ReturnsRecord()
     {
         // Act
-        var record = _recordFactory.Create("TestName", 42);
+        var record = _recordFactory.Create("TestName", 42, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(record);
@@ -42,8 +42,8 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public void HttpPost_CreateRecord_ValueEquality()
     {
         // Act
-        var record1 = _recordFactory.Create("Same", 100);
-        var record2 = _recordFactory.Create("Same", 100);
+        var record1 = _recordFactory.Create("Same", 100, TestContext.Current.CancellationToken);
+        var record2 = _recordFactory.Create("Same", 100, TestContext.Current.CancellationToken);
 
         // Assert - Records should have value equality
         Assert.Equal(record1, record2);
@@ -57,7 +57,7 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public async Task HttpPost_FetchRecord_ReturnsRecord()
     {
         // Act - Async because remote operations return Task
-        var record = await _fetchableFactory.FetchById("http-test");
+        var record = await _fetchableFactory.FetchById("http-test", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(record);
@@ -69,7 +69,7 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public async Task HttpPost_FetchRecordAsync_ReturnsRecord()
     {
         // Act
-        var record = await _fetchableFactory.FetchByIdAsync("async-http-test");
+        var record = await _fetchableFactory.FetchByIdAsync("async-http-test", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(record);
@@ -85,7 +85,7 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public async Task HttpPost_RecordWithAuth_Authorized()
     {
         // Act - This should succeed because "TestPolicy" and "Test role" pass
-        var record = await _authorizedFactory.FetchAuthorized("auth-test");
+        var record = await _authorizedFactory.FetchAuthorized("auth-test", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(record);
@@ -96,7 +96,7 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public async Task HttpPost_RecordWithAuth_Denied()
     {
         // Act - Unauthorized should return null (not throw) because "No auth" role fails
-        var record = await _authorizedFactory.FetchUnauthorized("no-auth-test");
+        var record = await _authorizedFactory.FetchUnauthorized("no-auth-test", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(record);
@@ -106,7 +106,7 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public async Task HttpPost_CanFetchAuthorized_ReturnsTrue()
     {
         // Act - CanFetch methods check if caller has access (no parameters)
-        var result = await _authorizedFactory.CanFetchAuthorized();
+        var result = await _authorizedFactory.CanFetchAuthorized(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.HasAccess);
@@ -116,7 +116,7 @@ public class RecordHttpTests : IClassFixture<ContainerFixture>
     public async Task HttpPost_CanFetchUnauthorized_ReturnsFalse()
     {
         // Act
-        var result = await _authorizedFactory.CanFetchUnauthorized();
+        var result = await _authorizedFactory.CanFetchUnauthorized(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result.HasAccess);

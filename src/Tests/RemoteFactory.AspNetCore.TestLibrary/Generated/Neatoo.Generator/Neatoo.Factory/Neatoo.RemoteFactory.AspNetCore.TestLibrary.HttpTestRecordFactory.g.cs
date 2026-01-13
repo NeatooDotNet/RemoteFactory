@@ -11,7 +11,7 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 {
     public interface IHttpTestRecordFactory
     {
-        HttpTestRecord Create(string Name, int Value);
+        HttpTestRecord Create(string Name, int Value, CancellationToken cancellationToken = default);
     }
 
     internal class HttpTestRecordFactory : FactoryBase<HttpTestRecord>, IHttpTestRecordFactory
@@ -31,12 +31,12 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual HttpTestRecord Create(string Name, int Value)
+        public virtual HttpTestRecord Create(string Name, int Value, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name, Value);
+            return LocalCreate(Name, Value, cancellationToken);
         }
 
-        public HttpTestRecord LocalCreate(string Name, int Value)
+        public HttpTestRecord LocalCreate(string Name, int Value, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new HttpTestRecord(Name, Value));
         }

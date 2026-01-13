@@ -14,8 +14,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface ICurrentUserExampleFactory
     {
-        ICurrentUserExample Create();
-        Task<ICurrentUserExample?> Save(ICurrentUserExample target);
+        ICurrentUserExample Create(CancellationToken cancellationToken = default);
+        Task<ICurrentUserExample?> Save(ICurrentUserExample target, CancellationToken cancellationToken = default);
     }
 
     internal class CurrentUserExampleFactory : FactorySaveBase<ICurrentUserExample>, IFactorySave<CurrentUserExample>, ICurrentUserExampleFactory
@@ -23,7 +23,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<ICurrentUserExample?> Save2Delegate(ICurrentUserExample target);
+        public delegate Task<ICurrentUserExample?> Save2Delegate(ICurrentUserExample target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public Save2Delegate Save2Property { get; }
 
@@ -40,17 +40,17 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             Save2Property = RemoteSave2;
         }
 
-        public virtual ICurrentUserExample Create()
+        public virtual ICurrentUserExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public ICurrentUserExample LocalCreate()
+        public ICurrentUserExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CurrentUserExample());
         }
 
-        public Task<ICurrentUserExample> LocalSave(ICurrentUserExample target)
+        public Task<ICurrentUserExample> LocalSave(ICurrentUserExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CurrentUserExample)target ?? throw new Exception("ICurrentUserExample must implement CurrentUserExample");
             var currentUser = ServiceProvider.GetRequiredService<ICurrentUser>();
@@ -58,7 +58,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Save(currentUser, context));
         }
 
-        public Task<ICurrentUserExample> LocalSave1(ICurrentUserExample target)
+        public Task<ICurrentUserExample> LocalSave1(ICurrentUserExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CurrentUserExample)target ?? throw new Exception("ICurrentUserExample must implement CurrentUserExample");
             var currentUser = ServiceProvider.GetRequiredService<ICurrentUser>();
@@ -66,28 +66,28 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.Save(currentUser, context));
         }
 
-        public Task<ICurrentUserExample> LocalDelete(ICurrentUserExample target)
+        public Task<ICurrentUserExample> LocalDelete(ICurrentUserExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (CurrentUserExample)target ?? throw new Exception("ICurrentUserExample must implement CurrentUserExample");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.Delete());
         }
 
-        public virtual Task<ICurrentUserExample?> Save(ICurrentUserExample target)
+        public virtual Task<ICurrentUserExample?> Save(ICurrentUserExample target, CancellationToken cancellationToken = default)
         {
-            return Save2Property(target);
+            return Save2Property(target, cancellationToken);
         }
 
-        public virtual async Task<ICurrentUserExample?> RemoteSave2(ICurrentUserExample target)
+        public virtual async Task<ICurrentUserExample?> RemoteSave2(ICurrentUserExample target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ICurrentUserExample?>(typeof(Save2Delegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ICurrentUserExample?>(typeof(Save2Delegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<CurrentUserExample>.Save(CurrentUserExample target)
+        async Task<IFactorySaveMeta?> IFactorySave<CurrentUserExample>.Save(CurrentUserExample target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<ICurrentUserExample?> LocalSave2(ICurrentUserExample target)
+        public virtual async Task<ICurrentUserExample?> LocalSave2(ICurrentUserExample target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -96,15 +96,15 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
                     return default(ICurrentUserExample);
                 }
 
-                return await LocalDelete(target);
+                return await LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalSave(target);
+                return await LocalSave(target, cancellationToken);
             }
             else
             {
-                return await LocalSave1(target);
+                return await LocalSave1(target, cancellationToken);
             }
         }
 
@@ -115,7 +115,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<Save2Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<CurrentUserExampleFactory>();
-                return (ICurrentUserExample target) => factory.LocalSave2(target);
+                return (ICurrentUserExample target, CancellationToken cancellationToken = default) => factory.LocalSave2(target, cancellationToken);
             });
             services.AddTransient<CurrentUserExample>();
             services.AddTransient<ICurrentUserExample, CurrentUserExample>();

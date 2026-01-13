@@ -1,4 +1,4 @@
-﻿using Neatoo.RemoteFactory.AspNetCore.TestLibrary;
+using Neatoo.RemoteFactory.AspNetCore.TestLibrary;
 
 namespace RemoteFactory.AspNetCore.Tests;
 
@@ -52,12 +52,12 @@ public class InterfaceAspAuthorizeTests : IClassFixture<ContainerFixture>
 	[Fact]
 	public async Task InterfaceAspAuthorize_Factory_CanHasAspAccess()
 	{
-		Assert.True(await this.interfaceObjFactory.CanHasAspAccess(true));
+		Assert.True((await this.interfaceObjFactory.CanHasAspAccess(true, TestContext.Current.CancellationToken)).HasAccess);
 	}
 
 	[Fact]
 	public async Task InterfaceAspAuthorize_Factory_CanNotAuthorized()
 	{
-		Assert.False(await this.interfaceObjFactory.CanNoAspAccess(true));
+		Assert.False((await this.interfaceObjFactory.CanNoAspAccess(true, TestContext.Current.CancellationToken)).HasAccess);
 	}
 }

@@ -16,14 +16,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public static partial class ExecuteNullableStatic
     {
-        public delegate Task<string?> RunOnServer(string message);
+        public delegate Task<string?> RunOnServer(string message, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<ExecuteNullableStatic.RunOnServer>(cc =>
                 {
-                    return (message) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<string?>(typeof(ExecuteNullableStatic.RunOnServer), [message], default);
+                    return (message, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<string?>(typeof(ExecuteNullableStatic.RunOnServer), [message], cancellationToken);
                 });
             }
 
@@ -31,7 +31,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 services.AddTransient<ExecuteNullableStatic.RunOnServer>(cc =>
                 {
-                    return (string message) =>
+                    return (string message, CancellationToken cancellationToken = default) =>
                     {
                         return ExecuteNullableStatic._RunOnServer(message);
                     };

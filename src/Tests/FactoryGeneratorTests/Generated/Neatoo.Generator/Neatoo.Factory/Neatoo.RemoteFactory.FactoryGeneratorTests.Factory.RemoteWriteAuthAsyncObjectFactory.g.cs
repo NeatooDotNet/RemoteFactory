@@ -13,18 +13,18 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRemoteWriteAuthAsyncObjectFactory
     {
-        Task<RemoteWriteAuthAsyncObject?> SaveVoid(RemoteWriteAuthAsyncObject target, int? param);
-        Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveVoid(RemoteWriteAuthAsyncObject target, int? param);
-        Task<RemoteWriteAuthAsyncObject?> SaveTask(RemoteWriteAuthAsyncObject target, int? param);
-        Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveTask(RemoteWriteAuthAsyncObject target, int? param);
-        Task<Authorized> CanInsertVoid(int? p);
-        Task<Authorized> CanInsertTask(int? p);
-        Task<Authorized> CanUpdateVoid(int? p);
-        Task<Authorized> CanUpdateTask(int? p);
-        Task<Authorized> CanDeleteVoid(int? p);
-        Task<Authorized> CanDeleteTask(int? p);
-        Task<Authorized> CanSaveVoid(int? p);
-        Task<Authorized> CanSaveTask(int? p);
+        Task<RemoteWriteAuthAsyncObject?> SaveVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default);
+        Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default);
+        Task<RemoteWriteAuthAsyncObject?> SaveTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default);
+        Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default);
+        Task<Authorized> CanInsertVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanInsertTask(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanUpdateVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanUpdateTask(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanDeleteVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanDeleteTask(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanSaveVoid(int? p, CancellationToken cancellationToken = default);
+        Task<Authorized> CanSaveTask(int? p, CancellationToken cancellationToken = default);
     }
 
     internal class RemoteWriteAuthAsyncObjectFactory : FactoryBase<RemoteWriteAuthAsyncObject>, IRemoteWriteAuthAsyncObjectFactory
@@ -32,16 +32,16 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<Authorized<RemoteWriteAuthAsyncObject>> SaveVoidDelegate(RemoteWriteAuthAsyncObject target, int? param);
-        public delegate Task<Authorized<RemoteWriteAuthAsyncObject>> SaveTaskDelegate(RemoteWriteAuthAsyncObject target, int? param);
-        public delegate Task<Authorized> CanInsertVoidDelegate(int? p);
-        public delegate Task<Authorized> CanInsertTaskDelegate(int? p);
-        public delegate Task<Authorized> CanUpdateVoidDelegate(int? p);
-        public delegate Task<Authorized> CanUpdateTaskDelegate(int? p);
-        public delegate Task<Authorized> CanDeleteVoidDelegate(int? p);
-        public delegate Task<Authorized> CanDeleteTaskDelegate(int? p);
-        public delegate Task<Authorized> CanSaveVoidDelegate(int? p);
-        public delegate Task<Authorized> CanSaveTaskDelegate(int? p);
+        public delegate Task<Authorized<RemoteWriteAuthAsyncObject>> SaveVoidDelegate(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<RemoteWriteAuthAsyncObject>> SaveTaskDelegate(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanInsertVoidDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanInsertTaskDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanUpdateVoidDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanUpdateTaskDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanDeleteVoidDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanDeleteTaskDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanSaveVoidDelegate(int? p, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanSaveTaskDelegate(int? p, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveVoidDelegate SaveVoidProperty { get; }
         public SaveTaskDelegate SaveTaskProperty { get; }
@@ -85,7 +85,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             CanSaveTaskProperty = RemoteCanSaveTask;
         }
 
-        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalInsertVoid(RemoteWriteAuthAsyncObject target, int? param)
+        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalInsertVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -190,7 +190,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<RemoteWriteAuthAsyncObject>(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertVoid(param)));
         }
 
-        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalInsertTask(RemoteWriteAuthAsyncObject target, int? param)
+        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalInsertTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -295,7 +295,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<RemoteWriteAuthAsyncObject>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertTask(param)));
         }
 
-        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalUpdateVoid(RemoteWriteAuthAsyncObject target, int? param)
+        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalUpdateVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -400,7 +400,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<RemoteWriteAuthAsyncObject>(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateVoid(param)));
         }
 
-        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalUpdateTask(RemoteWriteAuthAsyncObject target, int? param)
+        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalUpdateTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -505,7 +505,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<RemoteWriteAuthAsyncObject>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateTask(param)));
         }
 
-        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalDeleteVoid(RemoteWriteAuthAsyncObject target, int? param)
+        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalDeleteVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -610,7 +610,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<RemoteWriteAuthAsyncObject>(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteVoid(param)));
         }
 
-        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalDeleteTask(RemoteWriteAuthAsyncObject target, int? param)
+        public async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalDeleteTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -715,9 +715,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized<RemoteWriteAuthAsyncObject>(await DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteTask(param)));
         }
 
-        public virtual async Task<RemoteWriteAuthAsyncObject?> SaveVoid(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<RemoteWriteAuthAsyncObject?> SaveVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
-            var authorized = (await SaveVoidProperty(target, param));
+            var authorized = (await SaveVoidProperty(target, param, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -726,17 +726,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return authorized.Result;
         }
 
-        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveVoid(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return await SaveVoidProperty(target, param);
+            return await SaveVoidProperty(target, param, cancellationToken);
         }
 
-        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> RemoteSaveVoid(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> RemoteSaveVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<RemoteWriteAuthAsyncObject>>(typeof(SaveVoidDelegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<RemoteWriteAuthAsyncObject>>(typeof(SaveVoidDelegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalSaveVoid(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalSaveVoid(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -745,21 +745,21 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return new Authorized<RemoteWriteAuthAsyncObject>();
                 }
 
-                return await LocalDeleteVoid(target, param);
+                return await LocalDeleteVoid(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertVoid(target, param);
+                return await LocalInsertVoid(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateVoid(target, param);
+                return await LocalUpdateVoid(target, param, cancellationToken);
             }
         }
 
-        public virtual async Task<RemoteWriteAuthAsyncObject?> SaveTask(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<RemoteWriteAuthAsyncObject?> SaveTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
-            var authorized = (await SaveTaskProperty(target, param));
+            var authorized = (await SaveTaskProperty(target, param, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -768,17 +768,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return authorized.Result;
         }
 
-        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveTask(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> TrySaveTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return await SaveTaskProperty(target, param);
+            return await SaveTaskProperty(target, param, cancellationToken);
         }
 
-        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> RemoteSaveTask(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> RemoteSaveTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<RemoteWriteAuthAsyncObject>>(typeof(SaveTaskDelegate), [target, param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<RemoteWriteAuthAsyncObject>>(typeof(SaveTaskDelegate), [target, param], cancellationToken))!;
         }
 
-        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalSaveTask(RemoteWriteAuthAsyncObject target, int? param)
+        public virtual async Task<Authorized<RemoteWriteAuthAsyncObject>> LocalSaveTask(RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -787,143 +787,29 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return new Authorized<RemoteWriteAuthAsyncObject>();
                 }
 
-                return await LocalDeleteTask(target, param);
+                return await LocalDeleteTask(target, param, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertTask(target, param);
+                return await LocalInsertTask(target, param, cancellationToken);
             }
             else
             {
-                return await LocalUpdateTask(target, param);
+                return await LocalUpdateTask(target, param, cancellationToken);
             }
         }
 
-        public virtual Task<Authorized> CanInsertVoid(int? p)
+        public virtual Task<Authorized> CanInsertVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return CanInsertVoidProperty(p);
+            return CanInsertVoidProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanInsertVoid(int? p)
+        public virtual async Task<Authorized> RemoteCanInsertVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertVoidDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertVoidDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanInsertVoid(int? p)
-        {
-            Authorized authorized;
-            RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
-            authorized = await remotewriteauthasync.CanWriteBoolAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanWriteStringAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanWriteBoolFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanWriteStringFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanInsertBoolAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanInsertStringAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanInsertBoolFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanInsertStringFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            RemoteWriteAuth remotewriteauth = ServiceProvider.GetRequiredService<RemoteWriteAuth>();
-            authorized = remotewriteauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanInsertBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanInsertString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanInsertBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanInsertStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanInsertTask(int? p)
-        {
-            return CanInsertTaskProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanInsertTask(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertTaskDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanInsertTask(int? p)
+        public async Task<Authorized> LocalCanInsertVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -1027,17 +913,131 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanUpdateVoid(int? p)
+        public virtual Task<Authorized> CanInsertTask(int? p, CancellationToken cancellationToken = default)
         {
-            return CanUpdateVoidProperty(p);
+            return CanInsertTaskProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanUpdateVoid(int? p)
+        public virtual async Task<Authorized> RemoteCanInsertTask(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanUpdateVoidDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanInsertTaskDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanUpdateVoid(int? p)
+        public async Task<Authorized> LocalCanInsertTask(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
+            authorized = await remotewriteauthasync.CanWriteBoolAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanWriteStringAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanWriteBoolFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanWriteStringFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanInsertBoolAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanInsertStringAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanInsertBoolFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanInsertStringFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            RemoteWriteAuth remotewriteauth = ServiceProvider.GetRequiredService<RemoteWriteAuth>();
+            authorized = remotewriteauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanInsertBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanInsertString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanInsertBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanInsertStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanUpdateVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanUpdateVoidProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanUpdateVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanUpdateVoidDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanUpdateVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -1141,17 +1141,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanUpdateTask(int? p)
+        public virtual Task<Authorized> CanUpdateTask(int? p, CancellationToken cancellationToken = default)
         {
-            return CanUpdateTaskProperty(p);
+            return CanUpdateTaskProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanUpdateTask(int? p)
+        public virtual async Task<Authorized> RemoteCanUpdateTask(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanUpdateTaskDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanUpdateTaskDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanUpdateTask(int? p)
+        public async Task<Authorized> LocalCanUpdateTask(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -1255,131 +1255,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanDeleteVoid(int? p)
+        public virtual Task<Authorized> CanDeleteVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return CanDeleteVoidProperty(p);
+            return CanDeleteVoidProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanDeleteVoid(int? p)
+        public virtual async Task<Authorized> RemoteCanDeleteVoid(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanDeleteVoidDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanDeleteVoidDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanDeleteVoid(int? p)
-        {
-            Authorized authorized;
-            RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
-            authorized = await remotewriteauthasync.CanWriteBoolAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanWriteStringAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanWriteBoolFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanWriteStringFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanDeleteBoolAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanDeleteStringAsync();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanDeleteBoolFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = await remotewriteauthasync.CanDeleteStringFailAsync(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            RemoteWriteAuth remotewriteauth = ServiceProvider.GetRequiredService<RemoteWriteAuth>();
-            authorized = remotewriteauth.CanWriteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanWriteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanWriteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanWriteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanDeleteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanDeleteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanDeleteBoolFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = remotewriteauth.CanDeleteStringFail(p);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Task<Authorized> CanDeleteTask(int? p)
-        {
-            return CanDeleteTaskProperty(p);
-        }
-
-        public virtual async Task<Authorized> RemoteCanDeleteTask(int? p)
-        {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanDeleteTaskDelegate), [p], default))!;
-        }
-
-        public async Task<Authorized> LocalCanDeleteTask(int? p)
+        public async Task<Authorized> LocalCanDeleteVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -1483,17 +1369,131 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanSaveVoid(int? p)
+        public virtual Task<Authorized> CanDeleteTask(int? p, CancellationToken cancellationToken = default)
         {
-            return CanSaveVoidProperty(p);
+            return CanDeleteTaskProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanSaveVoid(int? p)
+        public virtual async Task<Authorized> RemoteCanDeleteTask(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveVoidDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanDeleteTaskDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanSaveVoid(int? p)
+        public async Task<Authorized> LocalCanDeleteTask(int? p, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
+            authorized = await remotewriteauthasync.CanWriteBoolAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanWriteStringAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanWriteBoolFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanWriteStringFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanDeleteBoolAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanDeleteStringAsync();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanDeleteBoolFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = await remotewriteauthasync.CanDeleteStringFailAsync(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            RemoteWriteAuth remotewriteauth = ServiceProvider.GetRequiredService<RemoteWriteAuth>();
+            authorized = remotewriteauth.CanWriteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanWriteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanWriteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanWriteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanDeleteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanDeleteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanDeleteBoolFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = remotewriteauth.CanDeleteStringFail(p);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Task<Authorized> CanSaveVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return CanSaveVoidProperty(p, cancellationToken);
+        }
+
+        public virtual async Task<Authorized> RemoteCanSaveVoid(int? p, CancellationToken cancellationToken = default)
+        {
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveVoidDelegate), [p], cancellationToken))!;
+        }
+
+        public async Task<Authorized> LocalCanSaveVoid(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -1693,17 +1693,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanSaveTask(int? p)
+        public virtual Task<Authorized> CanSaveTask(int? p, CancellationToken cancellationToken = default)
         {
-            return CanSaveTaskProperty(p);
+            return CanSaveTaskProperty(p, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanSaveTask(int? p)
+        public virtual async Task<Authorized> RemoteCanSaveTask(int? p, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveTaskDelegate), [p], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanSaveTaskDelegate), [p], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanSaveTask(int? p)
+        public async Task<Authorized> LocalCanSaveTask(int? p, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             RemoteWriteAuthAsync remotewriteauthasync = ServiceProvider.GetRequiredService<RemoteWriteAuthAsync>();
@@ -1910,52 +1910,52 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<SaveVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (RemoteWriteAuthAsyncObject target, int? param) => factory.LocalSaveVoid(target, param);
+                return (RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveVoid(target, param, cancellationToken);
             });
             services.AddScoped<SaveTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (RemoteWriteAuthAsyncObject target, int? param) => factory.LocalSaveTask(target, param);
+                return (RemoteWriteAuthAsyncObject target, int? param, CancellationToken cancellationToken = default) => factory.LocalSaveTask(target, param, cancellationToken);
             });
             services.AddScoped<CanInsertVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanInsertVoid(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanInsertVoid(p, cancellationToken);
             });
             services.AddScoped<CanInsertTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanInsertTask(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanInsertTask(p, cancellationToken);
             });
             services.AddScoped<CanUpdateVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanUpdateVoid(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanUpdateVoid(p, cancellationToken);
             });
             services.AddScoped<CanUpdateTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanUpdateTask(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanUpdateTask(p, cancellationToken);
             });
             services.AddScoped<CanDeleteVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanDeleteVoid(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanDeleteVoid(p, cancellationToken);
             });
             services.AddScoped<CanDeleteTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanDeleteTask(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanDeleteTask(p, cancellationToken);
             });
             services.AddScoped<CanSaveVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanSaveVoid(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanSaveVoid(p, cancellationToken);
             });
             services.AddScoped<CanSaveTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteWriteAuthAsyncObjectFactory>();
-                return (int? p) => factory.LocalCanSaveTask(p);
+                return (int? p, CancellationToken cancellationToken = default) => factory.LocalCanSaveTask(p, cancellationToken);
             });
             services.AddTransient<RemoteWriteAuthAsyncObject>();
             // Event registrations

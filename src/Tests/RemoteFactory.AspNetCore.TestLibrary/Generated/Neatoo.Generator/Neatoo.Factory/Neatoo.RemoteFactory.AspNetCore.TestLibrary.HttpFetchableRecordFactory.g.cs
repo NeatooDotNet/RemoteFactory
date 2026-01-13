@@ -11,9 +11,9 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 {
     public interface IHttpFetchableRecordFactory
     {
-        HttpFetchableRecord Create(string Id, string Data);
-        Task<HttpFetchableRecord> FetchById(string id);
-        Task<HttpFetchableRecord> FetchByIdAsync(string id);
+        HttpFetchableRecord Create(string Id, string Data, CancellationToken cancellationToken = default);
+        Task<HttpFetchableRecord> FetchById(string id, CancellationToken cancellationToken = default);
+        Task<HttpFetchableRecord> FetchByIdAsync(string id, CancellationToken cancellationToken = default);
     }
 
     internal class HttpFetchableRecordFactory : FactoryBase<HttpFetchableRecord>, IHttpFetchableRecordFactory
@@ -21,8 +21,8 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<HttpFetchableRecord> FetchByIdDelegate(string id);
-        public delegate Task<HttpFetchableRecord> FetchByIdAsyncDelegate(string id);
+        public delegate Task<HttpFetchableRecord> FetchByIdDelegate(string id, CancellationToken cancellationToken = default);
+        public delegate Task<HttpFetchableRecord> FetchByIdAsyncDelegate(string id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchByIdDelegate FetchByIdProperty { get; }
         public FetchByIdAsyncDelegate FetchByIdAsyncProperty { get; }
@@ -42,42 +42,42 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             FetchByIdAsyncProperty = RemoteFetchByIdAsync;
         }
 
-        public virtual HttpFetchableRecord Create(string Id, string Data)
+        public virtual HttpFetchableRecord Create(string Id, string Data, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Id, Data);
+            return LocalCreate(Id, Data, cancellationToken);
         }
 
-        public HttpFetchableRecord LocalCreate(string Id, string Data)
+        public HttpFetchableRecord LocalCreate(string Id, string Data, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new HttpFetchableRecord(Id, Data));
         }
 
-        public virtual Task<HttpFetchableRecord> FetchById(string id)
+        public virtual Task<HttpFetchableRecord> FetchById(string id, CancellationToken cancellationToken = default)
         {
-            return FetchByIdProperty(id);
+            return FetchByIdProperty(id, cancellationToken);
         }
 
-        public virtual async Task<HttpFetchableRecord> RemoteFetchById(string id)
+        public virtual async Task<HttpFetchableRecord> RemoteFetchById(string id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<HttpFetchableRecord>(typeof(FetchByIdDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<HttpFetchableRecord>(typeof(FetchByIdDelegate), [id], cancellationToken))!;
         }
 
-        public Task<HttpFetchableRecord> LocalFetchById(string id)
+        public Task<HttpFetchableRecord> LocalFetchById(string id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(DoFactoryMethodCall(FactoryOperation.Fetch, () => HttpFetchableRecord.FetchById(id)));
         }
 
-        public virtual Task<HttpFetchableRecord> FetchByIdAsync(string id)
+        public virtual Task<HttpFetchableRecord> FetchByIdAsync(string id, CancellationToken cancellationToken = default)
         {
-            return FetchByIdAsyncProperty(id);
+            return FetchByIdAsyncProperty(id, cancellationToken);
         }
 
-        public virtual async Task<HttpFetchableRecord> RemoteFetchByIdAsync(string id)
+        public virtual async Task<HttpFetchableRecord> RemoteFetchByIdAsync(string id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<HttpFetchableRecord>(typeof(FetchByIdAsyncDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<HttpFetchableRecord>(typeof(FetchByIdAsyncDelegate), [id], cancellationToken))!;
         }
 
-        public Task<HttpFetchableRecord> LocalFetchByIdAsync(string id)
+        public Task<HttpFetchableRecord> LocalFetchByIdAsync(string id, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCallAsync(FactoryOperation.Fetch, () => HttpFetchableRecord.FetchByIdAsync(id));
         }
@@ -89,12 +89,12 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             services.AddScoped<FetchByIdDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<HttpFetchableRecordFactory>();
-                return (string id) => factory.LocalFetchById(id);
+                return (string id, CancellationToken cancellationToken = default) => factory.LocalFetchById(id, cancellationToken);
             });
             services.AddScoped<FetchByIdAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<HttpFetchableRecordFactory>();
-                return (string id) => factory.LocalFetchByIdAsync(id);
+                return (string id, CancellationToken cancellationToken = default) => factory.LocalFetchByIdAsync(id, cancellationToken);
             });
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(HttpFetchableRecord.CreateOrdinalConverter());

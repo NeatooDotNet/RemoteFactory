@@ -13,9 +13,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IAsyncCoreWriteTargetFactory
     {
-        AsyncCoreWriteTarget Create();
-        Task<AsyncCoreWriteTarget?> SaveAsync(AsyncCoreWriteTarget target);
-        Task<AsyncCoreWriteTarget?> SaveBoolAsync(AsyncCoreWriteTarget target);
+        AsyncCoreWriteTarget Create(CancellationToken cancellationToken = default);
+        Task<AsyncCoreWriteTarget?> SaveAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default);
+        Task<AsyncCoreWriteTarget?> SaveBoolAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default);
     }
 
     internal class AsyncCoreWriteTargetFactory : FactorySaveBase<AsyncCoreWriteTarget>, IFactorySave<AsyncCoreWriteTarget>, IAsyncCoreWriteTargetFactory
@@ -35,63 +35,63 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual AsyncCoreWriteTarget Create()
+        public virtual AsyncCoreWriteTarget Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public AsyncCoreWriteTarget LocalCreate()
+        public AsyncCoreWriteTarget LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new AsyncCoreWriteTarget());
         }
 
-        public Task<AsyncCoreWriteTarget> LocalInsertAsync(AsyncCoreWriteTarget target)
+        public Task<AsyncCoreWriteTarget> LocalInsertAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncCoreWriteTarget)target ?? throw new Exception("AsyncCoreWriteTarget must implement AsyncCoreWriteTarget");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertAsync());
         }
 
-        public Task<AsyncCoreWriteTarget> LocalUpdateAsync(AsyncCoreWriteTarget target)
+        public Task<AsyncCoreWriteTarget> LocalUpdateAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncCoreWriteTarget)target ?? throw new Exception("AsyncCoreWriteTarget must implement AsyncCoreWriteTarget");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateAsync());
         }
 
-        public Task<AsyncCoreWriteTarget> LocalDeleteAsync(AsyncCoreWriteTarget target)
+        public Task<AsyncCoreWriteTarget> LocalDeleteAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncCoreWriteTarget)target ?? throw new Exception("AsyncCoreWriteTarget must implement AsyncCoreWriteTarget");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteAsync());
         }
 
-        public Task<AsyncCoreWriteTarget?> LocalInsertBoolAsync(AsyncCoreWriteTarget target)
+        public Task<AsyncCoreWriteTarget?> LocalInsertBoolAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncCoreWriteTarget)target ?? throw new Exception("AsyncCoreWriteTarget must implement AsyncCoreWriteTarget");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertBoolAsync());
         }
 
-        public Task<AsyncCoreWriteTarget?> LocalUpdateBoolAsync(AsyncCoreWriteTarget target)
+        public Task<AsyncCoreWriteTarget?> LocalUpdateBoolAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncCoreWriteTarget)target ?? throw new Exception("AsyncCoreWriteTarget must implement AsyncCoreWriteTarget");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Update, () => cTarget.UpdateBoolAsync());
         }
 
-        public Task<AsyncCoreWriteTarget?> LocalDeleteBoolAsync(AsyncCoreWriteTarget target)
+        public Task<AsyncCoreWriteTarget?> LocalDeleteBoolAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             var cTarget = (AsyncCoreWriteTarget)target ?? throw new Exception("AsyncCoreWriteTarget must implement AsyncCoreWriteTarget");
             return DoFactoryMethodCallBoolAsync(cTarget, FactoryOperation.Delete, () => cTarget.DeleteBoolAsync());
         }
 
-        public virtual Task<AsyncCoreWriteTarget?> SaveAsync(AsyncCoreWriteTarget target)
+        public virtual Task<AsyncCoreWriteTarget?> SaveAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveAsync(target);
+            return LocalSaveAsync(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<AsyncCoreWriteTarget>.Save(AsyncCoreWriteTarget target)
+        async Task<IFactorySaveMeta?> IFactorySave<AsyncCoreWriteTarget>.Save(AsyncCoreWriteTarget target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await SaveAsync(target);
+            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
         }
 
-        public virtual async Task<AsyncCoreWriteTarget?> LocalSaveAsync(AsyncCoreWriteTarget target)
+        public virtual async Task<AsyncCoreWriteTarget?> LocalSaveAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -100,24 +100,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(AsyncCoreWriteTarget);
                 }
 
-                return await LocalDeleteAsync(target);
+                return await LocalDeleteAsync(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertAsync(target);
+                return await LocalInsertAsync(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateAsync(target);
+                return await LocalUpdateAsync(target, cancellationToken);
             }
         }
 
-        public virtual Task<AsyncCoreWriteTarget?> SaveBoolAsync(AsyncCoreWriteTarget target)
+        public virtual Task<AsyncCoreWriteTarget?> SaveBoolAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
-            return LocalSaveBoolAsync(target);
+            return LocalSaveBoolAsync(target, cancellationToken);
         }
 
-        public virtual async Task<AsyncCoreWriteTarget?> LocalSaveBoolAsync(AsyncCoreWriteTarget target)
+        public virtual async Task<AsyncCoreWriteTarget?> LocalSaveBoolAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -126,15 +126,15 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(AsyncCoreWriteTarget);
                 }
 
-                return await LocalDeleteBoolAsync(target);
+                return await LocalDeleteBoolAsync(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertBoolAsync(target);
+                return await LocalInsertBoolAsync(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdateBoolAsync(target);
+                return await LocalUpdateBoolAsync(target, cancellationToken);
             }
         }
 

@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IPersonWithFacadeFactory
     {
-        Task<PersonWithFacade> Save(PersonWithFacade target);
+        Task<PersonWithFacade> Save(PersonWithFacade target, CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithFacadeFactory : FactorySaveBase<PersonWithFacade>, IFactorySave<PersonWithFacade>, IPersonWithFacadeFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonWithFacade> SaveDelegate(PersonWithFacade target);
+        public delegate Task<PersonWithFacade> SaveDelegate(PersonWithFacade target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveDelegate SaveProperty { get; }
 
@@ -39,29 +39,29 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             SaveProperty = RemoteSave;
         }
 
-        public Task<PersonWithFacade> LocalInsert(PersonWithFacade target)
+        public Task<PersonWithFacade> LocalInsert(PersonWithFacade target, CancellationToken cancellationToken = default)
         {
             var cTarget = (PersonWithFacade)target ?? throw new Exception("PersonWithFacade must implement PersonWithFacade");
             var service = ServiceProvider.GetRequiredService<IPersonInsertService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Insert(service));
         }
 
-        public virtual Task<PersonWithFacade> Save(PersonWithFacade target)
+        public virtual Task<PersonWithFacade> Save(PersonWithFacade target, CancellationToken cancellationToken = default)
         {
-            return SaveProperty(target);
+            return SaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<PersonWithFacade> RemoteSave(PersonWithFacade target)
+        public virtual async Task<PersonWithFacade> RemoteSave(PersonWithFacade target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonWithFacade>(typeof(SaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonWithFacade>(typeof(SaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<PersonWithFacade>.Save(PersonWithFacade target)
+        async Task<IFactorySaveMeta?> IFactorySave<PersonWithFacade>.Save(PersonWithFacade target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<PersonWithFacade> LocalSave(PersonWithFacade target)
+        public virtual async Task<PersonWithFacade> LocalSave(PersonWithFacade target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -69,7 +69,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             }
             else if (target.IsNew)
             {
-                return await LocalInsert(target);
+                return await LocalInsert(target, cancellationToken);
             }
             else
             {
@@ -84,7 +84,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<SaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonWithFacadeFactory>();
-                return (PersonWithFacade target) => factory.LocalSave(target);
+                return (PersonWithFacade target, CancellationToken cancellationToken = default) => factory.LocalSave(target, cancellationToken);
             });
             services.AddTransient<PersonWithFacade>();
             services.AddScoped<IFactorySave<PersonWithFacade>, PersonWithFacadeFactory>();

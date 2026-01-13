@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICtorTestNeatooStyleEntityFactory
     {
-        CtorTestNeatooStyleEntity Create();
-        CtorTestNeatooStyleEntity Fetch(Guid id);
+        CtorTestNeatooStyleEntity Create(CancellationToken cancellationToken = default);
+        CtorTestNeatooStyleEntity Fetch(Guid id, CancellationToken cancellationToken = default);
     }
 
     internal class CtorTestNeatooStyleEntityFactory : FactoryBase<CtorTestNeatooStyleEntity>, ICtorTestNeatooStyleEntityFactory
@@ -33,23 +33,23 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CtorTestNeatooStyleEntity Create()
+        public virtual CtorTestNeatooStyleEntity Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CtorTestNeatooStyleEntity LocalCreate()
+        public CtorTestNeatooStyleEntity LocalCreate(CancellationToken cancellationToken = default)
         {
             var services = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(FactoryOperation.Create, () => CtorTestNeatooStyleEntity.Create(services));
         }
 
-        public virtual CtorTestNeatooStyleEntity Fetch(Guid id)
+        public virtual CtorTestNeatooStyleEntity Fetch(Guid id, CancellationToken cancellationToken = default)
         {
-            return LocalFetch(id);
+            return LocalFetch(id, cancellationToken);
         }
 
-        public CtorTestNeatooStyleEntity LocalFetch(Guid id)
+        public CtorTestNeatooStyleEntity LocalFetch(Guid id, CancellationToken cancellationToken = default)
         {
             var services = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(FactoryOperation.Fetch, () => CtorTestNeatooStyleEntity.Fetch(id, services));

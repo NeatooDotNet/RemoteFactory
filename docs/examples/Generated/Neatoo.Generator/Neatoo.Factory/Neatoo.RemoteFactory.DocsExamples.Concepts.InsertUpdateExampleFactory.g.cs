@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface IInsertUpdateExampleFactory
     {
-        IInsertUpdateExample Create();
-        Task<IInsertUpdateExample> SaveSave(IInsertUpdateExample target);
+        IInsertUpdateExample Create(CancellationToken cancellationToken = default);
+        Task<IInsertUpdateExample> SaveSave(IInsertUpdateExample target, CancellationToken cancellationToken = default);
     }
 
     internal class InsertUpdateExampleFactory : FactorySaveBase<IInsertUpdateExample>, IFactorySave<InsertUpdateExample>, IInsertUpdateExampleFactory
@@ -21,7 +21,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<IInsertUpdateExample> SaveSaveDelegate(IInsertUpdateExample target);
+        public delegate Task<IInsertUpdateExample> SaveSaveDelegate(IInsertUpdateExample target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveSaveDelegate SaveSaveProperty { get; }
 
@@ -38,44 +38,44 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             SaveSaveProperty = RemoteSaveSave;
         }
 
-        public virtual IInsertUpdateExample Create()
+        public virtual IInsertUpdateExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public IInsertUpdateExample LocalCreate()
+        public IInsertUpdateExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new InsertUpdateExample());
         }
 
-        public Task<IInsertUpdateExample> LocalSave(IInsertUpdateExample target)
+        public Task<IInsertUpdateExample> LocalSave(IInsertUpdateExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (InsertUpdateExample)target ?? throw new Exception("IInsertUpdateExample must implement InsertUpdateExample");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Save());
         }
 
-        public Task<IInsertUpdateExample> LocalSave1(IInsertUpdateExample target)
+        public Task<IInsertUpdateExample> LocalSave1(IInsertUpdateExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (InsertUpdateExample)target ?? throw new Exception("IInsertUpdateExample must implement InsertUpdateExample");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.Save());
         }
 
-        public virtual Task<IInsertUpdateExample> SaveSave(IInsertUpdateExample target)
+        public virtual Task<IInsertUpdateExample> SaveSave(IInsertUpdateExample target, CancellationToken cancellationToken = default)
         {
-            return SaveSaveProperty(target);
+            return SaveSaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<IInsertUpdateExample> RemoteSaveSave(IInsertUpdateExample target)
+        public virtual async Task<IInsertUpdateExample> RemoteSaveSave(IInsertUpdateExample target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<IInsertUpdateExample>(typeof(SaveSaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<IInsertUpdateExample>(typeof(SaveSaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<InsertUpdateExample>.Save(InsertUpdateExample target)
+        async Task<IFactorySaveMeta?> IFactorySave<InsertUpdateExample>.Save(InsertUpdateExample target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await SaveSave(target);
+            return (IFactorySaveMeta? )await SaveSave(target, cancellationToken);
         }
 
-        public virtual async Task<IInsertUpdateExample> LocalSaveSave(IInsertUpdateExample target)
+        public virtual async Task<IInsertUpdateExample> LocalSaveSave(IInsertUpdateExample target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -83,11 +83,11 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             }
             else if (target.IsNew)
             {
-                return await LocalSave(target);
+                return await LocalSave(target, cancellationToken);
             }
             else
             {
-                return await LocalSave1(target);
+                return await LocalSave1(target, cancellationToken);
             }
         }
 
@@ -98,7 +98,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<SaveSaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<InsertUpdateExampleFactory>();
-                return (IInsertUpdateExample target) => factory.LocalSaveSave(target);
+                return (IInsertUpdateExample target, CancellationToken cancellationToken = default) => factory.LocalSaveSave(target, cancellationToken);
             });
             services.AddTransient<InsertUpdateExample>();
             services.AddTransient<IInsertUpdateExample, InsertUpdateExample>();

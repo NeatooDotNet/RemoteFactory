@@ -12,14 +12,14 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
 {
     public static partial class UserQueriesExample
     {
-        public delegate Task<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.UserResult?> GetUser(GetUserQuery query);
+        public delegate Task<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.UserResult?> GetUser(GetUserQuery query, CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<UserQueriesExample.GetUser>(cc =>
                 {
-                    return (query) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.UserResult?>(typeof(UserQueriesExample.GetUser), [query], default);
+                    return (query, cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateNullable<RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples.UserResult?>(typeof(UserQueriesExample.GetUser), [query], cancellationToken);
                 });
             }
 
@@ -27,7 +27,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.ExecuteExamples
             {
                 services.AddTransient<UserQueriesExample.GetUser>(cc =>
                 {
-                    return (GetUserQuery query) =>
+                    return (GetUserQuery query, CancellationToken cancellationToken = default) =>
                     {
                         var ctx = cc.GetRequiredService<IUserContext>();
                         return UserQueriesExample._GetUser(query, ctx);

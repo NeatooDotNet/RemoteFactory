@@ -390,6 +390,7 @@ public class RemoteReadTests
 
 	private async Task RemoteRead(IRemoteReadDataMapperFactory readFactory)
 	{
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch")).ToList();
 
 		foreach (var method in methods)
@@ -397,13 +398,16 @@ public class RemoteReadTests
 			object? result;
 			var methodName = method.Name;
 
-			if (method.GetParameters().Length != 0)
+			// Exclude CancellationToken from meaningful parameter count
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+
+			if (meaningfulParams.Count != 0)
 			{
-				result = method.Invoke(readFactory, [1]);
+				result = method.Invoke(readFactory, [1, default(CancellationToken)]);
 			}
 			else
 			{
-				result = method.Invoke(readFactory, null);
+				result = method.Invoke(readFactory, [default(CancellationToken)]);
 			}
 
 			if (result is Task<RemoteReadDataMapper?> taskBool)

@@ -12,16 +12,16 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
 {
     public interface IShowcaseAuthObjFactory
     {
-        IShowcaseAuthObj? Fetch();
-        IShowcaseAuthObj? Create();
-        IShowcaseAuthObj? Save(IShowcaseAuthObj target);
-        Authorized<IShowcaseAuthObj> TrySave(IShowcaseAuthObj target);
-        Authorized CanFetch();
-        Authorized CanCreate();
-        Authorized CanInsert();
-        Authorized CanUpdate();
-        Authorized CanDelete();
-        Authorized CanSave();
+        IShowcaseAuthObj? Fetch(CancellationToken cancellationToken = default);
+        IShowcaseAuthObj? Create(CancellationToken cancellationToken = default);
+        IShowcaseAuthObj? Save(IShowcaseAuthObj target, CancellationToken cancellationToken = default);
+        Authorized<IShowcaseAuthObj> TrySave(IShowcaseAuthObj target, CancellationToken cancellationToken = default);
+        Authorized CanFetch(CancellationToken cancellationToken = default);
+        Authorized CanCreate(CancellationToken cancellationToken = default);
+        Authorized CanInsert(CancellationToken cancellationToken = default);
+        Authorized CanUpdate(CancellationToken cancellationToken = default);
+        Authorized CanDelete(CancellationToken cancellationToken = default);
+        Authorized CanSave(CancellationToken cancellationToken = default);
     }
 
     internal class ShowcaseAuthObjFactory : FactorySaveBase<IShowcaseAuthObj>, IFactorySave<ShowcaseAuthObj>, IShowcaseAuthObjFactory
@@ -41,12 +41,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual IShowcaseAuthObj? Fetch()
+        public virtual IShowcaseAuthObj? Fetch(CancellationToken cancellationToken = default)
         {
-            return (LocalFetch()).Result;
+            return (LocalFetch(cancellationToken)).Result;
         }
 
-        public Authorized<IShowcaseAuthObj> LocalFetch()
+        public Authorized<IShowcaseAuthObj> LocalFetch(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -72,12 +72,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized<IShowcaseAuthObj>(DoFactoryMethodCall(FactoryOperation.Fetch, () => new ShowcaseAuthObj(service)));
         }
 
-        public virtual IShowcaseAuthObj? Create()
+        public virtual IShowcaseAuthObj? Create(CancellationToken cancellationToken = default)
         {
-            return (LocalCreate()).Result;
+            return (LocalCreate(cancellationToken)).Result;
         }
 
-        public Authorized<IShowcaseAuthObj> LocalCreate()
+        public Authorized<IShowcaseAuthObj> LocalCreate(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -103,7 +103,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized<IShowcaseAuthObj>(DoFactoryMethodCall(FactoryOperation.Create, () => new ShowcaseAuthObj(service)));
         }
 
-        public Authorized<IShowcaseAuthObj> LocalInsert(IShowcaseAuthObj target)
+        public Authorized<IShowcaseAuthObj> LocalInsert(IShowcaseAuthObj target, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -118,7 +118,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized<IShowcaseAuthObj>(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert(service)));
         }
 
-        public Authorized<IShowcaseAuthObj> LocalUpdate(IShowcaseAuthObj target)
+        public Authorized<IShowcaseAuthObj> LocalUpdate(IShowcaseAuthObj target, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -133,7 +133,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized<IShowcaseAuthObj>(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update(service)));
         }
 
-        public Authorized<IShowcaseAuthObj> LocalDelete(IShowcaseAuthObj target)
+        public Authorized<IShowcaseAuthObj> LocalDelete(IShowcaseAuthObj target, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -154,9 +154,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized<IShowcaseAuthObj>(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.Delete(service)));
         }
 
-        public virtual IShowcaseAuthObj? Save(IShowcaseAuthObj target)
+        public virtual IShowcaseAuthObj? Save(IShowcaseAuthObj target, CancellationToken cancellationToken = default)
         {
-            var authorized = (LocalSave(target));
+            var authorized = (LocalSave(target, cancellationToken));
             if (!authorized.HasAccess)
             {
                 throw new NotAuthorizedException(authorized);
@@ -165,17 +165,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return authorized.Result;
         }
 
-        public virtual Authorized<IShowcaseAuthObj> TrySave(IShowcaseAuthObj target)
+        public virtual Authorized<IShowcaseAuthObj> TrySave(IShowcaseAuthObj target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseAuthObj>.Save(ShowcaseAuthObj target)
+        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseAuthObj>.Save(ShowcaseAuthObj target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual Authorized<IShowcaseAuthObj> LocalSave(IShowcaseAuthObj target)
+        public virtual Authorized<IShowcaseAuthObj> LocalSave(IShowcaseAuthObj target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -184,24 +184,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
                     return new Authorized<IShowcaseAuthObj>();
                 }
 
-                return LocalDelete(target);
+                return LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {
-                return LocalUpdate(target);
+                return LocalUpdate(target, cancellationToken);
             }
         }
 
-        public virtual Authorized CanFetch()
+        public virtual Authorized CanFetch(CancellationToken cancellationToken = default)
         {
-            return LocalCanFetch();
+            return LocalCanFetch(cancellationToken);
         }
 
-        public Authorized LocalCanFetch()
+        public Authorized LocalCanFetch(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -226,12 +226,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized(true);
         }
 
-        public virtual Authorized CanCreate()
+        public virtual Authorized CanCreate(CancellationToken cancellationToken = default)
         {
-            return LocalCanCreate();
+            return LocalCanCreate(cancellationToken);
         }
 
-        public Authorized LocalCanCreate()
+        public Authorized LocalCanCreate(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -256,30 +256,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized(true);
         }
 
-        public virtual Authorized CanInsert()
+        public virtual Authorized CanInsert(CancellationToken cancellationToken = default)
         {
-            return LocalCanInsert();
+            return LocalCanInsert(cancellationToken);
         }
 
-        public Authorized LocalCanInsert()
-        {
-            Authorized authorized;
-            IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
-            authorized = ishowcaseauthorize.AnyAccess();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanUpdate()
-        {
-            return LocalCanUpdate();
-        }
-
-        public Authorized LocalCanUpdate()
+        public Authorized LocalCanInsert(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -292,12 +274,30 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized(true);
         }
 
-        public virtual Authorized CanDelete()
+        public virtual Authorized CanUpdate(CancellationToken cancellationToken = default)
         {
-            return LocalCanDelete();
+            return LocalCanUpdate(cancellationToken);
         }
 
-        public Authorized LocalCanDelete()
+        public Authorized LocalCanUpdate(CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
+            authorized = ishowcaseauthorize.AnyAccess();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanDelete(CancellationToken cancellationToken = default)
+        {
+            return LocalCanDelete(cancellationToken);
+        }
+
+        public Authorized LocalCanDelete(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();
@@ -316,12 +316,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return new Authorized(true);
         }
 
-        public virtual Authorized CanSave()
+        public virtual Authorized CanSave(CancellationToken cancellationToken = default)
         {
-            return LocalCanSave();
+            return LocalCanSave(cancellationToken);
         }
 
-        public Authorized LocalCanSave()
+        public Authorized LocalCanSave(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             IShowcaseAuthorize ishowcaseauthorize = ServiceProvider.GetRequiredService<IShowcaseAuthorize>();

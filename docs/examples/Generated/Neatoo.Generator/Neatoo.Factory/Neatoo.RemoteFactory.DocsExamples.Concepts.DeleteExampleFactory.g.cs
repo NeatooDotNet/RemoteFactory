@@ -12,9 +12,9 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface IDeleteExampleFactory
     {
-        IDeleteExample Create();
-        Task<IDeleteExample?> Fetch(int id);
-        Task<IDeleteExample?> Save(IDeleteExample target);
+        IDeleteExample Create(CancellationToken cancellationToken = default);
+        Task<IDeleteExample?> Fetch(int id, CancellationToken cancellationToken = default);
+        Task<IDeleteExample?> Save(IDeleteExample target, CancellationToken cancellationToken = default);
     }
 
     internal class DeleteExampleFactory : FactorySaveBase<IDeleteExample>, IFactorySave<DeleteExample>, IDeleteExampleFactory
@@ -22,8 +22,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<IDeleteExample?> FetchDelegate(int id);
-        public delegate Task<IDeleteExample?> Save2Delegate(IDeleteExample target);
+        public delegate Task<IDeleteExample?> FetchDelegate(int id, CancellationToken cancellationToken = default);
+        public delegate Task<IDeleteExample?> Save2Delegate(IDeleteExample target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
         public Save2Delegate Save2Property { get; }
@@ -43,66 +43,66 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             Save2Property = RemoteSave2;
         }
 
-        public virtual IDeleteExample Create()
+        public virtual IDeleteExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public IDeleteExample LocalCreate()
+        public IDeleteExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new DeleteExample());
         }
 
-        public virtual Task<IDeleteExample?> Fetch(int id)
+        public virtual Task<IDeleteExample?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<IDeleteExample?> RemoteFetch(int id)
+        public virtual async Task<IDeleteExample?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IDeleteExample?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IDeleteExample?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<IDeleteExample?> LocalFetch(int id)
+        public Task<IDeleteExample?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<DeleteExample>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.Fetch(id));
         }
 
-        public Task<IDeleteExample> LocalSave(IDeleteExample target)
+        public Task<IDeleteExample> LocalSave(IDeleteExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (DeleteExample)target ?? throw new Exception("IDeleteExample must implement DeleteExample");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Save());
         }
 
-        public Task<IDeleteExample> LocalSave1(IDeleteExample target)
+        public Task<IDeleteExample> LocalSave1(IDeleteExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (DeleteExample)target ?? throw new Exception("IDeleteExample must implement DeleteExample");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.Save());
         }
 
-        public Task<IDeleteExample> LocalDelete(IDeleteExample target)
+        public Task<IDeleteExample> LocalDelete(IDeleteExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (DeleteExample)target ?? throw new Exception("IDeleteExample must implement DeleteExample");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.Delete());
         }
 
-        public virtual Task<IDeleteExample?> Save(IDeleteExample target)
+        public virtual Task<IDeleteExample?> Save(IDeleteExample target, CancellationToken cancellationToken = default)
         {
-            return Save2Property(target);
+            return Save2Property(target, cancellationToken);
         }
 
-        public virtual async Task<IDeleteExample?> RemoteSave2(IDeleteExample target)
+        public virtual async Task<IDeleteExample?> RemoteSave2(IDeleteExample target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IDeleteExample?>(typeof(Save2Delegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IDeleteExample?>(typeof(Save2Delegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<DeleteExample>.Save(DeleteExample target)
+        async Task<IFactorySaveMeta?> IFactorySave<DeleteExample>.Save(DeleteExample target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<IDeleteExample?> LocalSave2(IDeleteExample target)
+        public virtual async Task<IDeleteExample?> LocalSave2(IDeleteExample target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -111,15 +111,15 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
                     return default(IDeleteExample);
                 }
 
-                return await LocalDelete(target);
+                return await LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalSave(target);
+                return await LocalSave(target, cancellationToken);
             }
             else
             {
-                return await LocalSave1(target);
+                return await LocalSave1(target, cancellationToken);
             }
         }
 
@@ -130,12 +130,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<DeleteExampleFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddScoped<Save2Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<DeleteExampleFactory>();
-                return (IDeleteExample target) => factory.LocalSave2(target);
+                return (IDeleteExample target, CancellationToken cancellationToken = default) => factory.LocalSave2(target, cancellationToken);
             });
             services.AddTransient<DeleteExample>();
             services.AddTransient<IDeleteExample, DeleteExample>();

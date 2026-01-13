@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IPersonServiceExampleFactory
     {
-        Task<PersonServiceExample?> Fetch(int id);
+        Task<PersonServiceExample?> Fetch(int id, CancellationToken cancellationToken = default);
     }
 
     internal class PersonServiceExampleFactory : FactoryBase<PersonServiceExample>, IPersonServiceExampleFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonServiceExample?> FetchDelegate(int id);
+        public delegate Task<PersonServiceExample?> FetchDelegate(int id, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -39,17 +39,17 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             FetchProperty = RemoteFetch;
         }
 
-        public virtual Task<PersonServiceExample?> Fetch(int id)
+        public virtual Task<PersonServiceExample?> Fetch(int id, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(id);
+            return FetchProperty(id, cancellationToken);
         }
 
-        public virtual async Task<PersonServiceExample?> RemoteFetch(int id)
+        public virtual async Task<PersonServiceExample?> RemoteFetch(int id, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonServiceExample?>(typeof(FetchDelegate), [id], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonServiceExample?>(typeof(FetchDelegate), [id], cancellationToken))!;
         }
 
-        public Task<PersonServiceExample?> LocalFetch(int id)
+        public Task<PersonServiceExample?> LocalFetch(int id, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonServiceExample>();
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
@@ -64,7 +64,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonServiceExampleFactory>();
-                return (int id) => factory.LocalFetch(id);
+                return (int id, CancellationToken cancellationToken = default) => factory.LocalFetch(id, cancellationToken);
             });
             services.AddTransient<PersonServiceExample>();
             // Event registrations

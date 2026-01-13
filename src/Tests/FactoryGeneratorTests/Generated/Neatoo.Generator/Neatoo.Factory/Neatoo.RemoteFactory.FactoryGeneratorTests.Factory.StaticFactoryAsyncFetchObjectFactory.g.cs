@@ -13,7 +13,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IStaticFactoryAsyncFetchObjectFactory
     {
-        Task<StaticFactoryAsyncFetchObject> Fetch();
+        Task<StaticFactoryAsyncFetchObject> Fetch(CancellationToken cancellationToken = default);
     }
 
     internal class StaticFactoryAsyncFetchObjectFactory : FactoryBase<StaticFactoryAsyncFetchObject>, IStaticFactoryAsyncFetchObjectFactory
@@ -33,12 +33,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual Task<StaticFactoryAsyncFetchObject> Fetch()
+        public virtual Task<StaticFactoryAsyncFetchObject> Fetch(CancellationToken cancellationToken = default)
         {
-            return LocalFetch();
+            return LocalFetch(cancellationToken);
         }
 
-        public Task<StaticFactoryAsyncFetchObject> LocalFetch()
+        public Task<StaticFactoryAsyncFetchObject> LocalFetch(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCallAsync(FactoryOperation.Fetch, () => StaticFactoryAsyncFetchObject.Fetch());
         }

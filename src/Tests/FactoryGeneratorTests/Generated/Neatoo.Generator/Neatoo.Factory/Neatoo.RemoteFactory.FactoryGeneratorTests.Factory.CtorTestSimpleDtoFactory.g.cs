@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICtorTestSimpleDtoFactory
     {
-        CtorTestSimpleDto Create(string name, int value);
+        CtorTestSimpleDto Create(string name, int value, CancellationToken cancellationToken = default);
     }
 
     internal class CtorTestSimpleDtoFactory : FactoryBase<CtorTestSimpleDto>, ICtorTestSimpleDtoFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CtorTestSimpleDto Create(string name, int value)
+        public virtual CtorTestSimpleDto Create(string name, int value, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(name, value);
+            return LocalCreate(name, value, cancellationToken);
         }
 
-        public CtorTestSimpleDto LocalCreate(string name, int value)
+        public CtorTestSimpleDto LocalCreate(string name, int value, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => CtorTestSimpleDto.Create(name, value));
         }

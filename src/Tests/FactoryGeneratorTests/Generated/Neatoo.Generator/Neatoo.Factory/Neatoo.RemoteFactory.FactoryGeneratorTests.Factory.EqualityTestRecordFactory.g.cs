@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IEqualityTestRecordFactory
     {
-        EqualityTestRecord Create(string Name, int Value, DateTime CreatedAt);
+        EqualityTestRecord Create(string Name, int Value, DateTime CreatedAt, CancellationToken cancellationToken = default);
     }
 
     internal class EqualityTestRecordFactory : FactoryBase<EqualityTestRecord>, IEqualityTestRecordFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual EqualityTestRecord Create(string Name, int Value, DateTime CreatedAt)
+        public virtual EqualityTestRecord Create(string Name, int Value, DateTime CreatedAt, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name, Value, CreatedAt);
+            return LocalCreate(Name, Value, CreatedAt, cancellationToken);
         }
 
-        public EqualityTestRecord LocalCreate(string Name, int Value, DateTime CreatedAt)
+        public EqualityTestRecord LocalCreate(string Name, int Value, DateTime CreatedAt, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new EqualityTestRecord(Name, Value, CreatedAt));
         }

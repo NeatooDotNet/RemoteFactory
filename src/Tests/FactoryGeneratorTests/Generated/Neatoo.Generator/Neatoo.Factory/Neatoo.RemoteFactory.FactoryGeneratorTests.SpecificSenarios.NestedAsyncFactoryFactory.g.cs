@@ -13,9 +13,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface INestedAsyncFactoryFactory
     {
-        Task<NestedAsyncFactory> CreateAsync();
-        Task<NestedAsyncFactory> FetchAsync();
-        Task<NestedAsyncFactory?> FetchBoolAsync();
+        Task<NestedAsyncFactory> CreateAsync(CancellationToken cancellationToken = default);
+        Task<NestedAsyncFactory> FetchAsync(CancellationToken cancellationToken = default);
+        Task<NestedAsyncFactory?> FetchBoolAsync(CancellationToken cancellationToken = default);
     }
 
     internal class NestedAsyncFactoryFactory : FactoryBase<NestedAsyncFactory>, INestedAsyncFactoryFactory
@@ -35,34 +35,34 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual Task<NestedAsyncFactory> CreateAsync()
+        public virtual Task<NestedAsyncFactory> CreateAsync(CancellationToken cancellationToken = default)
         {
-            return LocalCreateAsync();
+            return LocalCreateAsync(cancellationToken);
         }
 
-        public Task<NestedAsyncFactory> LocalCreateAsync()
+        public Task<NestedAsyncFactory> LocalCreateAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedAsyncFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateAsync());
         }
 
-        public virtual Task<NestedAsyncFactory> FetchAsync()
+        public virtual Task<NestedAsyncFactory> FetchAsync(CancellationToken cancellationToken = default)
         {
-            return LocalFetchAsync();
+            return LocalFetchAsync(cancellationToken);
         }
 
-        public Task<NestedAsyncFactory> LocalFetchAsync()
+        public Task<NestedAsyncFactory> LocalFetchAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedAsyncFactory>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchAsync());
         }
 
-        public virtual Task<NestedAsyncFactory?> FetchBoolAsync()
+        public virtual Task<NestedAsyncFactory?> FetchBoolAsync(CancellationToken cancellationToken = default)
         {
-            return LocalFetchBoolAsync();
+            return LocalFetchBoolAsync(cancellationToken);
         }
 
-        public Task<NestedAsyncFactory?> LocalFetchBoolAsync()
+        public Task<NestedAsyncFactory?> LocalFetchBoolAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedAsyncFactory>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchBoolAsync());

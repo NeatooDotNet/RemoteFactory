@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IRemoteInsertUpdateOnlyFactory
     {
-        RemoteInsertUpdateOnly Create();
-        Task<RemoteInsertUpdateOnly> Save(RemoteInsertUpdateOnly target);
+        RemoteInsertUpdateOnly Create(CancellationToken cancellationToken = default);
+        Task<RemoteInsertUpdateOnly> Save(RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default);
     }
 
     internal class RemoteInsertUpdateOnlyFactory : FactorySaveBase<RemoteInsertUpdateOnly>, IFactorySave<RemoteInsertUpdateOnly>, IRemoteInsertUpdateOnlyFactory
@@ -22,7 +22,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<RemoteInsertUpdateOnly> SaveDelegate(RemoteInsertUpdateOnly target);
+        public delegate Task<RemoteInsertUpdateOnly> SaveDelegate(RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveDelegate SaveProperty { get; }
 
@@ -39,44 +39,44 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             SaveProperty = RemoteSave;
         }
 
-        public virtual RemoteInsertUpdateOnly Create()
+        public virtual RemoteInsertUpdateOnly Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public RemoteInsertUpdateOnly LocalCreate()
+        public RemoteInsertUpdateOnly LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new RemoteInsertUpdateOnly());
         }
 
-        public Task<RemoteInsertUpdateOnly> LocalInsert(RemoteInsertUpdateOnly target)
+        public Task<RemoteInsertUpdateOnly> LocalInsert(RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteInsertUpdateOnly)target ?? throw new Exception("RemoteInsertUpdateOnly must implement RemoteInsertUpdateOnly");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert()));
         }
 
-        public Task<RemoteInsertUpdateOnly> LocalUpdate(RemoteInsertUpdateOnly target)
+        public Task<RemoteInsertUpdateOnly> LocalUpdate(RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (RemoteInsertUpdateOnly)target ?? throw new Exception("RemoteInsertUpdateOnly must implement RemoteInsertUpdateOnly");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.Update()));
         }
 
-        public virtual Task<RemoteInsertUpdateOnly> Save(RemoteInsertUpdateOnly target)
+        public virtual Task<RemoteInsertUpdateOnly> Save(RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
-            return SaveProperty(target);
+            return SaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteInsertUpdateOnly> RemoteSave(RemoteInsertUpdateOnly target)
+        public virtual async Task<RemoteInsertUpdateOnly> RemoteSave(RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteInsertUpdateOnly>(typeof(SaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteInsertUpdateOnly>(typeof(SaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<RemoteInsertUpdateOnly>.Save(RemoteInsertUpdateOnly target)
+        async Task<IFactorySaveMeta?> IFactorySave<RemoteInsertUpdateOnly>.Save(RemoteInsertUpdateOnly target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<RemoteInsertUpdateOnly> LocalSave(RemoteInsertUpdateOnly target)
+        public virtual async Task<RemoteInsertUpdateOnly> LocalSave(RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -84,11 +84,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return await LocalInsert(target);
+                return await LocalInsert(target, cancellationToken);
             }
             else
             {
-                return await LocalUpdate(target);
+                return await LocalUpdate(target, cancellationToken);
             }
         }
 
@@ -99,7 +99,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             services.AddScoped<SaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteInsertUpdateOnlyFactory>();
-                return (RemoteInsertUpdateOnly target) => factory.LocalSave(target);
+                return (RemoteInsertUpdateOnly target, CancellationToken cancellationToken = default) => factory.LocalSave(target, cancellationToken);
             });
             services.AddTransient<RemoteInsertUpdateOnly>();
             services.AddScoped<IFactorySave<RemoteInsertUpdateOnly>, RemoteInsertUpdateOnlyFactory>();

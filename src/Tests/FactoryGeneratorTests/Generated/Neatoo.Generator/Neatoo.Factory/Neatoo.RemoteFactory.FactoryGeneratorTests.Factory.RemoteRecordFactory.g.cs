@@ -12,9 +12,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRemoteRecordFactory
     {
-        RemoteRecord Create(string Name);
-        Task<RemoteRecord> FetchRemote(string name);
-        Task<RemoteRecord> FetchRemoteAsync(string name);
+        RemoteRecord Create(string Name, CancellationToken cancellationToken = default);
+        Task<RemoteRecord> FetchRemote(string name, CancellationToken cancellationToken = default);
+        Task<RemoteRecord> FetchRemoteAsync(string name, CancellationToken cancellationToken = default);
     }
 
     internal class RemoteRecordFactory : FactoryBase<RemoteRecord>, IRemoteRecordFactory
@@ -22,8 +22,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<RemoteRecord> FetchRemoteDelegate(string name);
-        public delegate Task<RemoteRecord> FetchRemoteAsyncDelegate(string name);
+        public delegate Task<RemoteRecord> FetchRemoteDelegate(string name, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteRecord> FetchRemoteAsyncDelegate(string name, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchRemoteDelegate FetchRemoteProperty { get; }
         public FetchRemoteAsyncDelegate FetchRemoteAsyncProperty { get; }
@@ -43,42 +43,42 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             FetchRemoteAsyncProperty = RemoteFetchRemoteAsync;
         }
 
-        public virtual RemoteRecord Create(string Name)
+        public virtual RemoteRecord Create(string Name, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name);
+            return LocalCreate(Name, cancellationToken);
         }
 
-        public RemoteRecord LocalCreate(string Name)
+        public RemoteRecord LocalCreate(string Name, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new RemoteRecord(Name));
         }
 
-        public virtual Task<RemoteRecord> FetchRemote(string name)
+        public virtual Task<RemoteRecord> FetchRemote(string name, CancellationToken cancellationToken = default)
         {
-            return FetchRemoteProperty(name);
+            return FetchRemoteProperty(name, cancellationToken);
         }
 
-        public virtual async Task<RemoteRecord> RemoteFetchRemote(string name)
+        public virtual async Task<RemoteRecord> RemoteFetchRemote(string name, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteRecord>(typeof(FetchRemoteDelegate), [name], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteRecord>(typeof(FetchRemoteDelegate), [name], cancellationToken))!;
         }
 
-        public Task<RemoteRecord> LocalFetchRemote(string name)
+        public Task<RemoteRecord> LocalFetchRemote(string name, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(DoFactoryMethodCall(FactoryOperation.Fetch, () => RemoteRecord.FetchRemote(name)));
         }
 
-        public virtual Task<RemoteRecord> FetchRemoteAsync(string name)
+        public virtual Task<RemoteRecord> FetchRemoteAsync(string name, CancellationToken cancellationToken = default)
         {
-            return FetchRemoteAsyncProperty(name);
+            return FetchRemoteAsyncProperty(name, cancellationToken);
         }
 
-        public virtual async Task<RemoteRecord> RemoteFetchRemoteAsync(string name)
+        public virtual async Task<RemoteRecord> RemoteFetchRemoteAsync(string name, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteRecord>(typeof(FetchRemoteAsyncDelegate), [name], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteRecord>(typeof(FetchRemoteAsyncDelegate), [name], cancellationToken))!;
         }
 
-        public Task<RemoteRecord> LocalFetchRemoteAsync(string name)
+        public Task<RemoteRecord> LocalFetchRemoteAsync(string name, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCallAsync(FactoryOperation.Fetch, () => RemoteRecord.FetchRemoteAsync(name));
         }
@@ -90,12 +90,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<FetchRemoteDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteRecordFactory>();
-                return (string name) => factory.LocalFetchRemote(name);
+                return (string name, CancellationToken cancellationToken = default) => factory.LocalFetchRemote(name, cancellationToken);
             });
             services.AddScoped<FetchRemoteAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteRecordFactory>();
-                return (string name) => factory.LocalFetchRemoteAsync(name);
+                return (string name, CancellationToken cancellationToken = default) => factory.LocalFetchRemoteAsync(name, cancellationToken);
             });
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(RemoteRecord.CreateOrdinalConverter());

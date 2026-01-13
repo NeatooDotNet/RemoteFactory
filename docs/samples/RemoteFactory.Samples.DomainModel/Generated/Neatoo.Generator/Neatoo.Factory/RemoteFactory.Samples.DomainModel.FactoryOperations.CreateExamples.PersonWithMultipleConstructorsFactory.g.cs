@@ -11,8 +11,8 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.CreateExamples
 {
     public interface IPersonWithMultipleConstructorsFactory
     {
-        PersonWithMultipleConstructors Create();
-        PersonWithMultipleConstructors Create(string firstName, string lastName);
+        PersonWithMultipleConstructors Create(CancellationToken cancellationToken = default);
+        PersonWithMultipleConstructors Create(string firstName, string lastName, CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithMultipleConstructorsFactory : FactoryBase<PersonWithMultipleConstructors>, IPersonWithMultipleConstructorsFactory
@@ -32,22 +32,22 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.CreateExamples
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual PersonWithMultipleConstructors Create()
+        public virtual PersonWithMultipleConstructors Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public PersonWithMultipleConstructors LocalCreate()
+        public PersonWithMultipleConstructors LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new PersonWithMultipleConstructors());
         }
 
-        public virtual PersonWithMultipleConstructors Create(string firstName, string lastName)
+        public virtual PersonWithMultipleConstructors Create(string firstName, string lastName, CancellationToken cancellationToken = default)
         {
-            return LocalCreate1(firstName, lastName);
+            return LocalCreate1(firstName, lastName, cancellationToken);
         }
 
-        public PersonWithMultipleConstructors LocalCreate1(string firstName, string lastName)
+        public PersonWithMultipleConstructors LocalCreate1(string firstName, string lastName, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new PersonWithMultipleConstructors(firstName, lastName));
         }

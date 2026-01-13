@@ -13,9 +13,9 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICancellableBoolFactoryFactory
     {
-        CancellableBoolFactory Create();
-        Task<CancellableBoolFactory?> CreateBoolAsync(CancellationToken cancellationToken);
-        Task<CancellableBoolFactory?> FetchBoolAsync(bool shouldSucceed, CancellationToken cancellationToken);
+        CancellableBoolFactory Create(CancellationToken cancellationToken = default);
+        Task<CancellableBoolFactory?> CreateBoolAsync(CancellationToken cancellationToken = default);
+        Task<CancellableBoolFactory?> FetchBoolAsync(bool shouldSucceed, CancellationToken cancellationToken = default);
     }
 
     internal class CancellableBoolFactoryFactory : FactoryBase<CancellableBoolFactory>, ICancellableBoolFactoryFactory
@@ -35,33 +35,33 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CancellableBoolFactory Create()
+        public virtual CancellableBoolFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public CancellableBoolFactory LocalCreate()
+        public CancellableBoolFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new CancellableBoolFactory());
         }
 
-        public virtual Task<CancellableBoolFactory?> CreateBoolAsync(CancellationToken cancellationToken)
+        public virtual Task<CancellableBoolFactory?> CreateBoolAsync(CancellationToken cancellationToken = default)
         {
             return LocalCreateBoolAsync(cancellationToken);
         }
 
-        public Task<CancellableBoolFactory?> LocalCreateBoolAsync(CancellationToken cancellationToken)
+        public Task<CancellableBoolFactory?> LocalCreateBoolAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<CancellableBoolFactory>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateBoolAsync(cancellationToken));
         }
 
-        public virtual Task<CancellableBoolFactory?> FetchBoolAsync(bool shouldSucceed, CancellationToken cancellationToken)
+        public virtual Task<CancellableBoolFactory?> FetchBoolAsync(bool shouldSucceed, CancellationToken cancellationToken = default)
         {
             return LocalFetchBoolAsync(shouldSucceed, cancellationToken);
         }
 
-        public Task<CancellableBoolFactory?> LocalFetchBoolAsync(bool shouldSucceed, CancellationToken cancellationToken)
+        public Task<CancellableBoolFactory?> LocalFetchBoolAsync(bool shouldSucceed, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<CancellableBoolFactory>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchBoolAsync(shouldSucceed, cancellationToken));

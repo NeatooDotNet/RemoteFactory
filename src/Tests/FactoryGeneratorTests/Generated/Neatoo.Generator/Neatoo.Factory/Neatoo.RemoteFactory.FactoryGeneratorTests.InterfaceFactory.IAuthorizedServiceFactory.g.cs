@@ -12,10 +12,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
 {
     public interface IAuthorizedServiceFactory : IAuthorizedService
     {
-        Authorized CanGetData(Guid id);
-        Authorized CanProcessData(Guid id);
-        Authorized CanCheckStatus(Guid id);
-        Authorized CanGetItems(Guid id);
+        Authorized CanGetData(Guid id, CancellationToken cancellationToken = default);
+        Authorized CanProcessData(Guid id, CancellationToken cancellationToken = default);
+        Authorized CanCheckStatus(Guid id, CancellationToken cancellationToken = default);
+        Authorized CanGetItems(Guid id, CancellationToken cancellationToken = default);
     }
 
     internal class AuthorizedServiceFactory : IAuthorizedServiceFactory
@@ -244,54 +244,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
             return await target.GetItems(id, count);
         }
 
-        public virtual Authorized CanGetData(Guid id)
+        public virtual Authorized CanGetData(Guid id, CancellationToken cancellationToken = default)
         {
-            return LocalCanGetData(id);
+            return LocalCanGetData(id, cancellationToken);
         }
 
-        public Authorized LocalCanGetData(Guid id)
-        {
-            Authorized authorized;
-            InterfaceAuth interfaceauth = ServiceProvider.GetRequiredService<InterfaceAuth>();
-            authorized = interfaceauth.CanExecuteBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = interfaceauth.CanExecuteString();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = interfaceauth.CanExecuteBoolFail(id);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = interfaceauth.CanExecuteStringFail(id);
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            authorized = interfaceauth.CanReadBool();
-            if (!authorized.HasAccess)
-            {
-                return authorized;
-            }
-
-            return new Authorized(true);
-        }
-
-        public virtual Authorized CanProcessData(Guid id)
-        {
-            return LocalCanProcessData(id);
-        }
-
-        public Authorized LocalCanProcessData(Guid id)
+        public Authorized LocalCanGetData(Guid id, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             InterfaceAuth interfaceauth = ServiceProvider.GetRequiredService<InterfaceAuth>();
@@ -328,12 +286,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
             return new Authorized(true);
         }
 
-        public virtual Authorized CanCheckStatus(Guid id)
+        public virtual Authorized CanProcessData(Guid id, CancellationToken cancellationToken = default)
         {
-            return LocalCanCheckStatus(id);
+            return LocalCanProcessData(id, cancellationToken);
         }
 
-        public Authorized LocalCanCheckStatus(Guid id)
+        public Authorized LocalCanProcessData(Guid id, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             InterfaceAuth interfaceauth = ServiceProvider.GetRequiredService<InterfaceAuth>();
@@ -370,12 +328,54 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.InterfaceFactory
             return new Authorized(true);
         }
 
-        public virtual Authorized CanGetItems(Guid id)
+        public virtual Authorized CanCheckStatus(Guid id, CancellationToken cancellationToken = default)
         {
-            return LocalCanGetItems(id);
+            return LocalCanCheckStatus(id, cancellationToken);
         }
 
-        public Authorized LocalCanGetItems(Guid id)
+        public Authorized LocalCanCheckStatus(Guid id, CancellationToken cancellationToken = default)
+        {
+            Authorized authorized;
+            InterfaceAuth interfaceauth = ServiceProvider.GetRequiredService<InterfaceAuth>();
+            authorized = interfaceauth.CanExecuteBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = interfaceauth.CanExecuteString();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = interfaceauth.CanExecuteBoolFail(id);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = interfaceauth.CanExecuteStringFail(id);
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            authorized = interfaceauth.CanReadBool();
+            if (!authorized.HasAccess)
+            {
+                return authorized;
+            }
+
+            return new Authorized(true);
+        }
+
+        public virtual Authorized CanGetItems(Guid id, CancellationToken cancellationToken = default)
+        {
+            return LocalCanGetItems(id, cancellationToken);
+        }
+
+        public Authorized LocalCanGetItems(Guid id, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             InterfaceAuth interfaceauth = ServiceProvider.GetRequiredService<InterfaceAuth>();

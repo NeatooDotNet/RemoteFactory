@@ -338,6 +338,7 @@ public class ReadAuthTests
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
 		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
@@ -346,14 +347,16 @@ public class ReadAuthTests
 			var methodName = method.Name;
 
 			var expect = 2;
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			// Exclude CancellationToken when checking for meaningful parameters
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, [1]);
+				result = method.Invoke(readFactory, [1, default(CancellationToken)]);
 				expect = 4;
 			}
 			else
 			{
-				result = method.Invoke(readFactory, null);
+				result = method.Invoke(readFactory, [default(CancellationToken)]);
 			}
 
 			if (result is Task<ReadAuthObject?> task)
@@ -440,6 +443,7 @@ public class ReadAuthTests
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthTaskObjectFactory>();
 		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuthTask>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
@@ -447,15 +451,17 @@ public class ReadAuthTests
 			object? result;
 			var methodName = method.Name;
 
+			// Exclude CancellationToken from meaningful parameter check
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
 			var expect = 2;
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 1 });
+				result = method.Invoke(readFactory, new object[] { 1, default(CancellationToken) });
 				expect = 4;
 			}
 			else
 			{
-				result = method.Invoke(readFactory, null);
+				result = method.Invoke(readFactory, new object[] { default(CancellationToken) });
 			}
 
 			if (result is Task<ReadAuthTaskObject?> task)
@@ -539,6 +545,7 @@ public class ReadAuthTests
 		var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IReadAuthObjectFactory>();
 		var authorized = this.clientScope.ServiceProvider.GetRequiredService<ReadAuth>();
 
+		// Reflection Approved
 		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Create") || m.Name.StartsWith("Fetch") || m.Name.StartsWith("Can") || m.Name.StartsWith("Try")).ToList();
 
 		foreach (var method in methods)
@@ -546,9 +553,11 @@ public class ReadAuthTests
 			object? result;
 			var methodName = method.Name;
 
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			// Exclude CancellationToken when checking for meaningful parameters
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 10 }); // Fail
+				result = method.Invoke(readFactory, new object[] { 10, default(CancellationToken) }); // Fail
 			}
 			else
 			{
@@ -601,9 +610,11 @@ public class ReadAuthTests
 			object? result;
 			var methodName = method.Name;
 
-			if (method.GetParameters().FirstOrDefault()?.ParameterType == typeof(int?))
+			// Exclude CancellationToken when checking for meaningful parameters
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+			if (meaningfulParams.FirstOrDefault()?.ParameterType == typeof(int?))
 			{
-				result = method.Invoke(readFactory, new object[] { 20 }); // Fail
+				result = method.Invoke(readFactory, new object[] { 20, default(CancellationToken) }); // Fail
 			}
 			else
 			{

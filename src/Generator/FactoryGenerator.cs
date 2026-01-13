@@ -111,7 +111,7 @@ public partial class Factory : IIncrementalGenerator
 				var writeMethodsGrouped = factoryMethods
 									 .OfType<WriteFactoryMethod>()
 									 .Where(m => m.IsSave)
-									 .GroupBy(m => string.Join(",", m.Parameters.Where(m => !m.IsTarget && !m.IsService)
+									 .GroupBy(m => string.Join(",", m.Parameters.Where(m => !m.IsTarget && !m.IsService && !m.IsCancellationToken)
 																	 .Select(m => m.Type.ToString())))
 									 .ToList();
 
@@ -204,7 +204,7 @@ public partial class Factory : IIncrementalGenerator
 
 				var hasDefaultSave = false;
 				var defaultSaveMethod = factoryMethods.OfType<SaveFactoryMethod>()
-									 .Where(s => s.Parameters.Where(p => !p.IsTarget && !p.IsService).Count() == 0 && s.Parameters.First().IsTarget)
+									 .Where(s => s.Parameters.Where(p => !p.IsTarget && !p.IsService && !p.IsCancellationToken).Count() == 0 && s.Parameters.First().IsTarget)
 									 .FirstOrDefault();
 				if (defaultSaveMethod != null)
 				{
@@ -456,15 +456,40 @@ public partial class Factory : IIncrementalGenerator
 						var nullableText = method.IsNullable ? "Nullable" : "";
 
 						var parameters = method.Parameters;
+						var hasCancellationToken = parameters.Any(p => p.IsCancellationToken);
 
-						var parameterDeclarations = string.Join(", ", parameters.Where(p => !p.IsService)
-																		.Select(p => $"{p.Type} {p.Name}"));
-						var parameterIdentifiers = string.Join(", ", parameters.Where(p => !p.IsService).Select(p => p.Name));
+						// Build parameter declarations excluding services and existing CancellationToken, then add optional CancellationToken
+						var paramsWithoutServiceAndCt = parameters.Where(p => !p.IsService && !p.IsCancellationToken).ToList();
+						var parameterDeclarations = string.Join(", ", paramsWithoutServiceAndCt.Select(p => $"{p.Type} {p.Name}"));
+						if (!string.IsNullOrEmpty(parameterDeclarations))
+						{
+							parameterDeclarations += ", ";
+						}
+						parameterDeclarations += "CancellationToken cancellationToken = default";
+
+						// Parameter identifiers for factory signature (always includes cancellationToken)
+						var parameterIdentifiers = string.Join(", ", paramsWithoutServiceAndCt.Select(p => p.Name));
+						if (!string.IsNullOrEmpty(parameterIdentifiers))
+						{
+							parameterIdentifiers += ", ";
+						}
+						parameterIdentifiers += "cancellationToken";
+
 						// For serialization, exclude CancellationToken - it flows through HTTP layer instead
-						var serializedParameterIdentifiers = string.Join(", ", parameters.Where(p => !p.IsService && !p.IsCancellationToken).Select(p => p.Name));
-						// Get CancellationToken parameter name, or "default" if none exists
-						var cancellationTokenParam = parameters.FirstOrDefault(p => p.IsCancellationToken)?.Name ?? "default";
-						var allParameterIdentifiers = string.Join(", ", parameters.Select(p => p.Name));
+						var serializedParameterIdentifiers = string.Join(", ", paramsWithoutServiceAndCt.Select(p => p.Name));
+
+						// Build parameter identifiers for domain method invocation (include CT only if method has it)
+						var domainMethodParams = parameters.Where(p => !p.IsCancellationToken).ToList();
+						var allParameterIdentifiers = string.Join(", ", domainMethodParams.Select(p => p.Name));
+						if (hasCancellationToken)
+						{
+							if (!string.IsNullOrEmpty(allParameterIdentifiers))
+							{
+								allParameterIdentifiers += ", ";
+							}
+							allParameterIdentifiers += "cancellationToken";
+						}
+
 						var serviceAssignmentsText = WithStringBuilder(parameters.Where(p => p.IsService).Select(p => $"var {p.Name} = cc.GetRequiredService<{p.Type}>();"));
 
 						delegates.AppendLine($"public delegate Task<{method.ReturnType}> {delegateName}({parameterDeclarations});");
@@ -472,7 +497,7 @@ public partial class Factory : IIncrementalGenerator
 						remoteMethods.AppendLine(@$"
 						  services.AddTransient<{typeInfo.Name}.{delegateName}>(cc =>
 						  {{
-								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate{nullableText}<{method.ReturnType}>(typeof({typeInfo.Name}.{delegateName}), [{serializedParameterIdentifiers}], {cancellationTokenParam});
+								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate{nullableText}<{method.ReturnType}>(typeof({typeInfo.Name}.{delegateName}), [{serializedParameterIdentifiers}], cancellationToken);
 						  }});");
 
 						localMethods.AppendLine(@$"

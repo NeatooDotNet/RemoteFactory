@@ -14,8 +14,8 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IOrderFetchExampleFactory
     {
-        Task<OrderFetchExample?> Fetch(Guid orderId);
-        Task<OrderFetchExample> SaveSave(OrderFetchExample target);
+        Task<OrderFetchExample?> Fetch(Guid orderId, CancellationToken cancellationToken = default);
+        Task<OrderFetchExample> SaveSave(OrderFetchExample target, CancellationToken cancellationToken = default);
     }
 
     internal class OrderFetchExampleFactory : FactorySaveBase<OrderFetchExample>, IFactorySave<OrderFetchExample>, IOrderFetchExampleFactory
@@ -23,8 +23,8 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<OrderFetchExample?> FetchDelegate(Guid orderId);
-        public delegate Task<OrderFetchExample> SaveSaveDelegate(OrderFetchExample target);
+        public delegate Task<OrderFetchExample?> FetchDelegate(Guid orderId, CancellationToken cancellationToken = default);
+        public delegate Task<OrderFetchExample> SaveSaveDelegate(OrderFetchExample target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
         public SaveSaveDelegate SaveSaveProperty { get; }
@@ -44,53 +44,53 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             SaveSaveProperty = RemoteSaveSave;
         }
 
-        public virtual Task<OrderFetchExample?> Fetch(Guid orderId)
+        public virtual Task<OrderFetchExample?> Fetch(Guid orderId, CancellationToken cancellationToken = default)
         {
-            return FetchProperty(orderId);
+            return FetchProperty(orderId, cancellationToken);
         }
 
-        public virtual async Task<OrderFetchExample?> RemoteFetch(Guid orderId)
+        public virtual async Task<OrderFetchExample?> RemoteFetch(Guid orderId, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderFetchExample?>(typeof(FetchDelegate), [orderId], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<OrderFetchExample?>(typeof(FetchDelegate), [orderId], cancellationToken))!;
         }
 
-        public Task<OrderFetchExample?> LocalFetch(Guid orderId)
+        public Task<OrderFetchExample?> LocalFetch(Guid orderId, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<OrderFetchExample>();
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.Fetch(orderId, context));
         }
 
-        public Task<OrderFetchExample> LocalSave(OrderFetchExample target)
+        public Task<OrderFetchExample> LocalSave(OrderFetchExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderFetchExample)target ?? throw new Exception("OrderFetchExample must implement OrderFetchExample");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Save(context));
         }
 
-        public Task<OrderFetchExample> LocalSave1(OrderFetchExample target)
+        public Task<OrderFetchExample> LocalSave1(OrderFetchExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (OrderFetchExample)target ?? throw new Exception("OrderFetchExample must implement OrderFetchExample");
             var context = ServiceProvider.GetRequiredService<IOrderContext>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.Save(context));
         }
 
-        public virtual Task<OrderFetchExample> SaveSave(OrderFetchExample target)
+        public virtual Task<OrderFetchExample> SaveSave(OrderFetchExample target, CancellationToken cancellationToken = default)
         {
-            return SaveSaveProperty(target);
+            return SaveSaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<OrderFetchExample> RemoteSaveSave(OrderFetchExample target)
+        public virtual async Task<OrderFetchExample> RemoteSaveSave(OrderFetchExample target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<OrderFetchExample>(typeof(SaveSaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<OrderFetchExample>(typeof(SaveSaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<OrderFetchExample>.Save(OrderFetchExample target)
+        async Task<IFactorySaveMeta?> IFactorySave<OrderFetchExample>.Save(OrderFetchExample target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await SaveSave(target);
+            return (IFactorySaveMeta? )await SaveSave(target, cancellationToken);
         }
 
-        public virtual async Task<OrderFetchExample> LocalSaveSave(OrderFetchExample target)
+        public virtual async Task<OrderFetchExample> LocalSaveSave(OrderFetchExample target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -98,11 +98,11 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             }
             else if (target.IsNew)
             {
-                return await LocalSave(target);
+                return await LocalSave(target, cancellationToken);
             }
             else
             {
-                return await LocalSave1(target);
+                return await LocalSave1(target, cancellationToken);
             }
         }
 
@@ -113,12 +113,12 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<OrderFetchExampleFactory>();
-                return (Guid orderId) => factory.LocalFetch(orderId);
+                return (Guid orderId, CancellationToken cancellationToken = default) => factory.LocalFetch(orderId, cancellationToken);
             });
             services.AddScoped<SaveSaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<OrderFetchExampleFactory>();
-                return (OrderFetchExample target) => factory.LocalSaveSave(target);
+                return (OrderFetchExample target, CancellationToken cancellationToken = default) => factory.LocalSaveSave(target, cancellationToken);
             });
             services.AddTransient<OrderFetchExample>();
             services.AddScoped<IFactorySave<OrderFetchExample>, OrderFetchExampleFactory>();

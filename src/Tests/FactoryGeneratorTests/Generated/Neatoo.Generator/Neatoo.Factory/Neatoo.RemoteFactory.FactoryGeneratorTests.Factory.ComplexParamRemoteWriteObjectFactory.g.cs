@@ -12,10 +12,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IComplexParamRemoteWriteObjectFactory
     {
-        Task<ComplexParamRemoteWriteObject?> SaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids);
-        Task<ComplexParamRemoteWriteObject> SaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto);
-        Task<ComplexParamRemoteWriteObject> SaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data);
-        Task<ComplexParamRemoteWriteObject> SaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto);
+        Task<ComplexParamRemoteWriteObject?> SaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteWriteObject> SaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteWriteObject> SaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteWriteObject> SaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default);
     }
 
     internal class ComplexParamRemoteWriteObjectFactory : FactoryBase<ComplexParamRemoteWriteObject>, IComplexParamRemoteWriteObjectFactory
@@ -23,10 +23,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<ComplexParamRemoteWriteObject?> SaveRemoteWithIntListDelegate(ComplexParamRemoteWriteObject target, List<int> ids);
-        public delegate Task<ComplexParamRemoteWriteObject> SaveRemoteWithDtoDelegate(ComplexParamRemoteWriteObject target, SimpleDto dto);
-        public delegate Task<ComplexParamRemoteWriteObject> SaveRemoteWithDictionaryDelegate(ComplexParamRemoteWriteObject target, Dictionary<string, int> data);
-        public delegate Task<ComplexParamRemoteWriteObject> SaveRemoteWithComplexParamsAsyncDelegate(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto);
+        public delegate Task<ComplexParamRemoteWriteObject?> SaveRemoteWithIntListDelegate(ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteWriteObject> SaveRemoteWithDtoDelegate(ComplexParamRemoteWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteWriteObject> SaveRemoteWithDictionaryDelegate(ComplexParamRemoteWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteWriteObject> SaveRemoteWithComplexParamsAsyncDelegate(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveRemoteWithIntListDelegate SaveRemoteWithIntListProperty { get; }
         public SaveRemoteWithDtoDelegate SaveRemoteWithDtoProperty { get; }
@@ -52,47 +52,47 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             SaveRemoteWithComplexParamsAsyncProperty = RemoteSaveRemoteWithComplexParamsAsync;
         }
 
-        public Task<ComplexParamRemoteWriteObject> LocalInsertRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids)
+        public Task<ComplexParamRemoteWriteObject> LocalInsertRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamRemoteWriteObject)target ?? throw new Exception("ComplexParamRemoteWriteObject must implement ComplexParamRemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertRemoteWithIntList(ids)));
         }
 
-        public Task<ComplexParamRemoteWriteObject> LocalInsertRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto)
+        public Task<ComplexParamRemoteWriteObject> LocalInsertRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamRemoteWriteObject)target ?? throw new Exception("ComplexParamRemoteWriteObject must implement ComplexParamRemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.InsertRemoteWithDto(dto)));
         }
 
-        public Task<ComplexParamRemoteWriteObject> LocalUpdateRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data)
+        public Task<ComplexParamRemoteWriteObject> LocalUpdateRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamRemoteWriteObject)target ?? throw new Exception("ComplexParamRemoteWriteObject must implement ComplexParamRemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Update, () => cTarget.UpdateRemoteWithDictionary(data)));
         }
 
-        public Task<ComplexParamRemoteWriteObject> LocalDeleteRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids)
+        public Task<ComplexParamRemoteWriteObject> LocalDeleteRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamRemoteWriteObject)target ?? throw new Exception("ComplexParamRemoteWriteObject must implement ComplexParamRemoteWriteObject");
             return Task.FromResult(DoFactoryMethodCall(cTarget, FactoryOperation.Delete, () => cTarget.DeleteRemoteWithIntList(ids)));
         }
 
-        public Task<ComplexParamRemoteWriteObject> LocalInsertRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto)
+        public Task<ComplexParamRemoteWriteObject> LocalInsertRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var cTarget = (ComplexParamRemoteWriteObject)target ?? throw new Exception("ComplexParamRemoteWriteObject must implement ComplexParamRemoteWriteObject");
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.InsertRemoteWithComplexParamsAsync(tags, dto));
         }
 
-        public virtual Task<ComplexParamRemoteWriteObject?> SaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids)
+        public virtual Task<ComplexParamRemoteWriteObject?> SaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
-            return SaveRemoteWithIntListProperty(target, ids);
+            return SaveRemoteWithIntListProperty(target, ids, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject?> RemoteSaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids)
+        public virtual async Task<ComplexParamRemoteWriteObject?> RemoteSaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ComplexParamRemoteWriteObject?>(typeof(SaveRemoteWithIntListDelegate), [target, ids], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ComplexParamRemoteWriteObject?>(typeof(SaveRemoteWithIntListDelegate), [target, ids], cancellationToken))!;
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject?> LocalSaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids)
+        public virtual async Task<ComplexParamRemoteWriteObject?> LocalSaveRemoteWithIntList(ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -101,11 +101,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                     return default(ComplexParamRemoteWriteObject);
                 }
 
-                return await LocalDeleteRemoteWithIntList(target, ids);
+                return await LocalDeleteRemoteWithIntList(target, ids, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalInsertRemoteWithIntList(target, ids);
+                return await LocalInsertRemoteWithIntList(target, ids, cancellationToken);
             }
             else
             {
@@ -113,17 +113,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<ComplexParamRemoteWriteObject> SaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto)
+        public virtual Task<ComplexParamRemoteWriteObject> SaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return SaveRemoteWithDtoProperty(target, dto);
+            return SaveRemoteWithDtoProperty(target, dto, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject> RemoteSaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto)
+        public virtual async Task<ComplexParamRemoteWriteObject> RemoteSaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteWriteObject>(typeof(SaveRemoteWithDtoDelegate), [target, dto], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteWriteObject>(typeof(SaveRemoteWithDtoDelegate), [target, dto], cancellationToken))!;
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject> LocalSaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto)
+        public virtual async Task<ComplexParamRemoteWriteObject> LocalSaveRemoteWithDto(ComplexParamRemoteWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -131,7 +131,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
             else if (target.IsNew)
             {
-                return await LocalInsertRemoteWithDto(target, dto);
+                return await LocalInsertRemoteWithDto(target, dto, cancellationToken);
             }
             else
             {
@@ -139,17 +139,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
         }
 
-        public virtual Task<ComplexParamRemoteWriteObject> SaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data)
+        public virtual Task<ComplexParamRemoteWriteObject> SaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return SaveRemoteWithDictionaryProperty(target, data);
+            return SaveRemoteWithDictionaryProperty(target, data, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject> RemoteSaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data)
+        public virtual async Task<ComplexParamRemoteWriteObject> RemoteSaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteWriteObject>(typeof(SaveRemoteWithDictionaryDelegate), [target, data], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteWriteObject>(typeof(SaveRemoteWithDictionaryDelegate), [target, data], cancellationToken))!;
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject> LocalSaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data)
+        public virtual async Task<ComplexParamRemoteWriteObject> LocalSaveRemoteWithDictionary(ComplexParamRemoteWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -161,21 +161,21 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
             else
             {
-                return await LocalUpdateRemoteWithDictionary(target, data);
+                return await LocalUpdateRemoteWithDictionary(target, data, cancellationToken);
             }
         }
 
-        public virtual Task<ComplexParamRemoteWriteObject> SaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto)
+        public virtual Task<ComplexParamRemoteWriteObject> SaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return SaveRemoteWithComplexParamsAsyncProperty(target, tags, dto);
+            return SaveRemoteWithComplexParamsAsyncProperty(target, tags, dto, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject> RemoteSaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto)
+        public virtual async Task<ComplexParamRemoteWriteObject> RemoteSaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteWriteObject>(typeof(SaveRemoteWithComplexParamsAsyncDelegate), [target, tags, dto], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteWriteObject>(typeof(SaveRemoteWithComplexParamsAsyncDelegate), [target, tags, dto], cancellationToken))!;
         }
 
-        public virtual async Task<ComplexParamRemoteWriteObject> LocalSaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto)
+        public virtual async Task<ComplexParamRemoteWriteObject> LocalSaveRemoteWithComplexParamsAsync(ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -183,7 +183,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             }
             else if (target.IsNew)
             {
-                return await LocalInsertRemoteWithComplexParamsAsync(target, tags, dto);
+                return await LocalInsertRemoteWithComplexParamsAsync(target, tags, dto, cancellationToken);
             }
             else
             {
@@ -198,22 +198,22 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<SaveRemoteWithIntListDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteWriteObjectFactory>();
-                return (ComplexParamRemoteWriteObject target, List<int> ids) => factory.LocalSaveRemoteWithIntList(target, ids);
+                return (ComplexParamRemoteWriteObject target, List<int> ids, CancellationToken cancellationToken = default) => factory.LocalSaveRemoteWithIntList(target, ids, cancellationToken);
             });
             services.AddScoped<SaveRemoteWithDtoDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteWriteObjectFactory>();
-                return (ComplexParamRemoteWriteObject target, SimpleDto dto) => factory.LocalSaveRemoteWithDto(target, dto);
+                return (ComplexParamRemoteWriteObject target, SimpleDto dto, CancellationToken cancellationToken = default) => factory.LocalSaveRemoteWithDto(target, dto, cancellationToken);
             });
             services.AddScoped<SaveRemoteWithDictionaryDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteWriteObjectFactory>();
-                return (ComplexParamRemoteWriteObject target, Dictionary<string, int> data) => factory.LocalSaveRemoteWithDictionary(target, data);
+                return (ComplexParamRemoteWriteObject target, Dictionary<string, int> data, CancellationToken cancellationToken = default) => factory.LocalSaveRemoteWithDictionary(target, data, cancellationToken);
             });
             services.AddScoped<SaveRemoteWithComplexParamsAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteWriteObjectFactory>();
-                return (ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto) => factory.LocalSaveRemoteWithComplexParamsAsync(target, tags, dto);
+                return (ComplexParamRemoteWriteObject target, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default) => factory.LocalSaveRemoteWithComplexParamsAsync(target, tags, dto, cancellationToken);
             });
             services.AddTransient<ComplexParamRemoteWriteObject>();
             // Event registrations

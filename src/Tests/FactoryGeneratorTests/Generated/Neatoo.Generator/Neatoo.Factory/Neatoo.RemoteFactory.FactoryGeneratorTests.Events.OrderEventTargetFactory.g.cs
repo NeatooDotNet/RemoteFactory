@@ -19,7 +19,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Events
 
     public interface IOrderEventTargetFactory
     {
-        OrderEventTarget Create(Guid orderId);
+        OrderEventTarget Create(Guid orderId, CancellationToken cancellationToken = default);
     }
 
     internal class OrderEventTargetFactory : FactoryBase<OrderEventTarget>, IOrderEventTargetFactory
@@ -39,12 +39,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Events
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual OrderEventTarget Create(Guid orderId)
+        public virtual OrderEventTarget Create(Guid orderId, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(orderId);
+            return LocalCreate(orderId, cancellationToken);
         }
 
-        public OrderEventTarget LocalCreate(Guid orderId)
+        public OrderEventTarget LocalCreate(Guid orderId, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => OrderEventTarget.Create(orderId));
         }

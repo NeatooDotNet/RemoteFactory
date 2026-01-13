@@ -11,8 +11,8 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 {
     public interface IInterfaceAuthorizeTestObjFactory : IInterfaceAuthorizeTestObj
     {
-        Task<Authorized> CanHasAspAccess(bool hasAccess);
-        Task<Authorized> CanNoAspAccess(bool hasAccess);
+        Task<Authorized> CanHasAspAccess(bool hasAccess, CancellationToken cancellationToken = default);
+        Task<Authorized> CanNoAspAccess(bool hasAccess, CancellationToken cancellationToken = default);
     }
 
     internal class InterfaceAuthorizeTestObjFactory : IInterfaceAuthorizeTestObjFactory
@@ -22,8 +22,8 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
         // Delegates
         public delegate Task<bool> HasAspAccessDelegate(bool hasAccess);
         public delegate Task<bool> NoAspAccessDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanHasAspAccessDelegate(bool hasAccess);
-        public delegate Task<Authorized> CanNoAspAccessDelegate(bool hasAccess);
+        public delegate Task<Authorized> CanHasAspAccessDelegate(bool hasAccess, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanNoAspAccessDelegate(bool hasAccess, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public HasAspAccessDelegate HasAspAccessProperty { get; }
         public NoAspAccessDelegate NoAspAccessProperty { get; }
@@ -101,17 +101,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return await target.NoAspAccess(hasAccess);
         }
 
-        public virtual Task<Authorized> CanHasAspAccess(bool hasAccess)
+        public virtual Task<Authorized> CanHasAspAccess(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanHasAspAccessProperty(hasAccess);
+            return CanHasAspAccessProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanHasAspAccess(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanHasAspAccess(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanHasAspAccessDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanHasAspAccessDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanHasAspAccess(bool hasAccess)
+        public async Task<Authorized> LocalCanHasAspAccess(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             InterfaceAuthorizeTestObjAuth interfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<InterfaceAuthorizeTestObjAuth>();
@@ -131,17 +131,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanNoAspAccess(bool hasAccess)
+        public virtual Task<Authorized> CanNoAspAccess(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return CanNoAspAccessProperty(hasAccess);
+            return CanNoAspAccessProperty(hasAccess, cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanNoAspAccess(bool hasAccess)
+        public virtual async Task<Authorized> RemoteCanNoAspAccess(bool hasAccess, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanNoAspAccessDelegate), [hasAccess], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanNoAspAccessDelegate), [hasAccess], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanNoAspAccess(bool hasAccess)
+        public async Task<Authorized> LocalCanNoAspAccess(bool hasAccess, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             InterfaceAuthorizeTestObjAuth interfaceauthorizetestobjauth = ServiceProvider.GetRequiredService<InterfaceAuthorizeTestObjAuth>();
@@ -191,12 +191,12 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
                 services.AddScoped<CanHasAspAccessDelegate>(cc =>
                 {
                     var factory = cc.GetRequiredService<InterfaceAuthorizeTestObjFactory>();
-                    return (bool hasAccess) => factory.LocalCanHasAspAccess(hasAccess);
+                    return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanHasAspAccess(hasAccess, cancellationToken);
                 });
                 services.AddScoped<CanNoAspAccessDelegate>(cc =>
                 {
                     var factory = cc.GetRequiredService<InterfaceAuthorizeTestObjFactory>();
-                    return (bool hasAccess) => factory.LocalCanNoAspAccess(hasAccess);
+                    return (bool hasAccess, CancellationToken cancellationToken = default) => factory.LocalCanNoAspAccess(hasAccess, cancellationToken);
                 });
             }
         }

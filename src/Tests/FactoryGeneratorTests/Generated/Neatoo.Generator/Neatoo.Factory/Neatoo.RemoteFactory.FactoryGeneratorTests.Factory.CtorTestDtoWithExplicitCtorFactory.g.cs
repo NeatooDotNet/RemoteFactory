@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface ICtorTestDtoWithExplicitCtorFactory
     {
-        CtorTestDtoWithExplicitCtor Create(string name);
+        CtorTestDtoWithExplicitCtor Create(string name, CancellationToken cancellationToken = default);
     }
 
     internal class CtorTestDtoWithExplicitCtorFactory : FactoryBase<CtorTestDtoWithExplicitCtor>, ICtorTestDtoWithExplicitCtorFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual CtorTestDtoWithExplicitCtor Create(string name)
+        public virtual CtorTestDtoWithExplicitCtor Create(string name, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(name);
+            return LocalCreate(name, cancellationToken);
         }
 
-        public CtorTestDtoWithExplicitCtor LocalCreate(string name)
+        public CtorTestDtoWithExplicitCtor LocalCreate(string name, CancellationToken cancellationToken = default)
         {
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCall(FactoryOperation.Create, () => CtorTestDtoWithExplicitCtor.Create(name, service));

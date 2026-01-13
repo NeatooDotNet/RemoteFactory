@@ -11,11 +11,11 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
 {
     public interface IHttpAuthorizedRecordFactory
     {
-        HttpAuthorizedRecord Create(string Name);
-        Task<HttpAuthorizedRecord?> FetchAuthorized(string name);
-        Task<HttpAuthorizedRecord?> FetchUnauthorized(string name);
-        Task<Authorized> CanFetchAuthorized();
-        Task<Authorized> CanFetchUnauthorized();
+        HttpAuthorizedRecord Create(string Name, CancellationToken cancellationToken = default);
+        Task<HttpAuthorizedRecord?> FetchAuthorized(string name, CancellationToken cancellationToken = default);
+        Task<HttpAuthorizedRecord?> FetchUnauthorized(string name, CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchAuthorized(CancellationToken cancellationToken = default);
+        Task<Authorized> CanFetchUnauthorized(CancellationToken cancellationToken = default);
     }
 
     internal class HttpAuthorizedRecordFactory : FactoryBase<HttpAuthorizedRecord>, IHttpAuthorizedRecordFactory
@@ -23,10 +23,10 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<Authorized<HttpAuthorizedRecord>> FetchAuthorizedDelegate(string name);
-        public delegate Task<Authorized<HttpAuthorizedRecord>> FetchUnauthorizedDelegate(string name);
-        public delegate Task<Authorized> CanFetchAuthorizedDelegate();
-        public delegate Task<Authorized> CanFetchUnauthorizedDelegate();
+        public delegate Task<Authorized<HttpAuthorizedRecord>> FetchAuthorizedDelegate(string name, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized<HttpAuthorizedRecord>> FetchUnauthorizedDelegate(string name, CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchAuthorizedDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<Authorized> CanFetchUnauthorizedDelegate(CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchAuthorizedDelegate FetchAuthorizedProperty { get; }
         public FetchUnauthorizedDelegate FetchUnauthorizedProperty { get; }
@@ -52,27 +52,27 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             CanFetchUnauthorizedProperty = RemoteCanFetchUnauthorized;
         }
 
-        public virtual HttpAuthorizedRecord Create(string Name)
+        public virtual HttpAuthorizedRecord Create(string Name, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name);
+            return LocalCreate(Name, cancellationToken);
         }
 
-        public HttpAuthorizedRecord LocalCreate(string Name)
+        public HttpAuthorizedRecord LocalCreate(string Name, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new HttpAuthorizedRecord(Name));
         }
 
-        public virtual async Task<HttpAuthorizedRecord?> FetchAuthorized(string name)
+        public virtual async Task<HttpAuthorizedRecord?> FetchAuthorized(string name, CancellationToken cancellationToken = default)
         {
-            return (await FetchAuthorizedProperty(name)).Result;
+            return (await FetchAuthorizedProperty(name, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<HttpAuthorizedRecord>> RemoteFetchAuthorized(string name)
+        public virtual async Task<Authorized<HttpAuthorizedRecord>> RemoteFetchAuthorized(string name, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<HttpAuthorizedRecord>>(typeof(FetchAuthorizedDelegate), [name], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<HttpAuthorizedRecord>>(typeof(FetchAuthorizedDelegate), [name], cancellationToken))!;
         }
 
-        public async Task<Authorized<HttpAuthorizedRecord>> LocalFetchAuthorized(string name)
+        public async Task<Authorized<HttpAuthorizedRecord>> LocalFetchAuthorized(string name, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
@@ -85,17 +85,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized<HttpAuthorizedRecord>(DoFactoryMethodCall(FactoryOperation.Fetch, () => HttpAuthorizedRecord.FetchAuthorized(name)));
         }
 
-        public virtual async Task<HttpAuthorizedRecord?> FetchUnauthorized(string name)
+        public virtual async Task<HttpAuthorizedRecord?> FetchUnauthorized(string name, CancellationToken cancellationToken = default)
         {
-            return (await FetchUnauthorizedProperty(name)).Result;
+            return (await FetchUnauthorizedProperty(name, cancellationToken)).Result;
         }
 
-        public virtual async Task<Authorized<HttpAuthorizedRecord>> RemoteFetchUnauthorized(string name)
+        public virtual async Task<Authorized<HttpAuthorizedRecord>> RemoteFetchUnauthorized(string name, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<HttpAuthorizedRecord>>(typeof(FetchUnauthorizedDelegate), [name], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<HttpAuthorizedRecord>>(typeof(FetchUnauthorizedDelegate), [name], cancellationToken))!;
         }
 
-        public async Task<Authorized<HttpAuthorizedRecord>> LocalFetchUnauthorized(string name)
+        public async Task<Authorized<HttpAuthorizedRecord>> LocalFetchUnauthorized(string name, CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
@@ -108,17 +108,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized<HttpAuthorizedRecord>(DoFactoryMethodCall(FactoryOperation.Fetch, () => HttpAuthorizedRecord.FetchUnauthorized(name)));
         }
 
-        public virtual Task<Authorized> CanFetchAuthorized()
+        public virtual Task<Authorized> CanFetchAuthorized(CancellationToken cancellationToken = default)
         {
-            return CanFetchAuthorizedProperty();
+            return CanFetchAuthorizedProperty(cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchAuthorized()
+        public virtual async Task<Authorized> RemoteCanFetchAuthorized(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchAuthorizedDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchAuthorizedDelegate), [], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchAuthorized()
+        public async Task<Authorized> LocalCanFetchAuthorized(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
@@ -131,17 +131,17 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             return new Authorized(true);
         }
 
-        public virtual Task<Authorized> CanFetchUnauthorized()
+        public virtual Task<Authorized> CanFetchUnauthorized(CancellationToken cancellationToken = default)
         {
-            return CanFetchUnauthorizedProperty();
+            return CanFetchUnauthorizedProperty(cancellationToken);
         }
 
-        public virtual async Task<Authorized> RemoteCanFetchUnauthorized()
+        public virtual async Task<Authorized> RemoteCanFetchUnauthorized(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchUnauthorizedDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized>(typeof(CanFetchUnauthorizedDelegate), [], cancellationToken))!;
         }
 
-        public async Task<Authorized> LocalCanFetchUnauthorized()
+        public async Task<Authorized> LocalCanFetchUnauthorized(CancellationToken cancellationToken = default)
         {
             Authorized authorized;
             var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();
@@ -161,22 +161,22 @@ namespace Neatoo.RemoteFactory.AspNetCore.TestLibrary
             services.AddScoped<FetchAuthorizedDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<HttpAuthorizedRecordFactory>();
-                return (string name) => factory.LocalFetchAuthorized(name);
+                return (string name, CancellationToken cancellationToken = default) => factory.LocalFetchAuthorized(name, cancellationToken);
             });
             services.AddScoped<FetchUnauthorizedDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<HttpAuthorizedRecordFactory>();
-                return (string name) => factory.LocalFetchUnauthorized(name);
+                return (string name, CancellationToken cancellationToken = default) => factory.LocalFetchUnauthorized(name, cancellationToken);
             });
             services.AddScoped<CanFetchAuthorizedDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<HttpAuthorizedRecordFactory>();
-                return () => factory.LocalCanFetchAuthorized();
+                return (CancellationToken cancellationToken = default) => factory.LocalCanFetchAuthorized(cancellationToken);
             });
             services.AddScoped<CanFetchUnauthorizedDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<HttpAuthorizedRecordFactory>();
-                return () => factory.LocalCanFetchUnauthorized();
+                return (CancellationToken cancellationToken = default) => factory.LocalCanFetchUnauthorized(cancellationToken);
             });
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(HttpAuthorizedRecord.CreateOrdinalConverter());

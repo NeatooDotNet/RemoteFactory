@@ -14,8 +14,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface IMultiServiceExampleFactory
     {
-        IMultiServiceExample Create();
-        Task<IMultiServiceExample?> Save(IMultiServiceExample target);
+        IMultiServiceExample Create(CancellationToken cancellationToken = default);
+        Task<IMultiServiceExample?> Save(IMultiServiceExample target, CancellationToken cancellationToken = default);
     }
 
     internal class MultiServiceExampleFactory : FactorySaveBase<IMultiServiceExample>, IFactorySave<MultiServiceExample>, IMultiServiceExampleFactory
@@ -23,7 +23,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<IMultiServiceExample?> Save2Delegate(IMultiServiceExample target);
+        public delegate Task<IMultiServiceExample?> Save2Delegate(IMultiServiceExample target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public Save2Delegate Save2Property { get; }
 
@@ -40,17 +40,17 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             Save2Property = RemoteSave2;
         }
 
-        public virtual IMultiServiceExample Create()
+        public virtual IMultiServiceExample Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public IMultiServiceExample LocalCreate()
+        public IMultiServiceExample LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new MultiServiceExample());
         }
 
-        public Task<IMultiServiceExample> LocalSave(IMultiServiceExample target)
+        public Task<IMultiServiceExample> LocalSave(IMultiServiceExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceExample)target ?? throw new Exception("IMultiServiceExample must implement MultiServiceExample");
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
@@ -59,7 +59,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Save(context, emailService, auditService));
         }
 
-        public Task<IMultiServiceExample> LocalSave1(IMultiServiceExample target)
+        public Task<IMultiServiceExample> LocalSave1(IMultiServiceExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceExample)target ?? throw new Exception("IMultiServiceExample must implement MultiServiceExample");
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
@@ -68,29 +68,29 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.Save(context, emailService, auditService));
         }
 
-        public Task<IMultiServiceExample> LocalDelete(IMultiServiceExample target)
+        public Task<IMultiServiceExample> LocalDelete(IMultiServiceExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (MultiServiceExample)target ?? throw new Exception("IMultiServiceExample must implement MultiServiceExample");
             var auditService = ServiceProvider.GetRequiredService<IAuditService>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Delete, () => cTarget.Delete(auditService));
         }
 
-        public virtual Task<IMultiServiceExample?> Save(IMultiServiceExample target)
+        public virtual Task<IMultiServiceExample?> Save(IMultiServiceExample target, CancellationToken cancellationToken = default)
         {
-            return Save2Property(target);
+            return Save2Property(target, cancellationToken);
         }
 
-        public virtual async Task<IMultiServiceExample?> RemoteSave2(IMultiServiceExample target)
+        public virtual async Task<IMultiServiceExample?> RemoteSave2(IMultiServiceExample target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IMultiServiceExample?>(typeof(Save2Delegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<IMultiServiceExample?>(typeof(Save2Delegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceExample>.Save(MultiServiceExample target)
+        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceExample>.Save(MultiServiceExample target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<IMultiServiceExample?> LocalSave2(IMultiServiceExample target)
+        public virtual async Task<IMultiServiceExample?> LocalSave2(IMultiServiceExample target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -99,15 +99,15 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
                     return default(IMultiServiceExample);
                 }
 
-                return await LocalDelete(target);
+                return await LocalDelete(target, cancellationToken);
             }
             else if (target.IsNew)
             {
-                return await LocalSave(target);
+                return await LocalSave(target, cancellationToken);
             }
             else
             {
-                return await LocalSave1(target);
+                return await LocalSave1(target, cancellationToken);
             }
         }
 
@@ -118,7 +118,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<Save2Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<MultiServiceExampleFactory>();
-                return (IMultiServiceExample target) => factory.LocalSave2(target);
+                return (IMultiServiceExample target, CancellationToken cancellationToken = default) => factory.LocalSave2(target, cancellationToken);
             });
             services.AddTransient<MultiServiceExample>();
             services.AddTransient<IMultiServiceExample, MultiServiceExample>();

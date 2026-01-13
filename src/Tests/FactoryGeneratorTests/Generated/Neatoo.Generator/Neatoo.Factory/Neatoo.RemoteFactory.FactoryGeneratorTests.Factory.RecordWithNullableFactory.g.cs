@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRecordWithNullableFactory
     {
-        RecordWithNullable Create(string Name, string? Description);
+        RecordWithNullable Create(string Name, string? Description, CancellationToken cancellationToken = default);
     }
 
     internal class RecordWithNullableFactory : FactoryBase<RecordWithNullable>, IRecordWithNullableFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual RecordWithNullable Create(string Name, string? Description)
+        public virtual RecordWithNullable Create(string Name, string? Description, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name, Description);
+            return LocalCreate(Name, Description, cancellationToken);
         }
 
-        public RecordWithNullable LocalCreate(string Name, string? Description)
+        public RecordWithNullable LocalCreate(string Name, string? Description, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new RecordWithNullable(Name, Description));
         }

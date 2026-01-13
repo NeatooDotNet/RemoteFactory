@@ -12,8 +12,8 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface IRemoteFetchRecordExampleFactory
     {
-        RemoteFetchRecordExample Create(string Name);
-        Task<RemoteFetchRecordExample> FetchFromServer(string name);
+        RemoteFetchRecordExample Create(string Name, CancellationToken cancellationToken = default);
+        Task<RemoteFetchRecordExample> FetchFromServer(string name, CancellationToken cancellationToken = default);
     }
 
     internal class RemoteFetchRecordExampleFactory : FactoryBase<RemoteFetchRecordExample>, IRemoteFetchRecordExampleFactory
@@ -21,7 +21,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<RemoteFetchRecordExample> FetchFromServerDelegate(string name);
+        public delegate Task<RemoteFetchRecordExample> FetchFromServerDelegate(string name, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchFromServerDelegate FetchFromServerProperty { get; }
 
@@ -38,27 +38,27 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             FetchFromServerProperty = RemoteFetchFromServer;
         }
 
-        public virtual RemoteFetchRecordExample Create(string Name)
+        public virtual RemoteFetchRecordExample Create(string Name, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name);
+            return LocalCreate(Name, cancellationToken);
         }
 
-        public RemoteFetchRecordExample LocalCreate(string Name)
+        public RemoteFetchRecordExample LocalCreate(string Name, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new RemoteFetchRecordExample(Name));
         }
 
-        public virtual Task<RemoteFetchRecordExample> FetchFromServer(string name)
+        public virtual Task<RemoteFetchRecordExample> FetchFromServer(string name, CancellationToken cancellationToken = default)
         {
-            return FetchFromServerProperty(name);
+            return FetchFromServerProperty(name, cancellationToken);
         }
 
-        public virtual async Task<RemoteFetchRecordExample> RemoteFetchFromServer(string name)
+        public virtual async Task<RemoteFetchRecordExample> RemoteFetchFromServer(string name, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteFetchRecordExample>(typeof(FetchFromServerDelegate), [name], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteFetchRecordExample>(typeof(FetchFromServerDelegate), [name], cancellationToken))!;
         }
 
-        public Task<RemoteFetchRecordExample> LocalFetchFromServer(string name)
+        public Task<RemoteFetchRecordExample> LocalFetchFromServer(string name, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(DoFactoryMethodCall(FactoryOperation.Fetch, () => RemoteFetchRecordExample.FetchFromServer(name)));
         }
@@ -70,7 +70,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             services.AddScoped<FetchFromServerDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteFetchRecordExampleFactory>();
-                return (string name) => factory.LocalFetchFromServer(name);
+                return (string name, CancellationToken cancellationToken = default) => factory.LocalFetchFromServer(name, cancellationToken);
             });
             // Register AOT-compatible ordinal converter
             global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(RemoteFetchRecordExample.CreateOrdinalConverter());

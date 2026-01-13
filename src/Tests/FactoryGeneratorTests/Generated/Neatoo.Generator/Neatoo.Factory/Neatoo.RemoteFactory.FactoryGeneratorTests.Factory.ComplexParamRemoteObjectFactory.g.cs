@@ -12,17 +12,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IComplexParamRemoteObjectFactory
     {
-        Task<ComplexParamRemoteObject> CreateRemoteWithIntList(List<int> ids);
-        Task<ComplexParamRemoteObject> CreateRemoteWithStringList(List<string> names);
-        Task<ComplexParamRemoteObject> CreateRemoteWithDictionary(Dictionary<string, int> data);
-        Task<ComplexParamRemoteObject> CreateRemoteWithDto(SimpleDto dto);
-        Task<ComplexParamRemoteObject> CreateRemoteWithNestedDto(NestedDto dto);
-        Task<ComplexParamRemoteObject> CreateRemoteWithNullableList(List<int>? optionalIds);
-        Task<ComplexParamRemoteObject> CreateRemoteWithNullableDto(SimpleDto? optionalDto);
-        Task<ComplexParamRemoteObject> CreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto);
-        Task<ComplexParamRemoteObject?> CreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data);
-        Task<ComplexParamRemoteObject> FetchRemoteWithIntList(List<int> ids);
-        Task<ComplexParamRemoteObject> FetchRemoteWithDto(SimpleDto dto);
+        Task<ComplexParamRemoteObject> CreateRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> CreateRemoteWithStringList(List<string> names, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> CreateRemoteWithDictionary(Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> CreateRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> CreateRemoteWithNestedDto(NestedDto dto, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> CreateRemoteWithNullableList(List<int>? optionalIds, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> CreateRemoteWithNullableDto(SimpleDto? optionalDto, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> CreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject?> CreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> FetchRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default);
+        Task<ComplexParamRemoteObject> FetchRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default);
     }
 
     internal class ComplexParamRemoteObjectFactory : FactoryBase<ComplexParamRemoteObject>, IComplexParamRemoteObjectFactory
@@ -30,17 +30,17 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithIntListDelegate(List<int> ids);
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithStringListDelegate(List<string> names);
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithDictionaryDelegate(Dictionary<string, int> data);
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithDtoDelegate(SimpleDto dto);
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithNestedDtoDelegate(NestedDto dto);
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithNullableListDelegate(List<int>? optionalIds);
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithNullableDtoDelegate(SimpleDto? optionalDto);
-        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithMixedParamsDelegate(int id, List<string> tags, SimpleDto dto);
-        public delegate Task<ComplexParamRemoteObject?> CreateRemoteWithComplexParamsAsyncDelegate(List<int> ids, Dictionary<string, int> data);
-        public delegate Task<ComplexParamRemoteObject> FetchRemoteWithIntListDelegate(List<int> ids);
-        public delegate Task<ComplexParamRemoteObject> FetchRemoteWithDtoDelegate(SimpleDto dto);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithIntListDelegate(List<int> ids, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithStringListDelegate(List<string> names, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithDictionaryDelegate(Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithDtoDelegate(SimpleDto dto, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithNestedDtoDelegate(NestedDto dto, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithNullableListDelegate(List<int>? optionalIds, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithNullableDtoDelegate(SimpleDto? optionalDto, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> CreateRemoteWithMixedParamsDelegate(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject?> CreateRemoteWithComplexParamsAsyncDelegate(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> FetchRemoteWithIntListDelegate(List<int> ids, CancellationToken cancellationToken = default);
+        public delegate Task<ComplexParamRemoteObject> FetchRemoteWithDtoDelegate(SimpleDto dto, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateRemoteWithIntListDelegate CreateRemoteWithIntListProperty { get; }
         public CreateRemoteWithStringListDelegate CreateRemoteWithStringListProperty { get; }
@@ -87,177 +87,177 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             FetchRemoteWithDtoProperty = RemoteFetchRemoteWithDto;
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithIntList(List<int> ids)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithIntListProperty(ids);
+            return CreateRemoteWithIntListProperty(ids, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithIntList(List<int> ids)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithIntListDelegate), [ids], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithIntListDelegate), [ids], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithIntList(List<int> ids)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithIntList(ids)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithStringList(List<string> names)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithStringList(List<string> names, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithStringListProperty(names);
+            return CreateRemoteWithStringListProperty(names, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithStringList(List<string> names)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithStringList(List<string> names, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithStringListDelegate), [names], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithStringListDelegate), [names], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithStringList(List<string> names)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithStringList(List<string> names, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithStringList(names)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithDictionary(Dictionary<string, int> data)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithDictionary(Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithDictionaryProperty(data);
+            return CreateRemoteWithDictionaryProperty(data, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithDictionary(Dictionary<string, int> data)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithDictionary(Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithDictionaryDelegate), [data], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithDictionaryDelegate), [data], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithDictionary(Dictionary<string, int> data)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithDictionary(Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithDictionary(data)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithDto(SimpleDto dto)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithDtoProperty(dto);
+            return CreateRemoteWithDtoProperty(dto, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithDto(SimpleDto dto)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithDtoDelegate), [dto], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithDtoDelegate), [dto], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithDto(SimpleDto dto)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithDto(dto)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithNestedDto(NestedDto dto)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithNestedDto(NestedDto dto, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithNestedDtoProperty(dto);
+            return CreateRemoteWithNestedDtoProperty(dto, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithNestedDto(NestedDto dto)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithNestedDto(NestedDto dto, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithNestedDtoDelegate), [dto], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithNestedDtoDelegate), [dto], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithNestedDto(NestedDto dto)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithNestedDto(NestedDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithNestedDto(dto)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithNullableList(List<int>? optionalIds)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithNullableList(List<int>? optionalIds, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithNullableListProperty(optionalIds);
+            return CreateRemoteWithNullableListProperty(optionalIds, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithNullableList(List<int>? optionalIds)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithNullableList(List<int>? optionalIds, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithNullableListDelegate), [optionalIds], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithNullableListDelegate), [optionalIds], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithNullableList(List<int>? optionalIds)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithNullableList(List<int>? optionalIds, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithNullableList(optionalIds)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithNullableDto(SimpleDto? optionalDto)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithNullableDto(SimpleDto? optionalDto, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithNullableDtoProperty(optionalDto);
+            return CreateRemoteWithNullableDtoProperty(optionalDto, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithNullableDto(SimpleDto? optionalDto)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithNullableDto(SimpleDto? optionalDto, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithNullableDtoDelegate), [optionalDto], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithNullableDtoDelegate), [optionalDto], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithNullableDto(SimpleDto? optionalDto)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithNullableDto(SimpleDto? optionalDto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithNullableDto(optionalDto)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto)
+        public virtual Task<ComplexParamRemoteObject> CreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithMixedParamsProperty(id, tags, dto);
+            return CreateRemoteWithMixedParamsProperty(id, tags, dto, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto)
+        public virtual async Task<ComplexParamRemoteObject> RemoteCreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithMixedParamsDelegate), [id, tags, dto], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(CreateRemoteWithMixedParamsDelegate), [id, tags, dto], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto)
+        public Task<ComplexParamRemoteObject> LocalCreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateRemoteWithMixedParams(id, tags, dto)));
         }
 
-        public virtual Task<ComplexParamRemoteObject?> CreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data)
+        public virtual Task<ComplexParamRemoteObject?> CreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return CreateRemoteWithComplexParamsAsyncProperty(ids, data);
+            return CreateRemoteWithComplexParamsAsyncProperty(ids, data, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject?> RemoteCreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data)
+        public virtual async Task<ComplexParamRemoteObject?> RemoteCreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ComplexParamRemoteObject?>(typeof(CreateRemoteWithComplexParamsAsyncDelegate), [ids, data], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<ComplexParamRemoteObject?>(typeof(CreateRemoteWithComplexParamsAsyncDelegate), [ids, data], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject?> LocalCreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data)
+        public Task<ComplexParamRemoteObject?> LocalCreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateRemoteWithComplexParamsAsync(ids, data));
         }
 
-        public virtual Task<ComplexParamRemoteObject> FetchRemoteWithIntList(List<int> ids)
+        public virtual Task<ComplexParamRemoteObject> FetchRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
-            return FetchRemoteWithIntListProperty(ids);
+            return FetchRemoteWithIntListProperty(ids, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteFetchRemoteWithIntList(List<int> ids)
+        public virtual async Task<ComplexParamRemoteObject> RemoteFetchRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(FetchRemoteWithIntListDelegate), [ids], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(FetchRemoteWithIntListDelegate), [ids], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalFetchRemoteWithIntList(List<int> ids)
+        public Task<ComplexParamRemoteObject> LocalFetchRemoteWithIntList(List<int> ids, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchRemoteWithIntList(ids)));
         }
 
-        public virtual Task<ComplexParamRemoteObject> FetchRemoteWithDto(SimpleDto dto)
+        public virtual Task<ComplexParamRemoteObject> FetchRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return FetchRemoteWithDtoProperty(dto);
+            return FetchRemoteWithDtoProperty(dto, cancellationToken);
         }
 
-        public virtual async Task<ComplexParamRemoteObject> RemoteFetchRemoteWithDto(SimpleDto dto)
+        public virtual async Task<ComplexParamRemoteObject> RemoteFetchRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(FetchRemoteWithDtoDelegate), [dto], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<ComplexParamRemoteObject>(typeof(FetchRemoteWithDtoDelegate), [dto], cancellationToken))!;
         }
 
-        public Task<ComplexParamRemoteObject> LocalFetchRemoteWithDto(SimpleDto dto)
+        public Task<ComplexParamRemoteObject> LocalFetchRemoteWithDto(SimpleDto dto, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<ComplexParamRemoteObject>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchRemoteWithDto(dto)));
@@ -270,57 +270,57 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CreateRemoteWithIntListDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (List<int> ids) => factory.LocalCreateRemoteWithIntList(ids);
+                return (List<int> ids, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithIntList(ids, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithStringListDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (List<string> names) => factory.LocalCreateRemoteWithStringList(names);
+                return (List<string> names, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithStringList(names, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithDictionaryDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (Dictionary<string, int> data) => factory.LocalCreateRemoteWithDictionary(data);
+                return (Dictionary<string, int> data, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithDictionary(data, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithDtoDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (SimpleDto dto) => factory.LocalCreateRemoteWithDto(dto);
+                return (SimpleDto dto, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithDto(dto, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithNestedDtoDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (NestedDto dto) => factory.LocalCreateRemoteWithNestedDto(dto);
+                return (NestedDto dto, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithNestedDto(dto, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithNullableListDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (List<int>? optionalIds) => factory.LocalCreateRemoteWithNullableList(optionalIds);
+                return (List<int>? optionalIds, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithNullableList(optionalIds, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithNullableDtoDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (SimpleDto? optionalDto) => factory.LocalCreateRemoteWithNullableDto(optionalDto);
+                return (SimpleDto? optionalDto, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithNullableDto(optionalDto, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithMixedParamsDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (int id, List<string> tags, SimpleDto dto) => factory.LocalCreateRemoteWithMixedParams(id, tags, dto);
+                return (int id, List<string> tags, SimpleDto dto, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithMixedParams(id, tags, dto, cancellationToken);
             });
             services.AddScoped<CreateRemoteWithComplexParamsAsyncDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (List<int> ids, Dictionary<string, int> data) => factory.LocalCreateRemoteWithComplexParamsAsync(ids, data);
+                return (List<int> ids, Dictionary<string, int> data, CancellationToken cancellationToken = default) => factory.LocalCreateRemoteWithComplexParamsAsync(ids, data, cancellationToken);
             });
             services.AddScoped<FetchRemoteWithIntListDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (List<int> ids) => factory.LocalFetchRemoteWithIntList(ids);
+                return (List<int> ids, CancellationToken cancellationToken = default) => factory.LocalFetchRemoteWithIntList(ids, cancellationToken);
             });
             services.AddScoped<FetchRemoteWithDtoDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<ComplexParamRemoteObjectFactory>();
-                return (SimpleDto dto) => factory.LocalFetchRemoteWithDto(dto);
+                return (SimpleDto dto, CancellationToken cancellationToken = default) => factory.LocalFetchRemoteWithDto(dto, cancellationToken);
             });
             services.AddTransient<ComplexParamRemoteObject>();
             // Event registrations

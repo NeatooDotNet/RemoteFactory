@@ -13,7 +13,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IStaticFactoryAsyncFetchNullableFactory
     {
-        Task<StaticFactoryAsyncFetchNullable?> Fetch(int? a);
+        Task<StaticFactoryAsyncFetchNullable?> Fetch(int? a, CancellationToken cancellationToken = default);
     }
 
     internal class StaticFactoryAsyncFetchNullableFactory : FactoryBase<StaticFactoryAsyncFetchNullable>, IStaticFactoryAsyncFetchNullableFactory
@@ -33,12 +33,12 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual Task<StaticFactoryAsyncFetchNullable?> Fetch(int? a)
+        public virtual Task<StaticFactoryAsyncFetchNullable?> Fetch(int? a, CancellationToken cancellationToken = default)
         {
-            return LocalFetch(a);
+            return LocalFetch(a, cancellationToken);
         }
 
-        public Task<StaticFactoryAsyncFetchNullable?> LocalFetch(int? a)
+        public Task<StaticFactoryAsyncFetchNullable?> LocalFetch(int? a, CancellationToken cancellationToken = default)
         {
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsyncNullable(FactoryOperation.Fetch, () => StaticFactoryAsyncFetchNullable.Fetch(a, service));

@@ -406,9 +406,10 @@ public class RecordTests
         Assert.Equal(typeof(SimpleRecord), createMethod.ReturnType);
 
         var parameters = createMethod.GetParameters();
-        Assert.Equal(2, parameters.Length);
+        Assert.Equal(3, parameters.Length); // name, value, cancellationToken
         Assert.Equal("name", parameters[0].Name, ignoreCase: true);
         Assert.Equal("value", parameters[1].Name, ignoreCase: true);
+        Assert.Equal(typeof(CancellationToken), parameters[2].ParameterType);
     }
 
     [Fact]

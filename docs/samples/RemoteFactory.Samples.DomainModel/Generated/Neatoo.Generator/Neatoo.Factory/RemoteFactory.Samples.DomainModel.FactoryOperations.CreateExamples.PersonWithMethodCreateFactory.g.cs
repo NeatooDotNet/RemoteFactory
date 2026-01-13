@@ -11,8 +11,8 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.CreateExamples
 {
     public interface IPersonWithMethodCreateFactory
     {
-        PersonWithMethodCreate Initialize(string template);
-        Task<PersonWithMethodCreate> InitializeAsync();
+        PersonWithMethodCreate Initialize(string template, CancellationToken cancellationToken = default);
+        Task<PersonWithMethodCreate> InitializeAsync(CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithMethodCreateFactory : FactoryBase<PersonWithMethodCreate>, IPersonWithMethodCreateFactory
@@ -32,23 +32,23 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.CreateExamples
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual PersonWithMethodCreate Initialize(string template)
+        public virtual PersonWithMethodCreate Initialize(string template, CancellationToken cancellationToken = default)
         {
-            return LocalInitialize(template);
+            return LocalInitialize(template, cancellationToken);
         }
 
-        public PersonWithMethodCreate LocalInitialize(string template)
+        public PersonWithMethodCreate LocalInitialize(string template, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonWithMethodCreate>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Initialize(template));
         }
 
-        public virtual Task<PersonWithMethodCreate> InitializeAsync()
+        public virtual Task<PersonWithMethodCreate> InitializeAsync(CancellationToken cancellationToken = default)
         {
-            return LocalInitializeAsync();
+            return LocalInitializeAsync(cancellationToken);
         }
 
-        public Task<PersonWithMethodCreate> LocalInitializeAsync()
+        public Task<PersonWithMethodCreate> LocalInitializeAsync(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonWithMethodCreate>();
             var templates = ServiceProvider.GetRequiredService<ITemplateService>();

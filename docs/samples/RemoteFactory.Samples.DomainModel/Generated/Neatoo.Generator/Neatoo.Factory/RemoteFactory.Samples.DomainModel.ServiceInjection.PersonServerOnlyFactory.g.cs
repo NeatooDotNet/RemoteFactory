@@ -14,8 +14,8 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IPersonServerOnlyFactory
     {
-        Task<PersonServerOnly?> Fetch();
-        PersonServerOnly Initialize();
+        Task<PersonServerOnly?> Fetch(CancellationToken cancellationToken = default);
+        PersonServerOnly Initialize(CancellationToken cancellationToken = default);
     }
 
     internal class PersonServerOnlyFactory : FactoryBase<PersonServerOnly>, IPersonServerOnlyFactory
@@ -23,7 +23,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonServerOnly?> FetchDelegate();
+        public delegate Task<PersonServerOnly?> FetchDelegate(CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public FetchDelegate FetchProperty { get; }
 
@@ -40,29 +40,29 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             FetchProperty = RemoteFetch;
         }
 
-        public virtual Task<PersonServerOnly?> Fetch()
+        public virtual Task<PersonServerOnly?> Fetch(CancellationToken cancellationToken = default)
         {
-            return FetchProperty();
+            return FetchProperty(cancellationToken);
         }
 
-        public virtual async Task<PersonServerOnly?> RemoteFetch()
+        public virtual async Task<PersonServerOnly?> RemoteFetch(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonServerOnly?>(typeof(FetchDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<PersonServerOnly?>(typeof(FetchDelegate), [], cancellationToken))!;
         }
 
-        public Task<PersonServerOnly?> LocalFetch()
+        public Task<PersonServerOnly?> LocalFetch(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonServerOnly>();
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.Fetch(context));
         }
 
-        public virtual PersonServerOnly Initialize()
+        public virtual PersonServerOnly Initialize(CancellationToken cancellationToken = default)
         {
-            return LocalInitialize();
+            return LocalInitialize(cancellationToken);
         }
 
-        public PersonServerOnly LocalInitialize()
+        public PersonServerOnly LocalInitialize(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<PersonServerOnly>();
             var clientService = ServiceProvider.GetRequiredService<IClientService>();
@@ -76,7 +76,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<FetchDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonServerOnlyFactory>();
-                return () => factory.LocalFetch();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetch(cancellationToken);
             });
             services.AddTransient<PersonServerOnly>();
             // Event registrations

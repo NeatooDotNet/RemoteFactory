@@ -13,8 +13,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface IInsertOnlyFactory
     {
-        InsertOnly Create();
-        InsertOnly Save(InsertOnly target);
+        InsertOnly Create(CancellationToken cancellationToken = default);
+        InsertOnly Save(InsertOnly target, CancellationToken cancellationToken = default);
     }
 
     internal class InsertOnlyFactory : FactorySaveBase<InsertOnly>, IFactorySave<InsertOnly>, IInsertOnlyFactory
@@ -34,33 +34,33 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual InsertOnly Create()
+        public virtual InsertOnly Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public InsertOnly LocalCreate()
+        public InsertOnly LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new InsertOnly());
         }
 
-        public InsertOnly LocalInsert(InsertOnly target)
+        public InsertOnly LocalInsert(InsertOnly target, CancellationToken cancellationToken = default)
         {
             var cTarget = (InsertOnly)target ?? throw new Exception("InsertOnly must implement InsertOnly");
             return DoFactoryMethodCall(cTarget, FactoryOperation.Insert, () => cTarget.Insert());
         }
 
-        public virtual InsertOnly Save(InsertOnly target)
+        public virtual InsertOnly Save(InsertOnly target, CancellationToken cancellationToken = default)
         {
-            return LocalSave(target);
+            return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<InsertOnly>.Save(InsertOnly target)
+        async Task<IFactorySaveMeta?> IFactorySave<InsertOnly>.Save(InsertOnly target, CancellationToken cancellationToken)
         {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target));
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
-        public virtual InsertOnly LocalSave(InsertOnly target)
+        public virtual InsertOnly LocalSave(InsertOnly target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -68,7 +68,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             }
             else if (target.IsNew)
             {
-                return LocalInsert(target);
+                return LocalInsert(target, cancellationToken);
             }
             else
             {

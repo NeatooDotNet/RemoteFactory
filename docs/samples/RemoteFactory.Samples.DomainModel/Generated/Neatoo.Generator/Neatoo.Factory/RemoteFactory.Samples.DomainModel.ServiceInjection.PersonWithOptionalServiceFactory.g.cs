@@ -14,7 +14,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
 {
     public interface IPersonWithOptionalServiceFactory
     {
-        Task<PersonWithOptionalService> Save(PersonWithOptionalService target);
+        Task<PersonWithOptionalService> Save(PersonWithOptionalService target, CancellationToken cancellationToken = default);
     }
 
     internal class PersonWithOptionalServiceFactory : FactorySaveBase<PersonWithOptionalService>, IFactorySave<PersonWithOptionalService>, IPersonWithOptionalServiceFactory
@@ -22,7 +22,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonWithOptionalService> SaveDelegate(PersonWithOptionalService target);
+        public delegate Task<PersonWithOptionalService> SaveDelegate(PersonWithOptionalService target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveDelegate SaveProperty { get; }
 
@@ -39,7 +39,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             SaveProperty = RemoteSave;
         }
 
-        public Task<PersonWithOptionalService> LocalInsert(PersonWithOptionalService target)
+        public Task<PersonWithOptionalService> LocalInsert(PersonWithOptionalService target, CancellationToken cancellationToken = default)
         {
             var cTarget = (PersonWithOptionalService)target ?? throw new Exception("PersonWithOptionalService must implement PersonWithOptionalService");
             var sp = ServiceProvider.GetRequiredService<IServiceProvider>();
@@ -47,22 +47,22 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Insert, () => cTarget.Insert(sp, context));
         }
 
-        public virtual Task<PersonWithOptionalService> Save(PersonWithOptionalService target)
+        public virtual Task<PersonWithOptionalService> Save(PersonWithOptionalService target, CancellationToken cancellationToken = default)
         {
-            return SaveProperty(target);
+            return SaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<PersonWithOptionalService> RemoteSave(PersonWithOptionalService target)
+        public virtual async Task<PersonWithOptionalService> RemoteSave(PersonWithOptionalService target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonWithOptionalService>(typeof(SaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonWithOptionalService>(typeof(SaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<PersonWithOptionalService>.Save(PersonWithOptionalService target)
+        async Task<IFactorySaveMeta?> IFactorySave<PersonWithOptionalService>.Save(PersonWithOptionalService target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<PersonWithOptionalService> LocalSave(PersonWithOptionalService target)
+        public virtual async Task<PersonWithOptionalService> LocalSave(PersonWithOptionalService target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -70,7 +70,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             }
             else if (target.IsNew)
             {
-                return await LocalInsert(target);
+                return await LocalInsert(target, cancellationToken);
             }
             else
             {
@@ -85,7 +85,7 @@ namespace RemoteFactory.Samples.DomainModel.ServiceInjection
             services.AddScoped<SaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonWithOptionalServiceFactory>();
-                return (PersonWithOptionalService target) => factory.LocalSave(target);
+                return (PersonWithOptionalService target, CancellationToken cancellationToken = default) => factory.LocalSave(target, cancellationToken);
             });
             services.AddTransient<PersonWithOptionalService>();
             services.AddScoped<IFactorySave<PersonWithOptionalService>, PersonWithOptionalServiceFactory>();

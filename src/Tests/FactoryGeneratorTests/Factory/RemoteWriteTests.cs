@@ -560,6 +560,7 @@ public class RemoteWriteTests
 		var scopes = ClientServerContainers.Scopes();
 
 		var factory = scopes.client.ServiceProvider.GetRequiredService<IRemoteWriteObjectFactory>();
+		// Reflection Approved
 		var methods = factory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
 
 		foreach (var method in methods)
@@ -573,6 +574,7 @@ public class RemoteWriteTests
 		var scopes = ClientServerContainers.Scopes();
 
 		var factory = scopes.local.ServiceProvider.GetRequiredService<IRemoteWriteObjectFactory>();
+		// Reflection Approved
 		var methods = factory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
 
 		foreach (var method in methods)
@@ -591,13 +593,16 @@ public class RemoteWriteTests
 
 		async Task<RemoteWriteObject?> doSave(RemoteWriteObject remoteWrite)
 		{
-			if (method.GetParameters().Count() == 2)
+			// Exclude CancellationToken from meaningful parameter count
+			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
+
+			if (meaningfulParams.Count == 2)
 			{
-				result = method.Invoke(remoteFactory, [remoteWrite, 1]);
+				result = method.Invoke(remoteFactory, [remoteWrite, 1, default(CancellationToken)]);
 			}
 			else
 			{
-				result = method.Invoke(remoteFactory, [remoteWrite]);
+				result = method.Invoke(remoteFactory, [remoteWrite, default(CancellationToken)]);
 			}
 
 			if (result is Task<RemoteWriteObject?> taskBool)

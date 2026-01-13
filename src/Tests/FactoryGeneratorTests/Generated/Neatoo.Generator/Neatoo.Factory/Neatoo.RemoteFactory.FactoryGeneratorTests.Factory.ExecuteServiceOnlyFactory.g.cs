@@ -12,24 +12,24 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public static partial class ExecuteServiceOnly
     {
-        public delegate Task<int> GetServiceValue();
-        public delegate Task<string> GetCombinedServiceValues();
-        public delegate Task<int> GetServiceValueRemote();
+        public delegate Task<int> GetServiceValue(CancellationToken cancellationToken = default);
+        public delegate Task<string> GetCombinedServiceValues(CancellationToken cancellationToken = default);
+        public delegate Task<int> GetServiceValueRemote(CancellationToken cancellationToken = default);
         internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
         {
             if (remoteLocal == NeatooFactory.Remote)
             {
                 services.AddTransient<ExecuteServiceOnly.GetServiceValue>(cc =>
                 {
-                    return () => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(ExecuteServiceOnly.GetServiceValue), [], default);
+                    return (cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(ExecuteServiceOnly.GetServiceValue), [], cancellationToken);
                 });
                 services.AddTransient<ExecuteServiceOnly.GetCombinedServiceValues>(cc =>
                 {
-                    return () => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteServiceOnly.GetCombinedServiceValues), [], default);
+                    return (cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<string>(typeof(ExecuteServiceOnly.GetCombinedServiceValues), [], cancellationToken);
                 });
                 services.AddTransient<ExecuteServiceOnly.GetServiceValueRemote>(cc =>
                 {
-                    return () => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(ExecuteServiceOnly.GetServiceValueRemote), [], default);
+                    return (cancellationToken) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate<int>(typeof(ExecuteServiceOnly.GetServiceValueRemote), [], cancellationToken);
                 });
             }
 
@@ -37,7 +37,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 services.AddTransient<ExecuteServiceOnly.GetServiceValue>(cc =>
                 {
-                    return () =>
+                    return (CancellationToken cancellationToken = default) =>
                     {
                         var service = cc.GetRequiredService<IService2>();
                         return ExecuteServiceOnly._GetServiceValue(service);
@@ -45,7 +45,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 });
                 services.AddTransient<ExecuteServiceOnly.GetCombinedServiceValues>(cc =>
                 {
-                    return () =>
+                    return (CancellationToken cancellationToken = default) =>
                     {
                         var service2 = cc.GetRequiredService<IService2>();
                         var service3 = cc.GetRequiredService<IService3>();
@@ -54,7 +54,7 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
                 });
                 services.AddTransient<ExecuteServiceOnly.GetServiceValueRemote>(cc =>
                 {
-                    return () =>
+                    return (CancellationToken cancellationToken = default) =>
                     {
                         var service = cc.GetRequiredService<IService2>();
                         return ExecuteServiceOnly._GetServiceValueRemote(service);

@@ -12,7 +12,7 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
 {
     public interface ISimpleRecordExampleFactory
     {
-        SimpleRecordExample Create(string Name, int Value);
+        SimpleRecordExample Create(string Name, int Value, CancellationToken cancellationToken = default);
     }
 
     internal class SimpleRecordExampleFactory : FactoryBase<SimpleRecordExample>, ISimpleRecordExampleFactory
@@ -32,12 +32,12 @@ namespace Neatoo.RemoteFactory.DocsExamples.Concepts
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual SimpleRecordExample Create(string Name, int Value)
+        public virtual SimpleRecordExample Create(string Name, int Value, CancellationToken cancellationToken = default)
         {
-            return LocalCreate(Name, Value);
+            return LocalCreate(Name, Value, cancellationToken);
         }
 
-        public SimpleRecordExample LocalCreate(string Name, int Value)
+        public SimpleRecordExample LocalCreate(string Name, int Value, CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new SimpleRecordExample(Name, Value));
         }

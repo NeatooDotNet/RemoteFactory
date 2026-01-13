@@ -15,45 +15,45 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
 {
     public interface IRemoteReadDataMapperFactory
     {
-        Task<RemoteReadDataMapper> CreateVoid();
-        Task<RemoteReadDataMapper?> CreateBool();
-        Task<RemoteReadDataMapper> CreateTask();
-        Task<RemoteReadDataMapper?> CreateTaskBool();
-        Task<RemoteReadDataMapper> CreateVoid(int? param);
-        Task<RemoteReadDataMapper?> CreateBool(int? param);
-        Task<RemoteReadDataMapper> CreateTask(int? param);
-        Task<RemoteReadDataMapper?> CreateTaskBool(int? param);
-        Task<RemoteReadDataMapper?> CreateTaskBoolFalse(int? param);
-        Task<RemoteReadDataMapper> CreateVoidDep();
-        Task<RemoteReadDataMapper?> CreateBoolTrueDep();
-        Task<RemoteReadDataMapper?> CreateBoolFalseDep();
-        Task<RemoteReadDataMapper> CreateTaskDep();
-        Task<RemoteReadDataMapper?> CreateTaskBoolDep();
-        Task<RemoteReadDataMapper?> CreateTaskBoolFalseDep();
-        Task<RemoteReadDataMapper> CreateVoidDep(int? param);
-        Task<RemoteReadDataMapper?> CreateBoolTrueDep(int? param);
-        Task<RemoteReadDataMapper?> CreateBoolFalseDep(int? param);
-        Task<RemoteReadDataMapper> CreateTaskDep(int? param);
-        Task<RemoteReadDataMapper?> CreateTaskBoolDep(int? param);
-        Task<RemoteReadDataMapper> FetchVoid();
-        Task<RemoteReadDataMapper?> FetchBool();
-        Task<RemoteReadDataMapper> FetchTask();
-        Task<RemoteReadDataMapper?> FetchTaskBool();
-        Task<RemoteReadDataMapper> FetchVoid(int? param);
-        Task<RemoteReadDataMapper?> FetchBool(int? param);
-        Task<RemoteReadDataMapper> FetchTask(int? param);
-        Task<RemoteReadDataMapper?> FetchTaskBool(int? param);
-        Task<RemoteReadDataMapper> FetchVoidDep();
-        Task<RemoteReadDataMapper?> FetchBoolTrueDep();
-        Task<RemoteReadDataMapper?> FetchBoolFalseDep();
-        Task<RemoteReadDataMapper> FetchTaskDep();
-        Task<RemoteReadDataMapper?> FetchTaskBoolDep();
-        Task<RemoteReadDataMapper> FetchVoidDep(int? param);
-        Task<RemoteReadDataMapper?> FetchBoolTrueDep(int? param);
-        Task<RemoteReadDataMapper?> FetchBoolFalseDep(int? param);
-        Task<RemoteReadDataMapper> FetchTaskDep(int? param);
-        Task<RemoteReadDataMapper?> FetchTaskBoolDep(int? param);
-        Task<RemoteReadDataMapper?> FetchTaskBoolFalseDep(int? param);
+        Task<RemoteReadDataMapper> CreateVoid(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateBool(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> CreateTask(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateTaskBool(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> CreateVoid(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateBool(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> CreateTask(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateTaskBool(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> CreateVoidDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateBoolTrueDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateBoolFalseDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> CreateTaskDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateTaskBoolDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateTaskBoolFalseDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> CreateVoidDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> CreateTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchVoid(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchBool(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchTask(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchTaskBool(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchVoid(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchBool(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchTask(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchTaskBool(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchVoidDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchBoolTrueDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchBoolFalseDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchTaskDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchTaskBoolDep(CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchVoidDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper> FetchTaskDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default);
+        Task<RemoteReadDataMapper?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default);
     }
 
     internal class RemoteReadDataMapperFactory : FactoryBase<RemoteReadDataMapper>, IRemoteReadDataMapperFactory
@@ -61,45 +61,45 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<RemoteReadDataMapper> CreateVoidDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateTaskDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateVoid1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> CreateTask1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolFalseDelegate(int? param);
-        public delegate Task<RemoteReadDataMapper> CreateVoidDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateBoolTrueDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateBoolFalseDepDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateTaskDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolFalseDepDelegate();
-        public delegate Task<RemoteReadDataMapper> CreateVoidDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateBoolTrueDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateBoolFalseDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> CreateTaskDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchVoidDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchTaskDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchVoid1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchTask1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBool1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchVoidDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchBoolTrueDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchBoolFalseDepDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchTaskDepDelegate();
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDepDelegate();
-        public delegate Task<RemoteReadDataMapper> FetchVoidDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchBoolTrueDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchBoolFalseDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper> FetchTaskDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDep1Delegate(int? param);
-        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolFalseDepDelegate(int? param);
+        public delegate Task<RemoteReadDataMapper> CreateVoidDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateBoolDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> CreateTaskDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> CreateVoid1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateBool1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> CreateTask1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateTaskBool1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolFalseDelegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> CreateVoidDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateBoolTrueDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateBoolFalseDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> CreateTaskDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolFalseDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> CreateVoidDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateBoolTrueDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateBoolFalseDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> CreateTaskDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> CreateTaskBoolDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchVoidDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchBoolDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchTaskDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchVoid1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchBool1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchTask1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchTaskBool1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchVoidDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchBoolTrueDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchBoolFalseDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchTaskDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDepDelegate(CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchVoidDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchBoolTrueDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchBoolFalseDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper> FetchTaskDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolDep1Delegate(int? param, CancellationToken cancellationToken = default);
+        public delegate Task<RemoteReadDataMapper?> FetchTaskBoolFalseDepDelegate(int? param, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public CreateVoidDelegate CreateVoidProperty { get; }
         public CreateBoolDelegate CreateBoolProperty { get; }
@@ -230,646 +230,646 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             FetchTaskBoolFalseDepProperty = RemoteFetchTaskBoolFalseDep;
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateVoid()
+        public virtual Task<RemoteReadDataMapper> CreateVoid(CancellationToken cancellationToken = default)
         {
-            return CreateVoidProperty();
+            return CreateVoidProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoid()
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoid(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateVoid()
+        public Task<RemoteReadDataMapper> LocalCreateVoid(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid()));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBool()
+        public virtual Task<RemoteReadDataMapper?> CreateBool(CancellationToken cancellationToken = default)
         {
-            return CreateBoolProperty();
+            return CreateBoolProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBool()
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBool(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateBool()
+        public Task<RemoteReadDataMapper?> LocalCreateBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool()));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateTask()
+        public virtual Task<RemoteReadDataMapper> CreateTask(CancellationToken cancellationToken = default)
         {
-            return CreateTaskProperty();
+            return CreateTaskProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTask()
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateTask(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateTask()
+        public Task<RemoteReadDataMapper> LocalCreateTask(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask());
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBool()
+        public virtual Task<RemoteReadDataMapper?> CreateTaskBool(CancellationToken cancellationToken = default)
         {
-            return CreateTaskBoolProperty();
+            return CreateTaskBoolProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBool()
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBool(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateTaskBool()
+        public Task<RemoteReadDataMapper?> LocalCreateTaskBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool());
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateVoid(int? param)
+        public virtual Task<RemoteReadDataMapper> CreateVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateVoid1Property(param);
+            return CreateVoid1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoid1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoid1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoid1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoid1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateVoid1(int? param)
+        public Task<RemoteReadDataMapper> LocalCreateVoid1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoid(param)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBool(int? param)
+        public virtual Task<RemoteReadDataMapper?> CreateBool(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateBool1Property(param);
+            return CreateBool1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBool1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBool1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBool1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBool1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateBool1(int? param)
+        public Task<RemoteReadDataMapper?> LocalCreateBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBool(param)));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateTask(int? param)
+        public virtual Task<RemoteReadDataMapper> CreateTask(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateTask1Property(param);
+            return CreateTask1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTask1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateTask1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTask1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTask1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateTask1(int? param)
+        public Task<RemoteReadDataMapper> LocalCreateTask1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTask(param));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBool(int? param)
+        public virtual Task<RemoteReadDataMapper?> CreateTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateTaskBool1Property(param);
+            return CreateTaskBool1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBool1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBool1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBool1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBool1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateTaskBool1(int? param)
+        public Task<RemoteReadDataMapper?> LocalCreateTaskBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBool(param));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolFalse(int? param)
+        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateTaskBoolFalseProperty(param);
+            return CreateTaskBoolFalseProperty(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolFalse(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolFalseDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolFalseDelegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolFalse(int? param)
+        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolFalse(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalse(param));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateVoidDep()
+        public virtual Task<RemoteReadDataMapper> CreateVoidDep(CancellationToken cancellationToken = default)
         {
-            return CreateVoidDepProperty();
+            return CreateVoidDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoidDep()
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoidDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateVoidDep()
+        public Task<RemoteReadDataMapper> LocalCreateVoidDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBoolTrueDep()
+        public virtual Task<RemoteReadDataMapper?> CreateBoolTrueDep(CancellationToken cancellationToken = default)
         {
-            return CreateBoolTrueDepProperty();
+            return CreateBoolTrueDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolTrueDep()
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolTrueDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolTrueDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolTrueDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateBoolTrueDep()
+        public Task<RemoteReadDataMapper?> LocalCreateBoolTrueDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBoolFalseDep()
+        public virtual Task<RemoteReadDataMapper?> CreateBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return CreateBoolFalseDepProperty();
+            return CreateBoolFalseDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolFalseDep()
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolFalseDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolFalseDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateBoolFalseDep()
+        public Task<RemoteReadDataMapper?> LocalCreateBoolFalseDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateTaskDep()
+        public virtual Task<RemoteReadDataMapper> CreateTaskDep(CancellationToken cancellationToken = default)
         {
-            return CreateTaskDepProperty();
+            return CreateTaskDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTaskDep()
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateTaskDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateTaskDep()
+        public Task<RemoteReadDataMapper> LocalCreateTaskDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolDep()
+        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolDep(CancellationToken cancellationToken = default)
         {
-            return CreateTaskBoolDepProperty();
+            return CreateTaskBoolDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolDep()
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolDep()
+        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolFalseDep()
+        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return CreateTaskBoolFalseDepProperty();
+            return CreateTaskBoolFalseDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolFalseDep()
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolFalseDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolFalseDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolFalseDep()
+        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolFalseDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolFalseDep(service));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateVoidDep(int? param)
+        public virtual Task<RemoteReadDataMapper> CreateVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateVoidDep1Property(param);
+            return CreateVoidDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoidDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateVoidDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateVoidDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateVoidDep1(int? param)
+        public Task<RemoteReadDataMapper> LocalCreateVoidDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Create, () => target.CreateVoidDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBoolTrueDep(int? param)
+        public virtual Task<RemoteReadDataMapper?> CreateBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateBoolTrueDep1Property(param);
+            return CreateBoolTrueDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolTrueDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolTrueDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolTrueDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolTrueDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateBoolTrueDep1(int? param)
+        public Task<RemoteReadDataMapper?> LocalCreateBoolTrueDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolTrueDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateBoolFalseDep(int? param)
+        public virtual Task<RemoteReadDataMapper?> CreateBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateBoolFalseDep1Property(param);
+            return CreateBoolFalseDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolFalseDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateBoolFalseDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolFalseDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateBoolFalseDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateBoolFalseDep1(int? param)
+        public Task<RemoteReadDataMapper?> LocalCreateBoolFalseDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Create, () => target.CreateBoolFalseDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper> CreateTaskDep(int? param)
+        public virtual Task<RemoteReadDataMapper> CreateTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateTaskDep1Property(param);
+            return CreateTaskDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteCreateTaskDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteCreateTaskDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(CreateTaskDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalCreateTaskDep1(int? param)
+        public Task<RemoteReadDataMapper> LocalCreateTaskDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Create, () => target.CreateTaskDep(param, service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolDep(int? param)
+        public virtual Task<RemoteReadDataMapper?> CreateTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return CreateTaskBoolDep1Property(param);
+            return CreateTaskBoolDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteCreateTaskBoolDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(CreateTaskBoolDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolDep1(int? param)
+        public Task<RemoteReadDataMapper?> LocalCreateTaskBoolDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Create, () => target.CreateTaskBoolDep(param, service));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchVoid()
+        public virtual Task<RemoteReadDataMapper> FetchVoid(CancellationToken cancellationToken = default)
         {
-            return FetchVoidProperty();
+            return FetchVoidProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoid()
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoid(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchVoid()
+        public Task<RemoteReadDataMapper> LocalFetchVoid(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid()));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBool()
+        public virtual Task<RemoteReadDataMapper?> FetchBool(CancellationToken cancellationToken = default)
         {
-            return FetchBoolProperty();
+            return FetchBoolProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBool()
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBool(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchBool()
+        public Task<RemoteReadDataMapper?> LocalFetchBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool()));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchTask()
+        public virtual Task<RemoteReadDataMapper> FetchTask(CancellationToken cancellationToken = default)
         {
-            return FetchTaskProperty();
+            return FetchTaskProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTask()
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchTask(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchTask()
+        public Task<RemoteReadDataMapper> LocalFetchTask(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask());
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBool()
+        public virtual Task<RemoteReadDataMapper?> FetchTaskBool(CancellationToken cancellationToken = default)
         {
-            return FetchTaskBoolProperty();
+            return FetchTaskBoolProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBool()
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBool(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchTaskBool()
+        public Task<RemoteReadDataMapper?> LocalFetchTaskBool(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool());
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchVoid(int? param)
+        public virtual Task<RemoteReadDataMapper> FetchVoid(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchVoid1Property(param);
+            return FetchVoid1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoid1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoid1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoid1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoid1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchVoid1(int? param)
+        public Task<RemoteReadDataMapper> LocalFetchVoid1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoid(param)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBool(int? param)
+        public virtual Task<RemoteReadDataMapper?> FetchBool(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchBool1Property(param);
+            return FetchBool1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBool1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBool1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBool1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBool1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchBool1(int? param)
+        public Task<RemoteReadDataMapper?> LocalFetchBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBool(param)));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchTask(int? param)
+        public virtual Task<RemoteReadDataMapper> FetchTask(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchTask1Property(param);
+            return FetchTask1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTask1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchTask1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTask1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTask1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchTask1(int? param)
+        public Task<RemoteReadDataMapper> LocalFetchTask1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTask(param));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBool(int? param)
+        public virtual Task<RemoteReadDataMapper?> FetchTaskBool(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchTaskBool1Property(param);
+            return FetchTaskBool1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBool1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBool1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBool1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBool1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchTaskBool1(int? param)
+        public Task<RemoteReadDataMapper?> LocalFetchTaskBool1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBool(param));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchVoidDep()
+        public virtual Task<RemoteReadDataMapper> FetchVoidDep(CancellationToken cancellationToken = default)
         {
-            return FetchVoidDepProperty();
+            return FetchVoidDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoidDep()
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoidDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchVoidDep()
+        public Task<RemoteReadDataMapper> LocalFetchVoidDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBoolTrueDep()
+        public virtual Task<RemoteReadDataMapper?> FetchBoolTrueDep(CancellationToken cancellationToken = default)
         {
-            return FetchBoolTrueDepProperty();
+            return FetchBoolTrueDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolTrueDep()
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolTrueDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolTrueDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolTrueDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchBoolTrueDep()
+        public Task<RemoteReadDataMapper?> LocalFetchBoolTrueDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBoolFalseDep()
+        public virtual Task<RemoteReadDataMapper?> FetchBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return FetchBoolFalseDepProperty();
+            return FetchBoolFalseDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolFalseDep()
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolFalseDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolFalseDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolFalseDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchBoolFalseDep()
+        public Task<RemoteReadDataMapper?> LocalFetchBoolFalseDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(service)));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchTaskDep()
+        public virtual Task<RemoteReadDataMapper> FetchTaskDep(CancellationToken cancellationToken = default)
         {
-            return FetchTaskDepProperty();
+            return FetchTaskDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTaskDep()
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchTaskDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchTaskDep()
+        public Task<RemoteReadDataMapper> LocalFetchTaskDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolDep()
+        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolDep(CancellationToken cancellationToken = default)
         {
-            return FetchTaskBoolDepProperty();
+            return FetchTaskBoolDepProperty(cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolDep()
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolDep(CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDepDelegate), [], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDepDelegate), [], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchTaskBoolDep()
+        public Task<RemoteReadDataMapper?> LocalFetchTaskBoolDep(CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(service));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchVoidDep(int? param)
+        public virtual Task<RemoteReadDataMapper> FetchVoidDep(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchVoidDep1Property(param);
+            return FetchVoidDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoidDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchVoidDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchVoidDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchVoidDep1(int? param)
+        public Task<RemoteReadDataMapper> LocalFetchVoidDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.FetchVoidDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBoolTrueDep(int? param)
+        public virtual Task<RemoteReadDataMapper?> FetchBoolTrueDep(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchBoolTrueDep1Property(param);
+            return FetchBoolTrueDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolTrueDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolTrueDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolTrueDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolTrueDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchBoolTrueDep1(int? param)
+        public Task<RemoteReadDataMapper?> LocalFetchBoolTrueDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolTrueDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchBoolFalseDep(int? param)
+        public virtual Task<RemoteReadDataMapper?> FetchBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchBoolFalseDep1Property(param);
+            return FetchBoolFalseDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolFalseDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchBoolFalseDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolFalseDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchBoolFalseDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchBoolFalseDep1(int? param)
+        public Task<RemoteReadDataMapper?> LocalFetchBoolFalseDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return Task.FromResult(DoFactoryMethodCallBool(target, FactoryOperation.Fetch, () => target.FetchBoolFalseDep(param, service)));
         }
 
-        public virtual Task<RemoteReadDataMapper> FetchTaskDep(int? param)
+        public virtual Task<RemoteReadDataMapper> FetchTaskDep(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchTaskDep1Property(param);
+            return FetchTaskDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper> RemoteFetchTaskDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper> RemoteFetchTaskDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<RemoteReadDataMapper>(typeof(FetchTaskDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper> LocalFetchTaskDep1(int? param)
+        public Task<RemoteReadDataMapper> LocalFetchTaskDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallAsync(target, FactoryOperation.Fetch, () => target.FetchTaskDep(param, service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolDep(int? param)
+        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolDep(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchTaskBoolDep1Property(param);
+            return FetchTaskBoolDep1Property(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolDep1(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolDep1(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDep1Delegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolDep1Delegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchTaskBoolDep1(int? param)
+        public Task<RemoteReadDataMapper?> LocalFetchTaskBoolDep1(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
             return DoFactoryMethodCallBoolAsync(target, FactoryOperation.Fetch, () => target.FetchTaskBoolDep(param, service));
         }
 
-        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolFalseDep(int? param)
+        public virtual Task<RemoteReadDataMapper?> FetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return FetchTaskBoolFalseDepProperty(param);
+            return FetchTaskBoolFalseDepProperty(param, cancellationToken);
         }
 
-        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolFalseDep(int? param)
+        public virtual async Task<RemoteReadDataMapper?> RemoteFetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolFalseDepDelegate), [param], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteReadDataMapper?>(typeof(FetchTaskBoolFalseDepDelegate), [param], cancellationToken))!;
         }
 
-        public Task<RemoteReadDataMapper?> LocalFetchTaskBoolFalseDep(int? param)
+        public Task<RemoteReadDataMapper?> LocalFetchTaskBoolFalseDep(int? param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<RemoteReadDataMapper>();
             var service = ServiceProvider.GetRequiredService<IService>();
@@ -883,197 +883,197 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             services.AddScoped<CreateVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateVoid();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateVoid(cancellationToken);
             });
             services.AddScoped<CreateBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateBool();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateBool(cancellationToken);
             });
             services.AddScoped<CreateTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateTask();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateTask(cancellationToken);
             });
             services.AddScoped<CreateTaskBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateTaskBool();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateTaskBool(cancellationToken);
             });
             services.AddScoped<CreateVoid1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateVoid1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateVoid1(param, cancellationToken);
             });
             services.AddScoped<CreateBool1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateBool1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateBool1(param, cancellationToken);
             });
             services.AddScoped<CreateTask1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateTask1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTask1(param, cancellationToken);
             });
             services.AddScoped<CreateTaskBool1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateTaskBool1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskBool1(param, cancellationToken);
             });
             services.AddScoped<CreateTaskBoolFalseDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateTaskBoolFalse(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskBoolFalse(param, cancellationToken);
             });
             services.AddScoped<CreateVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateVoidDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateVoidDep(cancellationToken);
             });
             services.AddScoped<CreateBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateBoolTrueDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateBoolTrueDep(cancellationToken);
             });
             services.AddScoped<CreateBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateBoolFalseDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateBoolFalseDep(cancellationToken);
             });
             services.AddScoped<CreateTaskDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateTaskDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateTaskDep(cancellationToken);
             });
             services.AddScoped<CreateTaskBoolDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateTaskBoolDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateTaskBoolDep(cancellationToken);
             });
             services.AddScoped<CreateTaskBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalCreateTaskBoolFalseDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalCreateTaskBoolFalseDep(cancellationToken);
             });
             services.AddScoped<CreateVoidDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateVoidDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateVoidDep1(param, cancellationToken);
             });
             services.AddScoped<CreateBoolTrueDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateBoolTrueDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateBoolTrueDep1(param, cancellationToken);
             });
             services.AddScoped<CreateBoolFalseDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateBoolFalseDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateBoolFalseDep1(param, cancellationToken);
             });
             services.AddScoped<CreateTaskDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateTaskDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskDep1(param, cancellationToken);
             });
             services.AddScoped<CreateTaskBoolDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalCreateTaskBoolDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalCreateTaskBoolDep1(param, cancellationToken);
             });
             services.AddScoped<FetchVoidDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchVoid();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchVoid(cancellationToken);
             });
             services.AddScoped<FetchBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchBool();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchBool(cancellationToken);
             });
             services.AddScoped<FetchTaskDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchTask();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchTask(cancellationToken);
             });
             services.AddScoped<FetchTaskBoolDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchTaskBool();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchTaskBool(cancellationToken);
             });
             services.AddScoped<FetchVoid1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchVoid1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchVoid1(param, cancellationToken);
             });
             services.AddScoped<FetchBool1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchBool1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchBool1(param, cancellationToken);
             });
             services.AddScoped<FetchTask1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchTask1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTask1(param, cancellationToken);
             });
             services.AddScoped<FetchTaskBool1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchTaskBool1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskBool1(param, cancellationToken);
             });
             services.AddScoped<FetchVoidDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchVoidDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchVoidDep(cancellationToken);
             });
             services.AddScoped<FetchBoolTrueDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchBoolTrueDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchBoolTrueDep(cancellationToken);
             });
             services.AddScoped<FetchBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchBoolFalseDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchBoolFalseDep(cancellationToken);
             });
             services.AddScoped<FetchTaskDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchTaskDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchTaskDep(cancellationToken);
             });
             services.AddScoped<FetchTaskBoolDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return () => factory.LocalFetchTaskBoolDep();
+                return (CancellationToken cancellationToken = default) => factory.LocalFetchTaskBoolDep(cancellationToken);
             });
             services.AddScoped<FetchVoidDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchVoidDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchVoidDep1(param, cancellationToken);
             });
             services.AddScoped<FetchBoolTrueDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchBoolTrueDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchBoolTrueDep1(param, cancellationToken);
             });
             services.AddScoped<FetchBoolFalseDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchBoolFalseDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchBoolFalseDep1(param, cancellationToken);
             });
             services.AddScoped<FetchTaskDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchTaskDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskDep1(param, cancellationToken);
             });
             services.AddScoped<FetchTaskBoolDep1Delegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchTaskBoolDep1(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskBoolDep1(param, cancellationToken);
             });
             services.AddScoped<FetchTaskBoolFalseDepDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<RemoteReadDataMapperFactory>();
-                return (int? param) => factory.LocalFetchTaskBoolFalseDep(param);
+                return (int? param, CancellationToken cancellationToken = default) => factory.LocalFetchTaskBoolFalseDep(param, cancellationToken);
             });
             services.AddTransient<RemoteReadDataMapper>();
             // Event registrations

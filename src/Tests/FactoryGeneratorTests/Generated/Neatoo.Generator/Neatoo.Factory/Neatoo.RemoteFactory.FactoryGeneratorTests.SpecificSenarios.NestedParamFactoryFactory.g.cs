@@ -13,10 +13,10 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
 {
     public interface INestedParamFactoryFactory
     {
-        NestedParamFactory Create();
-        NestedParamFactory Create(int param);
-        NestedParamFactory Fetch(string param);
-        NestedParamFactory Fetch(int intParam, string stringParam);
+        NestedParamFactory Create(CancellationToken cancellationToken = default);
+        NestedParamFactory Create(int param, CancellationToken cancellationToken = default);
+        NestedParamFactory Fetch(string param, CancellationToken cancellationToken = default);
+        NestedParamFactory Fetch(int intParam, string stringParam, CancellationToken cancellationToken = default);
     }
 
     internal class NestedParamFactoryFactory : FactoryBase<NestedParamFactory>, INestedParamFactoryFactory
@@ -36,44 +36,44 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             this.MakeRemoteDelegateRequest = remoteMethodDelegate;
         }
 
-        public virtual NestedParamFactory Create()
+        public virtual NestedParamFactory Create(CancellationToken cancellationToken = default)
         {
-            return LocalCreate();
+            return LocalCreate(cancellationToken);
         }
 
-        public NestedParamFactory LocalCreate()
+        public NestedParamFactory LocalCreate(CancellationToken cancellationToken = default)
         {
             return DoFactoryMethodCall(FactoryOperation.Create, () => new NestedParamFactory());
         }
 
-        public virtual NestedParamFactory Create(int param)
+        public virtual NestedParamFactory Create(int param, CancellationToken cancellationToken = default)
         {
-            return LocalCreate1(param);
+            return LocalCreate1(param, cancellationToken);
         }
 
-        public NestedParamFactory LocalCreate1(int param)
+        public NestedParamFactory LocalCreate1(int param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedParamFactory>();
             return DoFactoryMethodCall(target, FactoryOperation.Create, () => target.Create(param));
         }
 
-        public virtual NestedParamFactory Fetch(string param)
+        public virtual NestedParamFactory Fetch(string param, CancellationToken cancellationToken = default)
         {
-            return LocalFetch(param);
+            return LocalFetch(param, cancellationToken);
         }
 
-        public NestedParamFactory LocalFetch(string param)
+        public NestedParamFactory LocalFetch(string param, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedParamFactory>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.Fetch(param));
         }
 
-        public virtual NestedParamFactory Fetch(int intParam, string stringParam)
+        public virtual NestedParamFactory Fetch(int intParam, string stringParam, CancellationToken cancellationToken = default)
         {
-            return LocalFetch1(intParam, stringParam);
+            return LocalFetch1(intParam, stringParam, cancellationToken);
         }
 
-        public NestedParamFactory LocalFetch1(int intParam, string stringParam)
+        public NestedParamFactory LocalFetch1(int intParam, string stringParam, CancellationToken cancellationToken = default)
         {
             var target = ServiceProvider.GetRequiredService<NestedParamFactory>();
             return DoFactoryMethodCall(target, FactoryOperation.Fetch, () => target.Fetch(intParam, stringParam));

@@ -11,7 +11,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.WriteExamples
 {
     public interface IPersonUpdateExampleFactory
     {
-        Task<PersonUpdateExample> Save(PersonUpdateExample target);
+        Task<PersonUpdateExample> Save(PersonUpdateExample target, CancellationToken cancellationToken = default);
     }
 
     internal class PersonUpdateExampleFactory : FactorySaveBase<PersonUpdateExample>, IFactorySave<PersonUpdateExample>, IPersonUpdateExampleFactory
@@ -19,7 +19,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.WriteExamples
         private readonly IServiceProvider ServiceProvider;
         private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
         // Delegates
-        public delegate Task<PersonUpdateExample> SaveDelegate(PersonUpdateExample target);
+        public delegate Task<PersonUpdateExample> SaveDelegate(PersonUpdateExample target, CancellationToken cancellationToken = default);
         // Delegate Properties to provide Local or Remote fork in execution
         public SaveDelegate SaveProperty { get; }
 
@@ -36,29 +36,29 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.WriteExamples
             SaveProperty = RemoteSave;
         }
 
-        public Task<PersonUpdateExample> LocalUpdate(PersonUpdateExample target)
+        public Task<PersonUpdateExample> LocalUpdate(PersonUpdateExample target, CancellationToken cancellationToken = default)
         {
             var cTarget = (PersonUpdateExample)target ?? throw new Exception("PersonUpdateExample must implement PersonUpdateExample");
             var context = ServiceProvider.GetRequiredService<IPersonContext>();
             return DoFactoryMethodCallAsync(cTarget, FactoryOperation.Update, () => cTarget.Update(context));
         }
 
-        public virtual Task<PersonUpdateExample> Save(PersonUpdateExample target)
+        public virtual Task<PersonUpdateExample> Save(PersonUpdateExample target, CancellationToken cancellationToken = default)
         {
-            return SaveProperty(target);
+            return SaveProperty(target, cancellationToken);
         }
 
-        public virtual async Task<PersonUpdateExample> RemoteSave(PersonUpdateExample target)
+        public virtual async Task<PersonUpdateExample> RemoteSave(PersonUpdateExample target, CancellationToken cancellationToken = default)
         {
-            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonUpdateExample>(typeof(SaveDelegate), [target], default))!;
+            return (await MakeRemoteDelegateRequest!.ForDelegate<PersonUpdateExample>(typeof(SaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<PersonUpdateExample>.Save(PersonUpdateExample target)
+        async Task<IFactorySaveMeta?> IFactorySave<PersonUpdateExample>.Save(PersonUpdateExample target, CancellationToken cancellationToken)
         {
-            return (IFactorySaveMeta? )await Save(target);
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
-        public virtual async Task<PersonUpdateExample> LocalSave(PersonUpdateExample target)
+        public virtual async Task<PersonUpdateExample> LocalSave(PersonUpdateExample target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
             {
@@ -70,7 +70,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.WriteExamples
             }
             else
             {
-                return await LocalUpdate(target);
+                return await LocalUpdate(target, cancellationToken);
             }
         }
 
@@ -81,7 +81,7 @@ namespace RemoteFactory.Samples.DomainModel.FactoryOperations.WriteExamples
             services.AddScoped<SaveDelegate>(cc =>
             {
                 var factory = cc.GetRequiredService<PersonUpdateExampleFactory>();
-                return (PersonUpdateExample target) => factory.LocalSave(target);
+                return (PersonUpdateExample target, CancellationToken cancellationToken = default) => factory.LocalSave(target, cancellationToken);
             });
             services.AddTransient<PersonUpdateExample>();
             services.AddScoped<IFactorySave<PersonUpdateExample>, PersonUpdateExampleFactory>();
