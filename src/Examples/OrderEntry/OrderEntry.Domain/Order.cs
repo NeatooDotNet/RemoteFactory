@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace OrderEntry.Domain;
 
+#region docs:concepts/client-server-separation:order-entity
 /// <summary>
 /// Order aggregate root with client-server separation.
 /// Client: Placeholder methods (never called directly - factory handles remote calls).
@@ -160,7 +161,7 @@ internal class Order : IOrder
 
         // Sync lines: remove deleted, update existing, add new
         var lineIds = Lines.Select(l => l.Id).ToHashSet();
-        
+
         // Remove lines not in current collection
         var toRemove = entity.Lines.Where(e => !lineIds.Contains(e.Id)).ToList();
         foreach (var line in toRemove)
@@ -207,3 +208,4 @@ internal class Order : IOrder
     }
 #endif
 }
+#endregion

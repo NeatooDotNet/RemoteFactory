@@ -54,64 +54,220 @@ The `[assembly: FactoryMode]` attribute controls how factories are generated:
 
 **Client assembly:**
 
-<!-- pseudo:factory-mode-remote-only -->
+<!-- snippet: docs:concepts/client-server-separation:factory-mode-remote-only -->
 ```csharp
 using Neatoo.RemoteFactory;
 
 [assembly: FactoryMode(FactoryMode.RemoteOnly)]
 ```
+<!-- /snippet -->
 
 ## Entity Structure
 
 Entities use `#if CLIENT` / `#else` to provide different implementations:
 
-<!-- pseudo:entity-with-conditional-compilation -->
+<!-- snippet: docs:concepts/client-server-separation:order-entity -->
 ```csharp
+/// <summary>
+/// Order aggregate root with client-server separation.
+/// Client: Placeholder methods (never called directly - factory handles remote calls).
+/// Server: Full implementations with [Service] parameters including child factories.
+/// </summary>
 [Factory]
 internal class Order : IOrder
 {
-    // Shared - compiled by both client and server
     public Guid Id { get; set; }
-    public string? CustomerName { get; set; }
-    public IOrderLineList Lines { get; set; }
+
+    [Required(ErrorMessage = "Customer name is required")]
+    public string? CustomerName { get; set { field = value; OnPropertyChanged(); } }
+
+    public DateTime OrderDate { get; set { field = value; OnPropertyChanged(); } }
+
+    public decimal Total => Lines?.Sum(l => l.LineTotal) ?? 0;
+
+    /// <summary>
+    /// Child collection of order lines.
+    /// </summary>
+    public IOrderLineList Lines { get; set; } = null!;
+
+    public bool IsDeleted { get; set; }
+    public bool IsNew { get; set; } = true;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 
 #if CLIENT
-    // Client: Placeholder methods that throw if called directly
-    // The factory generates remote HTTP stubs for these
+    // CLIENT: Placeholder methods - RemoteOnly factory generates remote stubs only
+    // These method signatures define what the factory will generate.
+    // The implementations throw if called directly (they shouldn't be).
+
     [Remote, Create]
     public void Create()
     {
-        throw new InvalidOperationException("Call through IOrderFactory");
+        throw new InvalidOperationException("Client should call through IOrderFactory.Create()");
     }
 
     [Remote, Fetch]
     public Task Fetch(Guid id)
     {
-        throw new InvalidOperationException("Call through IOrderFactory");
+        throw new InvalidOperationException("Client should call through IOrderFactory.Fetch()");
     }
+
+    [Remote, Insert]
+    public Task Insert()
+    {
+        throw new InvalidOperationException("Client should call through IOrderFactory.Save()");
+    }
+
+    [Remote, Update]
+    public Task Update()
+    {
+        throw new InvalidOperationException("Client should call through IOrderFactory.Save()");
+    }
+
+    [Remote, Delete]
+    public Task Delete()
+    {
+        throw new InvalidOperationException("Client should call through IOrderFactory.Save()");
+    }
+
 #else
-    // Server: Full implementations with [Service] parameters
+    // SERVER: Full implementations with [Service] parameters
+
+    /// <summary>
+    /// Server-side Create with child factory injection.
+    /// Creates a new order with an empty Lines collection.
+    /// </summary>
     [Remote, Create]
     public void Create([Service] IOrderLineListFactory lineListFactory)
     {
         Id = Guid.NewGuid();
+        OrderDate = DateTime.Now;
         Lines = lineListFactory.Create();
+        IsNew = true;
     }
 
+    /// <summary>
+    /// Server-side Fetch with EF and child factory.
+    /// Loads order and its lines from database.
+    /// </summary>
     [Remote, Fetch]
     public async Task Fetch(
         Guid id,
-        [Service] IDbContext db,
+        [Service] IOrderEntryContext db,
         [Service] IOrderLineListFactory lineListFactory)
     {
-        var entity = await db.Orders.Include(o => o.Lines).FirstAsync(o => o.Id == id);
+        var entity = await db.Orders
+            .Include(o => o.Lines)
+            .FirstAsync(o => o.Id == id);
+
         Id = entity.Id;
         CustomerName = entity.CustomerName;
+        OrderDate = entity.OrderDate;
         Lines = lineListFactory.Fetch(entity.Lines);
+        IsNew = false;
+    }
+
+    /// <summary>
+    /// Server-side Insert - persists new order and lines to database.
+    /// </summary>
+    [Remote, Insert]
+    public async Task Insert([Service] IOrderEntryContext db)
+    {
+        var entity = new OrderEntity
+        {
+            Id = Id,
+            CustomerName = CustomerName!,
+            OrderDate = OrderDate,
+            Total = Total
+        };
+
+        // Add lines to entity
+        foreach (var line in Lines)
+        {
+            entity.Lines.Add(new OrderLineEntity
+            {
+                Id = line.Id,
+                OrderId = Id,
+                ProductName = line.ProductName!,
+                Quantity = line.Quantity,
+                UnitPrice = line.UnitPrice
+            });
+        }
+
+        db.Orders.Add(entity);
+        await db.SaveChangesAsync();
+        IsNew = false;
+    }
+
+    /// <summary>
+    /// Server-side Update - updates order and syncs lines.
+    /// </summary>
+    [Remote, Update]
+    public async Task Update([Service] IOrderEntryContext db)
+    {
+        var entity = await db.Orders
+            .Include(o => o.Lines)
+            .FirstAsync(o => o.Id == Id);
+
+        entity.CustomerName = CustomerName!;
+        entity.Total = Total;
+
+        // Sync lines: remove deleted, update existing, add new
+        var lineIds = Lines.Select(l => l.Id).ToHashSet();
+
+        // Remove lines not in current collection
+        var toRemove = entity.Lines.Where(e => !lineIds.Contains(e.Id)).ToList();
+        foreach (var line in toRemove)
+        {
+            entity.Lines.Remove(line);
+        }
+
+        // Update existing and add new
+        foreach (var line in Lines)
+        {
+            var existingLine = entity.Lines.FirstOrDefault(e => e.Id == line.Id);
+            if (existingLine != null)
+            {
+                existingLine.ProductName = line.ProductName!;
+                existingLine.Quantity = line.Quantity;
+                existingLine.UnitPrice = line.UnitPrice;
+            }
+            else
+            {
+                entity.Lines.Add(new OrderLineEntity
+                {
+                    Id = line.Id,
+                    OrderId = Id,
+                    ProductName = line.ProductName!,
+                    Quantity = line.Quantity,
+                    UnitPrice = line.UnitPrice
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Server-side Delete - removes order from database.
+    /// Lines are cascade deleted by EF.
+    /// </summary>
+    [Remote, Delete]
+    public async Task Delete([Service] IOrderEntryContext db)
+    {
+        var entity = await db.Orders.FirstAsync(o => o.Id == Id);
+        db.Orders.Remove(entity);
+        await db.SaveChangesAsync();
     }
 #endif
 }
 ```
+<!-- /snippet -->
 
 ## What Goes Where
 
@@ -235,18 +391,39 @@ internal class OrderFactory : IOrderFactory
 
 Child entities without server dependencies can use local `[Create]`:
 
-<!-- pseudo:simple-child-entity -->
+<!-- snippet: docs:concepts/client-server-separation:simple-child-entity -->
 ```csharp
+/// <summary>
+/// Order line item entity.
+/// Simple entity with local [Create] - runs on both client and server.
+/// </summary>
 [Factory]
 internal class OrderLine : IOrderLine
 {
     public Guid Id { get; set; }
-    public string? ProductName { get; set; }
-    public int Quantity { get; set; }
-    public decimal UnitPrice { get; set; }
 
-    // Local Create - works on both client and server
-    // No #if CLIENT needed
+    [Required(ErrorMessage = "Product name is required")]
+    public string? ProductName { get; set { field = value; OnPropertyChanged(); } }
+
+    [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1")]
+    public int Quantity { get; set { field = value; OnPropertyChanged(); OnPropertyChanged(nameof(LineTotal)); } } = 1;
+
+    [Range(0.01, double.MaxValue, ErrorMessage = "Unit price must be positive")]
+    public decimal UnitPrice { get; set { field = value; OnPropertyChanged(); OnPropertyChanged(nameof(LineTotal)); } }
+
+    public decimal LineTotal => Quantity * UnitPrice;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    /// <summary>
+    /// Local Create - runs on both client and server.
+    /// No [Remote] attribute because this doesn't need server-side services.
+    /// </summary>
     [Create]
     public OrderLine()
     {
@@ -254,7 +431,10 @@ internal class OrderLine : IOrderLine
     }
 
 #if !CLIENT
-    // Server-only Fetch for loading from database
+    /// <summary>
+    /// Server-only Fetch - loads line from EF entity.
+    /// Called by OrderLineList.Fetch to populate children.
+    /// </summary>
     [Fetch]
     public void Fetch(OrderLineEntity entity)
     {
@@ -266,6 +446,7 @@ internal class OrderLine : IOrderLine
 #endif
 }
 ```
+<!-- /snippet -->
 
 ## Validation
 

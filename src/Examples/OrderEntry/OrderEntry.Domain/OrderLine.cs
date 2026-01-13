@@ -8,6 +8,7 @@ using OrderEntry.Ef;
 
 namespace OrderEntry.Domain;
 
+#region docs:concepts/client-server-separation:simple-child-entity
 /// <summary>
 /// Order line item entity.
 /// Simple entity with local [Create] - runs on both client and server.
@@ -60,3 +61,4 @@ internal class OrderLine : IOrderLine
     }
 #endif
 }
+#endregion

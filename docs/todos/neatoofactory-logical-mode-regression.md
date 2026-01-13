@@ -94,14 +94,53 @@ See commit: `0bec5a4` in Neatoo repository.
 
 ## Tasks
 
-- [ ] Investigate why `Logical` mode doesn't register `IFactorySave<T>`
-- [ ] Investigate why `Logical` mode has parameter count mismatch with `[Remote]` methods
-- [ ] Determine if `Logical` mode ever supported `[Remote]` methods or if this is by design
-- [ ] If by design, document that `Logical` mode only works for entities without `[Remote]` attributes
-- [ ] If regression, fix the generator to properly handle `[Remote]` methods in `Logical` mode
+- [x] Investigate why `Logical` mode doesn't register `IFactorySave<T>`
+- [x] Investigate why `Logical` mode has parameter count mismatch with `[Remote]` methods
+- [x] Determine if `Logical` mode ever supported `[Remote]` methods or if this is by design
+- [x] ~~If by design, document that `Logical` mode only works for entities without `[Remote]` attributes~~
+- [x] If regression, fix the generator to properly handle `[Remote]` methods in `Logical` mode
+
+## Resolution (2026-01-13)
+
+**Fixed by RemoteFactory 10.8.0** - The regression was fixed as part of the "optional CancellationToken on all factory methods" feature (commit `eab7726`).
+
+### Verification
+- Upgraded Neatoo to RemoteFactory 10.9.0
+- Added test `PersonSave_DirectSave_ShouldWork` that uses `person.Save()` directly in Logical mode
+- Test **passes** with 10.9.0, **fails** with 10.7.0
+- All 1,921 Neatoo tests pass
+
+## Investigation Results (2026-01-13)
+
+### Finding: RemoteFactory Logical mode works correctly
+
+New tests added in `src/Tests/FactoryGeneratorTests/Factory/LogicalModeTests.cs` prove that:
+
+1. **`IFactorySave<T>` is registered and resolvable** in Logical mode
+2. **`IFactorySave<T>.Save()` works correctly** for Insert, Update, and Delete operations
+3. **`factory.Save()` works correctly** with no parameter count mismatch
+4. **`[Service]` parameters work correctly** in Logical mode
+5. **Logical mode behaves identically to Server mode** for all save operations
+
+All 13 new tests pass across net8.0, net9.0, and net10.0.
+
+### Conclusion: Bug is NOT in RemoteFactory
+
+The bug described in this todo is **not a RemoteFactory issue**. The issue must be in the **Neatoo project**:
+
+1. **EntityBase implementation**: How `EntityBase.Save()` resolves or uses `IFactorySave<T>`
+2. **Test project configuration**: Possibly using `[assembly: FactoryMode(FactoryMode.RemoteOnly)]` when it should use `Full`
+3. **Entity method signatures**: If the Neatoo entity has extra parameters beyond `target`, `[Service]`, and `CancellationToken`, the "default" save method won't be generated
+
+### Next Steps (in Neatoo repository)
+
+1. Check if the test project has `[assembly: FactoryMode(FactoryMode.RemoteOnly)]` - if so, that's the issue
+2. Verify the Person entity's `Insert`/`Update`/`Delete` method signatures match the pattern expected for `IFactorySave<T>`
+3. Check how `EntityBase.Save()` resolves `IFactorySave<T>` - the error message comes from Neatoo, not RemoteFactory
 
 ## Related Files
 
 - Neatoo: `src/Examples/Person/Person.DomainModel/Person.cs`
 - Neatoo: `src/Examples/Person/Person.DomainModel.Tests/Integration Tests/PersonIntegrationTests.cs`
 - RemoteFactory: Factory generator code that produces `FactoryServiceRegistrar`
+- **NEW**: RemoteFactory: `src/Tests/FactoryGeneratorTests/Factory/LogicalModeTests.cs` - Tests proving Logical mode works

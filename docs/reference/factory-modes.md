@@ -12,6 +12,7 @@ The `NeatooFactory` enum determines how factories execute operations. This docum
 
 ## NeatooFactory Enum
 
+<!-- pseudo:neatoo-factory-enum -->
 ```csharp
 public enum NeatooFactory
 {
@@ -38,13 +39,15 @@ Used in ASP.NET Core server applications.
 
 ### Configuration
 
+<!-- snippet: docs:reference/factory-modes:server-configuration -->
 ```csharp
 // Using the AspNetCore helper (recommended)
-builder.Services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly);
+services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly);
 
 // Or using the base method directly
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(IPersonModel).Assembly);
+services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(IPersonModel).Assembly);
 ```
+<!-- /snippet -->
 
 ### Behavior
 
@@ -58,6 +61,7 @@ builder.Services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(IPersonMode
 
 ### What Gets Registered
 
+<!-- pseudo:server-registrations -->
 ```csharp
 // Factories
 services.AddScoped<PersonModelFactory>();
@@ -79,6 +83,7 @@ services.AddTransient<HandleRemoteDelegateRequest>(s => LocalServer.HandlePortal
 
 The factory constructor without `IMakeRemoteDelegateRequest`:
 
+<!-- pseudo:server-constructor -->
 ```csharp
 public PersonModelFactory(
     IServiceProvider serviceProvider,
@@ -94,15 +99,17 @@ Used in client applications (Blazor WASM, WPF, etc.).
 
 ### Configuration
 
+<!-- snippet: docs:reference/factory-modes:remote-configuration -->
 ```csharp
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IPersonModel).Assembly);
+services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IPersonModel).Assembly);
 
 // Must also configure HTTP client
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 {
     return new HttpClient { BaseAddress = new Uri("https://your-server.com/") };
 });
 ```
+<!-- /snippet -->
 
 ### Behavior
 
@@ -117,6 +124,7 @@ builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =
 
 ### What Gets Registered
 
+<!-- pseudo:remote-registrations -->
 ```csharp
 // Factories
 services.AddScoped<PersonModelFactory>();
@@ -140,6 +148,7 @@ services.AddTransient(sp => {
 
 The factory constructor with `IMakeRemoteDelegateRequest`:
 
+<!-- pseudo:remote-constructor -->
 ```csharp
 public PersonModelFactory(
     IServiceProvider serviceProvider,
@@ -152,15 +161,16 @@ public PersonModelFactory(
 
 ### HTTP Client Configuration
 
+<!-- snippet: docs:reference/factory-modes:http-client-configuration -->
 ```csharp
 // Basic configuration
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 {
     return new HttpClient { BaseAddress = new Uri("https://api.example.com/") };
 });
 
 // With authentication
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 {
     var tokenProvider = sp.GetRequiredService<ITokenProvider>();
     var client = new HttpClient { BaseAddress = new Uri("https://api.example.com/") };
@@ -170,7 +180,7 @@ builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =
 });
 
 // With custom headers
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 {
     var client = new HttpClient { BaseAddress = new Uri("https://api.example.com/") };
     client.DefaultRequestHeaders.Add("X-Api-Key", "your-api-key");
@@ -178,6 +188,7 @@ builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =
     return client;
 });
 ```
+<!-- /snippet -->
 
 ## Logical Mode
 
@@ -185,9 +196,11 @@ Used for testing or single-tier applications.
 
 ### Configuration
 
+<!-- snippet: docs:reference/factory-modes:logical-configuration -->
 ```csharp
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IPersonModel).Assembly);
+services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IPersonModel).Assembly);
 ```
+<!-- /snippet -->
 
 ### Behavior
 
@@ -202,6 +215,7 @@ builder.Services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IPersonMod
 
 ### What Gets Registered
 
+<!-- pseudo:logical-registrations -->
 ```csharp
 // Same factory registrations as Remote mode
 services.AddScoped<PersonModelFactory>();
@@ -225,19 +239,20 @@ Logical mode serializes and deserializes objects even though no HTTP call is mad
 
 ### Use Cases
 
+<!-- snippet: docs:reference/factory-modes:logical-use-cases -->
 ```csharp
 // Unit testing
-[Test]
-public async Task TestFetchPerson()
+[Fact]
+public void TestCreatePerson()
 {
     var services = new ServiceCollection();
     services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IPersonModel).Assembly);
-    services.AddScoped<IPersonContext, InMemoryPersonContext>();
 
     var provider = services.BuildServiceProvider();
-    var factory = provider.GetRequiredService<IPersonModelFactory>();
+    using var scope = provider.CreateScope();
+    var factory = scope.ServiceProvider.GetRequiredService<IPersonModelFactory>();
 
-    var person = await factory.Fetch(123);
+    var person = factory.Create();
     Assert.NotNull(person);
 }
 
@@ -248,11 +263,11 @@ public class DesktopApp
     {
         var services = new ServiceCollection();
         services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IPersonModel).Assembly);
-        services.AddDbContext<AppDbContext>();
         // No HTTP, no server - everything local
     }
 }
 ```
+<!-- /snippet -->
 
 ## Mode Comparison Table
 
@@ -270,9 +285,10 @@ public class DesktopApp
 
 A single codebase can run in different modes:
 
+<!-- snippet: docs:reference/factory-modes:switching-modes -->
 ```csharp
 // Determined by configuration
-var mode = configuration["FactoryMode"] switch
+var mode = factoryModeSetting switch
 {
     "Server" => NeatooFactory.Server,
     "Remote" => NeatooFactory.Remote,
@@ -282,6 +298,7 @@ var mode = configuration["FactoryMode"] switch
 
 services.AddNeatooRemoteFactory(mode, typeof(IPersonModel).Assembly);
 ```
+<!-- /snippet -->
 
 ## Best Practices
 
@@ -311,10 +328,12 @@ services.AddNeatooRemoteFactory(mode, typeof(IPersonModel).Assembly);
 
 Auto-registers interface-to-implementation pairs where names follow the `I{Name}` convention:
 
+<!-- snippet: docs:reference/factory-modes:register-matching-name -->
 ```csharp
 // Register types following naming convention
 services.RegisterMatchingName(typeof(IPersonModel).Assembly);
 ```
+<!-- /snippet -->
 
 **Matching rules:**
 - Interface name must start with `I`
@@ -331,6 +350,7 @@ services.RegisterMatchingName(typeof(IPersonModel).Assembly);
 | `ILogger` | `FileLogger` | No (names don't match) |
 | `IAbstractBase` | `AbstractBase` (abstract) | No |
 
+<!-- pseudo:manual-vs-automatic-registration -->
 ```csharp
 // Before (manual registration)
 services.AddTransient<IPersonService, PersonService>();
