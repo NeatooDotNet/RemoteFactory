@@ -16,6 +16,8 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v10.9.0](v10.9.0.md) | 2026-01-13 | Client-server code separation with FactoryMode.RemoteOnly |
+| [v10.8.0](v10.8.0.md) | 2026-01-13 | Optional CancellationToken on all factory methods |
 | [v10.7.0](v10.7.0.md) | 2026-01-11 | Fix duplicate Save method generation with multi-line parameters |
 | [v10.6.0](v10.6.0.md) | 2026-01-07 | Fire-and-forget domain events with [Event] attribute |
 | [v10.5.0](v10.5.0.md) | 2026-01-04 | Constructor injection compatibility, AOT documentation |
@@ -25,6 +27,8 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v10.9.0](v10.9.0.md) - 2026-01-13 - Client-server code separation
+- [v10.8.0](v10.8.0.md) - 2026-01-13 - Optional CancellationToken on factory methods
 - [v10.7.0](v10.7.0.md) - 2026-01-11 - Parameter whitespace bug fix
 - [v10.6.0](v10.6.0.md) - 2026-01-07 - Fire-and-forget domain events
 - [v10.5.0](v10.5.0.md) - 2026-01-04 - Constructor injection compatibility
