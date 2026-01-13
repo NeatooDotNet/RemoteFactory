@@ -63,11 +63,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ServiceInsertUpdateOnly>.Save(ServiceInsertUpdateOnly target, CancellationToken cancellationToken)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
-        }
-
         public virtual ServiceInsertUpdateOnly LocalSave(ServiceInsertUpdateOnly target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -82,6 +77,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             {
                 return LocalUpdate(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<ServiceInsertUpdateOnly>.Save(ServiceInsertUpdateOnly target, CancellationToken cancellationToken)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

@@ -85,11 +85,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return (await MakeRemoteDelegateRequest!.ForDelegateNullable<MultiServiceRemoteWriteObject?>(typeof(SaveRemoteWithTwoServicesDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceRemoteWriteObject>.Save(MultiServiceRemoteWriteObject target, CancellationToken cancellationToken)
-        {
-            return (IFactorySaveMeta? )await SaveRemoteWithTwoServices(target, cancellationToken);
-        }
-
         public virtual async Task<MultiServiceRemoteWriteObject?> LocalSaveRemoteWithTwoServices(MultiServiceRemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -109,6 +104,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateRemoteWithTwoServices(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceRemoteWriteObject>.Save(MultiServiceRemoteWriteObject target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await SaveRemoteWithTwoServices(target, cancellationToken);
         }
 
         public virtual Task<MultiServiceRemoteWriteObject> SaveRemoteWithThreeServicesAsync(MultiServiceRemoteWriteObject target, int priority, CancellationToken cancellationToken = default)

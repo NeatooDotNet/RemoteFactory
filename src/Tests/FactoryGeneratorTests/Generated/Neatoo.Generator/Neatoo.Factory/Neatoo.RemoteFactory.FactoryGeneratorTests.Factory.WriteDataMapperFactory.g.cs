@@ -457,11 +457,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return LocalSaveVoid(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<WriteDataMapper>.Save(WriteDataMapper target, CancellationToken cancellationToken)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target, cancellationToken));
-        }
-
         public virtual WriteDataMapper? LocalSaveVoid(WriteDataMapper target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -481,6 +476,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return LocalUpdateVoid(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<WriteDataMapper>.Save(WriteDataMapper target, CancellationToken cancellationToken)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target, cancellationToken));
         }
 
         public virtual WriteDataMapper? SaveBool(WriteDataMapper target, CancellationToken cancellationToken = default)

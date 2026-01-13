@@ -1,0 +1,122 @@
+@page "/"
+@inject IOrderFactory OrderFactory
+@inject IOrderLineFactory LineFactory
+
+<PageTitle>Order Entry - Home</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Order Entry Demo</MudText>
+
+<MudText Class="mb-4">
+    This application demonstrates the <strong>client-server separation</strong> pattern with Neatoo RemoteFactory.
+    The client assembly uses <code>[assembly: FactoryMode(FactoryMode.RemoteOnly)]</code> to generate factories with remote HTTP stubs only.
+</MudText>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Architecture</MudText>
+    <MudList T="string">
+        <MudListItem T="string" Icon="@Icons.Material.Filled.Cloud">
+            <strong>OrderEntry.Domain.Client</strong> - RemoteOnly factories (HTTP stubs only, no EF dependencies)
+        </MudListItem>
+        <MudListItem T="string" Icon="@Icons.Material.Filled.Storage">
+            <strong>OrderEntry.Domain.Server</strong> - Full factories with EF Core integration
+        </MudListItem>
+        <MudListItem T="string" Icon="@Icons.Material.Filled.Code">
+            <strong>OrderEntry.Domain</strong> - Shared source with #if CLIENT / #else
+        </MudListItem>
+    </MudList>
+</MudPaper>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateOrderAsync" Disabled="@isLoading">
+    @if (isLoading)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+    }
+    Create New Order
+</MudButton>
+
+@if (order != null)
+{
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6">Order Details</MudText>
+        <MudText>Order ID: @order.Id</MudText>
+        <MudText>Order Date: @order.OrderDate</MudText>
+        <MudTextField @bind-Value="order.CustomerName" Label="Customer Name" Class="mt-2" />
+        
+        <MudText Typo="Typo.h6" Class="mt-4">Order Lines</MudText>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddLine" Class="mb-2">
+            Add Line
+        </MudButton>
+        
+        @foreach (var line in order.Lines)
+        {
+            <MudPaper Class="pa-2 mb-2" Outlined="true">
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudTextField @bind-Value="line.ProductName" Label="Product" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="2">
+                        <MudNumericField @bind-Value="line.Quantity" Label="Qty" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudNumericField @bind-Value="line.UnitPrice" Label="Price" Format="N2" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="2">
+                        <MudText>@line.LineTotal.ToString("N2")</MudText>
+                    </MudItem>
+                    <MudItem xs="1">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveLine(line))" />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
+        
+        <MudText Typo="Typo.h6" Class="mt-2">Total: @order.Total.ToString("C")</MudText>
+    </MudPaper>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">@errorMessage</MudAlert>
+}
+
+@code {
+    private IOrder? order;
+    private string? errorMessage;
+    private bool isLoading;
+
+    private async Task CreateOrderAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            StateHasChanged();
+            
+            // Create is now a remote method - requires server call
+            order = await OrderFactory.Create();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating order: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private void AddLine()
+    {
+        if (order != null)
+        {
+            // OrderLine.Create is local - runs on client
+            var line = LineFactory.Create();
+            order.Lines.Add(line);
+        }
+    }
+    
+    private void RemoveLine(IOrderLine line)
+    {
+        order?.Lines.Remove(line);
+    }
+}

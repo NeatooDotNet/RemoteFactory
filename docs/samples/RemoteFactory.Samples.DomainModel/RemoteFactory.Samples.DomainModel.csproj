@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\..\src\RemoteFactory\RemoteFactory.csproj" />
   </ItemGroup>
 
+  <!-- Delete Generated folder before build to detect removed files -->
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
   </Target>

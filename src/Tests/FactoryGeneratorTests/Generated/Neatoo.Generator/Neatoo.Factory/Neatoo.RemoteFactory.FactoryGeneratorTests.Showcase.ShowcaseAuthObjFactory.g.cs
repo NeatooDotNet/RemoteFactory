@@ -170,11 +170,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseAuthObj>.Save(ShowcaseAuthObj target, CancellationToken cancellationToken)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
-        }
-
         public virtual Authorized<IShowcaseAuthObj> LocalSave(IShowcaseAuthObj target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -194,6 +189,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             {
                 return LocalUpdate(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseAuthObj>.Save(ShowcaseAuthObj target, CancellationToken cancellationToken)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
         public virtual Authorized CanFetch(CancellationToken cancellationToken = default)

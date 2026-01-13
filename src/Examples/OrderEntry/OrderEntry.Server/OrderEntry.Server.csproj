@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Inherits TargetFramework, Nullable, and ImplicitUsings from Directory.Build.props -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
+    <ProjectReference Include="..\OrderEntry.Domain.Server\OrderEntry.Domain.Server.csproj" />
+    <ProjectReference Include="..\OrderEntry.Ef\OrderEntry.Ef.csproj" />
+  </ItemGroup>
+
+</Project>

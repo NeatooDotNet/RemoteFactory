@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- No CLIENT constant - this is the server version -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <!-- Suppress warnings for example code: CA1852 (seal type), CS0067 (unused event) -->
+    <NoWarn>$(NoWarn);CA1852;CS0067</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+  </ItemGroup>
+
+  <!-- Link to shared Domain source files -->
+  <ItemGroup>
+    <Compile Include="..\OrderEntry.Domain\*.cs" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
+    <!-- Server references EF for database operations -->
+    <ProjectReference Include="..\OrderEntry.Ef\OrderEntry.Ef.csproj" />
+  </ItemGroup>
+
+  <!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
+  <Target Name="PreBuild" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net8.0'">
+    <RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
+  </Target>
+
+</Project>

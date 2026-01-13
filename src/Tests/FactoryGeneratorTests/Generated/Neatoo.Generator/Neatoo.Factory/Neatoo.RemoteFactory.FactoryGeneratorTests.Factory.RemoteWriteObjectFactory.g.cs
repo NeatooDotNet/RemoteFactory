@@ -539,11 +539,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return (await MakeRemoteDelegateRequest!.ForDelegateNullable<RemoteWriteObject?>(typeof(SaveVoidDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<RemoteWriteObject>.Save(RemoteWriteObject target, CancellationToken cancellationToken)
-        {
-            return (IFactorySaveMeta? )await SaveVoid(target, cancellationToken);
-        }
-
         public virtual async Task<RemoteWriteObject?> LocalSaveVoid(RemoteWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -563,6 +558,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateVoid(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<RemoteWriteObject>.Save(RemoteWriteObject target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await SaveVoid(target, cancellationToken);
         }
 
         public virtual Task<RemoteWriteObject?> SaveBool(RemoteWriteObject target, CancellationToken cancellationToken = default)

@@ -93,11 +93,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<BugNoCanCreateFetchObj>.Save(BugNoCanCreateFetchObj target, CancellationToken cancellationToken)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
-        }
-
         public virtual Authorized<BugNoCanCreateFetchObj> LocalSave(BugNoCanCreateFetchObj target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -112,6 +107,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             {
                 throw new NotImplementedException();
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<BugNoCanCreateFetchObj>.Save(BugNoCanCreateFetchObj target, CancellationToken cancellationToken)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
         public virtual Authorized CanCreate(CancellationToken cancellationToken = default)

@@ -86,11 +86,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return LocalSaveAsync(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<AsyncCoreWriteTarget>.Save(AsyncCoreWriteTarget target, CancellationToken cancellationToken)
-        {
-            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
-        }
-
         public virtual async Task<AsyncCoreWriteTarget?> LocalSaveAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -110,6 +105,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateAsync(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<AsyncCoreWriteTarget>.Save(AsyncCoreWriteTarget target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
         }
 
         public virtual Task<AsyncCoreWriteTarget?> SaveBoolAsync(AsyncCoreWriteTarget target, CancellationToken cancellationToken = default)

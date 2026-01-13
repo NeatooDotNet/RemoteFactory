@@ -141,3 +141,60 @@ public sealed class FactoryHintNameLengthAttribute : Attribute
 
 	public int MaxHintNameLength => this.maxHintNameLength;
 }
+
+/// <summary>
+/// Specifies the factory generation mode for an assembly.
+/// </summary>
+public enum FactoryMode
+{
+	/// <summary>
+	/// Generate full factory with both local and remote execution paths.
+	/// This is the default mode for server assemblies.
+	/// </summary>
+	Full = 0,
+
+	/// <summary>
+	/// Generate factory with remote HTTP stubs only.
+	/// Use this mode for client assemblies that call server-side factories via HTTP.
+	/// Local methods that call entity methods are not generated.
+	/// </summary>
+	RemoteOnly = 1
+}
+
+/// <summary>
+/// Specifies the factory generation mode for the assembly.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Use <see cref="FactoryMode.Full"/> (default) for server assemblies that need
+/// both local execution and remote delegate handling.
+/// </para>
+/// <para>
+/// Use <see cref="FactoryMode.RemoteOnly"/> for client assemblies (e.g., Blazor WASM)
+/// that only need to call server-side factories via HTTP. This produces smaller
+/// assemblies by excluding local method implementations and their dependencies.
+/// </para>
+/// </remarks>
+/// <example>
+/// <code>
+/// // In client assembly's AssemblyAttributes.cs:
+/// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
+/// </code>
+/// </example>
+[System.AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = false)]
+public sealed class FactoryModeAttribute : Attribute
+{
+	/// <summary>
+	/// Gets the factory generation mode.
+	/// </summary>
+	public FactoryMode Mode { get; }
+
+	/// <summary>
+	/// Initializes a new instance of the FactoryModeAttribute.
+	/// </summary>
+	/// <param name="mode">The factory generation mode for this assembly.</param>
+	public FactoryModeAttribute(FactoryMode mode)
+	{
+		Mode = mode;
+	}
+}

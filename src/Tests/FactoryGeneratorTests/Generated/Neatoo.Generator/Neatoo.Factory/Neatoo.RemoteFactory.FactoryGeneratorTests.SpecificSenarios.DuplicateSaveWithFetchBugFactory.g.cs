@@ -196,11 +196,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return (await MakeRemoteDelegateRequest!.ForDelegate<Authorized<IDuplicateSaveWithFetchBug>>(typeof(SaveDelegate), [target], cancellationToken))!;
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<DuplicateSaveWithFetchBug>.Save(DuplicateSaveWithFetchBug target, CancellationToken cancellationToken)
-        {
-            return (IFactorySaveMeta? )await Save(target, cancellationToken);
-        }
-
         public virtual async Task<Authorized<IDuplicateSaveWithFetchBug>> LocalSave(IDuplicateSaveWithFetchBug target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -220,6 +215,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             {
                 return await LocalUpdate(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<DuplicateSaveWithFetchBug>.Save(DuplicateSaveWithFetchBug target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await Save(target, cancellationToken);
         }
 
         public virtual Authorized CanCreate(CancellationToken cancellationToken = default)

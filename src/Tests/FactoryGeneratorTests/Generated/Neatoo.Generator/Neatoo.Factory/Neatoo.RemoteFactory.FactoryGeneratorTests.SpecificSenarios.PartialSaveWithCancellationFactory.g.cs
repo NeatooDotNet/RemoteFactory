@@ -61,11 +61,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             return LocalSaveAsync(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<PartialSaveWithCancellation>.Save(PartialSaveWithCancellation target, CancellationToken cancellationToken)
-        {
-            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
-        }
-
         public virtual async Task<PartialSaveWithCancellation> LocalSaveAsync(PartialSaveWithCancellation target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -80,6 +75,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.SpecificSenarios
             {
                 return await LocalUpdateAsync(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<PartialSaveWithCancellation>.Save(PartialSaveWithCancellation target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await SaveAsync(target, cancellationToken);
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

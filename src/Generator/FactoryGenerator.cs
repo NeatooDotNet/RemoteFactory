@@ -66,7 +66,7 @@ public partial class Factory : IIncrementalGenerator
 
 		try
 		{
-			var factoryText = new FactoryText();
+			var factoryText = new FactoryText(typeInfo.FactoryMode);
 
 			try
 			{
@@ -233,13 +233,17 @@ public partial class Factory : IIncrementalGenerator
 					factoryMethod.AddFactoryText(factoryText);
 				}
 
-				// We only need the target registered if we do a fetch or create that is not the constructor
-				if (factoryMethods.OfType<ReadFactoryMethod>().Any(f => !(f.CallMethod.IsConstructor || f.CallMethod.IsStaticFactory)))
+				// In RemoteOnly mode, skip entity type registrations - entities are deserialized from server, not instantiated locally
+				if (typeInfo.FactoryMode == FactoryMode.Full)
 				{
-					factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{typeInfo.ImplementationTypeName}>();");
-					if (typeInfo.ServiceTypeName != typeInfo.ImplementationTypeName)
+					// We only need the target registered if we do a fetch or create that is not the constructor
+					if (factoryMethods.OfType<ReadFactoryMethod>().Any(f => !(f.CallMethod.IsConstructor || f.CallMethod.IsStaticFactory)))
 					{
-						factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{typeInfo.ServiceTypeName}, {typeInfo.ImplementationTypeName}>();");
+						factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{typeInfo.ImplementationTypeName}>();");
+						if (typeInfo.ServiceTypeName != typeInfo.ImplementationTypeName)
+						{
+							factoryText.ServiceRegistrations.AppendLine($@"services.AddTransient<{typeInfo.ServiceTypeName}, {typeInfo.ImplementationTypeName}>();");
+						}
 					}
 				}
 
@@ -247,7 +251,11 @@ public partial class Factory : IIncrementalGenerator
 				if (hasDefaultSave)
 				{
 					editText = "Save";
-					factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{typeInfo.ImplementationTypeName}>, {typeInfo.ImplementationTypeName}Factory>();");
+					// IFactorySave is used for child saving - only needed in Full mode
+					if (typeInfo.FactoryMode == FactoryMode.Full)
+					{
+						factoryText.ServiceRegistrations.AppendLine($@"services.AddScoped<IFactorySave<{typeInfo.ImplementationTypeName}>, {typeInfo.ImplementationTypeName}Factory>();");
+					}
 				}
 
 				// Register AOT-compatible ordinal converter if ordinal serialization was generated
@@ -285,6 +293,41 @@ public partial class Factory : IIncrementalGenerator
                         }}";
 				}
 
+				// Generate constructors based on factory mode
+				string constructors;
+				string remoteRequestDeclaration;
+
+				if (typeInfo.FactoryMode == FactoryMode.RemoteOnly)
+				{
+					// RemoteOnly mode: Only generate remote constructor, MakeRemoteDelegateRequest is non-nullable
+					remoteRequestDeclaration = "private readonly IMakeRemoteDelegateRequest MakeRemoteDelegateRequest;";
+					constructors = $@"
+                            public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{typeInfo.ServiceTypeName}> factoryCore) : base(factoryCore)
+                            {{
+                                    this.ServiceProvider = serviceProvider;
+                                    this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+                                    {factoryText.ConstructorPropertyAssignmentsRemote}
+                            }}";
+				}
+				else
+				{
+					// Full mode: Generate both constructors, MakeRemoteDelegateRequest is nullable
+					remoteRequestDeclaration = "private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;";
+					constructors = $@"
+                            public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IFactoryCore<{typeInfo.ServiceTypeName}> factoryCore) : base(factoryCore)
+                            {{
+                                    this.ServiceProvider = serviceProvider;
+                                    {factoryText.ConstructorPropertyAssignmentsLocal}
+                            }}
+
+                            public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{typeInfo.ServiceTypeName}> factoryCore) : base(factoryCore)
+                            {{
+                                    this.ServiceProvider = serviceProvider;
+                                    this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+                                    {factoryText.ConstructorPropertyAssignmentsRemote}
+                            }}";
+				}
+
 				source = $@"
 						  #nullable enable
 
@@ -308,25 +351,14 @@ public partial class Factory : IIncrementalGenerator
                         {{
 
                             private readonly IServiceProvider ServiceProvider;
-                            private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
+                            {remoteRequestDeclaration}
 
                     // Delegates
                     {factoryText.Delegates}
                     // Delegate Properties to provide Local or Remote fork in execution
                     {factoryText.PropertyDeclarations}
 
-                            public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IFactoryCore<{typeInfo.ServiceTypeName}> factoryCore) : base(factoryCore)
-                            {{
-                                    this.ServiceProvider = serviceProvider;
-                                    {factoryText.ConstructorPropertyAssignmentsLocal}
-                            }}
-
-                            public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{typeInfo.ServiceTypeName}> factoryCore) : base(factoryCore)
-                            {{
-                                    this.ServiceProvider = serviceProvider;
-                                    this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-                                    {factoryText.ConstructorPropertyAssignmentsRemote}
-                            }}
+                    {constructors}
 
                     {factoryText.MethodsBuilder}
                     {factoryText.SaveMethods}
@@ -500,14 +532,18 @@ public partial class Factory : IIncrementalGenerator
 								return ({parameterIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate{nullableText}<{method.ReturnType}>(typeof({typeInfo.Name}.{delegateName}), [{serializedParameterIdentifiers}], cancellationToken);
 						  }});");
 
-						localMethods.AppendLine(@$"
-						  services.AddTransient<{typeInfo.Name}.{delegateName}>(cc =>
-						  {{
-								return ({parameterDeclarations}) => {{
-								{serviceAssignmentsText}
-								return {typeInfo.Name}.{method.Name}({allParameterIdentifiers});
-							}};
-						  }});");
+						// In RemoteOnly mode, skip local method registration (server-only)
+						if (typeInfo.FactoryMode == FactoryMode.Full)
+						{
+							localMethods.AppendLine(@$"
+							  services.AddTransient<{typeInfo.Name}.{delegateName}>(cc =>
+							  {{
+									return ({parameterDeclarations}) => {{
+									{serviceAssignmentsText}
+									return {typeInfo.Name}.{method.Name}({allParameterIdentifiers});
+								}};
+							  }});");
+						}
 
 					}
 					else if (method.FactoryOperation == FactoryOperation.Event)
@@ -521,7 +557,11 @@ public partial class Factory : IIncrementalGenerator
 						}
 
 						delegates.AppendLine(eventResult.DelegateDeclaration);
-						eventMethods.AppendLine(eventResult.EventRegistration);
+						// In RemoteOnly mode, skip local event registration (server-only)
+						if (typeInfo.FactoryMode == FactoryMode.Full)
+						{
+							eventMethods.AppendLine(eventResult.EventRegistration);
+						}
 						remoteMethods.AppendLine(eventResult.RemoteRegistration);
 					}
 				}
@@ -1018,7 +1058,7 @@ public partial class Factory : IIncrementalGenerator
 
 		try
 		{
-			var factoryText = new FactoryText();
+			var factoryText = new FactoryText(typeInfo.FactoryMode);
 
 			try
 			{
@@ -1060,6 +1100,41 @@ public partial class Factory : IIncrementalGenerator
 					factoryMethod.AddFactoryText(factoryText);
 				}
 
+				// Generate constructors based on factory mode
+				string constructors;
+				string remoteRequestDeclaration;
+
+				if (typeInfo.FactoryMode == FactoryMode.RemoteOnly)
+				{
+					// RemoteOnly mode: Only generate remote constructor, MakeRemoteDelegateRequest is non-nullable
+					remoteRequestDeclaration = "private readonly IMakeRemoteDelegateRequest MakeRemoteDelegateRequest;";
+					constructors = $@"
+														 public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
+														 {{
+																	this.ServiceProvider = serviceProvider;
+																	this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+																	{factoryText.ConstructorPropertyAssignmentsRemote}
+														 }}";
+				}
+				else
+				{
+					// Full mode: Generate both constructors, MakeRemoteDelegateRequest is nullable
+					remoteRequestDeclaration = "private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;";
+					constructors = $@"
+														 public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider)
+														 {{
+																	this.ServiceProvider = serviceProvider;
+																	{factoryText.ConstructorPropertyAssignmentsLocal}
+														 }}
+
+														 public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
+														 {{
+																	this.ServiceProvider = serviceProvider;
+																	this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+																	{factoryText.ConstructorPropertyAssignmentsRemote}
+														 }}";
+				}
+
 				source = $@"
 											  #nullable enable
 
@@ -1079,26 +1154,15 @@ public partial class Factory : IIncrementalGenerator
 					                        internal class {typeInfo.ImplementationTypeName}Factory : {typeInfo.ServiceTypeName}Factory
 					                        {{
 
-					                            private readonly IServiceProvider ServiceProvider;  
-					                            private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;
+					                            private readonly IServiceProvider ServiceProvider;
+					                            {remoteRequestDeclaration}
 
 														  // Delegates
 														  {factoryText.Delegates}
 														  // Delegate Properties to provide Local or Remote fork in execution
 														  {factoryText.PropertyDeclarations}
 
-														 public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider)
-														 {{
-																	this.ServiceProvider = serviceProvider;
-																	{factoryText.ConstructorPropertyAssignmentsLocal}
-														 }}
-
-														 public {typeInfo.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)
-														 {{
-																	this.ServiceProvider = serviceProvider;
-																	this.MakeRemoteDelegateRequest = remoteMethodDelegate;
-																	{factoryText.ConstructorPropertyAssignmentsRemote}
-														 }}
+														  {constructors}
 
 														{factoryText.MethodsBuilder}
 
@@ -1480,6 +1544,23 @@ namespace {typeInfo.Namespace}
 
 		var resultName = TruncateHintName(hintName, maxLength.Value);
 		return new SafeHintNameResult(resultName, originalName, maxLength.Value);
+	}
+
+	/// <summary>
+	/// Detects the FactoryMode assembly attribute from the compilation.
+	/// Returns FactoryMode.Full if no attribute is present.
+	/// </summary>
+	internal static FactoryMode GetFactoryMode(SemanticModel semanticModel)
+	{
+		var factoryModeAttribute = semanticModel.Compilation.Assembly.GetAttributes()
+			.FirstOrDefault(a => a.AttributeClass?.Name == "FactoryModeAttribute");
+
+		if (factoryModeAttribute?.ConstructorArguments.FirstOrDefault().Value is int modeValue)
+		{
+			return (FactoryMode)modeValue;
+		}
+
+		return FactoryMode.Full;
 	}
 
 	private static string TruncateHintName(string hintName, int maxLength)

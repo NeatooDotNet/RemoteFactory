@@ -61,11 +61,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return LocalSaveBoolAsync(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<CancellableWriteBoolFactory>.Save(CancellableWriteBoolFactory target, CancellationToken cancellationToken)
-        {
-            return (IFactorySaveMeta? )await SaveBoolAsync(target, cancellationToken);
-        }
-
         public virtual async Task<CancellableWriteBoolFactory?> LocalSaveBoolAsync(CancellableWriteBoolFactory target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -80,6 +75,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return await LocalUpdateBoolAsync(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<CancellableWriteBoolFactory>.Save(CancellableWriteBoolFactory target, CancellationToken cancellationToken)
+        {
+            return (IFactorySaveMeta? )await SaveBoolAsync(target, cancellationToken);
         }
 
         public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)

@@ -585,6 +585,54 @@ Controls the maximum length of generated file names (hint names).
 
 ---
 
+### [FactoryMode]
+
+Controls factory code generation mode for an entire assembly. Used for client-server separation.
+
+**Target:** Assembly
+
+**Parameter:** `FactoryMode` enum value
+
+**FactoryMode Enum:**
+
+| Value | Description |
+|-------|-------------|
+| `Full` (default) | Generate full factory with both local and remote execution paths |
+| `RemoteOnly` | Generate factory with remote HTTP stubs only; no local method implementations |
+
+**Usage:**
+
+<!-- pseudo:factorymode-assembly-attribute -->
+```csharp
+using Neatoo.RemoteFactory;
+
+[assembly: FactoryMode(FactoryMode.RemoteOnly)]
+```
+
+**Generated Factory Differences:**
+
+With `FactoryMode.Full` (server):
+- Factory has both local and remote constructors
+- Local methods call entity methods directly
+- Remote methods make HTTP calls
+
+With `FactoryMode.RemoteOnly` (client):
+- Factory has only remote constructor
+- All methods make HTTP calls to server
+- No local execution code generated
+- Smaller assembly size
+
+**When to Use:**
+
+Use `RemoteOnly` for client assemblies (Blazor WASM) that:
+- Call server-side factories via HTTP
+- Should not include database types or business logic
+- Need minimal assembly size
+
+**See Also:** [Client-Server Separation](../concepts/client-server-separation.md)
+
+---
+
 ## Attribute Summary Table
 
 | Attribute | Target | Purpose |
@@ -604,6 +652,7 @@ Controls the maximum length of generated file names (hint names).
 | `[AuthorizeFactory]` | Method | Authorization method marker |
 | `[Service]` | Parameter | DI resolution marker |
 | `[FactoryHintNameLength]` | Assembly | Control file name length |
+| `[FactoryMode]` | Assembly | Control code generation mode |
 
 ## Next Steps
 

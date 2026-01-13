@@ -20,7 +20,8 @@
 	  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
 	</ItemGroup>
 	
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+	<!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(TargetFramework)' == 'net8.0'">
 		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>
 	

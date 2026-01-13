@@ -145,11 +145,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             return LocalSave(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseSave>.Save(ShowcaseSave target, CancellationToken cancellationToken)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
-        }
-
         public virtual IShowcaseSave? LocalSave(IShowcaseSave target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -169,6 +164,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Showcase
             {
                 return LocalUpdate(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<ShowcaseSave>.Save(ShowcaseSave target, CancellationToken cancellationToken)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )Save(target, cancellationToken));
         }
 
         public virtual IShowcaseSave SaveNoDeleteNotNullable(IShowcaseSave target, CancellationToken cancellationToken = default)

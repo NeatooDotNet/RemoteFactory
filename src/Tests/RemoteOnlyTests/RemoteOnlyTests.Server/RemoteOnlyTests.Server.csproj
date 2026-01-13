@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- No CLIENT constant - gets full implementations -->
+    <!-- Output generated factories for inspection -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <!-- Suppress code analysis for test code -->
+    <NoWarn>CA1062;CA2227</NoWarn>
+  </PropertyGroup>
+
+  <!-- Link shared source files -->
+  <ItemGroup>
+    <Compile Include="..\RemoteOnlyTests.Domain\*.cs" Link="Domain\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Exclude generated files from compilation (they're included automatically) -->
+  <ItemGroup>
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
+    <ProjectReference Include="..\..\..\Generator\Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

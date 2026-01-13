@@ -107,11 +107,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return LocalSaveWithTwoServices(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceWriteObject>.Save(MultiServiceWriteObject target, CancellationToken cancellationToken)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )SaveWithTwoServices(target, cancellationToken));
-        }
-
         public virtual MultiServiceWriteObject? LocalSaveWithTwoServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -131,6 +126,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return LocalUpdateWithTwoServices(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<MultiServiceWriteObject>.Save(MultiServiceWriteObject target, CancellationToken cancellationToken)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )SaveWithTwoServices(target, cancellationToken));
         }
 
         public virtual MultiServiceWriteObject? SaveWithThreeServices(MultiServiceWriteObject target, CancellationToken cancellationToken = default)

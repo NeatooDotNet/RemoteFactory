@@ -480,11 +480,6 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             return LocalSaveVoid(target, cancellationToken);
         }
 
-        async Task<IFactorySaveMeta?> IFactorySave<MixedWriteObject>.Save(MixedWriteObject target, CancellationToken cancellationToken)
-        {
-            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target, cancellationToken));
-        }
-
         public virtual MixedWriteObject? LocalSaveVoid(MixedWriteObject target, CancellationToken cancellationToken = default)
         {
             if (target.IsDeleted)
@@ -504,6 +499,11 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             {
                 return LocalUpdateVoid(target, cancellationToken);
             }
+        }
+
+        async Task<IFactorySaveMeta?> IFactorySave<MixedWriteObject>.Save(MixedWriteObject target, CancellationToken cancellationToken)
+        {
+            return await Task.FromResult((IFactorySaveMeta? )SaveVoid(target, cancellationToken));
         }
 
         public virtual Task<MixedWriteObject?> SaveBool(MixedWriteObject target, CancellationToken cancellationToken = default)

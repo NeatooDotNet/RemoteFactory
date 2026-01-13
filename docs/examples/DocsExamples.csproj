@@ -46,8 +46,9 @@
 		<Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" Condition="Exists('$(CompilerGeneratedFilesOutputPath)')" />
+	<!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(TargetFramework)' == 'net8.0'">
+		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>
 
 </Project>

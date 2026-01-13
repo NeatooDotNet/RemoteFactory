@@ -221,6 +221,9 @@ public partial class Factory
 				this.RequiresServiceInstantiation = RequiresServiceInstantiationCheck(symbol);
 			}
 
+			// Get the factory mode for this assembly
+			this.FactoryMode = GetFactoryMode(semanticModel);
+
 			var hintNameResult = SafeHintName(semanticModel, $"{this.Namespace}.{this.Name}");
 			this.SafeHintName = hintNameResult.ResultName;
 
@@ -282,6 +285,12 @@ public partial class Factory
 		public bool IsNested { get; }
 
 		public string SafeHintName { get; }
+
+		/// <summary>
+		/// The factory generation mode for this type's assembly.
+		/// Determines whether to generate full factory (local + remote) or remote-only stubs.
+		/// </summary>
+		public FactoryMode FactoryMode { get; }
 
 		/// <summary>
 		/// Properties for ordinal serialization, sorted by inheritance depth then alphabetically.
@@ -955,17 +964,39 @@ public partial class Factory
 
 			if (this.IsRemote)
 			{
+				// Delegates are needed in both modes (RemoteOnly uses typeof() to identify the delegate)
 				classText.Delegates.Append(this.Delegates());
 				classText.PropertyDeclarations.Append(this.PropertyDeclarations());
-				classText.ConstructorPropertyAssignmentsLocal.Append(this.ConstructorPropertyAssignmentsLocal());
+
+				// In RemoteOnly mode, skip local constructor assignments for remote methods
+				if (classText.Mode == FactoryMode.Full)
+				{
+					classText.ConstructorPropertyAssignmentsLocal.Append(this.ConstructorPropertyAssignmentsLocal());
+				}
+
 				classText.ConstructorPropertyAssignmentsRemote.Append(this.ConstructorPropertyAssignmentsRemote());
-				classText.ServiceRegistrations.Append(this.ServiceRegistrations());
+
+				// In RemoteOnly mode, skip delegate service registrations (server-only)
+				if (classText.Mode == FactoryMode.Full)
+				{
+					classText.ServiceRegistrations.Append(this.ServiceRegistrations());
+				}
 			}
 
 			var methodBuilder = new StringBuilder();
 			methodBuilder.Append(this.PublicMethod());
 			methodBuilder.Append(this.RemoteMethod());
-			methodBuilder.Append(this.LocalMethod());
+
+			// In RemoteOnly mode, skip LocalMethod for remote methods
+			// Non-remote methods (e.g., local [Create]) should still have LocalMethod generated
+			if (classText.Mode == FactoryMode.Full || !this.IsRemote)
+			{
+				methodBuilder.Append(this.LocalMethod());
+			}
+
+			// ExplicitInterfaceMethod is always needed (e.g., IFactorySave<T>.Save implementation)
+			// regardless of mode because the class implements the interface
+			methodBuilder.Append(this.ExplicitInterfaceMethod());
 
 			classText.MethodsBuilder.Append(methodBuilder);
 		}
@@ -1104,6 +1135,23 @@ public partial class Factory
 		}
 
 		public abstract StringBuilder LocalMethod();
+
+		/// <summary>
+		/// Generates the explicit interface implementation (e.g., IFactorySave&lt;T&gt;.Save).
+		/// </summary>
+		/// <remarks>
+		/// This is separate from <see cref="LocalMethod"/> because:
+		/// - LocalMethod contains server-side logic that calls entity methods with injected services
+		/// - ExplicitInterfaceMethod just delegates to the public method (e.g., Save calls public Save)
+		///
+		/// In RemoteOnly mode, LocalMethod is skipped (no server-side code on client), but
+		/// ExplicitInterfaceMethod must still be generated because the factory class implements
+		/// the interface (e.g., IFactorySave&lt;T&gt;) regardless of mode.
+		/// </remarks>
+		public virtual StringBuilder ExplicitInterfaceMethod()
+		{
+			return new StringBuilder();
+		}
 	}
 
 	/// <summary>
@@ -1217,7 +1265,11 @@ public partial class Factory
 
 		public override void AddFactoryText(FactoryText classText)
 		{
-			classText.MethodsBuilder.Append(this.LocalMethod());
+			// In RemoteOnly mode, skip LocalMethod for remote methods
+			if (classText.Mode == FactoryMode.Full || !this.IsRemote)
+			{
+				classText.MethodsBuilder.Append(this.LocalMethod());
+			}
 		}
 
 		public override StringBuilder LocalMethod()
@@ -1309,7 +1361,11 @@ public partial class Factory
 			return stringBuilder;
 		}
 
-		public override StringBuilder LocalMethod()
+		/// <summary>
+		/// Generates the explicit IFactorySave&lt;T&gt;.Save implementation.
+		/// This must be generated regardless of FactoryMode because the class implements the interface.
+		/// </summary>
+		public override StringBuilder ExplicitInterfaceMethod()
 		{
 			var methodBuilder = new StringBuilder();
 
@@ -1328,6 +1384,13 @@ public partial class Factory
 				}
 				methodBuilder.AppendLine("}");
 			}
+
+			return methodBuilder;
+		}
+
+		public override StringBuilder LocalMethod()
+		{
+			var methodBuilder = new StringBuilder();
 
 			methodBuilder.AppendLine($@"public virtual {this.AsyncKeyword} {this.ReturnType()} Local{this.UniqueName}({this.ParameterDeclarationsTextWithOptionalCancellationToken()})
                                             {{");
@@ -1650,6 +1713,16 @@ public partial class Factory
 	/// </summary>
 	internal class FactoryText
 	{
+		/// <summary>
+		/// The factory mode for this generation context.
+		/// </summary>
+		public FactoryMode Mode { get; }
+
+		public FactoryText(FactoryMode mode = FactoryMode.Full)
+		{
+			Mode = mode;
+		}
+
 		public StringBuilder Delegates { get; set; } = new();
 		public StringBuilder ConstructorPropertyAssignmentsLocal { get; set; } = new();
 		public StringBuilder ConstructorPropertyAssignmentsRemote { get; set; } = new();
