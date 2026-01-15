@@ -13,9 +13,9 @@
 
 **Deferred (Future Enhancements):**
 - [ ] E2E tests with actual database (OrderEntry + EF Core)
-- [ ] Validation error serialization tests
-- [ ] Migration guide documentation
-- [ ] Update generated-code.md reference
+- [x] Validation error serialization tests (12 tests in `ValidationSerializationTests.cs`)
+- [x] Migration guide documentation (`docs/concepts/migrating-to-client-server.md`)
+- [x] Update generated-code.md reference (added "FactoryMode: Full vs RemoteOnly" section)
 
 ---
 

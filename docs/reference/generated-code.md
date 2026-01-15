@@ -73,6 +73,153 @@ The header provides debugging information:
 
 If Transform Count keeps increasing, the incremental generator cache isn't working properly.
 
+## FactoryMode: Full vs RemoteOnly
+
+RemoteFactory generates different code depending on the `[assembly: FactoryMode]` attribute. This enables client-server separation where client assemblies contain only remote stubs.
+
+### Mode Comparison
+
+| Aspect | Full (Default) | RemoteOnly |
+|--------|---------------|------------|
+| Constructors | 2 (local + remote) | 1 (remote only) |
+| `IMakeRemoteDelegateRequest` field | Nullable (`?`) | Required (non-nullable) |
+| LocalCreate/Fetch/Save methods | Generated | **Omitted** |
+| Delegate registrations | Generated | **Omitted** |
+| Domain model registrations | Generated | **Omitted** |
+| Assembly size | Larger | Smaller |
+
+### Full Mode (Default)
+
+Full mode generates both local and remote execution paths:
+
+<!-- generated:src/Tests/RemoteOnlyTests/RemoteOnlyTests.Server/Generated/Neatoo.Generator/Neatoo.Factory/RemoteOnlyTests.Domain.TestAggregateFactory.g.cs#L19-L47 -->
+```csharp
+internal class TestAggregateFactory : FactorySaveBase<ITestAggregate>, IFactorySave<TestAggregate>, ITestAggregateFactory
+{
+    private readonly IServiceProvider ServiceProvider;
+    private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;  // Nullable
+    // Delegates
+    public delegate Task<ITestAggregate> CreateDelegate(CancellationToken cancellationToken = default);
+    // ... other delegates
+
+    // Constructor 1: Local execution (no remote delegate)
+    public TestAggregateFactory(IServiceProvider serviceProvider, IFactoryCore<ITestAggregate> factoryCore) : base(factoryCore)
+    {
+        this.ServiceProvider = serviceProvider;
+        CreateProperty = LocalCreate;   // Points to local method
+        FetchProperty = LocalFetch;
+        SaveProperty = LocalSave;
+    }
+
+    // Constructor 2: Remote execution
+    public TestAggregateFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<ITestAggregate> factoryCore) : base(factoryCore)
+    {
+        this.ServiceProvider = serviceProvider;
+        this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+        CreateProperty = RemoteCreate;  // Points to remote method
+        FetchProperty = RemoteFetch;
+        SaveProperty = RemoteSave;
+    }
+
+    // Local methods generated (LocalCreate, LocalFetch, LocalSave, etc.)
+    // Remote methods generated (RemoteCreate, RemoteFetch, RemoteSave)
+}
+```
+
+### RemoteOnly Mode
+
+RemoteOnly mode generates only remote execution stubs:
+
+<!-- generated:src/Tests/RemoteOnlyTests/RemoteOnlyTests.Client/Generated/Neatoo.Generator/Neatoo.Factory/RemoteOnlyTests.Domain.TestAggregateFactory.g.cs#L19-L39 -->
+```csharp
+internal class TestAggregateFactory : FactorySaveBase<ITestAggregate>, IFactorySave<TestAggregate>, ITestAggregateFactory
+{
+    private readonly IServiceProvider ServiceProvider;
+    private readonly IMakeRemoteDelegateRequest MakeRemoteDelegateRequest;  // Required (non-nullable)
+    // Delegates
+    public delegate Task<ITestAggregate> CreateDelegate(CancellationToken cancellationToken = default);
+    // ... other delegates
+
+    // Single constructor - remote only
+    public TestAggregateFactory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<ITestAggregate> factoryCore) : base(factoryCore)
+    {
+        this.ServiceProvider = serviceProvider;
+        this.MakeRemoteDelegateRequest = remoteMethodDelegate;
+        CreateProperty = RemoteCreate;
+        FetchProperty = RemoteFetch;
+        SaveProperty = RemoteSave;
+    }
+
+    // NO LocalCreate, LocalFetch, LocalSave methods
+    // Only RemoteCreate, RemoteFetch, RemoteSave
+}
+```
+
+### FactoryServiceRegistrar Differences
+
+**Full Mode** registers delegates and domain models:
+
+<!-- generated:src/Tests/RemoteOnlyTests/RemoteOnlyTests.Server/Generated/Neatoo.Generator/Neatoo.Factory/RemoteOnlyTests.Domain.TestAggregateFactory.g.cs#L141-L162 -->
+```csharp
+public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+{
+    services.AddScoped<TestAggregateFactory>();
+    services.AddScoped<ITestAggregateFactory, TestAggregateFactory>();
+
+    // Delegate registrations (server handles remote calls)
+    services.AddScoped<CreateDelegate>(cc =>
+    {
+        var factory = cc.GetRequiredService<TestAggregateFactory>();
+        return (CancellationToken ct) => factory.LocalCreate(ct);
+    });
+    services.AddScoped<FetchDelegate>(cc => { ... });
+    services.AddScoped<SaveDelegate>(cc => { ... });
+
+    // Domain model registrations
+    services.AddTransient<TestAggregate>();
+    services.AddTransient<ITestAggregate, TestAggregate>();
+    services.AddScoped<IFactorySave<TestAggregate>, TestAggregateFactory>();
+}
+```
+
+**RemoteOnly Mode** registers only the factory:
+
+<!-- generated:src/Tests/RemoteOnlyTests/RemoteOnlyTests.Client/Generated/Neatoo.Generator/Neatoo.Factory/RemoteOnlyTests.Domain.TestAggregateFactory.g.cs#L76-L88 -->
+```csharp
+public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+{
+    services.AddScoped<TestAggregateFactory>();
+    services.AddScoped<ITestAggregateFactory, TestAggregateFactory>();
+
+    // No delegate registrations - client doesn't handle remote calls
+    // No domain model registrations - server handles instantiation
+}
+```
+
+### Interface Consistency
+
+The factory interface is **identical** in both modes, ensuring client and server can communicate:
+
+<!-- pseudo:factory-interface-identical -->
+```csharp
+// Same interface generated regardless of mode
+public interface ITestAggregateFactory
+{
+    Task<ITestAggregate> Create(CancellationToken cancellationToken = default);
+    Task<ITestAggregate> Fetch(Guid id, CancellationToken cancellationToken = default);
+    Task<ITestAggregate?> Save(ITestAggregate target, CancellationToken cancellationToken = default);
+}
+```
+
+### When to Use Each Mode
+
+| Mode | Use When |
+|------|----------|
+| **Full** (default) | Server projects, single-project apps, Blazor Server, unit tests |
+| **RemoteOnly** | Client assemblies (Blazor WASM, WPF/MAUI clients) that call server APIs |
+
+See [Client-Server Separation](../concepts/client-server-separation.md) for architectural guidance.
+
 ## Factory Interface
 
 ### Complete Interface Example
