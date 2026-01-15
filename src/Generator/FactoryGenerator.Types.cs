@@ -6,6 +6,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections.Generic;
 using System.Text;
 using static Neatoo.Factory;
 using Neatoo.RemoteFactory.FactoryGenerator;
@@ -771,8 +772,11 @@ public partial class Factory
 	/// </summary>
 	public record AspAuthorizeInfo
 	{
-		EquatableArray<string> ConstructorArguments = [];
-		EquatableArray<string> NamedArguments = [];
+		EquatableArray<string> _constructorArguments = [];
+		EquatableArray<string> _namedArguments = [];
+
+		public IReadOnlyList<string> ConstructorArguments => _constructorArguments.ToList();
+		public IReadOnlyList<string> NamedArguments => _namedArguments.ToList();
 
 		public AspAuthorizeInfo(AttributeData attribute)
 		{
@@ -794,14 +798,14 @@ public partial class Factory
 				}
 			}
 
-			this.NamedArguments = new EquatableArray<string>([.. namedArguments]);
-			this.ConstructorArguments = new EquatableArray<string>([.. constructorArguments]);
+			this._namedArguments = new EquatableArray<string>([.. namedArguments]);
+			this._constructorArguments = new EquatableArray<string>([.. constructorArguments]);
 		}
 
 		public string ToAspAuthorizedDataText()
 		{
-			var constructorArgumentsText = string.Join(", ", this.ConstructorArguments);
-			var namedArgumentsText = string.Join(", ", this.NamedArguments);
+			var constructorArgumentsText = string.Join(", ", this._constructorArguments);
+			var namedArgumentsText = string.Join(", ", this._namedArguments);
 			var text = $"new AspAuthorizeData({constructorArgumentsText})";
 
 			if (!string.IsNullOrEmpty(namedArgumentsText))
