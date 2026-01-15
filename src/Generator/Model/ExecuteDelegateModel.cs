@@ -13,7 +13,8 @@ internal sealed record ExecuteDelegateModel
         string returnType,
         bool isNullable = false,
         IReadOnlyList<ParameterModel>? parameters = null,
-        IReadOnlyList<ParameterModel>? serviceParameters = null)
+        IReadOnlyList<ParameterModel>? serviceParameters = null,
+        bool hasCancellationToken = false)
     {
         Name = name;
         DelegateName = delegateName;
@@ -21,6 +22,7 @@ internal sealed record ExecuteDelegateModel
         IsNullable = isNullable;
         Parameters = parameters ?? System.Array.Empty<ParameterModel>();
         ServiceParameters = serviceParameters ?? System.Array.Empty<ParameterModel>();
+        HasCancellationToken = hasCancellationToken;
     }
 
     public string Name { get; }
@@ -29,4 +31,8 @@ internal sealed record ExecuteDelegateModel
     public bool IsNullable { get; }
     public IReadOnlyList<ParameterModel> Parameters { get; }
     public IReadOnlyList<ParameterModel> ServiceParameters { get; }
+    /// <summary>
+    /// Whether the domain method has a CancellationToken parameter.
+    /// </summary>
+    public bool HasCancellationToken { get; }
 }

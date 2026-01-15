@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using static Neatoo.Factory;
 using Neatoo.RemoteFactory.FactoryGenerator;
+using Neatoo.RemoteFactory.Generator.Builder;
+using Neatoo.RemoteFactory.Generator.Renderer;
 
 namespace Neatoo;
 
@@ -31,15 +33,24 @@ public partial class Factory : IIncrementalGenerator
 
 		context.RegisterSourceOutput(classesToGenerate, static (spc, typeInfo) =>
 		{
-			if (typeInfo.IsStatic)
+			// Build model from TypeInfo
+			var unit = FactoryModelBuilder.Build(typeInfo);
+
+			// Report diagnostics (includes both transform-phase and build-phase diagnostics)
+			foreach (var diag in unit.Diagnostics)
 			{
-				GenerateExecute(spc, typeInfo);
+				ReportDiagnostic(spc, diag);
 			}
-			else
+
+			// Render and add source
+			var source = FactoryRenderer.Render(unit);
+			spc.AddSource($"{unit.HintName}Factory.g.cs", source);
+
+			// Render ordinal serialization if applicable
+			var ordinalSource = FactoryRenderer.RenderOrdinalSerialization(unit);
+			if (ordinalSource != null)
 			{
-				GenerateFactory(spc, typeInfo);
-				// Generate ordinal serialization support
-				GenerateOrdinalSerialization(spc, typeInfo);
+				spc.AddSource($"{unit.HintName}.Ordinal.g.cs", ordinalSource);
 			}
 		});
 
@@ -55,7 +66,18 @@ public partial class Factory : IIncrementalGenerator
 
 		context.RegisterSourceOutput(interfacesToGenerate, static (spc, typeInfo) =>
 		{
-			GenerateInterfaceFactory(spc, typeInfo);
+			// Build model from TypeInfo
+			var unit = FactoryModelBuilder.Build(typeInfo);
+
+			// Report diagnostics (includes both transform-phase and build-phase diagnostics)
+			foreach (var diag in unit.Diagnostics)
+			{
+				ReportDiagnostic(spc, diag);
+			}
+
+			// Render and add source
+			var source = FactoryRenderer.Render(unit);
+			spc.AddSource($"{unit.HintName}Factory.g.cs", source);
 		});
 	}
 

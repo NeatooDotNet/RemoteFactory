@@ -21,9 +21,23 @@ internal sealed record WriteMethodModel : FactoryMethodModel
         bool isAsync = false,
         bool isNullable = false,
         IReadOnlyList<ParameterModel>? parameters = null,
-        AuthorizationModel? authorization = null)
+        AuthorizationModel? authorization = null,
+        bool isDomainMethodTask = false,
+        bool isBool = false)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
                isRemote, isTask, isAsync, isNullable, parameters, authorization)
     {
+        IsDomainMethodTask = isDomainMethodTask;
+        IsBool = isBool;
     }
+
+    /// <summary>
+    /// Whether the underlying domain method (Insert/Update/Delete) returns Task.
+    /// </summary>
+    public bool IsDomainMethodTask { get; }
+
+    /// <summary>
+    /// Whether the underlying domain method returns bool (success/failure indicator).
+    /// </summary>
+    public bool IsBool { get; }
 }

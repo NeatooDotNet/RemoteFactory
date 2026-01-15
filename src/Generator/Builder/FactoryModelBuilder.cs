@@ -43,6 +43,22 @@ internal static class FactoryModelBuilder
     {
         var delegates = new List<ExecuteDelegateModel>();
         var events = new List<EventMethodModel>();
+        var diagnostics = new List<DiagnosticInfo>(typeInfo.Diagnostics.ToList());
+
+        // NF0101: Class must be partial for factory generation
+        if (!typeInfo.IsPartial)
+        {
+            diagnostics.Add(new DiagnosticInfo(
+                "NF0101",
+                typeInfo.ClassFilePath,
+                typeInfo.ClassStartLine,
+                typeInfo.ClassStartColumn,
+                typeInfo.ClassEndLine,
+                typeInfo.ClassEndColumn,
+                typeInfo.ClassTextSpanStart,
+                typeInfo.ClassTextSpanLength,
+                typeInfo.Name));
+        }
 
         foreach (var method in typeInfo.FactoryMethods)
         {
@@ -52,6 +68,23 @@ internal static class FactoryModelBuilder
             }
             else if (method.FactoryOperation == FactoryOperation.Execute)
             {
+                // NF0102: Execute method must return Task
+                if (!method.IsTask)
+                {
+                    diagnostics.Add(new DiagnosticInfo(
+                        "NF0102",
+                        method.MethodFilePath,
+                        method.MethodStartLine,
+                        method.MethodStartColumn,
+                        method.MethodEndLine,
+                        method.MethodEndColumn,
+                        method.MethodTextSpanStart,
+                        method.MethodTextSpanLength,
+                        method.Name,
+                        method.ReturnType ?? "void"));
+                    continue; // Skip this method - don't generate code for it
+                }
+
                 delegates.Add(BuildExecuteDelegate(method));
             }
         }
@@ -68,7 +101,7 @@ internal static class FactoryModelBuilder
             usings: typeInfo.UsingStatements.ToList(),
             mode: typeInfo.FactoryMode,
             hintName: typeInfo.SafeHintName,
-            diagnostics: typeInfo.Diagnostics.ToList(),
+            diagnostics: diagnostics,
             staticFactory: staticFactory);
     }
 
@@ -107,6 +140,9 @@ internal static class FactoryModelBuilder
             methodNames.Add(uniqueName);
         }
 
+        // Add CanXxx methods for methods with authorization
+        AddCanMethodsForInterface(methods, typeInfo, methodNames);
+
         var interfaceFactory = new InterfaceFactoryModel(
             serviceTypeName: typeInfo.ServiceTypeName,
             implementationTypeName: typeInfo.ImplementationTypeName,
@@ -128,7 +164,6 @@ internal static class FactoryModelBuilder
     {
         var factoryMethods = new List<FactoryMethodModel>();
         var events = new List<EventMethodModel>();
-        var writeMethodsForGrouping = new List<WriteMethodModel>();
 
         // First pass: separate events and build initial method list
         foreach (var method in typeInfo.FactoryMethods)
@@ -142,7 +177,6 @@ internal static class FactoryModelBuilder
             if (method.IsSave)
             {
                 var writeMethod = BuildWriteMethod(method, typeInfo);
-                writeMethodsForGrouping.Add(writeMethod);
                 factoryMethods.Add(writeMethod);
             }
             else
@@ -151,14 +185,21 @@ internal static class FactoryModelBuilder
             }
         }
 
+        // Assign unique names to write/read methods BEFORE building save methods
+        // This ensures the SaveMethodModel references have the correct unique names
+        AssignUniqueNames(factoryMethods);
+
+        // Extract write methods with their updated unique names
+        var writeMethodsWithUniqueNames = factoryMethods.OfType<WriteMethodModel>().ToList();
+
         // Group write methods by parameter signature to create SaveMethodModels
-        var saveMethods = BuildSaveMethods(writeMethodsForGrouping, typeInfo);
+        var saveMethods = BuildSaveMethods(writeMethodsWithUniqueNames, typeInfo);
         factoryMethods.AddRange(saveMethods);
 
         // Add CanXxx methods for methods with authorization (when auth doesn't have target param)
         AddCanMethods(factoryMethods, typeInfo);
 
-        // Assign unique names to methods with same name but different signatures
+        // Assign unique names to save methods and can methods
         AssignUniqueNames(factoryMethods);
 
         // Determine if there's a default Save method (no additional parameters beyond target)
@@ -240,7 +281,9 @@ internal static class FactoryModelBuilder
             authorization: authorization,
             isConstructor: method.IsConstructor,
             isStaticFactory: method.IsStaticFactory,
-            isBool: method.IsBool);
+            isBool: method.IsBool,
+            isDomainMethodTask: method.IsTask,
+            isDomainMethodNullable: method.IsNullable);
     }
 
     private static WriteMethodModel BuildWriteMethod(TypeFactoryMethodInfo method, TypeInfo typeInfo)
@@ -285,7 +328,9 @@ internal static class FactoryModelBuilder
             isAsync: isAsync,
             isNullable: isNullable,
             parameters: allParameters,
-            authorization: authorization);
+            authorization: authorization,
+            isDomainMethodTask: method.IsTask,
+            isBool: method.IsBool);
     }
 
     private static InterfaceMethodModel BuildInterfaceMethod(TypeFactoryMethodInfo method, TypeInfo typeInfo)
@@ -340,7 +385,7 @@ internal static class FactoryModelBuilder
 
         return new EventMethodModel(
             name: method.Name,
-            delegateName: delegateName + "Delegate",
+            delegateName: delegateName + "Event",
             isAsync: method.IsTask,
             parameters: parameters,
             serviceParameters: serviceParameters,
@@ -373,13 +418,16 @@ internal static class FactoryModelBuilder
         // Extract return type from Task<T> if present
         var returnType = method.ReturnType ?? "void";
 
+        var hasCancellationToken = method.Parameters.Any(p => p.IsCancellationToken);
+
         return new ExecuteDelegateModel(
             name: method.Name,
-            delegateName: delegateName + "Delegate",
+            delegateName: delegateName,  // No "Delegate" suffix - tests expect just the method name
             returnType: returnType,
             isNullable: method.IsNullable,
             parameters: parameters,
-            serviceParameters: serviceParameters);
+            serviceParameters: serviceParameters,
+            hasCancellationToken: hasCancellationToken);
     }
 
     private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize)
@@ -397,8 +445,11 @@ internal static class FactoryModelBuilder
             }
         }
 
-        var isTask = authMethods.Any(m => m.IsTask) || aspAuthorize.Count > 0;
-        var isRemote = aspAuthorize.Count > 0;
+        // isRemote is true if any auth method has [Remote] or if there are AspAuthorize attributes
+        var isRemote = authMethods.Any(m => m.IsRemote) || aspAuthorize.Count > 0;
+        // isTask is true if isRemote (remote calls are async) or if any auth method is async
+        var isTask = isRemote || authMethods.Any(m => m.IsTask) || aspAuthorize.Count > 0;
+        // isAsync is true if any auth method is async or if there are AspAuthorize attributes
         var isAsync = authMethods.Any(m => m.IsTask) || aspAuthorize.Count > 0;
 
         var authorization = new AuthorizationModel(
@@ -434,8 +485,6 @@ internal static class FactoryModelBuilder
             .GroupBy(m => GetParameterSignature(m.Parameters))
             .ToList();
 
-        string? nameOverride = grouped.Count == 1 ? "Save" : null;
-
         foreach (var group in grouped)
         {
             var methodsInGroup = group.ToList();
@@ -451,12 +500,12 @@ internal static class FactoryModelBuilder
                 var byNamePostfix = methodsInGroup.GroupBy(m => GetNamePostfix(m.Name, m.Operation)).ToList();
                 foreach (var nameGroup in byNamePostfix)
                 {
-                    saveMethods.Add(BuildSaveMethodFromGroup(nameGroup.ToList(), typeInfo, nameOverride));
+                    saveMethods.Add(BuildSaveMethodFromGroup(nameGroup.ToList(), typeInfo));
                 }
             }
             else
             {
-                saveMethods.Add(BuildSaveMethodFromGroup(methodsInGroup, typeInfo, nameOverride));
+                saveMethods.Add(BuildSaveMethodFromGroup(methodsInGroup, typeInfo));
             }
         }
 
@@ -490,7 +539,7 @@ internal static class FactoryModelBuilder
         return saveMethods;
     }
 
-    private static SaveMethodModel BuildSaveMethodFromGroup(List<WriteMethodModel> methods, TypeInfo typeInfo, string? nameOverride)
+    private static SaveMethodModel BuildSaveMethodFromGroup(List<WriteMethodModel> methods, TypeInfo typeInfo)
     {
         var insertMethod = methods.FirstOrDefault(m => m.Operation == FactoryOperation.Insert);
         var updateMethod = methods.FirstOrDefault(m => m.Operation == FactoryOperation.Update);
@@ -499,7 +548,7 @@ internal static class FactoryModelBuilder
         // Use the method with highest operation priority for naming
         var primaryMethod = methods.OrderByDescending(m => (int)m.Operation).First();
         var namePostfix = GetNamePostfix(primaryMethod.Name, primaryMethod.Operation);
-        var name = nameOverride ?? $"Save{namePostfix}";
+        var name = $"Save{namePostfix}";
 
         // Merge parameters from first method (they should all have same signature)
         var parameters = methods.First().Parameters;
@@ -569,6 +618,83 @@ internal static class FactoryModelBuilder
     #endregion
 
     #region CanMethod Generation
+
+    private static void AddCanMethodsForInterface(List<InterfaceMethodModel> methods, TypeInfo typeInfo, List<string> existingNames)
+    {
+        var canMethodsToAdd = new List<InterfaceMethodModel>();
+        var existingMethodNames = new HashSet<string>(existingNames);
+
+        foreach (var method in methods)
+        {
+            if (!method.HasAuth)
+            {
+                continue;
+            }
+
+            // Only add CanXxx if auth methods don't have a target parameter
+            var authMethodsHaveTarget = method.Authorization?.AuthMethods
+                .Any(am => am.Parameters.Any(p => p.IsTarget)) ?? false;
+
+            if (authMethodsHaveTarget)
+            {
+                continue;
+            }
+
+            var canMethodName = $"Can{method.Name}";
+            if (existingMethodNames.Contains(canMethodName))
+            {
+                continue;
+            }
+
+            // Collect parameters from auth methods (excluding target)
+            var parameters = new List<ParameterModel>();
+            foreach (var authMethod in method.Authorization?.AuthMethods ?? Array.Empty<AuthMethodCall>())
+            {
+                foreach (var param in authMethod.Parameters)
+                {
+                    if (!param.IsTarget && !parameters.Any(p => p.Name == param.Name && p.Type == param.Type))
+                    {
+                        parameters.Add(param);
+                    }
+                }
+            }
+
+            // CanXxx methods are async only if the underlying auth methods are async or if there's AspAuthorize
+            var isRemote = method.Authorization?.AuthMethods.Any(m => m.IsRemote) ?? false;
+            isRemote = isRemote || (method.Authorization?.AspAuthorize.Count > 0);
+            var isTask = isRemote || (method.Authorization?.AuthMethods.Any(m => m.IsTask) ?? false);
+            var isAsync = (method.Authorization?.AuthMethods.Any(m => m.IsTask) ?? false) || (method.Authorization?.AspAuthorize.Count > 0);
+
+            // Add optional CancellationToken parameter for interface CanXxx methods
+            // This allows passing cancellation token through remote calls
+            parameters.Add(new ParameterModel(
+                name: "cancellationToken",
+                type: "CancellationToken",
+                isService: false,
+                isTarget: false,
+                isCancellationToken: true,
+                isParams: false));
+
+            var canMethod = new InterfaceMethodModel(
+                name: canMethodName,
+                uniqueName: canMethodName,
+                returnType: "Authorized",
+                serviceType: typeInfo.ServiceTypeName,
+                implementationType: typeInfo.ImplementationTypeName,
+                operation: FactoryOperation.None,
+                isRemote: isRemote,
+                isTask: isTask,
+                isAsync: isAsync,
+                isNullable: false,
+                parameters: parameters,
+                authorization: method.Authorization);
+
+            canMethodsToAdd.Add(canMethod);
+            existingMethodNames.Add(canMethodName);
+        }
+
+        methods.AddRange(canMethodsToAdd);
+    }
 
     private static void AddCanMethods(List<FactoryMethodModel> methods, TypeInfo typeInfo)
     {
@@ -659,10 +785,10 @@ internal static class FactoryModelBuilder
             ReadMethodModel rm => new ReadMethodModel(
                 rm.Name, uniqueName, rm.ReturnType, rm.ServiceType, rm.ImplementationType, rm.Operation,
                 rm.IsRemote, rm.IsTask, rm.IsAsync, rm.IsNullable, rm.Parameters, rm.Authorization,
-                rm.IsConstructor, rm.IsStaticFactory, rm.IsBool),
+                rm.IsConstructor, rm.IsStaticFactory, rm.IsBool, rm.IsDomainMethodTask, rm.IsDomainMethodNullable),
             WriteMethodModel wm => new WriteMethodModel(
                 wm.Name, uniqueName, wm.ReturnType, wm.ServiceType, wm.ImplementationType, wm.Operation,
-                wm.IsRemote, wm.IsTask, wm.IsAsync, wm.IsNullable, wm.Parameters, wm.Authorization),
+                wm.IsRemote, wm.IsTask, wm.IsAsync, wm.IsNullable, wm.Parameters, wm.Authorization, wm.IsDomainMethodTask, wm.IsBool),
             SaveMethodModel sm => new SaveMethodModel(
                 sm.Name, uniqueName, sm.ReturnType, sm.ServiceType, sm.ImplementationType, sm.Operation,
                 sm.IsRemote, sm.IsTask, sm.IsAsync, sm.IsNullable, sm.Parameters, sm.Authorization,
@@ -698,6 +824,7 @@ internal static class FactoryModelBuilder
                 className: am.ClassName,
                 methodName: am.Name,
                 isTask: am.IsTask,
+                isRemote: am.IsRemote,
                 parameters: BuildParameters(am.Parameters)))
             .ToList();
 

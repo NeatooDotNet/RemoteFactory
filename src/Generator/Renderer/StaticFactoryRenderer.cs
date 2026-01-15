@@ -217,11 +217,33 @@ internal static class StaticFactoryRenderer
         // Add service parameters
         allParams.AddRange(del.ServiceParameters.Select(p => p.Name));
 
-        // Note: CancellationToken was excluded from del.Parameters in the model builder,
-        // so we need to add it if the domain method has it
-        // Since we don't have that info directly, we pass cancellationToken at the end
-        // This matches the existing behavior
-        allParams.Add("cancellationToken");
+        // Only add cancellationToken if the domain method actually has it
+        if (del.HasCancellationToken)
+        {
+            allParams.Add("cancellationToken");
+        }
+
+        return string.Join(", ", allParams);
+    }
+
+    private static string BuildEventMethodInvocationParams(EventMethodModel evt)
+    {
+        // Build the full parameter list including services
+        var allParams = new List<string>();
+
+        // Add data parameters (exclude CancellationToken - it's handled separately as 'ct')
+        allParams.AddRange(evt.Parameters
+            .Where(p => !p.IsCancellationToken)
+            .Select(p => p.Name));
+
+        // Add service parameters (resolved from DI)
+        allParams.AddRange(evt.ServiceParameters.Select(p => p.Name));
+
+        // Add ct if domain method has CancellationToken
+        if (evt.Parameters.Any(p => p.IsCancellationToken))
+        {
+            allParams.Add("ct");
+        }
 
         return string.Join(", ", allParams);
     }
@@ -248,7 +270,7 @@ internal static class StaticFactoryRenderer
             .Where(p => !p.IsCancellationToken)
             .Select(p => $"{p.Type} {p.Name}"));
 
-        var allParamIdentifiers = string.Join(", ", evt.Parameters.Select(p => p.Name));
+        var allParamIdentifiers = BuildEventMethodInvocationParams(evt);
 
         var serviceAssignments = string.Join("\n                            ",
             evt.ServiceParameters.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));

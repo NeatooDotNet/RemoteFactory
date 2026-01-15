@@ -209,7 +209,8 @@ internal static class ClassFactoryRenderer
     private static void RenderDelegate(StringBuilder sb, FactoryMethodModel method)
     {
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
+        // Delegate signature excludes services - they're injected in LocalMethod
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
 
         sb.AppendLine($"        public delegate {returnType} {method.UniqueName}Delegate({parameters});");
     }
@@ -329,7 +330,8 @@ internal static class ClassFactoryRenderer
     {
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
         var returnTypeWithoutTask = GetReturnType(method, includeTask: false, includeAuth: true);
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
+        // Remote method signature excludes services
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
         var nullableText = returnTypeWithoutTask.EndsWith("?") ? "Nullable" : "";
 
         // Exclude CancellationToken from serialized parameters
@@ -348,7 +350,8 @@ internal static class ClassFactoryRenderer
     {
         var asyncKeyword = method.IsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
+        // Local method signature excludes services - they're obtained via ServiceProvider inside
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
 
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
@@ -382,10 +385,11 @@ internal static class ClassFactoryRenderer
             callMethod += "Bool";
         }
 
-        if (method.IsTask)
+        // Use IsDomainMethodTask (underlying method's async status) not IsTask (factory method's return type)
+        if (method.IsDomainMethodTask)
         {
             callMethod += "Async";
-            if (method.IsNullable && !method.HasAuth)
+            if (method.IsDomainMethodNullable)
             {
                 callMethod += "Nullable";
             }
@@ -408,7 +412,8 @@ internal static class ClassFactoryRenderer
             factoryCall = $"{callMethod}(target, FactoryOperation.{method.Operation}, () => target.{method.Name}({domainParams}))";
         }
 
-        if (method.IsAsync && method.IsTask)
+        // Add await if factory method is async AND domain method returns Task
+        if (method.IsAsync && method.IsDomainMethodTask)
         {
             factoryCall = $"await {factoryCall}";
         }
@@ -418,7 +423,8 @@ internal static class ClassFactoryRenderer
             factoryCall = $"new Authorized<{model.ServiceTypeName}>({factoryCall})";
         }
 
-        if (!method.IsTask && method.IsRemote && !method.IsAsync)
+        // Wrap in Task.FromResult if domain method doesn't return Task but factory method needs to
+        if (!method.IsDomainMethodTask && method.IsTask && !method.IsAsync)
         {
             factoryCall = $"Task.FromResult({factoryCall})";
         }
@@ -434,7 +440,8 @@ internal static class ClassFactoryRenderer
     {
         var asyncKeyword = method.IsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
+        // Local method signature excludes services - they're obtained via ServiceProvider inside
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
 
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
@@ -460,13 +467,16 @@ internal static class ClassFactoryRenderer
     {
         var callMethod = "DoFactoryMethodCall";
 
-        if (method.IsTask)
+        // Add Bool suffix if domain method returns bool
+        if (method.IsBool)
+        {
+            callMethod += "Bool";
+        }
+
+        // Use IsDomainMethodTask (underlying method's async status) not IsTask (factory method's return type)
+        if (method.IsDomainMethodTask)
         {
             callMethod += "Async";
-            if (method.IsNullable && !method.HasAuth)
-            {
-                callMethod += "Nullable";
-            }
         }
 
         // Build domain method invocation parameters
@@ -474,7 +484,8 @@ internal static class ClassFactoryRenderer
 
         var factoryCall = $"{callMethod}(cTarget, FactoryOperation.{method.Operation}, () => cTarget.{method.Name}({domainParams}))";
 
-        if (method.IsAsync && method.IsTask)
+        // Add await if factory method is async AND domain method returns Task
+        if (method.IsAsync && method.IsDomainMethodTask)
         {
             factoryCall = $"await {factoryCall}";
         }
@@ -484,7 +495,8 @@ internal static class ClassFactoryRenderer
             factoryCall = $"new Authorized<{model.ServiceTypeName}>({factoryCall})";
         }
 
-        if (!method.IsTask && method.IsRemote && !method.IsAsync)
+        // Wrap in Task.FromResult if domain method doesn't return Task but factory method needs to
+        if (!method.IsDomainMethodTask && method.IsTask && !method.IsAsync)
         {
             factoryCall = $"Task.FromResult({factoryCall})";
         }
@@ -521,8 +533,9 @@ internal static class ClassFactoryRenderer
     {
         var hasAuth = method.HasAuth;
         var returnType = GetReturnType(method, includeTask: true, includeAuth: false);
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
-        var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters);
+        // Public method excludes services - they're injected in the local method
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+        var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
         var methodTarget = method.IsRemote ? $"{method.UniqueName}Property" : $"Local{method.UniqueName}";
 
@@ -568,8 +581,9 @@ internal static class ClassFactoryRenderer
     {
         var asyncKeyword = method.IsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
-        var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters);
+        // Local method signature excludes services - they're obtained via ServiceProvider inside
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+        var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
         sb.AppendLine($"        public virtual {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
@@ -631,11 +645,39 @@ internal static class ClassFactoryRenderer
         sb.AppendLine();
     }
 
-    private static string BuildSaveBranchCall(SaveMethodModel saveMethod, WriteMethodModel branchMethod, string paramIdentifiers)
+    private static string BuildSaveBranchCall(SaveMethodModel saveMethod, WriteMethodModel branchMethod, string _unused)
     {
-        var methodCall = $"Local{branchMethod.UniqueName}({paramIdentifiers})";
+        // Map branch method parameters to save method parameters
+        // Branch method may have different parameter names but same types
+        var branchParams = branchMethod.Parameters.Where(p => !p.IsService && !p.IsCancellationToken).ToList();
+        var saveParams = saveMethod.Parameters.Where(p => !p.IsService && !p.IsCancellationToken).ToList();
 
-        if (branchMethod.IsTask && saveMethod.IsAsync)
+        var paramList = new List<string>();
+
+        // Add target
+        if (branchMethod.Parameters.Any(p => p.IsTarget))
+        {
+            paramList.Add("target");
+        }
+
+        // Map branch method's non-target parameters to save method's parameters by position
+        var branchNonTarget = branchParams.Where(p => !p.IsTarget).ToList();
+        var saveNonTarget = saveParams.Where(p => !p.IsTarget).ToList();
+
+        for (int i = 0; i < branchNonTarget.Count && i < saveNonTarget.Count; i++)
+        {
+            // Use save method's parameter name (which is in scope)
+            paramList.Add(saveNonTarget[i].Name);
+        }
+
+        // Always add cancellation token - Local methods always have this parameter
+        // (added by GetParameterDeclarationsWithOptionalCancellationToken)
+        paramList.Add("cancellationToken");
+
+        var methodCall = $"Local{branchMethod.UniqueName}({string.Join(", ", paramList)})";
+
+        // Add await if save method is async AND branch method returns Task (IsTask, not IsDomainMethodTask)
+        if (saveMethod.IsAsync && branchMethod.IsTask)
         {
             methodCall = $"await {methodCall}";
         }
@@ -645,9 +687,19 @@ internal static class ClassFactoryRenderer
             methodCall = $"new Authorized<{saveMethod.ServiceType}>({methodCall})";
         }
 
+        // Wrap in Task.FromResult if branch local method doesn't return Task but save method needs to
+        // Use branchMethod.IsTask (local method return type), not IsDomainMethodTask (domain method)
         if (!branchMethod.IsTask && saveMethod.IsTask && !saveMethod.IsAsync)
         {
             methodCall = $"Task.FromResult({methodCall})";
+        }
+
+        // Handle nullability mismatch: if save is nullable but branch isn't, add null-forgiving cast
+        // This happens when SaveMethod.IsNullable (due to Delete) but WriteMethod.IsNullable is false
+        if (saveMethod.IsNullable && !branchMethod.IsNullable && !saveMethod.HasAuth)
+        {
+            // Cast to nullable to satisfy the return type
+            methodCall = $"({methodCall})!";
         }
 
         return methodCall;
@@ -712,7 +764,8 @@ internal static class ClassFactoryRenderer
     private static void RenderCanRemoteMethod(StringBuilder sb, CanMethodModel method)
     {
         var returnType = method.IsTask ? "Task<Authorized>" : "Authorized";
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
+        // Remote method signature excludes services
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
 
         // Exclude CancellationToken from serialized parameters
         var serializedParams = string.Join(", ", method.Parameters
@@ -730,7 +783,8 @@ internal static class ClassFactoryRenderer
     {
         var asyncKeyword = method.IsAsync ? "async" : "";
         var returnType = method.IsTask ? "Task<Authorized>" : "Authorized";
-        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
+        // Local method signature excludes services - they're obtained via ServiceProvider inside
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
 
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
@@ -915,8 +969,9 @@ internal static class ClassFactoryRenderer
         {
             foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
             {
-                var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters);
-                var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters);
+                // Delegate registration excludes services - matches the delegate signature
+                var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+                var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
                 sb.AppendLine($"            services.AddScoped<{method.UniqueName}Delegate>(cc => {{");
                 sb.AppendLine($"                var factory = cc.GetRequiredService<{model.ImplementationTypeName}Factory>();");
@@ -955,7 +1010,7 @@ internal static class ClassFactoryRenderer
             .Where(p => !p.IsCancellationToken)
             .Select(p => $"{p.Type} {p.Name}"));
 
-        var allParamIdentifiers = string.Join(", ", evt.Parameters.Select(p => p.Name));
+        var allParamIdentifiers = BuildEventMethodInvocationParams(evt);
 
         var serviceAssignments = string.Join("\n                        ",
             evt.ServiceParameters.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
@@ -1105,6 +1160,28 @@ internal static class ClassFactoryRenderer
         return string.Join(", ", parameters
             .Where(p => !p.IsTarget)
             .Select(p => p.IsCancellationToken ? "cancellationToken" : p.Name));
+    }
+
+    private static string BuildEventMethodInvocationParams(EventMethodModel evt)
+    {
+        // Build the full parameter list including services
+        var allParams = new List<string>();
+
+        // Add data parameters (exclude CancellationToken - it's handled separately as 'ct')
+        allParams.AddRange(evt.Parameters
+            .Where(p => !p.IsCancellationToken)
+            .Select(p => p.Name));
+
+        // Add service parameters (resolved from DI)
+        allParams.AddRange(evt.ServiceParameters.Select(p => p.Name));
+
+        // Add ct if domain method has CancellationToken
+        if (evt.Parameters.Any(p => p.IsCancellationToken))
+        {
+            allParams.Add("ct");
+        }
+
+        return string.Join(", ", allParams);
     }
 
     #endregion

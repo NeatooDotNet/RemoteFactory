@@ -84,7 +84,17 @@ public static class LocalServer
 				var methodParams = method.Method.GetParameters();
 				var invokeParams = PrepareInvokeParameters(remoteRequest.Parameters, methodParams, cancellationToken);
 
-				var result = method.DynamicInvoke(invokeParams);
+				object? result;
+				try
+				{
+					result = method.DynamicInvoke(invokeParams);
+				}
+				catch (TargetInvocationException tie) when (tie.InnerException != null)
+				{
+					// Unwrap the TargetInvocationException from DynamicInvoke
+					System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+					throw; // Unreachable, but required by compiler
+				}
 
 				if (result is Task task)
 				{

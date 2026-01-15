@@ -32,17 +32,20 @@ internal sealed record AuthMethodCall
         string className,
         string methodName,
         bool isTask = false,
+        bool isRemote = false,
         IReadOnlyList<ParameterModel>? parameters = null)
     {
         ClassName = className;
         MethodName = methodName;
         IsTask = isTask;
+        IsRemote = isRemote;
         Parameters = parameters ?? System.Array.Empty<ParameterModel>();
     }
 
     public string ClassName { get; }
     public string MethodName { get; }
     public bool IsTask { get; }
+    public bool IsRemote { get; }
     public IReadOnlyList<ParameterModel> Parameters { get; }
 }
 

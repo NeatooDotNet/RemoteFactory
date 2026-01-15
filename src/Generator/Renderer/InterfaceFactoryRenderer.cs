@@ -155,10 +155,12 @@ internal static class InterfaceFactoryRenderer
             sb.AppendLine("            this.ServiceProvider = serviceProvider;");
             sb.AppendLine("            this.MakeRemoteDelegateRequest = remoteMethodDelegate;");
 
-            // Remote property assignments
+            // Remote property assignments - sync CanXxx methods always use Local
             foreach (var method in model.Methods)
             {
-                sb.AppendLine($"            {method.UniqueName}Property = Remote{method.UniqueName};");
+                var useLocal = IsSyncCanMethod(method);
+                var methodPrefix = useLocal ? "Local" : "Remote";
+                sb.AppendLine($"            {method.UniqueName}Property = {methodPrefix}{method.UniqueName};");
             }
 
             sb.AppendLine("        }");
@@ -186,16 +188,26 @@ internal static class InterfaceFactoryRenderer
             sb.AppendLine("            this.ServiceProvider = serviceProvider;");
             sb.AppendLine("            this.MakeRemoteDelegateRequest = remoteMethodDelegate;");
 
-            // Remote property assignments
+            // Remote property assignments - sync CanXxx methods always use Local
             foreach (var method in model.Methods)
             {
-                sb.AppendLine($"            {method.UniqueName}Property = Remote{method.UniqueName};");
+                var useLocal = IsSyncCanMethod(method);
+                var methodPrefix = useLocal ? "Local" : "Remote";
+                sb.AppendLine($"            {method.UniqueName}Property = {methodPrefix}{method.UniqueName};");
             }
 
             sb.AppendLine("        }");
         }
 
         sb.AppendLine();
+    }
+
+    /// <summary>
+    /// Returns true if this is a sync CanXxx method (local-only, no remote version).
+    /// </summary>
+    private static bool IsSyncCanMethod(InterfaceMethodModel method)
+    {
+        return method.Name.StartsWith("Can") && !method.IsTask;
     }
 
     #endregion
@@ -207,8 +219,11 @@ internal static class InterfaceFactoryRenderer
         // Public method (interface implementation)
         RenderPublicMethod(sb, method);
 
-        // Remote method
-        RenderRemoteMethod(sb, method);
+        // Remote method - skip for sync CanXxx methods (they're local-only)
+        if (!IsSyncCanMethod(method))
+        {
+            RenderRemoteMethod(sb, method);
+        }
 
         // Local method (only in Full mode)
         if (mode == FactoryMode.Full)
@@ -232,8 +247,11 @@ internal static class InterfaceFactoryRenderer
 
     private static void RenderRemoteMethod(StringBuilder sb, InterfaceMethodModel method)
     {
-        var returnType = GetReturnType(method);
+        // Remote methods are always async, so always use Task-wrapped return type
         var returnTypeWithoutTask = GetReturnTypeWithoutTask(method);
+        var returnType = method.IsTask
+            ? GetReturnType(method)
+            : $"Task<{returnTypeWithoutTask}>";  // Force Task wrapper for remote methods
         var parameters = GetParameterDeclarations(method.Parameters);
         var nullableText = returnTypeWithoutTask.EndsWith("?") ? "Nullable" : "";
 
@@ -263,18 +281,29 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Authorization checks (interface methods use AspForbid = true)
-        RenderAuthorizationChecks(sb, method);
+        // CanXxx methods only perform authorization checks and return the result
+        if (method.Name.StartsWith("Can"))
+        {
+            // Authorization checks - don't throw on failure, just return the result
+            RenderAuthorizationChecks(sb, method, throwOnFailure: false);
+            // Return authorized result
+            sb.AppendLine("            return authorized;");
+        }
+        else
+        {
+            // Regular methods: authorization checks + call target (throw on failure)
+            RenderAuthorizationChecks(sb, method, throwOnFailure: true);
 
-        // Get the target service
-        sb.AppendLine($"            var target = ServiceProvider.GetRequiredService<{model.ImplementationTypeName}>();");
+            // Get the target service - use the interface type since that's what's registered in DI
+            sb.AppendLine($"            var target = ServiceProvider.GetRequiredService<{model.ServiceTypeName}>();");
 
-        // Service assignments
-        RenderServiceAssignments(sb, method.Parameters);
+            // Service assignments
+            RenderServiceAssignments(sb, method.Parameters);
 
-        // Method call
-        var methodCall = BuildMethodCall(method, paramIdentifiers);
-        sb.AppendLine($"            return {methodCall};");
+            // Method call
+            var methodCall = BuildMethodCall(method, paramIdentifiers);
+            sb.AppendLine($"            return {methodCall};");
+        }
 
         sb.AppendLine("        }");
         sb.AppendLine();
@@ -301,7 +330,7 @@ internal static class InterfaceFactoryRenderer
 
     #region Authorization Rendering
 
-    private static void RenderAuthorizationChecks(StringBuilder sb, InterfaceMethodModel method)
+    private static void RenderAuthorizationChecks(StringBuilder sb, InterfaceMethodModel method, bool throwOnFailure)
     {
         if (!method.HasAuth || method.Authorization == null)
         {
@@ -321,11 +350,13 @@ internal static class InterfaceFactoryRenderer
 
             foreach (var authMethod in authClass)
             {
-                RenderAuthMethodCall(sb, method, authMethod, varName);
+                RenderAuthMethodCall(sb, method, authMethod, varName, throwOnFailure);
             }
         }
 
-        // ASP.NET Authorize checks (interface methods use AspForbid = true)
+        // ASP.NET Authorize checks
+        // Regular methods use AspForbid = true (return 403 on failure)
+        // CanXxx methods use AspForbid = false (return Authorized result)
         if (method.Authorization.AspAuthorize.Count > 0)
         {
             sb.AppendLine("            var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();");
@@ -343,12 +374,12 @@ internal static class InterfaceFactoryRenderer
             });
 
             var aspAuthDataText = string.Join(", ", aspAuthDataList);
-            // Interface methods use AspForbid = true
-            sb.AppendLine($"            authorized = await aspAuthorized.Authorize([ {aspAuthDataText} ], true);");
+            var aspForbid = throwOnFailure ? "true" : "false";
+            sb.AppendLine($"            authorized = await aspAuthorized.Authorize([ {aspAuthDataText} ], {aspForbid});");
         }
     }
 
-    private static void RenderAuthMethodCall(StringBuilder sb, InterfaceMethodModel factoryMethod, AuthMethodCall authMethod, string varName)
+    private static void RenderAuthMethodCall(StringBuilder sb, InterfaceMethodModel factoryMethod, AuthMethodCall authMethod, string varName, bool throwOnFailure)
     {
         // Build parameter mapping from factory method params to auth method params
         var authParams = new List<string>();
@@ -380,8 +411,16 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine("            if (!authorized.HasAccess)");
         sb.AppendLine("            {");
 
-        // Interface methods throw NotAuthorizedException (AspForbid = true)
-        sb.AppendLine("                throw new NotAuthorizedException(authorized);");
+        if (throwOnFailure)
+        {
+            // Regular methods throw NotAuthorizedException on auth failure
+            sb.AppendLine("                throw new NotAuthorizedException(authorized);");
+        }
+        else
+        {
+            // CanXxx methods just return the authorized result
+            sb.AppendLine("                return authorized;");
+        }
 
         sb.AppendLine("            }");
     }
@@ -483,7 +522,9 @@ internal static class InterfaceFactoryRenderer
     {
         return string.Join(", ", parameters
             .Where(p => includeServices || !p.IsService)
-            .Select(p => $"{p.Type} {p.Name}"));
+            .Select(p => p.IsCancellationToken
+                ? $"{p.Type} {p.Name} = default"
+                : $"{p.Type} {p.Name}"));
     }
 
     private static string GetParameterIdentifiers(IReadOnlyList<ParameterModel> parameters, bool includeServices = true)
