@@ -740,6 +740,9 @@ public partial class Factory
 			var typeText = this.Type.Trim();
 			this.IsCancellationToken = typeText == "CancellationToken" ||
 									   typeText == "System.Threading.CancellationToken";
+
+			// Detect params modifier - params must be last, so CancellationToken goes before it
+			this.IsParams = parameterSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.ParamsKeyword));
 		}
 
 		public string Name { get; set; } = null!;
@@ -747,6 +750,7 @@ public partial class Factory
 		public bool IsService { get; set; }
 		public bool IsTarget { get; set; }
 		public bool IsCancellationToken { get; set; }
+		public bool IsParams { get; set; }
 
 		public bool Equals(MethodParameterInfo obj)
 		{
@@ -903,20 +907,36 @@ public partial class Factory
 			var paramsWithoutCt = this.Parameters.Where(p =>
 				(includeServices || !p.IsService) &&
 				(includeTarget || !p.IsTarget) &&
-				!p.IsCancellationToken);
+				!p.IsCancellationToken).ToList();
 
-			var paramsList = paramsWithoutCt.Select(p => $"{p.Type} {p.Name}").ToList();
+			// Check if any parameter has the params modifier
+			var hasParamsParameter = paramsWithoutCt.Any(p => p.IsParams);
 
-			// Always append optional CancellationToken at the end
-			paramsList.Add("CancellationToken cancellationToken = default");
+			if (hasParamsParameter)
+			{
+				// When params is present, CancellationToken must come BEFORE params (params must be last in C#)
+				// Build: [regular params], CancellationToken, params T[] paramsParam
+				var regularParams = paramsWithoutCt.Where(p => !p.IsParams).Select(p => $"{p.Type} {p.Name}").ToList();
+				var paramsParam = paramsWithoutCt.First(p => p.IsParams);
 
-			return string.Join(", ", paramsList);
+				regularParams.Add("CancellationToken cancellationToken = default");
+				regularParams.Add($"params {paramsParam.Type} {paramsParam.Name}");
+
+				return string.Join(", ", regularParams);
+			}
+			else
+			{
+				// Standard case: append optional CancellationToken at the end
+				var paramsList = paramsWithoutCt.Select(p => $"{p.Type} {p.Name}").ToList();
+				paramsList.Add("CancellationToken cancellationToken = default");
+				return string.Join(", ", paramsList);
+			}
 		}
 
 		/// <summary>
 		/// Builds parameter identifiers with cancellationToken always included.
 		/// Excludes any existing CancellationToken from the domain method parameters and appends
-		/// the standard cancellationToken identifier at the end.
+		/// the standard cancellationToken identifier at the end (or before params if present).
 		/// </summary>
 		public string ParameterIdentifiersTextWithCancellationToken(bool includeServices = false, bool includeTarget = true)
 		{
@@ -924,14 +944,28 @@ public partial class Factory
 			var paramsWithoutCt = this.Parameters.Where(p =>
 				(includeServices || !p.IsService) &&
 				(includeTarget || !p.IsTarget) &&
-				!p.IsCancellationToken);
+				!p.IsCancellationToken).ToList();
 
-			var identifiersList = paramsWithoutCt.Select(p => p.Name).ToList();
+			// Check if any parameter has the params modifier
+			var hasParamsParameter = paramsWithoutCt.Any(p => p.IsParams);
 
-			// Always append cancellationToken at the end
-			identifiersList.Add("cancellationToken");
+			if (hasParamsParameter)
+			{
+				// When params is present, CancellationToken comes before params
+				var regularParams = paramsWithoutCt.Where(p => !p.IsParams).Select(p => p.Name).ToList();
+				var paramsParam = paramsWithoutCt.First(p => p.IsParams);
 
-			return string.Join(", ", identifiersList);
+				regularParams.Add("cancellationToken");
+				regularParams.Add(paramsParam.Name);
+
+				return string.Join(", ", regularParams);
+			}
+			else
+			{
+				var identifiersList = paramsWithoutCt.Select(p => p.Name).ToList();
+				identifiersList.Add("cancellationToken");
+				return string.Join(", ", identifiersList);
+			}
 		}
 
 		/// <summary>

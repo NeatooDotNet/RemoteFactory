@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v10.10.0](v10.10.0.md) | 2026-01-15 | Support for `params` parameters in factory methods |
 | [v10.9.0](v10.9.0.md) | 2026-01-13 | Client-server code separation with FactoryMode.RemoteOnly |
 | [v10.8.0](v10.8.0.md) | 2026-01-13 | Optional CancellationToken on all factory methods |
 | [v10.7.0](v10.7.0.md) | 2026-01-11 | Fix duplicate Save method generation with multi-line parameters |
@@ -27,6 +28,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v10.10.0](v10.10.0.md) - 2026-01-15 - Support for params parameters
 - [v10.9.0](v10.9.0.md) - 2026-01-13 - Client-server code separation
 - [v10.8.0](v10.8.0.md) - 2026-01-13 - Optional CancellationToken on factory methods
 - [v10.7.0](v10.7.0.md) - 2026-01-11 - Parameter whitespace bug fix
