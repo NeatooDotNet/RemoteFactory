@@ -368,7 +368,7 @@ public partial class Factory
 
 					properties.Add(new OrdinalPropertyInfo(
 						propertySymbol.Name,
-						propertySymbol.Type.ToDisplayString(),
+						propertySymbol.Type.WithNullableAnnotation(NullableAnnotation.NotAnnotated).ToDisplayString(),
 						isNullable,
 						depth));
 				}

@@ -215,6 +215,35 @@ public partial record RecordWithCollection(string Name, List<string> Items);
 public partial record RecordWithNullable(string Name, string? Description);
 
 // ============================================================================
+// Record with nullable collection (CS8639 regression test)
+// ============================================================================
+
+/// <summary>
+/// Record with nullable collection property.
+/// Tests that typeof() in PropertyTypes array handles nullable reference types.
+/// Regression test for CS8639: typeof cannot be used on nullable reference types.
+/// </summary>
+[Factory]
+[Create]
+public partial record RecordWithNullableCollection(string Name, List<string>? Items);
+
+// ============================================================================
+// Record with complex nullable generics (CS8639 regression test)
+// ============================================================================
+
+/// <summary>
+/// Record with complex nullable generic types.
+/// Tests edge cases with nested generics and mixed nullability.
+/// Regression test for CS8639: typeof cannot be used on nullable reference types.
+/// </summary>
+[Factory]
+[Create]
+public partial record RecordWithComplexNullableGenerics(
+    string Name,
+    Dictionary<string, int>? Metadata,
+    List<string?>? NullableItems);
+
+// ============================================================================
 // Record for value equality tests
 // ============================================================================
 

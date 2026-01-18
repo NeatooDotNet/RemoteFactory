@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v10.11.1](v10.11.1.md) | 2026-01-18 | Fix nullable typeof() in ordinal serialization |
 | [v10.11.0](v10.11.0.md) | 2026-01-15 | Generator refactoring, exception stack trace fix |
 | [v10.10.0](v10.10.0.md) | 2026-01-15 | Support for `params` parameters in factory methods |
 | [v10.9.0](v10.9.0.md) | 2026-01-13 | Client-server code separation with FactoryMode.RemoteOnly |
@@ -29,6 +30,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v10.11.1](v10.11.1.md) - 2026-01-18 - Nullable typeof() fix
 - [v10.11.0](v10.11.0.md) - 2026-01-15 - Generator refactoring
 - [v10.10.0](v10.10.0.md) - 2026-01-15 - Support for params parameters
 - [v10.9.0](v10.9.0.md) - 2026-01-13 - Client-server code separation

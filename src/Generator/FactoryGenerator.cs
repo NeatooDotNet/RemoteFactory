@@ -1276,12 +1276,13 @@ public partial class Factory : IIncrementalGenerator
 			var properties = typeInfo.OrdinalProperties.ToList();
 			var propertyNamesArray = string.Join(", ", properties.Select(p => $"\"{p.Name}\""));
 			// Strip nullable annotation from types for typeof() operator (CS8639)
+			// Nullable reference types (e.g., List<string>?, string?) have a trailing ?
+			// that is invalid in typeof() expressions. Nullability is compile-time only.
 			var propertyTypesArray = string.Join(", ", properties.Select(p =>
 			{
 				var typeName = p.Type;
-				if (typeName.EndsWith("?") && !typeName.Contains("<"))
+				if (typeName.EndsWith("?"))
 				{
-					// Simple nullable type like "string?" -> "string"
 					typeName = typeName.TrimEnd('?');
 				}
 				return $"typeof({typeName})";
