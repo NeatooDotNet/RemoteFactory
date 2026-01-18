@@ -22,8 +22,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             if (reader.TokenType != global::System.Text.Json.JsonTokenType.StartArray)
                 throw new global::System.Text.Json.JsonException($"Expected StartArray for RecordWithNullable ordinal format, got {reader.TokenType}");
             reader.Read(); // Move past StartArray
-            // Description (string?) - position 0
-            var prop0 = global::System.Text.Json.JsonSerializer.Deserialize<string?>(ref reader, options);
+            // Description (string) - position 0
+            var prop0 = global::System.Text.Json.JsonSerializer.Deserialize<string>(ref reader, options);
             reader.Read();
             // Name (string) - position 1
             var prop1 = global::System.Text.Json.JsonSerializer.Deserialize<string>(ref reader, options);
