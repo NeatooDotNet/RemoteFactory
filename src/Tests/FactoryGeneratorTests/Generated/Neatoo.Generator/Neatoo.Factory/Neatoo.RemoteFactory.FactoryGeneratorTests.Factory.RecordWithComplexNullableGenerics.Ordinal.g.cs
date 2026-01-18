@@ -22,14 +22,14 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory
             if (reader.TokenType != global::System.Text.Json.JsonTokenType.StartArray)
                 throw new global::System.Text.Json.JsonException($"Expected StartArray for RecordWithComplexNullableGenerics ordinal format, got {reader.TokenType}");
             reader.Read(); // Move past StartArray
-            // Metadata (System.Collections.Generic.Dictionary<string, int>) - position 0
-            var prop0 = global::System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, int>>(ref reader, options);
+            // Metadata (System.Collections.Generic.Dictionary<string, int>?) - position 0
+            var prop0 = global::System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, int>?>(ref reader, options);
             reader.Read();
             // Name (string) - position 1
             var prop1 = global::System.Text.Json.JsonSerializer.Deserialize<string>(ref reader, options);
             reader.Read();
-            // NullableItems (System.Collections.Generic.List<string?>) - position 2
-            var prop2 = global::System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<string?>>(ref reader, options);
+            // NullableItems (System.Collections.Generic.List<string?>?) - position 2
+            var prop2 = global::System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<string?>?>(ref reader, options);
             reader.Read();
             if (reader.TokenType != global::System.Text.Json.JsonTokenType.EndArray)
                 throw new global::System.Text.Json.JsonException($"Too many values in ordinal array for RecordWithComplexNullableGenerics. Expected 3.");

@@ -451,6 +451,97 @@ public class PropertyTypesGenerationTests
 		Assert.Equal(typeof(string), propertyTypes[0]);
 		Assert.Equal(typeof(string), propertyTypes[1]);
 	}
+
+	[Fact]
+	public void RecordWithNullableValueTypes_PropertyTypes_NoNullableAnnotation()
+	{
+		// Arrange & Act
+		// This test validates the CS1525 fix for nullable value types in typeof()
+		// Regression test: typeof(int?) would previously generate invalid syntax
+		var propertyTypes = RecordWithNullableValueTypes.PropertyTypes;
+
+		// Assert
+		Assert.Equal(5, propertyTypes.Length);
+		// All nullable value types should be their underlying types without ?
+		Assert.Equal(typeof(string), propertyTypes[0]); // Name
+		Assert.Equal(typeof(DateTime), propertyTypes[1]); // NullableDateTime
+		Assert.Equal(typeof(decimal), propertyTypes[2]); // NullableDecimal
+		Assert.Equal(typeof(Guid), propertyTypes[3]); // NullableGuid
+		Assert.Equal(typeof(int), propertyTypes[4]); // NullableInt
+	}
+
+	[Fact]
+	public void RecordWithNullableValueTypes_ToOrdinalArray_SerializesCorrectly()
+	{
+		// Arrange
+		var record = new RecordWithNullableValueTypes(
+			"Test",
+			42,
+			new DateTime(2024, 1, 15),
+			Guid.Parse("12345678-1234-1234-1234-123456789012"),
+			123.45m);
+
+		// Act
+		var array = record.ToOrdinalArray();
+
+		// Assert
+		Assert.Equal(5, array.Length);
+		Assert.Equal("Test", array[0]);
+		Assert.Equal(new DateTime(2024, 1, 15), array[1]);
+		Assert.Equal(123.45m, array[2]);
+		Assert.Equal(Guid.Parse("12345678-1234-1234-1234-123456789012"), array[3]);
+		Assert.Equal(42, array[4]);
+	}
+
+	[Fact]
+	public void RecordWithNullableValueTypes_FromOrdinalArray_DeserializesCorrectly()
+	{
+		// Arrange
+		// This test validates the CS1525 fix for nullable value type casts in FromOrdinalArray
+		// Regression test: (int?)values[i] would previously generate (int ?? )values[i]
+		var array = new object?[]
+		{
+			"Test",
+			new DateTime(2024, 1, 15),
+			123.45m,
+			Guid.Parse("12345678-1234-1234-1234-123456789012"),
+			42
+		};
+
+		// Act
+		var record = (RecordWithNullableValueTypes)RecordWithNullableValueTypes.FromOrdinalArray(array);
+
+		// Assert
+		Assert.Equal("Test", record.Name);
+		Assert.Equal(42, record.NullableInt);
+		Assert.Equal(new DateTime(2024, 1, 15), record.NullableDateTime);
+		Assert.Equal(Guid.Parse("12345678-1234-1234-1234-123456789012"), record.NullableGuid);
+		Assert.Equal(123.45m, record.NullableDecimal);
+	}
+
+	[Fact]
+	public void RecordWithNullableValueTypes_FromOrdinalArray_HandlesNullValues()
+	{
+		// Arrange
+		var array = new object?[]
+		{
+			"Test",
+			null, // NullableDateTime
+			null, // NullableDecimal
+			null, // NullableGuid
+			null  // NullableInt
+		};
+
+		// Act
+		var record = (RecordWithNullableValueTypes)RecordWithNullableValueTypes.FromOrdinalArray(array);
+
+		// Assert
+		Assert.Equal("Test", record.Name);
+		Assert.Null(record.NullableInt);
+		Assert.Null(record.NullableDateTime);
+		Assert.Null(record.NullableGuid);
+		Assert.Null(record.NullableDecimal);
+	}
 }
 
 /// <summary>

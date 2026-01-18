@@ -366,9 +366,22 @@ public partial class Factory
 					// int? (annotated) vs int (not annotated)
 					var isNullable = propertySymbol.NullableAnnotation == NullableAnnotation.Annotated;
 
+					// Get the type string without nullable annotation.
+					// For reference types: WithNullableAnnotation strips the ? annotation
+					// For value types: int? is actually Nullable<int>, so ToDisplayString() still returns "int?"
+					// We strip trailing whitespace and ? to get the base type for both cases.
+					// The final TrimEnd() handles cases where there was whitespace before the ? (e.g., "int ?").
+					// The IsNullable flag preserves the nullability information for use during rendering.
+					var typeString = propertySymbol.Type
+						.WithNullableAnnotation(NullableAnnotation.NotAnnotated)
+						.ToDisplayString()
+						.TrimEnd()
+						.TrimEnd('?')
+						.TrimEnd();
+
 					properties.Add(new OrdinalPropertyInfo(
 						propertySymbol.Name,
-						propertySymbol.Type.WithNullableAnnotation(NullableAnnotation.NotAnnotated).ToDisplayString(),
+						typeString,
 						isNullable,
 						depth));
 				}
