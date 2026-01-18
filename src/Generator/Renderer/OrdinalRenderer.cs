@@ -96,8 +96,13 @@ internal static class OrdinalRenderer
         for (int i = 0; i < model.Properties.Count; i++)
         {
             var prop = model.Properties[i];
-            sb.AppendLine($"            // {prop.Name} ({prop.Type}) - position {i}");
-            sb.AppendLine($"            var prop{i} = global::System.Text.Json.JsonSerializer.Deserialize<{prop.Type}>(ref reader, options);");
+            // For nullable types, append ? to the type for proper null handling.
+            // Nullable value types (int?) need Deserialize<int?> to handle null values.
+            // TrimEnd ensures no trailing whitespace in the type string.
+            var baseType = prop.Type.TrimEnd();
+            var deserializeType = prop.IsNullable ? $"{baseType}?" : baseType;
+            sb.AppendLine($"            // {prop.Name} ({deserializeType}) - position {i}");
+            sb.AppendLine($"            var prop{i} = global::System.Text.Json.JsonSerializer.Deserialize<{deserializeType}>(ref reader, options);");
             sb.AppendLine("            reader.Read();");
         }
 
@@ -242,9 +247,13 @@ internal static class OrdinalRenderer
             for (int i = 0; i < model.Properties.Count; i++)
             {
                 var prop = model.Properties[i];
-                // For nullable reference types, add ? to the cast type to avoid CS8600
-                // when casting from object? to a non-nullable type
-                var castType = prop.IsNullable ? $"{prop.Type}?" : prop.Type;
+                // For nullable types, add ? to the cast type to avoid CS8600
+                // when casting from object? to a non-nullable type.
+                // TrimEnd ensures no trailing whitespace in the type string.
+                // Defensive: only add ? if type doesn't already end with ? (shouldn't happen after source fix).
+                var baseType = prop.Type.TrimEnd();
+                var needsNullableSuffix = prop.IsNullable && !baseType.EndsWith("?");
+                var castType = needsNullableSuffix ? $"{baseType}?" : baseType;
                 var cast = $"({castType})";
                 var nullForgiving = prop.IsNullable ? "" : "!";
                 var comma = i < model.Properties.Count - 1 ? "," : "";
@@ -298,10 +307,14 @@ internal static class OrdinalRenderer
             if (propertyToIndex.TryGetValue(paramName, out var idx))
             {
                 var prop = model.Properties[idx];
-                // For nullable reference types, add ? to the cast type to avoid CS8600
-                // when casting from object? to a non-nullable type
-                var castType = prop.IsNullable ? $"{prop.Type}?" : prop.Type;
-                var cast = $"({castType})";
+                // For nullable types, add ? to the cast type to avoid CS8600
+                // when casting from object? to a non-nullable type.
+                // TrimEnd ensures no trailing whitespace in the type string.
+                // Defensive: only add ? if type doesn't already end with ? (shouldn't happen after source fix).
+                var baseType = prop.Type.TrimEnd();
+                var needsNullableSuffix = prop.IsNullable && !baseType.EndsWith("?");
+                var castType = needsNullableSuffix ? $"{baseType}?" : baseType;
+                var cast = $"({castType.TrimEnd()})";  // Extra TrimEnd for safety
                 var nullForgiving = prop.IsNullable ? "" : "!";
                 args.Add($"{cast}values[{idx}]{nullForgiving}");
             }

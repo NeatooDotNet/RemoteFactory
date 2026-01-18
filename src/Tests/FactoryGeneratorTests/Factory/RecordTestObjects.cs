@@ -244,6 +244,24 @@ public partial record RecordWithComplexNullableGenerics(
     List<string?>? NullableItems);
 
 // ============================================================================
+// Record with nullable value types (CS1525 regression test)
+// ============================================================================
+
+/// <summary>
+/// Record with nullable value types in primary constructor.
+/// Tests that FromOrdinalArray generates valid cast syntax for nullable value types.
+/// Regression test for CS1525: Invalid expression term (caused by generating "int ?? " instead of "int?").
+/// </summary>
+[Factory]
+[Create]
+public partial record RecordWithNullableValueTypes(
+    string Name,
+    int? NullableInt,
+    DateTime? NullableDateTime,
+    Guid? NullableGuid,
+    decimal? NullableDecimal);
+
+// ============================================================================
 // Record for value equality tests
 // ============================================================================
 
