@@ -158,16 +158,9 @@ internal static class OrdinalRenderer
         sb.AppendLine();
 
         // PropertyTypes static property
-        var propertyTypesArray = string.Join(", ", model.Properties.Select(p =>
-        {
-            var typeName = p.Type;
-            // Strip nullable annotation for typeof() (CS8639)
-            if (typeName.EndsWith("?") && !typeName.Contains("<"))
-            {
-                typeName = typeName.TrimEnd('?');
-            }
-            return $"typeof({typeName})";
-        }));
+        // Note: Nullable annotations are already stripped at the source (FactoryGenerator.Types.cs)
+        // using WithNullableAnnotation(NullableAnnotation.NotAnnotated) to avoid CS8639 errors.
+        var propertyTypesArray = string.Join(", ", model.Properties.Select(p => $"typeof({p.Type})"));
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Property types in ordinal order.");
         sb.AppendLine("        /// </summary>");
@@ -249,9 +242,11 @@ internal static class OrdinalRenderer
             for (int i = 0; i < model.Properties.Count; i++)
             {
                 var prop = model.Properties[i];
-                var cast = $"({prop.Type})";
-                var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
-                var nullForgiving = isEffectivelyNullable ? "" : "!";
+                // For nullable reference types, add ? to the cast type to avoid CS8600
+                // when casting from object? to a non-nullable type
+                var castType = prop.IsNullable ? $"{prop.Type}?" : prop.Type;
+                var cast = $"({castType})";
+                var nullForgiving = prop.IsNullable ? "" : "!";
                 var comma = i < model.Properties.Count - 1 ? "," : "";
                 sb.AppendLine($"                {prop.Name} = {cast}values[{i}]{nullForgiving}{comma}");
             }
@@ -303,9 +298,11 @@ internal static class OrdinalRenderer
             if (propertyToIndex.TryGetValue(paramName, out var idx))
             {
                 var prop = model.Properties[idx];
-                var cast = $"({prop.Type})";
-                var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
-                var nullForgiving = isEffectivelyNullable ? "" : "!";
+                // For nullable reference types, add ? to the cast type to avoid CS8600
+                // when casting from object? to a non-nullable type
+                var castType = prop.IsNullable ? $"{prop.Type}?" : prop.Type;
+                var cast = $"({castType})";
+                var nullForgiving = prop.IsNullable ? "" : "!";
                 args.Add($"{cast}values[{idx}]{nullForgiving}");
             }
         }

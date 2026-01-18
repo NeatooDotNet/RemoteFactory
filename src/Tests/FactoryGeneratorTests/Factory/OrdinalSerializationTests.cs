@@ -301,6 +301,156 @@ public class OrdinalSerializationTests
 		Assert.Equal("custom", record.Name);
 		Assert.Equal(100, record.Value);
 	}
+
+	// ============================================================================
+	// Nullable Collection Tests (CS8639 Regression)
+	// ============================================================================
+
+	public static IEnumerable<object[]> NullableCollectionFactory_Ordinal()
+	{
+		var scopes = ClientServerContainers.Scopes(SerializationFormat.Ordinal);
+		yield return new object[] { scopes.client.ServiceProvider.GetRequiredService<IRecordWithNullableCollectionFactory>() };
+	}
+
+	public static IEnumerable<object[]> NullableCollectionFactory_Named()
+	{
+		var scopes = ClientServerContainers.Scopes(SerializationFormat.Named);
+		yield return new object[] { scopes.client.ServiceProvider.GetRequiredService<IRecordWithNullableCollectionFactory>() };
+	}
+
+	[Theory]
+	[MemberData(nameof(NullableCollectionFactory_Ordinal))]
+	[MemberData(nameof(NullableCollectionFactory_Named))]
+	public void BothFormats_NullableCollection_WithValues_Serializes(IRecordWithNullableCollectionFactory factory)
+	{
+		// Arrange
+		var items = new List<string> { "A", "B", "C" };
+
+		// Act
+		var record = factory.Create("Test", items);
+
+		// Assert
+		Assert.NotNull(record);
+		Assert.Equal("Test", record.Name);
+		Assert.NotNull(record.Items);
+		Assert.Equal(items, record.Items);
+	}
+
+	[Theory]
+	[MemberData(nameof(NullableCollectionFactory_Ordinal))]
+	[MemberData(nameof(NullableCollectionFactory_Named))]
+	public void BothFormats_NullableCollection_WithNull_Serializes(IRecordWithNullableCollectionFactory factory)
+	{
+		// Act
+		var record = factory.Create("NullItems", null);
+
+		// Assert
+		Assert.NotNull(record);
+		Assert.Equal("NullItems", record.Name);
+		Assert.Null(record.Items);
+	}
+
+	// ============================================================================
+	// Complex Nullable Generics Tests (CS8639 Regression)
+	// ============================================================================
+
+	public static IEnumerable<object[]> ComplexNullableGenericsFactory_Ordinal()
+	{
+		var scopes = ClientServerContainers.Scopes(SerializationFormat.Ordinal);
+		yield return new object[] { scopes.client.ServiceProvider.GetRequiredService<IRecordWithComplexNullableGenericsFactory>() };
+	}
+
+	public static IEnumerable<object[]> ComplexNullableGenericsFactory_Named()
+	{
+		var scopes = ClientServerContainers.Scopes(SerializationFormat.Named);
+		yield return new object[] { scopes.client.ServiceProvider.GetRequiredService<IRecordWithComplexNullableGenericsFactory>() };
+	}
+
+	[Theory]
+	[MemberData(nameof(ComplexNullableGenericsFactory_Ordinal))]
+	[MemberData(nameof(ComplexNullableGenericsFactory_Named))]
+	public void BothFormats_ComplexNullableGenerics_WithValues_Serializes(IRecordWithComplexNullableGenericsFactory factory)
+	{
+		// Arrange
+		var metadata = new Dictionary<string, int> { { "key1", 1 }, { "key2", 2 } };
+		var nullableItems = new List<string?> { "A", null, "C" };
+
+		// Act
+		var record = factory.Create("Test", metadata, nullableItems);
+
+		// Assert
+		Assert.NotNull(record);
+		Assert.Equal("Test", record.Name);
+		Assert.NotNull(record.Metadata);
+		Assert.Equal(2, record.Metadata!.Count);
+		Assert.NotNull(record.NullableItems);
+		Assert.Equal(3, record.NullableItems!.Count);
+	}
+
+	[Theory]
+	[MemberData(nameof(ComplexNullableGenericsFactory_Ordinal))]
+	[MemberData(nameof(ComplexNullableGenericsFactory_Named))]
+	public void BothFormats_ComplexNullableGenerics_AllNull_Serializes(IRecordWithComplexNullableGenericsFactory factory)
+	{
+		// Act
+		var record = factory.Create("AllNull", null, null);
+
+		// Assert
+		Assert.NotNull(record);
+		Assert.Equal("AllNull", record.Name);
+		Assert.Null(record.Metadata);
+		Assert.Null(record.NullableItems);
+	}
+}
+
+/// <summary>
+/// Tests that verify the generated PropertyTypes arrays are correct.
+/// These tests validate the CS8639 fix for nullable reference types in typeof().
+/// </summary>
+public class PropertyTypesGenerationTests
+{
+	[Fact]
+	public void RecordWithNullableCollection_PropertyTypes_NoNullableAnnotation()
+	{
+		// Arrange & Act
+		var propertyTypes = RecordWithNullableCollection.PropertyTypes;
+
+		// Assert
+		Assert.Equal(2, propertyTypes.Length);
+		// Items is List<string>? - should be typeof(List<string>) without the trailing ?
+		Assert.Equal(typeof(List<string>), propertyTypes[0]);
+		Assert.Equal(typeof(string), propertyTypes[1]);
+	}
+
+	[Fact]
+	public void RecordWithComplexNullableGenerics_PropertyTypes_NoNullableAnnotation()
+	{
+		// Arrange & Act
+		var propertyTypes = RecordWithComplexNullableGenerics.PropertyTypes;
+
+		// Assert
+		Assert.Equal(3, propertyTypes.Length);
+		// Metadata is Dictionary<string, int>? - should be typeof(Dictionary<string, int>)
+		Assert.Equal(typeof(Dictionary<string, int>), propertyTypes[0]);
+		// Name is string (not nullable)
+		Assert.Equal(typeof(string), propertyTypes[1]);
+		// NullableItems is List<string?>? - should be typeof(List<string>)
+		// Note: Inner nullability (string?) is compile-time only, runtime is List<string>
+		Assert.Equal(typeof(List<string>), propertyTypes[2]);
+	}
+
+	[Fact]
+	public void RecordWithNullable_PropertyTypes_SimpleNullableString()
+	{
+		// Arrange & Act
+		var propertyTypes = RecordWithNullable.PropertyTypes;
+
+		// Assert
+		Assert.Equal(2, propertyTypes.Length);
+		// Description is string? - should be typeof(string)
+		Assert.Equal(typeof(string), propertyTypes[0]);
+		Assert.Equal(typeof(string), propertyTypes[1]);
+	}
 }
 
 /// <summary>
