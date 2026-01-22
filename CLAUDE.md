@@ -23,8 +23,10 @@ RemoteFactory/
 │   ├── RemoteFactory.AspNetCore/         # ASP.NET Core integration
 │   ├── Generator/                        # Roslyn source generator (netstandard2.0)
 │   ├── Tests/
-│   │   ├── FactoryGeneratorTests/        # Unit tests for generator
-│   │   ├── RemoteFactory.AspNet.Tests/   # Integration tests
+│   │   ├── RemoteFactory.UnitTests/      # Unit tests (NEW - all new tests go here)
+│   │   ├── RemoteFactory.IntegrationTests/ # Integration tests (NEW - all new tests go here)
+│   │   ├── FactoryGeneratorTests/        # DEPRECATED - do not fix, delete broken tests
+│   │   ├── RemoteFactory.AspNet.Tests/   # DEPRECATED - migrated to IntegrationTests
 │   │   └── ...
 │   └── Examples/
 │       ├── Person/                       # Complete Blazor WASM example
@@ -68,22 +70,31 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 
 ## Testing
 
-Tests run against all three target frameworks (net8.0, net9.0, net10.0):
-- **FactoryGeneratorTests**: Unit tests for the Roslyn source generator
-- **RemoteFactory.AspNet.Tests**: Integration tests with ASP.NET Core
+Tests run against all three target frameworks (net8.0, net9.0, net10.0).
+
+### Test Projects
+
+**All new tests must go in the new test projects:**
+
+- **RemoteFactory.UnitTests**: Unit tests for generator, factories, serialization
+- **RemoteFactory.IntegrationTests**: Integration tests with ASP.NET Core, client/server simulation
+
+**Deprecated test projects (do not use):**
+
+- **FactoryGeneratorTests**: DEPRECATED. Tests here are broken and should be deleted, not fixed.
+- **RemoteFactory.AspNet.Tests**: DEPRECATED. Migrated to IntegrationTests.
 
 ### Two DI Container Testing Pattern
 
 This project uses a **client/server container simulation** for testing remote operations:
 - `ClientServerContainers.Scopes()` creates three isolated DI containers: client, server, and local
-- The client container serializes requests through `NeatooJsonSerializer`
+- The client container serializes requests through a custom `MakeSerializedServerStandinDelegateRequest`
 - The server container deserializes requests, executes methods, and serializes responses
 - This validates the full round-trip without requiring HTTP
 
 Key test files demonstrating this pattern:
-- `src/Tests/FactoryGeneratorTests/ClientServerContainers.cs` - Container setup
-- `src/Tests/FactoryGeneratorTests/FactoryTestBase.cs` - Base class for factory tests
-- `src/Tests/FactoryGeneratorTests/Factory/RemoteWriteTests.cs` - Example using Theory/MemberData
+- `src/Tests/RemoteFactory.IntegrationTests/TestContainers/ClientServerContainers.cs` - Container setup
+- `src/Tests/RemoteFactory.IntegrationTests/TestTargets/` - Test target classes
 
 ## Planning Guidelines
 
@@ -94,10 +105,9 @@ When creating implementation plans for this project, **always evaluate** whether
 3. **Diagnostic Tests**: If adding new Roslyn diagnostics, include tests that verify they are emitted correctly
 4. **Integration Tests**: If the feature affects HTTP endpoints, include ASP.NET Core integration tests
 
-Test plans should follow the existing patterns in `FactoryGeneratorTests/` using:
-- `FactoryTestBase<TFactory>` for client/server container setup
+Test plans should follow the existing patterns in the new test projects:
 - `Theory/MemberData` for parameterized testing across containers
-- Reflection-based validation for generated factory methods
+- `ClientServerContainers.Scopes()` for client/server/local container setup
 
 ## Documentation
 
