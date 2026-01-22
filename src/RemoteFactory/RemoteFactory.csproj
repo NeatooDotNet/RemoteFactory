@@ -2,6 +2,8 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="FactoryGeneratorTests" />
 		<InternalsVisibleTo Include="Neatoo.RemoteFactory.AspNetCore" />
+		<InternalsVisibleTo Include="RemoteFactory.UnitTests" />
+		<InternalsVisibleTo Include="RemoteFactory.IntegrationTests" />
 	</ItemGroup>
 	<PropertyGroup>
 		<RootNamespace>Neatoo.RemoteFactory</RootNamespace>
