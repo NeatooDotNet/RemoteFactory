@@ -46,53 +46,6 @@ public class FactoryOnStartCompleteTests : FactoryTestBase<IFactoryOnStartComple
 		}
 	}
 
-	[Fact]
-	public async Task ReadFactoryTest()
-	{
-		var readFactory = this.factory;
-
-		// Reflection Approved
-		var methods = readFactory.GetType().GetMethods().Where(m => m.Name.Contains("Create") || m.Name.Contains("Fetch")).ToList();
-
-		foreach (var method in methods)
-		{
-			if (method.Name.Contains("False"))
-			{
-				// Null object created
-				continue;
-			}
-
-			object? result;
-			var methodName = method.Name;
-
-			// Exclude CancellationToken from meaningful parameter count
-			var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
-			if (meaningfulParams.Any())
-			{
-				result = method.Invoke(readFactory, new object[] { 1, default(CancellationToken) });
-			}
-			else
-			{
-				result = method.Invoke(readFactory, new object[] { default(CancellationToken) });
-			}
-
-			FactoryOnStartCompleteObj? obj = null;
-
-			if (result is Task<FactoryOnStartCompleteObj?> task)
-			{
-				obj = await task;
-				Assert.True(obj!.StartAsyncCalled);
-				Assert.True(obj!.CompleteAsyncCalled);
-			}
-			else if (result is FactoryOnStartCompleteObj r)
-			{
-				obj = r;
-				Assert.False(obj!.StartAsyncCalled);
-				Assert.False(obj!.CompleteAsyncCalled);
-			}
-
-			Assert.True(obj!.StartCalled);
-			Assert.True(obj!.CompleteCalled);
-		}
-	}
+	// DEPRECATED: Reflection-based tests removed
+	// Factory lifecycle tests are now in RemoteFactory.IntegrationTests
 }

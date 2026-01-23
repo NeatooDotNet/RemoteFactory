@@ -1,0 +1,145 @@
+{
+  "operations": [
+    {
+      "name": "Create",
+      "attribute": "[Create]",
+      "validReturnTypes": ["TResult", "TaskTResult"],
+      "validParameters": ["None", "Single", "Multiple", "Service", "Mixed", "CancellationToken"],
+      "validExecutionModes": ["Local", "Remote"],
+      "signatureTypes": ["Static"],
+      "generateTestTargets": true
+    },
+    {
+      "name": "Fetch",
+      "attribute": "[Fetch]",
+      "validReturnTypes": ["TResult", "TaskTResult"],
+      "validParameters": ["None", "Single", "Multiple", "Service", "Mixed", "CancellationToken"],
+      "validExecutionModes": ["Local", "Remote"],
+      "signatureTypes": ["Static"],
+      "generateTestTargets": true
+    },
+    {
+      "name": "Insert",
+      "attribute": "[Insert]",
+      "validReturnTypes": ["Void", "Task"],
+      "validParameters": ["None", "Single", "Service", "Mixed"],
+      "validExecutionModes": ["Local", "Remote"],
+      "signatureTypes": ["Instance"],
+      "generateTestTargets": true
+    },
+    {
+      "name": "Update",
+      "attribute": "[Update]",
+      "validReturnTypes": ["Void", "Task"],
+      "validParameters": ["None", "Single", "Service", "Mixed"],
+      "validExecutionModes": ["Local", "Remote"],
+      "signatureTypes": ["Instance"],
+      "generateTestTargets": true
+    },
+    {
+      "name": "Delete",
+      "attribute": "[Delete]",
+      "validReturnTypes": ["Void", "Task"],
+      "validParameters": ["None", "Single", "Service", "Mixed"],
+      "validExecutionModes": ["Local", "Remote"],
+      "signatureTypes": ["Instance"],
+      "generateTestTargets": true
+    },
+    {
+      "name": "Execute",
+      "attribute": "[Execute]",
+      "validReturnTypes": ["TaskTResult"],
+      "validParameters": ["None", "Single", "Multiple", "Service", "Mixed"],
+      "validExecutionModes": ["Remote"],
+      "signatureTypes": ["Static"],
+      "constraints": ["requires_static_class", "always_remote"],
+      "generateTestTargets": true
+    }
+  ],
+  "returnTypes": {
+    "Void": {
+      "csharpType": "void",
+      "taskVariant": null,
+      "isAsync": false,
+      "isBool": false,
+      "returnsTarget": false
+    },
+    "Bool": {
+      "csharpType": "bool",
+      "taskVariant": "Task<bool>",
+      "isAsync": false,
+      "isBool": true,
+      "returnsTarget": false
+    },
+    "Task": {
+      "csharpType": "Task",
+      "taskVariant": null,
+      "isAsync": true,
+      "isBool": false,
+      "returnsTarget": false
+    },
+    "TaskBool": {
+      "csharpType": "Task<bool>",
+      "taskVariant": null,
+      "isAsync": true,
+      "isBool": true,
+      "returnsTarget": false
+    },
+    "TResult": {
+      "csharpType": "{TargetType}",
+      "taskVariant": "Task<{TargetType}>",
+      "isAsync": false,
+      "isBool": false,
+      "returnsTarget": true
+    },
+    "TaskTResult": {
+      "csharpType": "Task<{TargetType}>",
+      "taskVariant": null,
+      "isAsync": true,
+      "isBool": false,
+      "returnsTarget": true
+    }
+  },
+  "parameters": {
+    "None": [],
+    "Single": [
+      { "type": "int", "name": "id", "isService": false }
+    ],
+    "Multiple": [
+      { "type": "int", "name": "id", "isService": false },
+      { "type": "string", "name": "name", "isService": false }
+    ],
+    "Service": [
+      { "type": "IService", "name": "service", "attribute": "[Service]", "isService": true }
+    ],
+    "Mixed": [
+      { "type": "int", "name": "id", "isService": false },
+      { "type": "IService", "name": "service", "attribute": "[Service]", "isService": true }
+    ],
+    "CancellationToken": [
+      { "type": "int", "name": "id", "isService": false },
+      { "type": "CancellationToken", "name": "ct", "isService": false }
+    ]
+  },
+  "invalidCombinations": [],
+  "authorizationModes": [
+    {
+      "name": "None",
+      "attributes": [],
+      "methods": [],
+      "description": "No authorization"
+    },
+    {
+      "name": "ClassAuth",
+      "attributes": ["[AuthorizeFactory<{AuthType}>]"],
+      "methods": [],
+      "description": "AuthorizeFactory<T> attribute on class"
+    },
+    {
+      "name": "MethodAuth",
+      "attributes": [],
+      "methods": ["CanCreate", "CanFetch", "CanInsert", "CanUpdate", "CanDelete"],
+      "description": "Auth methods with AuthorizeFactory(Operation)"
+    }
+  ]
+}

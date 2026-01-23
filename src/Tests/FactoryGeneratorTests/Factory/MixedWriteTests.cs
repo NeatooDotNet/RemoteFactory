@@ -493,70 +493,8 @@ namespace Neatoo.RemoteFactory.FactoryGeneratorTests.Factory;
 		}
 
 
-		private IServiceScope clientScope;
-
-		public MixedWriteTests()
-		{
-			var scopes = ClientServerContainers.Scopes();
-			this.clientScope = scopes.client;
-		}
-
-		[Fact]
-		public async Task MixedReturnTypeWriteDataMapperTest()
-		{
-			var readFactory = this.clientScope.ServiceProvider.GetRequiredService<IMixedWriteObjectFactory>();
-
-			// Reflection Approved
-			var methods = readFactory.GetType().GetMethods().Where(m => m.Name.StartsWith("Save")).ToList();
-
-			foreach (var method in methods)
-			{
-				object? result;
-				var methodName = method.Name;
-
-				async Task<MixedWriteObject?> doSave(MixedWriteObject writeDataMapper)
-				{
-					// Exclude CancellationToken from meaningful parameter count
-					var meaningfulParams = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToList();
-					if (meaningfulParams.Count == 2)
-					{
-						result = method.Invoke(readFactory, [writeDataMapper, 1, default(CancellationToken)]);
-					}
-					else
-					{
-						result = method.Invoke(readFactory, [writeDataMapper, default(CancellationToken)]);
-					}
-
-					if (result is Task<MixedWriteObject?> taskBool)
-					{
-						return await taskBool;
-					}
-					else if (result is MixedWriteObject r)
-					{
-						Assert.NotNull(r);
-						return r;
-					}
-					else
-					{
-						Assert.Null(result);
-						return null;
-					}
-				}
-
-				var writeDataMapperToSave = new MixedWriteObject();
-				var writeDataMapper = await doSave(writeDataMapperToSave);
-				Assert.True(writeDataMapper?.UpdateCalled ?? true);
-
-				writeDataMapperToSave = new MixedWriteObject() { IsNew = true };
-				writeDataMapper = await doSave(writeDataMapperToSave);
-				Assert.True(writeDataMapper?.InsertCalled ?? true);
-
-				writeDataMapperToSave = new MixedWriteObject() { IsDeleted = true };
-				writeDataMapper = await doSave(writeDataMapperToSave);
-				Assert.True(writeDataMapper?.DeleteCalled ?? true);
-
-			}
-		}
+		// DEPRECATED: Reflection-based tests removed
+		// Write operation tests are now in RemoteFactory.IntegrationTests.Combinations.*BehaviorTests
 	}
 
 

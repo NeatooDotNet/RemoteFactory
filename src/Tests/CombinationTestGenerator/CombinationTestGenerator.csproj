@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<!-- Override Directory.Build.props multi-targeting - generators must be netstandard2.0 only -->
+		<TargetFrameworks></TargetFrameworks>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+		<IsRoslynComponent>true</IsRoslynComponent>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<RootNamespace>CombinationTestGenerator</RootNamespace>
+		<!-- Suppress RS2008: Enable analyzer release tracking - not required for source generators -->
+		<NoWarn>$(NoWarn);RS2008</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="CombinationDimensions.json" />
+		<None Remove="CombinationDimensions.json" />
+	</ItemGroup>
+
+</Project>
