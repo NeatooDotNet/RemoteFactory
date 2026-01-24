@@ -1,34 +1,34 @@
 ---
 name: docs-code-samples
-description: Use this agent when you need to create, update, or verify C# code samples for markdown documentation. This includes: creating new code samples for documentation placeholders, ensuring existing samples compile and work correctly, designing sample projects across platforms (Blazor, xUnit, ASP.NET Core), and verifying that documentation code snippets are up-to-date with the framework. This agent focuses exclusively on the code samples and their tests—not the markdown text itself.
+description: |
+  Use this agent when you need to create, update, or verify C# code samples for markdown documentation. This includes: creating new code samples for documentation placeholders, ensuring existing samples compile and work correctly, designing sample projects across platforms (Blazor, xUnit, ASP.NET Core), and verifying that documentation code snippets are up-to-date with the framework. This agent focuses exclusively on the code samples and their tests—not the markdown text itself.
 
-<example>
-Context: User wants to add code samples to a getting-started guide.
-user: "I need code samples for the getting-started.md file that has placeholders for basic usage"
-assistant: "I'll use the docs-code-samples agent to examine the markdown file and create the appropriate code samples."
-<commentary>
-Since the user needs code samples created for documentation, use the Task tool to launch the docs-code-samples agent to analyze the placeholders and create compilable, tested samples.
-</commentary>
-</example>
+  <example>
+  Context: User wants to add code samples to a getting-started guide.
+  user: "I need code samples for the getting-started.md file that has placeholders for basic usage"
+  assistant: "I'll use the docs-code-samples agent to examine the markdown file and create the appropriate code samples."
+  <commentary>
+  Since the user needs code samples created for documentation, use the Task tool to launch the docs-code-samples agent to analyze the placeholders and create compilable, tested samples.
+  </commentary>
+  </example>
 
-<example>
-Context: User suspects documentation samples may be outdated after a breaking change.
-user: "We just released v3.0 with breaking changes. Can you check if the samples in our docs still compile?"
-assistant: "I'll use the docs-code-samples agent to verify all documentation code samples compile against the new version and update any that are broken."
-<commentary>
-Since the user needs to verify and potentially update documentation code samples, use the Task tool to launch the docs-code-samples agent to systematically check and fix samples.
-</commentary>
-</example>
+  <example>
+  Context: User suspects documentation samples may be outdated after a breaking change.
+  user: "We just released v3.0 with breaking changes. Can you check if the samples in our docs still compile?"
+  assistant: "I'll use the docs-code-samples agent to verify all documentation code samples compile against the new version and update any that are broken."
+  <commentary>
+  Since the user needs to verify and potentially update documentation code samples, use the Task tool to launch the docs-code-samples agent to systematically check and fix samples.
+  </commentary>
+  </example>
 
-<example>
-Context: User needs sample code for a new feature being documented.
-user: "I'm documenting the new authentication middleware. Can you create sample code showing basic and advanced usage?"
-assistant: "I'll use the docs-code-samples agent to design multiple sample options for the authentication middleware documentation."
-<commentary>
-Since the user needs new code samples designed for documentation, use the Task tool to launch the docs-code-samples agent to create sample options with full test coverage.
-</commentary>
-</example>
-
+  <example>
+  Context: User needs sample code for a new feature being documented.
+  user: "I'm documenting the new authentication middleware. Can you create sample code showing basic and advanced usage?"
+  assistant: "I'll use the docs-code-samples agent to design multiple sample options for the authentication middleware documentation."
+  <commentary>
+  Since the user needs new code samples designed for documentation, use the Task tool to launch the docs-code-samples agent to create sample options with full test coverage.
+  </commentary>
+  </example>
 model: opus
 color: green
 tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "TaskCreate", "TaskUpdate", "TaskList"]

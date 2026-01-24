@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<AnalysisMode>default</AnalysisMode>
+		<RootNamespace>Neatoo.RemoteFactory.Samples</RootNamespace>
+		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, IDE0044, CS4014, xUnit1051, xUnit1013</NoWarn>
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+		<CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" />
+		<PackageReference Include="xunit.runner.visualstudio">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="xunit.v3" />
+	</ItemGroup>
+
+	<!-- Framework-specific package references to match transitive dependencies -->
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" VersionOverride="8.0.2" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" VersionOverride="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Logging" VersionOverride="8.0.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Metadata" VersionOverride="8.0.11" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Logging" />
+		<PackageReference Include="Microsoft.AspNetCore.Metadata" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\RemoteFactory\RemoteFactory.csproj" />
+		<ProjectReference Include="..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
+		<ProjectReference Include="..\..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit"></Using>
+		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+	</ItemGroup>
+
+	<!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(TargetFramework)' == 'net8.0'">
+		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
+	</Target>
+
+</Project>

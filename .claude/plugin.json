@@ -5,5 +5,9 @@
   "author": {
     "name": "NeatooDotNet"
   },
-  "keywords": ["documentation", "csharp", "dotnet", "markdownsnippets", "samples"]
+  "keywords": ["documentation", "csharp", "dotnet", "markdownsnippets", "samples"],
+  "agents": [
+    "agents/docs-architect.md",
+    "agents/docs-code-samples.md"
+  ]
 }
