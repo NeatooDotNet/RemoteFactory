@@ -9,17 +9,18 @@ using System.Reflection;
 namespace RemoteFactory.IntegrationTests.TestContainers;
 
 /// <summary>
-/// Fluent builder for creating a lightweight DI container for local/server mode unit testing.
-/// This builder avoids the overhead of ClientServerContainers for tests that don't need
-/// remote serialization round-trips.
+/// Fluent builder for creating a lightweight DI container for local mode unit testing.
+/// Both Logical and Server modes execute methods locally without serialization.
 /// </summary>
 /// <remarks>
 /// Use this builder for:
-/// - Local mode tests (NeatooFactory.Logical or NeatooFactory.Server)
-/// - Tests that don't require client/server serialization
+/// - Server mode tests (NeatooFactory.Server) - ASP.NET Core server scenarios
+/// - Logical mode tests (NeatooFactory.Logical) - single-tier app/unit test scenarios
+/// - Tests that don't require serialization validation
 /// - Faster test execution without remote overhead
 ///
-/// For remote mode tests requiring serialization round-trips, use <see cref="ClientServerContainers"/>.
+/// Both modes behave identically - direct local execution without serialization.
+/// For tests requiring serialization round-trips, use <see cref="ClientServerContainers"/>.
 /// </remarks>
 public sealed class LocalContainerBuilder
 {

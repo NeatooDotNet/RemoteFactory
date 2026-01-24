@@ -8,20 +8,24 @@ namespace RemoteFactory.UnitTests.TestContainers;
 
 /// <summary>
 /// Fluent builder for creating a Logical mode DI container for unit testing.
-/// Logical mode combines client-side factory interfaces with local method execution.
+/// Logical mode executes factory methods locally without serialization.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Use this builder specifically for tests in the Logical/ namespace that verify:
+/// Use this builder for tests that verify:
 /// - IFactorySave&lt;T&gt; resolution and behavior
 /// - factory.Save() with [Remote] methods executing locally
-/// - Behavioral equivalence between Logical and Server modes
+/// - Single-tier application scenarios
 /// </para>
 /// <para>
-/// Logical mode differs from Server mode in how it handles [Remote] attributed methods.
-/// In Server mode, [Remote] methods are direct implementations.
-/// In Logical mode, [Remote] methods use the client-side factory interface pattern
-/// but execute locally without serialization.
+/// Logical mode behaves identically to Server mode - both execute methods locally
+/// without any serialization. The difference is semantic:
+/// - Server mode: "I am an ASP.NET Core server"
+/// - Logical mode: "I am a single-tier app or unit test"
+/// </para>
+/// <para>
+/// For tests that need to validate serialization round-trips, use
+/// <see cref="RemoteFactory.IntegrationTests.TestContainers.ClientServerContainers"/> instead.
 /// </para>
 /// </remarks>
 public sealed class LogicalContainerBuilder

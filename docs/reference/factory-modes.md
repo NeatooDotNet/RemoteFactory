@@ -27,7 +27,7 @@ public enum NeatooFactory
     Remote,
 
     /// <summary>
-    /// Logical factory - local execution with serialization (for testing)
+    /// Logical factory for single-tier apps and unit tests - executes locally
     /// </summary>
     Logical
 }
@@ -192,7 +192,7 @@ services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 
 ## Logical Mode
 
-Used for testing or single-tier applications.
+Used for single-tier applications and unit testing.
 
 ### Configuration
 
@@ -207,35 +207,42 @@ services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IPersonModel).Asse
 | Aspect | Behavior |
 |--------|----------|
 | Factory methods | Execute locally |
-| `[Remote]` methods | Execute locally (with serialization) |
+| `[Remote]` methods | Execute locally |
 | Service resolution | From DI container |
 | Delegate registration | No |
 | HTTP calls | None |
-| Serialization | Yes (simulates network) |
+| Serialization | None |
+
+Logical mode behaves identically to Server mode - both execute methods locally without serialization. The difference is semantic: Server mode implies an ASP.NET Core server, while Logical mode implies a single-tier application or test.
 
 ### What Gets Registered
 
 <!-- pseudo:logical-registrations -->
 ```csharp
-// Same factory registrations as Remote mode
+// Factory registrations
 services.AddScoped<PersonModelFactory>();
 services.AddScoped<IPersonModelFactory, PersonModelFactory>();
-
-// Local serialized delegate request (no HTTP)
-services.AddScoped<IMakeRemoteDelegateRequest, MakeLocalSerializedDelegateRequest>();
 
 // Domain model types
 services.AddTransient<PersonModel>();
 services.AddTransient<IPersonModel, PersonModel>();
+
+// No IMakeRemoteDelegateRequest - uses local constructor
 ```
 
-### Why Serialization?
+### Constructor Selected
 
-Logical mode serializes and deserializes objects even though no HTTP call is made. This:
+The factory constructor without `IMakeRemoteDelegateRequest` (same as Server mode):
 
-1. **Tests serialization**: Ensures objects serialize correctly
-2. **Simulates network**: Catches issues that would appear in remote mode
-3. **Validates types**: Ensures all types are serialization-compatible
+<!-- pseudo:logical-constructor -->
+```csharp
+public PersonModelFactory(
+    IServiceProvider serviceProvider,
+    IFactoryCore<IPersonModel> factoryCore)
+{
+    // FetchProperty = LocalFetch (local execution)
+}
+```
 
 ### Use Cases
 
@@ -273,11 +280,11 @@ public class DesktopApp
 
 | Feature | Server | Remote | Logical |
 |---------|--------|--------|---------|
-| Use case | ASP.NET Core | Blazor/WPF | Testing |
+| Use case | ASP.NET Core | Blazor/WPF | Testing/Single-tier |
 | HTTP calls | Receives | Makes | None |
 | Local execution | All methods | Non-[Remote] | All methods |
-| Remote execution | N/A | [Remote] methods | Simulated |
-| Serialization | On response | Request/response | Full round-trip |
+| Remote execution | N/A | [Remote] methods | N/A |
+| Serialization | On response | Request/response | None |
 | Delegate registration | Yes | No | No |
 | Needs HttpClient | No | Yes | No |
 
