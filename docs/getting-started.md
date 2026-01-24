@@ -45,43 +45,32 @@ Configure RemoteFactory in your ASP.NET Core server:
 <a id='snippet-getting-started-server-program'></a>
 ```cs
 // Server Program.cs
-public static class GettingStartedServerProgram
+public static class ServerConfiguration
 {
-    public static void ConfigureServer(IServiceCollection services)
+    public static void ConfigureServices(IServiceCollection services)
     {
-        // Add Neatoo ASP.NET Core with custom serialization
+        // Configure serialization (Ordinal is default, smaller payloads)
         var serializationOptions = new NeatooSerializationOptions
         {
-            Format = SerializationFormat.Ordinal // Compact format (default)
+            Format = SerializationFormat.Ordinal
         };
 
+        // Register Neatoo factories and server-side handlers
         services.AddNeatooAspNetCore(
             serializationOptions,
             typeof(GettingStartedSamples.PersonModel).Assembly);
 
         // Register domain services
         services.AddScoped<IPersonRepository, PersonRepository>();
-
-        // Add CORS for Blazor client
-        services.AddCors(options =>
-        {
-            options.AddDefaultPolicy(policy =>
-            {
-                policy.WithOrigins("https://localhost:5001")
-                      .AllowAnyHeader()
-                      .AllowAnyMethod();
-            });
-        });
     }
 
-    public static void ConfigureApp(Microsoft.AspNetCore.Builder.WebApplication app)
+    public static void ConfigureApp(WebApplication app)
     {
-        app.UseCors();
         app.UseNeatoo(); // Maps /api/neatoo endpoint
     }
 }
 ```
-<sup><a href='/src/docs/samples/GettingStartedSamples.cs#L201-L238' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/GettingStartedSamples.cs#L197-L223' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Key points:
@@ -97,16 +86,16 @@ Configure RemoteFactory in your Blazor WASM client:
 <a id='snippet-getting-started-client-program'></a>
 ```cs
 // Client Program.cs (Blazor WASM)
-public static class GettingStartedClientProgram
+public static class ClientConfiguration
 {
-    public static void ConfigureClient(IServiceCollection services, string serverUrl)
+    public static void ConfigureServices(IServiceCollection services, string serverUrl)
     {
-        // Register Neatoo RemoteFactory for remote mode
+        // Register Neatoo factories for remote mode
         services.AddNeatooRemoteFactory(
             NeatooFactory.Remote,
             typeof(GettingStartedSamples.PersonModel).Assembly);
 
-        // Register keyed HttpClient for Neatoo API calls
+        // Register HttpClient for Neatoo API calls
         services.AddKeyedScoped(
             RemoteFactoryServices.HttpClientKey,
             (sp, key) => new HttpClient
@@ -116,7 +105,7 @@ public static class GettingStartedClientProgram
     }
 }
 ```
-<sup><a href='/src/docs/samples/GettingStartedSamples.cs#L240-L260' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/GettingStartedSamples.cs#L225-L245' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Key points:
@@ -257,26 +246,26 @@ Inject and call the generated factory from your client:
 ```cs
 public async Task UsePersonFactory(IPersonModelFactory factory)
 {
-    // Create new person
+    // Create a new person (local operation)
     var person = factory.Create();
     person.FirstName = "Jane";
     person.LastName = "Smith";
     person.Email = "jane.smith@example.com";
-    person.Phone = "555-0123";
 
-    // Save (Insert) - routes to Insert method when IsNew=true
+    // Save routes to Insert because IsNew = true
     var saved = await factory.Save(person);
+    // saved.IsNew is now false
 
-    // Fetch existing person by ID
+    // Fetch existing person (remote operation)
     var fetched = await factory.Fetch(saved!.Id);
 
-    // Update - routes to Update method when IsNew=false
+    // Save routes to Update because IsNew = false
     fetched!.Email = "jane.updated@example.com";
-    var updated = await factory.Save(fetched);
+    await factory.Save(fetched);
 
-    // Delete - routes to Delete method when IsDeleted=true
-    updated!.IsDeleted = true;
-    await factory.Save(updated);
+    // Save routes to Delete because IsDeleted = true
+    fetched.IsDeleted = true;
+    await factory.Save(fetched);
 }
 ```
 <sup><a href='/src/docs/samples/GettingStartedSamples.cs#L122-L146' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-usage' title='Start of snippet'>anchor</a></sup>
@@ -320,36 +309,32 @@ Configure during registration:
 <!-- snippet: getting-started-serialization-config -->
 <a id='snippet-getting-started-serialization-config'></a>
 ```cs
-public static class SerializationConfigExample
+public static class SerializationConfig
 {
-    public static void ConfigureWithNamedFormat(IServiceCollection services)
+    public static void ConfigureOrdinal(IServiceCollection services)
     {
-        // Use Named format for easier debugging (larger payloads)
-        var serializationOptions = new NeatooSerializationOptions
+        // Ordinal format (default): Compact array format, 40-50% smaller
+        // Payload: ["John", "Doe", "john@example.com"]
+        var options = new NeatooSerializationOptions
+        {
+            Format = SerializationFormat.Ordinal
+        };
+        services.AddNeatooAspNetCore(options, typeof(GettingStartedSamples.PersonModel).Assembly);
+    }
+
+    public static void ConfigureNamed(IServiceCollection services)
+    {
+        // Named format: Verbose with property names, easier to debug
+        // Payload: {"FirstName":"John","LastName":"Doe","Email":"john@example.com"}
+        var options = new NeatooSerializationOptions
         {
             Format = SerializationFormat.Named
         };
-
-        services.AddNeatooAspNetCore(
-            serializationOptions,
-            typeof(GettingStartedSamples.PersonModel).Assembly);
-    }
-
-    public static void ConfigureWithOrdinalFormat(IServiceCollection services)
-    {
-        // Use Ordinal format for production (compact payloads)
-        var serializationOptions = new NeatooSerializationOptions
-        {
-            Format = SerializationFormat.Ordinal // Default
-        };
-
-        services.AddNeatooAspNetCore(
-            serializationOptions,
-            typeof(GettingStartedSamples.PersonModel).Assembly);
+        services.AddNeatooAspNetCore(options, typeof(GettingStartedSamples.PersonModel).Assembly);
     }
 }
 ```
-<sup><a href='/src/docs/samples/GettingStartedSamples.cs#L262-L291' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-serialization-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/GettingStartedSamples.cs#L247-L272' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-serialization-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Both client and server must use the same format.

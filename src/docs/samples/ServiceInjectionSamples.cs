@@ -314,32 +314,49 @@ public partial class ServiceInjectionSamples
     #endregion
 
     #region service-injection-testing
-    public partial class ServiceInjectionTests
+    // Register test doubles instead of production services
+    public static class ServiceInjectionTestSetup
     {
-        [Fact]
-        public async Task TestWithMockedRepository()
+        public static void ConfigureTestServices(IServiceCollection services)
         {
-            // Arrange - add test data to local scope's repository
-            var scopes = SampleTestContainers.Scopes();
-            var repository = scopes.local.GetRequiredService<IPersonRepository>();
-
-            var testPerson = new PersonEntity
-            {
-                Id = Guid.NewGuid(),
-                FirstName = "Test",
-                LastName = "User"
-            };
-            await repository.AddAsync(testPerson);
-
-            var factory = scopes.local.GetRequiredService<IBasicServiceInjectionFactory>();
-
-            // Act - Fetch returns populated instance
-            var fetched = await factory.Fetch(testPerson.Id);
-
-            // Assert
-            Assert.Equal(testPerson.Id, fetched.Id);
-            Assert.Equal("Test User", fetched.Data);
+            // In-memory implementations for testing
+            services.AddScoped<IPersonRepository, InMemoryPersonRepository>();
+            services.AddScoped<IUserContext, TestUserContext>();
         }
+    }
+
+    // Simple in-memory repository for tests
+    public class InMemoryPersonRepository : IPersonRepository
+    {
+        private readonly Dictionary<Guid, PersonEntity> _store = new();
+
+        public Task<PersonEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
+            => Task.FromResult(_store.GetValueOrDefault(id));
+
+        public Task AddAsync(PersonEntity entity, CancellationToken ct = default)
+        { _store[entity.Id] = entity; return Task.CompletedTask; }
+
+        public Task<List<PersonEntity>> GetAllAsync(CancellationToken ct = default)
+            => Task.FromResult(_store.Values.ToList());
+
+        public Task UpdateAsync(PersonEntity entity, CancellationToken ct = default)
+        { _store[entity.Id] = entity; return Task.CompletedTask; }
+
+        public Task DeleteAsync(Guid id, CancellationToken ct = default)
+        { _store.Remove(id); return Task.CompletedTask; }
+
+        public Task SaveChangesAsync(CancellationToken ct = default)
+            => Task.CompletedTask;
+    }
+
+    // Controllable test double for user context
+    public class TestUserContext : IUserContext
+    {
+        public Guid UserId { get; set; } = Guid.NewGuid();
+        public string Username { get; set; } = "testuser";
+        public string[] Roles { get; set; } = ["User"];
+        public bool IsAuthenticated { get; set; } = true;
+        public bool IsInRole(string role) => Roles.Contains(role);
     }
     #endregion
 

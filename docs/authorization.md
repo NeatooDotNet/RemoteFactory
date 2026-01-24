@@ -127,31 +127,30 @@ RemoteFactory generates authorization checks in the factory:
 <!-- snippet: authorization-generated -->
 <a id='snippet-authorization-generated'></a>
 ```cs
-// The generated factory includes Can* methods for client-side checks:
-public partial class GeneratedFactoryExample
+// The generated factory includes Can* methods for client-side checks.
+// IDocumentFactory is injected via DI:
+public partial class GeneratedFactoryExample(IDocumentFactory factory)
 {
-    public static async Task CheckAuthorizationBeforeCalling()
+    public async Task CheckAuthorizationBeforeCalling()
     {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.client.GetRequiredService<IDocumentFactory>();
-
-        // Check authorization before attempting operation
+        // Check authorization before attempting Create
         if (factory.CanCreate().HasAccess)
         {
             var doc = factory.Create();
-            // ... modify doc ...
+            doc!.Title = "New Document";
         }
 
+        // Check authorization before attempting Fetch
         var docId = Guid.NewGuid();
         if (factory.CanFetch().HasAccess)
         {
             var doc = await factory.Fetch(docId);
-            // ... use doc ...
+            // doc is null if auth fails or not found
         }
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L103-L127' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-generated' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L103-L126' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-generated' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Authorization failures are wrapped in the `Authorized<T>` result. Methods like `Create()` and `Fetch()` return null when authorization fails, while `Save()` throws `NotAuthorizedException`.
@@ -219,7 +218,7 @@ public partial class CombinedFlagsDocument
     public CombinedFlagsDocument() { Id = Guid.NewGuid(); }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L129-L167' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined-flags' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L128-L166' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined-flags' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Method-Level Authorization
@@ -272,7 +271,7 @@ public partial class ProjectWithMethodAuth : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L169-L212' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-method-level' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L168-L211' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-method-level' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The `Archive()` method combines class-level `[AuthorizeFactory<IProjectAuthorization>]` with method-level `[AspAuthorize(Roles = "Admin")]`. Both checks must pass for the operation to succeed.
@@ -304,7 +303,7 @@ public static class AuthorizationPolicyConfig
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L214-L232' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L213-L231' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Step 2: Apply to Factory Methods
@@ -341,7 +340,7 @@ public partial class PolicyProtectedResource
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L234-L263' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L233-L262' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Authorization Execution
@@ -381,7 +380,7 @@ public static partial class MultiplePolicyResource
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L265-L279' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L264-L278' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Roles-Based Authorization
@@ -427,7 +426,7 @@ public static partial class RoleProtectedOperations
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L281-L317' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L280-L316' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Comparing Approaches
@@ -508,7 +507,7 @@ public static partial class ReportOperations
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L319-L366' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L318-L365' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Execution order in generated factory methods:
@@ -525,34 +524,28 @@ Throw `NotAuthorizedException` for explicit auth failures:
 <!-- snippet: authorization-exception -->
 <a id='snippet-authorization-exception'></a>
 ```cs
-public partial class AuthorizationExceptionHandling
+// NotAuthorizedException is thrown when authorization fails on Save operations.
+// IDocumentFactory is injected via DI:
+public partial class AuthorizationExceptionHandling(IDocumentFactory factory)
 {
-    // [Fact]
     public async Task HandleNotAuthorizedException()
     {
-        var scopes = SampleTestContainers.Scopes();
-
-        // Configure user without required role
-        var userContext = scopes.server.GetRequiredService<MockUserContext>();
-        userContext.IsAuthenticated = false;
-
-        var factory = scopes.client.GetRequiredService<IDocumentFactory>();
-
         try
         {
-            // This will throw NotAuthorizedException if user lacks permission
+            // Attempt an operation the user is not authorized for
             var doc = factory.Create();
-            await Task.CompletedTask;
+            await factory.Save(doc!);
         }
         catch (NotAuthorizedException ex)
         {
             // Handle unauthorized access
-            Assert.NotNull(ex.Message);
+            // ex.Message contains the authorization failure reason
+            Console.WriteLine($"Authorization failed: {ex.Message}");
         }
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L368-L395' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-exception' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L367-L388' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-exception' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 This translates to a 403 response when called remotely.
@@ -584,7 +577,7 @@ public partial class EventAuthorizationExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L397-L417' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-events' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L390-L410' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-events' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Events bypass authorization checks and always execute. Use events for internal operations like notifications, audit logging, or background processing that should run regardless of user permissions.
@@ -596,47 +589,37 @@ Test authorization classes directly:
 <!-- snippet: authorization-testing -->
 <a id='snippet-authorization-testing'></a>
 ```cs
-public partial class AuthorizationTests
+// Test authorization directly using the generated factory methods.
+// IDocumentFactory is injected via DI:
+public partial class AuthorizationTests(IDocumentFactory factory)
 {
-    // [Fact]
     public void AuthorizedUser_CanCreate()
     {
-        var scopes = SampleTestContainers.Scopes();
+        // Given: user is authenticated (configured in test setup)
 
-        // Configure user with authentication
-        var userContext = scopes.server.GetRequiredService<MockUserContext>();
-        userContext.IsAuthenticated = true;
-        userContext.Roles = ["User"];
-
-        var factory = scopes.local.GetRequiredService<IDocumentFactory>();
-
-        // Should succeed
+        // When: check Create authorization
         var canCreate = factory.CanCreate();
-        Assert.True(canCreate.HasAccess);
+
+        // Then: access is granted
+        var hasAccess = canCreate.HasAccess; // true for authenticated users
 
         var doc = factory.Create();
-        Assert.NotNull(doc);
+        // doc is not null when authorized
     }
 
-    // [Fact]
     public void UnauthorizedUser_CannotDelete()
     {
-        var scopes = SampleTestContainers.Scopes();
+        // Given: user lacks Admin role (configured in test setup)
 
-        // Configure user without Admin role
-        var userContext = scopes.server.GetRequiredService<MockUserContext>();
-        userContext.IsAuthenticated = true;
-        userContext.Roles = ["User"]; // Not Admin
-
-        var factory = scopes.local.GetRequiredService<IDocumentFactory>();
-
-        // Check authorization first - CanDelete checks delete permission
+        // When: check Delete authorization (requires Write permission)
         var canDelete = factory.CanDelete();
-        Assert.False(canDelete.HasAccess);
+
+        // Then: access is denied
+        var hasAccess = canDelete.HasAccess; // false - user lacks Editor/Admin role
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L419-L459' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L412-L442' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization Enforcement by Mode
@@ -710,7 +693,7 @@ public partial class AuthContextResource
     }
 }
 ```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L461-L509' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-context' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L444-L492' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-context' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Inject any service needed for authorization decisions:

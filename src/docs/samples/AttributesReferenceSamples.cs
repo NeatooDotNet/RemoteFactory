@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory.Samples.Infrastructure;
 
 namespace Neatoo.RemoteFactory.Samples;
@@ -626,7 +625,7 @@ public partial class AttributesReferenceSamples
     #endregion
 
     #region attributes-pattern-event
-    // Event handler pattern (Events only) - must be static partial
+    // Event handler pattern - must be static partial
     [SuppressFactory] // Nested in wrapper class - pattern demonstration only
     public static partial class OrderEventHandlers
     {
@@ -651,44 +650,4 @@ public partial class AttributesReferenceSamples
         }
     }
     #endregion
-
-    // [Fact]
-    public void BasicEntity_CanBeCreated()
-    {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.local.GetRequiredService<IBasicEntityFactory>();
-
-        var entity = factory.Create();
-        Assert.NotNull(entity);
-        Assert.NotEqual(Guid.Empty, entity.Id);
-    }
-
-    // [Fact]
-    public async Task CrudEntity_FullWorkflow()
-    {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.local.GetRequiredService<ICrudEntityFactory>();
-
-        // Create
-        var entity = factory.Create();
-        entity.Name = "Test";
-        Assert.True(entity.IsNew);
-
-        // Save (Insert)
-        var saved = await factory.Save(entity);
-        Assert.NotNull(saved);
-        Assert.False(saved.IsNew);
-
-        // Update
-        saved.Name = "Updated";
-        var updated = await factory.Save(saved);
-        Assert.NotNull(updated);
-
-        // Delete
-        updated.IsDeleted = true;
-        await factory.Save(updated);
-    }
-
-    // Test methods removed - static partial classes with [Execute] are demonstration-only
-    // when nested in wrapper classes. Use at namespace level in production.
 }

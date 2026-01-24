@@ -16,31 +16,22 @@ namespace Neatoo.RemoteFactory.Samples;
 public partial class SerializationSamples
 {
     #region serialization-config
-    public static class SerializationConfiguration
+    public static void ConfigureOrdinalFormat(IServiceCollection services)
     {
-        public static void ConfigureOrdinalFormat(IServiceCollection services)
-        {
-            // Ordinal format: compact array-based JSON (default)
-            // Properties serialized as: [value1, value2, value3]
-            var options = new NeatooSerializationOptions
-            {
-                Format = SerializationFormat.Ordinal
-            };
+        // Ordinal format (default): compact array-based JSON
+        // Properties serialized as: [value1, value2, value3]
+        services.AddNeatooAspNetCore(
+            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+            typeof(SerializationSamples).Assembly);
+    }
 
-            services.AddNeatooAspNetCore(options, typeof(SerializationSamples).Assembly);
-        }
-
-        public static void ConfigureNamedFormat(IServiceCollection services)
-        {
-            // Named format: traditional object-based JSON
-            // Properties serialized as: {"Property1": value1, "Property2": value2}
-            var options = new NeatooSerializationOptions
-            {
-                Format = SerializationFormat.Named
-            };
-
-            services.AddNeatooAspNetCore(options, typeof(SerializationSamples).Assembly);
-        }
+    public static void ConfigureNamedFormat(IServiceCollection services)
+    {
+        // Named format: traditional object-based JSON
+        // Properties serialized as: {"Property1": value1, "Property2": value2}
+        services.AddNeatooAspNetCore(
+            new NeatooSerializationOptions { Format = SerializationFormat.Named },
+            typeof(SerializationSamples).Assembly);
     }
     #endregion
 
@@ -116,7 +107,6 @@ public partial class SerializationSamples
     {
         public string CountryCode { get; set; } = string.Empty;
         public string Number { get; set; } = string.Empty;
-
         public override string ToString() => $"+{CountryCode} {Number}";
     }
 
@@ -125,8 +115,7 @@ public partial class SerializationSamples
         public override PhoneNumber? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             var value = reader.GetString();
-            if (string.IsNullOrEmpty(value))
-                return null;
+            if (string.IsNullOrEmpty(value)) return null;
 
             var parts = value.Split(' ', 2);
             return new PhoneNumber
@@ -138,87 +127,57 @@ public partial class SerializationSamples
 
         public override void Write(Utf8JsonWriter writer, PhoneNumber value, JsonSerializerOptions options)
         {
-            writer.WriteStringValue(value.ToString());
-        }
-    }
-
-    // Register custom converter in serialization options
-    public static class CustomConverterRegistration
-    {
-        public static JsonSerializerOptions CreateOptions()
-        {
-            var options = new JsonSerializerOptions();
-            options.Converters.Add(new PhoneNumberConverter());
-            return options;
+            writer.WriteStringValue(value.ToString()); // Writes "+1 5551234567"
         }
     }
     #endregion
 
     #region serialization-logging
-    // Enable serialization logging for debugging
-    public static class SerializationLogging
+    public static void ConfigureWithLogging(IServiceCollection services)
     {
-        public static void ConfigureWithLogging(IServiceCollection services)
+        services.AddLogging(builder =>
         {
-            // Add logging to see serialization details
-            services.AddLogging(builder =>
-            {
-                builder.AddConsole();
-                builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace);
+        });
 
-                // Filter to Neatoo categories for serialization logs
-                builder.AddFilter("Neatoo.RemoteFactory", Microsoft.Extensions.Logging.LogLevel.Trace);
-            });
-
-            services.AddNeatooAspNetCore(typeof(SerializationSamples).Assembly);
-        }
+        services.AddNeatooAspNetCore(typeof(SerializationSamples).Assembly);
     }
     #endregion
 
     #region serialization-debug-named
-    public static class DebugSerializationConfig
+    public static void ConfigureByEnvironment(IServiceCollection services, bool isDevelopment)
     {
-        public static void ConfigureForDevelopment(IServiceCollection services, bool isDevelopment)
-        {
-            var options = new NeatooSerializationOptions
-            {
-                // Use Named format in development for readable JSON
-                // Use Ordinal format in production for smaller payloads
-                Format = isDevelopment
-                    ? SerializationFormat.Named
-                    : SerializationFormat.Ordinal
-            };
+        // Named format in development for readable JSON
+        // Ordinal format in production for smaller payloads
+        var format = isDevelopment ? SerializationFormat.Named : SerializationFormat.Ordinal;
 
-            services.AddNeatooAspNetCore(options, typeof(SerializationSamples).Assembly);
-        }
+        services.AddNeatooAspNetCore(
+            new NeatooSerializationOptions { Format = format },
+            typeof(SerializationSamples).Assembly);
     }
 
-    // Named format example (development):
-    // {"Id":"550e8400-e29b-41d4-a716-446655440000","Name":"Test","Price":29.99}
-    //
-    // Ordinal format example (production):
-    // ["550e8400-e29b-41d4-a716-446655440000","Test",29.99]
+    // Named:   {"Id":"550e8400...","Name":"Test","Price":29.99}
+    // Ordinal: ["550e8400...",29.99,"Test"]
     #endregion
 
     #region serialization-json-options
-    public static class CustomJsonOptions
+    public static JsonSerializerOptions CreateCustomOptions()
     {
-        public static void ConfigureCustomOptions(IServiceCollection services)
+        var options = new JsonSerializerOptions
         {
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            };
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
 
-            // Add custom converters
-            jsonOptions.Converters.Add(new PhoneNumberConverter());
-            jsonOptions.Converters.Add(new JsonStringEnumConverter());
+        options.Converters.Add(new PhoneNumberConverter());
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
 
-            // Note: RemoteFactory manages its own JsonSerializerOptions internally
-            // Custom converters can be registered via IOrdinalConverterProvider
-        }
+        // Note: RemoteFactory manages its own JsonSerializerOptions internally
+        // Custom converters should use IOrdinalConverterProvider<T> instead
     }
     #endregion
 
@@ -481,26 +440,13 @@ public partial class SerializationValidatedEntity
     public SerializationValidatedEntity() { Id = Guid.NewGuid(); }
 }
 
+// Validation on client before sending to server
 public partial class ClientValidationExample
 {
     public static bool ValidateBeforeSave(SerializationValidatedEntity entity)
     {
-        var validationResults = new List<ValidationResult>();
-        var isValid = Validator.TryValidateObject(
-            entity,
-            new ValidationContext(entity),
-            validationResults,
-            validateAllProperties: true);
-
-        if (!isValid)
-        {
-            foreach (var result in validationResults)
-            {
-                Console.WriteLine($"Validation error: {result.ErrorMessage}");
-            }
-        }
-
-        return isValid;
+        var results = new List<ValidationResult>();
+        return Validator.TryValidateObject(entity, new ValidationContext(entity), results, true);
     }
 }
 #endregion

@@ -94,32 +94,21 @@ public partial class SaveOperationSamples
     #endregion
 
     #region save-usage
-    public partial class SaveUsageExample
-    {
-        // [Fact]
-        public async Task UsingSaveMethod()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.client.GetRequiredService<ICustomerWithWriteOpsFactory>();
-
-            // Create new customer
-            var customer = factory.Create();
-            customer.Name = "Acme Corp";
-
-            // Save routes to Insert (IsNew = true)
-            var saved = await factory.Save(customer);
-            Assert.NotNull(saved);
-            Assert.False(saved.IsNew);
-
-            // Modify and save again - routes to Update (IsNew = false)
-            saved.Name = "Acme Corporation";
-            var updated = await factory.Save(saved);
-
-            // Mark for deletion and save - routes to Delete
-            updated!.IsDeleted = true;
-            await factory.Save(updated);
-        }
-    }
+    // Create new customer
+    // var customer = factory.Create();
+    // customer.Name = "Acme Corp";
+    //
+    // Save routes to Insert (IsNew = true)
+    // var saved = await factory.Save(customer);
+    // saved.IsNew; // false - Insert sets IsNew = false
+    //
+    // Modify and save again - routes to Update (IsNew = false)
+    // saved.Name = "Acme Corporation";
+    // await factory.Save(saved); // Calls Update
+    //
+    // Mark for deletion and save - routes to Delete
+    // saved.IsDeleted = true;
+    // await factory.Save(saved); // Calls Delete
     #endregion
 
     #region save-generated
@@ -146,79 +135,36 @@ public partial class SaveOperationSamples
     #endregion
 
     #region save-state-new
-    public partial class SaveStateNewExample
-    {
-        // [Fact]
-        public async Task NewEntity_RoutesToInsert()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.local.GetRequiredService<ICustomerWithWriteOpsFactory>();
-
-            var customer = factory.Create();
-            Assert.True(customer.IsNew); // New entity
-            Assert.False(customer.IsDeleted);
-
-            customer.Name = "New Customer";
-            var saved = await factory.Save(customer);
-
-            // After save, IsNew should be false
-            Assert.NotNull(saved);
-            Assert.False(saved.IsNew);
-        }
-    }
+    // After Create, IsNew is true
+    // var customer = factory.Create();
+    // customer.IsNew;     // true - new entity not yet persisted
+    // customer.IsDeleted; // false
+    //
+    // After Save, IsNew becomes false
+    // customer.Name = "New Customer";
+    // var saved = await factory.Save(customer); // Calls Insert
+    // saved.IsNew; // false - entity now exists in database
     #endregion
 
     #region save-state-fetch
-    public partial class SaveStateFetchExample
-    {
-        // [Fact]
-        public async Task FetchedEntity_RoutesToUpdate()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.local.GetRequiredService<ICustomerWithWriteOpsFactory>();
-
-            // First create and save a customer
-            var customer = factory.Create();
-            customer.Name = "Original Name";
-            var saved = await factory.Save(customer);
-
-            // After save, IsNew = false, so next save routes to Update
-            Assert.False(saved!.IsNew);
-
-            // Modify and save - routes to Update
-            saved.Name = "Updated Name";
-            var updated = await factory.Save(saved);
-
-            Assert.NotNull(updated);
-            Assert.Equal("Updated Name", updated.Name);
-        }
-    }
+    // After Fetch, IsNew is false
+    // var customer = await factory.Fetch(id);
+    // customer.IsNew; // false - fetched entities already exist
+    //
+    // Save routes to Update because IsNew = false
+    // customer.Name = "Updated Name";
+    // await factory.Save(customer); // Calls Update, not Insert
     #endregion
 
     #region save-state-delete
-    public partial class SaveStateDeleteExample
-    {
-        // [Fact]
-        public async Task DeletedEntity_RoutesToDelete()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.local.GetRequiredService<ICustomerWithWriteOpsFactory>();
-
-            // Create and save
-            var customer = factory.Create();
-            customer.Name = "To Be Deleted";
-            var saved = await factory.Save(customer);
-
-            // Mark for deletion
-            saved!.IsDeleted = true;
-            Assert.False(saved.IsNew);
-            Assert.True(saved.IsDeleted);
-
-            // Save routes to Delete
-            var result = await factory.Save(saved);
-            Assert.NotNull(result); // Delete returns the deleted entity
-        }
-    }
+    // Mark entity for deletion
+    // saved.IsDeleted = true;
+    // saved.IsNew;     // false - existing entity
+    // saved.IsDeleted; // true - marked for removal
+    //
+    // Save routes to Delete
+    // var result = await factory.Save(saved); // Calls Delete
+    // result; // Returns the deleted entity
     #endregion
 
     #region save-complete-example
@@ -300,41 +246,25 @@ public partial class SaveOperationSamples
     #endregion
 
     #region save-complete-usage
-    public partial class SaveCompleteUsageExample
-    {
-        // [Fact]
-        public async Task FullCrudWorkflow()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.client.GetRequiredService<IInvoiceFactory>();
-
-            // CREATE
-            var invoice = factory.Create();
-            invoice.CustomerId = Guid.NewGuid();
-            invoice.Total = 1500.00m;
-            invoice.DueDate = DateTime.UtcNow.AddDays(30);
-
-            var created = await factory.Save(invoice);
-            Assert.NotNull(created);
-            var invoiceId = created.Id;
-
-            // READ
-            var fetched = await factory.Fetch(invoiceId);
-            Assert.NotNull(fetched);
-            Assert.Equal(1500.00m, fetched.Total);
-
-            // UPDATE
-            fetched.Total = 1750.00m;
-            var updated = await factory.Save(fetched);
-            Assert.NotNull(updated);
-            Assert.Equal(1750.00m, updated.Total);
-
-            // DELETE
-            updated.IsDeleted = true;
-            var deleted = await factory.Save(updated);
-            Assert.NotNull(deleted); // Returns the deleted entity
-        }
-    }
+    // CREATE
+    // var invoice = factory.Create();
+    // invoice.CustomerId = customerId;
+    // invoice.Total = 1500.00m;
+    // var created = await factory.Save(invoice);
+    // var invoiceId = created.Id;
+    //
+    // READ
+    // var fetched = await factory.Fetch(invoiceId);
+    // fetched.Total; // 1500.00m
+    //
+    // UPDATE
+    // fetched.Total = 1750.00m;
+    // var updated = await factory.Save(fetched);
+    // updated.Total; // 1750.00m
+    //
+    // DELETE
+    // updated.IsDeleted = true;
+    // await factory.Save(updated); // Entity removed from database
     #endregion
 
     #region save-partial-methods
@@ -533,28 +463,18 @@ public partial class SaveOperationSamples
         }
     }
 
-    public partial class ValidationExceptionHandling
-    {
-        // [Fact]
-        public async Task HandleValidationException()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.client.GetRequiredService<IStrictValidatedEntityFactory>();
-
-            var entity = factory.Create();
-            entity.Name = string.Empty; // Invalid
-
-            try
-            {
-                await factory.Save(entity);
-                Assert.Fail("Should have thrown ValidationException");
-            }
-            catch (ValidationException ex)
-            {
-                Assert.Equal("Name is required", ex.Message);
-            }
-        }
-    }
+    // Usage:
+    // var entity = factory.Create();
+    // entity.Name = string.Empty; // Invalid
+    //
+    // try
+    // {
+    //     await factory.Save(entity);
+    // }
+    // catch (ValidationException ex)
+    // {
+    //     ex.Message; // "Name is required"
+    // }
     #endregion
 
     #region save-optimistic-concurrency
@@ -630,29 +550,17 @@ public partial class SaveOperationSamples
     #endregion
 
     #region save-explicit
-    // When individual operation methods are needed, use Save with appropriate IsNew/IsDeleted flags.
-    // The Save method routes to Insert, Update, or Delete based on the entity state:
+    // Use Save with appropriate IsNew/IsDeleted flags for state-based routing:
     //
-    // public partial class ExplicitOperationCalls
-    // {
-    //     public async Task CallOperationsDirectly()
-    //     {
-    //         var factory = services.GetRequiredService<ICustomerWithWriteOpsFactory>();
+    // var customer = factory.Create();
+    // customer.Name = "New Customer";
+    // var inserted = await factory.Save(customer); // Routes to Insert (IsNew = true)
     //
-    //         // Create and Insert
-    //         var customer = factory.Create();
-    //         customer.Name = "New Customer";
-    //         var inserted = await factory.Save(customer); // Routes to Insert (IsNew = true)
+    // inserted.Name = "Updated Name";
+    // var updated = await factory.Save(inserted);  // Routes to Update (IsNew = false)
     //
-    //         // Update
-    //         inserted!.Name = "Updated Name";
-    //         var updated = await factory.Save(inserted); // Routes to Update (IsNew = false)
-    //
-    //         // Delete
-    //         updated!.IsDeleted = true;
-    //         await factory.Save(updated); // Routes to Delete (IsDeleted = true)
-    //     }
-    // }
+    // updated.IsDeleted = true;
+    // await factory.Save(updated);                 // Routes to Delete (IsDeleted = true)
     #endregion
 
     #region save-extensions
@@ -703,59 +611,22 @@ public partial class SaveOperationSamples
     #endregion
 
     #region save-testing
-    public partial class SaveRoutingTests
-    {
-        // [Fact]
-        public async Task NewEntity_RoutesToInsert()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.local.GetRequiredService<ICustomerWithWriteOpsFactory>();
-
-            var customer = factory.Create();
-            Assert.True(customer.IsNew);
-
-            customer.Name = "Test";
-            var saved = await factory.Save(customer);
-
-            Assert.NotNull(saved);
-            Assert.False(saved.IsNew);
-        }
-
-        // [Fact]
-        public async Task ExistingEntity_RoutesToUpdate()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.local.GetRequiredService<ICustomerWithWriteOpsFactory>();
-
-            // Create and save first
-            var customer = factory.Create();
-            customer.Name = "Original";
-            var saved = await factory.Save(customer);
-
-            // Modify and save again
-            saved!.Name = "Modified";
-            var updated = await factory.Save(saved);
-
-            Assert.NotNull(updated);
-            Assert.Equal("Modified", updated.Name);
-        }
-
-        // [Fact]
-        public async Task DeletedEntity_RoutesToDelete()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.local.GetRequiredService<ICustomerWithWriteOpsFactory>();
-
-            var customer = factory.Create();
-            customer.Name = "ToDelete";
-            var saved = await factory.Save(customer);
-
-            saved!.IsDeleted = true;
-            var result = await factory.Save(saved);
-
-            Assert.NotNull(result); // Delete returns the entity
-        }
-    }
+    // Test Insert routing:
+    // var customer = factory.Create();
+    // customer.IsNew; // true
+    // customer.Name = "Test";
+    // var saved = await factory.Save(customer);
+    // saved.IsNew; // false - Insert was called
+    //
+    // Test Update routing:
+    // saved.Name = "Modified";
+    // var updated = await factory.Save(saved);
+    // updated.Name; // "Modified" - Update was called
+    //
+    // Test Delete routing:
+    // updated.IsDeleted = true;
+    // var result = await factory.Save(updated);
+    // result; // Returns the deleted entity - Delete was called
     #endregion
 
     // [Fact]

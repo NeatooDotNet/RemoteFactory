@@ -395,29 +395,19 @@ public partial class CorrelatedEvent
 public partial class EventsSamples
 {
     #region events-caller
-    public partial class EventCallerExample
+    public async Task FireEvent(
+        OrderWithEvents.SendOrderConfirmationEvent sendConfirmation,
+        IEventTracker eventTracker)
     {
-        // [Fact]
-        public async Task FireEvent()
-        {
-            var scopes = SampleTestContainers.Scopes();
+        var orderId = Guid.NewGuid();
+        var email = "customer@example.com";
 
-            // Get the generated event delegate
-            var sendConfirmation = scopes.local.GetRequiredService<OrderWithEvents.SendOrderConfirmationEvent>();
+        // Fire the event - returns Task but doesn't block
+        _ = sendConfirmation(orderId, email);
+        // Code continues immediately - event runs in background
 
-            var orderId = Guid.NewGuid();
-            var email = "customer@example.com";
-
-            // Fire the event - returns Task but doesn't block
-            _ = sendConfirmation(orderId, email);
-
-            // Code continues immediately without waiting for event to complete
-            // Event executes in background with isolated scope
-
-            // For testing, wait for events to complete
-            var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
-            await eventTracker.WaitAllAsync();
-        }
+        // In tests, wait for events to complete
+        await eventTracker.WaitAllAsync();
     }
     #endregion
 
@@ -462,82 +452,61 @@ public partial class EventsSamples
     #endregion
 
     #region events-eventtracker-access
-    public partial class EventTrackerAccess
+    public async Task AccessEventTracker(
+        IEventTracker eventTracker,
+        OrderWithEvents.SendOrderConfirmationEvent sendConfirmation)
     {
-        // [Fact]
-        public async Task AccessEventTracker()
-        {
-            var scopes = SampleTestContainers.Scopes();
+        // IEventTracker is registered as singleton
+        // Fire some events
+        _ = sendConfirmation(Guid.NewGuid(), "test@example.com");
+        _ = sendConfirmation(Guid.NewGuid(), "test2@example.com");
 
-            // IEventTracker is registered as singleton
-            var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
+        // Check pending count (may be 0, 1, or 2 depending on timing)
+        var pendingCount = eventTracker.PendingCount;
 
-            // Fire some events
-            var fireEvent = scopes.local.GetRequiredService<OrderWithEvents.SendOrderConfirmationEvent>();
-            _ = fireEvent(Guid.NewGuid(), "test@example.com");
-            _ = fireEvent(Guid.NewGuid(), "test2@example.com");
-
-            // Check pending count
-            Assert.True(eventTracker.PendingCount >= 0);
-
-            // Wait for all events
-            await eventTracker.WaitAllAsync();
-            Assert.Equal(0, eventTracker.PendingCount);
-        }
+        // Wait for all events to complete
+        await eventTracker.WaitAllAsync();
+        var afterCount = eventTracker.PendingCount; // 0 - all completed
     }
     #endregion
 
     #region events-eventtracker-wait
-    public partial class EventTrackerWaitExample
+    public async Task WaitForPendingEvents(
+        IEventTracker eventTracker,
+        OrderWithEvents.SendOrderConfirmationEvent sendConfirmation,
+        MockEmailService emailService)
     {
-        // [Fact]
-        public async Task WaitForPendingEvents()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
+        var orderId = Guid.NewGuid();
 
-            var fireEvent = scopes.local.GetRequiredService<OrderWithEvents.SendOrderConfirmationEvent>();
-            var orderId = Guid.NewGuid();
+        // Fire event
+        _ = sendConfirmation(orderId, "customer@example.com");
 
-            // Fire event
-            _ = fireEvent(orderId, "customer@example.com");
+        // Wait for completion
+        await eventTracker.WaitAllAsync();
 
-            // Wait for completion in tests
-            await eventTracker.WaitAllAsync();
-
-            // Assert side effects
-            var emailService = scopes.local.GetRequiredService<MockEmailService>();
-            Assert.Contains(emailService.SentEmails, e => e.To == "customer@example.com");
-        }
+        // Verify side effects
+        var emailSent = emailService.SentEmails.Any(e => e.To == "customer@example.com");
+        // emailSent is true
     }
     #endregion
 
     #region events-eventtracker-count
-    public partial class EventTrackerCountExample
+    public async Task CheckPendingCount(
+        IEventTracker eventTracker,
+        CancellableEvent.LongRunningEventEvent longRunningEvent)
     {
-        // [Fact]
-        public async Task CheckPendingCount()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
+        var initialCount = eventTracker.PendingCount; // 0 - no pending events
 
-            // Initially no pending events
-            Assert.Equal(0, eventTracker.PendingCount);
+        // Fire multiple events
+        _ = longRunningEvent(Guid.NewGuid());
+        _ = longRunningEvent(Guid.NewGuid());
 
-            var fireEvent = scopes.local.GetRequiredService<CancellableEvent.LongRunningEventEvent>();
+        // Count may be > 0 while events are running
+        var duringCount = eventTracker.PendingCount; // 0, 1, or 2
 
-            // Fire multiple events
-            _ = fireEvent(Guid.NewGuid());
-            _ = fireEvent(Guid.NewGuid());
-
-            // Some events may be pending
-            // Note: count may already be 0 if events completed quickly
-            var initialCount = eventTracker.PendingCount;
-
-            // Wait and verify all complete
-            await eventTracker.WaitAllAsync();
-            Assert.Equal(0, eventTracker.PendingCount);
-        }
+        // Wait for all to complete
+        await eventTracker.WaitAllAsync();
+        var afterCount = eventTracker.PendingCount; // 0 - all completed
     }
     #endregion
 
@@ -556,54 +525,42 @@ public partial class EventsSamples
     #endregion
 
     #region events-testing
-    public partial class EventTestingPatterns
+    public async Task TestEventSideEffects(
+        IEventTracker eventTracker,
+        OrderWithEvents.SendOrderConfirmationEvent sendConfirmation,
+        MockEmailService emailService)
     {
-        // [Fact]
-        public async Task TestEventSideEffects()
-        {
-            var scopes = SampleTestContainers.Scopes();
-            var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
-            var emailService = scopes.local.GetRequiredService<MockEmailService>();
+        var orderId = Guid.NewGuid();
+        var customerEmail = "test@example.com";
 
-            // Fire event
-            var sendEmail = scopes.local.GetRequiredService<OrderWithEvents.SendOrderConfirmationEvent>();
-            var orderId = Guid.NewGuid();
-            var customerEmail = "test@example.com";
+        // Fire event
+        _ = sendConfirmation(orderId, customerEmail);
 
-            _ = sendEmail(orderId, customerEmail);
+        // Wait for completion before asserting
+        await eventTracker.WaitAllAsync();
 
-            // Wait for event completion
-            await eventTracker.WaitAllAsync();
-
-            // Assert side effects
-            Assert.Contains(emailService.SentEmails,
-                e => e.To == customerEmail && e.Subject == "Order Confirmation");
-        }
+        // Verify side effects occurred
+        var confirmationSent = emailService.SentEmails.Any(
+            e => e.To == customerEmail && e.Subject == "Order Confirmation");
+        // confirmationSent is true
     }
     #endregion
 
     #region events-testing-latch
-    public partial class EventTestingWithLatch
+    public async Task TestMultipleEvents(
+        IEventTracker eventTracker,
+        OrderWithEvents.SendOrderConfirmationEvent sendConfirmation,
+        MockEmailService emailService)
     {
-        // [Fact]
-        public async Task TestMultipleEvents()
-        {
-            var scopes = SampleTestContainers.Scopes();
+        // Fire multiple events
+        _ = sendConfirmation(Guid.NewGuid(), "user1@example.com");
+        _ = sendConfirmation(Guid.NewGuid(), "user2@example.com");
 
-            var emailService = scopes.local.GetRequiredService<MockEmailService>();
-            var sendEmail = scopes.local.GetRequiredService<OrderWithEvents.SendOrderConfirmationEvent>();
+        // Wait for all events to complete
+        await eventTracker.WaitAllAsync();
 
-            // Fire multiple events
-            _ = sendEmail(Guid.NewGuid(), "user1@example.com");
-            _ = sendEmail(Guid.NewGuid(), "user2@example.com");
-
-            // Wait using IEventTracker for all events to complete
-            var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
-            await eventTracker.WaitAllAsync();
-
-            // Assert all events completed
-            Assert.Equal(2, emailService.SentEmails.Count);
-        }
+        // Verify all events completed
+        var emailCount = emailService.SentEmails.Count; // 2
     }
     #endregion
 

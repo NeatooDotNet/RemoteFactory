@@ -101,26 +101,25 @@ public partial class AuthorizationSamples
     #endregion
 
     #region authorization-generated
-    // The generated factory includes Can* methods for client-side checks:
-    public partial class GeneratedFactoryExample
+    // The generated factory includes Can* methods for client-side checks.
+    // IDocumentFactory is injected via DI:
+    public partial class GeneratedFactoryExample(IDocumentFactory factory)
     {
-        public static async Task CheckAuthorizationBeforeCalling()
+        public async Task CheckAuthorizationBeforeCalling()
         {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.client.GetRequiredService<IDocumentFactory>();
-
-            // Check authorization before attempting operation
+            // Check authorization before attempting Create
             if (factory.CanCreate().HasAccess)
             {
                 var doc = factory.Create();
-                // ... modify doc ...
+                doc!.Title = "New Document";
             }
 
+            // Check authorization before attempting Fetch
             var docId = Guid.NewGuid();
             if (factory.CanFetch().HasAccess)
             {
                 var doc = await factory.Fetch(docId);
-                // ... use doc ...
+                // doc is null if auth fails or not found
             }
         }
     }
@@ -366,29 +365,23 @@ public partial class AuthorizationSamples
     #endregion
 
     #region authorization-exception
-    public partial class AuthorizationExceptionHandling
+    // NotAuthorizedException is thrown when authorization fails on Save operations.
+    // IDocumentFactory is injected via DI:
+    public partial class AuthorizationExceptionHandling(IDocumentFactory factory)
     {
-        // [Fact]
         public async Task HandleNotAuthorizedException()
         {
-            var scopes = SampleTestContainers.Scopes();
-
-            // Configure user without required role
-            var userContext = scopes.server.GetRequiredService<MockUserContext>();
-            userContext.IsAuthenticated = false;
-
-            var factory = scopes.client.GetRequiredService<IDocumentFactory>();
-
             try
             {
-                // This will throw NotAuthorizedException if user lacks permission
+                // Attempt an operation the user is not authorized for
                 var doc = factory.Create();
-                await Task.CompletedTask;
+                await factory.Save(doc!);
             }
             catch (NotAuthorizedException ex)
             {
                 // Handle unauthorized access
-                Assert.NotNull(ex.Message);
+                // ex.Message contains the authorization failure reason
+                Console.WriteLine($"Authorization failed: {ex.Message}");
             }
         }
     }
@@ -417,43 +410,33 @@ public partial class AuthorizationSamples
     #endregion
 
     #region authorization-testing
-    public partial class AuthorizationTests
+    // Test authorization directly using the generated factory methods.
+    // IDocumentFactory is injected via DI:
+    public partial class AuthorizationTests(IDocumentFactory factory)
     {
-        // [Fact]
         public void AuthorizedUser_CanCreate()
         {
-            var scopes = SampleTestContainers.Scopes();
+            // Given: user is authenticated (configured in test setup)
 
-            // Configure user with authentication
-            var userContext = scopes.server.GetRequiredService<MockUserContext>();
-            userContext.IsAuthenticated = true;
-            userContext.Roles = ["User"];
-
-            var factory = scopes.local.GetRequiredService<IDocumentFactory>();
-
-            // Should succeed
+            // When: check Create authorization
             var canCreate = factory.CanCreate();
-            Assert.True(canCreate.HasAccess);
+
+            // Then: access is granted
+            var hasAccess = canCreate.HasAccess; // true for authenticated users
 
             var doc = factory.Create();
-            Assert.NotNull(doc);
+            // doc is not null when authorized
         }
 
-        // [Fact]
         public void UnauthorizedUser_CannotDelete()
         {
-            var scopes = SampleTestContainers.Scopes();
+            // Given: user lacks Admin role (configured in test setup)
 
-            // Configure user without Admin role
-            var userContext = scopes.server.GetRequiredService<MockUserContext>();
-            userContext.IsAuthenticated = true;
-            userContext.Roles = ["User"]; // Not Admin
-
-            var factory = scopes.local.GetRequiredService<IDocumentFactory>();
-
-            // Check authorization first - CanDelete checks delete permission
+            // When: check Delete authorization (requires Write permission)
             var canDelete = factory.CanDelete();
-            Assert.False(canDelete.HasAccess);
+
+            // Then: access is denied
+            var hasAccess = canDelete.HasAccess; // false - user lacks Editor/Admin role
         }
     }
     #endregion
@@ -508,29 +491,16 @@ public partial class AuthorizationSamples
     }
     #endregion
 
-    // [Fact]
-    public void AuthorizationInterface_Compiles()
+    // Compile verification - ensures all types resolve correctly
+    private static void VerifyCompilation(IDocumentFactory factory, IUserContext userContext)
     {
-        var userContext = new MockUserContext { IsAuthenticated = true, Roles = ["Admin"] };
+        // Verify authorization implementation compiles
         var auth = new DocumentAuthorization(userContext);
+        _ = auth.CanCreate();
+        _ = auth.CanWrite();
 
-        Assert.True(auth.CanCreate());
-        Assert.True(auth.CanWrite()); // CanWrite covers Update/Delete
-    }
-
-    // [Fact]
-    public void Document_WithAuthorization_Works()
-    {
-        var scopes = SampleTestContainers.Scopes();
-
-        var userContext = scopes.server.GetRequiredService<MockUserContext>();
-        userContext.IsAuthenticated = true;
-        userContext.Roles = ["Admin"];
-
-        var factory = scopes.local.GetRequiredService<IDocumentFactory>();
-
-        var doc = factory.Create();
-        Assert.NotNull(doc);
-        Assert.NotEqual(Guid.Empty, doc.Id);
+        // Verify factory methods compile
+        _ = factory.CanCreate();
+        _ = factory.Create();
     }
 }

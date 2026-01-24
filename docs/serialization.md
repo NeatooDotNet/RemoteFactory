@@ -61,34 +61,25 @@ Configure format during DI registration:
 <!-- snippet: serialization-config -->
 <a id='snippet-serialization-config'></a>
 ```cs
-public static class SerializationConfiguration
+public static void ConfigureOrdinalFormat(IServiceCollection services)
 {
-    public static void ConfigureOrdinalFormat(IServiceCollection services)
-    {
-        // Ordinal format: compact array-based JSON (default)
-        // Properties serialized as: [value1, value2, value3]
-        var options = new NeatooSerializationOptions
-        {
-            Format = SerializationFormat.Ordinal
-        };
+    // Ordinal format (default): compact array-based JSON
+    // Properties serialized as: [value1, value2, value3]
+    services.AddNeatooAspNetCore(
+        new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+        typeof(SerializationSamples).Assembly);
+}
 
-        services.AddNeatooAspNetCore(options, typeof(SerializationSamples).Assembly);
-    }
-
-    public static void ConfigureNamedFormat(IServiceCollection services)
-    {
-        // Named format: traditional object-based JSON
-        // Properties serialized as: {"Property1": value1, "Property2": value2}
-        var options = new NeatooSerializationOptions
-        {
-            Format = SerializationFormat.Named
-        };
-
-        services.AddNeatooAspNetCore(options, typeof(SerializationSamples).Assembly);
-    }
+public static void ConfigureNamedFormat(IServiceCollection services)
+{
+    // Named format: traditional object-based JSON
+    // Properties serialized as: {"Property1": value1, "Property2": value2}
+    services.AddNeatooAspNetCore(
+        new NeatooSerializationOptions { Format = SerializationFormat.Named },
+        typeof(SerializationSamples).Assembly);
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L18-L45' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L18-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Both client and server must use the same format.
@@ -133,7 +124,7 @@ public partial class SerializationOrdinalExample
 // JSON output in Ordinal format: ["value", 42, "2024-01-15T10:30:00Z"]
 // JSON output in Named format: {"Alpha":"value","Beta":42,"Gamma":"2024-01-15T10:30:00Z"}
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L300-L321' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-generated' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L259-L280' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-generated' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Property Ordering
@@ -182,7 +173,7 @@ public partial class SerializationVersionedEntity
     // Generator produces: [Alpha, Beta, Gamma, Zeta] in ordinal format
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L323-L347' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-versioning' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L282-L306' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-versioning' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Removing or renaming properties breaks compatibility. Use semantic versioning and coordinate client/server updates.
@@ -239,7 +230,7 @@ public partial class MoneyOrdinalConverter : JsonConverter<Money>
 // For [Factory] types, IOrdinalConverterProvider<T> is generated automatically.
 // See MoneyWithFactory below for the pattern the generator produces.
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L47-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-custom-ordinal' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L38-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-custom-ordinal' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 This overrides the generated serialization methods.
@@ -316,7 +307,7 @@ public partial class SerializationChildEntity
 // - Preserve object identity across serialization
 // - Avoid infinite loops in serialization
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L365-L394' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-references' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L324-L353' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-references' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The same instance is shared, not duplicated.
@@ -370,7 +361,7 @@ public partial class SerializationConcreteProduct : ISerializationProduct
 // When serializing ISerializationProduct, RemoteFactory includes type information
 // to deserialize back to SerializationConcreteProduct
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L396-L418' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L355-L377' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Serialized as:
@@ -414,7 +405,7 @@ public partial class SerializationCollectionExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L420-L441' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-collections' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L379-L400' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-collections' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Supports:
@@ -447,7 +438,7 @@ public partial class Rectangle : Shape
     public double Height { get; set; }
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L94-L111' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-polymorphism' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L85-L102' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-polymorphism' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The `$type` discriminator identifies the concrete type during deserialization.
@@ -478,30 +469,17 @@ public partial class SerializationValidatedEntity
     public SerializationValidatedEntity() { Id = Guid.NewGuid(); }
 }
 
+// Validation on client before sending to server
 public partial class ClientValidationExample
 {
     public static bool ValidateBeforeSave(SerializationValidatedEntity entity)
     {
-        var validationResults = new List<ValidationResult>();
-        var isValid = Validator.TryValidateObject(
-            entity,
-            new ValidationContext(entity),
-            validationResults,
-            validateAllProperties: true);
-
-        if (!isValid)
-        {
-            foreach (var result in validationResults)
-            {
-                Console.WriteLine($"Validation error: {result.ErrorMessage}");
-            }
-        }
-
-        return isValid;
+        var results = new List<ValidationResult>();
+        return Validator.TryValidateObject(entity, new ValidationContext(entity), results, true);
     }
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L464-L506' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-validation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L423-L452' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-validation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Validate on the server after deserialization:
@@ -535,7 +513,7 @@ public partial class SerializationServerValidatedEntity : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L508-L534' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-validation-server' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L454-L480' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-validation-server' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Performance Characteristics
@@ -565,7 +543,6 @@ public partial class PhoneNumber
 {
     public string CountryCode { get; set; } = string.Empty;
     public string Number { get; set; } = string.Empty;
-
     public override string ToString() => $"+{CountryCode} {Number}";
 }
 
@@ -574,8 +551,7 @@ public partial class PhoneNumberConverter : JsonConverter<PhoneNumber>
     public override PhoneNumber? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var value = reader.GetString();
-        if (string.IsNullOrEmpty(value))
-            return null;
+        if (string.IsNullOrEmpty(value)) return null;
 
         var parts = value.Split(' ', 2);
         return new PhoneNumber
@@ -587,22 +563,11 @@ public partial class PhoneNumberConverter : JsonConverter<PhoneNumber>
 
     public override void Write(Utf8JsonWriter writer, PhoneNumber value, JsonSerializerOptions options)
     {
-        writer.WriteStringValue(value.ToString());
-    }
-}
-
-// Register custom converter in serialization options
-public static class CustomConverterRegistration
-{
-    public static JsonSerializerOptions CreateOptions()
-    {
-        var options = new JsonSerializerOptions();
-        options.Converters.Add(new PhoneNumberConverter());
-        return options;
+        writer.WriteStringValue(value.ToString()); // Writes "+1 5551234567"
     }
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L114-L155' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-custom-converter' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L105-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-custom-converter' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Note:** RemoteFactory manages its own JsonSerializerOptions internally. For types that need custom serialization with Ordinal format, use `IOrdinalConverterProvider<T>` instead.
@@ -614,26 +579,19 @@ Enable verbose logging:
 <!-- snippet: serialization-logging -->
 <a id='snippet-serialization-logging'></a>
 ```cs
-// Enable serialization logging for debugging
-public static class SerializationLogging
+public static void ConfigureWithLogging(IServiceCollection services)
 {
-    public static void ConfigureWithLogging(IServiceCollection services)
+    services.AddLogging(builder =>
     {
-        // Add logging to see serialization details
-        services.AddLogging(builder =>
-        {
-            builder.AddConsole();
-            builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+        builder.AddConsole();
+        builder.SetMinimumLevel(LogLevel.Debug);
+        builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace);
+    });
 
-            // Filter to Neatoo categories for serialization logs
-            builder.AddFilter("Neatoo.RemoteFactory", Microsoft.Extensions.Logging.LogLevel.Trace);
-        });
-
-        services.AddNeatooAspNetCore(typeof(SerializationSamples).Assembly);
-    }
+    services.AddNeatooAspNetCore(typeof(SerializationSamples).Assembly);
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L157-L176' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L135-L147' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Logs include:
@@ -647,30 +605,21 @@ Switch to Named format for debugging:
 <!-- snippet: serialization-debug-named -->
 <a id='snippet-serialization-debug-named'></a>
 ```cs
-public static class DebugSerializationConfig
+public static void ConfigureByEnvironment(IServiceCollection services, bool isDevelopment)
 {
-    public static void ConfigureForDevelopment(IServiceCollection services, bool isDevelopment)
-    {
-        var options = new NeatooSerializationOptions
-        {
-            // Use Named format in development for readable JSON
-            // Use Ordinal format in production for smaller payloads
-            Format = isDevelopment
-                ? SerializationFormat.Named
-                : SerializationFormat.Ordinal
-        };
+    // Named format in development for readable JSON
+    // Ordinal format in production for smaller payloads
+    var format = isDevelopment ? SerializationFormat.Named : SerializationFormat.Ordinal;
 
-        services.AddNeatooAspNetCore(options, typeof(SerializationSamples).Assembly);
-    }
+    services.AddNeatooAspNetCore(
+        new NeatooSerializationOptions { Format = format },
+        typeof(SerializationSamples).Assembly);
 }
 
-// Named format example (development):
-// {"Id":"550e8400-e29b-41d4-a716-446655440000","Name":"Test","Price":29.99}
-//
-// Ordinal format example (production):
-// ["550e8400-e29b-41d4-a716-446655440000","Test",29.99]
+// Named:   {"Id":"550e8400...","Name":"Test","Price":29.99}
+// Ordinal: ["550e8400...",29.99,"Test"]
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L178-L201' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-debug-named' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L149-L163' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-debug-named' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Inspect payloads with browser DevTools or Fiddler.
@@ -682,27 +631,24 @@ RemoteFactory manages its own JsonSerializerOptions internally. Configuration is
 <!-- snippet: serialization-json-options -->
 <a id='snippet-serialization-json-options'></a>
 ```cs
-public static class CustomJsonOptions
+public static JsonSerializerOptions CreateCustomOptions()
 {
-    public static void ConfigureCustomOptions(IServiceCollection services)
+    var options = new JsonSerializerOptions
     {
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
-        // Add custom converters
-        jsonOptions.Converters.Add(new PhoneNumberConverter());
-        jsonOptions.Converters.Add(new JsonStringEnumConverter());
+    options.Converters.Add(new PhoneNumberConverter());
+    options.Converters.Add(new JsonStringEnumConverter());
+    return options;
 
-        // Note: RemoteFactory manages its own JsonSerializerOptions internally
-        // Custom converters can be registered via IOrdinalConverterProvider
-    }
+    // Note: RemoteFactory manages its own JsonSerializerOptions internally
+    // Custom converters should use IOrdinalConverterProvider<T> instead
 }
 ```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L203-L223' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-json-options' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/SerializationSamples.cs#L165-L182' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-json-options' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Available options:**

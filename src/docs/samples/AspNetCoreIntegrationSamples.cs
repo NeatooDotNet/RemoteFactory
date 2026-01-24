@@ -13,97 +13,75 @@ namespace Neatoo.RemoteFactory.Samples;
 public partial class AspNetCoreIntegrationSamples
 {
     #region aspnetcore-basic-setup
-    public static class BasicSetup
+    // In Program.cs
+    public static void ConfigureBasicSetup(IServiceCollection services, WebApplication app)
     {
-        public static void ConfigureServices(IServiceCollection services)
-        {
-            // Add Neatoo ASP.NET Core services
-            services.AddNeatooAspNetCore(typeof(AspNetCoreIntegrationSamples).Assembly);
-        }
+        // Add Neatoo ASP.NET Core services
+        services.AddNeatooAspNetCore(typeof(MyDomainEntity).Assembly);
 
-        public static void ConfigureApp(Microsoft.AspNetCore.Builder.WebApplication app)
-        {
-            // Map Neatoo endpoint at /api/neatoo
-            app.UseNeatoo();
-        }
+        // Map Neatoo endpoint at /api/neatoo
+        app.UseNeatoo();
     }
     #endregion
 
     #region aspnetcore-addneatoo
-    public static class AddNeatooExample
+    // Single assembly registration
+    public static void RegisterSingleAssembly(IServiceCollection services)
     {
-        public static void ConfigureServices(IServiceCollection services)
-        {
-            // Register with single domain assembly
-            services.AddNeatooAspNetCore(typeof(AspNetCoreIntegrationSamples).Assembly);
+        services.AddNeatooAspNetCore(typeof(MyDomainEntity).Assembly);
+    }
 
-            // Or register with multiple assemblies
-            // services.AddNeatooAspNetCore(
-            //     typeof(Domain.Person).Assembly,
-            //     typeof(Domain.Order).Assembly);
-        }
+    // Multiple assembly registration
+    public static void RegisterMultipleAssemblies(IServiceCollection services)
+    {
+        services.AddNeatooAspNetCore(
+            typeof(MyDomainEntity).Assembly,
+            typeof(OtherDomainEntity).Assembly);
     }
     #endregion
 
     #region aspnetcore-custom-serialization
-    public static class CustomSerializationSetup
+    public static void ConfigureCustomSerialization(IServiceCollection services)
     {
-        public static void ConfigureServices(IServiceCollection services)
+        var options = new NeatooSerializationOptions
         {
-            var serializationOptions = new NeatooSerializationOptions
-            {
-                // Named format: traditional JSON objects (larger but readable)
-                Format = SerializationFormat.Named
-            };
+            // Named format: traditional JSON objects (larger but readable)
+            Format = SerializationFormat.Named
+        };
 
-            services.AddNeatooAspNetCore(
-                serializationOptions,
-                typeof(AspNetCoreIntegrationSamples).Assembly);
-        }
+        services.AddNeatooAspNetCore(options, typeof(MyDomainEntity).Assembly);
     }
     #endregion
 
     #region aspnetcore-middleware-order
-    public static class MiddlewareOrderExample
+    public static void ConfigureMiddlewareOrder(WebApplication app)
     {
-        public static void ConfigureApp(Microsoft.AspNetCore.Builder.WebApplication app)
-        {
-            // Middleware order matters
-            // 1. CORS must come before UseNeatoo if client is cross-origin
-            app.UseCors();
-
-            // 2. Authentication/Authorization if using [AspAuthorize]
-            app.UseAuthentication();
-            app.UseAuthorization();
-
-            // 3. Neatoo endpoint
-            app.UseNeatoo();
-
-            // 4. Other endpoints
-            // app.MapControllers();
-        }
+        // Middleware order matters
+        app.UseCors();              // 1. CORS (if client is cross-origin)
+        app.UseAuthentication();    // 2. Authentication (if using [AspAuthorize])
+        app.UseAuthorization();     // 3. Authorization
+        app.UseNeatoo();            // 4. Neatoo endpoint
     }
     #endregion
 
     #region aspnetcore-cancellation
     [Factory]
-    public partial class CancellationSupportedEntity
+    public partial class LongRunningEntity
     {
         public Guid Id { get; private set; }
-        public bool Completed { get; private set; }
 
         [Create]
-        public CancellationSupportedEntity() { Id = Guid.NewGuid(); }
+        public LongRunningEntity() { Id = Guid.NewGuid(); }
 
         [Remote, Fetch]
         public async Task<bool> Fetch(
             Guid id,
             [Service] IPersonRepository repository,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken) // Automatically wired
         {
             // CancellationToken receives signal from:
-            // 1. Client disconnect (HttpContext.RequestAborted)
-            // 2. Server shutdown (IHostApplicationLifetime.ApplicationStopping)
+            // - Client disconnect (HttpContext.RequestAborted)
+            // - Server shutdown (IHostApplicationLifetime.ApplicationStopping)
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -111,7 +89,6 @@ public partial class AspNetCoreIntegrationSamples
             var entity = await repository.GetByIdAsync(id, cancellationToken);
 
             Id = id;
-            Completed = true;
             return entity != null;
         }
     }
@@ -119,23 +96,22 @@ public partial class AspNetCoreIntegrationSamples
 
     #region aspnetcore-correlation-id
     [Factory]
-    public partial class CorrelationIdExample
+    public partial class AuditedEntity
     {
         public Guid Id { get; private set; }
-        public string? CorrelationId { get; private set; }
 
         [Create]
-        public CorrelationIdExample() { Id = Guid.NewGuid(); }
+        public AuditedEntity() { Id = Guid.NewGuid(); }
 
         [Remote, Fetch]
         public Task<bool> Fetch(Guid id, [Service] IAuditLogService auditLog)
         {
             // CorrelationContext.CorrelationId is automatically populated from
             // X-Correlation-Id header (or generated if not present)
-            CorrelationId = CorrelationContext.CorrelationId;
+            var correlationId = CorrelationContext.CorrelationId;
 
             // Use for distributed tracing
-            _ = auditLog.LogAsync("Fetch", id, "Entity", $"Correlation: {CorrelationId}", default);
+            _ = auditLog.LogAsync("Fetch", id, "Entity", $"Correlation: {correlationId}", default);
 
             Id = id;
             return Task.FromResult(true);
@@ -144,193 +120,161 @@ public partial class AspNetCoreIntegrationSamples
     #endregion
 
     #region aspnetcore-logging
-    public static class LoggingConfiguration
+    public static void ConfigureNeatooLogging(IServiceCollection services)
     {
-        public static void ConfigureServices(IServiceCollection services)
+        services.AddLogging(builder =>
         {
-            services.AddLogging(builder =>
-            {
-                builder.AddConsole();
-                builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Information);
 
-                // Neatoo-specific log categories:
-                // - Neatoo.RemoteFactory.Server - server-side request handling
-                // - Neatoo.RemoteFactory.Client - client-side HTTP calls
-                // - Neatoo.RemoteFactory.Serialization - serialization details
+            // Neatoo-specific log categories:
+            // - Neatoo.RemoteFactory.Server - server-side request handling
+            // - Neatoo.RemoteFactory.Client - client-side HTTP calls
+            // - Neatoo.RemoteFactory.Serialization - serialization details
+            builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Debug);
+        });
 
-                builder.AddFilter("Neatoo.RemoteFactory", Microsoft.Extensions.Logging.LogLevel.Debug);
-            });
-
-            services.AddNeatooAspNetCore(typeof(AspNetCoreIntegrationSamples).Assembly);
-        }
+        services.AddNeatooAspNetCore(typeof(MyDomainEntity).Assembly);
     }
     #endregion
 
     #region aspnetcore-service-registration
-    public static class ServiceRegistration
+    public static void ConfigureServices(IServiceCollection services)
     {
-        public static void ConfigureServices(IServiceCollection services)
-        {
-            // Register Neatoo
-            services.AddNeatooAspNetCore(typeof(AspNetCoreIntegrationSamples).Assembly);
+        // Register Neatoo
+        services.AddNeatooAspNetCore(typeof(MyDomainEntity).Assembly);
 
-            // Register domain services (available in [Service] parameters)
-            services.AddScoped<IPersonRepository, PersonRepository>();
-            services.AddScoped<IOrderRepository, OrderRepository>();
-            services.AddScoped<IUserContext, MockUserContext>();
-            services.AddScoped<IEmailService, MockEmailService>();
-            services.AddScoped<IAuditLogService, MockAuditLogService>();
+        // Register domain services (available via [Service] parameters)
+        services.AddScoped<IPersonRepository, PersonRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IUserContext, MockUserContext>();
+        services.AddScoped<IEmailService, MockEmailService>();
+        services.AddScoped<IAuditLogService, MockAuditLogService>();
 
-            // Auto-register matching interfaces/implementations
-            services.RegisterMatchingName(typeof(AspNetCoreIntegrationSamples).Assembly);
-        }
+        // Auto-register matching interfaces/implementations (IFoo -> Foo)
+        services.RegisterMatchingName(typeof(MyDomainEntity).Assembly);
     }
     #endregion
 
     #region aspnetcore-multi-assembly
-    public static class MultiAssemblySetup
+    public static void ConfigureMultiAssembly(IServiceCollection services)
     {
-        public static void ConfigureServices(IServiceCollection services)
-        {
-            // Register multiple domain assemblies
-            services.AddNeatooAspNetCore(
-                typeof(AspNetCoreIntegrationSamples).Assembly
-                // typeof(OtherDomain.Entity).Assembly,
-                // typeof(AnotherDomain.Model).Assembly
-            );
+        // Register domain assemblies
+        services.AddNeatooAspNetCore(
+            typeof(MyDomainEntity).Assembly,
+            typeof(OtherDomainEntity).Assembly);
 
-            // Register matching services from all assemblies
-            services.RegisterMatchingName(
-                typeof(AspNetCoreIntegrationSamples).Assembly
-                // typeof(OtherDomain.Entity).Assembly
-            );
-        }
+        // Register services from all assemblies
+        services.RegisterMatchingName(
+            typeof(MyDomainEntity).Assembly,
+            typeof(OtherDomainEntity).Assembly);
     }
     #endregion
 
     #region aspnetcore-development
-    public static class DevelopmentConfiguration
+    public static void ConfigureDevelopment(IServiceCollection services)
     {
-        public static void ConfigureServices(IServiceCollection services, bool isDevelopment)
+        // Readable JSON format for debugging
+        var options = new NeatooSerializationOptions
         {
-            // Use readable JSON format in development
-            var options = new NeatooSerializationOptions
-            {
-                Format = isDevelopment
-                    ? SerializationFormat.Named  // Readable JSON
-                    : SerializationFormat.Ordinal // Compact arrays
-            };
+            Format = SerializationFormat.Named
+        };
 
-            services.AddNeatooAspNetCore(options, typeof(AspNetCoreIntegrationSamples).Assembly);
+        services.AddNeatooAspNetCore(options, typeof(MyDomainEntity).Assembly);
 
-            if (isDevelopment)
-            {
-                // Enable detailed logging
-                services.AddLogging(builder =>
-                {
-                    builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
-                    builder.AddFilter("Neatoo", Microsoft.Extensions.Logging.LogLevel.Trace);
-                });
-            }
-        }
+        // Detailed logging
+        services.AddLogging(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.AddFilter("Neatoo", LogLevel.Trace);
+        });
     }
     #endregion
 
     #region aspnetcore-production
-    public static class ProductionConfiguration
+    public static void ConfigureProduction(IServiceCollection services)
     {
-        public static void ConfigureServices(IServiceCollection services)
+        // Compact array format for minimal payload size (default)
+        var options = new NeatooSerializationOptions
         {
-            // Ordinal format for minimal payload size (default)
-            var options = new NeatooSerializationOptions
-            {
-                Format = SerializationFormat.Ordinal
-            };
+            Format = SerializationFormat.Ordinal
+        };
 
-            services.AddNeatooAspNetCore(options, typeof(AspNetCoreIntegrationSamples).Assembly);
+        services.AddNeatooAspNetCore(options, typeof(MyDomainEntity).Assembly);
 
-            // Production logging - less verbose
-            services.AddLogging(builder =>
-            {
-                builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
-                builder.AddFilter("Neatoo", Microsoft.Extensions.Logging.LogLevel.Information);
-            });
-        }
+        // Minimal logging
+        services.AddLogging(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Warning);
+            builder.AddFilter("Neatoo", LogLevel.Information);
+        });
     }
     #endregion
 
     #region aspnetcore-error-handling
-    public partial class ErrorHandlingExample
+    // Authorization errors throw NotAuthorizedException
+    public static async Task HandleAuthorizationError(IProtectedEntityFactory factory)
     {
-        // [Fact]
-        public async Task HandleNotAuthorizedException()
+        try
         {
-            var scopes = SampleTestContainers.Scopes();
-
-            // Configure unauthorized user
-            var userContext = scopes.server.GetRequiredService<MockUserContext>();
-            userContext.IsAuthenticated = false;
-
-            var factory = scopes.client.GetRequiredService<IProtectedServerEntityFactory>();
-
-            try
-            {
-                factory.Create();
-                await Task.CompletedTask;
-            }
-            catch (NotAuthorizedException ex)
-            {
-                // Handle authorization failure
-                Assert.NotNull(ex.Message);
-            }
+            await factory.Fetch(Guid.NewGuid());
         }
-
-        // [Fact]
-        public async Task HandleValidationException()
+        catch (NotAuthorizedException)
         {
-            var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.client.GetRequiredService<IValidatedServerEntityFactory>();
-
-            var entity = factory.Create();
-            entity.Name = string.Empty; // Invalid
-
-            try
-            {
-                await factory.Save(entity);  // Use Save instead of Insert
-            }
-            catch (System.ComponentModel.DataAnnotations.ValidationException ex)
-            {
-                // Handle validation failure
-                Assert.Contains("required", ex.Message, StringComparison.OrdinalIgnoreCase);
-            }
+            // User not authorized - redirect to login or show error
         }
     }
 
+    // Validation errors throw ValidationException
+    public static async Task HandleValidationError(IValidatedEntityFactory factory)
+    {
+        var entity = factory.Create();
+        entity.Name = string.Empty; // Invalid
+
+        try
+        {
+            await factory.Save(entity);
+        }
+        catch (System.ComponentModel.DataAnnotations.ValidationException ex)
+        {
+            // ex.Message contains validation error details
+            var errorMessage = ex.Message; // "Name is required"
+        }
+    }
+
+    // Supporting types for error handling examples
     public interface IProtectedAuth
     {
-        [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-        bool CanCreate();
+        [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+        bool CanFetch();
     }
 
     public partial class ProtectedAuth : IProtectedAuth
     {
         private readonly IUserContext _userContext;
         public ProtectedAuth(IUserContext userContext) { _userContext = userContext; }
-        public bool CanCreate() => _userContext.IsAuthenticated;
+        public bool CanFetch() => _userContext.IsAuthenticated;
     }
 
     [Factory]
     [AuthorizeFactory<IProtectedAuth>]
-    public partial class ProtectedServerEntity
+    public partial class ProtectedEntity
     {
         public Guid Id { get; private set; }
 
         [Create]
-        public ProtectedServerEntity() { Id = Guid.NewGuid(); }
+        public ProtectedEntity() { Id = Guid.NewGuid(); }
+
+        [Remote, Fetch]
+        public Task<bool> Fetch(Guid id)
+        {
+            Id = id;
+            return Task.FromResult(true);
+        }
     }
 
     [Factory]
-    public partial class ValidatedServerEntity : IFactorySaveMeta
+    public partial class ValidatedEntity : IFactorySaveMeta
     {
         public Guid Id { get; private set; }
         public string Name { get; set; } = string.Empty;
@@ -338,7 +282,7 @@ public partial class AspNetCoreIntegrationSamples
         public bool IsDeleted { get; set; }
 
         [Create]
-        public ValidatedServerEntity() { Id = Guid.NewGuid(); }
+        public ValidatedEntity() { Id = Guid.NewGuid(); }
 
         [Remote, Insert]
         public Task Insert()
@@ -352,129 +296,106 @@ public partial class AspNetCoreIntegrationSamples
     #endregion
 
     #region aspnetcore-cors
-    public static class CorsConfiguration
+    public static void ConfigureCors(IServiceCollection services, WebApplication app)
     {
-        public static void ConfigureServices(IServiceCollection services)
+        services.AddCors(options =>
         {
-            services.AddCors(options =>
+            options.AddDefaultPolicy(policy =>
             {
-                options.AddDefaultPolicy(policy =>
-                {
-                    policy.WithOrigins(
-                            "https://localhost:5001",  // Blazor WASM client
-                            "https://myapp.example.com")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();  // Required if using auth cookies
-                });
-
-                // Named policy for specific endpoints
-                options.AddPolicy("NeatooApi", policy =>
-                {
-                    policy.WithOrigins("https://trusted-client.example.com")
-                          .WithHeaders("Content-Type", "X-Correlation-Id")
-                          .WithMethods("POST");
-                });
+                policy.WithOrigins(
+                        "https://localhost:5001",       // Blazor WASM client
+                        "https://myapp.example.com")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();              // Required for auth cookies
             });
 
-            services.AddNeatooAspNetCore(typeof(AspNetCoreIntegrationSamples).Assembly);
-        }
+            // Named policy for specific endpoints
+            options.AddPolicy("NeatooApi", policy =>
+            {
+                policy.WithOrigins("https://trusted-client.example.com")
+                      .WithHeaders("Content-Type", "X-Correlation-Id")
+                      .WithMethods("POST");
+            });
+        });
 
-        public static void ConfigureApp(Microsoft.AspNetCore.Builder.WebApplication app)
-        {
-            app.UseCors(); // Use default policy
-            app.UseNeatoo();
-        }
+        services.AddNeatooAspNetCore(typeof(MyDomainEntity).Assembly);
+
+        // In Configure:
+        app.UseCors();      // Use default policy
+        app.UseNeatoo();
     }
     #endregion
 
     #region aspnetcore-minimal-api
-    public static class MinimalApiIntegration
+    public static void ConfigureMinimalApi(WebApplication app)
     {
-        public static void ConfigureApp(Microsoft.AspNetCore.Builder.WebApplication app)
-        {
-            // Neatoo coexists with other minimal API endpoints
-            app.UseNeatoo(); // POST /api/neatoo
+        // Neatoo coexists with other minimal API endpoints
+        app.UseNeatoo();  // POST /api/neatoo
 
-            // Other endpoints
-            app.MapGet("/health", () => "OK");
-
-            app.MapGet("/api/info", () => new
-            {
-                Version = "1.0",
-                Framework = "RemoteFactory"
-            });
-
-            // app.MapControllers(); // MVC controllers if needed
-        }
+        // Other endpoints
+        app.MapGet("/health", () => "OK");
+        app.MapGet("/api/info", () => new { Version = "1.0", Framework = "RemoteFactory" });
     }
     #endregion
 
     #region aspnetcore-testing
+    // Two-container pattern for testing client/server round-trips
     public partial class TwoContainerTestPattern
     {
         // [Fact]
-        public async Task ClientServerRoundTrip()
+        public async Task TestClientServerRoundTrip()
         {
             // Create isolated client/server/local containers
             var scopes = SampleTestContainers.Scopes();
 
             // Client container - simulates Blazor WASM
-            var clientFactory = scopes.client.GetRequiredService<IServerEntityFactory>();
-
-            // Server container - simulates ASP.NET Core server
-            // (automatically connected via SampleTestContainers)
+            var clientFactory = scopes.client.GetRequiredService<ITestEntityFactory>();
 
             // Local container - for comparison (no serialization)
-            var localFactory = scopes.local.GetRequiredService<IServerEntityFactory>();
+            var localFactory = scopes.local.GetRequiredService<ITestEntityFactory>();
 
-            // Test client call (goes through serialization)
+            // Client call goes through serialization round-trip
             var clientEntity = clientFactory.Create();
-            Assert.NotNull(clientEntity);
+            // clientEntity.Id != Guid.Empty
 
-            // Test local call (direct execution)
+            // Local call executes directly
             var localEntity = localFactory.Create();
-            Assert.NotNull(localEntity);
+            // localEntity.Id != Guid.Empty
 
-            // Both should produce valid results
-            Assert.NotEqual(Guid.Empty, clientEntity.Id);
-            Assert.NotEqual(Guid.Empty, localEntity.Id);
             await Task.CompletedTask;
         }
 
         // [Fact]
-        public async Task TestFullWorkflow()
+        public async Task TestFullCrudWorkflow()
         {
             var scopes = SampleTestContainers.Scopes();
-            var factory = scopes.client.GetRequiredService<IServerEntityFactory>();
+            var factory = scopes.client.GetRequiredService<ITestEntityFactory>();
 
             // Create
             var entity = factory.Create();
             entity.Name = "Integration Test";
 
-            // Save (Insert)
+            // Save (routes to Insert because IsNew = true)
             var saved = await factory.Save(entity);
-            Assert.NotNull(saved);
-            Assert.False(saved.IsNew);
+            // saved.IsNew == false
 
             // Fetch
-            var fetched = await factory.Fetch(saved.Id);
-            Assert.NotNull(fetched);
-            Assert.Equal("Integration Test", fetched.Name);
+            var fetched = await factory.Fetch(saved!.Id);
+            // fetched.Name == "Integration Test"
 
-            // Update
-            fetched.Name = "Updated";
-            var updated = await factory.Save(fetched);
-            Assert.NotNull(updated);
+            // Update (routes to Update because IsNew = false)
+            fetched!.Name = "Updated";
+            await factory.Save(fetched);
 
             // Delete
-            updated.IsDeleted = true;
-            await factory.Save(updated);
+            fetched.IsDeleted = true;
+            await factory.Save(fetched);
         }
     }
 
     [Factory]
-    public partial class ServerEntity : IFactorySaveMeta
+    public partial class TestEntity : IFactorySaveMeta
     {
         public Guid Id { get; private set; }
         public string Name { get; set; } = string.Empty;
@@ -482,7 +403,7 @@ public partial class AspNetCoreIntegrationSamples
         public bool IsDeleted { get; set; }
 
         [Create]
-        public ServerEntity() { Id = Guid.NewGuid(); }
+        public TestEntity() { Id = Guid.NewGuid(); }
 
         [Remote, Fetch]
         public Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
@@ -514,28 +435,18 @@ public partial class AspNetCoreIntegrationSamples
     }
     #endregion
 
-    // [Fact]
-    public async Task BasicSetup_Works()
+    // Placeholder types for documentation examples
+    [Factory]
+    public partial class MyDomainEntity
     {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.server.GetRequiredService<IServerEntityFactory>();
-
-        var entity = factory.Create();
-        Assert.NotNull(entity);
-        await Task.CompletedTask; // Satisfy async signature
+        [Create]
+        public MyDomainEntity() { }
     }
 
-    // [Fact]
-    public async Task ClientServerRoundTrip_Works()
+    [Factory]
+    public partial class OtherDomainEntity
     {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.client.GetRequiredService<IServerEntityFactory>();
-
-        var entity = factory.Create();
-        entity.Name = "Test";
-
-        var saved = await factory.Save(entity);
-        Assert.NotNull(saved);
-        Assert.False(saved.IsNew);
+        [Create]
+        public OtherDomainEntity() { }
     }
 }

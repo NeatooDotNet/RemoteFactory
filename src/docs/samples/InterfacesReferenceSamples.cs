@@ -284,37 +284,24 @@ public partial class InterfacesReferenceSamples
     #endregion
 
     #region interfaces-factorysave
-    public partial class FactorySaveUsageExample
-    {
-        // [Fact]
-        public async Task UsingIFactorySave()
-        {
-            var scopes = SampleTestContainers.Scopes();
+    // IFactorySave<T> is implemented by generated factories
+    // Usage: inject the factory interface and call Save()
 
-            // IFactorySave<T> is implemented by generated factories
-            var factory = scopes.local.GetRequiredService<IFactorySaveMetaExampleFactory>();
+    // Create new entity - IsNew=true by default
+    // var entity = factory.Create();
+    // entity.Name = "Test";
 
-            // Create new entity
-            var entity = factory.Create();
-            entity.Name = "Test";
+    // Save routes to Insert (IsNew=true, IsDeleted=false)
+    // var saved = await factory.Save(entity);
+    // saved.IsNew; // false - Insert completed
 
-            // Save routes based on IsNew/IsDeleted
-            // IsNew=true -> Insert
-            var saved = await factory.Save(entity);
-            Assert.NotNull(saved);
-            Assert.False(saved.IsNew);
+    // Modify and Save routes to Update (IsNew=false, IsDeleted=false)
+    // saved.Name = "Updated";
+    // await factory.Save(saved);
 
-            // Modify and save again
-            // IsNew=false -> Update
-            saved.Name = "Updated";
-            var updated = await factory.Save(saved);
-
-            // Mark for deletion and save
-            // IsDeleted=true -> Delete
-            updated!.IsDeleted = true;
-            await factory.Save(updated);
-        }
-    }
+    // Mark deleted and Save routes to Delete (IsDeleted=true)
+    // saved.IsDeleted = true;
+    // await factory.Save(saved); // returns null - entity deleted
     #endregion
 
     #region interfaces-aspauthorize
@@ -437,26 +424,17 @@ public partial class InterfacesReferenceSamples
     #endregion
 
     #region interfaces-eventtracker
-    public partial class EventTrackerExample
-    {
-        // [Fact]
-        public async Task UsingIEventTracker()
-        {
-            var scopes = SampleTestContainers.Scopes();
+    // IEventTracker monitors pending fire-and-forget events
+    // Inject via DI: IEventTracker eventTracker
 
-            // IEventTracker monitors pending fire-and-forget events
-            var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
+    // Check number of pending events
+    // eventTracker.PendingCount; // number of tracked events not yet complete
 
-            // Check number of pending events
-            var pendingCount = eventTracker.PendingCount;
+    // Wait for all pending events to complete (useful for graceful shutdown)
+    // await eventTracker.WaitAllAsync();
 
-            // Wait for all pending events to complete
-            await eventTracker.WaitAllAsync();
-
-            // After WaitAllAsync, all tracked events have completed
-            Assert.Equal(0, eventTracker.PendingCount);
-        }
-    }
+    // After WaitAllAsync, all tracked events have completed
+    // eventTracker.PendingCount; // 0
     #endregion
 
     // [Fact]

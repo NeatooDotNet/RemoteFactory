@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory.AspNetCore;
 using Neatoo.RemoteFactory.Samples.Infrastructure;
 
@@ -11,19 +10,15 @@ namespace Neatoo.RemoteFactory.Samples;
 public partial class FactoryModesSamples
 {
     #region modes-full-config
-    // Full mode (compile-time) is the default - no attribute needed
+    // Full mode is the default - no assembly attribute needed
     // Or explicitly: [assembly: FactoryMode(FactoryMode.Full)]
 
-    public static class FullModeConfiguration
+    public void ConfigureFullMode(IServiceCollection services)
     {
-        public static void ConfigureServer(IServiceCollection services)
-        {
-            // Full mode assembly + Server runtime mode
-            // Full mode generates both local execution and remote handler code
-            services.AddNeatooRemoteFactory(
-                NeatooFactory.Server, // Runtime mode: handles incoming HTTP
-                typeof(FactoryModesSamples).Assembly);
-        }
+        // Server runtime mode with Full compile-time mode
+        services.AddNeatooRemoteFactory(
+            NeatooFactory.Server, // Handles incoming HTTP requests
+            typeof(FactoryModesSamples).Assembly);
     }
     #endregion
 
@@ -57,21 +52,17 @@ public partial class FactoryModesSamples
     // In client assembly's AssemblyAttributes.cs:
     // [assembly: FactoryMode(FactoryMode.RemoteOnly)]
 
-    public static class RemoteOnlyConfiguration
+    public void ConfigureRemoteOnlyMode(IServiceCollection services)
     {
-        public static void ConfigureClient(IServiceCollection services, string serverUrl)
-        {
-            // RemoteOnly mode assembly + Remote runtime mode
-            // RemoteOnly generates HTTP stubs only (smaller assembly)
-            services.AddNeatooRemoteFactory(
-                NeatooFactory.Remote, // Runtime mode: makes HTTP calls to server
-                typeof(FactoryModesSamples).Assembly);
+        // Remote runtime mode - all operations go via HTTP
+        services.AddNeatooRemoteFactory(
+            NeatooFactory.Remote,
+            typeof(FactoryModesSamples).Assembly);
 
-            // Must register HttpClient for remote calls
-            services.AddKeyedScoped(
-                RemoteFactoryServices.HttpClientKey,
-                (sp, key) => new HttpClient { BaseAddress = new Uri(serverUrl) });
-        }
+        // Register HttpClient for remote calls
+        services.AddKeyedScoped(
+            RemoteFactoryServices.HttpClientKey,
+            (sp, key) => new HttpClient { BaseAddress = new Uri("https://api.example.com") });
     }
     #endregion
 
@@ -97,105 +88,64 @@ public partial class FactoryModesSamples
     #endregion
 
     #region modes-server-config
-    public static class ServerModeConfiguration
+    public void ConfigureServerMode(IServiceCollection services)
     {
-        public static void ConfigureServer(IServiceCollection services)
-        {
-            // Server mode - handles incoming HTTP requests from clients
-            // AddNeatooAspNetCore uses NeatooFactory.Server internally
-            services.AddNeatooAspNetCore(typeof(FactoryModesSamples).Assembly);
+        // AddNeatooAspNetCore uses NeatooFactory.Server internally
+        services.AddNeatooAspNetCore(typeof(FactoryModesSamples).Assembly);
 
-            // Register server-side services (repositories, DbContext, etc.)
-            services.AddScoped<IPersonRepository, PersonRepository>();
-        }
+        // Register server-side services
+        services.AddScoped<IPersonRepository, PersonRepository>();
     }
     #endregion
 
     #region modes-remote-config
-    public static class RemoteModeConfiguration
+    public void ConfigureRemoteMode(IServiceCollection services)
     {
-        public static void ConfigureClient(IServiceCollection services, string serverUrl)
-        {
-            // Remote mode - all factory operations go via HTTP to server
-            services.AddNeatooRemoteFactory(
-                NeatooFactory.Remote,
-                typeof(FactoryModesSamples).Assembly);
+        // Remote mode - all factory operations go via HTTP to server
+        services.AddNeatooRemoteFactory(
+            NeatooFactory.Remote,
+            typeof(FactoryModesSamples).Assembly);
 
-            // Register HttpClient with the server's base address
-            services.AddKeyedScoped(
-                RemoteFactoryServices.HttpClientKey,
-                (sp, key) => new HttpClient { BaseAddress = new Uri(serverUrl) });
-        }
+        // Register HttpClient with the server's base address
+        services.AddKeyedScoped(
+            RemoteFactoryServices.HttpClientKey,
+            (sp, key) => new HttpClient { BaseAddress = new Uri("https://api.example.com") });
     }
     #endregion
 
     #region modes-logical-config
-    public static class LogicalModeConfiguration
+    public void ConfigureLogicalMode(IServiceCollection services)
     {
-        public static void ConfigureLogical(IServiceCollection services)
-        {
-            // Logical mode - direct execution, no serialization
-            // Use for single-tier apps or unit tests
-            services.AddNeatooRemoteFactory(
-                NeatooFactory.Logical,
-                typeof(FactoryModesSamples).Assembly);
-        }
+        // Logical mode - direct execution, no serialization
+        // Use for single-tier apps or unit tests
+        services.AddNeatooRemoteFactory(
+            NeatooFactory.Logical,
+            typeof(FactoryModesSamples).Assembly);
     }
     #endregion
 
     #region modes-logical-testing
-    public partial class LogicalModeTestingExample
+    public async Task TestWithLogicalMode()
     {
-        // [Fact]
-        public async Task TestDomainLogic_WithoutHttp()
-        {
-            // Create container in Logical mode
-            var services = new ServiceCollection();
-            services.AddLogging();
-            services.AddSingleton<Microsoft.Extensions.Hosting.IHostApplicationLifetime, TestHostApplicationLifetime>();
+        // Logical mode enables testing without HTTP overhead
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Microsoft.Extensions.Hosting.IHostApplicationLifetime, TestHostApplicationLifetime>();
+        services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(FactoryModesSamples).Assembly);
+        services.AddSingleton<IPersonRepository, PersonRepository>();
 
-            // Logical mode - direct execution
-            services.AddNeatooRemoteFactory(
-                NeatooFactory.Logical,
-                typeof(FactoryModesSamples).Assembly);
+        var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<ILogicalModeEntityFactory>();
 
-            // Register domain services
-            services.AddSingleton<IPersonRepository, PersonRepository>();
-
-            var provider = services.BuildServiceProvider();
-            using var scope = provider.CreateScope();
-
-            var factory = scope.ServiceProvider.GetRequiredService<ILogicalModeEntityFactory>();
-
-            // Test domain logic without HTTP overhead
-            var entity = factory.Create();
-            entity.Name = "Test";
-
-            // Method executes directly, no serialization
-            await factory.Fetch(Guid.NewGuid());
-        }
+        // Methods execute directly - no serialization, no HTTP
+        var entity = factory.Create();
+        entity.Name = "Test";
+        await factory.Fetch(Guid.NewGuid()); // Runs locally
     }
     #endregion
 
-    [Factory]
-    public partial class LogicalModeEntity
-    {
-        public Guid Id { get; private set; }
-        public string Name { get; set; } = string.Empty;
-
-        [Create]
-        public LogicalModeEntity() { Id = Guid.NewGuid(); }
-
-        [Fetch]
-        public Task Fetch(Guid id)
-        {
-            Id = id;
-            return Task.CompletedTask;
-        }
-    }
-
     #region modes-full-example
-    // Complete server setup with Full mode
+    // Complete server entity with Full mode
 
     [Factory]
     public partial class ServerModeEntity : IFactorySaveMeta
@@ -249,98 +199,49 @@ public partial class FactoryModesSamples
         }
     }
 
-    public static class FullModeServerSetup
-    {
-        public static void Configure(IServiceCollection services)
-        {
-            // Server mode - handles incoming HTTP requests
-            services.AddNeatooAspNetCore(typeof(FactoryModesSamples).Assembly);
-
-            // Register server-only services
-            services.AddScoped<IPersonRepository, PersonRepository>();
-        }
-    }
+    // Server configuration:
+    // services.AddNeatooAspNetCore(typeof(ServerModeEntity).Assembly);
+    // services.AddScoped<IPersonRepository, PersonRepository>();
     #endregion
 
     #region modes-remoteonly-example
-    // Complete client setup with RemoteOnly mode
+    // Client configuration with RemoteOnly mode
+    // No repository dependencies - everything goes over HTTP
 
-    public static class RemoteOnlyClientSetup
+    public void ConfigureRemoteOnlyClient(IServiceCollection services, string serverUrl)
     {
-        public static void Configure(IServiceCollection services, string serverUrl)
-        {
-            // Remote mode - all operations go via HTTP
-            services.AddNeatooRemoteFactory(
-                NeatooFactory.Remote,
-                typeof(FactoryModesSamples).Assembly);
+        services.AddNeatooRemoteFactory(
+            NeatooFactory.Remote,
+            typeof(FactoryModesSamples).Assembly);
 
-            // Register keyed HttpClient
-            services.AddKeyedScoped(
-                RemoteFactoryServices.HttpClientKey,
-                (sp, key) => new HttpClient
-                {
-                    BaseAddress = new Uri(serverUrl),
-                    Timeout = TimeSpan.FromSeconds(30)
-                });
-
-            // Client-side services only
-            services.AddSingleton<IClientLoggerService, ClientLoggerService>();
-        }
-    }
-
-    public interface IClientLoggerService
-    {
-        void Log(string message);
-    }
-
-    public partial class ClientLoggerService : IClientLoggerService
-    {
-        public void Log(string message) => Console.WriteLine(message);
+        services.AddKeyedScoped(
+            RemoteFactoryServices.HttpClientKey,
+            (sp, key) => new HttpClient
+            {
+                BaseAddress = new Uri(serverUrl),
+                Timeout = TimeSpan.FromSeconds(30)
+            });
     }
     #endregion
 
     #region modes-logical-example
-    // Complete single-tier setup with Logical mode
+    // Single-tier setup with Logical mode
 
-    public static class LogicalModeSetup
+    public void ConfigureSingleTierApp(IServiceCollection services)
     {
-        public static void Configure(IServiceCollection services)
-        {
-            // Logical mode - direct execution, no HTTP
-            services.AddNeatooRemoteFactory(
-                NeatooFactory.Logical,
-                typeof(FactoryModesSamples).Assembly);
+        services.AddNeatooRemoteFactory(
+            NeatooFactory.Logical,
+            typeof(FactoryModesSamples).Assembly);
 
-            // All services available locally
-            services.AddSingleton<IPersonRepository, PersonRepository>();
-            services.AddSingleton<IOrderRepository, OrderRepository>();
-        }
+        // All services available locally
+        services.AddSingleton<IPersonRepository, PersonRepository>();
+        services.AddSingleton<IOrderRepository, OrderRepository>();
     }
 
-    public partial class SingleTierAppExample
-    {
-        // [Fact]
-        public async Task RunLocally()
-        {
-            var services = new ServiceCollection();
-            services.AddLogging();
-            services.AddSingleton<Microsoft.Extensions.Hosting.IHostApplicationLifetime, TestHostApplicationLifetime>();
-            LogicalModeSetup.Configure(services);
-
-            var provider = services.BuildServiceProvider();
-            using var scope = provider.CreateScope();
-
-            var factory = scope.ServiceProvider.GetRequiredService<ILogicalModeEntityFactory>();
-
-            var entity = factory.Create();
-            entity.Name = "Local Entity";
-
-            // Executes directly - no HTTP, no serialization
-            Assert.NotNull(entity);
-            Assert.Equal("Local Entity", entity.Name);
-            await Task.CompletedTask;
-        }
-    }
+    // Usage - executes directly, no HTTP or serialization
+    // var entity = factory.Create();
+    // entity.Name = "Local Entity";
+    // await factory.Save(entity); // Runs locally
     #endregion
 
     #region modes-local-remote-methods
@@ -355,8 +256,8 @@ public partial class FactoryModesSamples
         [Create]
         public MixedModeEntity() { Id = Guid.NewGuid(); }
 
-        // Local-only method - executes on client/server directly
-        // No [Remote] attribute means this only runs locally
+        // Local-only method - no [Remote] attribute
+        // Executes on client/server directly
         [Fetch]
         public void FetchLocal(string data)
         {
@@ -364,8 +265,7 @@ public partial class FactoryModesSamples
         }
 
         // Remote method - serializes and executes on server
-        [Remote]
-        [Fetch]
+        [Remote, Fetch]
         public async Task FetchRemote(Guid id, [Service] IPersonRepository repository)
         {
             var entity = await repository.GetByIdAsync(id);
@@ -380,65 +280,38 @@ public partial class FactoryModesSamples
     #endregion
 
     #region modes-logging
-    public static class ModeLogging
-    {
-        public static void ConfigureWithLogging(IServiceCollection services, NeatooFactory mode)
-        {
-            // Configure logging to see mode behavior
-            // services.AddLogging(builder =>
-            // {
-            //     builder.AddConsole();
-            //     builder.SetMinimumLevel(LogLevel.Debug);
-            //     builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace);
-            // });
-
-            services.AddNeatooRemoteFactory(mode, typeof(FactoryModesSamples).Assembly);
-        }
-    }
-
+    // Enable verbose logging to see mode behavior
+    //
+    // services.AddLogging(builder =>
+    // {
+    //     builder.AddConsole();
+    //     builder.SetMinimumLevel(LogLevel.Debug);
+    //     builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace);
+    // });
+    //
+    // services.AddNeatooRemoteFactory(mode, typeof(MyEntity).Assembly);
+    //
     // Logs will show:
     // - "Executing local factory method..." for Server/Logical modes
     // - "Sending remote factory request..." for Remote mode
     // - Serialization format and payload size
     #endregion
 
-    // [Fact]
-    public async Task FullMode_LocalExecution()
+    // Supporting types for samples
+    [Factory]
+    public partial class LogicalModeEntity
     {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.server.GetRequiredService<IServerModeEntityFactory>();
+        public Guid Id { get; private set; }
+        public string Name { get; set; } = string.Empty;
 
-        var entity = factory.Create();
-        entity.Name = "Server Test";
+        [Create]
+        public LogicalModeEntity() { Id = Guid.NewGuid(); }
 
-        var saved = await factory.Save(entity);
-        Assert.NotNull(saved);
-    }
-
-    // [Fact]
-    public async Task RemoteMode_ClientExecution()
-    {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.client.GetRequiredService<IServerModeEntityFactory>();
-
-        // Client call goes through simulated HTTP
-        var entity = factory.Create();
-        entity.Name = "Client Test";
-
-        var saved = await factory.Save(entity);
-        Assert.NotNull(saved);
-    }
-
-    // [Fact]
-    public void LogicalMode_DirectExecution()
-    {
-        var scopes = SampleTestContainers.Scopes();
-        var factory = scopes.local.GetRequiredService<ILogicalModeEntityFactory>();
-
-        var entity = factory.Create();
-        entity.Name = "Logical Test";
-
-        Assert.NotNull(entity);
-        Assert.Equal("Logical Test", entity.Name);
+        [Fetch]
+        public Task Fetch(Guid id)
+        {
+            Id = id;
+            return Task.CompletedTask;
+        }
     }
 }

@@ -415,7 +415,7 @@ public static class ServiceRegistration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L209-L228' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L169-L188' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **RegisterMatchingName** is a convenience method that registers interfaces and their implementations as transient when they follow the `IName` → `Name` pattern.
@@ -448,7 +448,7 @@ public static class MultiAssemblySetup
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L230-L249' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L190-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Each assembly can contain domain models with `[Factory]` attributes. The generator processes all of them.
@@ -488,7 +488,7 @@ public static class DevelopmentConfiguration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L251-L277' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-development' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L211-L237' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-development' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Production
@@ -519,7 +519,7 @@ public static class ProductionConfiguration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L279-L300' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-production' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L239-L260' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-production' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Ordinal format reduces payload size by 40-50% compared to Named format.
@@ -641,7 +641,7 @@ public partial class ValidatedServerEntity : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L302-L392' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L262-L352' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## CORS Configuration
@@ -686,7 +686,7 @@ public static class CorsConfiguration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L394-L429' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L354-L389' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Place CORS middleware before `UseNeatoo()` to allow cross-origin requests.
@@ -718,7 +718,7 @@ public static class MinimalApiIntegration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L431-L451' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-minimal-api' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L391-L411' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-minimal-api' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The `/api/neatoo` endpoint coexists with your other minimal API endpoints.
@@ -847,7 +847,7 @@ public partial class ServerEntity : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L453-L555' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L413-L515' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 This simulates client/server communication without HTTP.

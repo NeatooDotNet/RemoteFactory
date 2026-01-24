@@ -572,7 +572,7 @@ public partial class CustomAspAuthorize : IAspAuthorize
     }
 }
 ```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L320-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-aspauthorize' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L320-L369' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-aspauthorize' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Authorization](authorization.md) for standard authorization patterns.
@@ -616,7 +616,7 @@ public partial class OrdinalSerializableExample : IOrdinalSerializable
 // JSON output: ["value", 42, "2024-01-15T10:30:00Z"]
 // Instead of: {"Alpha":"value","Beta":42,"Gamma":"2024-01-15T10:30:00Z"}
 ```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L356-L373' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalserializable' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L371-L388' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalserializable' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Serialization](serialization.md) for details on ordinal format.
@@ -688,7 +688,7 @@ public partial class CustomOrdinalConverter : JsonConverter<CustomOrdinalType>
     }
 }
 ```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L375-L422' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalconverterprovider' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L390-L437' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalconverterprovider' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IOrdinalSerializationMetadata
@@ -755,7 +755,7 @@ public partial class EventTrackerExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L424-L445' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-eventtracker' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L439-L460' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-eventtracker' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Factory Core

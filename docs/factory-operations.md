@@ -621,23 +621,18 @@ Track event completion for testing or shutdown:
 <!-- snippet: operations-event-tracker -->
 <a id='snippet-operations-event-tracker'></a>
 ```cs
-// [Fact]
-public async Task EventTracker_WaitForPendingEvents()
-{
-    var scopes = SampleTestContainers.Scopes();
-    var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
-
-    // Fire event using namespace-level event type (from EventsSamples.cs)
-    var sendEmail = scopes.local.GetRequiredService<OrderWithEvents.SendOrderConfirmationEvent>();
-    _ = sendEmail(Guid.NewGuid(), "test@example.com");
-
-    // Wait for all pending events to complete
-    await eventTracker.WaitAllAsync();
-
-    Assert.Equal(0, eventTracker.PendingCount);
-}
+// IEventTracker tracks pending events for testing and graceful shutdown
+//
+// Fire event - returns immediately (fire-and-forget)
+// _ = sendConfirmationEmail(orderId, customerEmail);
+//
+// Wait for all pending events to complete
+// await eventTracker.WaitAllAsync();
+//
+// Check pending count
+// eventTracker.PendingCount; // 0 when all events complete
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L404-L420' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-tracker' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L404-L415' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-tracker' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Return value handling:
@@ -671,7 +666,7 @@ public partial class RemoteOperationExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L422-L442' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L417-L437' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 When a factory is registered with `NeatooFactory.Remote`:
@@ -723,7 +718,7 @@ public partial class LifecycleOnStartExample : IFactoryOnStart
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L444-L465' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L439-L460' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnComplete / IFactoryOnCompleteAsync
@@ -752,7 +747,7 @@ public partial class LifecycleOnCompleteExample : IFactoryOnComplete
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L467-L486' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L462-L481' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnCancelled / IFactoryOnCancelledAsync
@@ -781,7 +776,7 @@ public partial class LifecycleOnCancelledExample : IFactoryOnCancelled
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L488-L507' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncancelled' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L483-L502' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncancelled' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Lifecycle execution order:
@@ -828,7 +823,7 @@ public partial class CancellationTokenExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L509-L540' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L504-L535' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory methods automatically include CancellationToken:
@@ -877,7 +872,7 @@ public partial class ValueParametersExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L542-L565' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L537-L560' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Service parameters**: Injected from DI, not serialized
@@ -908,7 +903,7 @@ public partial class ServiceParametersExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L567-L591' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L562-L586' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Params arrays**: Variable-length arguments
@@ -929,7 +924,7 @@ public static partial class ArrayParametersExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L593-L607' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L588-L602' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **CancellationToken**: Optional, always last parameter
@@ -957,7 +952,7 @@ public partial class OptionalCancellationExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L609-L630' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L604-L625' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Parameter order rules:

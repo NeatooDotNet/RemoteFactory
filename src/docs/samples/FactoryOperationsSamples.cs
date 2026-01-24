@@ -402,21 +402,16 @@ public partial class FactoryOperationsSamples
     #endregion
 
     #region operations-event-tracker
-    // [Fact]
-    public async Task EventTracker_WaitForPendingEvents()
-    {
-        var scopes = SampleTestContainers.Scopes();
-        var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
-
-        // Fire event using namespace-level event type (from EventsSamples.cs)
-        var sendEmail = scopes.local.GetRequiredService<OrderWithEvents.SendOrderConfirmationEvent>();
-        _ = sendEmail(Guid.NewGuid(), "test@example.com");
-
-        // Wait for all pending events to complete
-        await eventTracker.WaitAllAsync();
-
-        Assert.Equal(0, eventTracker.PendingCount);
-    }
+    // IEventTracker tracks pending events for testing and graceful shutdown
+    //
+    // Fire event - returns immediately (fire-and-forget)
+    // _ = sendConfirmationEmail(orderId, customerEmail);
+    //
+    // Wait for all pending events to complete
+    // await eventTracker.WaitAllAsync();
+    //
+    // Check pending count
+    // eventTracker.PendingCount; // 0 when all events complete
     #endregion
 
     #region operations-remote
