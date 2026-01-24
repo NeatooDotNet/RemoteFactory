@@ -23,10 +23,8 @@ RemoteFactory/
 │   ├── RemoteFactory.AspNetCore/         # ASP.NET Core integration
 │   ├── Generator/                        # Roslyn source generator (netstandard2.0)
 │   ├── Tests/
-│   │   ├── RemoteFactory.UnitTests/      # Unit tests (NEW - all new tests go here)
-│   │   ├── RemoteFactory.IntegrationTests/ # Integration tests (NEW - all new tests go here)
-│   │   ├── FactoryGeneratorTests/        # DEPRECATED - do not fix, delete broken tests
-│   │   ├── RemoteFactory.AspNet.Tests/   # DEPRECATED - migrated to IntegrationTests
+│   │   ├── RemoteFactory.UnitTests/      # Unit tests for generator, factories, serialization
+│   │   ├── RemoteFactory.IntegrationTests/ # Integration tests with ASP.NET Core
 │   │   └── ...
 │   └── Examples/
 │       ├── Person/                       # Complete Blazor WASM example
@@ -74,15 +72,8 @@ Tests run against all three target frameworks (net8.0, net9.0, net10.0).
 
 ### Test Projects
 
-**All new tests must go in the new test projects:**
-
 - **RemoteFactory.UnitTests**: Unit tests for generator, factories, serialization
 - **RemoteFactory.IntegrationTests**: Integration tests with ASP.NET Core, client/server simulation
-
-**Deprecated test projects (do not use):**
-
-- **FactoryGeneratorTests**: DEPRECATED. Tests here are broken and should be deleted, not fixed.
-- **RemoteFactory.AspNet.Tests**: DEPRECATED. Migrated to IntegrationTests.
 
 ### Two DI Container Testing Pattern
 
