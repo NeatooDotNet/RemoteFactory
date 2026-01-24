@@ -18,8 +18,9 @@ public enum NeatooFactory
 	/// </summary>
 	Remote,
 	/// <summary>
-	/// A logical factory that does not make any remote calls
-	/// Factory methods will be executed in the same process
+	/// A logical factory for single-tier applications and unit tests.
+	/// Executes factory methods locally without serialization (same behavior as Server mode).
+	/// Use this mode when no server/client separation is needed.
 	/// </summary>
 	Logical
 }
@@ -88,14 +89,7 @@ public static partial class RemoteFactoryServices
 				return MakeRemoteDelegateRequestHttpCallImplementation.Create(httpClient);
 			});
 		}
-		else if (remoteLocal == NeatooFactory.Logical)
-		{
-			// Client Only
-			// We still Serialize the objects
-			// but we don't need to make a call to the server
-			services.AddScoped<IMakeRemoteDelegateRequest, MakeLocalSerializedDelegateRequest>();
-		}
-		else
+		else if (remoteLocal == NeatooFactory.Server)
 		{
 			services.AddTransient<HandleRemoteDelegateRequest>(s =>
 			{
@@ -103,6 +97,8 @@ public static partial class RemoteFactoryServices
 				return LocalServer.HandlePortalRequest(s, logger);
 			});
 		}
+		// Logical mode: No IMakeRemoteDelegateRequest registered.
+		// Generated factories will use local constructor -> direct execution (same as Server mode).
 
 		services.AddSingleton<GetServiceImplementationTypes>(s =>
 			{

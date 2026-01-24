@@ -11,9 +11,11 @@ namespace RemoteFactory.UnitTests.Logical;
 /// have [Remote] attributes on their [Insert], [Update], and [Delete] methods.
 /// </summary>
 /// <remarks>
-/// Logical mode combines client-side factory interfaces with local method execution.
-/// Unlike Server mode where [Remote] methods are executed directly,
-/// Logical mode uses the client-side factory interface pattern but executes locally.
+/// Logical mode executes factory methods locally without serialization.
+/// It behaves identically to Server mode - both use local execution.
+/// The semantic difference is:
+/// - Server mode: "I am an ASP.NET Core server"
+/// - Logical mode: "I am a single-tier app or unit test"
 /// </remarks>
 public class LogicalModeTests : IDisposable
 {
