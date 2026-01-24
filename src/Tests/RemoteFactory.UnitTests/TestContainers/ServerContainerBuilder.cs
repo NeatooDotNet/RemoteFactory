@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Neatoo.RemoteFactory;
+using RemoteFactory.UnitTests.Shared;
 using System.Reflection;
 
 namespace RemoteFactory.UnitTests.TestContainers;
@@ -26,6 +28,9 @@ public sealed class ServerContainerBuilder
             Assembly.GetExecutingAssembly()
         );
         _services.AddLogging(builder => builder.AddProvider(NullLoggerProvider.Instance));
+
+        // Add IHostApplicationLifetime for event delegate registration
+        _services.AddSingleton<IHostApplicationLifetime, TestHostApplicationLifetime>();
 
         // Register all [Factory] decorated types
         RegisterFactoryTypes();
