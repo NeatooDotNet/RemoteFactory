@@ -39,7 +39,7 @@ public static class BasicSetup
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L15-L30' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L15-L30' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The setup follows this pattern:
@@ -86,7 +86,7 @@ public static class AddNeatooExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L32-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-addneatoo' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L32-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-addneatoo' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Custom Serialization Options
@@ -121,7 +121,7 @@ public static class CustomSerializationSetup
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L48-L64' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-custom-serialization' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L48-L64' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-custom-serialization' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Serialization](serialization.md) for format details.
@@ -167,7 +167,7 @@ public static class MiddlewareOrderExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L66-L86' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L66-L86' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Endpoint Details
@@ -246,7 +246,7 @@ public partial class CancellationSupportedEntity
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L88-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L88-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Correlation IDs
@@ -292,7 +292,7 @@ public partial class CorrelationIdExample
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L120-L144' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L120-L144' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Logging
@@ -347,7 +347,7 @@ public static class LoggingConfiguration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L146-L167' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L146-L167' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Event Tracking
@@ -415,7 +415,7 @@ public static class ServiceRegistration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L169-L188' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L169-L188' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **RegisterMatchingName** is a convenience method that registers interfaces and their implementations as transient when they follow the `IName` → `Name` pattern.
@@ -448,7 +448,7 @@ public static class MultiAssemblySetup
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L190-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L190-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Each assembly can contain domain models with `[Factory]` attributes. The generator processes all of them.
@@ -488,7 +488,7 @@ public static class DevelopmentConfiguration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L211-L237' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-development' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L211-L237' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-development' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Production
@@ -519,7 +519,7 @@ public static class ProductionConfiguration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L239-L260' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-production' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L239-L260' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-production' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Ordinal format reduces payload size by 40-50% compared to Named format.
@@ -640,8 +640,20 @@ public partial class ValidatedServerEntity : IFactorySaveMeta
         return Task.CompletedTask;
     }
 }
+
+// Generated factory interface stubs (actual implementations are source-generated)
+public partial interface IProtectedServerEntityFactory
+{
+    ProtectedServerEntity Create();
+}
+
+public partial interface IValidatedServerEntityFactory
+{
+    ValidatedServerEntity Create();
+    Task<ValidatedServerEntity> Save(ValidatedServerEntity entity);
+}
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L262-L352' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L262-L364' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## CORS Configuration
@@ -686,7 +698,7 @@ public static class CorsConfiguration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L354-L389' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L366-L401' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Place CORS middleware before `UseNeatoo()` to allow cross-origin requests.
@@ -718,7 +730,7 @@ public static class MinimalApiIntegration
     }
 }
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L391-L411' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-minimal-api' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L403-L423' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-minimal-api' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The `/api/neatoo` endpoint coexists with your other minimal API endpoints.
@@ -846,8 +858,16 @@ public partial class ServerEntity : IFactorySaveMeta
         return Task.CompletedTask;
     }
 }
+
+// Generated factory interface stub (actual implementation is source-generated)
+public partial interface IServerEntityFactory
+{
+    ServerEntity Create();
+    Task<ServerEntity> Fetch(Guid id);
+    Task<ServerEntity> Save(ServerEntity entity);
+}
 ```
-<sup><a href='/src/docs/samples/AspNetCoreIntegrationSamples.cs#L413-L515' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ComprehensiveSample/ComprehensiveSample.Server/Services/AspNetCoreIntegrationSamples.cs#L425-L535' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 This simulates client/server communication without HTTP.
