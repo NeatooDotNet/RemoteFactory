@@ -3,10 +3,11 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Save;
 
-#region save-operation-class
+#region interfaces-lifecycle-order
 /// <summary>
-/// Employee aggregate demonstrating the complete IFactorySaveMeta workflow.
-/// Shows lifecycle hooks for save operations.
+/// Employee aggregate demonstrating the complete IFactorySaveMeta workflow
+/// with all lifecycle hooks: IFactoryOnStart, IFactoryOnComplete, IFactoryOnCancelled.
+/// Execution order: FactoryStart -> Operation -> FactoryComplete (or FactoryCancelled).
 /// </summary>
 [Factory]
 public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFactoryOnComplete, IFactoryOnCancelled
@@ -52,7 +53,7 @@ public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFact
         return true;
     }
 
-    #region factory-on-start
+    #region interfaces-factoryonstart
     /// <summary>
     /// Called before any factory operation begins.
     /// Use for pre-operation validation or setup.
@@ -75,9 +76,10 @@ public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFact
     }
     #endregion
 
-    #region factory-on-complete
+    #region interfaces-factoryoncomplete
     /// <summary>
     /// Called when factory operation succeeds.
+    /// Use for post-operation state updates, logging, or notifications.
     /// </summary>
     public void FactoryComplete(FactoryOperation factoryOperation)
     {
@@ -93,9 +95,10 @@ public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFact
     }
     #endregion
 
-    #region factory-on-cancelled
+    #region interfaces-factoryoncancelled
     /// <summary>
-    /// Called when factory operation is cancelled.
+    /// Called when factory operation is cancelled via CancellationToken.
+    /// Use for cleanup or logging of cancellation.
     /// </summary>
     public void FactoryCancelled(FactoryOperation factoryOperation)
     {

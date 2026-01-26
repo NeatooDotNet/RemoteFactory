@@ -4,7 +4,7 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Aggregates;
 
-#region factory-employee-aggregate
+#region getting-started-employee-model
 /// <summary>
 /// Employee aggregate root with full CRUD operations.
 /// </summary>
@@ -34,7 +34,6 @@ public partial class Employee : IFactorySaveMeta
         HireDate = DateTime.UtcNow;
     }
 
-    #region factory-fetch-operation
     /// <summary>
     /// Fetches an existing Employee by ID.
     /// </summary>
@@ -48,9 +47,7 @@ public partial class Employee : IFactorySaveMeta
         IsNew = false;
         return true;
     }
-    #endregion
 
-    #region factory-insert-operation
     /// <summary>
     /// Inserts a new Employee into the repository.
     /// </summary>
@@ -62,9 +59,7 @@ public partial class Employee : IFactorySaveMeta
         await repository.SaveChangesAsync(ct);
         IsNew = false;
     }
-    #endregion
 
-    #region factory-update-operation
     /// <summary>
     /// Updates an existing Employee in the repository.
     /// </summary>
@@ -75,9 +70,7 @@ public partial class Employee : IFactorySaveMeta
         await repository.UpdateAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
     }
-    #endregion
 
-    #region factory-delete-operation
     /// <summary>
     /// Deletes the Employee from the repository.
     /// </summary>
@@ -87,7 +80,6 @@ public partial class Employee : IFactorySaveMeta
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);
     }
-    #endregion
 
     private void MapFromEntity(EmployeeEntity entity)
     {
