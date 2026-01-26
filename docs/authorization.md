@@ -8,116 +8,61 @@ Define authorization logic in a dedicated class and reference it from your domai
 
 ### Step 1: Define Authorization Interface
 
+In the Application layer, define an interface that declares authorization checks for Employee operations:
+
 <!-- snippet: authorization-interface -->
-<a id='snippet-authorization-interface'></a>
-```cs
-public interface IDocumentAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-    bool CanCreate();
-
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-    bool CanRead();
-
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L11-L23' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define IEmployeeAuthorization interface in Application layer
+- Include three methods with [AuthorizeFactory] attributes:
+  - CanCreate() with AuthorizeFactoryOperation.Create
+  - CanRead() with AuthorizeFactoryOperation.Read
+  - CanWrite() with AuthorizeFactoryOperation.Write
+- Domain: Employee Management (controls access to Employee aggregate)
+- Context: Production code
+-->
 <!-- endSnippet -->
 
 Methods decorated with `[AuthorizeFactory]` control access to specific operations.
 
 ### Step 2: Implement Authorization Logic
 
+In the Application layer, implement the authorization interface with injected user context:
+
 <!-- snippet: authorization-implementation -->
-<a id='snippet-authorization-implementation'></a>
-```cs
-public partial class DocumentAuthorization : IDocumentAuthorization
-{
-    private readonly IUserContext _userContext;
-
-    public DocumentAuthorization(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public bool CanCreate()
-    {
-        // Any authenticated user can create
-        return _userContext.IsAuthenticated;
-    }
-
-    public bool CanRead()
-    {
-        // All authenticated users can read
-        return _userContext.IsAuthenticated;
-    }
-
-    public bool CanWrite()
-    {
-        // Only editors and admins can write (update/delete)
-        return _userContext.IsInRole("Editor") || _userContext.IsInRole("Admin");
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L25-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Implement EmployeeAuthorization class (partial) implementing IEmployeeAuthorization
+- Inject IUserContext via constructor for accessing current user info
+- CanCreate(): return true if user is authenticated
+- CanRead(): return true if user is authenticated
+- CanWrite(): return true if user has "HRManager" or "Admin" role
+- Domain: Employee Management
+- Context: Production code
+- Show realistic HR domain authorization rules
+-->
 <!-- endSnippet -->
 
 Inject any services needed for authorization decisions.
 
 ### Step 3: Apply to Domain Model
 
+In the Domain layer, apply the authorization interface to the Employee aggregate:
+
 <!-- snippet: authorization-apply -->
-<a id='snippet-authorization-apply'></a>
-```cs
-[Factory]
-[AuthorizeFactory<IDocumentAuthorization>]
-public partial class Document : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Title { get; set; } = string.Empty;
-    public string Content { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public Document()
-    {
-        Id = Guid.NewGuid();
-    }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid documentId, [Service] IPersonRepository repository)
-    {
-        Id = documentId;
-        Title = "Sample Document";
-        Content = "Document content";
-        IsNew = false;
-        return Task.FromResult(true);
-    }
-
-    [Remote, Insert]
-    public Task Insert([Service] IPersonRepository repository)
-    {
-        IsNew = false;
-        return Task.CompletedTask;
-    }
-
-    [Remote, Update]
-    public Task Update([Service] IPersonRepository repository)
-    {
-        return Task.CompletedTask;
-    }
-
-    [Remote, Delete]
-    public Task Delete([Service] IPersonRepository repository)
-    {
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L55-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define Employee class with [Factory] and [AuthorizeFactory<IEmployeeAuthorization>] attributes
+- Implement IFactorySaveMeta interface
+- Include properties: Id (Guid), FirstName (string), LastName (string), Email (string), DepartmentId (Guid), IsNew (bool), IsDeleted (bool)
+- [Create] constructor that generates new Guid
+- [Remote, Fetch] method Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+- [Remote, Insert] method Insert([Service] IEmployeeRepository repository)
+- [Remote, Update] method Update([Service] IEmployeeRepository repository)
+- [Remote, Delete] method Delete([Service] IEmployeeRepository repository)
+- Domain: Employee Management
+- Context: Production code
+-->
 <!-- endSnippet -->
 
 ### Generated Authorization Checks
@@ -125,32 +70,16 @@ public partial class Document : IFactorySaveMeta
 RemoteFactory generates authorization checks in the factory:
 
 <!-- snippet: authorization-generated -->
-<a id='snippet-authorization-generated'></a>
-```cs
-// The generated factory includes Can* methods for client-side checks.
-// IDocumentFactory is injected via DI:
-public partial class GeneratedFactoryExample(IDocumentFactory factory)
-{
-    public async Task CheckAuthorizationBeforeCalling()
-    {
-        // Check authorization before attempting Create
-        if (factory.CanCreate().HasAccess)
-        {
-            var doc = factory.Create();
-            doc!.Title = "New Document";
-        }
-
-        // Check authorization before attempting Fetch
-        var docId = Guid.NewGuid();
-        if (factory.CanFetch().HasAccess)
-        {
-            var doc = await factory.Fetch(docId);
-            // doc is null if auth fails or not found
-        }
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L103-L126' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-generated' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show example class that uses IEmployeeFactory (injected via constructor)
+- Demonstrate checking CanCreate().HasAccess before calling Create()
+- Demonstrate checking CanFetch().HasAccess before calling Fetch(employeeId)
+- Show null handling for unauthorized access
+- Include comments explaining that Can* methods are generated
+- Domain: Employee Management
+- Context: Production code - showing how consumers use the factory
+-->
 <!-- endSnippet -->
 
 Authorization failures are wrapped in the `Authorized<T>` result. Methods like `Create()` and `Fetch()` return null when authorization fails, while `Save()` throws `NotAuthorizedException`.
@@ -178,47 +107,19 @@ The generator calls all interface methods whose `[AuthorizeFactory]` flags match
 Use bitwise OR to check multiple operations:
 
 <!-- snippet: authorization-combined-flags -->
-<a id='snippet-authorization-combined-flags'></a>
-```cs
-public interface ICombinedFlagsAuthorization
-{
-    // Single method covers both Create and Fetch operations
-    [AuthorizeFactory(
-        AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
-    bool CanCreateOrFetch();
-
-    // Single method covers all write operations (Insert, Update, Delete)
-    [AuthorizeFactory(
-        AuthorizeFactoryOperation.Insert |
-        AuthorizeFactoryOperation.Update |
-        AuthorizeFactoryOperation.Delete)]
-    bool CanWrite();
-}
-
-public partial class CombinedFlagsAuthorization : ICombinedFlagsAuthorization
-{
-    private readonly IUserContext _userContext;
-
-    public CombinedFlagsAuthorization(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public bool CanCreateOrFetch() => _userContext.IsAuthenticated;
-    public bool CanWrite() => _userContext.IsInRole("Writer") || _userContext.IsInRole("Admin");
-}
-
-[Factory]
-[AuthorizeFactory<ICombinedFlagsAuthorization>]
-public partial class CombinedFlagsDocument
-{
-    public Guid Id { get; private set; }
-
-    [Create]
-    public CombinedFlagsDocument() { Id = Guid.NewGuid(); }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L128-L166' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined-flags' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define IDepartmentAuthorization interface with combined flags:
+  - CanCreateOrFetch() with Create | Fetch flags
+  - CanWrite() with Insert | Update | Delete flags
+- Implement DepartmentAuthorization class (partial) with IUserContext injection
+- Apply to Department class with [Factory] and [AuthorizeFactory<IDepartmentAuthorization>]
+- Department has: Id (Guid), Name (string), ManagerId (Guid?)
+- [Create] constructor
+- Domain: Employee Management - Department entity
+- Context: Production code
+- Show how combined flags reduce boilerplate
+-->
 <!-- endSnippet -->
 
 ## Method-Level Authorization
@@ -226,55 +127,24 @@ public partial class CombinedFlagsDocument
 Override class-level authorization for specific methods:
 
 <!-- snippet: authorization-method-level -->
-<a id='snippet-authorization-method-level'></a>
-```cs
-public interface IProjectAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-    bool CanRead();
-}
-
-public partial class ProjectAuthorization : IProjectAuthorization
-{
-    private readonly IUserContext _userContext;
-    public ProjectAuthorization(IUserContext userContext) { _userContext = userContext; }
-    public bool CanRead() => _userContext.IsAuthenticated;
-}
-
-[Factory]
-[AuthorizeFactory<IProjectAuthorization>]
-public partial class ProjectWithMethodAuth : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public bool IsArchived { get; private set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public ProjectWithMethodAuth() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        IsNew = false;
-        return Task.FromResult(true);
-    }
-
-    // Method-level authorization - only admins can archive (using Update)
-    [Remote, Update]
-    [AspAuthorize(Roles = "Admin")]
-    public Task Archive()
-    {
-        IsArchived = true;
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L168-L211' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-method-level' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define IEmployeeReadAuthorization interface with CanRead() method
+- Implement EmployeeReadAuthorization (partial) checking IsAuthenticated
+- Define EmployeeWithMethodAuth class with:
+  - [Factory] and [AuthorizeFactory<IEmployeeReadAuthorization>]
+  - IFactorySaveMeta implementation
+  - Properties: Id, IsTerminated, IsNew, IsDeleted
+  - [Create] constructor
+  - [Remote, Fetch] method Fetch(Guid id)
+  - [Remote, Update] with [AspAuthorize(Roles = "HRManager")] for Terminate() method
+- Domain: Employee Management
+- Context: Production code
+- Demonstrate method-level override for sensitive operation (termination)
+-->
 <!-- endSnippet -->
 
-The `Archive()` method combines class-level `[AuthorizeFactory<IProjectAuthorization>]` with method-level `[AspAuthorize(Roles = "Admin")]`. Both checks must pass for the operation to succeed.
+The `Terminate()` method combines class-level `[AuthorizeFactory<IEmployeeReadAuthorization>]` with method-level `[AspAuthorize(Roles = "HRManager")]`. Both checks must pass for the operation to succeed.
 
 ## ASP.NET Core Policy-Based Authorization
 
@@ -282,65 +152,38 @@ Use `[AspAuthorize]` to apply ASP.NET Core authorization policies using the fram
 
 ### Step 1: Configure Policies
 
+In the Server layer (Program.cs or Startup), configure authorization policies:
+
 <!-- snippet: authorization-policy-config -->
-<a id='snippet-authorization-policy-config'></a>
-```cs
-public static class AuthorizationPolicyConfig
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        services.AddAuthorization(options =>
-        {
-            options.AddPolicy("RequireAdmin", policy =>
-                policy.RequireRole("Admin"));
-
-            options.AddPolicy("RequireEditor", policy =>
-                policy.RequireRole("Editor", "Admin"));
-
-            options.AddPolicy("RequireAuthenticated", policy =>
-                policy.RequireAuthenticatedUser());
-        });
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L213-L231' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Static class AuthorizationPolicyConfig with ConfigureServices method
+- Configure policies relevant to HR domain:
+  - "RequireHRManager" - require "HRManager" role
+  - "RequirePayroll" - require "Payroll" or "HRManager" role
+  - "RequireAuthenticated" - require authenticated user
+- Use standard ASP.NET Core authorization configuration
+- Domain: Employee Management
+- Context: Production code - server configuration
+-->
 <!-- endSnippet -->
 
 ### Step 2: Apply to Factory Methods
 
+In the Domain layer, apply policies to factory methods:
+
 <!-- snippet: authorization-policy-apply -->
-<a id='snippet-authorization-policy-apply'></a>
-```cs
-[Factory]
-public partial class PolicyProtectedResource
-{
-    public Guid Id { get; private set; }
-    public string Data { get; private set; } = string.Empty;
-
-    [Create]
-    public PolicyProtectedResource() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    [AspAuthorize("RequireAuthenticated")]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        Data = "Fetched data";
-        return Task.FromResult(true);
-    }
-
-    // For admin-only operations with policy, use Fetch with different parameters
-    [Remote, Fetch]
-    [AspAuthorize("RequireAdmin")]
-    public Task<bool> FetchAdminOnly(Guid id, bool includePrivateData)
-    {
-        Id = id;
-        Data = includePrivateData ? "Private admin data" : "Admin operation completed";
-        return Task.FromResult(true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L233-L262' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define SalaryInfo class with [Factory] attribute
+- Properties: EmployeeId (Guid), AnnualSalary (decimal), EffectiveDate (DateTime)
+- [Create] constructor
+- [Remote, Fetch] with [AspAuthorize("RequireAuthenticated")] for basic fetch
+- [Remote, Fetch] with [AspAuthorize("RequirePayroll")] for FetchWithCompensation method (includes sensitive salary data)
+- Domain: Employee Management - salary/compensation info (sensitive data)
+- Context: Production code
+- Show how policies protect sensitive data at different levels
+-->
 <!-- endSnippet -->
 
 ### Authorization Execution
@@ -364,23 +207,18 @@ public async Task<Authorized<T>> LocalFetch(...)
 Apply multiple authorization requirements:
 
 <!-- snippet: authorization-policy-multiple -->
-<a id='snippet-authorization-policy-multiple'></a>
-```cs
-// For Execute with multiple policies, use static partial class
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class MultiplePolicyResource
-{
-    // Requires both policies to be satisfied
-    [Remote, Execute]
-    [AspAuthorize("RequireAuthenticated")]
-    [AspAuthorize("RequireAdmin")]
-    private static Task _SensitiveOperation(Guid resourceId)
-    {
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L264-L278' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Static partial class PayrollOperations with [SuppressFactory]
+- [Remote, Execute] method for ProcessPayroll with:
+  - [AspAuthorize("RequireAuthenticated")]
+  - [AspAuthorize("RequirePayroll")]
+- Method signature: _ProcessPayroll(Guid departmentId, DateTime payPeriodEnd)
+- Comment explaining both policies must be satisfied
+- Domain: Employee Management - payroll processing
+- Context: Production code
+- Show defense in depth with multiple policies
+-->
 <!-- endSnippet -->
 
 ### Roles-Based Authorization
@@ -388,45 +226,19 @@ public static partial class MultiplePolicyResource
 Use roles instead of policies:
 
 <!-- snippet: authorization-policy-roles -->
-<a id='snippet-authorization-policy-roles'></a>
-```cs
-[Factory]
-public partial class RoleProtectedResource
-{
-    public Guid Id { get; private set; }
-
-    [Create]
-    public RoleProtectedResource() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    [AspAuthorize(Roles = "User,Admin,Manager")]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        return Task.FromResult(true);
-    }
-}
-
-// Role-based Execute operations in static partial class
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class RoleProtectedOperations
-{
-    [Remote, Execute]
-    [AspAuthorize(Roles = "Admin,Manager")]
-    private static Task _ManagerOperation(Guid resourceId)
-    {
-        return Task.CompletedTask;
-    }
-
-    [Remote, Execute]
-    [AspAuthorize(Roles = "Admin")]
-    private static Task _AdminOnlyOperation(Guid resourceId)
-    {
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L280-L316' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define TimeOffRequest class with [Factory] attribute
+- Properties: Id (Guid), EmployeeId (Guid), StartDate (DateTime), EndDate (DateTime), Status (string)
+- [Create] constructor
+- [Remote, Fetch] with [AspAuthorize(Roles = "Employee,HRManager,Admin")] - any employee can view
+- Static partial class TimeOffOperations with [SuppressFactory]:
+  - [Remote, Execute] _ApproveRequest with [AspAuthorize(Roles = "HRManager,Admin")]
+  - [Remote, Execute] _CancelRequest with [AspAuthorize(Roles = "HRManager")]
+- Domain: Employee Management - time off requests
+- Context: Production code
+- Show role hierarchy for different operations
+-->
 <!-- endSnippet -->
 
 ## Comparing Approaches
@@ -458,56 +270,23 @@ public static partial class RoleProtectedOperations
 Use both for defense in depth:
 
 <!-- snippet: authorization-combined -->
-<a id='snippet-authorization-combined'></a>
-```cs
-public interface IReportAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
-    bool CanAccess();
-}
-
-public partial class ReportAuthorization : IReportAuthorization
-{
-    private readonly IUserContext _userContext;
-    public ReportAuthorization(IUserContext userContext) { _userContext = userContext; }
-    public bool CanAccess() => _userContext.IsAuthenticated;
-}
-
-[Factory]
-[AuthorizeFactory<IReportAuthorization>]
-public partial class Report
-{
-    public Guid Id { get; private set; }
-
-    [Create]
-    public Report() { Id = Guid.NewGuid(); }
-
-    // Custom auth (IReportAuthorization.CanAccess) runs first
-    // Then ASP.NET Core policy check
-    [Remote, Fetch]
-    [AspAuthorize("RequireAuthenticated")]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        return Task.FromResult(true);
-    }
-
-}
-
-// Combined auth with Execute in static partial class
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class ReportOperations
-{
-    // Custom auth runs through factory auth, then ASP.NET Core policy
-    [Remote, Execute]
-    [AspAuthorize(Roles = "Admin")]
-    private static Task<string> _GenerateReport(Guid reportId)
-    {
-        return Task.FromResult($"Report {reportId} generated");
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L318-L365' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define IPerformanceReviewAuthorization interface:
+  - CanAccess() with Create | Fetch flags
+- Implement PerformanceReviewAuthorization (partial) checking IsAuthenticated
+- Define PerformanceReview class with:
+  - [Factory] and [AuthorizeFactory<IPerformanceReviewAuthorization>]
+  - Properties: Id (Guid), EmployeeId (Guid), ReviewDate (DateTime), Rating (int), Comments (string)
+  - [Create] constructor
+  - [Remote, Fetch] with [AspAuthorize("RequireAuthenticated")]
+- Static partial class PerformanceReviewOperations with [SuppressFactory]:
+  - [Remote, Execute] _SubmitReview with [AspAuthorize(Roles = "HRManager")]
+- Comment explaining execution order (custom auth first, then ASP.NET Core)
+- Domain: Employee Management - performance reviews
+- Context: Production code
+- Show combined authorization for sensitive HR data
+-->
 <!-- endSnippet -->
 
 Execution order in generated factory methods:
@@ -522,30 +301,16 @@ Both authorization mechanisms execute in the factory implementation, not at the 
 Throw `NotAuthorizedException` for explicit auth failures:
 
 <!-- snippet: authorization-exception -->
-<a id='snippet-authorization-exception'></a>
-```cs
-// NotAuthorizedException is thrown when authorization fails on Save operations.
-// IDocumentFactory is injected via DI:
-public partial class AuthorizationExceptionHandling(IDocumentFactory factory)
-{
-    public async Task HandleNotAuthorizedException()
-    {
-        try
-        {
-            // Attempt an operation the user is not authorized for
-            var doc = factory.Create();
-            await factory.Save(doc!);
-        }
-        catch (NotAuthorizedException ex)
-        {
-            // Handle unauthorized access
-            // ex.Message contains the authorization failure reason
-            Console.WriteLine($"Authorization failed: {ex.Message}");
-        }
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L367-L388' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-exception' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define class with IEmployeeFactory injected via constructor
+- Method HandleNotAuthorizedException showing try/catch pattern
+- Try block: Create employee, attempt to Save
+- Catch NotAuthorizedException: log/handle the authorization failure
+- Show ex.Message access for failure reason
+- Domain: Employee Management
+- Context: Production code - showing exception handling pattern
+-->
 <!-- endSnippet -->
 
 This translates to a 403 response when called remotely.
@@ -555,29 +320,19 @@ This translates to a 403 response when called remotely.
 Events support authorization:
 
 <!-- snippet: authorization-events -->
-<a id='snippet-authorization-events'></a>
-```cs
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public partial class EventAuthorizationExample
-{
-    public Guid Id { get; private set; }
-
-    [Create]
-    public EventAuthorizationExample() { Id = Guid.NewGuid(); }
-
-    // Events bypass authorization - use for internal operations
-    // that should always execute regardless of user permissions
-    [Event]
-    public Task NotifyAdmins(
-        string message,
-        [Service] IEmailService emailService,
-        CancellationToken ct)
-    {
-        return emailService.SendAsync("admins@example.com", "Notification", message, ct);
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L390-L410' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-events' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define partial class EmployeeLifecycleEvents with [SuppressFactory]
+- Properties: Id (Guid)
+- [Create] constructor
+- [Event] method NotifyHROnTermination with:
+  - Parameters: Guid employeeId, string reason, [Service] INotificationService notificationService, CancellationToken ct
+  - Send notification to HR about termination
+- Comment explaining events bypass authorization - for internal operations
+- Domain: Employee Management - HR notifications
+- Context: Production code
+- Show events for audit/notification that should always execute
+-->
 <!-- endSnippet -->
 
 Events bypass authorization checks and always execute. Use events for internal operations like notifications, audit logging, or background processing that should run regardless of user permissions.
@@ -587,39 +342,20 @@ Events bypass authorization checks and always execute. Use events for internal o
 Test authorization classes directly:
 
 <!-- snippet: authorization-testing -->
-<a id='snippet-authorization-testing'></a>
-```cs
-// Test authorization directly using the generated factory methods.
-// IDocumentFactory is injected via DI:
-public partial class AuthorizationTests(IDocumentFactory factory)
-{
-    public void AuthorizedUser_CanCreate()
-    {
-        // Given: user is authenticated (configured in test setup)
-
-        // When: check Create authorization
-        var canCreate = factory.CanCreate();
-
-        // Then: access is granted
-        var hasAccess = canCreate.HasAccess; // true for authenticated users
-
-        var doc = factory.Create();
-        // doc is not null when authorized
-    }
-
-    public void UnauthorizedUser_CannotDelete()
-    {
-        // Given: user lacks Admin role (configured in test setup)
-
-        // When: check Delete authorization (requires Write permission)
-        var canDelete = factory.CanDelete();
-
-        // Then: access is denied
-        var hasAccess = canDelete.HasAccess; // false - user lacks Editor/Admin role
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L412-L442' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define class with IEmployeeFactory injected via constructor
+- Method AuthorizedUser_CanCreate():
+  - Check factory.CanCreate().HasAccess
+  - Call factory.Create() and verify not null
+- Method UnauthorizedUser_CannotTerminate():
+  - Check factory.CanDelete().HasAccess (for users without HRManager role)
+  - Verify HasAccess is false
+- Comments explaining test setup would configure user context
+- Domain: Employee Management
+- Context: Test code - showing how to test authorization
+- Note: This is test context so test-style assertions are appropriate
+-->
 <!-- endSnippet -->
 
 ## Authorization Enforcement by Mode
@@ -643,57 +379,24 @@ Authorization always executes in the factory's local implementation, regardless 
 Use injected services for context-aware authorization:
 
 <!-- snippet: authorization-context -->
-<a id='snippet-authorization-context'></a>
-```cs
-public interface IAuthContextAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-    bool CanRead();
-}
-
-public partial class AuthContextAuthorization : IAuthContextAuthorization
-{
-    private readonly IUserContext _userContext;
-
-    public AuthContextAuthorization(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public bool CanRead()
-    {
-        // Access user claims and context
-        var userId = _userContext.UserId;
-        var username = _userContext.Username;
-        var roles = _userContext.Roles;
-
-        // Check specific claims or roles
-        if (!_userContext.IsAuthenticated)
-            return false;
-
-        // Custom authorization logic based on claims
-        return _userContext.IsInRole("Reader") || _userContext.IsInRole("Admin");
-    }
-}
-
-[Factory]
-[AuthorizeFactory<IAuthContextAuthorization>]
-public partial class AuthContextResource
-{
-    public Guid Id { get; private set; }
-
-    [Create]
-    public AuthContextResource() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        return Task.FromResult(true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/AuthorizationSamples.cs#L444-L492' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-context' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define IEmployeeDataAuthorization interface:
+  - CanRead() with AuthorizeFactoryOperation.Read
+- Implement EmployeeDataAuthorization (partial) with IUserContext injection
+- CanRead() implementation:
+  - Access _userContext.UserId, Username, Roles
+  - Check IsAuthenticated first
+  - Allow if user has "HRStaff", "HRManager", or "Admin" role
+- Define EmployeePersonalData class with:
+  - [Factory] and [AuthorizeFactory<IEmployeeDataAuthorization>]
+  - Properties: Id (Guid), SSN (string), BankAccount (string), EmergencyContact (string)
+  - [Create] constructor
+  - [Remote, Fetch] method
+- Domain: Employee Management - sensitive personal data
+- Context: Production code
+- Show claims-based authorization for PII protection
+-->
 <!-- endSnippet -->
 
 Inject any service needed for authorization decisions:

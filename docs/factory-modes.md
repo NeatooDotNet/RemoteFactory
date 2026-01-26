@@ -39,24 +39,14 @@ The default code generation mode. Generates complete factories with local method
 Full mode is the default. No assembly attribute needed:
 
 <!-- snippet: modes-full-config -->
-<a id='snippet-modes-full-config'></a>
-```cs
-// Full mode (compile-time) is the default - no attribute needed
-// Or explicitly: [assembly: FactoryMode(FactoryMode.Full)]
-
-public static class FullModeConfiguration
-{
-    public static void ConfigureServer(IServiceCollection services)
-    {
-        // Full mode assembly + Server runtime mode
-        // Full mode generates both local execution and remote handler code
-        services.AddNeatooRemoteFactory(
-            NeatooFactory.Server, // Runtime mode: handles incoming HTTP
-            typeof(FactoryModesSamples).Assembly);
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L13-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-config' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a static configuration class with a method that configures services for Full mode
+- Use AddNeatooRemoteFactory with NeatooFactory.Server and pass the assembly
+- Include a comment noting Full mode is the default (no attribute needed)
+- Context: Server-side ASP.NET Core configuration
+- Domain: Employee Management (use EmployeeManagement assembly reference)
+-->
 <!-- endSnippet -->
 
 ### Generated Code
@@ -68,33 +58,16 @@ Full mode generates:
 - Factory interface and implementation
 
 <!-- snippet: modes-full-generated -->
-<a id='snippet-modes-full-generated'></a>
-```cs
-// In Full mode, the generated factory has:
-// 1. Local execution path - calls entity methods directly
-// 2. Remote execution path - serializes and sends via HTTP (when IMakeRemoteDelegateRequest is registered)
-//
-// Generated factory (simplified):
-// public partial class EntityFactory : IEntityFactory
-// {
-//     private readonly IMakeRemoteDelegateRequest? _remoteRequest;
-//
-//     public async Task<Entity> Create()
-//     {
-//         if (_remoteRequest != null)
-//         {
-//             // Remote execution - serialize and send
-//             return await _remoteRequest.ForDelegate<Entity>(...);
-//         }
-//         else
-//         {
-//             // Local execution - call directly
-//             return new Entity();
-//         }
-//     }
-// }
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L30-L54' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-generated' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a simplified representation of what the generator produces in Full mode
+- Demonstrate the dual execution path: local vs remote based on IMakeRemoteDelegateRequest presence
+- Show IEmployeeFactory interface and EmployeeFactory implementation structure
+- Include both Create() and Fetch() methods to illustrate the pattern
+- Use comments to explain the conditional logic
+- Context: Generated code illustration (can use pseudo-code style with comments)
+- Domain: Employee Management (IEmployeeFactory, Employee entity)
+-->
 <!-- endSnippet -->
 
 ### Use Full Mode For:
@@ -112,29 +85,16 @@ Generates HTTP stubs only. Excludes local method implementations, producing smal
 Set at assembly level with `[assembly: FactoryMode(FactoryMode.RemoteOnly)]`:
 
 <!-- snippet: modes-remoteonly-config -->
-<a id='snippet-modes-remoteonly-config'></a>
-```cs
-// In client assembly's AssemblyAttributes.cs:
-// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
-
-public static class RemoteOnlyConfiguration
-{
-    public static void ConfigureClient(IServiceCollection services, string serverUrl)
-    {
-        // RemoteOnly mode assembly + Remote runtime mode
-        // RemoteOnly generates HTTP stubs only (smaller assembly)
-        services.AddNeatooRemoteFactory(
-            NeatooFactory.Remote, // Runtime mode: makes HTTP calls to server
-            typeof(FactoryModesSamples).Assembly);
-
-        // Must register HttpClient for remote calls
-        services.AddKeyedScoped(
-            RemoteFactoryServices.HttpClientKey,
-            (sp, key) => new HttpClient { BaseAddress = new Uri(serverUrl) });
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L56-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-config' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a static configuration class for client-side RemoteOnly mode setup
+- Include a comment showing the assembly attribute: [assembly: FactoryMode(FactoryMode.RemoteOnly)]
+- Use AddNeatooRemoteFactory with NeatooFactory.Remote
+- Register HttpClient with RemoteFactoryServices.HttpClientKey using AddKeyedScoped
+- Set BaseAddress from the serverUrl parameter
+- Context: Client-side (Blazor WASM or similar) configuration
+- Domain: Employee Management assembly reference
+-->
 <!-- endSnippet -->
 
 Place in `AssemblyAttributes.cs` or `GlobalUsings.cs`.
@@ -147,28 +107,16 @@ RemoteOnly mode generates:
 - Factory interface (no local implementation)
 
 <!-- snippet: modes-remoteonly-generated -->
-<a id='snippet-modes-remoteonly-generated'></a>
-```cs
-// In RemoteOnly mode, the generated factory only has HTTP stubs:
-//
-// Generated factory (simplified):
-// public partial class EntityFactory : IEntityFactory
-// {
-//     private readonly IMakeRemoteDelegateRequest _remoteRequest;
-//
-//     public async Task<Entity> Create()
-//     {
-//         // Always remote - serialize and send via HTTP
-//         return await _remoteRequest.ForDelegate<Entity>(...);
-//     }
-// }
-//
-// Benefits:
-// - Smaller assembly size (no local implementation code)
-// - No server-side dependencies (DbContext, repositories, etc.)
-// - Clear client/server separation
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L78-L97' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-generated' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a simplified representation of what the generator produces in RemoteOnly mode
+- Demonstrate that ALL methods go through IMakeRemoteDelegateRequest (no local path)
+- Show IEmployeeFactory interface and EmployeeFactory implementation structure
+- Include both Create() and Fetch() methods showing only remote calls
+- Add comments listing benefits: smaller assembly, no server dependencies, clear separation
+- Context: Generated code illustration (can use pseudo-code style with comments)
+- Domain: Employee Management (IEmployeeFactory, Employee entity)
+-->
 <!-- endSnippet -->
 
 ### Benefits:
@@ -198,22 +146,15 @@ Registers factories for local execution and handles incoming HTTP requests. Use 
 Server mode is typically configured via `AddNeatooAspNetCore`:
 
 <!-- snippet: modes-server-config -->
-<a id='snippet-modes-server-config'></a>
-```cs
-public static class ServerModeConfiguration
-{
-    public static void ConfigureServer(IServiceCollection services)
-    {
-        // Server mode - handles incoming HTTP requests from clients
-        // AddNeatooAspNetCore uses NeatooFactory.Server internally
-        services.AddNeatooAspNetCore(typeof(FactoryModesSamples).Assembly);
-
-        // Register server-side services (repositories, DbContext, etc.)
-        services.AddScoped<IPersonRepository, PersonRepository>();
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L99-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a static configuration class for Server runtime mode
+- Use AddNeatooAspNetCore which internally uses NeatooFactory.Server
+- Register server-side services: IEmployeeRepository with EmployeeRepository implementation
+- Include comment explaining AddNeatooAspNetCore handles incoming HTTP requests
+- Context: ASP.NET Core server Program.cs or Startup configuration
+- Domain: Employee Management (IEmployeeRepository, EmployeeRepository)
+-->
 <!-- endSnippet -->
 
 ### Behavior
@@ -236,25 +177,16 @@ Registers factories that make HTTP calls to a server. Use with Full or RemoteOnl
 Register factories in Remote mode and configure HttpClient:
 
 <!-- snippet: modes-remote-config -->
-<a id='snippet-modes-remote-config'></a>
-```cs
-public static class RemoteModeConfiguration
-{
-    public static void ConfigureClient(IServiceCollection services, string serverUrl)
-    {
-        // Remote mode - all factory operations go via HTTP to server
-        services.AddNeatooRemoteFactory(
-            NeatooFactory.Remote,
-            typeof(FactoryModesSamples).Assembly);
-
-        // Register HttpClient with the server's base address
-        services.AddKeyedScoped(
-            RemoteFactoryServices.HttpClientKey,
-            (sp, key) => new HttpClient { BaseAddress = new Uri(serverUrl) });
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L114-L130' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remote-config' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a static configuration class for Remote runtime mode
+- Use AddNeatooRemoteFactory with NeatooFactory.Remote
+- Register HttpClient with RemoteFactoryServices.HttpClientKey using AddKeyedScoped
+- Set BaseAddress from the serverUrl parameter
+- Include comment: all factory operations go via HTTP to server
+- Context: Client-side DI configuration (Blazor, MAUI, desktop)
+- Domain: Employee Management assembly reference
+-->
 <!-- endSnippet -->
 
 ### Behavior
@@ -277,21 +209,14 @@ Executes all methods locally without HTTP infrastructure. Use with Full-generate
 ### Configuration
 
 <!-- snippet: modes-logical-config -->
-<a id='snippet-modes-logical-config'></a>
-```cs
-public static class LogicalModeConfiguration
-{
-    public static void ConfigureLogical(IServiceCollection services)
-    {
-        // Logical mode - direct execution, no serialization
-        // Use for single-tier apps or unit tests
-        services.AddNeatooRemoteFactory(
-            NeatooFactory.Logical,
-            typeof(FactoryModesSamples).Assembly);
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L132-L144' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a static configuration class for Logical runtime mode
+- Use AddNeatooRemoteFactory with NeatooFactory.Logical
+- Include comment: direct execution, no serialization, for single-tier apps or tests
+- Context: Console app, background service, or test configuration
+- Domain: Employee Management assembly reference
+-->
 <!-- endSnippet -->
 
 ### Behavior
@@ -312,41 +237,19 @@ Logical mode:
 ### Testing Benefits:
 
 <!-- snippet: modes-logical-testing -->
-<a id='snippet-modes-logical-testing'></a>
-```cs
-public partial class LogicalModeTestingExample
-{
-    // [Fact]
-    public async Task TestDomainLogic_WithoutHttp()
-    {
-        // Create container in Logical mode
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton<Microsoft.Extensions.Hosting.IHostApplicationLifetime, TestHostApplicationLifetime>();
-
-        // Logical mode - direct execution
-        services.AddNeatooRemoteFactory(
-            NeatooFactory.Logical,
-            typeof(FactoryModesSamples).Assembly);
-
-        // Register domain services
-        services.AddSingleton<IPersonRepository, PersonRepository>();
-
-        var provider = services.BuildServiceProvider();
-        using var scope = provider.CreateScope();
-
-        var factory = scope.ServiceProvider.GetRequiredService<ILogicalModeEntityFactory>();
-
-        // Test domain logic without HTTP overhead
-        var entity = factory.Create();
-        entity.Name = "Test";
-
-        // Method executes directly, no serialization
-        await factory.Fetch(Guid.NewGuid());
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L146-L178' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-testing' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a complete test method demonstrating Logical mode for testing
+- Build a ServiceCollection with AddLogging and IHostApplicationLifetime
+- Configure AddNeatooRemoteFactory with NeatooFactory.Logical
+- Register IEmployeeRepository with an in-memory or mock implementation
+- Build provider, create scope, resolve IEmployeeFactory
+- Call factory.Create() and set properties (FirstName, LastName)
+- Call factory.Fetch() to demonstrate direct execution without HTTP
+- Include comments: "Test domain logic without HTTP overhead", "Method executes directly, no serialization"
+- Context: Unit/integration test class
+- Domain: Employee Management (IEmployeeFactory, Employee, IEmployeeRepository)
+-->
 <!-- endSnippet -->
 
 Tests execute locally without HTTP server or serialization overhead.
@@ -356,168 +259,53 @@ Tests execute locally without HTTP server or serialization overhead.
 ### Server Setup (Full + Server):
 
 <!-- snippet: modes-full-example -->
-<a id='snippet-modes-full-example'></a>
-```cs
-// Complete server setup with Full mode
-
-[Factory]
-public partial class ServerModeEntity : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public ServerModeEntity() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        Name = entity.FirstName;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote, Insert]
-    public async Task Insert([Service] IPersonRepository repository)
-    {
-        await repository.AddAsync(new PersonEntity
-        {
-            Id = Id,
-            FirstName = Name,
-            LastName = string.Empty,
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        });
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-
-    [Remote, Update]
-    public async Task Update([Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id);
-        if (entity != null)
-        {
-            entity.FirstName = Name;
-            entity.Modified = DateTime.UtcNow;
-            await repository.UpdateAsync(entity);
-            await repository.SaveChangesAsync();
-        }
-    }
-}
-
-public static class FullModeServerSetup
-{
-    public static void Configure(IServiceCollection services)
-    {
-        // Server mode - handles incoming HTTP requests
-        services.AddNeatooAspNetCore(typeof(FactoryModesSamples).Assembly);
-
-        // Register server-only services
-        services.AddScoped<IPersonRepository, PersonRepository>();
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L197-L263' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-example' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a complete Employee entity with [Factory] attribute implementing IFactorySaveMeta
+- Properties: Id (Guid), FirstName, LastName, DepartmentId, IsNew, IsDeleted
+- [Create] constructor that generates new Guid
+- [Remote, Fetch] method that loads from IEmployeeRepository
+- [Remote, Insert] method that adds to repository and saves
+- [Remote, Update] method that updates existing and saves
+- Also show a static FullModeServerSetup class with Configure method
+- Configure method uses AddNeatooAspNetCore and registers IEmployeeRepository
+- Context: Complete server-side domain entity and configuration
+- Domain: Employee Management (Employee entity, IEmployeeRepository)
+-->
 <!-- endSnippet -->
 
 ### Client Setup (RemoteOnly + Remote):
 
 <!-- snippet: modes-remoteonly-example -->
-<a id='snippet-modes-remoteonly-example'></a>
-```cs
-// Complete client setup with RemoteOnly mode
-
-public static class RemoteOnlyClientSetup
-{
-    public static void Configure(IServiceCollection services, string serverUrl)
-    {
-        // Remote mode - all operations go via HTTP
-        services.AddNeatooRemoteFactory(
-            NeatooFactory.Remote,
-            typeof(FactoryModesSamples).Assembly);
-
-        // Register keyed HttpClient
-        services.AddKeyedScoped(
-            RemoteFactoryServices.HttpClientKey,
-            (sp, key) => new HttpClient
-            {
-                BaseAddress = new Uri(serverUrl),
-                Timeout = TimeSpan.FromSeconds(30)
-            });
-
-        // Client-side services only
-        services.AddSingleton<IClientLoggerService, ClientLoggerService>();
-    }
-}
-
-public interface IClientLoggerService
-{
-    void Log(string message);
-}
-
-public partial class ClientLoggerService : IClientLoggerService
-{
-    public void Log(string message) => Console.WriteLine(message);
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L265-L300' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-example' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a complete client-side setup class for RemoteOnly mode
+- Static Configure method taking IServiceCollection and serverUrl
+- Use AddNeatooRemoteFactory with NeatooFactory.Remote
+- Register HttpClient with RemoteFactoryServices.HttpClientKey, BaseAddress, and Timeout (30 seconds)
+- Register a client-side service (IClientStateService or similar) to show client-only dependencies
+- Include the IClientStateService interface and implementation
+- Context: Complete client-side (Blazor WASM) configuration
+- Domain: Employee Management assembly reference, client-side service
+-->
 <!-- endSnippet -->
 
 ### Single-Tier Setup (Full + Logical):
 
 <!-- snippet: modes-logical-example -->
-<a id='snippet-modes-logical-example'></a>
-```cs
-// Complete single-tier setup with Logical mode
-
-public static class LogicalModeSetup
-{
-    public static void Configure(IServiceCollection services)
-    {
-        // Logical mode - direct execution, no HTTP
-        services.AddNeatooRemoteFactory(
-            NeatooFactory.Logical,
-            typeof(FactoryModesSamples).Assembly);
-
-        // All services available locally
-        services.AddSingleton<IPersonRepository, PersonRepository>();
-        services.AddSingleton<IOrderRepository, OrderRepository>();
-    }
-}
-
-public partial class SingleTierAppExample
-{
-    // [Fact]
-    public async Task RunLocally()
-    {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton<Microsoft.Extensions.Hosting.IHostApplicationLifetime, TestHostApplicationLifetime>();
-        LogicalModeSetup.Configure(services);
-
-        var provider = services.BuildServiceProvider();
-        using var scope = provider.CreateScope();
-
-        var factory = scope.ServiceProvider.GetRequiredService<ILogicalModeEntityFactory>();
-
-        var entity = factory.Create();
-        entity.Name = "Local Entity";
-
-        // Executes directly - no HTTP, no serialization
-        Assert.NotNull(entity);
-        Assert.Equal("Local Entity", entity.Name);
-        await Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L302-L344' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-example' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a complete single-tier setup with Logical mode
+- Static LogicalModeSetup.Configure method using AddNeatooRemoteFactory with NeatooFactory.Logical
+- Register IEmployeeRepository and IDepartmentRepository locally
+- Show a SingleTierAppExample class with a RunLocally method
+- Build ServiceCollection, add logging, add IHostApplicationLifetime
+- Call LogicalModeSetup.Configure, build provider, create scope
+- Resolve IEmployeeFactory, call Create(), set FirstName and LastName
+- Include assertions and comment: "Executes directly - no HTTP, no serialization"
+- Context: Console app or single-tier application example
+- Domain: Employee Management (IEmployeeFactory, Employee, IEmployeeRepository, IDepartmentRepository)
+-->
 <!-- endSnippet -->
 
 ## Typical Solution Structure
@@ -570,43 +358,18 @@ services.AddNeatooRemoteFactory(NeatooFactory.Logical, ...);
 The `[Remote]` attribute controls whether entity methods can be called over HTTP:
 
 <!-- snippet: modes-local-remote-methods -->
-<a id='snippet-modes-local-remote-methods'></a>
-```cs
-[Factory]
-public partial class MixedModeEntity
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public string LocalOnlyData { get; private set; } = string.Empty;
-    public string RemoteData { get; private set; } = string.Empty;
-
-    [Create]
-    public MixedModeEntity() { Id = Guid.NewGuid(); }
-
-    // Local-only method - executes on client/server directly
-    // No [Remote] attribute means this only runs locally
-    [Fetch]
-    public void FetchLocal(string data)
-    {
-        LocalOnlyData = data;
-    }
-
-    // Remote method - serializes and executes on server
-    [Remote]
-    [Fetch]
-    public async Task FetchRemote(Guid id, [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity != null)
-        {
-            Id = entity.Id;
-            Name = entity.FirstName;
-            RemoteData = "Loaded from server";
-        }
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L346-L380' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-local-remote-methods' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show an Employee entity demonstrating mixed local and remote methods
+- Properties: Id (Guid), FirstName, LastName, LocalComputedValue, ServerLoadedData
+- [Create] constructor generating new Guid
+- [Fetch] WITHOUT [Remote] - local-only method that sets LocalComputedValue from parameter
+- Include comment: "Local-only method - executes on client/server directly, no [Remote] attribute"
+- [Remote, Fetch] method that loads from IEmployeeRepository and sets ServerLoadedData
+- Include comment: "Remote method - serializes and executes on server"
+- Context: Domain entity showing method execution behavior differences
+- Domain: Employee Management (Employee, IEmployeeRepository)
+-->
 <!-- endSnippet -->
 
 **How methods execute by mode:**
@@ -669,30 +432,19 @@ class PersonFactory : IPersonFactory
 ### Enable verbose logging:
 
 <!-- snippet: modes-logging -->
-<a id='snippet-modes-logging'></a>
-```cs
-public static class ModeLogging
-{
-    public static void ConfigureWithLogging(IServiceCollection services, NeatooFactory mode)
-    {
-        // Configure logging to see mode behavior
-        // services.AddLogging(builder =>
-        // {
-        //     builder.AddConsole();
-        //     builder.SetMinimumLevel(LogLevel.Debug);
-        //     builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace);
-        // });
-
-        services.AddNeatooRemoteFactory(mode, typeof(FactoryModesSamples).Assembly);
-    }
-}
-
-// Logs will show:
-// - "Executing local factory method..." for Server/Logical modes
-// - "Sending remote factory request..." for Remote mode
-// - Serialization format and payload size
-```
-<sup><a href='/src/docs/samples/FactoryModesSamples.cs#L382-L403' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logging' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a static ModeLogging class with ConfigureWithLogging method
+- Method takes IServiceCollection and NeatooFactory mode parameter
+- Configure logging with AddLogging: AddConsole, SetMinimumLevel(Debug), AddFilter for Neatoo.RemoteFactory at Trace level
+- Call AddNeatooRemoteFactory with the provided mode
+- Include trailing comments describing what logs show:
+  - "Executing local factory method..." for Server/Logical modes
+  - "Sending remote factory request..." for Remote mode
+  - Serialization format and payload size
+- Context: Production debugging/diagnostics configuration
+- Domain: Employee Management assembly reference
+-->
 <!-- endSnippet -->
 
 Logs show mode, serialization events, and HTTP calls.

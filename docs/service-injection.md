@@ -7,69 +7,41 @@ RemoteFactory integrates with ASP.NET Core dependency injection, allowing factor
 Mark parameters with `[Service]` to inject from the DI container:
 
 <!-- snippet: service-injection-basic -->
-<a id='snippet-service-injection-basic'></a>
-```cs
-[Factory]
-public partial class BasicServiceInjection
-{
-    public Guid Id { get; private set; }
-    public string Data { get; private set; } = string.Empty;
-
-    [Create]
-    public BasicServiceInjection() { Id = Guid.NewGuid(); }
-
-    [Remote]
-    [Fetch]
-    public async Task Fetch(Guid id, [Service] IPersonRepository repository)
-    {
-        // IPersonRepository is injected from DI container on server
-        var entity = await repository.GetByIdAsync(id);
-        if (entity != null)
-        {
-            Id = entity.Id;
-            Data = $"{entity.FirstName} {entity.LastName}";
-        }
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L11-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-basic' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain class with [Factory] attribute representing an Employee entity
+- Properties: Id (Guid), Name (string), Department (string)
+- [Create] constructor that initializes a new Employee
+- [Remote][Fetch] method that takes employeeId (Guid) and [Service] IEmployeeRepository
+- Fetch method retrieves employee by ID and populates properties from the entity
+- Show that IEmployeeRepository is injected from DI, not serialized
+- Context: Domain/Application layer
+-->
 <!-- endSnippet -->
 
 When the factory calls `Fetch()`:
-- **Client**: Serializes `id` parameter only
-- **Server**: Deserializes `id`, resolves `IPersonRepository` from DI
+- **Client**: Serializes `employeeId` parameter only
+- **Server**: Deserializes `employeeId`, resolves `IEmployeeRepository` from DI
 - **Server**: Calls method with both parameters
 - **Result**: Serialized and returned
 
-`IPersonRepository` is never serialized or sent over HTTP.
+`IEmployeeRepository` is never serialized or sent over HTTP.
 
 ## Parameter Rules
 
 Service parameters can appear anywhere in the parameter list, but conventionally appear after value parameters:
 
 <!-- snippet: service-injection-multiple -->
-<a id='snippet-service-injection-multiple'></a>
-```cs
-// Multiple service injection with [Execute] - use static partial class
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class MultipleServiceInjection
-{
-    [Remote]
-    [Execute]
-    private static async Task<string> _ProcessOrder(
-        Guid orderId,
-        [Service] IOrderRepository orderRepository,
-        [Service] IPersonRepository personRepository,
-        [Service] IUserContext userContext)
-    {
-        var order = await orderRepository.GetByIdAsync(orderId);
-        var customer = await personRepository.GetByIdAsync(order?.CustomerId ?? Guid.Empty);
-
-        return $"Order {order?.OrderNumber} for {customer?.FirstName} processed by {userContext.Username}";
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L36-L55' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-multiple' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Static partial class with [SuppressFactory] attribute for demonstration
+- [Remote][Execute] method that processes a department transfer
+- Value parameters: employeeId (Guid), newDepartmentId (Guid)
+- Multiple [Service] parameters: IEmployeeRepository, IDepartmentRepository, IUserContext
+- Method retrieves employee and department, then returns a summary string
+- Include comment explaining this is for [Execute] pattern demonstration
+- Context: Application layer command execution
+-->
 <!-- endSnippet -->
 
 Parameter resolution:
@@ -82,50 +54,24 @@ Parameter resolution:
 Services are resolved from the server's DI scope:
 
 <!-- snippet: service-injection-scoped -->
-<a id='snippet-service-injection-scoped'></a>
-```cs
-public interface IScopedAuditContext
-{
-    Guid CorrelationId { get; }
-    void LogAction(string action);
-}
-
-public partial class ScopedAuditContext : IScopedAuditContext
-{
-    public Guid CorrelationId { get; } = Guid.NewGuid();
-    public List<string> Actions { get; } = new();
-
-    public void LogAction(string action)
-    {
-        Actions.Add($"[{CorrelationId}] {action}");
-    }
-}
-
-// Scoped service injection with [Execute] - use static partial class
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class ScopedServiceInjection
-{
-    [Remote]
-    [Execute]
-    private static Task<Guid> _ProcessWithAudit(
-        string action,
-        [Service] IScopedAuditContext auditContext)
-    {
-        // Scoped service - same instance throughout the request
-        auditContext.LogAction(action);
-        return Task.FromResult(auditContext.CorrelationId);
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L57-L90' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-scoped' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Interface IAuditContext with CorrelationId (Guid) property and LogAction(string) method
+- Implementation AuditContext that generates CorrelationId on construction and stores actions in a list
+- Static partial class with [SuppressFactory] for [Execute] demonstration
+- [Remote][Execute] method that takes action (string) and [Service] IAuditContext
+- Method logs the action and returns the CorrelationId
+- Include comment about scoped services maintaining state within a request
+- Context: Infrastructure layer - audit/logging service
+-->
 <!-- endSnippet -->
 
 Generated factory call:
 ```csharp
 // Server-side execution
 using var scope = serviceProvider.CreateScope();
-var auditContext = scope.ServiceProvider.GetRequiredService<IScopedAuditContext>();
-var result = await ScopedServiceInjection._ProcessWithAudit(action, auditContext);
+var auditContext = scope.ServiceProvider.GetRequiredService<IAuditContext>();
+var result = await AuditExample._LogEmployeeAction(action, auditContext);
 ```
 
 Scoped services are disposed when the request completes.
@@ -135,38 +81,16 @@ Scoped services are disposed when the request completes.
 Services can be injected into constructors marked with `[Create]`:
 
 <!-- snippet: service-injection-constructor -->
-<a id='snippet-service-injection-constructor'></a>
-```cs
-public interface ICalculationService
-{
-    decimal Calculate(decimal amount, decimal rate);
-}
-
-public partial class CalculationService : ICalculationService
-{
-    public decimal Calculate(decimal amount, decimal rate) => amount * rate;
-}
-
-[Factory]
-public partial class ConstructorServiceInjection
-{
-    private readonly ICalculationService _calculationService;
-
-    public decimal Result { get; private set; }
-
-    [Create]
-    public ConstructorServiceInjection([Service] ICalculationService calculationService)
-    {
-        _calculationService = calculationService;
-    }
-
-    public void Calculate(decimal amount, decimal rate)
-    {
-        Result = _calculationService.Calculate(amount, rate);
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L92-L121' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Interface ISalaryCalculator with Calculate(decimal baseSalary, decimal bonus) method returning decimal
+- Simple implementation SalaryCalculator that adds baseSalary and bonus
+- [Factory] class EmployeeCompensation with private readonly ISalaryCalculator field
+- Properties: TotalCompensation (decimal)
+- [Create] constructor that takes [Service] ISalaryCalculator and stores it
+- Public method CalculateTotal(decimal baseSalary, decimal bonus) that uses the service
+- Context: Domain layer - service injected at construction time
+-->
 <!-- endSnippet -->
 
 Factory behavior:
@@ -178,79 +102,36 @@ Factory behavior:
 Some services exist only on the server (databases, file systems, secrets). Mark methods `[Remote]` to ensure server execution:
 
 <!-- snippet: service-injection-server-only -->
-<a id='snippet-service-injection-server-only'></a>
-```cs
-public interface IServerOnlyDatabaseService
-{
-    Task<string> ExecuteQueryAsync(string query);
-}
-
-public partial class ServerOnlyDatabaseService : IServerOnlyDatabaseService
-{
-    public Task<string> ExecuteQueryAsync(string query)
-    {
-        // This service only exists on the server
-        return Task.FromResult($"Query result for: {query}");
-    }
-}
-
-[Factory]
-public partial class ServerOnlyServiceExample
-{
-    public string QueryResult { get; private set; } = string.Empty;
-
-    [Create]
-    public ServerOnlyServiceExample() { }
-
-    // This method only runs on server where IServerOnlyDatabaseService is registered
-    [Remote]
-    [Fetch]
-    public async Task Fetch(
-        string query,
-        [Service] IServerOnlyDatabaseService databaseService)
-    {
-        QueryResult = await databaseService.ExecuteQueryAsync(query);
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L123-L156' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Interface IEmployeeDatabase with ExecuteQueryAsync(string query) method
+- Simple implementation EmployeeDatabase that simulates query execution
+- [Factory] class EmployeeReport with QueryResult (string) property
+- [Create] constructor with no parameters
+- [Remote][Fetch] method that takes query (string) and [Service] IEmployeeDatabase
+- Fetch sets QueryResult from the database service
+- Include comment: "This service only exists on the server"
+- Context: Infrastructure layer - database access only on server
+-->
 <!-- endSnippet -->
 
-Without `[Remote]`, clients would call `Fetch()` locally and fail when resolving `IServerOnlyDatabaseService`.
+Without `[Remote]`, clients would call `Fetch()` locally and fail when resolving `IEmployeeDatabase`.
 
 ## Client-Side Service Injection
 
 Services can be injected on the client for local operations:
 
 <!-- snippet: service-injection-client -->
-<a id='snippet-service-injection-client'></a>
-```cs
-public interface IClientLoggerService
-{
-    void Log(string message);
-}
-
-public partial class ClientLoggerService : IClientLoggerService
-{
-    public List<string> Messages { get; } = new();
-    public void Log(string message) => Messages.Add(message);
-}
-
-[Factory]
-public partial class ClientServiceExample
-{
-    public bool Logged { get; private set; }
-
-    [Create]
-    public ClientServiceExample([Service] IClientLoggerService logger)
-    {
-        // IClientLoggerService available on both client and server
-        logger.Log("ClientServiceExample created");
-        Logged = true;
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L158-L183' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-client' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Interface INotificationService with Notify(string message) method
+- Implementation NotificationService that stores messages in a list
+- [Factory] class EmployeeNotifier with Notified (bool) property
+- [Create] constructor that takes [Service] INotificationService
+- Constructor calls Notify with "Employee created" message and sets Notified = true
+- Include comment: service is available on both client and server
+- Context: Application layer - client-side notification service
+-->
 <!-- endSnippet -->
 
 This method runs locally on the client, accessing the client's DI container.
@@ -260,29 +141,20 @@ This method runs locally on the client, accessing the client's DI container.
 RemoteFactory provides a convention-based registration helper:
 
 <!-- snippet: service-injection-matching-name -->
-<a id='snippet-service-injection-matching-name'></a>
-```cs
-// When using RegisterMatchingName:
-// IPersonRepository -> PersonRepository
-// IOrderRepository -> OrderRepository
-// The pattern: Interface name starts with 'I', implementation has same name without 'I'
-
-public static class MatchingNameRegistration
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        // Automatically registers IPersonRepository -> PersonRepository
-        // if both types exist in the assembly
-        services.RegisterMatchingName(typeof(ServiceInjectionSamples).Assembly);
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L185-L200' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-matching-name' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Static class EmployeeServiceRegistration with ConfigureServices method
+- Takes IServiceCollection parameter
+- Comment explaining the naming convention: IEmployeeRepository -> EmployeeRepository
+- Call services.RegisterMatchingName with the assembly containing employee services
+- Show that this registers all interface/implementation pairs following the convention
+- Context: Server layer - DI registration in Program.cs or Startup
+-->
 <!-- endSnippet -->
 
 This registers interfaces to their implementations with **Transient** lifetime:
-- `IPersonRepository` → `PersonRepository`
-- `IOrderService` → `OrderService`
+- `IEmployeeRepository` → `EmployeeRepository`
+- `IDepartmentService` → `DepartmentService`
 
 Convention: Interface name starts with `I`, implementation removes the `I`.
 
@@ -294,12 +166,12 @@ If a service can't be resolved:
 
 **Server-side:**
 ```
-System.InvalidOperationException: No service for type 'IDbContext' has been registered.
+System.InvalidOperationException: No service for type 'IEmployeeRepository' has been registered.
 ```
 
 **Client-side (RemoteOnly mode):**
 ```
-System.InvalidOperationException: No service for type 'IServerOnlyService' has been registered.
+System.InvalidOperationException: No service for type 'IEmployeeDatabase' has been registered.
 ```
 
 Ensure:
@@ -312,38 +184,21 @@ Ensure:
 Classes can have both local and remote factory methods:
 
 <!-- snippet: service-injection-mixed -->
-<a id='snippet-service-injection-mixed'></a>
-```cs
-// Mixed parameters with [Execute] - use static partial class
-public record MixedParametersResult(Guid ProcessedId, string ProcessedBy, bool Cancelled);
-
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class MixedParametersExample
-{
-    [Remote]
-    [Execute]
-    private static async Task<MixedParametersResult> _ProcessItem(
-        Guid itemId,                              // Value parameter
-        string notes,                             // Value parameter
-        [Service] IPersonRepository repository,   // Service parameter
-        [Service] IUserContext userContext,       // Service parameter
-        CancellationToken cancellationToken)      // CancellationToken
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        await repository.GetByIdAsync(itemId, cancellationToken);
-
-        return new MixedParametersResult(
-            itemId,
-            userContext.Username,
-            cancellationToken.IsCancellationRequested);
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L202-L228' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-mixed' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Record EmployeeTransferResult(Guid EmployeeId, string TransferredBy, bool Cancelled)
+- Static partial class with [SuppressFactory] for [Execute] demonstration
+- [Remote][Execute] method _TransferEmployee with mixed parameters:
+  - Value parameters: employeeId (Guid), newDepartmentId (Guid)
+  - Service parameters: [Service] IEmployeeRepository, [Service] IUserContext
+  - CancellationToken at the end
+- Method checks cancellation, retrieves employee, returns EmployeeTransferResult
+- Include inline comments labeling each parameter type (Value, Service, CancellationToken)
+- Context: Application layer - command with multiple parameter types
+-->
 <!-- endSnippet -->
 
-The factory generates a static method that accepts value parameters (`itemId`, `notes`) and resolves service parameters (`IPersonRepository`, `IUserContext`) from DI. `CancellationToken` is passed through automatically.
+The factory generates a static method that accepts value parameters (`employeeId`, `newDepartmentId`) and resolves service parameters (`IEmployeeRepository`, `IUserContext`) from DI. `CancellationToken` is passed through automatically.
 
 ## Service Parameter vs Regular Parameter
 
@@ -353,9 +208,9 @@ RemoteFactory determines parameter handling:
 [Remote]
 [Fetch]
 public async Task Fetch(
-    int id,                          // Value: serialized
+    Guid employeeId,                 // Value: serialized
     string filter,                   // Value: serialized
-    [Service] IDbContext db,         // Service: injected
+    [Service] IEmployeeRepository db,// Service: injected
     [Service] ILogger logger)        // Service: injected
 { }
 ```
@@ -364,7 +219,7 @@ Generated request payload (JSON):
 ```json
 {
   "methodName": "Fetch",
-  "args": [42, "active"]  // Only id and filter
+  "args": ["3fa85f64-5717-4562-b3fc-2c963f66afa6", "active"]
 }
 ```
 
@@ -375,44 +230,17 @@ Generated request payload (JSON):
 Access HTTP context in server-side methods:
 
 <!-- snippet: service-injection-httpcontext -->
-<a id='snippet-service-injection-httpcontext'></a>
-```cs
-// Note: IHttpContextAccessor is available in ASP.NET Core projects
-// This example shows the pattern for accessing HttpContext
-
-public interface IHttpContextAccessorSimulator
-{
-    string? GetUserId();
-    string? GetCorrelationId();
-}
-
-public partial class HttpContextAccessorSimulator : IHttpContextAccessorSimulator
-{
-    public string? GetUserId() => "user-123";
-    public string? GetCorrelationId() => Guid.NewGuid().ToString();
-}
-
-[Factory]
-public partial class HttpContextExample
-{
-    public string? UserId { get; private set; }
-    public string? CorrelationId { get; private set; }
-
-    [Create]
-    public HttpContextExample() { }
-
-    [Remote]
-    [Fetch]
-    public Task Fetch([Service] IHttpContextAccessorSimulator httpContextAccessor)
-    {
-        // Access HttpContext on server to get user info, headers, etc.
-        UserId = httpContextAccessor.GetUserId();
-        CorrelationId = httpContextAccessor.GetCorrelationId();
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L230-L265' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-httpcontext' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Interface IHttpContextAccessorWrapper with GetUserId() and GetCorrelationId() methods returning string?
+- Implementation HttpContextAccessorWrapper that returns simulated values
+- [Factory] class EmployeeContext with UserId and CorrelationId properties (string?)
+- [Create] constructor with no parameters
+- [Remote][Fetch] method that takes [Service] IHttpContextAccessorWrapper
+- Fetch populates UserId and CorrelationId from the accessor
+- Include comment: "Access HttpContext on server to get user info, headers, etc."
+- Context: Server layer - accessing HTTP request context
+-->
 <!-- endSnippet -->
 
 ### IServiceProvider
@@ -420,25 +248,15 @@ public partial class HttpContextExample
 Direct access to the service provider:
 
 <!-- snippet: service-injection-serviceprovider -->
-<a id='snippet-service-injection-serviceprovider'></a>
-```cs
-// ServiceProvider injection with [Execute] - use static partial class
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class ServiceProviderExample
-{
-    [Remote]
-    [Execute]
-    private static Task<bool> _ResolveServices([Service] IServiceProvider serviceProvider)
-    {
-        // Dynamically resolve services when needed
-        var repository = serviceProvider.GetService<IPersonRepository>();
-        var userContext = serviceProvider.GetService<IUserContext>();
-
-        return Task.FromResult(repository != null && userContext != null);
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L267-L283' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-serviceprovider' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Static partial class with [SuppressFactory] for [Execute] demonstration
+- [Remote][Execute] method _ResolveEmployeeServices that takes [Service] IServiceProvider
+- Method dynamically resolves IEmployeeRepository and IUserContext from the provider
+- Returns Task<bool> indicating whether both services resolved successfully
+- Include comment: "Dynamically resolve services when needed"
+- Context: Application layer - dynamic service resolution (use sparingly)
+-->
 <!-- endSnippet -->
 
 Use sparingly. Prefer typed services.
@@ -448,38 +266,19 @@ Use sparingly. Prefer typed services.
 Service lifetimes behave as expected:
 
 <!-- snippet: service-injection-lifetimes -->
-<a id='snippet-service-injection-lifetimes'></a>
-```cs
-// Service Lifetimes in RemoteFactory:
-//
-// Singleton: One instance for application lifetime
-//   - Use for stateless services, caches, configuration
-//   - Same instance across all requests and scopes
-//
-// Scoped: One instance per request/operation
-//   - Use for DbContext, unit of work, request-specific state
-//   - New instance for each factory operation
-//
-// Transient: New instance every time resolved
-//   - Use for lightweight, stateless services
-//   - New instance each time [Service] parameter is resolved
-
-public static class ServiceLifetimeRegistration
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        // Singleton - shared across all operations
-        services.AddSingleton<ICalculationService, CalculationService>();
-
-        // Scoped - per-operation instance
-        services.AddScoped<IScopedAuditContext, ScopedAuditContext>();
-
-        // Transient - new instance each time
-        services.AddTransient<IClientLoggerService, ClientLoggerService>();
-    }
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L285-L314' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-lifetimes' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Comment block explaining service lifetimes in RemoteFactory context:
+  - Singleton: application lifetime, use for caches/configuration
+  - Scoped: per request/operation, use for DbContext/unit of work
+  - Transient: new instance each resolution
+- Static class EmployeeServiceLifetimes with ConfigureServices method
+- Register ISalaryCalculator as Singleton
+- Register IAuditContext as Scoped
+- Register INotificationService as Transient
+- Use services from earlier snippets in this document
+- Context: Server layer - DI configuration
+-->
 <!-- endSnippet -->
 
 **Singleton**: Same instance across all requests
@@ -493,54 +292,20 @@ RemoteFactory creates a new scope for each remote request.
 Register test doubles in your DI container:
 
 <!-- snippet: service-injection-testing -->
-<a id='snippet-service-injection-testing'></a>
-```cs
-// Register test doubles instead of production services
-public static class ServiceInjectionTestSetup
-{
-    public static void ConfigureTestServices(IServiceCollection services)
-    {
-        // In-memory implementations for testing
-        services.AddScoped<IPersonRepository, InMemoryPersonRepository>();
-        services.AddScoped<IUserContext, TestUserContext>();
-    }
-}
-
-// Simple in-memory repository for tests
-public class InMemoryPersonRepository : IPersonRepository
-{
-    private readonly Dictionary<Guid, PersonEntity> _store = new();
-
-    public Task<PersonEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => Task.FromResult(_store.GetValueOrDefault(id));
-
-    public Task AddAsync(PersonEntity entity, CancellationToken ct = default)
-    { _store[entity.Id] = entity; return Task.CompletedTask; }
-
-    public Task<List<PersonEntity>> GetAllAsync(CancellationToken ct = default)
-        => Task.FromResult(_store.Values.ToList());
-
-    public Task UpdateAsync(PersonEntity entity, CancellationToken ct = default)
-    { _store[entity.Id] = entity; return Task.CompletedTask; }
-
-    public Task DeleteAsync(Guid id, CancellationToken ct = default)
-    { _store.Remove(id); return Task.CompletedTask; }
-
-    public Task SaveChangesAsync(CancellationToken ct = default)
-        => Task.CompletedTask;
-}
-
-// Controllable test double for user context
-public class TestUserContext : IUserContext
-{
-    public Guid UserId { get; set; } = Guid.NewGuid();
-    public string Username { get; set; } = "testuser";
-    public string[] Roles { get; set; } = ["User"];
-    public bool IsAuthenticated { get; set; } = true;
-    public bool IsInRole(string role) => Roles.Contains(role);
-}
-```
-<sup><a href='/src/docs/samples/ServiceInjectionSamples.cs#L316-L361' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Static class EmployeeTestServices with ConfigureTestServices method
+- Comment: "Register test doubles instead of production services"
+- Register in-memory implementations for testing
+- InMemoryEmployeeRepository class implementing IEmployeeRepository:
+  - Private Dictionary<Guid, EmployeeEntity> for storage
+  - GetByIdAsync, AddAsync, GetAllAsync, UpdateAsync, DeleteAsync methods
+  - SaveChangesAsync returns completed task
+- TestUserContext class implementing IUserContext:
+  - Public settable properties: UserId, Username, Roles, IsAuthenticated
+  - IsInRole method checking Roles array
+- Context: Test layer - in-memory doubles for unit/integration tests
+-->
 <!-- endSnippet -->
 
 ## Next Steps

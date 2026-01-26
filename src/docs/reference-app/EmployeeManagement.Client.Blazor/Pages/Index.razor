@@ -1,0 +1,59 @@
+@page "/"
+@using EmployeeManagement.Domain.Aggregates
+@inject IEmployeeFactory EmployeeFactory
+@inject IEmployeeListFactory EmployeeListFactory
+
+<PageTitle>Employee Management</PageTitle>
+
+<h1>Employee Management</h1>
+
+<p>This Blazor WebAssembly application demonstrates RemoteFactory client-server communication.</p>
+
+@if (loading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (employees != null)
+{
+    <h2>Employees (@employees.Items.Count)</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Position</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var emp in employees.Items)
+            {
+                <tr>
+                    <td>@emp.FullName</td>
+                    <td>@emp.Email</td>
+                    <td>@emp.Position</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private EmployeeList? employees;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            employees = await EmployeeListFactory.FetchAll();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading employees: {ex.Message}");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

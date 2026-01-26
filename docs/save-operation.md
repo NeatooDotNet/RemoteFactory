@@ -8,42 +8,18 @@ Classes implementing `IFactorySaveMeta` get an `IFactorySave<T>` interface on th
 
 ### Step 1: Implement IFactorySaveMeta
 
+In the Domain layer, define an Employee entity that implements `IFactorySaveMeta` for state tracking:
+
 <!-- snippet: save-ifactorysavemeta -->
-<a id='snippet-save-ifactorysavemeta'></a>
-```cs
-[Factory]
-public partial class Customer : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Email { get; set; }
-
-    // IFactorySaveMeta implementation
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public Customer()
-    {
-        Id = Guid.NewGuid();
-        // IsNew defaults to true for new instances
-    }
-
-    [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        Name = $"{entity.FirstName} {entity.LastName}";
-        Email = entity.Email;
-        IsNew = false; // Mark as existing after fetch
-        return true;
-    }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L12-L44' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: Employee entity class with [Factory] attribute implementing IFactorySaveMeta
+- Properties: Id (Guid), FirstName (string), LastName (string), Email (string?)
+- IFactorySaveMeta properties: IsNew (bool, default true), IsDeleted (bool)
+- [Create] constructor that generates new Guid for Id
+- [Remote, Fetch] method that loads from IEmployeeRepository and sets IsNew = false
+- Show how IsNew defaults to true for new instances and becomes false after fetch
+-->
 <!-- endSnippet -->
 
 `IFactorySaveMeta` requires two properties:
@@ -52,82 +28,45 @@ public partial class Customer : IFactorySaveMeta
 
 ### Step 2: Implement Write Operations
 
+In the Domain layer, add Insert, Update, and Delete operations to the Employee entity:
+
 <!-- snippet: save-write-operations -->
-<a id='snippet-save-write-operations'></a>
-```cs
-[Factory]
-public partial class CustomerWithWriteOps : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public CustomerWithWriteOps() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public async Task Insert([Service] IPersonRepository repository)
-    {
-        var entity = new PersonEntity
-        {
-            Id = Id,
-            FirstName = Name,
-            LastName = string.Empty,
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        };
-        await repository.AddAsync(entity);
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-
-    [Remote, Update]
-    public async Task Update([Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Customer {Id} not found");
-
-        entity.FirstName = Name;
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-
-    [Remote, Delete]
-    public async Task Delete([Service] IPersonRepository repository)
-    {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
-    }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L46-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-write-operations' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: Employee entity with full CRUD operations
+- Properties: Id (Guid), FirstName (string), LastName (string), DepartmentId (Guid), IsNew, IsDeleted
+- [Create] constructor that generates new Id
+- [Remote, Insert] method that:
+  - Creates EmployeeEntity, maps properties
+  - Sets Created and Modified timestamps
+  - Calls repository.AddAsync and SaveChangesAsync
+  - Sets IsNew = false after successful insert
+- [Remote, Update] method that:
+  - Fetches entity by Id, throws if not found
+  - Maps updated properties
+  - Updates Modified timestamp
+  - Calls repository.UpdateAsync and SaveChangesAsync
+- [Remote, Delete] method that:
+  - Calls repository.DeleteAsync(Id) and SaveChangesAsync
+- Use [Service] IEmployeeRepository for all data access
+-->
 <!-- endSnippet -->
 
 ### Step 3: Use Save Method
 
+The Application layer uses the generated factory's Save method. The factory routes to the appropriate operation:
+
 <!-- snippet: save-usage -->
-<a id='snippet-save-usage'></a>
-```cs
-// Create new customer
-// var customer = factory.Create();
-// customer.Name = "Acme Corp";
-//
-// Save routes to Insert (IsNew = true)
-// var saved = await factory.Save(customer);
-// saved.IsNew; // false - Insert sets IsNew = false
-//
-// Modify and save again - routes to Update (IsNew = false)
-// saved.Name = "Acme Corporation";
-// await factory.Save(saved); // Calls Update
-//
-// Mark for deletion and save - routes to Delete
-// saved.IsDeleted = true;
-// await factory.Save(saved); // Calls Delete
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L96-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer: Demonstrate IEmployeeFactory.Save() usage
+- Show three scenarios with actual executable code (not comments):
+  1. Create new employee, set properties, call Save (routes to Insert because IsNew = true)
+  2. Modify saved employee's name, call Save again (routes to Update because IsNew = false)
+  3. Mark employee.IsDeleted = true, call Save (routes to Delete)
+- Demonstrate how IsNew changes from true to false after first Save
+- Use async/await properly
+-->
 <!-- endSnippet -->
 
 The factory's `Save()` method examines `IsNew` and `IsDeleted` to determine which operation to call.
@@ -144,30 +83,16 @@ The factory's `Save()` method examines `IsNew` and `IsDeleted` to determine whic
 Generated Save method:
 
 <!-- snippet: save-generated -->
-<a id='snippet-save-generated'></a>
-```cs
-// Generated Save method routing logic:
-//
-// public Task<T?> LocalSave(T entity)
-// {
-//     if (entity.IsDeleted)
-//     {
-//         if (entity.IsNew)
-//             return Task.FromResult(default(T)); // New item deleted before save - no operation
-//
-//         return LocalDelete(entity); // Route to Delete, returns the entity
-//     }
-//     else if (entity.IsNew)
-//     {
-//         return LocalInsert(entity); // Route to Insert
-//     }
-//     else
-//     {
-//         return LocalUpdate(entity); // Route to Update
-//     }
-// }
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L114-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-generated' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show the conceptual routing logic of the generated Save method (as pseudocode/comments)
+- Demonstrate the decision tree:
+  - If IsDeleted: if also IsNew return null (no-op), else route to Delete
+  - If IsNew: route to Insert
+  - Else: route to Update
+- This is explanatory pseudocode showing what the generator produces
+- Use LocalSave, LocalInsert, LocalUpdate, LocalDelete method names
+-->
 <!-- endSnippet -->
 
 ## State Management
@@ -176,165 +101,96 @@ Track state in your domain model:
 
 ### Constructor Sets IsNew
 
+In the Application layer, demonstrate how Create initializes state:
+
 <!-- snippet: save-state-new -->
-<a id='snippet-save-state-new'></a>
-```cs
-// After Create, IsNew is true
-// var customer = factory.Create();
-// customer.IsNew;     // true - new entity not yet persisted
-// customer.IsDeleted; // false
-//
-// After Save, IsNew becomes false
-// customer.Name = "New Customer";
-// var saved = await factory.Save(customer); // Calls Insert
-// saved.IsNew; // false - entity now exists in database
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L137-L147' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-state-new' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer: Show state after factory.Create()
+- Actual executable code demonstrating:
+  - Create employee via factory
+  - Assert/show IsNew = true, IsDeleted = false
+  - Set properties and call Save
+  - Assert/show IsNew = false after Save (Insert was called)
+- Show the state transition from new to persisted
+-->
 <!-- endSnippet -->
 
 ### Fetch Clears IsNew
 
+In the Application layer, demonstrate how Fetch sets state for existing entities:
+
 <!-- snippet: save-state-fetch -->
-<a id='snippet-save-state-fetch'></a>
-```cs
-// After Fetch, IsNew is false
-// var customer = await factory.Fetch(id);
-// customer.IsNew; // false - fetched entities already exist
-//
-// Save routes to Update because IsNew = false
-// customer.Name = "Updated Name";
-// await factory.Save(customer); // Calls Update, not Insert
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L149-L157' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-state-fetch' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer: Show state after factory.Fetch()
+- Actual executable code demonstrating:
+  - Fetch existing employee by Id
+  - Assert/show IsNew = false (fetched entities already exist)
+  - Modify a property and call Save
+  - Demonstrate that Update is called (not Insert) because IsNew = false
+-->
 <!-- endSnippet -->
 
 ### MarkDeleted Sets IsDeleted
 
+In the Application layer, demonstrate deletion workflow:
+
 <!-- snippet: save-state-delete -->
-<a id='snippet-save-state-delete'></a>
-```cs
-// Mark entity for deletion
-// saved.IsDeleted = true;
-// saved.IsNew;     // false - existing entity
-// saved.IsDeleted; // true - marked for removal
-//
-// Save routes to Delete
-// var result = await factory.Save(saved); // Calls Delete
-// result; // Returns the deleted entity
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L159-L168' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-state-delete' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer: Show deletion state and Save routing
+- Actual executable code demonstrating:
+  - Start with an existing employee (IsNew = false)
+  - Set IsDeleted = true
+  - Assert/show IsNew = false, IsDeleted = true
+  - Call Save (routes to Delete)
+  - Show that Save returns the deleted entity
+-->
 <!-- endSnippet -->
 
 ## Complete Example
 
+In the Domain layer, here's a complete Department entity with all CRUD operations:
+
 <!-- snippet: save-complete-example -->
-<a id='snippet-save-complete-example'></a>
-```cs
-[Factory]
-public partial class Invoice : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string InvoiceNumber { get; private set; } = string.Empty;
-    public Guid CustomerId { get; set; }
-    public decimal Total { get; set; }
-    public DateTime? DueDate { get; set; }
-    public string Status { get; private set; } = "Draft";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public Invoice()
-    {
-        Id = Guid.NewGuid();
-        InvoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8]}";
-    }
-
-    [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        InvoiceNumber = entity.OrderNumber;
-        CustomerId = entity.CustomerId;
-        Total = entity.Total;
-        Status = entity.Status;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote, Insert]
-    public async Task Insert([Service] IOrderRepository repository)
-    {
-        var entity = new OrderEntity
-        {
-            Id = Id,
-            OrderNumber = InvoiceNumber,
-            CustomerId = CustomerId,
-            Total = Total,
-            Status = Status,
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        };
-
-        await repository.AddAsync(entity);
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-
-    [Remote, Update]
-    public async Task Update([Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Invoice {Id} not found");
-
-        entity.CustomerId = CustomerId;
-        entity.Total = Total;
-        entity.Status = Status;
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-
-    [Remote, Delete]
-    public async Task Delete([Service] IOrderRepository repository)
-    {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
-    }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L170-L246' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-complete-example' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: Complete Department entity with full Save implementation
+- Properties: Id (Guid), Name (string), Code (string), ManagerId (Guid?), Budget (decimal), IsActive (bool), IsNew, IsDeleted
+- [Create] constructor that:
+  - Generates new Id
+  - Sets IsActive = true by default
+- [Remote, Fetch] method with IDepartmentRepository
+- [Remote, Insert] method that:
+  - Creates DepartmentEntity
+  - Maps all properties
+  - Sets timestamps
+  - Saves and sets IsNew = false
+- [Remote, Update] method that:
+  - Fetches by Id with error handling
+  - Updates all mutable properties
+  - Updates Modified timestamp
+  - Saves changes
+- [Remote, Delete] method that removes the department
+- Use Employee Management domain terminology
+-->
 <!-- endSnippet -->
 
 Usage:
 
 <!-- snippet: save-complete-usage -->
-<a id='snippet-save-complete-usage'></a>
-```cs
-// CREATE
-// var invoice = factory.Create();
-// invoice.CustomerId = customerId;
-// invoice.Total = 1500.00m;
-// var created = await factory.Save(invoice);
-// var invoiceId = created.Id;
-//
-// READ
-// var fetched = await factory.Fetch(invoiceId);
-// fetched.Total; // 1500.00m
-//
-// UPDATE
-// fetched.Total = 1750.00m;
-// var updated = await factory.Save(fetched);
-// updated.Total; // 1750.00m
-//
-// DELETE
-// updated.IsDeleted = true;
-// await factory.Save(updated); // Entity removed from database
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L248-L268' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-complete-usage' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer: Full CRUD workflow with Department
+- Actual executable code showing:
+  - CREATE: factory.Create(), set properties, Save (returns created department with Id)
+  - READ: factory.Fetch(departmentId)
+  - UPDATE: modify Budget property, Save
+  - DELETE: set IsDeleted = true, Save
+- Show property values at each step
+- Use async/await properly
+-->
 <!-- endSnippet -->
 
 ## Return Values
@@ -356,37 +212,21 @@ Task<IFactorySaveMeta?> Save(T entity, CancellationToken cancellationToken = def
 
 You don't need to implement all three operations. Save routes based on what you've defined:
 
+In the Domain layer, create an entity that only supports Insert (immutable after creation):
+
 <!-- snippet: save-partial-methods -->
-<a id='snippet-save-partial-methods'></a>
-```cs
-[Factory]
-public partial class ReadOnlyAfterCreate : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public ReadOnlyAfterCreate() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public Task Insert([Service] IPersonRepository repository)
-    {
-        IsNew = false;
-        return Task.CompletedTask;
-    }
-
-    // No Update method - entity becomes read-only after creation
-    // No Delete method - entity cannot be deleted
-
-    // Save will:
-    // - Call Insert when IsNew = true
-    // - Do nothing when IsNew = false (no Update defined)
-    // - Do nothing when IsDeleted = true (no Delete defined)
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L270-L297' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-partial-methods' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: AuditLog entity that is read-only after creation
+- Properties: Id (Guid), Action (string), EntityType (string), EntityId (Guid), Timestamp (DateTime), UserId (Guid), IsNew, IsDeleted
+- [Create] constructor that sets Id and Timestamp = DateTime.UtcNow
+- [Remote, Insert] method ONLY - no Update or Delete
+- Comments explaining:
+  - No Update method = entity becomes read-only after creation
+  - No Delete method = audit records cannot be deleted
+  - Save behavior: calls Insert when IsNew, no-op otherwise
+- Use for audit/compliance scenarios where records are immutable
+-->
 <!-- endSnippet -->
 
 Common patterns:
@@ -404,106 +244,41 @@ For Upsert (same method for Insert and Update), mark a single method with both `
 
 Apply authorization to individual operations:
 
+In the Domain layer, define authorization for Employee operations with granular control:
+
 <!-- snippet: save-authorization -->
-<a id='snippet-save-authorization'></a>
-```cs
-public interface IInvoiceAuth
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-    bool CanCreate();
-
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
-}
-
-public partial class InvoiceAuth : IInvoiceAuth
-{
-    private readonly IUserContext _userContext;
-    public InvoiceAuth(IUserContext userContext) { _userContext = userContext; }
-
-    public bool CanCreate() => _userContext.IsAuthenticated;
-    public bool CanWrite() => _userContext.IsInRole("Accountant") || _userContext.IsInRole("Admin");
-}
-
-[Factory]
-[AuthorizeFactory<IInvoiceAuth>]
-public partial class AuthorizedInvoice : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public decimal Total { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public AuthorizedInvoice() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public Task Insert([Service] IOrderRepository repository)
-    {
-        IsNew = false;
-        return Task.CompletedTask;
-    }
-
-    [Remote, Update]
-    public Task Update([Service] IOrderRepository repository)
-    {
-        return Task.CompletedTask;
-    }
-
-    [Remote, Delete]
-    public Task Delete([Service] IOrderRepository repository)
-    {
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L299-L349' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-authorization' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define IEmployeeWriteAuth interface with:
+  - [AuthorizeFactory(AuthorizeFactoryOperation.Create)] bool CanCreate()
+  - [AuthorizeFactory(AuthorizeFactoryOperation.Write)] bool CanWrite()
+- Implement EmployeeWriteAuth class that:
+  - Injects IUserContext
+  - CanCreate() returns true if user is authenticated
+  - CanWrite() returns true if user has "HR" or "Admin" role
+- Define Employee entity with [Factory] and [AuthorizeFactory<IEmployeeWriteAuth>]
+- Include [Remote, Insert], [Remote, Update], [Remote, Delete] methods
+- Show how different operations can have different authorization rules
+-->
 <!-- endSnippet -->
 
 Or to Save as a whole:
 
+In the Domain layer, use a single authorization check for all write operations:
+
 <!-- snippet: save-authorization-combined -->
-<a id='snippet-save-authorization-combined'></a>
-```cs
-public interface ICombinedWriteAuth
-{
-    // Single method authorizes all write operations
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
-}
-
-public partial class CombinedWriteAuth : ICombinedWriteAuth
-{
-    private readonly IUserContext _userContext;
-    public CombinedWriteAuth(IUserContext userContext) { _userContext = userContext; }
-
-    // Write = Insert | Update | Delete
-    public bool CanWrite() => _userContext.IsInRole("Writer") || _userContext.IsInRole("Admin");
-}
-
-[Factory]
-[AuthorizeFactory<ICombinedWriteAuth>]
-public partial class WriteAuthorizedEntity : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Data { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public WriteAuthorizedEntity() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public Task Insert() { IsNew = false; return Task.CompletedTask; }
-
-    [Remote, Update]
-    public Task Update() { return Task.CompletedTask; }
-
-    [Remote, Delete]
-    public Task Delete() { return Task.CompletedTask; }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L351-L389' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-authorization-combined' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Define ICombinedWriteAuth interface with:
+  - Single [AuthorizeFactory(AuthorizeFactoryOperation.Write)] bool CanWrite() method
+  - Comment: Write = Insert | Update | Delete
+- Implement CombinedWriteAuth class that:
+  - Injects IUserContext
+  - CanWrite() returns true if user has "Editor" or "Admin" role
+- Define Department entity with [Factory] and [AuthorizeFactory<ICombinedWriteAuth>]
+- Include all three write operations
+- Show how one authorization check covers all write operations
+-->
 <!-- endSnippet -->
 
 The factory checks authorization before routing.
@@ -512,161 +287,64 @@ The factory checks authorization before routing.
 
 Validate state before saving:
 
+In the Domain layer, use data annotations for validation:
+
 <!-- snippet: save-validation -->
-<a id='snippet-save-validation'></a>
-```cs
-[Factory]
-public partial class ValidatedInvoice : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-
-    [Required(ErrorMessage = "Customer is required")]
-    public Guid CustomerId { get; set; }
-
-    [Range(0.01, double.MaxValue, ErrorMessage = "Total must be greater than zero")]
-    public decimal Total { get; set; }
-
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public ValidatedInvoice() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public Task Insert([Service] IOrderRepository repository)
-    {
-        // Validation happens before save
-        IsNew = false;
-        return Task.CompletedTask;
-    }
-}
-
-public partial class ValidationBeforeSave
-{
-    public static async Task<ValidatedInvoice?> SaveWithValidation(
-        IValidatedInvoiceFactory factory,
-        ValidatedInvoice invoice)
-    {
-        var validationResults = new List<ValidationResult>();
-        var isValid = Validator.TryValidateObject(
-            invoice,
-            new ValidationContext(invoice),
-            validationResults,
-            validateAllProperties: true);
-
-        if (!isValid)
-        {
-            // Handle validation errors
-            return null;
-        }
-
-        return await factory.Save(invoice);
-    }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L391-L440' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-validation' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: Employee entity with validation attributes
+- Properties with validation:
+  - FirstName: [Required(ErrorMessage = "First name is required")]
+  - LastName: [Required(ErrorMessage = "Last name is required")]
+  - Email: [EmailAddress(ErrorMessage = "Invalid email format")]
+  - Salary: [Range(0, double.MaxValue, ErrorMessage = "Salary must be non-negative")]
+- IFactorySaveMeta implementation
+- [Remote, Insert] method with comment that validation happens before save
+- Also show Application layer helper method SaveWithValidation that:
+  - Uses Validator.TryValidateObject before calling factory.Save
+  - Returns null with validation errors if invalid
+  - Calls factory.Save if valid
+-->
 <!-- endSnippet -->
 
 Throw exceptions for validation failures:
 
+In the Domain layer, perform server-side validation in the Insert method:
+
 <!-- snippet: save-validation-throw -->
-<a id='snippet-save-validation-throw'></a>
-```cs
-[Factory]
-public partial class StrictValidatedEntity : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public StrictValidatedEntity() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public Task Insert()
-    {
-        // Validate on server - throw if invalid
-        if (string.IsNullOrWhiteSpace(Name))
-            throw new ValidationException("Name is required");
-
-        IsNew = false;
-        return Task.CompletedTask;
-    }
-}
-
-// Usage:
-// var entity = factory.Create();
-// entity.Name = string.Empty; // Invalid
-//
-// try
-// {
-//     await factory.Save(entity);
-// }
-// catch (ValidationException ex)
-// {
-//     ex.Message; // "Name is required"
-// }
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L442-L478' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-validation-throw' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: Employee entity with server-side validation in Insert
+- [Remote, Insert] method that:
+  - Validates FirstName is not null or whitespace
+  - Validates LastName is not null or whitespace
+  - Validates Email format if provided
+  - Throws ValidationException with descriptive message if invalid
+  - Only persists if all validations pass
+- Show usage pattern (as comments) demonstrating try/catch for ValidationException
+-->
 <!-- endSnippet -->
 
 ## Optimistic Concurrency
 
 Use version tokens or timestamps:
 
+In the Domain layer, implement optimistic concurrency with row versioning:
+
 <!-- snippet: save-optimistic-concurrency -->
-<a id='snippet-save-optimistic-concurrency'></a>
-```cs
-[Factory]
-public partial class ConcurrentEntity : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Data { get; set; } = string.Empty;
-    public byte[]? RowVersion { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public ConcurrentEntity() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        Data = entity.FirstName;
-        RowVersion = entity.RowVersion;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote, Update]
-    public async Task Update([Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Entity {Id} not found");
-
-        // Check row version for optimistic concurrency
-        if (RowVersion != null && entity.RowVersion != null &&
-            !RowVersion.SequenceEqual(entity.RowVersion))
-        {
-            throw new InvalidOperationException(
-                "The entity was modified by another user. Please refresh and try again.");
-        }
-
-        entity.FirstName = Data;
-        entity.Modified = DateTime.UtcNow;
-        // RowVersion updated by database
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L480-L528' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-optimistic-concurrency' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: Employee entity with concurrency handling
+- Properties: include byte[]? RowVersion for concurrency token
+- [Remote, Fetch] method that loads RowVersion from database
+- [Remote, Update] method that:
+  - Fetches current entity from database
+  - Compares RowVersion using SequenceEqual
+  - Throws InvalidOperationException with message "modified by another user" if versions don't match
+  - Updates entity and saves if versions match
+  - Comment that RowVersion is updated by database automatically
+- Show the full concurrency check pattern
+-->
 <!-- endSnippet -->
 
 EF Core DbUpdateConcurrencyException automatically becomes a 409 response when called remotely.
@@ -675,30 +353,20 @@ EF Core DbUpdateConcurrencyException automatically becomes a 409 response when c
 
 If you don't implement Delete, IFactorySave still generates but throws `NotImplementedException` for deleted entities:
 
+In the Domain layer, create an entity without Delete support:
+
 <!-- snippet: save-no-delete -->
-<a id='snippet-save-no-delete'></a>
-```cs
-[Factory]
-public partial class NoDeleteEntity : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public NoDeleteEntity() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public Task Insert() { IsNew = false; return Task.CompletedTask; }
-
-    [Remote, Update]
-    public Task Update() { return Task.CompletedTask; }
-
-    // No Delete method - setting IsDeleted = true and calling Save throws NotImplementedException
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L530-L550' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-no-delete' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Domain layer: Employee entity without Delete method
+- Properties: Id, FirstName, LastName, IsNew, IsDeleted
+- [Create] constructor
+- [Remote, Insert] method that sets IsNew = false
+- [Remote, Update] method
+- NO Delete method
+- Comment explaining: setting IsDeleted = true and calling Save throws NotImplementedException
+- Use case: soft-delete pattern where actual deletion is not allowed
+-->
 <!-- endSnippet -->
 
 Save throws `NotImplementedException` when `IsDeleted = true`.
@@ -707,22 +375,21 @@ Save throws `NotImplementedException` when `IsDeleted = true`.
 
 Save is optional. You can always call Insert/Update/Delete directly:
 
+In the Application layer, demonstrate explicit method calls vs Save:
+
 <!-- snippet: save-explicit -->
-<a id='snippet-save-explicit'></a>
-```cs
-// Use Save with appropriate IsNew/IsDeleted flags for state-based routing:
-//
-// var customer = factory.Create();
-// customer.Name = "New Customer";
-// var inserted = await factory.Save(customer); // Routes to Insert (IsNew = true)
-//
-// inserted.Name = "Updated Name";
-// var updated = await factory.Save(inserted);  // Routes to Update (IsNew = false)
-//
-// updated.IsDeleted = true;
-// await factory.Save(updated);                 // Routes to Delete (IsDeleted = true)
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L552-L564' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-explicit' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer: Show both explicit methods and Save for comparison
+- Demonstrate (as executable code or clear comments):
+  - Using Save with state flags for automatic routing
+  - Create employee, Save routes to Insert
+  - Modify employee, Save routes to Update
+  - Set IsDeleted, Save routes to Delete
+- Explain when to use Save vs explicit methods:
+  - Save: UI doesn't track state, single save button, simpler client code
+  - Explicit: granular control, different UI actions per operation
+-->
 <!-- endSnippet -->
 
 Use Save when:
@@ -737,57 +404,26 @@ Use explicit methods when:
 
 ## IFactorySaveMeta Extensions
 
-Extend IFactorySaveMeta for your domain:
+Extend IFactorySave for batch operations:
+
+In the Application layer, create utility methods for common save patterns:
 
 <!-- snippet: save-extensions -->
-<a id='snippet-save-extensions'></a>
-```cs
-// Extension methods for IFactorySave<T> (define in a top-level static class)
-// Example usage pattern:
-//
-// public static class SaveExtensions
-// {
-//     public static async Task<T?> SaveAsync<T>(this IFactorySave<T> factory, T entity, CancellationToken ct = default)
-//         where T : class, IFactorySaveMeta
-//     {
-//         ct.ThrowIfCancellationRequested();
-//         return await factory.Save(entity);
-//     }
-// }
-
-// Utility class demonstrating batch save operations
-public partial class SaveUtilities
-{
-    public static async Task<T?> SaveWithCancellation<T>(
-        IFactorySave<T> factory,
-        T entity,
-        CancellationToken ct = default)
-        where T : class, IFactorySaveMeta
-    {
-        ct.ThrowIfCancellationRequested();
-        var result = await factory.Save(entity);
-        return (T?)result;
-    }
-
-    public static async Task<List<T>> SaveBatch<T>(
-        IFactorySave<T> factory,
-        IEnumerable<T> entities,
-        CancellationToken ct = default)
-        where T : class, IFactorySaveMeta
-    {
-        var results = new List<T>();
-        foreach (var entity in entities)
-        {
-            ct.ThrowIfCancellationRequested();
-            var saved = await factory.Save(entity);
-            if (saved != null)
-                results.Add((T)saved);
-        }
-        return results;
-    }
-}
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L566-L611' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-extensions' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer: SaveUtilities class with helper methods
+- SaveWithCancellation<T> method:
+  - Takes IFactorySave<T> factory, T entity, CancellationToken
+  - Checks cancellation before save
+  - Returns Task<T?> with properly cast result
+- SaveBatch<T> method:
+  - Takes IFactorySave<T> factory, IEnumerable<T> entities, CancellationToken
+  - Iterates and saves each entity
+  - Checks cancellation between each save
+  - Collects and returns List<T> of successfully saved entities
+- Show extension method pattern (as comments) for IFactorySave<T>
+- Use where T : class, IFactorySaveMeta constraint
+-->
 <!-- endSnippet -->
 
 Track additional state without affecting Save routing.
@@ -796,27 +432,27 @@ Track additional state without affecting Save routing.
 
 Test routing logic:
 
+In the Tests layer, verify Save routes to the correct operation:
+
 <!-- snippet: save-testing -->
-<a id='snippet-save-testing'></a>
-```cs
-// Test Insert routing:
-// var customer = factory.Create();
-// customer.IsNew; // true
-// customer.Name = "Test";
-// var saved = await factory.Save(customer);
-// saved.IsNew; // false - Insert was called
-//
-// Test Update routing:
-// saved.Name = "Modified";
-// var updated = await factory.Save(saved);
-// updated.Name; // "Modified" - Update was called
-//
-// Test Delete routing:
-// updated.IsDeleted = true;
-// var result = await factory.Save(updated);
-// result; // Returns the deleted entity - Delete was called
-```
-<sup><a href='/src/docs/samples/SaveOperationSamples.cs#L613-L630' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-testing' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Tests layer: Unit test demonstrating Save routing verification
+- Test Insert routing:
+  - Create employee via factory
+  - Assert IsNew = true
+  - Set properties and call Save
+  - Assert IsNew = false (proves Insert was called)
+- Test Update routing:
+  - After Insert, modify a property
+  - Call Save
+  - Verify the modification persisted (proves Update was called)
+- Test Delete routing:
+  - Set IsDeleted = true
+  - Call Save
+  - Verify result is returned (proves Delete was called)
+- Use xUnit or similar test assertions
+-->
 <!-- endSnippet -->
 
 ## Next Steps

@@ -25,40 +25,15 @@ public interface IFactoryOnStart
 Implement this interface on your domain model to receive a callback before any factory operation:
 
 <!-- snippet: interfaces-factoryonstart -->
-<a id='snippet-interfaces-factoryonstart'></a>
-```cs
-[Factory]
-public partial class FactoryOnStartExample : IFactoryOnStart
-{
-    public Guid Id { get; private set; }
-    public FactoryOperation? StartedOperation { get; private set; }
-    public DateTime StartTime { get; private set; }
-
-    [Create]
-    public FactoryOnStartExample() { Id = Guid.NewGuid(); }
-
-    // Called BEFORE the factory operation executes
-    public void FactoryStart(FactoryOperation factoryOperation)
-    {
-        StartedOperation = factoryOperation;
-        StartTime = DateTime.UtcNow;
-
-        // Pre-operation logic: validation, setup, logging
-        if (factoryOperation == FactoryOperation.Delete && Id == Guid.Empty)
-        {
-            throw new InvalidOperationException("Cannot delete: entity has no Id");
-        }
-    }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        return Task.FromResult(true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L13-L44' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryonstart' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate implementing IFactoryOnStart
+- FactoryStart method validates business rules before operation executes
+- For Delete operation, throw if EmployeeId is empty (cannot delete unsaved employee)
+- Track StartedOperation and StartTime properties for audit purposes
+- Include [Create] constructor and [Remote, Fetch] method to show full lifecycle context
+- Domain layer code - this is an aggregate root with factory-generated lifecycle hooks
+-->
 <!-- endSnippet -->
 
 ### IFactoryOnStartAsync
@@ -77,35 +52,15 @@ public interface IFactoryOnStartAsync
 Async pre-operation hook with database access:
 
 <!-- snippet: interfaces-factoryonstart-async -->
-<a id='snippet-interfaces-factoryonstart-async'></a>
-```cs
-[Factory]
-public partial class FactoryOnStartAsyncExample : IFactoryOnStartAsync
-{
-    public Guid Id { get; private set; }
-    public bool PreConditionsValidated { get; private set; }
-
-    [Create]
-    public FactoryOnStartAsyncExample() { Id = Guid.NewGuid(); }
-
-    // Async version for operations requiring async validation
-    public async Task FactoryStartAsync(FactoryOperation factoryOperation)
-    {
-        // Async pre-operation logic
-        await Task.Delay(1); // Simulate async validation
-
-        PreConditionsValidated = true;
-    }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        return Task.FromResult(true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L46-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryonstart-async' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Department aggregate implementing IFactoryOnStartAsync
+- FactoryStartAsync validates department budget limits via async database query before operation
+- Use injected IDepartmentRepository to check existing department count or budget constraints
+- Track PreConditionsValidated property to confirm validation occurred
+- Include [Create] constructor and [Remote, Fetch] method
+- Domain layer code - demonstrates async pre-operation validation with database access
+-->
 <!-- endSnippet -->
 
 ### IFactoryOnComplete
@@ -124,36 +79,15 @@ public interface IFactoryOnComplete
 Implement this interface to track successful operations:
 
 <!-- snippet: interfaces-factoryoncomplete -->
-<a id='snippet-interfaces-factoryoncomplete'></a>
-```cs
-[Factory]
-public partial class FactoryOnCompleteExample : IFactoryOnComplete
-{
-    public Guid Id { get; private set; }
-    public FactoryOperation? CompletedOperation { get; private set; }
-    public DateTime CompleteTime { get; private set; }
-
-    [Create]
-    public FactoryOnCompleteExample() { Id = Guid.NewGuid(); }
-
-    // Called AFTER the factory operation completes successfully
-    public void FactoryComplete(FactoryOperation factoryOperation)
-    {
-        CompletedOperation = factoryOperation;
-        CompleteTime = DateTime.UtcNow;
-
-        // Post-operation logic: logging, notifications, cleanup
-    }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        return Task.FromResult(true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L74-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncomplete' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate implementing IFactoryOnComplete
+- FactoryComplete method tracks successful operation for audit logging
+- Store CompletedOperation and CompleteTime properties
+- Show comment indicating where post-operation logic goes (audit logging, cache invalidation)
+- Include [Create] constructor and [Remote, Fetch] method
+- Domain layer code - demonstrates post-operation hook for audit/logging purposes
+-->
 <!-- endSnippet -->
 
 ### IFactoryOnCompleteAsync
@@ -172,35 +106,15 @@ public interface IFactoryOnCompleteAsync
 Async post-operation hook for notifications:
 
 <!-- snippet: interfaces-factoryoncomplete-async -->
-<a id='snippet-interfaces-factoryoncomplete-async'></a>
-```cs
-[Factory]
-public partial class FactoryOnCompleteAsyncExample : IFactoryOnCompleteAsync
-{
-    public Guid Id { get; private set; }
-    public bool PostProcessingComplete { get; private set; }
-
-    [Create]
-    public FactoryOnCompleteAsyncExample() { Id = Guid.NewGuid(); }
-
-    // Async version for post-operation processing
-    public async Task FactoryCompleteAsync(FactoryOperation factoryOperation)
-    {
-        // Async post-operation logic
-        await Task.Delay(1); // Simulate async processing
-
-        PostProcessingComplete = true;
-    }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        return Task.FromResult(true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L103-L129' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncomplete-async' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate implementing IFactoryOnCompleteAsync
+- FactoryCompleteAsync sends notification via injected INotificationService after successful operation
+- Use async notification call (e.g., await _notificationService.SendAsync(...))
+- Track PostProcessingComplete property to confirm notification was sent
+- Include [Create] constructor and [Remote, Fetch] method
+- Domain layer code - demonstrates async post-operation hook for notifications/external services
+-->
 <!-- endSnippet -->
 
 ### IFactoryOnCancelled
@@ -219,38 +133,16 @@ public interface IFactoryOnCancelled
 Handle operation cancellation:
 
 <!-- snippet: interfaces-factoryoncancelled -->
-<a id='snippet-interfaces-factoryoncancelled'></a>
-```cs
-[Factory]
-public partial class FactoryOnCancelledExample : IFactoryOnCancelled
-{
-    public Guid Id { get; private set; }
-    public FactoryOperation? CancelledOperation { get; private set; }
-    public bool CleanupPerformed { get; private set; }
-
-    [Create]
-    public FactoryOnCancelledExample() { Id = Guid.NewGuid(); }
-
-    // Called when an OperationCanceledException occurs
-    public void FactoryCancelled(FactoryOperation factoryOperation)
-    {
-        CancelledOperation = factoryOperation;
-
-        // Cleanup logic for cancelled operations
-        CleanupPerformed = true;
-    }
-
-    [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        await Task.Delay(100, ct);
-        Id = id;
-        return true;
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L131-L160' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncancelled' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate implementing IFactoryOnCancelled
+- FactoryCancelled method handles cleanup when operation is cancelled
+- Track CancelledOperation property for logging which operation was cancelled
+- Set CleanupPerformed flag to indicate cleanup logic executed
+- Include [Create] constructor and [Remote, Fetch] with CancellationToken parameter
+- Fetch method should use ct.ThrowIfCancellationRequested() to demonstrate cancellation point
+- Domain layer code - demonstrates cancellation handling and cleanup logic
+-->
 <!-- endSnippet -->
 
 ### IFactoryOnCancelledAsync
@@ -269,37 +161,16 @@ public interface IFactoryOnCancelledAsync
 Async cancellation with database rollback:
 
 <!-- snippet: interfaces-factoryoncancelled-async -->
-<a id='snippet-interfaces-factoryoncancelled-async'></a>
-```cs
-[Factory]
-public partial class FactoryOnCancelledAsyncExample : IFactoryOnCancelledAsync
-{
-    public Guid Id { get; private set; }
-    public bool AsyncCleanupComplete { get; private set; }
-
-    [Create]
-    public FactoryOnCancelledAsyncExample() { Id = Guid.NewGuid(); }
-
-    // Async version for cleanup requiring async operations
-    public async Task FactoryCancelledAsync(FactoryOperation factoryOperation)
-    {
-        // Async cleanup logic
-        await Task.Delay(1); // Simulate async cleanup
-
-        AsyncCleanupComplete = true;
-    }
-
-    [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        await Task.Delay(100, ct);
-        Id = id;
-        return true;
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L162-L190' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncancelled-async' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate implementing IFactoryOnCancelledAsync
+- FactoryCancelledAsync performs async cleanup via injected IUnitOfWork to rollback partial changes
+- Use await _unitOfWork.RollbackAsync() or similar async cleanup operation
+- Track AsyncCleanupComplete property to confirm cleanup completed
+- Include [Create] constructor and [Remote, Fetch] with CancellationToken parameter
+- Fetch method demonstrates cancellable async operation
+- Domain layer code - demonstrates async cancellation cleanup with database rollback
+-->
 <!-- endSnippet -->
 
 ### Lifecycle Hook Execution Order
@@ -316,47 +187,17 @@ If cancelled:
 Combining sync and async hooks:
 
 <!-- snippet: interfaces-lifecycle-order -->
-<a id='snippet-interfaces-lifecycle-order'></a>
-```cs
-[Factory]
-public partial class LifecycleOrderExample : IFactoryOnStart, IFactoryOnComplete, IFactoryOnCancelled
-{
-    public Guid Id { get; private set; }
-    public List<string> LifecycleEvents { get; } = new();
-
-    [Create]
-    public LifecycleOrderExample() { Id = Guid.NewGuid(); }
-
-    // Execution order:
-    // 1. FactoryStart (before operation)
-    public void FactoryStart(FactoryOperation factoryOperation)
-    {
-        LifecycleEvents.Add($"Start: {factoryOperation}");
-    }
-
-    // 2. Factory operation executes (Fetch, Insert, etc.)
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        LifecycleEvents.Add("Operation: Fetch");
-        Id = id;
-        return Task.FromResult(true);
-    }
-
-    // 3a. FactoryComplete (on success)
-    public void FactoryComplete(FactoryOperation factoryOperation)
-    {
-        LifecycleEvents.Add($"Complete: {factoryOperation}");
-    }
-
-    // 3b. FactoryCancelled (on cancellation - instead of Complete)
-    public void FactoryCancelled(FactoryOperation factoryOperation)
-    {
-        LifecycleEvents.Add($"Cancelled: {factoryOperation}");
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L192-L230' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-lifecycle-order' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate implementing IFactoryOnStart, IFactoryOnComplete, AND IFactoryOnCancelled
+- Track LifecycleEvents as List<string> to show execution order
+- FactoryStart adds "Start: {operation}" to list (step 1)
+- Fetch method adds "Operation: Fetch" to list (step 2)
+- FactoryComplete adds "Complete: {operation}" to list (step 3a on success)
+- FactoryCancelled adds "Cancelled: {operation}" to list (step 3b on cancellation)
+- Include numbered comments showing execution order: 1. Start, 2. Operation, 3a. Complete OR 3b. Cancelled
+- Domain layer code - demonstrates full lifecycle hook ordering with all three interfaces combined
+-->
 <!-- endSnippet -->
 
 ## Save Operation
@@ -382,61 +223,22 @@ public interface IFactorySaveMeta
 Implement this interface on domain models that use the Save pattern:
 
 <!-- snippet: interfaces-factorysavemeta -->
-<a id='snippet-interfaces-factorysavemeta'></a>
-```cs
-[Factory]
-public partial class FactorySaveMetaExample : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-
-    // IFactorySaveMeta implementation
-    // These properties control Save routing
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public FactorySaveMetaExample()
-    {
-        Id = Guid.NewGuid();
-        // IsNew = true by default - Save will call Insert
-    }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id)
-    {
-        Id = id;
-        IsNew = false; // After fetch, IsNew = false - Save will call Update
-        return Task.FromResult(true);
-    }
-
-    [Remote, Insert]
-    public Task Insert()
-    {
-        IsNew = false;
-        return Task.CompletedTask;
-    }
-
-    [Remote, Update]
-    public Task Update()
-    {
-        return Task.CompletedTask;
-    }
-
-    [Remote, Delete]
-    public Task Delete()
-    {
-        return Task.CompletedTask;
-    }
-}
-
-// Save routing based on IFactorySaveMeta:
-// IsNew=true,  IsDeleted=false -> Insert
-// IsNew=false, IsDeleted=false -> Update
-// IsNew=false, IsDeleted=true  -> Delete
-// IsNew=true,  IsDeleted=true  -> No operation (new item deleted)
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L232-L284' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factorysavemeta' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate implementing IFactorySaveMeta
+- Properties: EmployeeId (Guid), Name (string), IsNew (bool, default true), IsDeleted (bool)
+- [Create] constructor sets EmployeeId = Guid.NewGuid(), IsNew = true (comment: Save will call Insert)
+- [Remote, Fetch] sets IsNew = false after loading (comment: Save will call Update)
+- [Remote, Insert] sets IsNew = false after successful insert
+- [Remote, Update] persists changes (no state change needed)
+- [Remote, Delete] removes the entity
+- Include trailing comment block showing Save routing logic:
+  - IsNew=true, IsDeleted=false -> Insert
+  - IsNew=false, IsDeleted=false -> Update
+  - IsNew=false, IsDeleted=true -> Delete
+  - IsNew=true, IsDeleted=true -> No operation
+- Domain layer code - demonstrates IFactorySaveMeta for Save operation routing
+-->
 <!-- endSnippet -->
 
 See [Save Operation](save-operation.md) for complete usage details.
@@ -457,41 +259,17 @@ public interface IFactorySave<T> where T : IFactorySaveMeta
 Using the generated Save method:
 
 <!-- snippet: interfaces-factorysave -->
-<a id='snippet-interfaces-factorysave'></a>
-```cs
-public partial class FactorySaveUsageExample
-{
-    // [Fact]
-    public async Task UsingIFactorySave()
-    {
-        var scopes = SampleTestContainers.Scopes();
-
-        // IFactorySave<T> is implemented by generated factories
-        var factory = scopes.local.GetRequiredService<IFactorySaveMetaExampleFactory>();
-
-        // Create new entity
-        var entity = factory.Create();
-        entity.Name = "Test";
-
-        // Save routes based on IsNew/IsDeleted
-        // IsNew=true -> Insert
-        var saved = await factory.Save(entity);
-        Assert.NotNull(saved);
-        Assert.False(saved.IsNew);
-
-        // Modify and save again
-        // IsNew=false -> Update
-        saved.Name = "Updated";
-        var updated = await factory.Save(saved);
-
-        // Mark for deletion and save
-        // IsDeleted=true -> Delete
-        updated!.IsDeleted = true;
-        await factory.Save(updated);
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L286-L318' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factorysave' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer service or test class demonstrating IFactorySave<Employee> usage
+- Get IEmployeeFactory from DI container (use scopes pattern from test containers)
+- Create new employee: var employee = factory.Create(); employee.Name = "John Smith";
+- First Save (Insert): var saved = await factory.Save(employee); - comment: IsNew=true -> Insert
+- Assert saved is not null and IsNew is false after save
+- Second Save (Update): saved.Name = "Jane Smith"; await factory.Save(saved); - comment: IsNew=false -> Update
+- Third Save (Delete): saved.IsDeleted = true; await factory.Save(saved); - comment: IsDeleted=true -> Delete
+- Application layer code - demonstrates consuming IFactorySave<T> from generated factory
+-->
 <!-- endSnippet -->
 
 ## Authorization
@@ -521,58 +299,19 @@ public interface IAspAuthorize
 Custom authorization implementation:
 
 <!-- snippet: interfaces-aspauthorize -->
-<a id='snippet-interfaces-aspauthorize'></a>
-```cs
-// Custom IAspAuthorize implementation for simplified authorization scenarios
-// (e.g., testing, non-ASP.NET Core environments, or custom authorization logic)
-public partial class CustomAspAuthorize : IAspAuthorize
-{
-    private readonly IUserContext _userContext;
-
-    public CustomAspAuthorize(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public Task<string?> Authorize(
-        IEnumerable<AspAuthorizeData> authorizeData,
-        bool forbid = false)
-    {
-        // Check if user is authenticated
-        if (!_userContext.IsAuthenticated)
-        {
-            var message = "User is not authenticated";
-            if (forbid)
-            {
-                throw new AspForbidException(message);
-            }
-            return Task.FromResult<string?>(message);
-        }
-
-        // Check role requirements from authorization data
-        foreach (var data in authorizeData)
-        {
-            if (!string.IsNullOrEmpty(data.Roles))
-            {
-                var requiredRoles = data.Roles.Split(',', StringSplitOptions.TrimEntries);
-                if (!requiredRoles.Any(role => _userContext.IsInRole(role)))
-                {
-                    var message = $"User lacks required role(s): {data.Roles}";
-                    if (forbid)
-                    {
-                        throw new AspForbidException(message);
-                    }
-                    return Task.FromResult<string?>(message);
-                }
-            }
-        }
-
-        // Return empty string to indicate success
-        return Task.FromResult<string?>(string.Empty);
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L320-L369' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-aspauthorize' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Custom IAspAuthorize implementation for simplified authorization
+- Inject IUserContext (custom interface for user identity/roles)
+- Authorize method implementation:
+  - Check if user is authenticated; if not, return error message or throw AspForbidException if forbid=true
+  - Iterate through AspAuthorizeData to check Roles requirements
+  - For each role requirement, verify user has at least one required role
+  - Return empty string on success, error message on failure
+  - Throw AspForbidException if forbid=true and authorization fails
+- Include leading comment: "Custom IAspAuthorize for testing or non-ASP.NET Core environments"
+- Infrastructure layer code - custom authorization implementation for non-standard scenarios
+-->
 <!-- endSnippet -->
 
 See [Authorization](authorization.md) for standard authorization patterns.
@@ -597,26 +336,18 @@ public interface IOrdinalSerializable
 Example of implementing IOrdinalSerializable:
 
 <!-- snippet: interfaces-ordinalserializable -->
-<a id='snippet-interfaces-ordinalserializable'></a>
-```cs
-// IOrdinalSerializable marks types for array-based JSON serialization
-public partial class OrdinalSerializableExample : IOrdinalSerializable
-{
-    public string Alpha { get; set; } = string.Empty;  // Index 0
-    public int Beta { get; set; }                       // Index 1
-    public DateTime Gamma { get; set; }                 // Index 2
-
-    // Convert to array in alphabetical property order
-    public object?[] ToOrdinalArray()
-    {
-        return [Alpha, Beta, Gamma];
-    }
-}
-
-// JSON output: ["value", 42, "2024-01-15T10:30:00Z"]
-// Instead of: {"Alpha":"value","Beta":42,"Gamma":"2024-01-15T10:30:00Z"}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L371-L388' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalserializable' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Value object implementing IOrdinalSerializable for compact JSON serialization
+- Use EmployeeSnapshot or similar DTO with 3+ properties
+- Properties: DepartmentCode (string), EmployeeCount (int), LastUpdated (DateTime)
+- Comment each property with its ordinal index (Index 0, Index 1, Index 2)
+- ToOrdinalArray returns properties in alphabetical order: [DepartmentCode, EmployeeCount, LastUpdated]
+- Include trailing comment showing JSON comparison:
+  - Array format: ["HR", 42, "2024-01-15T10:30:00Z"]
+  - Object format: {"DepartmentCode":"HR","EmployeeCount":42,"LastUpdated":"2024-01-15T10:30:00Z"}
+- Domain layer code - demonstrates compact array-based serialization for value objects/DTOs
+-->
 <!-- endSnippet -->
 
 See [Serialization](serialization.md) for details on ordinal format.
@@ -639,56 +370,17 @@ public interface IOrdinalConverterProvider<TSelf> where TSelf : class
 Custom ordinal converter for a value object:
 
 <!-- snippet: interfaces-ordinalconverterprovider -->
-<a id='snippet-interfaces-ordinalconverterprovider'></a>
-```cs
-// IOrdinalConverterProvider<TSelf> enables types to provide their own ordinal converter
-// This is used by the source generator to create AOT-compatible serialization
-
-// Type implements the interface to provide its own converter
-public partial class CustomOrdinalType : IOrdinalConverterProvider<CustomOrdinalType>
-{
-    public decimal Amount { get; set; }
-    public string Currency { get; set; } = "USD";
-
-    // Static abstract method implementation
-    public static JsonConverter<CustomOrdinalType> CreateOrdinalConverter()
-    {
-        return new CustomOrdinalConverter();
-    }
-}
-
-public partial class CustomOrdinalConverter : JsonConverter<CustomOrdinalType>
-{
-    public override CustomOrdinalType? Read(
-        ref Utf8JsonReader reader,
-        Type typeToConvert,
-        JsonSerializerOptions options)
-    {
-        if (reader.TokenType != JsonTokenType.StartArray)
-            throw new JsonException();
-
-        reader.Read();
-        var amount = reader.GetDecimal();
-        reader.Read();
-        var currency = reader.GetString() ?? "USD";
-        reader.Read();
-
-        return new CustomOrdinalType { Amount = amount, Currency = currency };
-    }
-
-    public override void Write(
-        Utf8JsonWriter writer,
-        CustomOrdinalType value,
-        JsonSerializerOptions options)
-    {
-        writer.WriteStartArray();
-        writer.WriteNumberValue(value.Amount);
-        writer.WriteStringValue(value.Currency);
-        writer.WriteEndArray();
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L390-L437' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalconverterprovider' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Money value object implementing IOrdinalConverterProvider<Money>
+- Properties: Amount (decimal), Currency (string, default "USD")
+- Static CreateOrdinalConverter method returns new MoneyOrdinalConverter()
+- Include leading comment: "IOrdinalConverterProvider<TSelf> enables types to provide their own ordinal converter"
+- MoneyOrdinalConverter class implementing JsonConverter<Money>:
+  - Read method: parse StartArray, read Amount as decimal, read Currency as string, return new Money
+  - Write method: WriteStartArray, WriteNumberValue(Amount), WriteStringValue(Currency), WriteEndArray
+- Domain layer code - demonstrates custom ordinal converter for value objects with special serialization needs
+-->
 <!-- endSnippet -->
 
 ### IOrdinalSerializationMetadata
@@ -732,30 +424,16 @@ public interface IEventTracker
 Using IEventTracker for graceful shutdown:
 
 <!-- snippet: interfaces-eventtracker -->
-<a id='snippet-interfaces-eventtracker'></a>
-```cs
-public partial class EventTrackerExample
-{
-    // [Fact]
-    public async Task UsingIEventTracker()
-    {
-        var scopes = SampleTestContainers.Scopes();
-
-        // IEventTracker monitors pending fire-and-forget events
-        var eventTracker = scopes.local.GetRequiredService<IEventTracker>();
-
-        // Check number of pending events
-        var pendingCount = eventTracker.PendingCount;
-
-        // Wait for all pending events to complete
-        await eventTracker.WaitAllAsync();
-
-        // After WaitAllAsync, all tracked events have completed
-        Assert.Equal(0, eventTracker.PendingCount);
-    }
-}
-```
-<sup><a href='/src/docs/samples/InterfacesReferenceSamples.cs#L439-L460' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-eventtracker' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Application layer service or test demonstrating IEventTracker usage for graceful shutdown
+- Get IEventTracker from DI container
+- Check PendingCount property to see how many fire-and-forget events are in progress
+- Call await eventTracker.WaitAllAsync() to wait for all pending events
+- Assert PendingCount equals 0 after WaitAllAsync completes
+- Include comments explaining: "IEventTracker monitors pending fire-and-forget events"
+- Application layer code - demonstrates graceful shutdown by waiting for pending events
+-->
 <!-- endSnippet -->
 
 ## Factory Core

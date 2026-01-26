@@ -21,75 +21,47 @@ Creates new instances via constructors or static factory methods.
 ### Constructor-based Creation
 
 <!-- snippet: operations-create-constructor -->
-<a id='snippet-operations-create-constructor'></a>
-```cs
-[Factory]
-public partial class ProductWithConstructorCreate
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public DateTime Created { get; private set; }
-
-    [Create]
-    public ProductWithConstructorCreate()
-    {
-        Id = Guid.NewGuid();
-        Created = DateTime.UtcNow;
-        Price = 0.00m;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L11-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute and constructor-based [Create]
+- Properties: Guid Id, string FirstName, string LastName, DateTime HireDate
+- Constructor sets Id = Guid.NewGuid() and HireDate = DateTime.UtcNow
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates simplest form of factory creation via parameterless constructor
+-->
 <!-- endSnippet -->
 
 Generated factory interface:
 ```csharp
-public interface IProductWithConstructorCreateFactory
+public interface IEmployeeFactory
 {
-    ProductWithConstructorCreate Create(CancellationToken cancellationToken = default);
+    Employee Create(CancellationToken cancellationToken = default);
 }
 ```
 
 ### Static Factory Method
 
 <!-- snippet: operations-create-static -->
-<a id='snippet-operations-create-static'></a>
-```cs
-[Factory]
-public partial class ProductWithStaticCreate
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public string Sku { get; private set; } = string.Empty;
-    public decimal Price { get; set; }
-
-    private ProductWithStaticCreate() { }
-
-    [Create]
-    public static ProductWithStaticCreate Create(string sku, string name, decimal initialPrice)
-    {
-        if (string.IsNullOrWhiteSpace(sku))
-            throw new ArgumentException("SKU is required", nameof(sku));
-
-        return new ProductWithStaticCreate
-        {
-            Id = Guid.NewGuid(),
-            Sku = sku.ToUpperInvariant(),
-            Name = name,
-            Price = initialPrice
-        };
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L30-L56' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-static' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute and static factory method [Create]
+- Properties: Guid Id, string EmployeeNumber, string FirstName, string LastName, decimal Salary
+- Private parameterless constructor
+- Static Create method accepting employeeNumber, firstName, lastName, initialSalary
+- Validate employeeNumber is not null/whitespace, throw ArgumentException if invalid
+- Generate Id and format EmployeeNumber to uppercase
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates validation and transformation in static factory method
+-->
 <!-- endSnippet -->
 
 Generated factory interface:
 ```csharp
-public interface IProductWithStaticCreateFactory
+public interface IEmployeeFactory
 {
-    ProductWithStaticCreate Create(string sku, string name, decimal initialPrice, CancellationToken cancellationToken = default);
+    Employee Create(string employeeNumber, string firstName, string lastName, decimal initialSalary, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -98,44 +70,17 @@ public interface IProductWithStaticCreateFactory
 Create methods support multiple return types:
 
 <!-- snippet: operations-create-return-types -->
-<a id='snippet-operations-create-return-types'></a>
-```cs
-[Factory]
-public partial class CreateReturnTypesExample
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public bool Initialized { get; private set; }
-
-    // Constructor Create - sets properties on created instance
-    [Create]
-    public CreateReturnTypesExample()
-    {
-        Id = Guid.NewGuid();
-    }
-
-    // Instance method Create - can modify this and return void
-    [Create]
-    public void Initialize(string name)
-    {
-        Name = name;
-        Initialized = true;
-    }
-
-    // Static method Create - returns new instance
-    [Create]
-    public static CreateReturnTypesExample CreateWithDefaults()
-    {
-        return new CreateReturnTypesExample
-        {
-            Id = Guid.NewGuid(),
-            Name = "Default",
-            Initialized = true
-        };
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L58-L93' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-return-types' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute demonstrating three Create patterns
+- Properties: Guid Id, string FirstName, string LastName, bool Initialized
+- Pattern 1: Constructor [Create] - sets Id = Guid.NewGuid()
+- Pattern 2: Instance method [Create] void Initialize(string firstName, string lastName) - sets names and Initialized = true
+- Pattern 3: Static method [Create] returning Employee CreateWithDefaults() - returns new instance with default values
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates multiple Create method patterns and return type handling
+-->
 <!-- endSnippet -->
 
 Factory return types:
@@ -153,44 +98,26 @@ Loads data into an existing instance.
 ### Instance Method Fetch
 
 <!-- snippet: operations-fetch-instance -->
-<a id='snippet-operations-fetch-instance'></a>
-```cs
-[Factory]
-public partial class OrderFetchExample
-{
-    public Guid Id { get; private set; }
-    public string OrderNumber { get; private set; } = string.Empty;
-    public decimal Total { get; private set; }
-    public string Status { get; private set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-
-    [Create]
-    public OrderFetchExample() { }
-
-    [Remote]
-    [Fetch]
-    public async Task Fetch(Guid orderId, [Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(orderId)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
-
-        Id = entity.Id;
-        OrderNumber = entity.OrderNumber;
-        Total = entity.Total;
-        Status = entity.Status;
-        IsNew = false;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L95-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute and instance Fetch method
+- Properties: Guid Id, string EmployeeNumber, string FirstName, string LastName, decimal Salary, bool IsNew = true
+- Parameterless [Create] constructor
+- [Remote][Fetch] async Task Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+- Fetch loads from repository, throws InvalidOperationException if not found
+- Maps entity properties to aggregate, sets IsNew = false
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates standard fetch pattern with repository injection
+-->
 <!-- endSnippet -->
 
 Generated factory interface:
 ```csharp
-public interface IOrderFetchExampleFactory
+public interface IEmployeeFactory
 {
-    OrderFetchExample Create(CancellationToken cancellationToken = default);
-    Task<OrderFetchExample> Fetch(Guid orderId, CancellationToken cancellationToken = default);
+    Employee Create(CancellationToken cancellationToken = default);
+    Task<Employee> Fetch(Guid employeeId, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -205,42 +132,26 @@ Fetch supports:
 - **Task\<bool\>**: True = success, false = not found (factory returns null, generated signature is nullable)
 
 <!-- snippet: operations-fetch-bool-return -->
-<a id='snippet-operations-fetch-bool-return'></a>
-```cs
-[Factory]
-public partial class OrderFetchBoolExample
-{
-    public Guid Id { get; private set; }
-    public string OrderNumber { get; private set; } = string.Empty;
-    public decimal Total { get; private set; }
-
-    [Create]
-    public OrderFetchBoolExample() { }
-
-    [Remote]
-    [Fetch]
-    public async Task<bool> TryFetch(Guid orderId, [Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(orderId);
-        if (entity == null)
-            return false;
-
-        Id = entity.Id;
-        OrderNumber = entity.OrderNumber;
-        Total = entity.Total;
-        return true;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L124-L149' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-bool-return' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute and bool-returning Fetch
+- Properties: Guid Id, string EmployeeNumber, string FirstName, string LastName
+- Parameterless [Create] constructor
+- [Remote][Fetch] async Task<bool> TryFetch(Guid employeeId, [Service] IEmployeeRepository repository)
+- Returns false if entity not found (no exception)
+- Returns true and maps properties if found
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates nullable return pattern for optional fetch scenarios
+-->
 <!-- endSnippet -->
 
 Generated factory interface for bool return:
 ```csharp
-public interface IOrderFetchBoolExampleFactory
+public interface IEmployeeFactory
 {
-    OrderFetchBoolExample Create(CancellationToken cancellationToken = default);
-    Task<OrderFetchBoolExample?> TryFetch(Guid orderId, CancellationToken cancellationToken = default);
+    Employee Create(CancellationToken cancellationToken = default);
+    Task<Employee?> TryFetch(Guid employeeId, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -253,212 +164,97 @@ Write operations for persisting changes.
 ### Insert
 
 <!-- snippet: operations-insert -->
-<a id='snippet-operations-insert'></a>
-```cs
-[Factory]
-public partial class OrderInsertExample : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string OrderNumber { get; set; } = string.Empty;
-    public decimal Total { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public OrderInsertExample()
-    {
-        Id = Guid.NewGuid();
-        OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8]}";
-    }
-
-    [Remote]
-    [Insert]
-    public async Task Insert([Service] IOrderRepository repository)
-    {
-        var entity = new OrderEntity
-        {
-            Id = Id,
-            OrderNumber = OrderNumber,
-            Total = Total,
-            Status = "Pending",
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        };
-
-        await repository.AddAsync(entity);
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L151-L187' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute implementing IFactorySaveMeta
+- Properties: Guid Id, string EmployeeNumber, string FirstName, string LastName, decimal Salary, bool IsNew = true, bool IsDeleted
+- [Create] constructor generates Id and EmployeeNumber (format: EMP-yyyyMMdd-{8-char guid})
+- [Remote][Insert] async Task Insert([Service] IEmployeeRepository repository)
+- Creates new EmployeeEntity, maps properties, sets Created/Modified timestamps
+- Calls repository.AddAsync and repository.SaveChangesAsync
+- Sets IsNew = false after successful insert
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates insert operation with entity mapping and timestamp handling
+-->
 <!-- endSnippet -->
 
 ### Update
 
 <!-- snippet: operations-update -->
-<a id='snippet-operations-update'></a>
-```cs
-[Factory]
-public partial class OrderUpdateExample : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string OrderNumber { get; private set; } = string.Empty;
-    public decimal Total { get; set; }
-    public string Status { get; set; } = "Pending";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public OrderUpdateExample() { Id = Guid.NewGuid(); }
-
-    [Remote]
-    [Fetch]
-    public async Task<bool> Fetch(Guid orderId, [Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(orderId);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        OrderNumber = entity.OrderNumber;
-        Total = entity.Total;
-        Status = entity.Status;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote]
-    [Update]
-    public async Task Update([Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Order {Id} not found");
-
-        entity.Total = Total;
-        entity.Status = Status;
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L189-L233' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute implementing IFactorySaveMeta
+- Properties: Guid Id, string EmployeeNumber, string FirstName, string LastName, decimal Salary, string Department, bool IsNew = true, bool IsDeleted
+- [Create] constructor generates Id
+- [Remote][Fetch] async Task<bool> Fetch with repository, maps all properties, sets IsNew = false
+- [Remote][Update] async Task Update([Service] IEmployeeRepository repository)
+- Update fetches existing entity, throws if not found
+- Updates mutable properties (FirstName, LastName, Salary, Department) and Modified timestamp
+- Calls repository.UpdateAsync and repository.SaveChangesAsync
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates update operation with optimistic concurrency pattern
+-->
 <!-- endSnippet -->
 
 ### Delete
 
 <!-- snippet: operations-delete -->
-<a id='snippet-operations-delete'></a>
-```cs
-[Factory]
-public partial class OrderDeleteExample : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public OrderDeleteExample() { Id = Guid.NewGuid(); }
-
-    [Remote]
-    [Fetch]
-    public async Task<bool> Fetch(Guid orderId, [Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(orderId);
-        if (entity == null) return false;
-        Id = entity.Id;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote]
-    [Delete]
-    public async Task Delete([Service] IOrderRepository repository)
-    {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L235-L265' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute implementing IFactorySaveMeta
+- Properties: Guid Id, bool IsNew = true, bool IsDeleted
+- [Create] constructor generates Id
+- [Remote][Fetch] async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+- Sets Id and IsNew = false on successful fetch, returns false if not found
+- [Remote][Delete] async Task Delete([Service] IEmployeeRepository repository)
+- Calls repository.DeleteAsync(Id) and repository.SaveChangesAsync
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates delete operation pattern
+-->
 <!-- endSnippet -->
 
 Multiple attributes on one method:
 
 <!-- snippet: operations-insert-update -->
-<a id='snippet-operations-insert-update'></a>
-```cs
-[Factory]
-public partial class OrderUpsertExample : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string OrderNumber { get; set; } = string.Empty;
-    public decimal Total { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public OrderUpsertExample()
-    {
-        Id = Guid.NewGuid();
-        OrderNumber = $"ORD-{Guid.NewGuid().ToString()[..8]}";
-    }
-
-    [Remote]
-    [Insert, Update]
-    public async Task Upsert([Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id);
-
-        if (entity == null)
-        {
-            entity = new OrderEntity
-            {
-                Id = Id,
-                OrderNumber = OrderNumber,
-                Total = Total,
-                Status = "Pending",
-                Created = DateTime.UtcNow,
-                Modified = DateTime.UtcNow
-            };
-            await repository.AddAsync(entity);
-        }
-        else
-        {
-            entity.Total = Total;
-            entity.Modified = DateTime.UtcNow;
-            await repository.UpdateAsync(entity);
-        }
-
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L267-L314' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute implementing IFactorySaveMeta
+- Properties: Guid Id, string EmployeeNumber, string FirstName, string LastName, decimal Salary, bool IsNew = true, bool IsDeleted
+- [Create] constructor generates Id and EmployeeNumber
+- [Remote][Insert, Update] async Task Upsert([Service] IEmployeeRepository repository)
+- Checks if entity exists via repository.GetByIdAsync
+- If null: creates new EmployeeEntity with all properties, Created/Modified timestamps, calls AddAsync
+- If exists: updates mutable properties and Modified timestamp, calls UpdateAsync
+- Calls SaveChangesAsync and sets IsNew = false
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates combined Insert/Update (upsert) pattern
+-->
 <!-- endSnippet -->
 
 Generated factory interfaces include methods that operate on the instance:
 ```csharp
-public interface IOrderInsertExampleFactory
+public interface IEmployeeInsertFactory
 {
-    OrderInsertExample Create(CancellationToken cancellationToken = default);
-    Task Insert(OrderInsertExample instance, CancellationToken cancellationToken = default);
+    Employee Create(CancellationToken cancellationToken = default);
+    Task Insert(Employee instance, CancellationToken cancellationToken = default);
 }
 
-public interface IOrderUpdateExampleFactory
+public interface IEmployeeUpdateFactory
 {
-    OrderUpdateExample Create(CancellationToken cancellationToken = default);
-    Task<OrderUpdateExample?> Fetch(Guid orderId, CancellationToken cancellationToken = default);
-    Task Update(OrderUpdateExample instance, CancellationToken cancellationToken = default);
+    Employee Create(CancellationToken cancellationToken = default);
+    Task<Employee?> Fetch(Guid employeeId, CancellationToken cancellationToken = default);
+    Task Update(Employee instance, CancellationToken cancellationToken = default);
 }
 
-public interface IOrderDeleteExampleFactory
+public interface IEmployeeDeleteFactory
 {
-    OrderDeleteExample Create(CancellationToken cancellationToken = default);
-    Task<OrderDeleteExample?> Fetch(Guid orderId, CancellationToken cancellationToken = default);
-    Task Delete(OrderDeleteExample instance, CancellationToken cancellationToken = default);
+    Employee Create(CancellationToken cancellationToken = default);
+    Task<Employee?> Fetch(Guid employeeId, CancellationToken cancellationToken = default);
+    Task Delete(Employee instance, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -473,45 +269,30 @@ Return value handling:
 Business operations that don't fit Create/Fetch/Write patterns.
 
 <!-- snippet: operations-execute -->
-<a id='snippet-operations-execute'></a>
-```cs
-// [Execute] must be in static partial class
-public record OrderApprovalResult(Guid OrderId, bool IsApproved, string? ApprovalNotes);
-
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class OrderApprovalCommand
-{
-    [Remote]
-    [Execute]
-    private static async Task<OrderApprovalResult> _ApproveOrder(
-        Guid orderId,
-        string notes,
-        [Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(orderId)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
-
-        entity.Status = "Approved";
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-
-        return new OrderApprovalResult(orderId, true, notes);
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L316-L342' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Record type: PromotionResult(Guid EmployeeId, bool IsApproved, string NewTitle, decimal NewSalary)
+- Static partial class EmployeePromotionCommand with [SuppressFactory] attribute (nested class pattern)
+- [Remote][Execute] private static async Task<PromotionResult> _PromoteEmployee(Guid employeeId, string newTitle, decimal salaryIncrease, [Service] IEmployeeRepository repository)
+- Fetches employee, throws if not found
+- Updates employee title and salary, sets Modified timestamp
+- Calls UpdateAsync and SaveChangesAsync
+- Returns PromotionResult with success details
+- Context: Application layer production code
+- Domain: Employee Management
+- Demonstrates Execute operation for business commands
+-->
 <!-- endSnippet -->
 
 Generated delegate (not a factory interface):
 ```csharp
-// Method: _ApproveOrder → Delegate: ApproveOrder (underscore prefix removed)
-public static partial class OrderApprovalCommand
+// Method: _PromoteEmployee -> Delegate: PromoteEmployee (underscore prefix removed)
+public static partial class EmployeePromotionCommand
 {
-    public delegate Task<OrderApprovalResult> ApproveOrder(
-        Guid orderId,
-        string notes,
+    public delegate Task<PromotionResult> PromoteEmployee(
+        Guid employeeId,
+        string newTitle,
+        decimal salaryIncrease,
         CancellationToken cancellationToken = default);
 }
 ```
@@ -521,42 +302,20 @@ Execute operations generate delegates registered in DI. The delegate name is der
 ### Command Pattern
 
 <!-- snippet: operations-execute-command -->
-<a id='snippet-operations-execute-command'></a>
-```cs
-// Command pattern using static partial class
-public record OrderShippingResult(Guid OrderId, string TrackingNumber, DateTime ShippedAt, bool Success);
-
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class OrderShippingCommand
-{
-    [Remote]
-    [Execute]
-    private static async Task<OrderShippingResult> _ShipOrder(
-        Guid orderId,
-        string carrier,
-        string trackingNumber,
-        [Service] IOrderRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(orderId)
-            ?? throw new InvalidOperationException($"Order {orderId} not found");
-
-        if (entity.Status != "Approved")
-        {
-            throw new InvalidOperationException(
-                $"Order must be approved before shipping. Current status: {entity.Status}");
-        }
-
-        entity.Status = "Shipped";
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-
-        return new OrderShippingResult(orderId, trackingNumber, DateTime.UtcNow, true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L344-L377' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Record type: TransferResult(Guid EmployeeId, Guid NewDepartmentId, DateTime TransferDate, bool Success)
+- Static partial class EmployeeTransferCommand with [SuppressFactory] attribute (nested class pattern)
+- [Remote][Execute] private static async Task<TransferResult> _TransferEmployee(Guid employeeId, Guid newDepartmentId, DateTime effectiveDate, [Service] IEmployeeRepository employeeRepo, [Service] IDepartmentRepository departmentRepo)
+- Fetches employee and validates exists
+- Validates employee is in Active status, throws InvalidOperationException if not
+- Updates employee's department and Modified timestamp
+- Calls UpdateAsync and SaveChangesAsync
+- Returns TransferResult with transfer details
+- Context: Application layer production code
+- Domain: Employee Management
+- Demonstrates command pattern with multiple service dependencies and business validation
+-->
 <!-- endSnippet -->
 
 ## Event Operation
@@ -566,43 +325,28 @@ Fire-and-forget operations with scope isolation.
 Events run asynchronously without blocking the caller. They execute in a separate DI scope for transactional independence.
 
 <!-- snippet: operations-event -->
-<a id='snippet-operations-event'></a>
-```cs
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public partial class OrderEventExample
-{
-    public Guid OrderId { get; set; }
-
-    [Create]
-    public OrderEventExample() { }
-
-    [Event]
-    public async Task SendOrderConfirmationEmail(
-        Guid orderId,
-        string customerEmail,
-        [Service] IEmailService emailService,
-        CancellationToken ct)
-    {
-        await emailService.SendAsync(
-            customerEmail,
-            "Order Confirmation",
-            $"Your order {orderId} has been received.",
-            ct);
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L379-L402' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Partial class EmployeeEventHandler with [SuppressFactory] attribute (nested class pattern)
+- Properties: Guid EmployeeId
+- [Create] constructor
+- [Event] async Task SendWelcomeEmail(Guid employeeId, string employeeEmail, [Service] IEmailService emailService, CancellationToken ct)
+- Calls emailService.SendAsync with email, subject "Welcome to the Team", and body containing employeeId
+- Context: Application layer production code
+- Domain: Employee Management
+- Demonstrates fire-and-forget event pattern for notifications
+-->
 <!-- endSnippet -->
 
 Generated delegate (not a factory interface):
 ```csharp
-// Method: SendOrderConfirmationEmail → Delegate: SendOrderConfirmationEmailEvent (Event suffix added)
-public partial class OrderEventExample
+// Method: SendWelcomeEmail -> Delegate: SendWelcomeEmailEvent (Event suffix added)
+public partial class EmployeeEventHandler
 {
     // CancellationToken is NOT included in delegate signature - framework provides it
-    public delegate Task SendOrderConfirmationEmailEvent(
-        Guid orderId,
-        string customerEmail);
+    public delegate Task SendWelcomeEmailEvent(
+        Guid employeeId,
+        string employeeEmail);
 }
 ```
 
@@ -619,20 +363,17 @@ Key characteristics:
 Track event completion for testing or shutdown:
 
 <!-- snippet: operations-event-tracker -->
-<a id='snippet-operations-event-tracker'></a>
-```cs
-// IEventTracker tracks pending events for testing and graceful shutdown
-//
-// Fire event - returns immediately (fire-and-forget)
-// _ = sendConfirmationEmail(orderId, customerEmail);
-//
-// Wait for all pending events to complete
-// await eventTracker.WaitAllAsync();
-//
-// Check pending count
-// eventTracker.PendingCount; // 0 when all events complete
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L404-L415' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-tracker' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Comment-based documentation snippet (no actual code)
+- Show IEventTracker usage pattern:
+  - Fire event: _ = sendWelcomeEmail(employeeId, employeeEmail);
+  - Wait for all pending events: await eventTracker.WaitAllAsync();
+  - Check pending count: eventTracker.PendingCount;
+- Context: Usage documentation
+- Domain: Employee Management
+- Demonstrates EventTracker API for testing and graceful shutdown
+-->
 <!-- endSnippet -->
 
 Return value handling:
@@ -644,29 +385,18 @@ Return value handling:
 Marks methods that execute on the server. Without `[Remote]`, methods execute locally.
 
 <!-- snippet: operations-remote -->
-<a id='snippet-operations-remote'></a>
-```cs
-[Factory]
-public partial class RemoteOperationExample
-{
-    public string Result { get; private set; } = string.Empty;
-
-    [Create]
-    public RemoteOperationExample() { }
-
-    // This method executes on the server when called from a remote client
-    // The client serializes parameters, sends via HTTP, server executes and returns result
-    [Remote]
-    [Fetch]
-    public Task FetchFromServer(string query, [Service] IPersonRepository repository)
-    {
-        // This code runs on the server
-        Result = $"Executed on server with query: {query}";
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L417-L437' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute demonstrating [Remote] attribute
+- Properties: string Result
+- [Create] constructor
+- [Remote][Fetch] Task FetchFromServer(string query, [Service] IEmployeeRepository repository)
+- Method sets Result to indicate server-side execution with the query value
+- Include comment explaining this code runs on the server
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates Remote attribute for server-side execution
+-->
 <!-- endSnippet -->
 
 When a factory is registered with `NeatooFactory.Remote`:
@@ -695,30 +425,19 @@ Interfaces for operation lifecycle:
 Called before the operation executes. Use `IFactoryOnStartAsync` for async validation or preparation:
 
 <!-- snippet: operations-lifecycle-onstart -->
-<a id='snippet-operations-lifecycle-onstart'></a>
-```cs
-[Factory]
-public partial class LifecycleOnStartExample : IFactoryOnStart
-{
-    public Guid Id { get; private set; }
-    public bool OnStartCalled { get; private set; }
-    public FactoryOperation? LastOperation { get; private set; }
-
-    [Create]
-    public LifecycleOnStartExample() { Id = Guid.NewGuid(); }
-
-    public void FactoryStart(FactoryOperation factoryOperation)
-    {
-        OnStartCalled = true;
-        LastOperation = factoryOperation;
-
-        // Validate or prepare before operation executes
-        if (factoryOperation == FactoryOperation.Delete && Id == Guid.Empty)
-            throw new InvalidOperationException("Cannot delete: Id is not set");
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L439-L460' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute implementing IFactoryOnStart
+- Properties: Guid Id, bool OnStartCalled, FactoryOperation? LastOperation
+- [Create] constructor generates Id
+- FactoryStart(FactoryOperation factoryOperation) implementation:
+  - Sets OnStartCalled = true and LastOperation = factoryOperation
+  - Validates: if Delete operation and Id == Guid.Empty, throw InvalidOperationException
+- Include comment explaining pre-operation validation use case
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates IFactoryOnStart lifecycle hook for pre-operation validation
+-->
 <!-- endSnippet -->
 
 ### IFactoryOnComplete / IFactoryOnCompleteAsync
@@ -726,28 +445,18 @@ public partial class LifecycleOnStartExample : IFactoryOnStart
 Called after successful operation. Use `IFactoryOnCompleteAsync` for async post-processing:
 
 <!-- snippet: operations-lifecycle-oncomplete -->
-<a id='snippet-operations-lifecycle-oncomplete'></a>
-```cs
-[Factory]
-public partial class LifecycleOnCompleteExample : IFactoryOnComplete
-{
-    public Guid Id { get; private set; }
-    public bool OnCompleteCalled { get; private set; }
-    public FactoryOperation? CompletedOperation { get; private set; }
-
-    [Create]
-    public LifecycleOnCompleteExample() { Id = Guid.NewGuid(); }
-
-    public void FactoryComplete(FactoryOperation factoryOperation)
-    {
-        OnCompleteCalled = true;
-        CompletedOperation = factoryOperation;
-
-        // Post-operation logic: logging, notifications, etc.
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L462-L481' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute implementing IFactoryOnComplete
+- Properties: Guid Id, bool OnCompleteCalled, FactoryOperation? CompletedOperation
+- [Create] constructor generates Id
+- FactoryComplete(FactoryOperation factoryOperation) implementation:
+  - Sets OnCompleteCalled = true and CompletedOperation = factoryOperation
+  - Include comment about post-operation logic: logging, notifications, etc.
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates IFactoryOnComplete lifecycle hook for post-operation processing
+-->
 <!-- endSnippet -->
 
 ### IFactoryOnCancelled / IFactoryOnCancelledAsync
@@ -755,28 +464,18 @@ public partial class LifecycleOnCompleteExample : IFactoryOnComplete
 Called when operation is cancelled via OperationCanceledException. Use `IFactoryOnCancelledAsync` for async cleanup:
 
 <!-- snippet: operations-lifecycle-oncancelled -->
-<a id='snippet-operations-lifecycle-oncancelled'></a>
-```cs
-[Factory]
-public partial class LifecycleOnCancelledExample : IFactoryOnCancelled
-{
-    public Guid Id { get; private set; }
-    public bool OnCancelledCalled { get; private set; }
-    public FactoryOperation? CancelledOperation { get; private set; }
-
-    [Create]
-    public LifecycleOnCancelledExample() { Id = Guid.NewGuid(); }
-
-    public void FactoryCancelled(FactoryOperation factoryOperation)
-    {
-        OnCancelledCalled = true;
-        CancelledOperation = factoryOperation;
-
-        // Cleanup logic when operation was cancelled
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L483-L502' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncancelled' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute implementing IFactoryOnCancelled
+- Properties: Guid Id, bool OnCancelledCalled, FactoryOperation? CancelledOperation
+- [Create] constructor generates Id
+- FactoryCancelled(FactoryOperation factoryOperation) implementation:
+  - Sets OnCancelledCalled = true and CancelledOperation = factoryOperation
+  - Include comment about cleanup logic when operation was cancelled
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates IFactoryOnCancelled lifecycle hook for cancellation handling
+-->
 <!-- endSnippet -->
 
 Lifecycle execution order:
@@ -790,48 +489,28 @@ Lifecycle execution order:
 All factory methods accept an optional CancellationToken:
 
 <!-- snippet: operations-cancellation -->
-<a id='snippet-operations-cancellation'></a>
-```cs
-[Factory]
-public partial class CancellationTokenExample
-{
-    public Guid Id { get; private set; }
-    public bool Completed { get; private set; }
-
-    [Create]
-    public CancellationTokenExample() { Id = Guid.NewGuid(); }
-
-    [Remote]
-    [Fetch]
-    public async Task Fetch(
-        Guid id,
-        [Service] IPersonRepository repository,
-        CancellationToken cancellationToken)
-    {
-        // Check cancellation before starting
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Pass token to async operations
-        var entity = await repository.GetByIdAsync(id, cancellationToken);
-
-        // Check cancellation during processing
-        if (cancellationToken.IsCancellationRequested)
-            return;
-
-        Id = id;
-        Completed = true;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L504-L535' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute demonstrating CancellationToken usage
+- Properties: Guid Id, bool Completed
+- [Create] constructor generates Id
+- [Remote][Fetch] async Task Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken cancellationToken)
+- Check cancellation before starting: cancellationToken.ThrowIfCancellationRequested()
+- Pass token to async repository call
+- Check cancellation during processing: if (cancellationToken.IsCancellationRequested) return
+- Set Id and Completed = true on success
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates proper CancellationToken propagation and checking
+-->
 <!-- endSnippet -->
 
 Generated factory methods automatically include CancellationToken:
 ```csharp
-public interface ICancellationTokenExampleFactory
+public interface IEmployeeFactory
 {
-    CancellationTokenExample Create(CancellationToken cancellationToken = default);
-    Task<CancellationTokenExample?> Fetch(Guid id, CancellationToken cancellationToken = default);
+    Employee Create(CancellationToken cancellationToken = default);
+    Task<Employee?> Fetch(Guid id, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -847,112 +526,64 @@ Factory methods support:
 
 **Value parameters**: Serialized and sent to server
 <!-- snippet: operations-params-value -->
-<a id='snippet-operations-params-value'></a>
-```cs
-[Factory]
-public partial class ValueParametersExample
-{
-    public int Count { get; private set; }
-    public string Name { get; private set; } = string.Empty;
-    public DateTime Timestamp { get; private set; }
-    public decimal Amount { get; private set; }
-
-    [Create]
-    public ValueParametersExample() { }
-
-    [Remote]
-    [Fetch]
-    public Task Fetch(int count, string name, DateTime timestamp, decimal amount)
-    {
-        Count = count;
-        Name = name;
-        Timestamp = timestamp;
-        Amount = amount;
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L537-L560' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute demonstrating value parameters
+- Properties: int YearsOfService, string Department, DateTime ReviewDate, decimal BonusAmount
+- [Create] constructor
+- [Remote][Fetch] Task Fetch(int yearsOfService, string department, DateTime reviewDate, decimal bonusAmount)
+- Maps all parameters to properties
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates various serializable value parameter types
+-->
 <!-- endSnippet -->
 
 **Service parameters**: Injected from DI, not serialized
 <!-- snippet: operations-params-service -->
-<a id='snippet-operations-params-service'></a>
-```cs
-[Factory]
-public partial class ServiceParametersExample
-{
-    public bool ServicesInjected { get; private set; }
-
-    [Create]
-    public ServiceParametersExample() { }
-
-    [Remote]
-    [Fetch]
-    public Task Fetch(
-        Guid id,
-        [Service] IPersonRepository personRepository,
-        [Service] IOrderRepository orderRepository,
-        [Service] IUserContext userContext)
-    {
-        // Services are resolved from DI container on server
-        ServicesInjected = personRepository != null
-            && orderRepository != null
-            && userContext != null;
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L562-L586' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute demonstrating service injection
+- Properties: bool ServicesInjected
+- [Create] constructor
+- [Remote][Fetch] Task Fetch(Guid id, [Service] IEmployeeRepository employeeRepo, [Service] IDepartmentRepository departmentRepo, [Service] IUserContext userContext)
+- Sets ServicesInjected = true if all services are non-null
+- Include comment: Services are resolved from DI container on server
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates multiple [Service] parameter injection
+-->
 <!-- endSnippet -->
 
 **Params arrays**: Variable-length arguments
 <!-- snippet: operations-params-array -->
-<a id='snippet-operations-params-array'></a>
-```cs
-// Array parameters with [Execute] - use static partial class
-public record BatchProcessResult(Guid[] ProcessedIds, List<string> ProcessedNames);
-
-[SuppressFactory] // Nested in wrapper class - pattern demonstration only
-public static partial class ArrayParametersExample
-{
-    [Remote]
-    [Execute]
-    private static Task<BatchProcessResult> _ProcessBatch(Guid[] ids, List<string> names)
-    {
-        return Task.FromResult(new BatchProcessResult(ids, names));
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L588-L602' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Record type: BatchAssignmentResult(Guid[] AssignedEmployeeIds, List<string> AssignedDepartments)
+- Static partial class BatchAssignmentCommand with [SuppressFactory] attribute (nested class pattern)
+- [Remote][Execute] private static Task<BatchAssignmentResult> _AssignToDepartments(Guid[] employeeIds, List<string> departmentNames)
+- Returns BatchAssignmentResult with the provided arrays
+- Context: Application layer production code
+- Domain: Employee Management
+- Demonstrates array and List parameters in Execute operations
+-->
 <!-- endSnippet -->
 
 **CancellationToken**: Optional, always last parameter
 <!-- snippet: operations-params-cancellation -->
-<a id='snippet-operations-params-cancellation'></a>
-```cs
-[Factory]
-public partial class OptionalCancellationExample
-{
-    public bool Completed { get; private set; }
-
-    [Create]
-    public OptionalCancellationExample() { }
-
-    [Remote]
-    [Fetch]
-    public async Task Fetch(
-        Guid id,
-        [Service] IPersonRepository repository,
-        CancellationToken cancellationToken = default)
-    {
-        // CancellationToken is optional - receives default if not provided by caller
-        await repository.GetByIdAsync(id, cancellationToken);
-        Completed = true;
-    }
-}
-```
-<sup><a href='/src/docs/samples/FactoryOperationsSamples.cs#L604-L625' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Employee aggregate with [Factory] attribute demonstrating optional CancellationToken
+- Properties: bool Completed
+- [Create] constructor
+- [Remote][Fetch] async Task Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken cancellationToken = default)
+- Include comment: CancellationToken is optional - receives default if not provided by caller
+- Calls repository.GetByIdAsync with cancellationToken
+- Sets Completed = true
+- Context: Domain layer production code
+- Domain: Employee Management
+- Demonstrates optional CancellationToken with default value
+-->
 <!-- endSnippet -->
 
 Parameter order rules:

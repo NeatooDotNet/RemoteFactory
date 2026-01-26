@@ -59,27 +59,16 @@ Standard JSON with property names.
 Configure format during DI registration:
 
 <!-- snippet: serialization-config -->
-<a id='snippet-serialization-config'></a>
-```cs
-public static void ConfigureOrdinalFormat(IServiceCollection services)
-{
-    // Ordinal format (default): compact array-based JSON
-    // Properties serialized as: [value1, value2, value3]
-    services.AddNeatooAspNetCore(
-        new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-        typeof(SerializationSamples).Assembly);
-}
-
-public static void ConfigureNamedFormat(IServiceCollection services)
-{
-    // Named format: traditional object-based JSON
-    // Properties serialized as: {"Property1": value1, "Property2": value2}
-    services.AddNeatooAspNetCore(
-        new NeatooSerializationOptions { Format = SerializationFormat.Named },
-        typeof(SerializationSamples).Assembly);
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L18-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-config' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show two static methods in a Server startup/configuration class
+- First method: ConfigureOrdinalFormat - registers RemoteFactory with Ordinal format (default, compact arrays)
+- Second method: ConfigureNamedFormat - registers RemoteFactory with Named format (traditional JSON objects)
+- Use AddNeatooAspNetCore with NeatooSerializationOptions
+- Context: Server layer (Program.cs or Startup configuration)
+- Domain: Employee Management - reference the assembly containing Employee types
+- Include brief comments explaining the difference between formats
+-->
 <!-- endSnippet -->
 
 Both client and server must use the same format.
@@ -101,30 +90,17 @@ Clients can detect format mismatches and log warnings.
 For each factory-enabled type, RemoteFactory generates serialization methods:
 
 <!-- snippet: serialization-ordinal-generated -->
-<a id='snippet-serialization-ordinal-generated'></a>
-```cs
-// RemoteFactory automatically generates ordinal serialization for [Factory] types.
-// Properties are serialized in alphabetical order.
-[Factory]
-public partial class SerializationOrdinalExample
-{
-    public string Alpha { get; set; } = string.Empty;    // Index 0 (alphabetically first)
-    public int Beta { get; set; }                         // Index 1
-    public DateTime Gamma { get; set; }                   // Index 2
-
-    [Create]
-    public SerializationOrdinalExample() { }
-
-    // The generator automatically implements:
-    // - IOrdinalSerializable.ToOrdinalArray()
-    // - IOrdinalConverterProvider<SerializationOrdinalExample>.CreateOrdinalConverter()
-    // - IOrdinalSerializationMetadata (PropertyNames, PropertyTypes, FromOrdinalArray)
-}
-
-// JSON output in Ordinal format: ["value", 42, "2024-01-15T10:30:00Z"]
-// JSON output in Named format: {"Alpha":"value","Beta":42,"Gamma":"2024-01-15T10:30:00Z"}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L259-L280' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-generated' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a simple [Factory] entity with 3-4 properties demonstrating alphabetical ordering
+- Use Employee domain: properties like Department (string), Email (string), HireDate (DateTime), Name (string)
+- Include [Create] constructor
+- Add comments showing which property gets which ordinal index (alphabetical order)
+- Add comments explaining what interfaces/methods the generator produces (IOrdinalSerializable, IOrdinalConverterProvider, IOrdinalSerializationMetadata)
+- Include trailing comment showing example JSON output in both Ordinal and Named formats
+- Context: Domain layer
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 ### Property Ordering
@@ -147,90 +123,41 @@ Array indices: `[Age, FirstName, LastName]` → `[0, 1, 2]`
 Adding properties is safe (new elements appended):
 
 <!-- snippet: serialization-ordinal-versioning -->
-<a id='snippet-serialization-ordinal-versioning'></a>
-```cs
-// Versioning strategy for ordinal serialization:
-// - Add new properties at the END alphabetically to maintain compatibility
-// - Never remove or rename existing properties
-// - Never change property types
-
-[Factory]
-public partial class SerializationVersionedEntity
-{
-    // Original properties (v1)
-    public string Alpha { get; set; } = string.Empty;    // Index 0
-    public int Beta { get; set; }                         // Index 1
-
-    // Added in v2 - comes after Beta alphabetically
-    public string? Gamma { get; set; }                    // Index 2
-
-    // Added in v3 - comes after Gamma alphabetically
-    public decimal? Zeta { get; set; }                    // Index 3
-
-    [Create]
-    public SerializationVersionedEntity() { }
-
-    // Generator produces: [Alpha, Beta, Gamma, Zeta] in ordinal format
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L282-L306' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-versioning' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a [Factory] entity demonstrating safe versioning with ordinal serialization
+- Use Employee domain: start with core properties (Department, Name), add optional properties in later versions
+- Version 1 properties: Department (string), Name (string) - indices 0, 1
+- Version 2 property: Email (string?) - index 2 (comes after Department alphabetically)
+- Version 3 property: Title (string?) - index 3 (comes after Name alphabetically)
+- Include comments explaining the versioning strategy and ordinal indices
+- Add leading comment block explaining versioning rules: add at END alphabetically, never remove/rename, never change types
+- Context: Domain layer
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 Removing or renaming properties breaks compatibility. Use semantic versioning and coordinate client/server updates.
 
 ## IOrdinalSerializable Interface
 
+> **Recommendation:** Custom serialization should be avoided. Use the `[Factory]` attribute on your types instead - the source generator automatically implements all required serialization interfaces. Custom serialization is only necessary for edge cases like third-party types you cannot modify.
+
 Implement `IOrdinalSerializable` to customize ordinal serialization:
 
 <!-- snippet: serialization-custom-ordinal -->
-<a id='snippet-serialization-custom-ordinal'></a>
-```cs
-// Custom ordinal serialization for types NOT managed by [Factory].
-// For [Factory] types, the generator creates converters automatically.
-
-// Value object without [Factory] - requires custom converter
-public partial class Money
-{
-    public decimal Amount { get; set; }
-    public string Currency { get; set; } = "USD";
-}
-
-// Custom ordinal converter for Money value object
-public partial class MoneyOrdinalConverter : JsonConverter<Money>
-{
-    public override Money? Read(
-        ref Utf8JsonReader reader,
-        Type typeToConvert,
-        JsonSerializerOptions options)
-    {
-        if (reader.TokenType != JsonTokenType.StartArray)
-            throw new JsonException("Expected array for Money");
-
-        reader.Read();
-        var amount = reader.GetDecimal();
-        reader.Read();
-        var currency = reader.GetString() ?? "USD";
-        reader.Read(); // End array
-
-        return new Money { Amount = amount, Currency = currency };
-    }
-
-    public override void Write(
-        Utf8JsonWriter writer,
-        Money value,
-        JsonSerializerOptions options)
-    {
-        writer.WriteStartArray();
-        writer.WriteNumberValue(value.Amount);
-        writer.WriteStringValue(value.Currency);
-        writer.WriteEndArray();
-    }
-}
-
-// For [Factory] types, IOrdinalConverterProvider<T> is generated automatically.
-// See MoneyWithFactory below for the pattern the generator produces.
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L38-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-custom-ordinal' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a value object that does NOT use [Factory] and requires custom ordinal serialization
+- Use Employee domain: Salary value object with Amount (decimal) and Currency (string)
+- Implement a custom JsonConverter<Salary> for ordinal format
+- Read method: expect array, read Amount then Currency, return new Salary
+- Write method: write array with Amount and Currency values
+- Include leading comment explaining this is for types NOT managed by [Factory]
+- Add trailing comment noting that [Factory] types get converters automatically
+- Context: Domain layer (value object) + Infrastructure layer (converter)
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 This overrides the generated serialization methods.
@@ -276,38 +203,18 @@ These types are not serializable:
 RemoteFactory preserves object identity:
 
 <!-- snippet: serialization-references -->
-<a id='snippet-serialization-references'></a>
-```cs
-// Object references and circular reference handling
-
-[Factory]
-public partial class SerializationParentEntity
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public List<SerializationChildEntity> Children { get; set; } = new();
-
-    [Create]
-    public SerializationParentEntity() { Id = Guid.NewGuid(); }
-}
-
-[Factory]
-public partial class SerializationChildEntity
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public SerializationParentEntity? Parent { get; set; } // Circular reference
-
-    [Create]
-    public SerializationChildEntity() { Id = Guid.NewGuid(); }
-}
-
-// RemoteFactory uses NeatooReferenceHandler to:
-// - Detect circular references
-// - Preserve object identity across serialization
-// - Avoid infinite loops in serialization
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L324-L353' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-references' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show two [Factory] entities with circular reference relationship
+- Use Employee domain: Department with list of Employees, Employee with reference back to Department
+- Department: Guid Id, string Name, List<Employee> Employees
+- Employee: Guid Id, string Name, Department? Department (circular reference)
+- Both have [Create] constructors that initialize Id with Guid.NewGuid()
+- Add leading comment explaining object references and circular reference handling
+- Add trailing comment explaining NeatooReferenceHandler capabilities: detect circular refs, preserve identity, avoid infinite loops
+- Context: Domain layer
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 The same instance is shared, not duplicated.
@@ -337,31 +244,17 @@ Circular references are encoded as `$ref` pointers.
 Interfaces serialize as their concrete implementation:
 
 <!-- snippet: serialization-interface -->
-<a id='snippet-serialization-interface'></a>
-```cs
-public interface ISerializationProduct
-{
-    Guid Id { get; }
-    string Name { get; set; }
-    decimal Price { get; set; }
-}
-
-[Factory]
-public partial class SerializationConcreteProduct : ISerializationProduct
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public string Sku { get; set; } = string.Empty; // Additional property
-
-    [Create]
-    public SerializationConcreteProduct() { Id = Guid.NewGuid(); }
-}
-
-// When serializing ISerializationProduct, RemoteFactory includes type information
-// to deserialize back to SerializationConcreteProduct
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L355-L377' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-interface' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show an interface and concrete [Factory] implementation demonstrating interface serialization
+- Use Employee domain: IEmployee interface with Id, Name, Department properties
+- Concrete implementation: Employee class with [Factory], implements IEmployee
+- Employee has additional properties beyond interface (e.g., Email, HireDate)
+- Include [Create] constructor
+- Add trailing comment explaining that RemoteFactory includes $type discriminator for interface deserialization
+- Context: Domain layer
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 Serialized as:
@@ -382,30 +275,16 @@ Serialized as:
 Collections serialize element-by-element:
 
 <!-- snippet: serialization-collections -->
-<a id='snippet-serialization-collections'></a>
-```cs
-[Factory]
-public partial class SerializationCollectionExample
-{
-    public Guid Id { get; private set; }
-    public List<string> Tags { get; set; } = new();
-    public string[] Categories { get; set; } = [];
-    public Dictionary<string, int> Counts { get; set; } = new();
-
-    [Create]
-    public SerializationCollectionExample() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    public Task Fetch()
-    {
-        Tags = ["tag1", "tag2", "tag3"];
-        Categories = ["cat1", "cat2"];
-        Counts = new() { ["a"] = 1, ["b"] = 2 };
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L379-L400' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-collections' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a [Factory] entity with various collection types demonstrating collection serialization
+- Use Employee domain: Employee with skills, certifications, project hours
+- Properties: Guid Id, List<string> Skills, string[] Certifications, Dictionary<string, int> ProjectHours
+- Include [Create] constructor that initializes Id
+- Include [Remote, Fetch] method that populates collections with sample data
+- Context: Domain layer
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 Supports:
@@ -419,26 +298,17 @@ Supports:
 Polymorphic types are supported:
 
 <!-- snippet: serialization-polymorphism -->
-<a id='snippet-serialization-polymorphism'></a>
-```cs
-public abstract class Shape
-{
-    public Guid Id { get; set; }
-    public string Color { get; set; } = "Black";
-}
-
-public partial class Circle : Shape
-{
-    public double Radius { get; set; }
-}
-
-public partial class Rectangle : Shape
-{
-    public double Width { get; set; }
-    public double Height { get; set; }
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L85-L102' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-polymorphism' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show abstract base class and concrete derived classes demonstrating polymorphic serialization
+- Use Employee domain: abstract Compensation base class with derived types
+- Base class Compensation: Guid Id, DateTime EffectiveDate
+- Derived SalaryCompensation: decimal AnnualAmount
+- Derived HourlyCompensation: decimal HourlyRate, int HoursPerWeek
+- No [Factory] attributes needed - this demonstrates type hierarchy serialization
+- Context: Domain layer
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 The `$type` discriminator identifies the concrete type during deserialization.
@@ -448,72 +318,35 @@ The `$type` discriminator identifies the concrete type during deserialization.
 Validation attributes are not serialized but remain on the type for validation:
 
 <!-- snippet: serialization-validation -->
-<a id='snippet-serialization-validation'></a>
-```cs
-[Factory]
-public partial class SerializationValidatedEntity
-{
-    public Guid Id { get; private set; }
-
-    [Required(ErrorMessage = "Name is required")]
-    [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be 2-100 characters")]
-    public string Name { get; set; } = string.Empty;
-
-    [EmailAddress(ErrorMessage = "Invalid email format")]
-    public string? Email { get; set; }
-
-    [Range(0, 1000, ErrorMessage = "Quantity must be 0-1000")]
-    public int Quantity { get; set; }
-
-    [Create]
-    public SerializationValidatedEntity() { Id = Guid.NewGuid(); }
-}
-
-// Validation on client before sending to server
-public partial class ClientValidationExample
-{
-    public static bool ValidateBeforeSave(SerializationValidatedEntity entity)
-    {
-        var results = new List<ValidationResult>();
-        return Validator.TryValidateObject(entity, new ValidationContext(entity), results, true);
-    }
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L423-L452' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-validation' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a [Factory] entity with validation attributes that persist across serialization
+- Use Employee domain: Employee with validated properties
+- Properties: Guid Id, [Required] string Name with [StringLength], [EmailAddress] string? Email, [Range] decimal Salary
+- Include [Create] constructor
+- Add a separate static helper class showing client-side validation using Validator.TryValidateObject
+- Include appropriate error messages on validation attributes
+- Context: Domain layer (entity) + Client layer (validation helper)
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 Validate on the server after deserialization:
 
 <!-- snippet: serialization-validation-server -->
-<a id='snippet-serialization-validation-server'></a>
-```cs
-[Factory]
-public partial class SerializationServerValidatedEntity : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = string.Empty;
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public SerializationServerValidatedEntity() { Id = Guid.NewGuid(); }
-
-    [Remote, Insert]
-    public Task Insert([Service] IPersonRepository repository)
-    {
-        // Server-side validation before persisting
-        if (string.IsNullOrWhiteSpace(Name))
-            throw new ValidationException("Name is required");
-
-        if (Name.Length > 100)
-            throw new ValidationException("Name cannot exceed 100 characters");
-
-        IsNew = false;
-        return Task.CompletedTask;
-    }
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L454-L480' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-validation-server' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a [Factory] entity implementing IFactorySaveMeta with server-side validation in [Remote, Insert] method
+- Use Employee domain: Employee with server-validated properties
+- Properties: Guid Id, string Name, string Email, bool IsNew, bool IsDeleted
+- Implement IFactorySaveMeta interface
+- Include [Create] constructor
+- Include [Remote, Insert] method with [Service] IEmployeeRepository parameter
+- Server-side validation: check Name is not empty, Email format is valid, throw ValidationException on failure
+- Set IsNew = false after successful insert
+- Context: Domain layer with server-side operation
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 ## Performance Characteristics
@@ -537,37 +370,17 @@ For Ordinal format, implement `IOrdinalConverterProvider<T>` as shown in the [IO
 For Named format or types not using ordinal serialization, custom converters follow standard System.Text.Json patterns:
 
 <!-- snippet: serialization-custom-converter -->
-<a id='snippet-serialization-custom-converter'></a>
-```cs
-public partial class PhoneNumber
-{
-    public string CountryCode { get; set; } = string.Empty;
-    public string Number { get; set; } = string.Empty;
-    public override string ToString() => $"+{CountryCode} {Number}";
-}
-
-public partial class PhoneNumberConverter : JsonConverter<PhoneNumber>
-{
-    public override PhoneNumber? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        var value = reader.GetString();
-        if (string.IsNullOrEmpty(value)) return null;
-
-        var parts = value.Split(' ', 2);
-        return new PhoneNumber
-        {
-            CountryCode = parts[0].TrimStart('+'),
-            Number = parts.Length > 1 ? parts[1] : string.Empty
-        };
-    }
-
-    public override void Write(Utf8JsonWriter writer, PhoneNumber value, JsonSerializerOptions options)
-    {
-        writer.WriteStringValue(value.ToString()); // Writes "+1 5551234567"
-    }
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L105-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-custom-converter' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show a value object with custom JsonConverter for Named format serialization
+- Use Employee domain: PhoneNumber value object with CountryCode and Number properties
+- PhoneNumber class: string CountryCode, string Number, override ToString() returning "+{CountryCode} {Number}"
+- Custom JsonConverter<PhoneNumber>: serialize as single string "+1 5551234567", deserialize by parsing
+- Read method: get string, split on space, extract country code and number
+- Write method: write the ToString() value as string
+- Context: Domain layer (value object) + Infrastructure layer (converter)
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 **Note:** RemoteFactory manages its own JsonSerializerOptions internally. For types that need custom serialization with Ordinal format, use `IOrdinalConverterProvider<T>` instead.
@@ -577,21 +390,15 @@ public partial class PhoneNumberConverter : JsonConverter<PhoneNumber>
 Enable verbose logging:
 
 <!-- snippet: serialization-logging -->
-<a id='snippet-serialization-logging'></a>
-```cs
-public static void ConfigureWithLogging(IServiceCollection services)
-{
-    services.AddLogging(builder =>
-    {
-        builder.AddConsole();
-        builder.SetMinimumLevel(LogLevel.Debug);
-        builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace);
-    });
-
-    services.AddNeatooAspNetCore(typeof(SerializationSamples).Assembly);
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L135-L147' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-logging' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show server configuration method enabling verbose logging for serialization debugging
+- Static method ConfigureWithLogging(IServiceCollection services)
+- Configure logging: AddConsole, SetMinimumLevel to Debug, AddFilter for "Neatoo.RemoteFactory" at Trace level
+- Call AddNeatooAspNetCore with the assembly containing Employee types
+- Context: Server layer (Program.cs or Startup configuration)
+- Domain: Employee Management - reference the assembly containing Employee types
+-->
 <!-- endSnippet -->
 
 Logs include:
@@ -603,23 +410,17 @@ Logs include:
 Switch to Named format for debugging:
 
 <!-- snippet: serialization-debug-named -->
-<a id='snippet-serialization-debug-named'></a>
-```cs
-public static void ConfigureByEnvironment(IServiceCollection services, bool isDevelopment)
-{
-    // Named format in development for readable JSON
-    // Ordinal format in production for smaller payloads
-    var format = isDevelopment ? SerializationFormat.Named : SerializationFormat.Ordinal;
-
-    services.AddNeatooAspNetCore(
-        new NeatooSerializationOptions { Format = format },
-        typeof(SerializationSamples).Assembly);
-}
-
-// Named:   {"Id":"550e8400...","Name":"Test","Price":29.99}
-// Ordinal: ["550e8400...",29.99,"Test"]
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L149-L163' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-debug-named' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show server configuration that switches serialization format based on environment
+- Static method ConfigureByEnvironment(IServiceCollection services, bool isDevelopment)
+- Use Named format in development (readable JSON), Ordinal format in production (smaller payloads)
+- Conditional: var format = isDevelopment ? SerializationFormat.Named : SerializationFormat.Ordinal
+- Call AddNeatooAspNetCore with NeatooSerializationOptions using the selected format
+- Add trailing comment showing example output in both formats for an Employee
+- Context: Server layer (Program.cs or Startup configuration)
+- Domain: Employee Management - reference the assembly containing Employee types
+-->
 <!-- endSnippet -->
 
 Inspect payloads with browser DevTools or Fiddler.
@@ -629,26 +430,16 @@ Inspect payloads with browser DevTools or Fiddler.
 RemoteFactory manages its own JsonSerializerOptions internally. Configuration is done through `NeatooSerializationOptions`:
 
 <!-- snippet: serialization-json-options -->
-<a id='snippet-serialization-json-options'></a>
-```cs
-public static JsonSerializerOptions CreateCustomOptions()
-{
-    var options = new JsonSerializerOptions
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
-    options.Converters.Add(new PhoneNumberConverter());
-    options.Converters.Add(new JsonStringEnumConverter());
-    return options;
-
-    // Note: RemoteFactory manages its own JsonSerializerOptions internally
-    // Custom converters should use IOrdinalConverterProvider<T> instead
-}
-```
-<sup><a href='/src/docs/samples/SerializationSamples.cs#L165-L182' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-json-options' title='Start of snippet'>anchor</a></sup>
+<!--
+SNIPPET REQUIREMENTS:
+- Show creating custom JsonSerializerOptions (for reference/comparison, NOT used by RemoteFactory)
+- Static method CreateCustomOptions() returning JsonSerializerOptions
+- Configure: CamelCase naming policy, WriteIndented = false, DefaultIgnoreCondition = WhenWritingNull
+- Add converters: PhoneNumberConverter (from serialization-custom-converter), JsonStringEnumConverter
+- Include trailing comment: RemoteFactory manages its own options internally, use IOrdinalConverterProvider<T> for custom serialization
+- Context: Infrastructure layer (configuration reference)
+- Domain: Employee Management
+-->
 <!-- endSnippet -->
 
 **Available options:**
