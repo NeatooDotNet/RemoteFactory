@@ -400,3 +400,6 @@ FodyWeavers.xsd
 *.sln.iml
 nul
 /.claude/settings.local.json
+
+# Source-generated files
+**/Generated/
