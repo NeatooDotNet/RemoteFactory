@@ -1,19 +1,10 @@
-# Attributes Reference
+using EmployeeManagement.Domain.Interfaces;
+using EmployeeManagement.Domain.Samples.Authorization;
+using Neatoo.RemoteFactory;
 
-Complete reference of all RemoteFactory attributes.
+namespace EmployeeManagement.Domain.Samples.Attributes;
 
-## Factory Discovery Attributes
-
-### [Factory]
-
-Marks a class or interface for factory generation.
-
-**Target:** Class, Interface
-**Inherited:** Yes
-
-<!-- snippet: attributes-factory -->
-<a id='snippet-attributes-factory'></a>
-```cs
+#region attributes-factory
 /// <summary>
 /// [Factory] marks a class for factory generation.
 /// Generates IEmployeeFactory interface and EmployeeFactory implementation.
@@ -30,24 +21,9 @@ public partial class SimpleEmployee
         Id = Guid.NewGuid();
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L7-L24' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Generates:
-- `I{TypeName}Factory` interface
-- `{TypeName}Factory` implementation class with static `FactoryServiceRegistrar` method for DI registration
-
-### [SuppressFactory]
-
-Prevents factory generation for a class or interface.
-
-**Target:** Class, Interface
-**Inherited:** Yes
-
-<!-- snippet: attributes-suppressfactory -->
-<a id='snippet-attributes-suppressfactory'></a>
-```cs
+#region attributes-suppressfactory
 /// <summary>
 /// Base class with factory generation.
 /// </summary>
@@ -76,26 +52,9 @@ public partial class InternalEmployeeEntity : BaseEmployeeEntity
     // No factory generated for this class
     // Must be created via base factory or manually
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L26-L55' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Use when:
-- Base class has `[Factory]` but derived class shouldn't
-- Type should not have a factory despite matching generation criteria
-
-## Operation Attributes
-
-### [Create]
-
-Marks constructors or methods that create new instances.
-
-**Target:** Constructor, Method, Class
-**Inherited:** No
-
-<!-- snippet: attributes-create -->
-<a id='snippet-attributes-create'></a>
-```cs
+#region attributes-create
 /// <summary>
 /// [Create] marks constructors and static methods for instance creation.
 /// </summary>
@@ -137,22 +96,9 @@ public partial class EmployeeWithCreate
         };
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L57-L99' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-create' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Operation flags: `AuthorizeFactoryOperation.Create | Read`
-
-### [Fetch]
-
-Marks methods that load data into existing instances.
-
-**Target:** Method, Constructor
-**Inherited:** No
-
-<!-- snippet: attributes-fetch -->
-<a id='snippet-attributes-fetch'></a>
-```cs
+#region attributes-fetch
 /// <summary>
 /// [Fetch] marks methods that load data into existing instances.
 /// </summary>
@@ -186,22 +132,9 @@ public partial class EmployeeWithFetch : IFactorySaveMeta
         return true;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L101-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-fetch' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Operation flags: `AuthorizeFactoryOperation.Fetch | Read`
-
-### [Insert]
-
-Marks methods that persist new entities.
-
-**Target:** Method
-**Inherited:** No
-
-<!-- snippet: attributes-insert -->
-<a id='snippet-attributes-insert'></a>
-```cs
+#region attributes-insert
 /// <summary>
 /// [Insert] marks methods that persist new entities.
 /// </summary>
@@ -236,22 +169,9 @@ public partial class EmployeeWithInsert : IFactorySaveMeta
         IsNew = false;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L137-L172' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-insert' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Operation flags: `AuthorizeFactoryOperation.Insert | Write`
-
-### [Update]
-
-Marks methods that persist changes to existing entities.
-
-**Target:** Method
-**Inherited:** No
-
-<!-- snippet: attributes-update -->
-<a id='snippet-attributes-update'></a>
-```cs
+#region attributes-update
 /// <summary>
 /// [Update] marks methods that persist changes to existing entities.
 /// </summary>
@@ -296,22 +216,9 @@ public partial class EmployeeWithUpdate : IFactorySaveMeta
         await repository.SaveChangesAsync(ct);
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L174-L219' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-update' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Operation flags: `AuthorizeFactoryOperation.Update | Write`
-
-### [Delete]
-
-Marks methods that remove entities.
-
-**Target:** Method
-**Inherited:** No
-
-<!-- snippet: attributes-delete -->
-<a id='snippet-attributes-delete'></a>
-```cs
+#region attributes-delete
 /// <summary>
 /// [Delete] marks methods that remove entities.
 /// </summary>
@@ -349,22 +256,9 @@ public partial class EmployeeWithDelete : IFactorySaveMeta
         await repository.SaveChangesAsync(ct);
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L221-L259' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-delete' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Operation flags: `AuthorizeFactoryOperation.Delete | Write`
-
-### [Execute]
-
-Marks methods for business operations.
-
-**Target:** Method
-**Inherited:** No
-
-<!-- snippet: attributes-execute -->
-<a id='snippet-attributes-execute'></a>
-```cs
+#region attributes-execute
 /// <summary>
 /// [Execute] marks methods for business operations (commands).
 /// </summary>
@@ -400,22 +294,9 @@ public static partial class EmployeePromotion
         return true;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L261-L297' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Operation flags: `AuthorizeFactoryOperation.Execute | Read`
-
-### [Event]
-
-Marks methods for fire-and-forget domain events.
-
-**Target:** Method
-**Inherited:** No
-
-<!-- snippet: attributes-event -->
-<a id='snippet-attributes-event'></a>
-```cs
+#region attributes-event
 /// <summary>
 /// [Event] marks methods for fire-and-forget domain events.
 /// CancellationToken is required as the last parameter.
@@ -441,28 +322,9 @@ public partial class EmployeeEvents
             ct);
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L299-L325' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-event' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Requirements:
-- Must have `CancellationToken` as last parameter
-- Returns `void` or `Task`
-
-Operation flags: `AuthorizeFactoryOperation.Event`
-
-## Execution Control Attributes
-
-### [Remote]
-
-Marks methods that execute on the server.
-
-**Target:** Method
-**Inherited:** Yes
-
-<!-- snippet: attributes-remote -->
-<a id='snippet-attributes-remote'></a>
-```cs
+#region attributes-remote
 /// <summary>
 /// [Remote] marks methods that execute on the server.
 /// </summary>
@@ -502,22 +364,9 @@ public partial class EmployeeRemoteExecution : IFactorySaveMeta
         return true;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L327-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Without `[Remote]`, methods execute locally (no serialization, no HTTP).
-
-### [Service]
-
-Marks parameters for dependency injection.
-
-**Target:** Parameter
-**Inherited:** No
-
-<!-- snippet: attributes-service -->
-<a id='snippet-attributes-service'></a>
-```cs
+#region attributes-service
 /// <summary>
 /// [Service] marks parameters for dependency injection.
 /// </summary>
@@ -553,27 +402,9 @@ public partial class EmployeeServiceParams : IFactorySaveMeta
         return true;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L369-L405' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Service parameters:
-- Resolved from DI container
-- Not serialized
-- Must be registered in the appropriate container (server for remote methods)
-
-## Authorization Attributes
-
-### [AuthorizeFactory\<T\>]
-
-Applies custom authorization class to the factory.
-
-**Target:** Class, Interface
-**Inherited:** No
-
-<!-- snippet: attributes-authorizefactory-generic -->
-<a id='snippet-attributes-authorizefactory-generic'></a>
-```cs
+#region attributes-authorizefactory-generic
 /// <summary>
 /// [AuthorizeFactory<T>] applies custom authorization to the factory.
 /// </summary>
@@ -600,24 +431,9 @@ public partial class AuthorizedEmployee : IFactorySaveMeta
         return true;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L407-L434' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-The type parameter must be an interface with authorization methods decorated with `[AuthorizeFactory]`.
-
-### [AuthorizeFactory]
-
-Marks methods in authorization interfaces or applies to specific factory methods.
-
-**Target:** Method
-**Inherited:** No
-
-**On authorization interface:**
-
-<!-- snippet: attributes-authorizefactory-interface -->
-<a id='snippet-attributes-authorizefactory-interface'></a>
-```cs
+#region attributes-authorizefactory-interface
 /// <summary>
 /// [AuthorizeFactory] on interface methods defines authorization checks.
 /// </summary>
@@ -641,15 +457,9 @@ public interface IDocumentAuthorization
     [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
     bool CanWrite();
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L436-L460' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-**On factory method (additional check):**
-
-<!-- snippet: attributes-authorizefactory-method -->
-<a id='snippet-attributes-authorizefactory-method'></a>
-```cs
+#region attributes-authorizefactory-method
 /// <summary>
 /// Method-level [AspAuthorize] adds ADDITIONAL authorization on top of class-level auth.
 /// </summary>
@@ -694,24 +504,9 @@ public partial class EmployeeWithMethodAuth2 : IFactorySaveMeta
         await repo.SaveChangesAsync(ct);
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L462-L507' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-method' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-**Parameters:**
-- `operation` (AuthorizeFactoryOperation): Flags indicating which operations require this authorization
-
-### [AspAuthorize]
-
-Applies ASP.NET Core authorization policies to endpoints.
-
-**Target:** Method
-**Inherited:** No
-**Multiple:** Yes
-
-<!-- snippet: attributes-aspauthorize -->
-<a id='snippet-attributes-aspauthorize'></a>
-```cs
+#region attributes-aspauthorize
 /// <summary>
 /// [AspAuthorize] applies ASP.NET Core authorization policies.
 /// </summary>
@@ -760,76 +555,9 @@ public partial class PolicyProtectedEmployee : IFactorySaveMeta
         IsNew = false;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L509-L558' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-**Properties:**
-- `Policy` (string?): Authorization policy name
-- `Roles` (string?): Comma-delimited role list
-- `AuthenticationSchemes` (string?): Comma-delimited authentication schemes
-
-Applied to the generated `/api/neatoo` endpoint for the method.
-
-## Assembly-Level Attributes
-
-### [assembly: FactoryMode]
-
-Specifies factory generation mode for the assembly.
-
-**Target:** Assembly
-**Inherited:** No
-
-<!-- snippet: attributes-factorymode -->
-<a id='snippet-attributes-factorymode'></a>
-```cs
-// Full mode (default): Generate both local methods and remote stubs
-// Use in shared domain assemblies that can run on both client and server
-[assembly: FactoryMode(FactoryModeOption.Full)]
-
-// RemoteOnly mode: Generate HTTP stubs only
-// Use in client-only assemblies (e.g., Blazor WASM)
-// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L5-L15' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factorymode' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-**Parameters:**
-- `mode` (FactoryMode): Full or RemoteOnly
-
-Modes:
-- **Full**: Generate local and remote code (default)
-- **RemoteOnly**: Generate HTTP stubs only (client assemblies)
-
-### [assembly: FactoryHintNameLength]
-
-Limits generated file hint name length for long paths.
-
-**Target:** Assembly
-**Inherited:** No
-
-<!-- snippet: attributes-factoryhintnamelength -->
-<a id='snippet-attributes-factoryhintnamelength'></a>
-```cs
-// Increase hint name length to accommodate long namespace/type names
-// Use when hitting Windows path length limits (260 characters)
-[assembly: FactoryHintNameLength(100)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/AssemblyAttributes.cs#L3-L7' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-**Parameters:**
-- `maxHintNameLength` (int): Maximum hint name length
-
-Use when hitting Windows path length limits (260 characters).
-
-## Attribute Combinations
-
-### Multiple Operations on One Method
-
-<!-- snippet: attributes-multiple-operations -->
-<a id='snippet-attributes-multiple-operations'></a>
-```cs
+#region attributes-multiple-operations
 /// <summary>
 /// Multiple operation attributes on one method (upsert pattern).
 /// </summary>
@@ -859,23 +587,9 @@ public partial class SettingSample : IFactorySaveMeta
         return Task.CompletedTask;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L560-L590' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Generated factory methods:
-```csharp
-Task Insert(IPerson person);
-Task Update(IPerson person);
-```
-
-Both route to the same method.
-
-### Remote + Operation
-
-<!-- snippet: attributes-remote-operation -->
-<a id='snippet-attributes-remote-operation'></a>
-```cs
+#region attributes-remote-operation
 /// <summary>
 /// [Remote] combined with operation attributes.
 /// </summary>
@@ -922,17 +636,9 @@ public partial class EmployeeRemoteOps : IFactorySaveMeta
         IsNew = false;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L592-L639' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote-operation' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Executes on server (serialized call).
-
-### Authorization + Operation
-
-<!-- snippet: attributes-authorization-operation -->
-<a id='snippet-attributes-authorization-operation'></a>
-```cs
+#region attributes-authorization-operation
 /// <summary>
 /// Authorization combined with operation attributes.
 /// </summary>
@@ -982,30 +688,9 @@ public partial class EmployeeAuthOps : IFactorySaveMeta
         IsNew = false;
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L641-L691' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-Authorization checked before execution.
-
-## Attribute Inheritance
-
-| Attribute | Inherited |
-|-----------|-----------|
-| `[Factory]` | Yes |
-| `[SuppressFactory]` | Yes |
-| `[Create]`, `[Fetch]`, etc. | No |
-| `[Remote]` | Yes |
-| `[Service]` | No |
-| `[AuthorizeFactory<T>]` | No |
-| `[AuthorizeFactory]` | No |
-| `[AspAuthorize]` | No |
-
-Example:
-
-<!-- snippet: attributes-inheritance -->
-<a id='snippet-attributes-inheritance'></a>
-```cs
+#region attributes-inheritance
 /// <summary>
 /// Demonstrates attribute inheritance behavior.
 /// </summary>
@@ -1049,25 +734,9 @@ public partial class DerivedWithInheritedFactory : BaseEntityWithFactory
         DerivedProperty = "Default";
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L693-L737' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-`DerivedWithInheritedFactory` inherits:
-- `[Factory]` from `BaseEntityWithFactory`
-- `[Remote]` from `BaseEntityWithFactory.Fetch`
-
-`DerivedWithInheritedFactory` does NOT inherit:
-- `[Create]` from `BaseEntityWithFactory` constructor
-- `[AuthorizeFactory<T>]` (if it were applied to `BaseEntityWithFactory`)
-
-## Common Patterns
-
-### CRUD Entity
-
-<!-- snippet: attributes-pattern-crud -->
-<a id='snippet-attributes-pattern-crud'></a>
-```cs
+#region attributes-pattern-crud
 /// <summary>
 /// Complete CRUD entity pattern with all operations.
 /// </summary>
@@ -1139,15 +808,9 @@ public partial class CrudEmployee : IFactorySaveMeta
         await repo.SaveChangesAsync(ct);
     }
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L739-L811' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-crud' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-### Read-Only Entity
-
-<!-- snippet: attributes-pattern-readonly -->
-<a id='snippet-attributes-pattern-readonly'></a>
-```cs
+#region attributes-pattern-readonly
 /// <summary>
 /// Read-only entity pattern with only Create and Fetch.
 /// </summary>
@@ -1187,15 +850,9 @@ public partial class EmployeeReport
 
     // No Insert, Update, Delete - this is a read-only projection
 }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L813-L853' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-readonly' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+#endregion
 
-### Command Handler
-
-<!-- snippet: attributes-pattern-command -->
-<a id='snippet-attributes-pattern-command'></a>
-```cs
+#region attributes-pattern-command
 /// <summary>
 /// Command handler pattern using static class with [Execute].
 /// </summary>
@@ -1238,86 +895,4 @@ public static partial class TransferEmployeeCmd
 }
 
 public record CommandResult(bool Success, string Message);
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L855-L898' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-command' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### Event Publisher
-
-<!-- snippet: attributes-pattern-event -->
-<a id='snippet-attributes-pattern-event'></a>
-```cs
-/// <summary>
-/// Event handlers for Employee domain events.
-/// </summary>
-[Factory]
-public partial class EmployeeEventHandlers
-{
-    /// <summary>
-    /// Notifies HR when a new employee is created.
-    /// CancellationToken is required as the last parameter.
-    /// </summary>
-    [Event]
-    public async Task NotifyHROfNewEmployee(
-        Guid employeeId,
-        string employeeName,
-        [Service] IEmailService emailService,
-        CancellationToken ct)
-    {
-        await emailService.SendAsync(
-            "hr@company.com",
-            $"New Employee: {employeeName}",
-            $"Employee {employeeName} (ID: {employeeId}) has been added to the system.",
-            ct);
-    }
-
-    /// <summary>
-    /// Domain event for employee promotion.
-    /// </summary>
-    [Event]
-    public async Task NotifyManagerOfPromotion(
-        Guid employeeId,
-        string employeeName,
-        string oldPosition,
-        string newPosition,
-        [Service] IEmailService emailService,
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
-    {
-        var employee = await repository.GetByIdAsync(employeeId, ct);
-        var departmentId = employee?.DepartmentId ?? Guid.Empty;
-
-        await emailService.SendAsync(
-            "manager@company.com",
-            $"Employee Promotion: {employeeName}",
-            $"{employeeName} has been promoted from {oldPosition} to {newPosition}. Department: {departmentId}",
-            ct);
-    }
-
-    /// <summary>
-    /// Audit logging event for employee departure.
-    /// </summary>
-    [Event]
-    public async Task LogEmployeeDeparture(
-        Guid employeeId,
-        string reason,
-        [Service] IAuditLogService auditLog,
-        CancellationToken ct)
-    {
-        await auditLog.LogAsync(
-            "Departure",
-            employeeId,
-            "Employee",
-            $"Employee departed. Reason: {reason}",
-            ct);
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Events/EmployeeEventHandlers.cs#L6-L78' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-event' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-## Next Steps
-
-- [Interfaces Reference](interfaces-reference.md) - All RemoteFactory interfaces
-- [Factory Operations](factory-operations.md) - Operation details
-- [Authorization](authorization.md) - Authorization attribute usage
+#endregion

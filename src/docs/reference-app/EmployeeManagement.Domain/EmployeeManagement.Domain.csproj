@@ -9,7 +9,17 @@
     <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
     <!-- CA1062: Service parameters are injected by DI and are never null -->
     <!-- CA1822: Event methods must be instance methods for [Event] attribute -->
-    <NoWarn>CA1062;CA1822</NoWarn>
+    <!-- CA1711: Impl suffix is conventional for interface implementations in samples -->
+    <!-- CA2227: Collection setters needed for serialization in samples -->
+    <!-- CA1308: ToLowerInvariant is intentional for email generation in samples -->
+    <!-- CA1848/CA1873: Logger performance patterns are too verbose for samples -->
+    <!-- CA1032: Exception constructors - simplified for samples -->
+    <!-- CA1031: Catch general Exception is intentional for event error handling demo -->
+    <!-- CA2208: ArgumentException param names refer to properties in samples -->
+    <!-- CA1819: Array properties are acceptable in sample code -->
+    <!-- CA1852: Sealing internal classes adds noise in samples -->
+    <!-- CA1307: StringComparison overloads add verbosity in samples -->
+    <NoWarn>CA1062;CA1822;CA1711;CA2227;CA1308;CA1848;CA1873;CA1032;CA1031;CA2208;CA1819;CA1852;CA1307</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

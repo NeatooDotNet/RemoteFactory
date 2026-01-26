@@ -35,6 +35,7 @@ public interface IPerson : IFactorySaveMeta
 }
 
 [Factory]
+[SuppressFactory] // Suppress factory generation for documentation sample
 public partial class Person : IPerson
 {
     public Guid Id { get; private set; }
@@ -108,7 +109,7 @@ public partial class Person : IPerson
     }
 }
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L13-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L9-L93' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Client code calls the factory:
@@ -116,28 +117,34 @@ Client code calls the factory:
 <!-- snippet: readme-client-usage -->
 <a id='snippet-readme-client-usage'></a>
 ```cs
-// Create a new person
-var person = factory.Create();
-person.FirstName = "John";
-person.LastName = "Doe";
-person.Email = "john.doe@example.com";
+public static class ClientUsageExample
+{
+    // IPersonFactory is auto-generated from Person class
+    public static async Task BasicOperations(IPersonFactory factory)
+    {
+        // Create a new person
+        var person = factory.Create();
+        person.FirstName = "John";
+        person.LastName = "Doe";
+        person.Email = "john.doe@example.com";
 
-// Save routes to Insert (IsNew = true)
-var saved = await factory.Save(person);
+        // Save (routes to Insert because IsNew = true)
+        await factory.Save(person);
 
-// Fetch an existing person
-var fetched = await factory.Fetch(saved!.Id);
-// fetched.FirstName is "John"
+        // Fetch existing
+        var existing = await factory.Fetch(person.Id);
 
-// Update - Save routes to Update (IsNew = false)
-fetched!.Email = "john.updated@example.com";
-await factory.Save(fetched);
+        // Update
+        existing!.Email = "john.updated@example.com";
+        await factory.Save(existing);  // Routes to Update
 
-// Delete - set IsDeleted, then Save
-fetched.IsDeleted = true;
-await factory.Save(fetched);
+        // Delete
+        existing.IsDeleted = true;
+        await factory.Save(existing);  // Routes to Delete
+    }
+}
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L101-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L95-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Server automatically exposes the endpoint at `/api/neatoo`. No controllers needed.
@@ -179,9 +186,9 @@ Configure client assembly for smaller output:
 <a id='snippet-readme-client-assembly-mode'></a>
 ```cs
 // In client assembly's AssemblyAttributes.cs:
-// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
+// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L153-L156' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-assembly-mode' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L124-L127' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-assembly-mode' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Getting Started
@@ -191,13 +198,11 @@ Configure client assembly for smaller output:
 <!-- snippet: readme-server-setup -->
 <a id='snippet-readme-server-setup'></a>
 ```cs
-// Register Neatoo ASP.NET Core services
-services.AddNeatooAspNetCore(typeof(Person).Assembly);
-
-// Register domain services
-services.AddScoped<IPersonRepository, PersonRepository>();
+// Server setup (Program.cs):
+// services.AddNeatooAspNetCore(typeof(Person).Assembly);
+// app.UseNeatoo();
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L128-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L129-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Client setup (Blazor WASM):**
@@ -205,17 +210,15 @@ services.AddScoped<IPersonRepository, PersonRepository>();
 <!-- snippet: readme-client-setup -->
 <a id='snippet-readme-client-setup'></a>
 ```cs
-// Register Neatoo RemoteFactory for client
-services.AddNeatooRemoteFactory(
-    NeatooFactory.Remote,
-    typeof(Person).Assembly);
-
-// Register keyed HttpClient for Neatoo
-services.AddKeyedScoped(
-    RemoteFactoryServices.HttpClientKey,
-    (sp, key) => new HttpClient { BaseAddress = baseAddress });
+// Client setup (Program.cs):
+// services.AddNeatooRemoteFactory(
+//     NeatooFactory.Remote,
+//     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+//     typeof(Person).Assembly);
+// services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+//     new HttpClient { BaseAddress = new Uri("https://api.example.com/") });
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L140-L150' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L135-L143' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Domain model:**
@@ -224,73 +227,58 @@ services.AddKeyedScoped(
 <a id='snippet-readme-full-example'></a>
 ```cs
 [Factory]
+[SuppressFactory] // Suppress factory generation for documentation sample
 [AuthorizeFactory<IPersonAuthorization>]
 public partial class PersonWithAuth : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string? Email { get; set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
     [Create]
-    public PersonWithAuth()
-    {
-        Id = Guid.NewGuid();
-    }
+    public PersonWithAuth() { Id = Guid.NewGuid(); }
 
-    [Remote]
-    [Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
+    [Remote, Fetch]
+    public async Task<bool> Fetch(
+        Guid id,
+        [Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(id);
         if (entity == null) return false;
-
         Id = entity.Id;
         FirstName = entity.FirstName;
         LastName = entity.LastName;
-        Email = entity.Email;
         IsNew = false;
         return true;
     }
 
-    [Remote]
-    [Insert]
+    [Remote, Insert]
     public async Task Insert([Service] IPersonRepository repository)
     {
-        var entity = new PersonEntity
+        await repository.AddAsync(new PersonEntity
         {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = Email,
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        };
-        await repository.AddAsync(entity);
+            Id = Id, FirstName = FirstName, LastName = LastName,
+            Email = "", Created = DateTime.UtcNow, Modified = DateTime.UtcNow
+        });
         await repository.SaveChangesAsync();
         IsNew = false;
     }
 
-    [Remote]
-    [Update]
+    [Remote, Update]
     public async Task Update([Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Person {Id} not found");
-
+            ?? throw new InvalidOperationException();
         entity.FirstName = FirstName;
         entity.LastName = LastName;
-        entity.Email = Email;
         entity.Modified = DateTime.UtcNow;
-
         await repository.UpdateAsync(entity);
         await repository.SaveChangesAsync();
     }
 
-    [Remote]
-    [Delete]
+    [Remote, Delete]
     public async Task Delete([Service] IPersonRepository repository)
     {
         await repository.DeleteAsync(Id);
@@ -300,31 +288,14 @@ public partial class PersonWithAuth : IFactorySaveMeta
 
 public interface IPersonAuthorization
 {
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-    bool CanCreate();
-
     [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
     bool CanRead();
 
     [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
     bool CanWrite();
 }
-
-public class PersonAuthorization : IPersonAuthorization
-{
-    private readonly IUserContext _userContext;
-
-    public PersonAuthorization(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public bool CanCreate() => _userContext.IsAuthenticated;
-    public bool CanRead() => _userContext.IsAuthenticated;
-    public bool CanWrite() => _userContext.IsInRole("Admin") || _userContext.IsInRole("Manager");
-}
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L158-L259' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L145-L214' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Getting Started](docs/getting-started.md) for a complete walkthrough.
