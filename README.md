@@ -1,257 +1,367 @@
 # Neatoo RemoteFactory
 
-> A Roslyn Source Generator-powered Data Mapper Factory for 3-tier .NET applications.
-> Build client/server applications without writing DTOs, factories, or API controllers.
+**Roslyn Source Generator-powered Data Mapper Factory for 3-tier .NET applications**
 
-[![NuGet](https://img.shields.io/nuget/v/Neatoo.RemoteFactory)](https://www.nuget.org/packages/Neatoo.RemoteFactory)
-[![Discord](https://img.shields.io/discord/your-discord-id)](https://discord.gg/M3dVuZkG)
-
-## Supported Frameworks
-
-| Framework | Support |
-|-----------|---------|
-| .NET 8.0 | LTS (Long Term Support) |
-| .NET 9.0 | STS (Standard Term Support) |
-| .NET 10.0 | LTS (Long Term Support) |
-
-All three frameworks are included in the NuGet packages.
+RemoteFactory eliminates DTOs, manual factories, and API controllers by generating everything at compile time. Write domain model methods once, get client and server implementations automatically.
 
 ## Why RemoteFactory?
 
-Traditional 3-tier architectures require extensive boilerplate: DTOs that mirror your domain models, controllers for each entity, manual mapping code, and scattered authorization logic. RemoteFactory eliminates all of this.
-
-**Before RemoteFactory:**
-- Write DTO classes that duplicate domain model properties
-- Write AutoMapper profiles or manual mapping code
-- Write API controllers for each entity
-- Write service layer factories
-- Maintain synchronization between all these layers
+**Traditional 3-tier architecture:**
+- Write domain model methods
+- Create DTOs to transfer state
+- Build factories to map between DTOs and domain models
+- Write API controllers to expose operations
+- Maintain all four layers as requirements change
 
 **With RemoteFactory:**
-- Annotate your domain model with `[Factory]`
-- Add operation methods with `[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`
-- Everything else is generated at compile time
+- Write domain model methods
+- Add attributes (`[Factory]`, `[Remote]`, `[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, etc.)
+- Done. Generator creates factories, serialization, and endpoints.
 
 ## Quick Example
 
-```csharp
-[Factory]
-[AuthorizeFactory<IPersonModelAuth>]
-public class PersonModel : IPersonModel
-{
-    [Create]
-    public PersonModel()
-    {
-        Created = DateTime.Now;
-    }
+Domain model with factory methods:
 
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public bool IsNew { get; set; } = true;
+<!-- snippet: readme-domain-model -->
+<a id='snippet-readme-domain-model'></a>
+```cs
+public interface IPerson : IFactorySaveMeta
+{
+    Guid Id { get; }
+    string FirstName { get; set; }
+    string LastName { get; set; }
+    string? Email { get; set; }
+    new bool IsDeleted { get; set; }
+}
+
+[Factory]
+public partial class Person : IPerson
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    // This runs on the server - [Service] parameters are injected
+    [Create]
+    public Person()
+    {
+        Id = Guid.NewGuid();
+    }
+
     [Remote]
     [Fetch]
-    public async Task<bool> Fetch([Service] IPersonContext context)
+    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
     {
-        var entity = await context.Persons.FirstOrDefaultAsync();
+        var entity = await repository.GetByIdAsync(id);
         if (entity == null) return false;
-        this.FirstName = entity.FirstName;
-        this.LastName = entity.LastName;
-        this.IsNew = false;
+
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
+        IsNew = false;
         return true;
     }
 
     [Remote]
     [Insert]
-    [Update]
-    public async Task Save([Service] IPersonContext context)
+    public async Task Insert([Service] IPersonRepository repository)
     {
-        // Upsert logic here
+        var entity = new PersonEntity
+        {
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
+            Created = DateTime.UtcNow,
+            Modified = DateTime.UtcNow
+        };
+        await repository.AddAsync(entity);
+        await repository.SaveChangesAsync();
+        IsNew = false;
+    }
+
+    [Remote]
+    [Update]
+    public async Task Update([Service] IPersonRepository repository)
+    {
+        var entity = await repository.GetByIdAsync(Id)
+            ?? throw new InvalidOperationException($"Person {Id} not found");
+
+        entity.FirstName = FirstName;
+        entity.LastName = LastName;
+        entity.Email = Email;
+        entity.Modified = DateTime.UtcNow;
+
+        await repository.UpdateAsync(entity);
+        await repository.SaveChangesAsync();
+    }
+
+    [Remote]
+    [Delete]
+    public async Task Delete([Service] IPersonRepository repository)
+    {
+        await repository.DeleteAsync(Id);
+        await repository.SaveChangesAsync();
     }
 }
 ```
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L13-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-RemoteFactory generates a complete factory interface:
+Client code calls the factory:
 
-```csharp
-public interface IPersonModelFactory
-{
-    IPersonModel? Create();
-    Task<IPersonModel?> Fetch();
-    Task<IPersonModel?> Save(IPersonModel target);
-    Task<Authorized<IPersonModel>> TrySave(IPersonModel target);
-    Authorized CanCreate();
-    Authorized CanFetch();
-    Authorized CanSave();
-}
+<!-- snippet: readme-client-usage -->
+<a id='snippet-readme-client-usage'></a>
+```cs
+// Create a new person
+var person = factory.Create();
+person.FirstName = "John";
+person.LastName = "Doe";
+person.Email = "john.doe@example.com";
+
+// Save routes to Insert (IsNew = true)
+var saved = await factory.Save(person);
+
+// Fetch an existing person
+var fetched = await factory.Fetch(saved!.Id);
+// fetched.FirstName is "John"
+
+// Update - Save routes to Update (IsNew = false)
+fetched!.Email = "john.updated@example.com";
+await factory.Save(fetched);
+
+// Delete - set IsDeleted, then Save
+fetched.IsDeleted = true;
+await factory.Save(fetched);
 ```
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L101-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+Server automatically exposes the endpoint at `/api/neatoo`. No controllers needed.
 
 ## Key Features
 
-- **Zero DTOs**: Domain objects serialize directly between client and server
-- **Single Endpoint**: One controller handles all operations via `/api/neatoo`
-- **Generated Factories**: Full CRUD with automatic DI registration
-- **Built-in Authorization**: Declarative access control with generated `Can*` methods
-- **Source Generators**: Compile-time generation, no runtime reflection
-- **Async/Await Centric**: First-class async support throughout
+- **Zero boilerplate**: No DTOs, no manual mapping, no controllers
+- **Type-safe**: Roslyn generates strongly-typed factories from your domain methods
+- **DI integration**: Inject services into factory methods with `[Service]` attribute
+- **Authorization**: Built-in support for custom auth or ASP.NET Core policies
+- **Compact serialization**: Ordinal format reduces payloads by 40-50%
+- **Lifecycle hooks**: `IFactoryOnStart`, `IFactoryOnComplete`, `IFactoryOnCancelled`
+- **Fire-and-forget events**: Domain events with scope isolation via `[Event]` attribute
+- **Flexible modes**: Full (server), RemoteOnly (client), or Logical (single-tier)
 
-## Getting Started
+## Installation
 
-### 1. Install NuGet Packages
+Install NuGet packages:
 
+**Server project:**
 ```bash
-# Domain model and client projects
 dotnet add package Neatoo.RemoteFactory
-
-# ASP.NET Core server projects
 dotnet add package Neatoo.RemoteFactory.AspNetCore
 ```
 
-### 2. Configure the Server
-
-```csharp
-using Neatoo.RemoteFactory.AspNetCore;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Register RemoteFactory services with your domain model assembly
-builder.Services.AddNeatooAspNetCore(typeof(IPersonModel).Assembly);
-builder.Services.AddScoped<IPersonContext, PersonContext>();
-
-var app = builder.Build();
-
-// Add the RemoteFactory endpoint
-app.UseNeatoo();
-
-app.Run();
+**Client project (Blazor WASM, etc.):**
+```bash
+dotnet add package Neatoo.RemoteFactory
 ```
 
-### 3. Configure the Client
-
-```csharp
-using Neatoo.RemoteFactory;
-
-// Blazor WebAssembly
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IPersonModel).Assembly);
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
-{
-    return new HttpClient { BaseAddress = new Uri("https://your-server/") };
-});
+**Shared project (domain models):**
+```bash
+dotnet add package Neatoo.RemoteFactory
 ```
 
-### 4. Use the Factory
+Configure client assembly for smaller output:
 
-```csharp
-public class PersonComponent
+<!-- snippet: readme-client-assembly-mode -->
+<a id='snippet-readme-client-assembly-mode'></a>
+```cs
+// In client assembly's AssemblyAttributes.cs:
+// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
+```
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L153-L156' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-assembly-mode' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+## Getting Started
+
+**Server setup (ASP.NET Core):**
+
+<!-- snippet: readme-server-setup -->
+<a id='snippet-readme-server-setup'></a>
+```cs
+// Register Neatoo ASP.NET Core services
+services.AddNeatooAspNetCore(typeof(Person).Assembly);
+
+// Register domain services
+services.AddScoped<IPersonRepository, PersonRepository>();
+```
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L128-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+**Client setup (Blazor WASM):**
+
+<!-- snippet: readme-client-setup -->
+<a id='snippet-readme-client-setup'></a>
+```cs
+// Register Neatoo RemoteFactory for client
+services.AddNeatooRemoteFactory(
+    NeatooFactory.Remote,
+    typeof(Person).Assembly);
+
+// Register keyed HttpClient for Neatoo
+services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
+    (sp, key) => new HttpClient { BaseAddress = baseAddress });
+```
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L140-L150' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+**Domain model:**
+
+<!-- snippet: readme-full-example -->
+<a id='snippet-readme-full-example'></a>
+```cs
+[Factory]
+[AuthorizeFactory<IPersonAuthorization>]
+public partial class PersonWithAuth : IFactorySaveMeta
 {
-    private readonly IPersonModelFactory _factory;
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
 
-    public PersonComponent(IPersonModelFactory factory)
+    [Create]
+    public PersonWithAuth()
     {
-        _factory = factory;
+        Id = Guid.NewGuid();
     }
 
-    public async Task LoadAndSave()
+    [Remote]
+    [Fetch]
+    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
     {
-        // Check authorization before showing UI
-        if (!_factory.CanFetch().HasAccess) return;
+        var entity = await repository.GetByIdAsync(id);
+        if (entity == null) return false;
 
-        // Fetch from server
-        var person = await _factory.Fetch();
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
+        IsNew = false;
+        return true;
+    }
 
-        // Modify
-        person.FirstName = "Updated";
-
-        // Save with authorization handling
-        var result = await _factory.TrySave(person);
-        if (!result.HasAccess)
+    [Remote]
+    [Insert]
+    public async Task Insert([Service] IPersonRepository repository)
+    {
+        var entity = new PersonEntity
         {
-            Console.WriteLine($"Save failed: {result.Message}");
-        }
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
+            Created = DateTime.UtcNow,
+            Modified = DateTime.UtcNow
+        };
+        await repository.AddAsync(entity);
+        await repository.SaveChangesAsync();
+        IsNew = false;
+    }
+
+    [Remote]
+    [Update]
+    public async Task Update([Service] IPersonRepository repository)
+    {
+        var entity = await repository.GetByIdAsync(Id)
+            ?? throw new InvalidOperationException($"Person {Id} not found");
+
+        entity.FirstName = FirstName;
+        entity.LastName = LastName;
+        entity.Email = Email;
+        entity.Modified = DateTime.UtcNow;
+
+        await repository.UpdateAsync(entity);
+        await repository.SaveChangesAsync();
+    }
+
+    [Remote]
+    [Delete]
+    public async Task Delete([Service] IPersonRepository repository)
+    {
+        await repository.DeleteAsync(Id);
+        await repository.SaveChangesAsync();
     }
 }
+
+public interface IPersonAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    bool CanCreate();
+
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
+    bool CanRead();
+
+    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+    bool CanWrite();
+}
+
+public class PersonAuthorization : IPersonAuthorization
+{
+    private readonly IUserContext _userContext;
+
+    public PersonAuthorization(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    public bool CanCreate() => _userContext.IsAuthenticated;
+    public bool CanRead() => _userContext.IsAuthenticated;
+    public bool CanWrite() => _userContext.IsInRole("Admin") || _userContext.IsInRole("Manager");
+}
 ```
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L158-L259' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+See [Getting Started](docs/getting-started.md) for a complete walkthrough.
 
 ## Documentation
 
-Comprehensive documentation is available in the [docs folder](docs/index.md):
+- [Getting Started](docs/getting-started.md) - Installation and first example
+- [Factory Operations](docs/factory-operations.md) - Create, Fetch, Insert, Update, Delete, Execute, Event
+- [Service Injection](docs/service-injection.md) - DI integration with `[Service]` attribute
+- [Authorization](docs/authorization.md) - Custom auth and ASP.NET Core policies
+- [Serialization](docs/serialization.md) - Ordinal vs Named formats
+- [Save Operation](docs/save-operation.md) - IFactorySave routing pattern
+- [Factory Modes](docs/factory-modes.md) - Full, RemoteOnly, Logical
+- [Events](docs/events.md) - Fire-and-forget domain events
+- [ASP.NET Core Integration](docs/aspnetcore-integration.md) - Server-side configuration
+- [Attributes Reference](docs/attributes-reference.md) - All available attributes
+- [Interfaces Reference](docs/interfaces-reference.md) - All available interfaces
 
-- [Installation Guide](docs/getting-started/installation.md)
-- [Quick Start Tutorial](docs/getting-started/quick-start.md)
-- [Architecture Overview](docs/concepts/architecture-overview.md)
-- [Factory Operations](docs/concepts/factory-operations.md)
-- [Authorization](docs/authorization/authorization-overview.md)
-- [Source Generation](docs/source-generation/how-it-works.md)
-- [Complete Attribute Reference](docs/reference/attributes.md)
-- [Release Notes](docs/release-notes/index.md)
+## Supported Frameworks
 
-## Framework Comparison
-
-| Feature | RemoteFactory | CSLA | Manual DTOs |
-|---------|--------------|------|-------------|
-| Code Generation | Roslyn Source Generators | Runtime + some codegen | None |
-| Base Class Required | No | Yes (BusinessBase, etc.) | No |
-| DTO Classes | Not needed | Built-in serialization | Required |
-| Learning Curve | Low | Medium-High | Low |
-| Boilerplate | Minimal | Low | High |
-| 3-Tier Support | Yes | Yes | Manual |
-| Authorization | Attribute-based | Method-based | Manual |
-
-See the [comparison documentation](docs/comparison/overview.md) for detailed analysis.
+- .NET 8.0 (LTS)
+- .NET 9.0 (STS)
+- .NET 10.0 (LTS)
 
 ## Examples
 
-### Person Demo
+Complete working examples in `src/Examples/`:
 
-The [Person Demo](src/Examples/Person) shows a complete Blazor WebAssembly application with:
-- Domain model with all operations
-- Authorization rules
-- Entity Framework Core integration
-- Generated factory usage
-
-![Person Demo](https://raw.githubusercontent.com/NeatooDotNet/RemoteFactory/main/RemoteFactory%20Person.gif)
-
-### Running the Example
-
-```bash
-# Clone the repository
-git clone https://github.com/NeatooDotNet/RemoteFactory.git
-
-# Navigate to the solution
-cd RemoteFactory
-
-# Run EF migrations
-cd src/Examples/Person/Person.Ef
-dotnet ef database update
-
-# Start the server (in one terminal)
-cd ../Person.Server
-dotnet run
-
-# Start the client (in another terminal)
-cd ../PersonApp
-dotnet run
-```
-
-## Video Introduction
-
-[![Introduction](https://raw.githubusercontent.com/NeatooDotNet/RemoteFactory/main/youtubetile.jpg)](https://youtu.be/e9zZ6d8LKkM?si=-EcUFep7Gih-7GiM)
-
-## Community
-
-- [Discord](https://discord.gg/M3dVuZkG) - Ask questions, share projects, get help
-- [GitHub Issues](https://github.com/NeatooDotNet/RemoteFactory/issues) - Report bugs, request features
-
-## Related Projects
-
-- [Neatoo](https://github.com/NeatooDotNet/Neatoo) - Rich Domain Model framework with business rules, validation, and data-binding
-
-## Contributing
-
-Contributions are welcome! Please see our contributing guidelines for details.
+- **Person** - Simple Blazor WASM CRUD application
+- **OrderEntry** - Order entry system with aggregate roots
 
 ## License
 
-RemoteFactory is released under the [MIT License](LICENSE).
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Links
+
+- [NuGet: Neatoo.RemoteFactory](https://nuget.org/packages/Neatoo.RemoteFactory)
+- [NuGet: Neatoo.RemoteFactory.AspNetCore](https://nuget.org/packages/Neatoo.RemoteFactory.AspNetCore)
+- [Release Notes](docs/release-notes/index.md)

@@ -1,0 +1,22 @@
+{
+  "Convention": "InPlaceOverwrite",
+  "TocLevel": 2,
+  "MaxWidth": 120,
+  "LinkFormat": "GitHub",
+  "DocumentExtensions": [
+    "md"
+  ],
+  "UrlsAsSnippets": [],
+  "ExcludeDirectories": [
+    "docs/todos",
+    "docs/plans",
+    "docs/release-notes",
+    ".claude"
+  ],
+  "ExcludeMarkdownDirectories": [
+    "docs/todos",
+    "docs/plans",
+    "docs/release-notes",
+    ".claude"
+  ]
+}

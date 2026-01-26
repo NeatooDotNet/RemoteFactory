@@ -100,16 +100,6 @@ Test plans should follow the existing patterns in the new test projects:
 - `Theory/MemberData` for parameterized testing across containers
 - `ClientServerContainers.Scopes()` for client/server/local container setup
 
-## Documentation
-
-Documentation is in `/docs/` using Jekyll format:
-- `docs/index.md` - Main entry point
-- `docs/getting-started/` - Installation, quick start, project structure
-- `docs/concepts/` - Architecture, factory operations, service injection
-- `docs/authorization/` - Authorization approaches
-- `docs/reference/` - Attributes, interfaces, generated code
-- `docs/release-notes/` - Version history and release notes
-
 ### Release Notes Maintenance
 
 #### Commit Conventions
