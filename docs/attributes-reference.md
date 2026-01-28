@@ -12,14 +12,54 @@ Marks a class or interface for factory generation.
 **Inherited:** Yes
 
 <!-- snippet: attributes-factory -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show [Factory] attribute on Employee class with Id, FirstName, LastName properties
-- Show [Factory] on an IEmployee interface with an implementing Employee class
-- Include [Create] constructor in both examples
-- Domain layer: Employee aggregate root
-- Properties should use private set for Id, public set for Name properties
--->
+<a id='snippet-attributes-factory'></a>
+```cs
+/// <summary>
+/// Employee aggregate root with [Factory] attribute on class.
+/// </summary>
+[Factory]
+public partial class EmployeeWithFactory
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+
+    [Create]
+    public EmployeeWithFactory()
+    {
+        Id = Guid.NewGuid();
+    }
+}
+
+/// <summary>
+/// Employee interface - [Factory] on interface generates factory for implementations.
+/// </summary>
+public interface IEmployeeContract
+{
+    Guid Id { get; }
+    string FirstName { get; set; }
+    string LastName { get; set; }
+}
+
+/// <summary>
+/// Employee implementation with [Factory] on the class.
+/// The factory is generated for this concrete class.
+/// </summary>
+[Factory]
+public partial class EmployeeContract : IEmployeeContract
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+
+    [Create]
+    public EmployeeContract()
+    {
+        Id = Guid.NewGuid();
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/FactorySamples.cs#L5-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generates:
@@ -34,15 +74,38 @@ Prevents factory generation for a class or interface.
 **Inherited:** Yes
 
 <!-- snippet: attributes-suppressfactory -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show base Employee class with [Factory] attribute
-- Show derived ManagerEmployee class with [SuppressFactory] attribute
-- Base has Id (protected set) and common employee properties
-- Derived adds manager-specific properties (DirectReports count, etc.)
-- Comment explaining no factory generated for derived class
-- Domain layer: Employee hierarchy
--->
+<a id='snippet-attributes-suppressfactory'></a>
+```cs
+/// <summary>
+/// Base Employee class with [Factory] attribute.
+/// </summary>
+[Factory]
+public partial class EmployeeBase
+{
+    public Guid Id { get; protected set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string Email { get; set; } = "";
+
+    [Create]
+    public EmployeeBase()
+    {
+        Id = Guid.NewGuid();
+    }
+}
+
+/// <summary>
+/// Manager employee with [SuppressFactory] - no factory generated for this derived class.
+/// </summary>
+[SuppressFactory]
+public partial class ManagerEmployee : EmployeeBase
+{
+    public int DirectReportCount { get; set; }
+    public string Department { get; set; } = "";
+    public decimal BonusPercentage { get; set; }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/SuppressFactorySamples.cs#L5-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Use when:
@@ -59,15 +122,61 @@ Marks constructors or methods that create new instances.
 **Inherited:** No
 
 <!-- snippet: attributes-create -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class with three [Create] patterns:
-  1. [Create] on parameterless constructor (generates new Id)
-  2. [Create] on instance method Initialize(string firstName, string lastName)
-  3. [Create] on static factory method CreateEmployee(string firstName, string lastName, Guid departmentId)
-- Properties: Id, FirstName, LastName, DepartmentId, HireDate
-- Domain layer: Employee aggregate showing multiple creation strategies
--->
+<a id='snippet-attributes-create'></a>
+```cs
+/// <summary>
+/// Employee aggregate demonstrating multiple [Create] patterns.
+/// </summary>
+[Factory]
+public partial class EmployeeWithCreate
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public Guid DepartmentId { get; set; }
+    public DateTime HireDate { get; private set; }
+
+    /// <summary>
+    /// [Create] on parameterless constructor - generates new Id.
+    /// </summary>
+    [Create]
+    public EmployeeWithCreate()
+    {
+        Id = Guid.NewGuid();
+        HireDate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// [Create] on instance method - initializes with provided values.
+    /// </summary>
+    [Create]
+    public void Initialize(string firstName, string lastName)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+    }
+
+    /// <summary>
+    /// [Create] on static factory method - full control over creation.
+    /// </summary>
+    [Create]
+    public static EmployeeWithCreate CreateEmployee(
+        string firstName,
+        string lastName,
+        Guid departmentId)
+    {
+        return new EmployeeWithCreate
+        {
+            Id = Guid.NewGuid(),
+            FirstName = firstName,
+            LastName = lastName,
+            DepartmentId = departmentId,
+            HireDate = DateTime.UtcNow
+        };
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/CreateSamples.cs#L5-L57' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-create' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Operation flags: `AuthorizeFactoryOperation.Create | Read`
@@ -80,16 +189,68 @@ Marks methods that load data into existing instances.
 **Inherited:** No
 
 <!-- snippet: attributes-fetch -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class with multiple [Fetch] methods:
-  1. Fetch(Guid employeeId) - loads by primary key
-  2. FetchByEmail(string email) - loads by unique email address
-- Populate employee properties from fetch parameters
-- Include [Create] constructor for completeness
-- Domain layer: Employee aggregate with fetch operations
-- Return Task (async pattern)
--->
+<a id='snippet-attributes-fetch'></a>
+```cs
+/// <summary>
+/// Employee aggregate with multiple [Fetch] methods.
+/// </summary>
+[Factory]
+public partial class EmployeeWithFetch
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string Email { get; private set; } = "";
+
+    [Create]
+    public EmployeeWithFetch()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Fetches employee by primary key.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task Fetch(
+        Guid employeeId,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(employeeId, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+            Email = entity.Email;
+        }
+    }
+
+    /// <summary>
+    /// Fetches employee by unique email address.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task FetchByEmail(
+        string email,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var employees = await repository.GetAllAsync(ct);
+        var entity = employees.FirstOrDefault(e =>
+            e.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+            Email = entity.Email;
+        }
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/FetchSamples.cs#L6-L65' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-fetch' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Operation flags: `AuthorizeFactoryOperation.Fetch | Read`
@@ -102,15 +263,55 @@ Marks methods that persist new entities.
 **Inherited:** No
 
 <!-- snippet: attributes-insert -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class implementing IFactorySaveMeta
-- Properties: Id, FirstName, LastName, Email, IsNew, IsDeleted
-- [Create] constructor that sets IsNew = true
-- [Insert] method with [Service] IEmployeeRepository parameter
-- Insert sets IsNew = false after persistence
-- Domain layer: Employee aggregate with insert operation
--->
+<a id='snippet-attributes-insert'></a>
+```cs
+/// <summary>
+/// Employee aggregate with [Insert] operation.
+/// </summary>
+[Factory]
+public partial class EmployeeWithInsert : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string Email { get; set; } = "";
+    public bool IsNew { get; private set; }
+    public bool IsDeleted { get; set; }
+
+    /// <summary>
+    /// Creates a new Employee, marking it as new.
+    /// </summary>
+    [Create]
+    public EmployeeWithInsert()
+    {
+        Id = Guid.NewGuid();
+        IsNew = true;
+    }
+
+    /// <summary>
+    /// Persists a new employee to the repository.
+    /// </summary>
+    [Remote, Insert]
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = new EmployeeEntity
+        {
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email
+        };
+
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+
+        IsNew = false;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/InsertSamples.cs#L6-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Operation flags: `AuthorizeFactoryOperation.Insert | Write`
@@ -123,15 +324,53 @@ Marks methods that persist changes to existing entities.
 **Inherited:** No
 
 <!-- snippet: attributes-update -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class implementing IFactorySaveMeta
-- Properties: Id, FirstName, LastName, Email, Salary, IsNew, IsDeleted
-- [Create] constructor
-- [Update] method with [Service] IEmployeeRepository parameter
-- Comment: called by Save when IsNew = false
-- Domain layer: Employee aggregate with update operation
--->
+<a id='snippet-attributes-update'></a>
+```cs
+/// <summary>
+/// Employee aggregate with [Update] operation.
+/// </summary>
+[Factory]
+public partial class EmployeeWithUpdate : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string Email { get; set; } = "";
+    public decimal Salary { get; set; }
+    public bool IsNew { get; private set; }
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public EmployeeWithUpdate()
+    {
+        Id = Guid.NewGuid();
+        IsNew = true;
+    }
+
+    /// <summary>
+    /// Updates an existing employee in the repository.
+    /// Called by Save when IsNew = false.
+    /// </summary>
+    [Remote, Update]
+    public async Task Update(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = new EmployeeEntity
+        {
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
+            SalaryAmount = Salary
+        };
+
+        await repository.UpdateAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/UpdateSamples.cs#L6-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Operation flags: `AuthorizeFactoryOperation.Update | Write`
@@ -144,15 +383,42 @@ Marks methods that remove entities.
 **Inherited:** No
 
 <!-- snippet: attributes-delete -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class implementing IFactorySaveMeta
-- Properties: Id, FirstName, LastName, IsNew, IsDeleted
-- [Create] constructor
-- [Delete] method with [Service] IEmployeeRepository parameter
-- Comment: called by Save when IsDeleted = true
-- Domain layer: Employee aggregate with delete operation
--->
+<a id='snippet-attributes-delete'></a>
+```cs
+/// <summary>
+/// Employee aggregate with [Delete] operation.
+/// </summary>
+[Factory]
+public partial class EmployeeWithDelete : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public bool IsNew { get; private set; }
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public EmployeeWithDelete()
+    {
+        Id = Guid.NewGuid();
+        IsNew = true;
+    }
+
+    /// <summary>
+    /// Deletes the employee from the repository.
+    /// Called by Save when IsDeleted = true.
+    /// </summary>
+    [Remote, Delete]
+    public async Task Delete(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        await repository.DeleteAsync(Id, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/DeleteSamples.cs#L6-L39' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-delete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Operation flags: `AuthorizeFactoryOperation.Delete | Write`
@@ -165,16 +431,57 @@ Marks methods for business operations.
 **Inherited:** No
 
 <!-- snippet: attributes-execute -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show static partial class TransferEmployeeCommand
-- Two methods demonstrating [Execute]:
-  1. Local execute: _TransferEmployee(Guid employeeId, Guid newDepartmentId, [Service] IEmployeeRepository)
-  2. Remote execute: [Remote, Execute] _TransferEmployeeRemote(...) with same signature
-- Return Task<TransferResult> where TransferResult is a simple record
-- Comment explaining [Execute] must be in static partial class
-- Application layer: Command pattern for employee transfer
--->
+<a id='snippet-attributes-execute'></a>
+```cs
+/// <summary>
+/// Result of a transfer operation.
+/// </summary>
+public record TransferResult(Guid EmployeeId, Guid NewDepartmentId, bool Success);
+
+/// <summary>
+/// Command for transferring an employee to a new department.
+/// [Execute] must be used in a static partial class.
+/// </summary>
+[Factory]
+public static partial class TransferEmployeeCommand
+{
+    /// <summary>
+    /// Local execute - runs on the calling machine.
+    /// </summary>
+    [Execute]
+    private static Task<TransferResult> _TransferEmployee(
+        Guid employeeId,
+        Guid newDepartmentId,
+        [Service] IEmployeeRepository repository)
+    {
+        return Task.FromResult(new TransferResult(employeeId, newDepartmentId, true));
+    }
+
+    /// <summary>
+    /// Remote execute - serializes to server and executes there.
+    /// </summary>
+    [Remote, Execute]
+    private static async Task<TransferResult> _TransferEmployeeRemote(
+        Guid employeeId,
+        Guid newDepartmentId,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var employee = await repository.GetByIdAsync(employeeId, ct);
+        if (employee == null)
+        {
+            return new TransferResult(employeeId, newDepartmentId, false);
+        }
+
+        employee.DepartmentId = newDepartmentId;
+        await repository.UpdateAsync(employee, ct);
+        await repository.SaveChangesAsync(ct);
+
+        return new TransferResult(employeeId, newDepartmentId, true);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/ExecuteSamples.cs#L6-L54' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Operation flags: `AuthorizeFactoryOperation.Execute | Read`
@@ -187,14 +494,35 @@ Marks methods for fire-and-forget domain events.
 **Inherited:** No
 
 <!-- snippet: attributes-event -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show static partial class EmployeeEventHandlers (events should be static partial)
-- [Event] method: SendWelcomeEmail(Guid employeeId, string email, [Service] IEmailService, CancellationToken ct)
-- Must show CancellationToken as final parameter (required for events)
-- Comment explaining fire-and-forget behavior
-- Application layer: Domain event handlers for employee onboarding
--->
+<a id='snippet-attributes-event'></a>
+```cs
+/// <summary>
+/// Event handlers for employee onboarding.
+/// Events are fire-and-forget - caller does not wait for completion.
+/// </summary>
+[Factory]
+public partial class EmployeeEventHandlers
+{
+    /// <summary>
+    /// Sends welcome email when an employee is hired.
+    /// CancellationToken must be the final parameter for [Event] methods.
+    /// </summary>
+    [Event]
+    public async Task SendWelcomeEmail(
+        Guid employeeId,
+        string email,
+        [Service] IEmailService emailService,
+        CancellationToken ct)
+    {
+        await emailService.SendAsync(
+            email,
+            "Welcome to the Company!",
+            $"Your employee ID is {employeeId}. We're excited to have you!",
+            ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/EventSamples.cs#L6-L32' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-event' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Requirements:
@@ -213,15 +541,61 @@ Marks methods that execute on the server.
 **Inherited:** Yes
 
 <!-- snippet: attributes-remote -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class with contrast between remote and local fetch:
-  1. [Remote, Fetch] FetchFromDatabase(Guid id, [Service] IEmployeeRepository) - server execution
-  2. [Fetch] FetchFromCache(Guid id) - local execution only
-- Properties: Id, FirstName, LastName, Email
-- Comments explaining: [Remote] = serialized HTTP call, no [Remote] = local execution
-- Domain layer: Employee aggregate demonstrating execution location control
--->
+<a id='snippet-attributes-remote'></a>
+```cs
+/// <summary>
+/// Employee aggregate demonstrating [Remote] vs local execution.
+/// </summary>
+[Factory]
+public partial class EmployeeWithRemote
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string Email { get; set; } = "";
+
+    [Create]
+    public EmployeeWithRemote()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// [Remote, Fetch] - Serialized HTTP call to server.
+    /// Method executes on the server with access to server-side services.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task FetchFromDatabase(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+            Email = entity.Email;
+        }
+    }
+
+    /// <summary>
+    /// [Fetch] without [Remote] - Local execution only.
+    /// No serialization, no HTTP call. Uses only local data.
+    /// </summary>
+    [Fetch]
+    public void FetchFromCache(Guid id)
+    {
+        // In a real scenario, this would read from a local cache
+        Id = id;
+        FirstName = "Cached";
+        LastName = "Employee";
+        Email = "cached@example.com";
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/RemoteSamples.cs#L6-L58' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Without `[Remote]`, methods execute locally (no serialization, no HTTP).
@@ -234,15 +608,48 @@ Marks parameters for dependency injection.
 **Inherited:** No
 
 <!-- snippet: attributes-service -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class with [Fetch] method demonstrating parameter types:
-  - Guid employeeId - value parameter passed by caller
-  - [Service] IEmployeeRepository repository - injected from DI
-  - [Service] ICurrentUserContext userContext - injected from DI
-- Include inline comments distinguishing value vs service parameters
-- Domain layer: Employee aggregate showing DI injection pattern
--->
+<a id='snippet-attributes-service'></a>
+```cs
+/// <summary>
+/// Employee aggregate demonstrating [Service] parameter injection.
+/// </summary>
+[Factory]
+public partial class EmployeeWithService
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string FetchedBy { get; private set; } = "";
+
+    [Create]
+    public EmployeeWithService()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Demonstrates both value and service parameters.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task Fetch(
+        Guid employeeId,                        // Value parameter - passed by caller
+        [Service] IEmployeeRepository repository, // Service - injected from DI
+        [Service] IUserContext userContext,       // Service - injected from DI
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(employeeId, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+        }
+
+        FetchedBy = userContext.Username;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/ServiceSamples.cs#L6-L45' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Service parameters:
@@ -260,19 +667,77 @@ Applies custom authorization class to the factory.
 **Inherited:** No
 
 <!-- snippet: attributes-authorizefactory-generic -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show IEmployeeAuthorization interface with:
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Read)] bool CanRead()
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Write)] bool CanWrite()
-- Show EmployeeAuthorization implementation:
-  - Constructor takes ICurrentUserContext
-  - CanRead() returns userContext.IsAuthenticated
-  - CanWrite() returns userContext.IsInRole("HRManager")
-- Show Employee class with [Factory] and [AuthorizeFactory<IEmployeeAuthorization>]
-- Include [Remote, Fetch] method to demonstrate protected operation
-- Application layer: Authorization interface and implementation
--->
+<a id='snippet-attributes-authorizefactory-generic'></a>
+```cs
+/// <summary>
+/// Authorization interface for Employee operations.
+/// </summary>
+public interface IEmployeeAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
+    bool CanRead();
+
+    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+    bool CanWrite();
+}
+
+/// <summary>
+/// Implementation of Employee authorization rules.
+/// </summary>
+public class EmployeeAuthorizationImpl : IEmployeeAuthorization
+{
+    private readonly IUserContext _userContext;
+
+    public EmployeeAuthorizationImpl(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    public bool CanRead()
+    {
+        return _userContext.IsAuthenticated;
+    }
+
+    public bool CanWrite()
+    {
+        return _userContext.IsInRole("HRManager");
+    }
+}
+
+/// <summary>
+/// Employee aggregate with class-level authorization.
+/// </summary>
+[Factory]
+[AuthorizeFactory<IEmployeeAuthorization>]
+public partial class EmployeeWithAuth
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+
+    [Create]
+    public EmployeeWithAuth()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    [Remote, Fetch]
+    public async Task Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+        }
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/AuthorizationSamples.cs#L6-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The type parameter must be an interface with authorization methods decorated with `[AuthorizeFactory]`.
@@ -287,32 +752,122 @@ Marks methods in authorization interfaces or applies to specific factory methods
 **On authorization interface:**
 
 <!-- snippet: attributes-authorizefactory-interface -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show IDepartmentAuthorization interface with operation-specific methods:
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Create)] bool CanCreate()
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)] bool CanFetch(Guid departmentId)
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Update)] bool CanUpdate(Guid departmentId)
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Delete)] bool CanDelete(Guid departmentId)
-- Show DepartmentAuthorization implementation:
-  - CanCreate/CanFetch require IsAuthenticated
-  - CanUpdate requires "DepartmentManager" role
-  - CanDelete requires "Administrator" role
-- Application layer: Fine-grained authorization per operation
--->
+<a id='snippet-attributes-authorizefactory-interface'></a>
+```cs
+/// <summary>
+/// Authorization interface with operation-specific methods.
+/// </summary>
+public interface IDepartmentAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    bool CanCreate();
+
+    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+    bool CanFetch(Guid departmentId);
+
+    [AuthorizeFactory(AuthorizeFactoryOperation.Update)]
+    bool CanUpdate(Guid departmentId);
+
+    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
+    bool CanDelete(Guid departmentId);
+}
+
+/// <summary>
+/// Implementation with fine-grained authorization per operation.
+/// </summary>
+public class DepartmentAuthorizationImpl : IDepartmentAuthorization
+{
+    private readonly IUserContext _userContext;
+
+    public DepartmentAuthorizationImpl(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    public bool CanCreate()
+    {
+        return _userContext.IsAuthenticated;
+    }
+
+    public bool CanFetch(Guid departmentId)
+    {
+        return _userContext.IsAuthenticated;
+    }
+
+    public bool CanUpdate(Guid departmentId)
+    {
+        return _userContext.IsInRole("DepartmentManager");
+    }
+
+    public bool CanDelete(Guid departmentId)
+    {
+        return _userContext.IsInRole("Administrator");
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/AuthorizationSamples.cs#L76-L127' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **On factory method (additional check):**
 
 <!-- snippet: attributes-authorizefactory-method -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Department class with class-level [AuthorizeFactory<IDepartmentAuthorization>]
-- Standard [Remote, Fetch] method (uses class-level auth)
-- [Remote, Fetch] FetchWithSalaryData with [AspAuthorize(Roles = "HRManager")]
-- Comment: method-level [AspAuthorize] adds additional authorization check
-- Domain layer: Department aggregate with mixed authorization strategies
--->
+<a id='snippet-attributes-authorizefactory-method'></a>
+```cs
+/// <summary>
+/// Department aggregate with class-level and method-level authorization.
+/// </summary>
+[Factory]
+[AuthorizeFactory<IDepartmentAuthorizationSample>]
+public partial class DepartmentWithMethodAuth
+{
+    public Guid Id { get; private set; }
+    public string Name { get; set; } = "";
+    public decimal Budget { get; set; }
+
+    [Create]
+    public DepartmentWithMethodAuth()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Uses class-level authorization only.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task Fetch(
+        Guid id,
+        [Service] IDepartmentRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            Name = entity.Name;
+        }
+    }
+
+    /// <summary>
+    /// Method-level [AspAuthorize] adds additional authorization check.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize(Roles = "HRManager")]
+    public async Task FetchWithSalaryData(
+        Guid id,
+        [Service] IDepartmentRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            Name = entity.Name;
+            Budget = entity.Budget;
+        }
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AuthorizeMethodSamples.cs#L15-L69' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-method' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Parameters:**
@@ -327,16 +882,103 @@ Applies ASP.NET Core authorization policies to endpoints.
 **Multiple:** Yes
 
 <!-- snippet: attributes-aspauthorize -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class with three [AspAuthorize] variations on fetch methods:
-  1. [AspAuthorize("RequireAuthenticated")] - policy-based
-  2. [AspAuthorize(Roles = "HRManager,Administrator")] - role-based
-  3. [AspAuthorize(AuthenticationSchemes = "Bearer")] - scheme-based
-- Show static partial class PayrollCommands with:
-  - [Remote, Execute] [AspAuthorize(Roles = "Payroll")] _ProcessPayroll method
-- Domain layer (Employee) and Application layer (PayrollCommands)
--->
+<a id='snippet-attributes-aspauthorize'></a>
+```cs
+/// <summary>
+/// Employee aggregate with various [AspAuthorize] patterns.
+/// </summary>
+[Factory]
+public partial class EmployeeWithAspAuth
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public decimal Salary { get; set; }
+
+    [Create]
+    public EmployeeWithAspAuth()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Policy-based authorization.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize("RequireAuthenticated")]
+    public async Task FetchWithPolicy(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+        }
+    }
+
+    /// <summary>
+    /// Role-based authorization with multiple roles.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize(Roles = "HRManager,Administrator")]
+    public async Task FetchWithRoles(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+            Salary = entity.SalaryAmount;
+        }
+    }
+
+    /// <summary>
+    /// Scheme-based authorization.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize(AuthenticationSchemes = "Bearer")]
+    public async Task FetchWithScheme(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+        }
+    }
+}
+
+/// <summary>
+/// Payroll commands with [AspAuthorize].
+/// </summary>
+[Factory]
+public static partial class PayrollCommands
+{
+    [Remote, Execute]
+    [AspAuthorize(Roles = "Payroll")]
+    private static Task<bool> _ProcessPayroll(
+        Guid departmentId,
+        DateTime payPeriodEnd,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        return Task.FromResult(true);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AspAuthorizeSamples.cs#L6-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Properties:**
@@ -356,16 +998,21 @@ Specifies factory generation mode for the assembly.
 **Inherited:** No
 
 <!-- snippet: attributes-factorymode -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show assembly-level attribute usage (comment form, not actual attribute):
-  - [assembly: FactoryMode(FactoryMode.Full)] - server assembly
-  - [assembly: FactoryMode(FactoryMode.RemoteOnly)] - client assembly
-- Comments explaining:
-  - Full: generates local and remote execution paths (default, for server)
-  - RemoteOnly: generates HTTP stubs only (for Blazor/client assemblies)
-- Infrastructure/configuration context
--->
+<a id='snippet-attributes-factorymode'></a>
+```cs
+// Assembly-level factory mode configuration examples:
+//
+// Server assembly (default mode):
+// [assembly: FactoryMode(FactoryMode.Full)]
+// - Generates local and remote execution paths
+// - Use in server/API projects
+//
+// Client assembly (remote-only mode):
+// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
+// - Generates HTTP stubs only, no local execution
+// - Use in Blazor WebAssembly and other client projects
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L6-L18' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factorymode' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Parameters:**
@@ -383,16 +1030,19 @@ Limits generated file hint name length for long paths.
 **Inherited:** No
 
 <!-- snippet: attributes-factoryhintnamelength -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show assembly-level attribute usage (comment form):
-  - [assembly: FactoryHintNameLength(100)]
-- Comments explaining:
-  - Limits generated file hint name length
-  - Use when hitting Windows 260-character path limits
-  - Value is maximum characters for hint name
-- Infrastructure/configuration context
--->
+<a id='snippet-attributes-factoryhintnamelength'></a>
+```cs
+// Assembly-level hint name length configuration:
+//
+// [assembly: FactoryHintNameLength(100)]
+// - Limits generated file hint name length to 100 characters
+// - Use when hitting Windows 260-character path limits
+// - Value is maximum characters for the generated file hint name
+//
+// Default behavior uses full type names which can be long
+// for deeply nested namespaces or generic types.
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L20-L30' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Parameters:**
@@ -405,16 +1055,67 @@ Use when hitting Windows path length limits (260 characters).
 ### Multiple Operations on One Method
 
 <!-- snippet: attributes-multiple-operations -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Department class implementing IFactorySaveMeta
-- Properties: Id, Name, Budget, IsNew, IsDeleted
-- [Create] constructor
-- [Insert, Update] combined on single Save method (upsert pattern)
-  - Comment: called by Save for both new and existing entities
-- [Delete] as separate method
-- Domain layer: Department aggregate with combined persistence operations
--->
+<a id='snippet-attributes-multiple-operations'></a>
+```cs
+/// <summary>
+/// Department aggregate with combined [Insert, Update] on single method.
+/// </summary>
+[Factory]
+public partial class DepartmentWithCombinedOps : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string Name { get; set; } = "";
+    public decimal Budget { get; set; }
+    public bool IsNew { get; private set; }
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public DepartmentWithCombinedOps()
+    {
+        Id = Guid.NewGuid();
+        IsNew = true;
+    }
+
+    /// <summary>
+    /// [Insert, Update] combined - upsert pattern.
+    /// Called by Save for both new and existing entities.
+    /// </summary>
+    [Remote, Insert, Update]
+    public async Task Save(
+        [Service] IDepartmentRepository repository,
+        CancellationToken ct)
+    {
+        var entity = new DepartmentEntity
+        {
+            Id = Id,
+            Name = Name,
+            Budget = Budget
+        };
+
+        if (IsNew)
+        {
+            await repository.AddAsync(entity, ct);
+            IsNew = false;
+        }
+        else
+        {
+            await repository.UpdateAsync(entity, ct);
+        }
+
+        await repository.SaveChangesAsync(ct);
+    }
+
+    [Remote, Delete]
+    public async Task Delete(
+        [Service] IDepartmentRepository repository,
+        CancellationToken ct)
+    {
+        await repository.DeleteAsync(Id, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/CombinationSamples.cs#L6-L64' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory methods:
@@ -428,15 +1129,74 @@ Both route to the same method.
 ### Remote + Operation
 
 <!-- snippet: attributes-remote-operation -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show Employee class with [Remote, Fetch] combination:
-  - FetchFromDatabase(Guid id, [Service] IEmployeeRepository)
-- Show static partial class PromoteEmployeeCommand with [Remote, Execute]:
-  - _Promote(Guid employeeId, string newTitle, decimal salaryIncrease, [Service] IEmployeeRepository)
-- Comments explaining: [Remote] + operation = server-side execution with serialization
-- Domain layer (Employee) and Application layer (PromoteEmployeeCommand)
--->
+<a id='snippet-attributes-remote-operation'></a>
+```cs
+/// <summary>
+/// Employee aggregate with [Remote, Fetch] combination.
+/// </summary>
+[Factory]
+public partial class EmployeeRemoteFetch
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+
+    [Create]
+    public EmployeeRemoteFetch()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// [Remote] + operation = server-side execution with serialization.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task FetchFromDatabase(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+        }
+    }
+}
+
+/// <summary>
+/// Promote command with [Remote, Execute].
+/// </summary>
+[Factory]
+public static partial class PromoteEmployeeCommand
+{
+    /// <summary>
+    /// [Remote, Execute] - server-side command execution.
+    /// </summary>
+    [Remote, Execute]
+    private static async Task<bool> _Promote(
+        Guid employeeId,
+        string newTitle,
+        decimal salaryIncrease,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var employee = await repository.GetByIdAsync(employeeId, ct);
+        if (employee == null) return false;
+
+        employee.Position = newTitle;
+        employee.SalaryAmount += salaryIncrease;
+
+        await repository.UpdateAsync(employee, ct);
+        await repository.SaveChangesAsync(ct);
+
+        return true;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/CombinationSamples.cs#L66-L131' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote-operation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Executes on server (serialized call).
@@ -444,17 +1204,53 @@ Executes on server (serialized call).
 ### Authorization + Operation
 
 <!-- snippet: attributes-authorization-operation -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show IEmployeeOperationAuth interface with combined operation flags:
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)] bool CanCreateAndRead()
-  - [AuthorizeFactory(AuthorizeFactoryOperation.Delete)] bool CanDelete()
-- Show EmployeeOperationAuth implementation:
-  - CanCreateAndRead() requires IsAuthenticated
-  - CanDelete() requires "Administrator" role
-- Comments explaining: combined flags apply same check to multiple operations
-- Application layer: Authorization with bitwise OR operation flags
--->
+<a id='snippet-attributes-authorization-operation'></a>
+```cs
+/// <summary>
+/// Authorization interface with combined operation flags.
+/// </summary>
+public interface IEmployeeOperationAuth
+{
+    /// <summary>
+    /// Combined flags apply same check to multiple operations.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
+    bool CanCreateAndRead();
+
+    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
+    bool CanDelete();
+}
+
+/// <summary>
+/// Implementation with operation-level authorization.
+/// </summary>
+public class EmployeeOperationAuthImpl : IEmployeeOperationAuth
+{
+    private readonly IUserContext _userContext;
+
+    public EmployeeOperationAuthImpl(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    /// <summary>
+    /// Create and Fetch require only authentication.
+    /// </summary>
+    public bool CanCreateAndRead()
+    {
+        return _userContext.IsAuthenticated;
+    }
+
+    /// <summary>
+    /// Delete requires Administrator role.
+    /// </summary>
+    public bool CanDelete()
+    {
+        return _userContext.IsInRole("Administrator");
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/AuthorizationOperationSamples.cs#L6-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Authorization checked before execution.
@@ -475,19 +1271,77 @@ Authorization checked before execution.
 Example:
 
 <!-- snippet: attributes-inheritance -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show base Employee class with [Factory]:
-  - Properties: Id (protected set), FirstName, LastName
-  - [Create] constructor
-  - [Remote, Fetch] virtual Fetch(Guid id)
-- Show Manager : Employee (inherits [Factory]):
-  - Adds DirectReportCount property
-  - [Remote, Fetch] override Fetch with additional data loading
-- Show Contractor : Employee with [SuppressFactory]:
-  - Comment: no factory generated, use EmployeeFactory
-- Domain layer: Employee hierarchy demonstrating attribute inheritance
--->
+<a id='snippet-attributes-inheritance'></a>
+```cs
+/// <summary>
+/// Base Employee class with [Factory].
+/// </summary>
+[Factory]
+public partial class EmployeeBaseInherited
+{
+    public Guid Id { get; protected set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+
+    [Create]
+    public EmployeeBaseInherited()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// [Remote] is inherited by derived classes.
+    /// </summary>
+    [Remote, Fetch]
+    public virtual async Task Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+        }
+    }
+}
+
+/// <summary>
+/// Manager inherits [Factory] from base.
+/// </summary>
+public partial class ManagerInherited : EmployeeBaseInherited
+{
+    public int DirectReportCount { get; set; }
+
+    /// <summary>
+    /// Override with additional data loading.
+    /// [Remote] is inherited from base.
+    /// </summary>
+    [Fetch]
+    public override async Task Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        await base.Fetch(id, repository, ct);
+        // Load additional manager-specific data
+        DirectReportCount = 5; // Would be loaded from repository
+    }
+}
+
+/// <summary>
+/// Contractor with [SuppressFactory] - no factory generated, use EmployeeBaseFactory.
+/// </summary>
+[SuppressFactory]
+public partial class ContractorInherited : EmployeeBaseInherited
+{
+    public DateTime ContractEndDate { get; set; }
+    public string AgencyName { get; set; } = "";
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/InheritanceSamples.cs#L6-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `DerivedWithInheritedFactory` inherits:
@@ -503,63 +1357,253 @@ SNIPPET REQUIREMENTS:
 ### CRUD Entity
 
 <!-- snippet: attributes-pattern-crud -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show complete Employee CRUD entity implementing IFactorySaveMeta
-- Properties: Id, FirstName, LastName, Email, DepartmentId, HireDate, IsNew, IsDeleted
-- [Create] constructor with IsNew = true
-- [Remote, Fetch] with [Service] IEmployeeRepository - sets IsNew = false
-- [Remote, Insert] with [Service] IEmployeeRepository - sets IsNew = false
-- [Remote, Update] with [Service] IEmployeeRepository
-- [Remote, Delete] with [Service] IEmployeeRepository
-- Domain layer: Complete Employee aggregate with all CRUD operations
--->
+<a id='snippet-attributes-pattern-crud'></a>
+```cs
+/// <summary>
+/// Complete Employee CRUD entity pattern.
+/// </summary>
+[Factory]
+public partial class EmployeeCrud : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string Email { get; set; } = "";
+    public Guid DepartmentId { get; set; }
+    public DateTime HireDate { get; private set; }
+    public bool IsNew { get; private set; }
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public EmployeeCrud()
+    {
+        Id = Guid.NewGuid();
+        HireDate = DateTime.UtcNow;
+        IsNew = true;
+    }
+
+    [Remote, Fetch]
+    public async Task Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity != null)
+        {
+            Id = entity.Id;
+            FirstName = entity.FirstName;
+            LastName = entity.LastName;
+            Email = entity.Email;
+            DepartmentId = entity.DepartmentId;
+            HireDate = entity.HireDate;
+            IsNew = false;
+        }
+    }
+
+    [Remote, Insert]
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = MapToEntity();
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+
+    [Remote, Update]
+    public async Task Update(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = MapToEntity();
+        await repository.UpdateAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+
+    [Remote, Delete]
+    public async Task Delete(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        await repository.DeleteAsync(Id, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+
+    private EmployeeEntity MapToEntity() => new()
+    {
+        Id = Id,
+        FirstName = FirstName,
+        LastName = LastName,
+        Email = Email,
+        DepartmentId = DepartmentId,
+        HireDate = HireDate
+    };
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/PatternSamples.cs#L6-L89' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-crud' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Read-Only Entity
 
 <!-- snippet: attributes-pattern-readonly -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show read-only EmployeeSnapshot class (Create and Fetch only, no persistence)
-- Properties: Id, FirstName, LastName, DepartmentName, SnapshotDate (all private set)
-- [Create] constructor sets Id and SnapshotDate = DateTime.UtcNow
-- [Remote, Fetch] with [Service] IEmployeeRepository - loads data
-- Comment: No Insert, Update, or Delete - read-only after creation
-- Domain layer: Read-only view/snapshot pattern
--->
+<a id='snippet-attributes-pattern-readonly'></a>
+```cs
+/// <summary>
+/// Read-only Employee snapshot - Create and Fetch only, no persistence.
+/// </summary>
+[Factory]
+public partial class EmployeeSnapshot
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; private set; } = "";
+    public string LastName { get; private set; } = "";
+    public string DepartmentName { get; private set; } = "";
+    public DateTime SnapshotDate { get; private set; }
+
+    /// <summary>
+    /// Creates a new snapshot with current timestamp.
+    /// </summary>
+    [Create]
+    public EmployeeSnapshot()
+    {
+        Id = Guid.NewGuid();
+        SnapshotDate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Loads snapshot data from repository.
+    /// No Insert, Update, or Delete - read-only after creation.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task Fetch(
+        Guid employeeId,
+        [Service] IEmployeeRepository employeeRepo,
+        [Service] IDepartmentRepository departmentRepo,
+        CancellationToken ct)
+    {
+        var employee = await employeeRepo.GetByIdAsync(employeeId, ct);
+        if (employee != null)
+        {
+            Id = employee.Id;
+            FirstName = employee.FirstName;
+            LastName = employee.LastName;
+
+            var department = await departmentRepo.GetByIdAsync(employee.DepartmentId, ct);
+            DepartmentName = department?.Name ?? "Unknown";
+        }
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/PatternSamples.cs#L91-L137' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-readonly' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Command Handler
 
 <!-- snippet: attributes-pattern-command -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show static partial class TerminateEmployeeCommand
-- Define result record: TerminationResult(Guid EmployeeId, bool Success, DateTime EffectiveDate, string Message)
-- [Remote, Execute] _Execute method:
-  - Parameters: Guid employeeId, DateTime terminationDate, string reason, [Service] IEmployeeRepository
-  - Returns Task<TerminationResult>
-- Comment explaining command pattern with [Execute]
-- Application layer: Command pattern for employee termination
--->
+<a id='snippet-attributes-pattern-command'></a>
+```cs
+/// <summary>
+/// Result of a termination operation.
+/// </summary>
+public record TerminationResult(
+    Guid EmployeeId,
+    bool Success,
+    DateTime EffectiveDate,
+    string Message);
+
+/// <summary>
+/// Command pattern for employee termination.
+/// </summary>
+[Factory]
+public static partial class TerminateEmployeeCommand
+{
+    /// <summary>
+    /// Executes the termination process on the server.
+    /// </summary>
+    [Remote, Execute]
+    private static async Task<TerminationResult> _Execute(
+        Guid employeeId,
+        DateTime terminationDate,
+        string reason,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var employee = await repository.GetByIdAsync(employeeId, ct);
+        if (employee == null)
+        {
+            return new TerminationResult(
+                employeeId,
+                false,
+                terminationDate,
+                "Employee not found");
+        }
+
+        await repository.DeleteAsync(employeeId, ct);
+        await repository.SaveChangesAsync(ct);
+
+        return new TerminationResult(
+            employeeId,
+            true,
+            terminationDate,
+            $"Terminated for: {reason}");
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/PatternSamples.cs#L6-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Event Publisher
 
 <!-- snippet: attributes-pattern-event -->
-<!--
-SNIPPET REQUIREMENTS:
-- Show static partial class EmployeeLifecycleEvents
-- [Event] _OnEmployeeHired:
-  - Parameters: Guid employeeId, string email, [Service] IEmailService, CancellationToken ct
-  - Sends welcome email
-- [Event] _OnEmployeePromoted:
-  - Parameters: Guid employeeId, string newTitle, decimal newSalary, [Service] IEmailService, CancellationToken ct
-  - Sends congratulations email
-- Comment explaining: Event handlers are fire-and-forget, must end with CancellationToken
-- Application layer: Domain event handlers pattern
--->
+<a id='snippet-attributes-pattern-event'></a>
+```cs
+/// <summary>
+/// Domain event handlers for employee lifecycle events.
+/// Event handlers are fire-and-forget - caller does not wait for completion.
+/// </summary>
+[Factory]
+public partial class EmployeeLifecycleEvents
+{
+    /// <summary>
+    /// Sends welcome email when employee is hired.
+    /// CancellationToken must be the final parameter for [Event] methods.
+    /// </summary>
+    [Event]
+    public async Task OnEmployeeHired(
+        Guid employeeId,
+        string email,
+        [Service] IEmailService emailService,
+        CancellationToken ct)
+    {
+        await emailService.SendAsync(
+            email,
+            "Welcome to the Team!",
+            $"Your employee ID is {employeeId}. Welcome aboard!",
+            ct);
+    }
+
+    /// <summary>
+    /// Sends congratulations email when employee is promoted.
+    /// </summary>
+    [Event]
+    public async Task OnEmployeePromoted(
+        Guid employeeId,
+        string newTitle,
+        decimal newSalary,
+        [Service] IEmailService emailService,
+        CancellationToken ct)
+    {
+        await emailService.SendAsync(
+            "hr@company.com",
+            "Employee Promotion",
+            $"Employee {employeeId} promoted to {newTitle} with salary ${newSalary:N2}",
+            ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/PatternSamples.cs#L55-L99' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-event' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Next Steps

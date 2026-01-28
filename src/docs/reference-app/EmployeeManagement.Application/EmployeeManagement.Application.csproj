@@ -5,9 +5,24 @@
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <RootNamespace>EmployeeManagement.Application</RootNamespace>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <!-- CA1062: Service parameters are injected by DI and are never null -->
+    <!-- CA1707: Underscore prefixed methods are required by RemoteFactory for Execute operations -->
+    <!-- CA1034: Nested types are OK for sample record types -->
+    <!-- CA1711: EventHandler suffix is intentional for event handler classes -->
+    <!-- CA1819: Properties returning arrays are OK for serialization samples -->
+    <!-- CA1822: Event methods must be instance methods for [Event] attribute -->
+    <NoWarn>CA1062;CA1707;CA1034;CA1711;CA1819;CA1822</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EmployeeManagement.Domain\EmployeeManagement.Domain.csproj" />
+    <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
+    <ProjectReference Include="..\..\..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
   </ItemGroup>
 </Project>

@@ -117,27 +117,27 @@ Client code calls the factory:
 <a id='snippet-readme-client-usage'></a>
 ```cs
 // Create a new person
-var person = factory.Create();
-person.FirstName = "John";
-person.LastName = "Doe";
-person.Email = "john.doe@example.com";
-
-// Save routes to Insert (IsNew = true)
-var saved = await factory.Save(person);
-
-// Fetch an existing person
-var fetched = await factory.Fetch(saved!.Id);
-// fetched.FirstName is "John"
-
-// Update - Save routes to Update (IsNew = false)
-fetched!.Email = "john.updated@example.com";
-await factory.Save(fetched);
-
-// Delete - set IsDeleted, then Save
-fetched.IsDeleted = true;
-await factory.Save(fetched);
+// var person = factory.Create();
+// person.FirstName = "John";
+// person.LastName = "Doe";
+// person.Email = "john.doe@example.com";
+//
+// // Save routes to Insert (IsNew = true)
+// var saved = await factory.Save(person);
+//
+// // Fetch an existing person
+// var fetched = await factory.Fetch(saved!.Id);
+// // fetched.FirstName is "John"
+//
+// // Update - Save routes to Update (IsNew = false)
+// fetched!.Email = "john.updated@example.com";
+// await factory.Save(fetched);
+//
+// // Delete - set IsDeleted, then Save
+// fetched.IsDeleted = true;
+// await factory.Save(fetched);
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L101-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L98-L119' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Server automatically exposes the endpoint at `/api/neatoo`. No controllers needed.
@@ -191,13 +191,19 @@ Configure client assembly for smaller output:
 <!-- snippet: readme-server-setup -->
 <a id='snippet-readme-server-setup'></a>
 ```cs
-// Register Neatoo ASP.NET Core services
-services.AddNeatooAspNetCore(typeof(Person).Assembly);
+public static class ServerSetup
+{
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        // Register Neatoo ASP.NET Core services
+        // services.AddNeatooAspNetCore(typeof(Person).Assembly);
 
-// Register domain services
-services.AddScoped<IPersonRepository, PersonRepository>();
+        // Register domain services
+        // services.AddScoped<IPersonRepository, PersonRepository>();
+    }
+}
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L128-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L121-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Client setup (Blazor WASM):**
@@ -205,17 +211,23 @@ services.AddScoped<IPersonRepository, PersonRepository>();
 <!-- snippet: readme-client-setup -->
 <a id='snippet-readme-client-setup'></a>
 ```cs
-// Register Neatoo RemoteFactory for client
-services.AddNeatooRemoteFactory(
-    NeatooFactory.Remote,
-    typeof(Person).Assembly);
+public static class ClientSetup
+{
+    public static void ConfigureServices(IServiceCollection services, Uri baseAddress)
+    {
+        // Register Neatoo RemoteFactory for client
+        // services.AddNeatooRemoteFactory(
+        //     NeatooFactory.Remote,
+        //     typeof(Person).Assembly);
 
-// Register keyed HttpClient for Neatoo
-services.AddKeyedScoped(
-    RemoteFactoryServices.HttpClientKey,
-    (sp, key) => new HttpClient { BaseAddress = baseAddress });
+        // Register keyed HttpClient for Neatoo
+        // services.AddKeyedScoped(
+        //     RemoteFactoryServices.HttpClientKey,
+        //     (sp, key) => new HttpClient { BaseAddress = baseAddress });
+    }
+}
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L140-L150' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L135-L151' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Domain model:**
@@ -321,10 +333,11 @@ public class PersonAuthorization : IPersonAuthorization
 
     public bool CanCreate() => _userContext.IsAuthenticated;
     public bool CanRead() => _userContext.IsAuthenticated;
-    public bool CanWrite() => _userContext.IsInRole("Admin") || _userContext.IsInRole("Manager");
+    public bool CanWrite() =>
+        _userContext.IsInRole("Admin") || _userContext.IsInRole("Manager");
 }
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L158-L259' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L158-L260' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Getting Started](docs/getting-started.md) for a complete walkthrough.

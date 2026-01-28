@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <RootNamespace>EmployeeManagement.Server</RootNamespace>
+    <!-- CA1062: Service parameters are injected by DI and are never null -->
+    <NoWarn>CA1062</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

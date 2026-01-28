@@ -66,6 +66,29 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 - `Neatoo.RemoteFactory` - Core library + embedded source generator
 - `Neatoo.RemoteFactory.AspNetCore` - Server-side ASP.NET Core integration
 
+### Understanding [Remote] - Client-to-Server Boundary
+
+**Core concept:** `[Remote]` marks entry points from the client to the server. Once execution crosses to the server, it stays there—subsequent method calls don't need `[Remote]`.
+
+**Constructor vs Method Injection:**
+- **Constructor injection** (`[Service]` on constructor): Services available on both client and server
+- **Method injection** (`[Service]` on method parameters): Server-only services—the common case for most factory methods
+
+**When to use `[Remote]`:**
+- Factory methods that are entry points from the client
+- Typically aggregate root operations (Create, Fetch, Save)
+
+**When `[Remote]` is NOT needed (the common case):**
+- Methods called from server-side code (most methods with method-injected services)
+- Child entity operations within an aggregate
+- Any method invoked after already crossing to the server
+
+**Entity duality (Neatoo/CSLA pattern):** An entity can be an aggregate root in one object graph and a child in another. The same class may have `[Remote]` methods for aggregate root scenarios while other methods are server-only.
+
+**Runtime enforcement:** Non-`[Remote]` methods are generated for client assemblies but result in "not-registered" DI exceptions if called—server-only services aren't in the client container.
+
+**Best practice - Blazor WASM:** Exclude server-only packages (Entity Framework Core, etc.) from client projects to enforce the boundary and reduce bundle size.
+
 ## Testing
 
 Tests run against all three target frameworks (net8.0, net9.0, net10.0).

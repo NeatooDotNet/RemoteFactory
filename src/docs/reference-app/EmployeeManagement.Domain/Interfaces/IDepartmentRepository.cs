@@ -22,4 +22,5 @@ public class DepartmentEntity
     public string Name { get; set; } = "";
     public string Code { get; set; } = "";
     public Guid? ManagerId { get; set; }
+    public decimal Budget { get; set; }
 }
