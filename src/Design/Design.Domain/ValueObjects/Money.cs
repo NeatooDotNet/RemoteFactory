@@ -2,8 +2,7 @@
 // DESIGN SOURCE OF TRUTH: Value Objects
 // =============================================================================
 //
-// Value objects are immutable objects identified by their values, not identity.
-// They don't need [Factory] because they don't have factory operations.
+// Value objects don't need [Factory] because they don't have factory operations.
 //
 // DESIGN DECISION: Value objects don't use [Factory]
 //
