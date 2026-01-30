@@ -14,6 +14,21 @@ This file provides guidance to Claude Code (claude.ai/claude-code) when working 
 
 All three frameworks are included in the NuGet packages.
 
+## Design Source of Truth
+
+**IMPORTANT**: Before proposing design changes or implementing features, consult the Design projects:
+
+- **`src/Design/CLAUDE-DESIGN.md`** - Quick reference for all factory patterns and rules
+- **`src/Design/Design.Domain/`** - Authoritative examples with extensive comments
+
+The Design projects are the **single source of truth** for RemoteFactory's API. They contain:
+- All three factory patterns (Class, Interface, Static) with working examples
+- Heavily commented code explaining "why" and "what we didn't do"
+- 26 passing tests demonstrating correct usage
+- Server and client projects showing configuration
+
+When in doubt about how something should work, read the Design code first.
+
 ## Solution Structure
 
 ```
@@ -22,6 +37,11 @@ RemoteFactory/
 │   ├── RemoteFactory/                    # Core library (Neatoo.RemoteFactory)
 │   ├── RemoteFactory.AspNetCore/         # ASP.NET Core integration
 │   ├── Generator/                        # Roslyn source generator (netstandard2.0)
+│   ├── Design/                           # DESIGN SOURCE OF TRUTH
+│   │   ├── Design.Domain/                # All factory patterns with comments
+│   │   ├── Design.Tests/                 # 26 tests demonstrating patterns
+│   │   ├── Design.Server/                # ASP.NET Core configuration
+│   │   └── Design.Client.Blazor/         # Blazor WASM configuration
 │   ├── Tests/
 │   │   ├── RemoteFactory.UnitTests/      # Unit tests for generator, factories, serialization
 │   │   ├── RemoteFactory.IntegrationTests/ # Integration tests with ASP.NET Core
