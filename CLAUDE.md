@@ -26,6 +26,8 @@ RemoteFactory/
 │   │   ├── RemoteFactory.UnitTests/      # Unit tests for generator, factories, serialization
 │   │   ├── RemoteFactory.IntegrationTests/ # Integration tests with ASP.NET Core
 │   │   └── ...
+│   ├── docs/
+│   │   └── reference-docs/              # Production-quality reference application (MarkdownSnippets source)
 │   └── Examples/
 │       ├── Person/                       # Complete Blazor WASM example
 │       └── ...

@@ -11,7 +11,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Configure the server base address
 var serverBaseAddress = builder.Configuration["ServerUrl"] ?? "http://localhost:5000/";
 
-#region client-configuration
+#region getting-started-client-program
 // Configure RemoteFactory for Remote (client) mode
 var domainAssembly = typeof(Employee).Assembly;
 
