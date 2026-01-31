@@ -1,9 +1,9 @@
 # Create Design Source of Truth Projects
 
-**Status:** In Progress
+**Status:** Complete
 **Priority:** High
 **Created:** 2026-01-30
-**Last Updated:** 2026-01-30
+**Last Updated:** 2026-01-31
 
 ---
 
@@ -82,7 +82,7 @@ Design Code → Design Plan → Updated Codebase + Design Code → Samples/Examp
 ### Phase 7: Server/Client Integration
 - [x] Create `Design.Server` ASP.NET Core project
 - [x] Create `Design.Client.Blazor` project
-- [x] Create sample page demonstrating all patterns
+- [x] Create sample page demonstrating all patterns (Home.razor)
 
 ### Phase 8: Documentation & Finalization
 - [x] Create `README.md` and `CLAUDE-DESIGN.md`
@@ -90,10 +90,10 @@ Design Code → Design Plan → Updated Codebase + Design Code → Samples/Examp
 - [ ] Re-evaluate relationship with docs/samples after completion
 
 ### Comment Requirements
-- [x] At least 10 "DID NOT DO THIS BECAUSE" comments (achieved: 10+)
-- [x] At least 5 "DESIGN DECISION" comments (achieved: 15+)
-- [x] At least 3 "GENERATOR BEHAVIOR" comments (achieved: 5+)
-- [x] At least 3 "COMMON MISTAKE" comments (achieved: 8+)
+- [x] At least 10 "DID NOT DO THIS BECAUSE" comments
+- [x] At least 5 "DESIGN DECISION" comments
+- [x] At least 3 "GENERATOR BEHAVIOR" comments
+- [x] At least 3 "COMMON MISTAKE" comments
 
 ---
 
@@ -109,42 +109,18 @@ Design Code → Design Plan → Updated Codebase + Design Code → Samples/Examp
 - Who Updates and When maintenance section
 - Reordered implementation phases (8 phases, building complexity progressively)
 
-**2026-01-30**: Implementation started. Completed:
-- Phase 1: Created src/Design/ with Design.sln, Design.Domain, Design.Tests
-- Phase 2: AllPatterns.cs with all three factory patterns side-by-side
-- Phase 3: Order aggregate, OrderLine child entity, Money value object
-- Phase 6 (partial): 11 tests passing, covering Class Factory pattern
+**2026-01-31**: Recovered work from `docDesignCSharp` branch. Merged into `design-source-of-truth` branch. Build and all 26 tests passing across net8.0/net9.0/net10.0.
 
-Key learnings documented in code:
-- Static factory methods must be `private static` with underscore prefix
-- Interface factory methods don't need operation attributes
-- Properties need public setters for serialization
-- Child factory references aren't preserved across serialization (documented as design consideration)
-
-**2026-01-30**: Phase 6 completed. All testing done:
-- InterfaceFactoryTests.cs: 4 tests for Interface Factory pattern
-- StaticFactoryTests.cs: 4 tests for Static Factory pattern (Execute and Event delegates)
-- SerializationTests.cs: 7 tests for serialization round-trip behavior
-- All 26 tests passing across net8.0, net9.0, net10.0
-
-Key learnings added:
-- Event delegates use `Event` suffix (e.g., `ExampleEvents.OnOrderPlacedEvent`)
-- Collections require local mode for full functionality (factory references lost in remote mode)
-- Value objects (records) serialize correctly via JSON
-
-**2026-01-30**: Phase 7 completed. Server/Client integration:
-- Design.Server: ASP.NET Core with AddNeatooAspNetCore() and UseNeatoo()
-- Design.Client.Blazor: Blazor WASM with AddNeatooRemoteFactory() and keyed HttpClient
-- Home.razor: Interactive sample page demonstrating all three factory patterns
-- Both projects added to Design.sln, all 26 tests still passing
-
-**2026-01-30**: Phase 8 completed. Documentation:
-- README.md: Overview, project structure, three patterns, running instructions
-- CLAUDE-DESIGN.md: Quick reference for Claude Code with all patterns and rules
-- Updated main CLAUDE.md to reference Design projects as source of truth
-- All phases 1-8 complete (except final evaluation of docs/samples relationship)
+All phases complete except final evaluation of docs/samples relationship.
 
 ---
 
 ## Results / Conclusions
 
+Implementation complete. The Design Source of Truth projects provide:
+
+- **4 projects**: Design.Domain, Design.Tests, Design.Server, Design.Client.Blazor
+- **26 passing tests** across net8.0/net9.0/net10.0
+- **All 3 factory patterns** demonstrated with extensive comments
+- **CLAUDE.md updated** to reference Design projects as source of truth
+- **Sample Blazor page** showing all patterns working through client/server boundary
