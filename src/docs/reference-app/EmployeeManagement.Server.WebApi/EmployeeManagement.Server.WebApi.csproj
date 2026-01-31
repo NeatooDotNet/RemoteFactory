@@ -5,8 +5,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <RootNamespace>EmployeeManagement.Server</RootNamespace>
-    <!-- Disable certain code analysis rules for documentation samples -->
-    <NoWarn>$(NoWarn);CA1062;CA1848;CA1031;CA1873</NoWarn>
+    <!-- CA1062: Service parameters are injected by DI and are never null -->
+    <NoWarn>CA1062</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

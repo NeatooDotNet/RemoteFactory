@@ -24,36 +24,25 @@ Configure services and middleware in `Program.cs`:
 <!-- snippet: aspnetcore-basic-setup -->
 <a id='snippet-aspnetcore-basic-setup'></a>
 ```cs
-/// <summary>
-/// Complete server configuration in a single Program.cs pattern.
-/// </summary>
-public static class BasicSetupSample
+public static class BasicSetup
 {
-    public static void ConfigureServices(WebApplicationBuilder builder)
+    public static void Configure(string[] args)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        var domainAssembly = typeof(Employee).Assembly;
+        var builder = WebApplication.CreateBuilder(args);
 
-        // Register RemoteFactory with ASP.NET Core integration
-        builder.Services.AddNeatooAspNetCore(
-            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-            domainAssembly);
+        // Register RemoteFactory services with the domain assembly
+        builder.Services.AddNeatooAspNetCore(typeof(Employee).Assembly);
 
-        // Register factory interface -> implementation mappings
-        builder.Services.RegisterMatchingName(domainAssembly);
+        var app = builder.Build();
 
-        // Register infrastructure services
-        builder.Services.AddInfrastructureServices();
-    }
-
-    public static void ConfigureApp(WebApplication app)
-    {
-        // Configure the /api/neatoo endpoint
+        // Map the /api/neatoo endpoint for remote delegate requests
         app.UseNeatoo();
+
+        app.Run();
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L14-L43' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L8-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The setup follows this pattern:
@@ -86,26 +75,21 @@ Basic registration with domain model assembly:
 <!-- snippet: aspnetcore-addneatoo -->
 <a id='snippet-aspnetcore-addneatoo'></a>
 ```cs
-/// <summary>
-/// AddNeatooAspNetCore registration with domain assembly.
-/// </summary>
 public static class AddNeatooSample
 {
-    public static void Configure(IServiceCollection services)
+    public static void ConfigureServices(IServiceCollection services)
     {
-        var domainAssembly = typeof(Employee).Assembly;
+        // Register with single domain assembly
+        services.AddNeatooAspNetCore(typeof(Employee).Assembly);
 
-        // Registers:
-        // - Generated factory interfaces and implementations (scoped)
-        // - NeatooJsonSerializer and NeatooSerializationOptions
-        // - IAspAuthorize default implementation
-        // - HandleRemoteDelegateRequest
-        // - EventTrackerHostedService for graceful shutdown
-        services.AddNeatooAspNetCore(domainAssembly);
+        // Register with multiple assemblies (if your domain spans multiple projects):
+        // services.AddNeatooAspNetCore(
+        //     typeof(Employee).Assembly,
+        //     typeof(Department).Assembly);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L45-L64' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-addneatoo' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L28-L42' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-addneatoo' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Custom Serialization Options
@@ -124,24 +108,21 @@ Use Named format for debugging:
 <!-- snippet: aspnetcore-custom-serialization -->
 <a id='snippet-aspnetcore-custom-serialization'></a>
 ```cs
-/// <summary>
-/// AddNeatooAspNetCore with custom serialization options.
-/// </summary>
 public static class CustomSerializationSample
 {
-    public static void Configure(IServiceCollection services)
+    public static void ConfigureServices(IServiceCollection services)
     {
-        var domainAssembly = typeof(Employee).Assembly;
+        // Named format produces larger but more readable JSON (useful for debugging)
+        var options = new NeatooSerializationOptions
+        {
+            Format = SerializationFormat.Named
+        };
 
-        // Use Named format for debugging (human-readable JSON)
-        // Must match client format
-        services.AddNeatooAspNetCore(
-            new NeatooSerializationOptions { Format = SerializationFormat.Named },
-            domainAssembly);
+        services.AddNeatooAspNetCore(options, typeof(Employee).Assembly);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L66-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-custom-serialization' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L44-L58' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-custom-serialization' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Serialization](serialization.md) for format details.
@@ -167,29 +148,26 @@ Middleware order matters:
 <!-- snippet: aspnetcore-middleware-order -->
 <a id='snippet-aspnetcore-middleware-order'></a>
 ```cs
-/// <summary>
-/// Proper middleware ordering with UseNeatoo.
-/// </summary>
 public static class MiddlewareOrderSample
 {
     public static void Configure(WebApplication app)
     {
-        // 1. CORS - Allow cross-origin requests
+        // 1. CORS - must be first for cross-origin requests
         app.UseCors();
 
-        // 2. Authentication - Establish identity
+        // 2. Authentication/Authorization - before protected endpoints
         app.UseAuthentication();
-
-        // 3. Authorization - Check permissions
         app.UseAuthorization();
 
-        // 4. UseNeatoo - RemoteFactory endpoint at /api/neatoo
-        // Must be after auth middleware for [AspAuthorize] to work
+        // 3. UseNeatoo - the /api/neatoo endpoint
         app.UseNeatoo();
+
+        // 4. Other endpoints (controllers, minimal APIs, etc.)
+        // app.MapControllers();
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L85-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L60-L79' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Endpoint Details
@@ -239,50 +217,50 @@ Cancellation flow:
 <a id='snippet-aspnetcore-cancellation'></a>
 ```cs
 /// <summary>
-/// Factory method demonstrating cancellation support.
-/// CancellationToken is linked to HttpContext.RequestAborted.
+/// Employee with cancellation support for long-running operations.
 /// </summary>
 [Factory]
-public partial class EmployeeCancellationDemo : IFactorySaveMeta
+public partial class EmployeeWithCancellation
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
+    public string LastName { get; set; } = "";
+    public EmailAddress Email { get; set; } = null!;
 
     [Create]
-    public EmployeeCancellationDemo() { Id = Guid.NewGuid(); }
+    public EmployeeWithCancellation()
+    {
+        Id = Guid.NewGuid();
+    }
 
     /// <summary>
-    /// CancellationToken receives cancellation from:
-    /// - Client disconnect (HttpContext.RequestAborted)
-    /// - Server shutdown (IHostApplicationLifetime.ApplicationStopping)
-    /// - Explicit cancellation from caller
+    /// Fetches an Employee with cancellation support.
+    /// Cancellation fires on: 1. Client disconnect, 2. Server shutdown
     /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
         [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
-        // Check cancellation before expensive work
-        ct.ThrowIfCancellationRequested();
+        // Check for cancellation before starting work
+        cancellationToken.ThrowIfCancellationRequested();
 
-        ArgumentNullException.ThrowIfNull(repository);
-        var entity = await repository.GetByIdAsync(id, ct);
-        if (entity == null) return false;
+        // Pass token to async operations for cooperative cancellation
+        var entity = await repository.GetByIdAsync(id, cancellationToken);
 
-        // Pass token to all async operations
-        ct.ThrowIfCancellationRequested();
+        if (entity == null)
+            return false;
 
         Id = entity.Id;
         FirstName = entity.FirstName;
-        IsNew = false;
+        LastName = entity.LastName;
+        Email = new EmailAddress(entity.Email);
         return true;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L109-L153' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/AspNetCore/CancellationSamples.cs#L7-L51' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Correlation IDs
@@ -305,49 +283,58 @@ Access the correlation ID in factory methods:
 <a id='snippet-aspnetcore-correlation-id'></a>
 ```cs
 /// <summary>
-/// Factory method accessing correlation ID for distributed tracing.
+/// Employee with correlation ID support for distributed tracing.
 /// </summary>
 [Factory]
-public partial class EmployeeCorrelationDemo : IFactorySaveMeta
+public partial class EmployeeWithCorrelation
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
+    public string LastName { get; set; } = "";
+    public EmailAddress Email { get; set; } = null!;
 
     [Create]
-    public EmployeeCorrelationDemo() { Id = Guid.NewGuid(); }
+    public EmployeeWithCorrelation()
+    {
+        Id = Guid.NewGuid();
+    }
 
     /// <summary>
-    /// Access correlation ID via static CorrelationContext.
-    /// Note: This API may be redesigned to support DI in a future version.
+    /// Fetches an Employee and logs the access with correlation ID for tracing.
     /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
         [Service] IEmployeeRepository repository,
-        [Service] ILogger<EmployeeCorrelationDemo> logger,
+        [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // Access correlation ID from static context
+        // CorrelationId is auto-populated from X-Correlation-Id header
         var correlationId = CorrelationContext.CorrelationId;
 
-        // Include in structured logs
-        logger.LogInformation(
-            "Fetching employee {EmployeeId} with correlation {CorrelationId}",
-            id, correlationId);
-
         var entity = await repository.GetByIdAsync(id, ct);
-        if (entity == null) return false;
+
+        if (entity == null)
+            return false;
 
         Id = entity.Id;
         FirstName = entity.FirstName;
-        IsNew = false;
+        LastName = entity.LastName;
+        Email = new EmailAddress(entity.Email);
+
+        // Log with correlation ID for distributed tracing
+        await auditLog.LogAsync(
+            action: "Fetch",
+            entityId: Id,
+            entityType: nameof(EmployeeWithCorrelation),
+            details: $"Fetched by correlation: {correlationId}",
+            ct);
+
         return true;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L155-L198' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/AspNetCore/CorrelationIdSamples.cs#L8-L60' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Logging
@@ -381,53 +368,29 @@ Log structured data in factory methods:
 <!-- snippet: aspnetcore-logging -->
 <a id='snippet-aspnetcore-logging'></a>
 ```cs
-/// <summary>
-/// Factory method with structured logging integration.
-/// </summary>
-[Factory]
-public partial class EmployeeLoggingDemo : IFactorySaveMeta
+public static class LoggingConfigurationSample
 {
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public EmployeeLoggingDemo() { Id = Guid.NewGuid(); }
-
-    /// <summary>
-    /// ILogger injected via [Service] for structured logging.
-    /// </summary>
-    [Remote, Insert]
-    public async Task Insert(
-        [Service] IEmployeeRepository repository,
-        [Service] ILogger<EmployeeLoggingDemo> logger,
-        CancellationToken ct)
+    public static void ConfigureServices(IServiceCollection services)
     {
-        var correlationId = CorrelationContext.CorrelationId;
-
-        logger.LogInformation(
-            "Creating employee {EmployeeName} with correlation {CorrelationId}",
-            FirstName, correlationId);
-
-        var entity = new EmployeeEntity
+        // Configure logging with Neatoo categories
+        services.AddLogging(builder =>
         {
-            Id = Id, FirstName = FirstName, LastName = "",
-            Email = $"{FirstName.ToUpperInvariant()}@example.com",
-            DepartmentId = Guid.Empty, Position = "New",
-            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
-        };
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Information);
 
-        await repository.AddAsync(entity, ct);
-        await repository.SaveChangesAsync(ct);
-        IsNew = false;
+            // Neatoo log categories:
+            // - Neatoo.RemoteFactory.Server: Remote delegate execution
+            // - Neatoo.RemoteFactory.Client: HTTP client requests
+            // - Neatoo.RemoteFactory.Serialization: JSON serialization/deserialization
+            builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Debug);
+        });
 
-        // Log successful creation
-        // logger.LogInformation("Employee {EmployeeId} created successfully", Id);
+        // Add RemoteFactory after logging is configured
+        services.AddNeatooAspNetCore(typeof(Employee).Assembly);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L200-L246' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/LoggingConfigurationSamples.cs#L9-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Event Tracking
@@ -476,32 +439,31 @@ Register your domain services alongside RemoteFactory:
 <!-- snippet: aspnetcore-service-registration -->
 <a id='snippet-aspnetcore-service-registration'></a>
 ```cs
-/// <summary>
-/// Complete service registration pattern.
-/// </summary>
 public static class ServiceRegistrationSample
 {
     public static void ConfigureServices(IServiceCollection services)
     {
         var domainAssembly = typeof(Employee).Assembly;
 
-        // RemoteFactory with ASP.NET Core integration
-        services.AddNeatooAspNetCore(
-            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-            domainAssembly);
+        // 1. Register RemoteFactory services first
+        services.AddNeatooAspNetCore(domainAssembly);
 
-        // Auto-register IName -> Name interface/implementation pairs
+        // 2. Register domain repositories
+        services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
+        services.AddScoped<IDepartmentRepository, InMemoryDepartmentRepository>();
+
+        // 3. Register infrastructure services
+        services.AddScoped<IUserContext, DefaultUserContext>();
+        services.AddScoped<IEmailService, InMemoryEmailService>();
+        services.AddScoped<IAuditLogService, InMemoryAuditLogService>();
+
+        // 4. Auto-register IName/Name pattern as transient
+        // Services are available via [Service] parameters in factory methods
         services.RegisterMatchingName(domainAssembly);
-
-        // Register infrastructure services
-        services.AddInfrastructureServices();
-
-        // Manual service registration for services not following IName pattern
-        // services.AddScoped<ISpecialService, SpecialServiceImpl>();
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L248-L273' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/ServiceRegistrationSamples.cs#L11-L35' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **RegisterMatchingName** is a convenience method that registers interfaces and their implementations as transient when they follow the `IName` → `Name` pattern.
@@ -515,24 +477,34 @@ Register factories from multiple assemblies:
 <!-- snippet: aspnetcore-multi-assembly -->
 <a id='snippet-aspnetcore-multi-assembly'></a>
 ```cs
-/// <summary>
-/// Registering multiple domain assemblies.
-/// </summary>
 public static class MultiAssemblySample
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        // Register factories from multiple assemblies
-        // Each assembly can contain domain models with [Factory] attributes
+        // Primary domain assembly
+        var employeeDomainAssembly = typeof(Employee).Assembly;
+
+        // Additional assemblies containing [Factory] types:
+        // var hrDomainAssembly = typeof(HR.Domain.HrEntity).Assembly;
+        // var payrollDomainAssembly = typeof(Payroll.Domain.PayrollEntity).Assembly;
+
+        // Register all assemblies with RemoteFactory
         services.AddNeatooAspNetCore(
-            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-            typeof(Employee).Assembly           // EmployeeManagement.Domain
-            // , typeof(OtherModel).Assembly    // Other domain assemblies
+            employeeDomainAssembly
+            // hrDomainAssembly,
+            // payrollDomainAssembly
+        );
+
+        // Auto-register services from all assemblies
+        services.RegisterMatchingName(
+            employeeDomainAssembly
+            // hrDomainAssembly,
+            // payrollDomainAssembly
         );
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L275-L292' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/ServiceRegistrationSamples.cs#L37-L64' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Each assembly can contain domain models with `[Factory]` attributes. The generator processes all of them.
@@ -546,38 +518,31 @@ Use Named serialization format for easier debugging:
 <!-- snippet: aspnetcore-development -->
 <a id='snippet-aspnetcore-development'></a>
 ```cs
-/// <summary>
-/// Development environment configuration.
-/// </summary>
-public static class DevelopmentConfigSample
+public static class DevelopmentConfigurationSample
 {
-    public static void Configure(WebApplicationBuilder builder)
+    public static void ConfigureServices(IServiceCollection services, bool isDevelopment)
     {
-        var domainAssembly = typeof(Employee).Assembly;
+        // Choose format based on environment
+        var format = isDevelopment
+            ? SerializationFormat.Named   // Readable JSON for debugging
+            : SerializationFormat.Ordinal; // Compact arrays for production
 
-        ArgumentNullException.ThrowIfNull(builder);
-        if (builder.Environment.IsDevelopment())
-        {
-            // Named format for human-readable JSON in dev tools
-            builder.Services.AddNeatooAspNetCore(
-                new NeatooSerializationOptions { Format = SerializationFormat.Named },
-                domainAssembly);
+        var options = new NeatooSerializationOptions { Format = format };
+        services.AddNeatooAspNetCore(options, typeof(Employee).Assembly);
 
-            // Verbose logging for debugging
-            builder.Logging.SetMinimumLevel(LogLevel.Debug);
-            builder.Logging.AddFilter("Neatoo.RemoteFactory", LogLevel.Debug);
-        }
-        else
+        // Enable verbose logging in development
+        if (isDevelopment)
         {
-            // Production: Ordinal format for compact payloads
-            builder.Services.AddNeatooAspNetCore(
-                new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-                domainAssembly);
+            services.AddLogging(builder =>
+            {
+                builder.SetMinimumLevel(LogLevel.Debug);
+                builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace);
+            });
         }
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L294-L325' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-development' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/EnvironmentConfigurationSamples.cs#L9-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-development' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Production
@@ -587,28 +552,28 @@ Use Ordinal format (default) for compact payloads:
 <!-- snippet: aspnetcore-production -->
 <a id='snippet-aspnetcore-production'></a>
 ```cs
-/// <summary>
-/// Production environment configuration.
-/// </summary>
-public static class ProductionConfigSample
+public static class ProductionConfigurationSample
 {
-    public static void Configure(WebApplicationBuilder builder)
+    public static void ConfigureServices(IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        var domainAssembly = typeof(Employee).Assembly;
+        // Ordinal format for minimal payload size (default)
+        var options = new NeatooSerializationOptions
+        {
+            Format = SerializationFormat.Ordinal
+        };
 
-        // Ordinal format for 40-50% smaller payloads
-        builder.Services.AddNeatooAspNetCore(
-            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-            domainAssembly);
+        services.AddNeatooAspNetCore(options, typeof(Employee).Assembly);
 
-        // Production logging levels
-        builder.Logging.SetMinimumLevel(LogLevel.Information);
-        builder.Logging.AddFilter("Neatoo.RemoteFactory", LogLevel.Warning);
+        // Production logging - less verbose
+        services.AddLogging(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Warning);
+            builder.AddFilter("Neatoo.RemoteFactory", LogLevel.Information);
+        });
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L327-L348' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-production' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/EnvironmentConfigurationSamples.cs#L35-L56' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-production' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Ordinal format reduces payload size by 40-50% compared to Named format.
@@ -640,51 +605,69 @@ Handle errors on the client:
 <!-- snippet: aspnetcore-error-handling -->
 <a id='snippet-aspnetcore-error-handling'></a>
 ```cs
-/// <summary>
-/// Client-side error handling for remote calls.
-/// Factory methods throw exceptions - they don't return RemoteResponse.
-/// </summary>
-public static class ErrorHandlingSample
+public class ErrorHandlingSample
 {
-    public static async Task<string> SafeFetchEmployee(
-        IEmployeeFactory factory,
-        Guid employeeId)
+    private readonly IEmployeeFactory _factory;
+
+    public ErrorHandlingSample(IEmployeeFactory factory)
     {
-        ArgumentNullException.ThrowIfNull(factory);
+        _factory = factory;
+    }
+
+    public async Task<string> HandleErrorsDemo(Guid employeeId)
+    {
         try
         {
-            // Factory methods return domain objects, not RemoteResponse
-            var employee = await factory.Fetch(employeeId);
+            // Fetch operation that may fail with authorization or server errors
+            var employee = await _factory.Fetch(employeeId);
+
             if (employee == null)
-            {
                 return "Employee not found";
-            }
+
             return $"Found: {employee.FirstName} {employee.LastName}";
         }
         catch (NotAuthorizedException ex)
         {
-            // User lacks permission
-            return $"Authorization failed: {ex.Message}";
+            // Authorization failed - user doesn't have permission
+            // Occurs when [AspAuthorize] policy denies access
+            return $"Access denied: {ex.Message}";
         }
-        catch (System.ComponentModel.DataAnnotations.ValidationException ex)
+        catch (Exception ex) when (ex.Message.Contains("validation", StringComparison.OrdinalIgnoreCase))
         {
-            // Data validation failed
+            // Server-side validation failed
+            // Occurs when domain rules reject the operation
             return $"Validation failed: {ex.Message}";
-        }
-        catch (OperationCanceledException)
-        {
-            // Request was cancelled
-            return "Request cancelled";
         }
         catch (HttpRequestException ex)
         {
-            // Network errors
-            return $"Network error: {ex.Message}";
+            // Network or server connectivity issue
+            return $"Server unavailable: {ex.Message}";
+        }
+    }
+
+    public async Task<string> CreateWithErrorHandling(string firstName, string lastName, string email)
+    {
+        try
+        {
+            var employee = _factory.Create();
+            employee.FirstName = firstName;
+            employee.LastName = lastName;
+            employee.Email = new Domain.ValueObjects.EmailAddress(email);
+
+            var saved = await _factory.Save(employee);
+            return saved != null
+                ? $"Created employee: {saved.Id}"
+                : "Failed to create employee";
+        }
+        catch (NotAuthorizedException)
+        {
+            // User not authorized to create employees
+            return "You don't have permission to create employees";
         }
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L401-L445' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Samples/AspNetCore/ErrorHandlingSamples.cs#L7-L69' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## CORS Configuration
@@ -694,33 +677,48 @@ Configure CORS for Blazor WASM clients:
 <!-- snippet: aspnetcore-cors -->
 <a id='snippet-aspnetcore-cors'></a>
 ```cs
-/// <summary>
-/// CORS configuration for Blazor WASM clients.
-/// </summary>
-public static class CorsSample
+public static class CorsConfigurationSample
 {
-    public static void ConfigureServices(IServiceCollection services)
+    public static void Configure(string[] args)
     {
-        services.AddCors(options =>
+        var builder = WebApplication.CreateBuilder(args);
+
+        // Configure default CORS policy
+        builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
-                policy.AllowAnyOrigin()    // Or WithOrigins("https://client.example.com")
-                      .AllowAnyMethod()
-                      .AllowAnyHeader();
+                policy.WithOrigins(
+                        "http://localhost:5001",  // Development
+                        "https://myapp.example.com" // Production
+                    )
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials(); // Required for auth cookies
+            });
+
+            // Named policy with specific headers for Neatoo API
+            options.AddPolicy("NeatooApi", policy =>
+            {
+                policy.WithOrigins("http://localhost:5001")
+                    .WithHeaders("Content-Type", "X-Correlation-Id")
+                    .WithMethods("POST");
             });
         });
-    }
 
-    public static void ConfigureApp(WebApplication app)
-    {
-        // CORS must be before UseNeatoo for cross-origin requests
+        builder.Services.AddNeatooAspNetCore(typeof(Employee).Assembly);
+
+        var app = builder.Build();
+
+        // CORS must come before UseNeatoo
         app.UseCors();
         app.UseNeatoo();
+
+        app.Run();
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L350-L376' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L7-L48' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Place CORS middleware before `UseNeatoo()` to allow cross-origin requests.
@@ -732,28 +730,29 @@ RemoteFactory integrates seamlessly with minimal APIs:
 <!-- snippet: aspnetcore-minimal-api -->
 <a id='snippet-aspnetcore-minimal-api'></a>
 ```cs
-/// <summary>
-/// RemoteFactory with minimal API endpoints.
-/// </summary>
 public static class MinimalApiSample
 {
-    public static void ConfigureApp(WebApplication app)
+    public static void Configure(WebApplication app)
     {
-        // RemoteFactory endpoint at /api/neatoo
+        // RemoteFactory endpoint: POST /api/neatoo
         app.UseNeatoo();
 
-        // Custom minimal API endpoints coexist with RemoteFactory
-        app.MapGet("/api/health", () => Results.Ok(new { Status = "Healthy" }));
+        // Health check endpoint
+        app.MapGet("/health", () => "OK");
 
-        app.MapGet("/api/employees/{id:guid}", async (Guid id, IEmployeeRepository repo) =>
+        // Custom API endpoint alongside Neatoo
+        app.MapGet("/api/info", () => new
         {
-            var employee = await repo.GetByIdAsync(id, default);
-            return employee is not null ? Results.Ok(employee) : Results.NotFound();
+            Version = "1.0.0",
+            Framework = RuntimeInformation.FrameworkDescription
         });
+
+        // MVC controllers (optional)
+        // app.MapControllers();
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L378-L399' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-minimal-api' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/MinimalApiSamples.cs#L6-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-minimal-api' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The `/api/neatoo` endpoint coexists with your other minimal API endpoints.
@@ -781,80 +780,157 @@ Test server-side factories using the two-container pattern:
 <a id='snippet-aspnetcore-testing'></a>
 ```cs
 /// <summary>
-/// Two-container testing pattern for client-server simulation.
-/// Tests RemoteFactory operations without HTTP using isolated DI scopes.
-/// </summary>
-public static class AspNetCoreTestingSample
-{
-    /// <summary>
-    /// Create isolated client, server, and local containers for testing.
-    /// This validates serialization round-trip without HTTP overhead.
-    /// </summary>
-    public static void TestWithTwoContainers()
-    {
-        // Create isolated scopes simulating client and server containers
-        // var (client, server, local) = TestClientServerContainers.CreateScopes();
-        //
-        // Client container: NeatooFactory.Remote mode (makes serialized calls)
-        // Server container: NeatooFactory.Server mode (handles serialized calls)
-        // Local container: NeatooFactory.Logical mode (direct execution for comparison)
-        //
-        // Example test flow:
-        // 1. Get factory from local container
-        // var factory = local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
-        //
-        // 2. Create and save
-        // var employee = factory.Create();
-        // employee.FirstName = "Test";
-        // await factory.Save(employee);
-        //
-        // 3. Fetch verifies serialization round-trip
-        // var fetched = await factory.Fetch(employee.Id);
-        // Assert.Equal("Test", fetched.FirstName);
-        //
-        // See RemoteFactory.IntegrationTests for comprehensive examples
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L501-L537' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-aspnetcore-testing-1'></a>
-```cs
-/// <summary>
-/// Two-container testing pattern for client-server simulation.
+/// Two-container test pattern for client/server simulation.
 /// </summary>
 public class TwoContainerTestingSample
 {
     [Fact]
-    public async Task ClientServerRoundTrip()
+    public void ClientServerRoundTrip_CompareClientVsLocalFactory()
     {
-        // Arrange - Create isolated client, server, and local scopes
+        // Arrange - Get scopes from test container helper
         var (client, server, local) = TestClientServerContainers.CreateScopes();
 
-        // In Logical mode, all containers share the same implementation
-        // For full client-server testing, use separate containers with
-        // Remote mode on client and Server mode on server
+        // Client container simulates Blazor WASM
+        var clientFactory = client.ServiceProvider.GetRequiredService<IEmployeeFactory>();
 
-        var factory = local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+        // Local container has no serialization (Logical mode)
+        var localFactory = local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
 
-        // Act - Create and persist
+        // Act - Create entities from both containers
+        var clientEmployee = clientFactory.Create();
+        var localEmployee = localFactory.Create();
+
+        // Assert - Both should produce valid entities
+        Assert.NotEqual(Guid.Empty, clientEmployee.Id);
+        Assert.NotEqual(Guid.Empty, localEmployee.Id);
+        Assert.True(clientEmployee.IsNew);
+        Assert.True(localEmployee.IsNew);
+    }
+
+    [Fact]
+    public async Task TestFullWorkflow_CreateSaveFetchUpdateDelete()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.client.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        // Create
         var employee = factory.Create();
         employee.FirstName = "Test";
-        employee.LastName = "RoundTrip";
-        employee.Email = new EmailAddress("test.roundtrip@example.com");
-        employee.Position = "Test";
+        employee.LastName = "Employee";
+        employee.Email = new EmailAddress("test@example.com");
+        employee.Position = "Tester";
         employee.Salary = new Money(50000, "USD");
         employee.DepartmentId = Guid.NewGuid();
+        Assert.True(employee.IsNew);
 
-        await factory.Save(employee);
+        // Save (Insert)
+        var saved = await factory.Save(employee);
+        Assert.NotNull(saved);
+        Assert.False(saved.IsNew);
 
-        // Assert - Fetch returns persisted data
-        var fetched = await factory.Fetch(employee.Id);
+        // Fetch
+        var fetched = await factory.Fetch(saved.Id);
         Assert.NotNull(fetched);
         Assert.Equal("Test", fetched.FirstName);
+
+        // Update
+        fetched.FirstName = "Updated";
+        var updated = await factory.Save(fetched);
+        Assert.NotNull(updated);
+        Assert.Equal("Updated", updated.FirstName);
+
+        // Delete
+        updated.IsDeleted = true;
+        await factory.Save(updated);
+
+        // Verify deletion
+        var deleted = await factory.Fetch(updated.Id);
+        Assert.Null(deleted);
+    }
+}
+
+/// <summary>
+/// Employee entity with full CRUD for testing.
+/// </summary>
+[Factory]
+public partial class EmployeeForTest : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string Name { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public EmployeeForTest()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    [Remote, Fetch]
+    public async Task<bool> Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity == null) return false;
+
+        Id = entity.Id;
+        Name = $"{entity.FirstName} {entity.LastName}";
+        IsNew = false;
+        return true;
+    }
+
+    [Remote, Insert]
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var parts = Name.Split(' ', 2);
+        var entity = new EmployeeEntity
+        {
+            Id = Id,
+            FirstName = parts.Length > 0 ? parts[0] : "",
+            LastName = parts.Length > 1 ? parts[1] : "",
+            Email = "test@example.com",
+            Position = "Test",
+            SalaryAmount = 50000,
+            SalaryCurrency = "USD",
+            HireDate = DateTime.UtcNow
+        };
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+
+    [Remote, Update]
+    public async Task Update(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(Id, ct);
+        if (entity != null)
+        {
+            var parts = Name.Split(' ', 2);
+            entity.FirstName = parts.Length > 0 ? parts[0] : "";
+            entity.LastName = parts.Length > 1 ? parts[1] : "";
+            await repository.UpdateAsync(entity, ct);
+            await repository.SaveChangesAsync(ct);
+        }
+    }
+
+    [Remote, Delete]
+    public async Task Delete(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        await repository.DeleteAsync(Id, ct);
+        await repository.SaveChangesAsync(ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L523-L558' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/AspNetCore/TwoContainerTestingSamples.cs#L10-L161' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 This simulates client/server communication without HTTP.

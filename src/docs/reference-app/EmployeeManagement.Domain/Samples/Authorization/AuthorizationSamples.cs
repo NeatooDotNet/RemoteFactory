@@ -1,30 +1,26 @@
 using EmployeeManagement.Domain.Interfaces;
+using Microsoft.Extensions.Hosting;
 using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Authorization;
 
+// ============================================================================
+// Authorization Interface and Implementation
+// ============================================================================
+
 #region authorization-interface
 /// <summary>
-/// Authorization interface defining access checks for Employee operations.
-/// Methods decorated with [AuthorizeFactory] control access to specific operations.
+/// Authorization interface for Employee operations.
+/// Methods with [AuthorizeFactory] control access to specific operations.
 /// </summary>
 public interface IEmployeeAuthorization
 {
-    /// <summary>
-    /// Checks if the current user can create new employees.
-    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
     bool CanCreate();
 
-    /// <summary>
-    /// Checks if the current user can read employee data.
-    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
     bool CanRead();
 
-    /// <summary>
-    /// Checks if the current user can modify employees.
-    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
     bool CanWrite();
 }
@@ -32,9 +28,9 @@ public interface IEmployeeAuthorization
 
 #region authorization-implementation
 /// <summary>
-/// Implementation of employee authorization with injected user context.
+/// Authorization rules for Employee operations with realistic HR domain logic.
 /// </summary>
-public class EmployeeAuthorizationImpl : IEmployeeAuthorization
+public partial class EmployeeAuthorizationImpl : IEmployeeAuthorization
 {
     private readonly IUserContext _userContext;
 
@@ -43,388 +39,725 @@ public class EmployeeAuthorizationImpl : IEmployeeAuthorization
         _userContext = userContext;
     }
 
-    /// <summary>
-    /// Only HR and Managers can create new employees.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
     public bool CanCreate()
     {
-        return _userContext.IsAuthenticated &&
-               (_userContext.IsInRole("HR") || _userContext.IsInRole("Manager"));
-    }
-
-    /// <summary>
-    /// All authenticated users can read employee data.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-    public bool CanRead()
-    {
+        // Only authenticated users can create employees
         return _userContext.IsAuthenticated;
     }
 
-    /// <summary>
-    /// Only HR and Managers can modify employees.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+    public bool CanRead()
+    {
+        // Only authenticated users can view employee data
+        return _userContext.IsAuthenticated;
+    }
+
     public bool CanWrite()
     {
-        return _userContext.IsAuthenticated &&
-               (_userContext.IsInRole("HR") || _userContext.IsInRole("Manager"));
+        // Only HRManager or Admin can modify employee records
+        return _userContext.IsInRole("HRManager") || _userContext.IsInRole("Admin");
     }
 }
 #endregion
 
+// ============================================================================
+// Employee Aggregate with Authorization Applied
+// ============================================================================
+
 #region authorization-apply
 /// <summary>
-/// Employee aggregate with authorization applied via [AuthorizeFactory<T>].
+/// Employee aggregate with authorization applied via AuthorizeFactory attribute.
 /// </summary>
 [Factory]
 [AuthorizeFactory<IEmployeeAuthorization>]
-public partial class EmployeeWithAuthorization : IFactorySaveMeta
+public partial class AuthorizedEmployee : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
+    public string Email { get; set; } = "";
+    public Guid DepartmentId { get; set; }
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeWithAuthorization()
+    public AuthorizedEmployee()
     {
         Id = Guid.NewGuid();
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    public async Task<bool> Fetch(
+        Guid employeeId,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct = default)
     {
-        var entity = await repo.GetByIdAsync(id, ct);
+        var entity = await repository.GetByIdAsync(employeeId, ct);
         if (entity == null) return false;
+
         Id = entity.Id;
         FirstName = entity.FirstName;
         LastName = entity.LastName;
+        Email = entity.Email;
+        DepartmentId = entity.DepartmentId;
         IsNew = false;
         return true;
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         var entity = new EmployeeEntity
         {
-            Id = Id, FirstName = FirstName, LastName = LastName,
-            Email = $"{FirstName.ToLowerInvariant()}@example.com",
-            DepartmentId = Guid.Empty, Position = "New",
-            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
+            DepartmentId = DepartmentId,
+            HireDate = DateTime.UtcNow
         };
-        await repo.AddAsync(entity, ct);
-        await repo.SaveChangesAsync(ct);
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
         IsNew = false;
+    }
+
+    [Remote, Update]
+    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    {
+        var entity = new EmployeeEntity
+        {
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
+            DepartmentId = DepartmentId
+        };
+        await repository.UpdateAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+
+    [Remote, Delete]
+    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    {
+        await repository.DeleteAsync(Id, ct);
+        await repository.SaveChangesAsync(ct);
     }
 }
 #endregion
 
-#region authorization-combined-flags
+// ============================================================================
+// Generated Authorization Checks - Consumer Example
+// ============================================================================
+
+#region authorization-generated
 /// <summary>
-/// Authorization with combined operation flags.
+/// Example showing how consumers use the generated factory's authorization methods.
+/// The CanCreate() and CanFetch() methods are generated based on [AuthorizeFactory] attributes.
 /// </summary>
-public interface IEmployeeCombinedAuth
+public class EmployeeManagementService
 {
-    /// <summary>
-    /// Single method checks both Read and Write operations.
-    /// Use bitwise OR to combine flags.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
-    bool CanAccess();
+    private readonly IAuthorizedEmployeeFactory _employeeFactory;
+
+    public EmployeeManagementService(IAuthorizedEmployeeFactory employeeFactory)
+    {
+        _employeeFactory = employeeFactory;
+    }
+
+    public AuthorizedEmployee? CreateNewEmployee()
+    {
+        // Check authorization before attempting create
+        // CanCreate() is generated from [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+        if (!_employeeFactory.CanCreate().HasAccess)
+        {
+            return null; // User not authorized to create
+        }
+
+        return _employeeFactory.Create();
+    }
+
+    public async Task<AuthorizedEmployee?> GetEmployeeById(Guid employeeId)
+    {
+        // Check authorization before attempting fetch
+        // CanFetch() is generated from [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
+        if (!_employeeFactory.CanFetch().HasAccess)
+        {
+            return null; // User not authorized to read
+        }
+
+        return await _employeeFactory.Fetch(employeeId);
+    }
 }
 #endregion
 
-#region authorization-method-level
+// ============================================================================
+// Combined Authorization Flags
+// ============================================================================
+
+#region authorization-combined-flags
 /// <summary>
-/// Employee with method-level authorization adding to class-level auth.
+/// Authorization interface with combined flags to reduce boilerplate.
+/// </summary>
+public interface IDepartmentAuthorization
+{
+    // Single method handles both Create and Fetch operations
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
+    bool CanCreateOrFetch();
+
+    // Single method handles all write operations
+    [AuthorizeFactory(
+        AuthorizeFactoryOperation.Insert |
+        AuthorizeFactoryOperation.Update |
+        AuthorizeFactoryOperation.Delete)]
+    bool CanWrite();
+}
+
+/// <summary>
+/// Department authorization with combined operation flags.
+/// </summary>
+public partial class DepartmentAuthorizationImpl : IDepartmentAuthorization
+{
+    private readonly IUserContext _userContext;
+
+    public DepartmentAuthorizationImpl(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    public bool CanCreateOrFetch()
+    {
+        return _userContext.IsAuthenticated;
+    }
+
+    public bool CanWrite()
+    {
+        return _userContext.IsInRole("Admin") || _userContext.IsInRole("HRManager");
+    }
+}
+
+/// <summary>
+/// Department entity with combined flag authorization.
 /// </summary>
 [Factory]
-[AuthorizeFactory<IEmployeeAuthorization>]
+[AuthorizeFactory<IDepartmentAuthorization>]
+public partial class AuthorizedDepartment
+{
+    public Guid Id { get; private set; }
+    public string Name { get; set; } = "";
+    public Guid? ManagerId { get; set; }
+
+    [Create]
+    public AuthorizedDepartment()
+    {
+        Id = Guid.NewGuid();
+    }
+}
+#endregion
+
+// ============================================================================
+// Method-Level Authorization
+// ============================================================================
+
+#region authorization-method-level
+/// <summary>
+/// Authorization interface for basic read access.
+/// </summary>
+public interface IEmployeeReadAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
+    bool CanRead();
+}
+
+/// <summary>
+/// Basic read authorization implementation.
+/// </summary>
+public partial class EmployeeReadAuthorizationImpl : IEmployeeReadAuthorization
+{
+    private readonly IUserContext _userContext;
+
+    public EmployeeReadAuthorizationImpl(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    public bool CanRead()
+    {
+        return _userContext.IsAuthenticated;
+    }
+}
+
+/// <summary>
+/// Employee with class-level authorization and method-level override for sensitive operations.
+/// </summary>
+[Factory]
+[AuthorizeFactory<IEmployeeReadAuthorization>]
 public partial class EmployeeWithMethodAuth : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
     public bool IsTerminated { get; private set; }
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeWithMethodAuth() { Id = Guid.NewGuid(); }
+    public EmployeeWithMethodAuth()
+    {
+        Id = Guid.NewGuid();
+    }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    public Task<bool> Fetch(Guid id, CancellationToken ct = default)
     {
-        var entity = await repo.GetByIdAsync(id, ct);
-        if (entity == null) return false;
-        Id = entity.Id;
-        FirstName = entity.FirstName;
+        Id = id;
         IsNew = false;
-        return true;
+        return Task.FromResult(true);
     }
 
     /// <summary>
-    /// TerminateEmployee requires both class-level auth AND method-level HRManager role.
-    /// [AuthorizeFactory<T>] runs first, then [AspAuthorize].
-    /// </summary>
-    [Remote, Delete]
-    [AspAuthorize(Roles = "HRManager")]
-    public async Task Delete(
-        [Service] IEmployeeRepository repo,
-        [Service] IAuditLogService auditLog,
-        CancellationToken ct)
-    {
-        await auditLog.LogAsync("Terminate", Id, "Employee", "Terminated", ct);
-        await repo.DeleteAsync(Id, ct);
-        await repo.SaveChangesAsync(ct);
-    }
-}
-#endregion
-
-#region authorization-exception
-/// <summary>
-/// Demonstrates throwing NotAuthorizedException for explicit failures.
-/// </summary>
-[Factory]
-public partial class EmployeeWithExplicitAuth : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
-    public decimal Salary { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public EmployeeWithExplicitAuth() { Id = Guid.NewGuid(); }
-
-    /// <summary>
-    /// Business rule: Only HR can modify salary above threshold.
-    /// Throws NotAuthorizedException for explicit auth failures.
+    /// Terminate employee - requires HRManager role in addition to class-level authorization.
+    /// Both checks must pass: IEmployeeReadAuthorization.CanRead() AND [AspAuthorize(Roles = "HRManager")].
     /// </summary>
     [Remote, Update]
-    public async Task Update(
-        [Service] IEmployeeRepository repo,
-        [Service] IUserContext userContext,
-        CancellationToken ct)
+    [AspAuthorize(Roles = "HRManager")]
+    public Task Terminate(CancellationToken ct = default)
     {
-        var existing = await repo.GetByIdAsync(Id, ct);
-        if (existing == null) return;
-
-        // Business rule enforcement
-        if (Salary != existing.SalaryAmount && Salary > 100000)
-        {
-            if (!userContext.IsInRole("HR"))
-            {
-                throw new NotAuthorizedException(
-                    "Only HR can set salary above $100,000");
-            }
-        }
-
-        var entity = new EmployeeEntity
-        {
-            Id = Id, FirstName = FirstName, LastName = "",
-            Email = $"{FirstName.ToLowerInvariant()}@example.com",
-            DepartmentId = Guid.Empty, Position = "Updated",
-            SalaryAmount = Salary, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
-        };
-        await repo.UpdateAsync(entity, ct);
-        await repo.SaveChangesAsync(ct);
+        IsTerminated = true;
+        return Task.CompletedTask;
     }
 }
 #endregion
 
-#region authorization-events
+// ============================================================================
+// ASP.NET Core Policy-Based Authorization - Applied to Factory Methods
+// ============================================================================
+
+#region authorization-policy-apply
 /// <summary>
-/// Events bypass authorization - they are internal operations.
+/// Salary information with policy-based authorization for sensitive data.
 /// </summary>
 [Factory]
-public partial class EmployeeEventNoAuth
+public partial class SalaryInfo
 {
-    /// <summary>
-    /// Events do NOT require authorization checks.
-    /// They are triggered by application code, not user requests.
-    /// AuthorizeFactoryOperation.Event flag is never checked.
-    /// </summary>
-    [Event]
-    public async Task LogActivity(
-        Guid employeeId,
-        string activity,
-        [Service] IAuditLogService auditLog,
-        CancellationToken ct)
+    public Guid EmployeeId { get; private set; }
+    public decimal AnnualSalary { get; set; }
+    public DateTime EffectiveDate { get; set; }
+
+    [Create]
+    public SalaryInfo()
     {
-        // No authorization check - events are internal
-        await auditLog.LogAsync("Activity", employeeId, "Employee", activity, ct);
+        EmployeeId = Guid.NewGuid();
+        EffectiveDate = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Basic salary fetch - requires authenticated user.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize("RequireAuthenticated")]
+    public Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+    {
+        EmployeeId = employeeId;
+        AnnualSalary = 75000m;
+        EffectiveDate = DateTime.UtcNow;
+        return Task.FromResult(true);
+    }
+
+    /// <summary>
+    /// Fetch with full compensation details - requires Payroll access.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize("RequirePayroll")]
+    public Task<bool> FetchWithCompensation(Guid employeeId, decimal bonusAmount, CancellationToken ct = default)
+    {
+        EmployeeId = employeeId;
+        AnnualSalary = 75000m + bonusAmount;
+        EffectiveDate = DateTime.UtcNow;
+        return Task.FromResult(true);
     }
 }
 #endregion
 
-#region authorization-context
+// ============================================================================
+// Multiple Policies
+// ============================================================================
+
+#region authorization-policy-multiple
 /// <summary>
-/// Context-aware authorization checking entity ownership.
+/// Payroll operations requiring multiple authorization policies.
+/// Both RequireAuthenticated AND RequirePayroll policies must be satisfied.
 /// </summary>
-public interface IDepartmentMembershipAuth
+[SuppressFactory]
+public static partial class PayrollOperations
 {
-    /// <summary>
-    /// User can only modify employees in their own department.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    Task<bool> CanModifyInDepartment(Guid departmentId);
-}
-
-public class DepartmentMembershipAuth : IDepartmentMembershipAuth
-{
-    private readonly IUserContext _userContext;
-    private readonly IDepartmentRepository _departmentRepo;
-
-    public DepartmentMembershipAuth(
-        IUserContext userContext,
-        IDepartmentRepository departmentRepo)
+    [Remote, Execute]
+    [AspAuthorize("RequireAuthenticated")]
+    [AspAuthorize("RequirePayroll")]
+    public static Task _ProcessPayroll(Guid departmentId, DateTime payPeriodEnd, CancellationToken ct = default)
     {
-        _userContext = userContext;
-        _departmentRepo = departmentRepo;
-    }
-
-    /// <summary>
-    /// Context-aware authorization using domain repositories.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    public async Task<bool> CanModifyInDepartment(Guid departmentId)
-    {
-        if (!_userContext.IsAuthenticated)
-            return false;
-
-        // HR can modify any department
-        if (_userContext.IsInRole("HR"))
-            return true;
-
-        // Managers can only modify their own department
-        if (_userContext.IsInRole("Manager"))
-        {
-            var department = await _departmentRepo.GetByIdAsync(departmentId, default);
-            return department?.ManagerId == _userContext.UserId;
-        }
-
-        return false;
+        // Process payroll for all employees in department
+        return Task.CompletedTask;
     }
 }
 #endregion
+
+// ============================================================================
+// Roles-Based Authorization
+// ============================================================================
+
+#region authorization-policy-roles
+/// <summary>
+/// Time off request with role-based authorization.
+/// </summary>
+[Factory]
+public partial class TimeOffRequest
+{
+    public Guid Id { get; private set; }
+    public Guid EmployeeId { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public string Status { get; private set; } = "Pending";
+
+    [Create]
+    public TimeOffRequest()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Any employee, HR, or admin can view time off requests.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize(Roles = "Employee,HRManager,Admin")]
+    public Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
+    {
+        Id = requestId;
+        return Task.FromResult(true);
+    }
+}
+
+/// <summary>
+/// Time off operations with role-based authorization.
+/// </summary>
+[SuppressFactory]
+public static partial class TimeOffOperations
+{
+    /// <summary>
+    /// Only HRManager or Admin can approve requests.
+    /// </summary>
+    [Remote, Execute]
+    [AspAuthorize(Roles = "HRManager,Admin")]
+    public static Task _ApproveRequest(Guid requestId, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Only HRManager can cancel approved requests.
+    /// </summary>
+    [Remote, Execute]
+    [AspAuthorize(Roles = "HRManager")]
+    public static Task _CancelRequest(Guid requestId, string reason, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
+    }
+}
+#endregion
+
+// ============================================================================
+// Combining Both Approaches
+// ============================================================================
 
 #region authorization-combined
 /// <summary>
-/// Combines AuthorizeFactory and AspAuthorize for defense in depth.
+/// Authorization interface for performance review access.
+/// </summary>
+public interface IPerformanceReviewAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
+    bool CanAccess();
+}
+
+/// <summary>
+/// Performance review authorization implementation.
+/// </summary>
+public partial class PerformanceReviewAuthorizationImpl : IPerformanceReviewAuthorization
+{
+    private readonly IUserContext _userContext;
+
+    public PerformanceReviewAuthorizationImpl(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    public bool CanAccess()
+    {
+        return _userContext.IsAuthenticated;
+    }
+}
+
+/// <summary>
+/// Performance review with combined custom and ASP.NET Core authorization.
+/// Execution order: 1) [AuthorizeFactory] checks run first (custom domain auth)
+///                  2) [AspAuthorize] checks run second (ASP.NET Core policies)
+///                  3) If both pass, domain method executes
 /// </summary>
 [Factory]
-[AuthorizeFactory<IEmployeeAuthorization>]  // Custom domain auth
-public partial class EmployeeDefenseInDepth : IFactorySaveMeta
+[AuthorizeFactory<IPerformanceReviewAuthorization>]
+public partial class PerformanceReview
 {
     public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    // Execution order:
-    // 1. [AuthorizeFactory] custom domain checks run first
-    // 2. [AspAuthorize] ASP.NET Core policies run second
-    // 3. If both pass, the domain method executes
+    public Guid EmployeeId { get; set; }
+    public DateTime ReviewDate { get; set; }
+    public int Rating { get; set; }
+    public string Comments { get; set; } = "";
 
     [Create]
-    public EmployeeDefenseInDepth() { Id = Guid.NewGuid(); }
+    public PerformanceReview()
+    {
+        Id = Guid.NewGuid();
+        ReviewDate = DateTime.UtcNow;
+    }
 
-    /// <summary>
-    /// [AspAuthorize] with policy uses constructor argument.
-    /// </summary>
     [Remote, Fetch]
-    [AspAuthorize("RequireAuthenticated")]  // Policy via constructor
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    [AspAuthorize("RequireAuthenticated")]
+    public Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
     {
-        var entity = await repo.GetByIdAsync(id, ct);
-        if (entity == null) return false;
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        IsNew = false;
-        return true;
+        Id = reviewId;
+        return Task.FromResult(true);
+    }
+}
+
+/// <summary>
+/// Performance review operations with combined authorization.
+/// </summary>
+[SuppressFactory]
+public static partial class PerformanceReviewOperations
+{
+    /// <summary>
+    /// Submit review - requires HRManager role.
+    /// </summary>
+    [Remote, Execute]
+    [AspAuthorize(Roles = "HRManager")]
+    public static Task _SubmitReview(Guid reviewId, int rating, string comments, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
     }
 }
 #endregion
 
-#region save-authorization
+// ============================================================================
+// NotAuthorizedException Handling
+// ============================================================================
+
+#region authorization-exception
 /// <summary>
-/// Authorization interface with granular Insert, Update, Delete checks.
+/// Demonstrates exception handling pattern for authorization failures.
 /// </summary>
-public interface IEmployeeWriteAuth
+public class EmployeeAuthorizationHandler
 {
-    /// <summary>
-    /// All managers can insert new employees.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Insert)]
-    bool CanInsert();
+    private readonly IAuthorizedEmployeeFactory _employeeFactory;
 
-    /// <summary>
-    /// Managers can update their direct reports.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Update)]
-    bool CanUpdate();
-
-    /// <summary>
-    /// Only HR can delete employees.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
-    bool CanDelete();
-}
-
-public class EmployeeWriteAuthImpl : IEmployeeWriteAuth
-{
-    private readonly IUserContext _userContext;
-
-    public EmployeeWriteAuthImpl(IUserContext userContext)
+    public EmployeeAuthorizationHandler(IAuthorizedEmployeeFactory employeeFactory)
     {
-        _userContext = userContext;
+        _employeeFactory = employeeFactory;
     }
 
-    [AuthorizeFactory(AuthorizeFactoryOperation.Insert)]
-    public bool CanInsert() =>
-        _userContext.IsAuthenticated &&
-        (_userContext.IsInRole("HR") || _userContext.IsInRole("Manager"));
+    public async Task HandleNotAuthorizedException()
+    {
+        try
+        {
+            var employee = _employeeFactory.Create();
+            if (employee == null)
+            {
+                // Create returned null - authorization failed
+                return;
+            }
 
-    [AuthorizeFactory(AuthorizeFactoryOperation.Update)]
-    public bool CanUpdate() =>
-        _userContext.IsAuthenticated &&
-        (_userContext.IsInRole("HR") || _userContext.IsInRole("Manager"));
+            employee.FirstName = "John";
+            employee.LastName = "Doe";
 
-    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
-    public bool CanDelete() =>
-        _userContext.IsAuthenticated && _userContext.IsInRole("HR");
+            // Save throws NotAuthorizedException if user lacks write permission
+            await _employeeFactory.Save(employee);
+        }
+        catch (NotAuthorizedException ex)
+        {
+            // Handle authorization failure
+            // ex.Message contains the failure reason
+            Console.WriteLine($"Authorization failed: {ex.Message}");
+        }
+    }
 }
 #endregion
 
-#region save-authorization-combined
+// ============================================================================
+// Events - Bypass Authorization
+// ============================================================================
+
 /// <summary>
-/// Single authorization check covering all write operations.
+/// Notification service interface for event handlers.
 /// </summary>
-public interface IEmployeeWriteCombinedAuth
+public interface INotificationService
 {
-    /// <summary>
-    /// Single method authorizes all write operations (Insert, Update, Delete).
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
+    Task SendNotificationAsync(string recipient, string message, CancellationToken ct = default);
 }
 
-public class EmployeeWriteCombinedAuthImpl : IEmployeeWriteCombinedAuth
+#region authorization-events
+/// <summary>
+/// Employee lifecycle events that bypass authorization.
+/// Events are for internal operations like notifications and audit logging
+/// that should always execute regardless of user permissions.
+/// </summary>
+[SuppressFactory]
+public partial class EmployeeLifecycleEvents
+{
+    public Guid Id { get; private set; }
+
+    [Create]
+    public EmployeeLifecycleEvents()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Notify HR when an employee is terminated.
+    /// Events bypass authorization - this runs regardless of user permissions.
+    /// </summary>
+    [Event]
+    public async Task NotifyHROnTermination(
+        Guid employeeId,
+        string reason,
+        [Service] INotificationService notificationService,
+        CancellationToken ct)
+    {
+        await notificationService.SendNotificationAsync(
+            "hr@company.com",
+            $"Employee {employeeId} terminated. Reason: {reason}",
+            ct);
+    }
+}
+#endregion
+
+// ============================================================================
+// Testing Authorization
+// ============================================================================
+
+#region authorization-testing
+/// <summary>
+/// Demonstrates how to test authorization using the generated factory methods.
+/// Test setup would configure IUserContext with appropriate user state.
+/// </summary>
+public class EmployeeAuthorizationTests
+{
+    private readonly IAuthorizedEmployeeFactory _factory;
+
+    public EmployeeAuthorizationTests(IAuthorizedEmployeeFactory factory)
+    {
+        _factory = factory;
+    }
+
+    /// <summary>
+    /// Test that an authorized user can create employees.
+    /// Test setup configures IUserContext with IsAuthenticated = true.
+    /// </summary>
+    public void AuthorizedUser_CanCreate()
+    {
+        // CanCreate() checks IEmployeeAuthorization.CanCreate()
+        var canCreate = _factory.CanCreate().HasAccess;
+
+        if (canCreate)
+        {
+            var employee = _factory.Create();
+            // Verify employee was created
+            System.Diagnostics.Debug.Assert(employee != null);
+        }
+    }
+
+    /// <summary>
+    /// Test that unauthorized users cannot delete employees.
+    /// Test setup configures IUserContext without HRManager role.
+    /// </summary>
+    public void UnauthorizedUser_CannotDelete()
+    {
+        // CanDelete() checks IEmployeeAuthorization.CanWrite()
+        // which requires HRManager or Admin role
+        var canDelete = _factory.CanDelete().HasAccess;
+
+        // User without HRManager role should not have delete access
+        System.Diagnostics.Debug.Assert(!canDelete);
+    }
+}
+#endregion
+
+// ============================================================================
+// Context-Specific Authorization
+// ============================================================================
+
+#region authorization-context
+/// <summary>
+/// Authorization interface for sensitive employee data.
+/// </summary>
+public interface IEmployeeDataAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
+    bool CanRead();
+}
+
+/// <summary>
+/// Claims-based authorization for PII protection.
+/// </summary>
+public partial class EmployeeDataAuthorizationImpl : IEmployeeDataAuthorization
 {
     private readonly IUserContext _userContext;
 
-    public EmployeeWriteCombinedAuthImpl(IUserContext userContext)
+    public EmployeeDataAuthorizationImpl(IUserContext userContext)
     {
         _userContext = userContext;
     }
 
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    public bool CanWrite() =>
-        _userContext.IsAuthenticated &&
-        (_userContext.IsInRole("HR") || _userContext.IsInRole("Manager"));
+    public bool CanRead()
+    {
+        // Access user context for authorization decisions
+        var userId = _userContext.UserId;
+        var username = _userContext.Username;
+        var roles = _userContext.Roles;
+
+        // Must be authenticated
+        if (!_userContext.IsAuthenticated)
+        {
+            return false;
+        }
+
+        // Only HR staff can access sensitive personal data
+        return _userContext.IsInRole("HRStaff") ||
+               _userContext.IsInRole("HRManager") ||
+               _userContext.IsInRole("Admin");
+    }
+}
+
+/// <summary>
+/// Employee personal data with claims-based authorization.
+/// </summary>
+[Factory]
+[AuthorizeFactory<IEmployeeDataAuthorization>]
+public partial class EmployeePersonalData
+{
+    public Guid Id { get; private set; }
+    public string SSN { get; set; } = "";
+    public string BankAccount { get; set; } = "";
+    public string EmergencyContact { get; set; } = "";
+
+    [Create]
+    public EmployeePersonalData()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    [Remote, Fetch]
+    public Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+    {
+        Id = employeeId;
+        // Load sensitive data from repository
+        SSN = "***-**-****";
+        BankAccount = "****1234";
+        EmergencyContact = "John Doe (555-1234)";
+        return Task.FromResult(true);
+    }
 }
 #endregion

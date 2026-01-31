@@ -44,25 +44,36 @@ Configure RemoteFactory in your ASP.NET Core server:
 <!-- snippet: getting-started-server-program -->
 <a id='snippet-getting-started-server-program'></a>
 ```cs
-// Configure RemoteFactory for Server mode with ASP.NET Core integration
-var domainAssembly = typeof(Employee).Assembly;
+public static class ServerProgram
+{
+    public static void ConfigureServer(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddNeatooAspNetCore(
-    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    domainAssembly);
+        // Configure serialization format (Ordinal is default, produces smaller payloads)
+        var serializationOptions = new NeatooSerializationOptions
+        {
+            Format = SerializationFormat.Ordinal
+        };
 
-// Register factory types from domain assembly (interfaces to implementations)
-builder.Services.RegisterMatchingName(domainAssembly);
+        // Register RemoteFactory server-side services with domain assembly
+        builder.Services.AddNeatooAspNetCore(
+            serializationOptions,
+            typeof(EmployeeModel).Assembly);
 
-// Register infrastructure services (repositories, etc.)
-builder.Services.AddInfrastructureServices();
+        // Register server-only services (repositories, etc.)
+        builder.Services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
 
-var app = builder.Build();
+        var app = builder.Build();
 
-// Configure the Neatoo RemoteFactory endpoint
-app.UseNeatoo();
+        // Map the /api/neatoo endpoint for remote delegate requests
+        app.UseNeatoo();
+
+        app.Run();
+    }
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Program.cs#L11-L29' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/ServerProgramSample.cs#L9-L38' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Key points:
@@ -77,21 +88,29 @@ Configure RemoteFactory in your Blazor WASM client:
 <!-- snippet: getting-started-client-program -->
 <a id='snippet-getting-started-client-program'></a>
 ```cs
-// Configure RemoteFactory for Remote (client) mode
-var domainAssembly = typeof(Employee).Assembly;
-
-builder.Services.AddNeatooRemoteFactory(
-    NeatooFactory.Remote,
-    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    domainAssembly);
-
-// Register the keyed HttpClient for RemoteFactory remote calls
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+public static class ClientProgram
 {
-    return new HttpClient { BaseAddress = new Uri(serverBaseAddress) };
-});
+    public static async Task ConfigureClient(string[] args, string serverBaseAddress)
+    {
+        var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+        // Configure RemoteFactory for Remote (client) mode with domain assembly
+        builder.Services.AddNeatooRemoteFactory(
+            NeatooFactory.Remote,
+            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+            typeof(EmployeeModel).Assembly);
+
+        // Register keyed HttpClient for RemoteFactory remote calls
+        builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+        {
+            return new HttpClient { BaseAddress = new Uri(serverBaseAddress) };
+        });
+
+        await builder.Build().RunAsync();
+    }
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L14-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Samples/ClientProgramSample.cs#L7-L29' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Key points:
@@ -106,117 +125,101 @@ Define a domain model with factory methods:
 <!-- snippet: getting-started-employee-model -->
 <a id='snippet-getting-started-employee-model'></a>
 ```cs
-/// <summary>
-/// Employee aggregate root with full CRUD operations.
-/// </summary>
+public interface IEmployeeModel : IFactorySaveMeta
+{
+    Guid Id { get; }
+    [Required] string FirstName { get; set; }
+    [Required] string LastName { get; set; }
+    [EmailAddress] string? Email { get; set; }
+    Guid? DepartmentId { get; set; }
+    DateTime Created { get; }
+    DateTime Modified { get; }
+    new bool IsDeleted { get; set; }
+}
+
 [Factory]
-public partial class Employee : IFactorySaveMeta
+public partial class EmployeeModel : IEmployeeModel
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
-    public EmailAddress Email { get; set; } = null!;
-    public PhoneNumber? Phone { get; set; }
-    public Guid DepartmentId { get; set; }
-    public string Position { get; set; } = "";
-    public Money Salary { get; set; } = null!;
-    public DateTime HireDate { get; set; }
+    public string? Email { get; set; }
+    public Guid? DepartmentId { get; set; }
+    public DateTime Created { get; private set; }
+    public DateTime Modified { get; private set; }
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    /// <summary>
-    /// Creates a new Employee with a generated ID.
-    /// </summary>
     [Create]
-    public Employee()
+    public EmployeeModel()
     {
         Id = Guid.NewGuid();
-        Salary = new Money(0, "USD");
-        HireDate = DateTime.UtcNow;
+        Created = DateTime.UtcNow;
+        Modified = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Fetches an existing Employee by ID.
-    /// </summary>
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
 
-        MapFromEntity(entity);
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        Email = entity.Email;
+        DepartmentId = entity.DepartmentId;
+        Created = entity.HireDate;
+        Modified = DateTime.UtcNow;
         IsNew = false;
         return true;
     }
 
-    /// <summary>
-    /// Inserts a new Employee into the repository.
-    /// </summary>
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
-        var entity = MapToEntity();
+        var entity = new EmployeeEntity
+        {
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email ?? "",
+            DepartmentId = DepartmentId ?? Guid.Empty,
+            Position = "",
+            SalaryAmount = 0,
+            SalaryCurrency = "USD",
+            HireDate = Created
+        };
         await repository.AddAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
         IsNew = false;
     }
 
-    /// <summary>
-    /// Updates an existing Employee in the repository.
-    /// </summary>
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
-        var entity = MapToEntity();
-        await repository.UpdateAsync(entity, ct);
-        await repository.SaveChangesAsync(ct);
+        var entity = await repository.GetByIdAsync(Id, ct);
+        if (entity != null)
+        {
+            entity.FirstName = FirstName;
+            entity.LastName = LastName;
+            entity.Email = Email ?? "";
+            entity.DepartmentId = DepartmentId ?? Guid.Empty;
+            await repository.UpdateAsync(entity, ct);
+            await repository.SaveChangesAsync(ct);
+        }
+        Modified = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Deletes the Employee from the repository.
-    /// </summary>
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);
     }
-
-    private void MapFromEntity(EmployeeEntity entity)
-    {
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        LastName = entity.LastName;
-        Email = new EmailAddress(entity.Email);
-        Phone = entity.Phone != null ? ParsePhone(entity.Phone) : null;
-        DepartmentId = entity.DepartmentId;
-        Position = entity.Position;
-        Salary = new Money(entity.SalaryAmount, entity.SalaryCurrency);
-        HireDate = entity.HireDate;
-    }
-
-    private EmployeeEntity MapToEntity() => new()
-    {
-        Id = Id,
-        FirstName = FirstName,
-        LastName = LastName,
-        Email = Email.Value,
-        Phone = Phone?.ToString(),
-        DepartmentId = DepartmentId,
-        Position = Position,
-        SalaryAmount = Salary.Amount,
-        SalaryCurrency = Salary.Currency,
-        HireDate = HireDate
-    };
-
-    private static PhoneNumber ParsePhone(string phone)
-    {
-        var parts = phone.Split(' ', 2);
-        return new PhoneNumber(parts[0], parts.Length > 1 ? parts[1] : "");
-    }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Aggregates/Employee.cs#L7-L117' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-employee-model' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/GettingStarted/EmployeeModel.cs#L7-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-employee-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Attribute breakdown:
@@ -234,57 +237,33 @@ Inject and call the generated factory from your client:
 <!-- snippet: getting-started-usage -->
 <a id='snippet-getting-started-usage'></a>
 ```cs
-/// <summary>
-/// Getting started usage example with factory operations.
-/// </summary>
-public class GettingStartedUsageTests
+public async Task UseEmployeeFactory(IEmployeeModelFactory factory)
 {
-    [Fact]
-    public async Task BasicCrudOperations()
-    {
-        // Arrange - Create test container
-        var scopes = TestClientServerContainers.CreateScopes();
-        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+    // Create: Call factory.Create() to instantiate a new employee
+    var employee = factory.Create();
+    employee.FirstName = "Jane";
+    employee.LastName = "Smith";
+    employee.Email = "jane.smith@example.com";
 
-        // Create - Factory generates IEmployeeFactory from [Factory] attribute
-        var employee = factory.Create();
-        employee.FirstName = "Alice";
-        employee.LastName = "Johnson";
-        employee.Email = new EmailAddress("alice.johnson@example.com");
-        employee.Position = "Software Engineer";
-        employee.Salary = new Money(95000, "USD");
-        employee.DepartmentId = Guid.NewGuid();
+    // Insert: Save routes to Insert because IsNew = true
+    var saved = await factory.Save(employee);
+    if (saved == null) return;
+    // saved.IsNew is now false
 
-        // Insert via Save (routes to Insert based on IsNew = true)
-        employee = await factory.Save(employee);
-        Assert.NotNull(employee);
-        Assert.False(employee.IsNew);
+    // Fetch: Load an existing employee by ID
+    var fetched = await factory.Fetch(saved.Id);
+    if (fetched == null) return;
 
-        // Fetch - Load existing employee
-        var fetched = await factory.Fetch(employee.Id);
-        Assert.NotNull(fetched);
-        Assert.Equal("Alice", fetched.FirstName);
+    // Update: Modify and save routes to Update because IsNew = false
+    fetched.Email = "jane.updated@example.com";
+    await factory.Save(fetched);
 
-        // Update
-        fetched.Position = "Senior Software Engineer";
-        fetched.Salary = new Money(115000, "USD");
-        fetched = await factory.Save(fetched);
-
-        // Verify update
-        var updated = await factory.Fetch(employee.Id);
-        Assert.Equal("Senior Software Engineer", updated?.Position);
-
-        // Delete
-        fetched.IsDeleted = true;
-        await factory.Save(fetched);
-
-        // Verify deletion
-        var deleted = await factory.Fetch(employee.Id);
-        Assert.Null(deleted);
-    }
+    // Delete: Set IsDeleted = true and save routes to Delete
+    fetched.IsDeleted = true;
+    await factory.Save(fetched);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L15-L65' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/GettingStarted/EmployeeModelUsage.cs#L5-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The generated factory:
@@ -325,35 +304,32 @@ Configure during registration:
 <!-- snippet: getting-started-serialization-config -->
 <a id='snippet-getting-started-serialization-config'></a>
 ```cs
-/// <summary>
-/// Demonstrates serialization format configuration.
-/// </summary>
-public class SerializationConfigTests
+public static class SerializationConfig
 {
-    [Fact]
-    public void OrdinalFormatConfiguration()
+    public static void ConfigureOrdinal(IServiceCollection services)
     {
-        // Ordinal format (default) - compact array-based serialization
-        var ordinalOptions = new NeatooSerializationOptions
+        // Ordinal format (default): Compact array format, 40-50% smaller
+        // Example payload: ["Jane", "Smith", "jane@example.com"]
+        var options = new NeatooSerializationOptions
         {
             Format = SerializationFormat.Ordinal
         };
-        Assert.Equal(SerializationFormat.Ordinal, ordinalOptions.Format);
+        services.AddNeatooAspNetCore(options, typeof(EmployeeModel).Assembly);
     }
 
-    [Fact]
-    public void NamedFormatConfiguration()
+    public static void ConfigureNamed(IServiceCollection services)
     {
-        // Named format - human-readable JSON with property names
-        var namedOptions = new NeatooSerializationOptions
+        // Named format: Verbose with property names, easier to debug
+        // Example payload: {"FirstName":"Jane","LastName":"Smith","Email":"jane@example.com"}
+        var options = new NeatooSerializationOptions
         {
             Format = SerializationFormat.Named
         };
-        Assert.Equal(SerializationFormat.Named, namedOptions.Format);
+        services.AddNeatooAspNetCore(options, typeof(EmployeeModel).Assembly);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L67-L95' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-serialization-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/SerializationConfigSample.cs#L8-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-serialization-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Both client and server must use the same format.
