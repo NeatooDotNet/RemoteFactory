@@ -1,0 +1,242 @@
+@page "/"
+@* =============================================================================
+   DESIGN SOURCE OF TRUTH: Sample Page
+   =============================================================================
+
+   Demonstrates all three RemoteFactory patterns in a Blazor WASM client:
+   1. Class Factory - Create/Fetch entities
+   2. Interface Factory - Call repository methods
+   3. Static Factory - Execute commands, fire events
+
+   ========================================================================== *@
+
+@using Design.Domain.Aggregates
+@using Design.Domain.FactoryPatterns
+@inject IOrderFactory OrderFactory
+@inject IExampleClassFactoryFactory ClassFactory
+@inject IExampleRepository Repository
+
+<PageTitle>Design Source of Truth</PageTitle>
+
+<h1>RemoteFactory Design Samples</h1>
+<p>This page demonstrates all three factory patterns working through the client/server boundary.</p>
+
+<hr />
+
+@* -------------------------------------------------------------------------
+   PATTERN 1: CLASS FACTORY
+
+   Class factories create and manage entity lifecycle.
+   IOrderFactory and IExampleClassFactoryFactory are generated from [Factory] classes.
+   -------------------------------------------------------------------------- *@
+<h2>1. Class Factory Pattern</h2>
+<p>Create and fetch entities using generated factory interfaces.</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="CreateOrder">Create Order</button>
+    <button class="btn btn-secondary" @onclick="FetchOrder">Fetch Order</button>
+</div>
+
+@if (currentOrder != null)
+{
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Order #@currentOrder.Id</h5>
+            <p>Customer: @currentOrder.CustomerName</p>
+            <p>Status: @currentOrder.Status</p>
+            <p>Total: @currentOrder.Total.Amount @currentOrder.Total.Currency</p>
+            <p>Lines: @currentOrder.Lines.Count</p>
+            <p>IsNew: @currentOrder.IsNew</p>
+        </div>
+    </div>
+}
+
+<hr />
+
+@* -------------------------------------------------------------------------
+   PATTERN 2: INTERFACE FACTORY
+
+   Interface factories create remote proxies for service interfaces.
+   The IExampleRepository implementation runs on the server.
+   -------------------------------------------------------------------------- *@
+<h2>2. Interface Factory Pattern</h2>
+<p>Call repository methods through generated remote proxy.</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="FetchRepositoryData">Get All Items</button>
+    <button class="btn btn-secondary" @onclick="FetchSingleItem">Get Item #42</button>
+</div>
+
+@if (repositoryItems != null)
+{
+    <ul>
+        @foreach (var item in repositoryItems)
+        {
+            <li>@item.Id: @item.Name</li>
+        }
+    </ul>
+}
+
+@if (singleItem != null)
+{
+    <p>Single item: @singleItem.Id - @singleItem.Name</p>
+}
+
+<hr />
+
+@* -------------------------------------------------------------------------
+   PATTERN 3: STATIC FACTORY
+
+   Static factories generate delegates for commands and events.
+   [Execute] = request-response, [Event] = fire-and-forget
+   -------------------------------------------------------------------------- *@
+<h2>3. Static Factory Pattern</h2>
+<p>Execute commands and fire events using generated delegates.</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="ExecuteCommand">Execute: Send Notification</button>
+    <button class="btn btn-secondary" @onclick="FireEvent">Fire Event: Order Placed</button>
+</div>
+
+@if (commandResult.HasValue)
+{
+    <p>Command result: @(commandResult.Value ? "Success" : "Failed")</p>
+}
+
+@if (eventFired)
+{
+    <p>Event fired successfully!</p>
+}
+
+<hr />
+
+<h2>Messages</h2>
+<pre>@messages</pre>
+
+@code {
+    // -------------------------------------------------------------------------
+    // State
+    // -------------------------------------------------------------------------
+    private Order? currentOrder;
+    private IReadOnlyList<ExampleDto>? repositoryItems;
+    private ExampleDto? singleItem;
+    private bool? commandResult;
+    private bool eventFired;
+    private string messages = "";
+
+    // -------------------------------------------------------------------------
+    // DESIGN DECISION: Inject factory interfaces, not concrete types
+    //
+    // The DI container provides:
+    // - IOrderFactory (generated from [Factory] on Order class)
+    // - IExampleClassFactoryFactory (generated from [Factory] on ExampleClassFactory)
+    // - IExampleRepository (interface factory - proxy to server implementation)
+    //
+    // Static factory delegates are also injected:
+    // - ExampleCommands.SendNotification
+    // - ExampleEvents.OnOrderPlacedEvent
+    // -------------------------------------------------------------------------
+
+    [Inject]
+    private ExampleCommands.SendNotification SendNotification { get; set; } = default!;
+
+    [Inject]
+    private ExampleEvents.OnOrderPlacedEvent OnOrderPlaced { get; set; } = default!;
+
+    // -------------------------------------------------------------------------
+    // Pattern 1: Class Factory - Create/Fetch
+    // -------------------------------------------------------------------------
+
+    private async Task CreateOrder()
+    {
+        try
+        {
+            messages += "Creating order...\n";
+            currentOrder = await OrderFactory.Create("Demo Customer");
+            messages += $"Created order: IsNew={currentOrder.IsNew}, Status={currentOrder.Status}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private async Task FetchOrder()
+    {
+        try
+        {
+            messages += "Fetching order #123...\n";
+            currentOrder = await OrderFactory.Fetch(123);
+            messages += $"Fetched order: Id={currentOrder.Id}, Lines={currentOrder.Lines.Count}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Pattern 2: Interface Factory - Repository calls
+    // -------------------------------------------------------------------------
+
+    private async Task FetchRepositoryData()
+    {
+        try
+        {
+            messages += "Calling repository.GetAllAsync()...\n";
+            repositoryItems = await Repository.GetAllAsync();
+            messages += $"Retrieved {repositoryItems.Count} items\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private async Task FetchSingleItem()
+    {
+        try
+        {
+            messages += "Calling repository.GetByIdAsync(42)...\n";
+            singleItem = await Repository.GetByIdAsync(42);
+            messages += $"Retrieved item: {singleItem?.Name ?? "null"}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Pattern 3: Static Factory - Commands and Events
+    // -------------------------------------------------------------------------
+
+    private async Task ExecuteCommand()
+    {
+        try
+        {
+            messages += "Executing SendNotification command...\n";
+            commandResult = await SendNotification("demo@example.com", "Hello from Blazor!");
+            messages += $"Command returned: {commandResult}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private async Task FireEvent()
+    {
+        try
+        {
+            messages += "Firing OnOrderPlaced event...\n";
+            await OnOrderPlaced(999);
+            eventFired = true;
+            messages += "Event fired successfully\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+}

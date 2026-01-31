@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<!-- Inherits TargetFrameworks, Nullable, and ImplicitUsings from Directory.Build.props -->
+
+	<PropertyGroup>
+		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, IDE0044, CA1062, CA2227, CA5394, CA1822</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
+		<ProjectReference Include="..\Design.Domain\Design.Domain.csproj" />
+	</ItemGroup>
+
+</Project>
