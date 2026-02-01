@@ -63,12 +63,12 @@ public class EmployeeDatabase : IEmployeeDatabase
 /// Employee report demonstrating server-only service injection.
 /// </summary>
 [Factory]
-public partial class EmployeeReport
+public partial class ServiceEmployeeReport
 {
     public string QueryResult { get; private set; } = "";
 
     [Create]
-    public EmployeeReport()
+    public ServiceEmployeeReport()
     {
     }
 

@@ -70,29 +70,8 @@ See [Client-Server Architecture](client-server-architecture.md) for the complete
 
 **Important**: Services injected via method parameters and stored in fields are **not serialized**. After crossing the client-server boundary, these fields will be null.
 
-```csharp
-[Factory]
-public partial class OrderLineList : List<OrderLine>
-{
-    private IOrderLineFactory? _lineFactory;  // Lost after serialization!
-
-    [Fetch]
-    public void Fetch(
-        IEnumerable<(int id, string name, decimal price, int qty)> items,
-        [Service] IOrderLineFactory lineFactory)  // Method injection
-    {
-        _lineFactory = lineFactory;  // Stored in field
-        // ... populate list
-    }
-
-    public void AddLine(string name, decimal price, int qty)
-    {
-        // This fails after serialization - _lineFactory is null!
-        var line = _lineFactory!.Create(name, price, qty);
-        Add(line);
-    }
-}
-```
+<!-- snippet: serialization-caveat-broken -->
+<!-- endSnippet -->
 
 When the client fetches an `OrderLineList` via a remote call:
 1. Server executes `Fetch()` with `IOrderLineFactory` injected
@@ -103,38 +82,8 @@ When the client fetches an `OrderLineList` via a remote call:
 
 **Solution: Use constructor injection for services needed on both sides**
 
-```csharp
-[Factory]
-public partial class OrderLineList : List<OrderLine>
-{
-    private readonly IOrderLineFactory _lineFactory;  // Survives serialization!
-
-    [Create]
-    public OrderLineList([Service] IOrderLineFactory lineFactory)
-    {
-        _lineFactory = lineFactory;  // Constructor injection
-    }
-
-    [Fetch]
-    public void Fetch(
-        IEnumerable<(int id, string name, decimal price, int qty)> items,
-        [Service] IOrderLineFactory lineFactory)
-    {
-        // Can use lineFactory here for populating
-        foreach (var item in items)
-        {
-            Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
-        }
-    }
-
-    public void AddLine(string name, decimal price, int qty)
-    {
-        // Works! _lineFactory is resolved from DI on both client and server
-        var line = _lineFactory.Create(name, price, qty);
-        Add(line);
-    }
-}
-```
+<!-- snippet: serialization-caveat-fixed -->
+<!-- endSnippet -->
 
 With constructor injection:
 1. Server executes `Fetch()` and populates the list
@@ -769,79 +718,13 @@ public class TestUserContext : IUserContext
 
 For integration tests that validate remote call serialization without HTTP, use the **ClientServerContainers** pattern:
 
-```csharp
-/// <summary>
-/// Creates isolated client, server, and local containers for integration testing.
-/// </summary>
-public static class ClientServerContainers
-{
-    /// <summary>
-    /// Creates scopes for testing client-server communication.
-    /// </summary>
-    /// <remarks>
-    /// - Client (NeatooFactory.Remote): Remote stubs, calls server via serialization
-    /// - Server (NeatooFactory.Server): Full implementations, handles remote requests
-    /// - Local (NeatooFactory.Logical): Full implementation, no remote calls
-    /// </remarks>
-    public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes()
-    {
-        var serializationOptions = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
+<!-- snippet: clientserver-container-setup -->
+<!-- endSnippet -->
 
-        var serverCollection = new ServiceCollection();
-        var clientCollection = new ServiceCollection();
-        var localCollection = new ServiceCollection();
+Example test using local (Logical) mode:
 
-        // Configure containers with appropriate mode
-        serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, typeof(MyDomainType).Assembly);
-        clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, serializationOptions, typeof(MyDomainType).Assembly);
-        localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, serializationOptions, typeof(MyDomainType).Assembly);
-
-        // Server-only services
-        serverCollection.AddScoped<IMyRepository, InMemoryRepository>();
-        localCollection.AddScoped<IMyRepository, InMemoryRepository>();
-
-        // Client needs server reference for remote calls
-        clientCollection.AddScoped<ServerServiceProvider>();
-        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
-
-        var serverProvider = serverCollection.BuildServiceProvider();
-        var clientProvider = clientCollection.BuildServiceProvider();
-        var localProvider = localCollection.BuildServiceProvider();
-
-        var serverScope = serverProvider.CreateScope();
-        var clientScope = clientProvider.CreateScope();
-        var localScope = localProvider.CreateScope();
-
-        // Link client to server
-        clientScope.ServiceProvider.GetRequiredService<ServerServiceProvider>().ServerProvider = serverScope.ServiceProvider;
-
-        return (serverScope, clientScope, localScope);
-    }
-}
-```
-
-Usage in tests:
-
-```csharp
-[Fact]
-public async Task Remote_Create_SerializesCorrectly()
-{
-    var (server, client, local) = ClientServerContainers.Scopes();
-
-    // Get factory from client container - calls go through serialization to server
-    var factory = client.ServiceProvider.GetRequiredService<IOrderFactory>();
-
-    // Create triggers remote call → server executes → response serialized back
-    var order = await factory.Create("Customer Name");
-
-    Assert.NotNull(order);
-    Assert.Equal("Customer Name", order.CustomerName);
-
-    server.Dispose();
-    client.Dispose();
-    local.Dispose();
-}
-```
+<!-- snippet: clientserver-container-usage -->
+<!-- endSnippet -->
 
 Benefits of this pattern:
 1. **Faster** - No HTTP overhead

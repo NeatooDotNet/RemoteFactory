@@ -6,6 +6,10 @@ using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.AspNetCore;
 using Neatoo.RemoteFactory.Internal;
 
+// Sample code: suppressing logging performance warnings for readability
+#pragma warning disable CA1848 // Use LoggerMessage delegates for performance
+#pragma warning disable CA1873 // Evaluation of argument may be expensive and unnecessary if logging is disabled
+
 namespace EmployeeManagement.Server.WebApi.Samples;
 
 // ASP.NET Core Integration Samples

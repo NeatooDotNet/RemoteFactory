@@ -120,9 +120,9 @@ public class AuthorizationTestingSamples
     }
 
     [Fact]
-    public void CanCreate_WithoutHROrManagerRole_ReturnsFalse()
+    public void CanCreate_WhenAuthenticatedWithAnyRole_ReturnsTrue()
     {
-        // Arrange - Create user context without required roles
+        // Arrange - Create user context with any role (no specific role required for Create)
         var userContext = new TestUserContext
         {
             IsAuthenticated = true,
@@ -134,8 +134,8 @@ public class AuthorizationTestingSamples
         // Act
         var canCreate = authorization.CanCreate();
 
-        // Assert
-        Assert.False(canCreate);
+        // Assert - CanCreate only requires authentication, not specific roles
+        Assert.True(canCreate);
     }
 
     [Fact]

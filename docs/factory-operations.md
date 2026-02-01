@@ -771,48 +771,8 @@ Collections can have `[Factory]` to support batch operations and child factory i
 
 ### Basic Collection Factory
 
-```csharp
-/// <summary>
-/// Collection of OrderLines within an Order aggregate.
-/// </summary>
-[Factory]
-public partial class OrderLineList : List<OrderLine>
-{
-    private readonly IOrderLineFactory _lineFactory;
-
-    /// <summary>
-    /// Creates an empty collection with injected child factory.
-    /// </summary>
-    [Create]
-    public OrderLineList([Service] IOrderLineFactory lineFactory)
-    {
-        _lineFactory = lineFactory;
-    }
-
-    /// <summary>
-    /// Fetches a collection from data.
-    /// </summary>
-    [Fetch]
-    public void Fetch(
-        IEnumerable<(int id, string name, decimal price, int qty)> items,
-        [Service] IOrderLineFactory lineFactory)
-    {
-        foreach (var item in items)
-        {
-            Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
-        }
-    }
-
-    /// <summary>
-    /// Domain method using stored factory to add children.
-    /// </summary>
-    public void AddLine(string name, decimal price, int qty)
-    {
-        var line = _lineFactory.Create(name, price, qty);
-        Add(line);
-    }
-}
-```
+<!-- snippet: collection-factory-basic -->
+<!-- endSnippet -->
 
 Generated factory interface:
 ```csharp
@@ -835,35 +795,9 @@ Use constructor injection for the child factory so it survives serialization (se
 Collections are part of their parent aggregate. The parent's `[Remote]` method is the entry point; collection operations run server-side within that call.
 
 **Parent creates collection via factory:**
-```csharp
-[Factory]
-public partial class Order
-{
-    public OrderLineList Lines { get; set; } = null!;
 
-    [Remote, Create]
-    public void Create(
-        string customerName,
-        [Service] IOrderLineListFactory lineListFactory)
-    {
-        CustomerName = customerName;
-        Lines = lineListFactory.Create();  // Factory creates collection
-    }
-
-    [Remote, Fetch]
-    public void Fetch(
-        int id,
-        [Service] IOrderLineListFactory lineListFactory)
-    {
-        Id = id;
-        // Factory fetches collection with data
-        Lines = lineListFactory.Fetch([
-            (1, "Widget A", 10.00m, 2),
-            (2, "Widget B", 25.00m, 1)
-        ]);
-    }
-}
-```
+<!-- snippet: collection-factory-parent -->
+<!-- endSnippet -->
 
 This pattern ensures:
 1. Collections are properly initialized with child factories
