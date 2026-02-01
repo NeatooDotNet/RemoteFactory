@@ -20,14 +20,14 @@ public interface IEmployeeModel : IFactorySaveMeta
 [Factory]
 public partial class EmployeeModel : IEmployeeModel
 {
-    public Guid Id { get; private set; }
+    public Guid Id { get; set; }
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
     public string? Email { get; set; }
     public Guid? DepartmentId { get; set; }
-    public DateTime Created { get; private set; }
-    public DateTime Modified { get; private set; }
-    public bool IsNew { get; private set; } = true;
+    public DateTime Created { get; set; }
+    public DateTime Modified { get; set; }
+    public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
 
     [Create]

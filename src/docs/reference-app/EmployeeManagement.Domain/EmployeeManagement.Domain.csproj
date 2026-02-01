@@ -18,7 +18,8 @@
     <!-- CA1848: LoggerMessage delegates are not required for sample code -->
     <!-- CA1873: Logging evaluation is OK in samples -->
     <!-- CA1308: ToLowerInvariant is intentional for email normalization -->
-    <NoWarn>CA1062;CA1822;CA1819;CA2227;CA1307;CA1711;CA1707;CA1034;CA1848;CA1873;CA1308</NoWarn>
+    <!-- CA5394: Random.Shared is OK for sample IDs, not security-critical -->
+    <NoWarn>CA1062;CA1822;CA1819;CA2227;CA1307;CA1711;CA1707;CA1034;CA1848;CA1873;CA1308;CA5394</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

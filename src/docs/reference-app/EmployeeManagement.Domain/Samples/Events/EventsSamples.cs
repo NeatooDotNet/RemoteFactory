@@ -187,12 +187,14 @@ public partial class EventErrorHandling
                 $"Event for {entityId}",
                 ct);
         }
+#pragma warning disable CA1031 // Intentionally catching all exceptions in fire-and-forget event handlers
         catch (Exception ex)
         {
             // Log error but do not re-throw
             // The parent operation already completed
             logger.LogError(ex, "Failed to send notification for {EntityId}", entityId);
         }
+#pragma warning restore CA1031
     }
 }
 #endregion

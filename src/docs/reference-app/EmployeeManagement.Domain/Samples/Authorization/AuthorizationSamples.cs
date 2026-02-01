@@ -69,7 +69,7 @@ public partial class EmployeeAuthorizationImpl : IEmployeeAuthorization
 /// </summary>
 [Factory]
 [AuthorizeFactory<IEmployeeAuthorization>]
-public partial class AuthorizedEmployee : IFactorySaveMeta
+public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
@@ -80,7 +80,7 @@ public partial class AuthorizedEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public AuthorizedEmployee()
+    public AuthorizedEmployeeEntity()
     {
         Id = Guid.NewGuid();
     }
@@ -155,14 +155,14 @@ public partial class AuthorizedEmployee : IFactorySaveMeta
 /// </summary>
 public class EmployeeManagementService
 {
-    private readonly IAuthorizedEmployeeFactory _employeeFactory;
+    private readonly IAuthorizedEmployeeEntityFactory _employeeFactory;
 
-    public EmployeeManagementService(IAuthorizedEmployeeFactory employeeFactory)
+    public EmployeeManagementService(IAuthorizedEmployeeEntityFactory employeeFactory)
     {
         _employeeFactory = employeeFactory;
     }
 
-    public AuthorizedEmployee? CreateNewEmployee()
+    public AuthorizedEmployeeEntity? CreateNewEmployee()
     {
         // Check authorization before attempting create
         // CanCreate() is generated from [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
@@ -174,7 +174,7 @@ public class EmployeeManagementService
         return _employeeFactory.Create();
     }
 
-    public async Task<AuthorizedEmployee?> GetEmployeeById(Guid employeeId)
+    public async Task<AuthorizedEmployeeEntity?> GetEmployeeById(Guid employeeId)
     {
         // Check authorization before attempting fetch
         // CanFetch() is generated from [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
@@ -552,9 +552,9 @@ public static partial class PerformanceReviewOperations
 /// </summary>
 public class EmployeeAuthorizationHandler
 {
-    private readonly IAuthorizedEmployeeFactory _employeeFactory;
+    private readonly IAuthorizedEmployeeEntityFactory _employeeFactory;
 
-    public EmployeeAuthorizationHandler(IAuthorizedEmployeeFactory employeeFactory)
+    public EmployeeAuthorizationHandler(IAuthorizedEmployeeEntityFactory employeeFactory)
     {
         _employeeFactory = employeeFactory;
     }
@@ -645,9 +645,9 @@ public partial class EmployeeLifecycleEvents
 /// </summary>
 public class EmployeeAuthorizationTests
 {
-    private readonly IAuthorizedEmployeeFactory _factory;
+    private readonly IAuthorizedEmployeeEntityFactory _factory;
 
-    public EmployeeAuthorizationTests(IAuthorizedEmployeeFactory factory)
+    public EmployeeAuthorizationTests(IAuthorizedEmployeeEntityFactory factory)
     {
         _factory = factory;
     }

@@ -336,7 +336,7 @@ public class MoneyWithConverter : IOrdinalSerializable, IOrdinalConverterProvide
     /// <summary>
     /// Custom ordinal converter for Money.
     /// </summary>
-    private class MoneyOrdinalConverter : JsonConverter<MoneyWithConverter>
+    private sealed class MoneyOrdinalConverter : JsonConverter<MoneyWithConverter>
     {
         public override MoneyWithConverter Read(
             ref Utf8JsonReader reader,

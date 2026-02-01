@@ -7,6 +7,138 @@
 // JSON round-trip serialization.
 //
 // =============================================================================
+//
+// SERIALIZATION ROUND-TRIP GUIDE
+// ==============================
+//
+// This guide explains which types can cross the client/server boundary,
+// how IOrdinalSerializable works, and how to use the two DI container
+// test pattern.
+//
+// -----------------------------------------------------------------------------
+// TYPES THAT CAN CROSS THE BOUNDARY
+// -----------------------------------------------------------------------------
+//
+// YES - These serialize correctly:
+//   - Primitive types (int, string, bool, decimal, etc.)
+//   - Nullable primitives (int?, string?, etc.)
+//   - Enums (serialize as string by default)
+//   - DateTime, DateTimeOffset, TimeSpan, Guid
+//   - Records (immutable value objects like Money)
+//   - Classes with [Factory] attribute (generate IOrdinalSerializable)
+//   - Concrete collections: List<T>, Dictionary<TKey,TValue>, arrays
+//   - Nested objects (if their types are also serializable)
+//
+// NO - These will NOT serialize correctly:
+//   - Properties with private setters (serialize but won't deserialize)
+//   - Service references (IRepository, ILogger, etc.)
+//   - Delegate/Func/Action fields
+//   - Lazy<T> or other deferred types
+//   - Interface-typed collections (IEnumerable<T>, IList<T>)
+//   - Circular references without proper handling
+//
+// PARTIAL - Special handling required:
+//   - Collections with injected factories (work in local mode only)
+//   - Child entity collections (see OrderLineList pattern)
+//
+// -----------------------------------------------------------------------------
+// WHY IORDINALSERIALIZABLE MATTERS
+// -----------------------------------------------------------------------------
+//
+// RemoteFactory uses ordinal-based serialization for efficiency and type safety:
+//
+// 1. WHAT IT DOES:
+//    - Each property gets an ordinal (integer) instead of a name
+//    - JSON payload is smaller: {"0":1,"1":"Name"} vs {"Id":1,"Name":"Name"}
+//    - Faster parsing since no string comparisons needed
+//
+// 2. HOW IT'S GENERATED:
+//    - The [Factory] attribute triggers source generation
+//    - Generator creates partial class implementing IOrdinalSerializable
+//    - Properties are assigned ordinals based on declaration order
+//
+// 3. WHAT YOU NEED TO DO:
+//    - Use [Factory] attribute on your class
+//    - Make the class partial
+//    - Use public setters on properties that need to serialize
+//
+// Example generated code:
+//
+//   partial class Order : IOrdinalSerializable
+//   {
+//       public void WriteOrdinal(ref OrdinalWriter writer)
+//       {
+//           writer.WriteInt32(0, Id);
+//           writer.WriteString(1, CustomerName);
+//           writer.WriteEnum(2, Status);
+//           // ... etc
+//       }
+//
+//       public void ReadOrdinal(ref OrdinalReader reader)
+//       {
+//           Id = reader.ReadInt32(0);
+//           CustomerName = reader.ReadString(1);
+//           Status = reader.ReadEnum<OrderStatus>(2);
+//           // ... etc
+//       }
+//   }
+//
+// -----------------------------------------------------------------------------
+// TWO DI CONTAINER TEST PATTERN (Visual)
+// -----------------------------------------------------------------------------
+//
+//   +------------------+                      +------------------+
+//   |   CLIENT SCOPE   |                      |   SERVER SCOPE   |
+//   +------------------+                      +------------------+
+//   |                  |                      |                  |
+//   | IOrderFactory    |                      | IOrderFactory    |
+//   | (Remote stub)    |                      | (Real impl)      |
+//   |                  |                      |                  |
+//   | NeatooJson-      |                      | NeatooJson-      |
+//   | Serializer       |                      | Serializer       |
+//   |                  |                      |                  |
+//   | ServerService-   |---references--->     | HandleRemote-    |
+//   | Provider         |                      | DelegateRequest  |
+//   |                  |                      |                  |
+//   +------------------+                      +------------------+
+//           |                                         ^
+//           |                                         |
+//           |   1. Serialize request to JSON          |
+//           +-----------------------------------------+
+//           |                                         |
+//           |   2. Execute on server                  |
+//           |   3. Serialize response to JSON         |
+//           |                                         |
+//           +<----------------------------------------+
+//           |                                         |
+//           |   4. Deserialize response               |
+//           v                                         |
+//   +------------------+                      +------------------+
+//   | Order object     |  <-- ROUND-TRIP --> | Order object     |
+//   | (deserialized)   |                      | (created here)   |
+//   +------------------+                      +------------------+
+//
+// USAGE PATTERN:
+//
+//   var (server, client, local) = DesignClientServerContainers.Scopes();
+//
+//   // CLIENT: Calls go through serialization to server
+//   var clientFactory = client.GetRequiredService<IOrderFactory>();
+//   var order = await clientFactory.Create("Customer");  // Remote call!
+//
+//   // SERVER: Direct execution, no serialization
+//   var serverFactory = server.GetRequiredService<IOrderFactory>();
+//
+//   // LOCAL: Single-tier mode, no remote calls
+//   var localFactory = local.GetRequiredService<IOrderFactory>();
+//
+// WHEN TO USE EACH:
+//
+//   - Client scope: Testing the actual client experience (Blazor WASM)
+//   - Server scope: Testing server logic in isolation
+//   - Local scope: Testing without serialization overhead
+//
+// =============================================================================
 
 using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;

@@ -13,7 +13,7 @@ namespace EmployeeManagement.Domain.Samples.SaveOperation;
 /// Employee aggregate with validation attributes for Save operations.
 /// </summary>
 [Factory]
-public partial class ValidatedEmployee : IFactorySaveMeta
+public partial class SaveValidatedEmployee : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
 
@@ -33,7 +33,7 @@ public partial class ValidatedEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public ValidatedEmployee()
+    public SaveValidatedEmployee()
     {
         Id = Guid.NewGuid();
     }
@@ -87,7 +87,7 @@ public static class ValidationHelper
 /// Employee aggregate with server-side validation in Insert method.
 /// </summary>
 [Factory]
-public partial class ServerValidatedEmployee : IFactorySaveMeta
+public partial class SaveServerValidatedEmployee : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
@@ -97,7 +97,7 @@ public partial class ServerValidatedEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public ServerValidatedEmployee()
+    public SaveServerValidatedEmployee()
     {
         Id = Guid.NewGuid();
     }

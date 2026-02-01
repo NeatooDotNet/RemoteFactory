@@ -66,6 +66,34 @@ Method injection is the common case—most factory methods have method-injected 
 
 See [Client-Server Architecture](client-server-architecture.md) for the complete mental model.
 
+## Serialization Caveat: Method-Injected Services Are Lost
+
+**Important**: Services injected via method parameters and stored in fields are **not serialized**. After crossing the client-server boundary, these fields will be null.
+
+<!-- snippet: serialization-caveat-broken -->
+<!-- endSnippet -->
+
+When the client fetches an `OrderLineList` via a remote call:
+1. Server executes `Fetch()` with `IOrderLineFactory` injected
+2. Server stores the factory in `_lineFactory`
+3. Response serializes the list (but NOT the factory reference)
+4. Client deserializes the list—`_lineFactory` is null
+5. Calling `AddLine()` on the client throws `NullReferenceException`
+
+**Solution: Use constructor injection for services needed on both sides**
+
+<!-- snippet: serialization-caveat-fixed -->
+<!-- endSnippet -->
+
+With constructor injection:
+1. Server executes `Fetch()` and populates the list
+2. Response serializes the list
+3. Client deserializes the list
+4. RemoteFactory resolves `IOrderLineFactory` from client DI
+5. `AddLine()` works because `_lineFactory` is resolved on both sides
+
+**Rule of thumb**: If you need a service reference after the object crosses the wire, use constructor injection.
+
 ## Parameter Rules
 
 Service parameters can appear anywhere in the parameter list, but conventionally appear after value parameters:
@@ -685,6 +713,26 @@ public class TestUserContext : IUserContext
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/ServiceRegistrationSamples.cs#L49-L125' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+## Client/Server Container Testing
+
+For integration tests that validate remote call serialization without HTTP, use the **ClientServerContainers** pattern:
+
+<!-- snippet: clientserver-container-setup -->
+<!-- endSnippet -->
+
+Example test using local (Logical) mode:
+
+<!-- snippet: clientserver-container-usage -->
+<!-- endSnippet -->
+
+Benefits of this pattern:
+1. **Faster** - No HTTP overhead
+2. **Deterministic** - No timing issues
+3. **Validates serialization** - JSON round-trip still happens
+4. **Isolated** - No external dependencies
+
+For a complete implementation, see `src/Design/Design.Tests/TestInfrastructure/DesignClientServerContainers.cs`.
 
 ## Next Steps
 
