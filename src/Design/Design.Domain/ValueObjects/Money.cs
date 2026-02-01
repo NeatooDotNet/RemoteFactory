@@ -2,21 +2,32 @@
 // DESIGN SOURCE OF TRUTH: Value Objects
 // =============================================================================
 //
-// Value objects don't need [Factory] because they don't have factory operations.
+// Value objects use [Factory] for self-hydration. The parent passes raw data
+// (e.g., from an EF entity) and the value object is responsible for constructing
+// itself from that data.
 //
-// DESIGN DECISION: Value objects don't use [Factory]
+// DESIGN DECISION: Value objects use [Factory] for self-hydration
 //
 // Reasons:
-// 1. No Create/Fetch/Save lifecycle - they're constructed directly
-// 2. No remote operations - they're serialized as part of entities
-// 3. Immutability means no state changes to track
+// 1. Encapsulation - parent doesn't need to know value object's internal structure
+// 2. Consistency - all domain objects use factory pattern
+// 3. If structure changes, only the value object's factory method changes
 //
-// DID NOT DO THIS: Add [Factory] to value objects
+// DID NOT DO THIS: Have parent construct value objects directly
 //
-// This would generate unnecessary factory infrastructure for types that
-// are simply constructed and serialized as data.
+// WRONG (parent knows too much about structure):
+// public void Fetch(EmployeeEntity entity) {
+//     Salary = new Money(entity.SalaryAmount, entity.SalaryCurrency);
+// }
+//
+// RIGHT (value object hydrates itself):
+// public void Fetch(EmployeeEntity entity, [Service] IMoneyFactory moneyFactory) {
+//     Salary = moneyFactory.Create(entity.SalaryAmount, entity.SalaryCurrency);
+// }
 //
 // =============================================================================
+
+using Neatoo.RemoteFactory;
 
 namespace Design.Domain.ValueObjects;
 
@@ -24,23 +35,42 @@ namespace Design.Domain.ValueObjects;
 /// Value object representing monetary amounts with currency.
 /// </summary>
 /// <remarks>
-/// DESIGN DECISION: Records are ideal for value objects
+/// DESIGN DECISION: Records with [Factory] for value object encapsulation
 ///
-/// Reasons:
-/// 1. Immutable by default
-/// 2. Value equality built-in
-/// 3. Concise syntax
-/// 4. Serialization-friendly
+/// For records, the "hydration" happens via the Create factory method, which
+/// wraps the primary constructor. This provides encapsulation while keeping
+/// the immutability benefits of records.
 ///
-/// GENERATOR BEHAVIOR: Records with no [Factory] attribute are serialized
-/// as regular data types. The parent entity's serializer handles them.
+/// GENERATOR BEHAVIOR: The generator creates IMoneyFactory with a Create
+/// method matching the factory method signature.
 /// </remarks>
-public record Money(decimal Amount, string Currency = "USD")
+[Factory]
+public partial record Money(decimal Amount, string Currency = "USD")
 {
     /// <summary>
     /// Zero amount in USD.
     /// </summary>
     public static readonly Money Zero = new(0);
+
+    /// <summary>
+    /// Factory method for creating Money instances.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: Value objects use [Create] for factory construction
+    ///
+    /// The parent injects IMoneyFactory and calls Create with raw data.
+    /// The value object encapsulates how to construct itself from that data.
+    ///
+    /// This becomes important when:
+    /// 1. Construction involves validation
+    /// 2. Multiple data sources map to the same value object
+    /// 3. The internal structure changes (only this method needs updating)
+    /// </remarks>
+    [Create]
+    public static Money Create(decimal amount, string currency = "USD")
+    {
+        return new Money(amount, currency);
+    }
 
     // -------------------------------------------------------------------------
     // DESIGN DECISION: Value objects can have behavior
@@ -88,10 +118,20 @@ public record Money(decimal Amount, string Currency = "USD")
 /// <summary>
 /// Value object representing a percentage.
 /// </summary>
-public record Percentage(decimal Value)
+[Factory]
+public partial record Percentage(decimal Value)
 {
     public static readonly Percentage Zero = new(0);
     public static readonly Percentage Full = new(100);
+
+    /// <summary>
+    /// Factory method for creating Percentage instances.
+    /// </summary>
+    [Create]
+    public static Percentage Create(decimal value)
+    {
+        return new Percentage(value);
+    }
 
     public Money Of(Money money)
     {

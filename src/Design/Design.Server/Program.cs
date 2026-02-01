@@ -63,7 +63,7 @@ var app = builder.Build();
 // DESIGN DECISION: UseNeatoo adds the RemoteFactory middleware
 //
 // This middleware:
-// - Intercepts requests to the configured endpoint (default: /remotefactory)
+// - Intercepts requests to the configured endpoint (default: /api/neatoo)
 // - Deserializes the factory operation request
 // - Resolves the delegate and invokes the operation
 // - Serializes the result back to the client
@@ -81,6 +81,6 @@ app.UseCors(policy => policy
 // -------------------------------------------------------------------------
 // Minimal API endpoint for health check
 // -------------------------------------------------------------------------
-app.MapGet("/", () => "Design.Server is running. RemoteFactory endpoint: /remotefactory");
+app.MapGet("/", () => "Design.Server is running. RemoteFactory endpoint: /api/neatoo");
 
 await app.RunAsync();

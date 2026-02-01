@@ -126,12 +126,14 @@ MyEvents.OnOrderPlacedEvent  // Note: Event suffix added
 ```csharp
 public MyEntity([Service] ILogger logger)  // Available everywhere
 ```
+Services injected via constructor are resolved from DI on both client and server. Use this when you need the service after the object crosses the wire.
 
 ### Method Injection = Server Only (Common Case)
 ```csharp
 [Remote, Create]
 public void Create(string name, [Service] IRepository repo)  // Server only
 ```
+Method-injected services stored in fields are NOT serialized—they'll be null after crossing the client/server boundary. If you need a service reference after serialization, use constructor injection.
 
 ## IFactorySaveMeta for Save Routing
 
@@ -181,7 +183,7 @@ builder.Services.AddNeatooAspNetCore(typeof(Order).Assembly);
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
 var app = builder.Build();
-app.UseNeatoo();  // Adds /remotefactory endpoint
+app.UseNeatoo();  // Adds /api/neatoo endpoint
 ```
 
 ## Client Setup (Blazor WASM)
@@ -223,7 +225,7 @@ public async Task Test_RemoteOperation()
 3. **Private property setters** - Won't serialize/deserialize
 4. **[Fetch] on interface methods** - Interface factories don't use operation attributes
 5. **Forgetting Event suffix** - `OnOrderPlacedEvent` not `OnOrderPlaced`
-6. **Calling AddLine after remote fetch** - Factory references lost in serialization
+6. **Method-injected services stored in fields** - Lost after serialization; use constructor injection
 
 ## Design Files to Consult
 
@@ -231,7 +233,10 @@ public async Task Test_RemoteOperation()
 |------|----------|
 | `Design.Domain/FactoryPatterns/AllPatterns.cs` | All three patterns side-by-side |
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle |
+| `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization |
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) |
+| `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage for distributed tracing |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Server/Program.cs` | Server configuration |
 | `Design.Client.Blazor/Program.cs` | Client configuration |
+| `Design.Client.Blazor/AssemblyAttributes.cs` | Assembly-level [FactoryMode] configuration |

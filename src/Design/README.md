@@ -24,7 +24,7 @@ src/Design/
 │   ├── Entities/                 # Child entity example
 │   │   └── OrderLine.cs          # No [Remote] - server-side only
 │   └── ValueObjects/             # Value object example
-│       └── Money.cs              # Record type, no [Factory]
+│       └── Money.cs              # Record with [Factory] for self-hydration
 ├── Design.Tests/                 # Comprehensive test suite
 │   ├── TestInfrastructure/       # Client/server container simulation
 │   └── FactoryTests/             # Tests for each pattern
@@ -128,7 +128,7 @@ dotnet test Design.sln
 cd src/Design/Design.Server
 dotnet run
 ```
-Server runs at `http://localhost:5000` with RemoteFactory endpoint at `/remotefactory`.
+Server runs at `http://localhost:5000` with RemoteFactory endpoint at `/api/neatoo`.
 
 ### Run Blazor Client
 ```bash

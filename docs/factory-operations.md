@@ -765,6 +765,111 @@ Return value handling:
 - **void**: Converted to Task automatically
 - **Task**: Tracked by EventTracker
 
+## Collection Factories
+
+Collections can have `[Factory]` to support batch operations and child factory injection.
+
+### Basic Collection Factory
+
+```csharp
+/// <summary>
+/// Collection of OrderLines within an Order aggregate.
+/// </summary>
+[Factory]
+public partial class OrderLineList : List<OrderLine>
+{
+    private readonly IOrderLineFactory _lineFactory;
+
+    /// <summary>
+    /// Creates an empty collection with injected child factory.
+    /// </summary>
+    [Create]
+    public OrderLineList([Service] IOrderLineFactory lineFactory)
+    {
+        _lineFactory = lineFactory;
+    }
+
+    /// <summary>
+    /// Fetches a collection from data.
+    /// </summary>
+    [Fetch]
+    public void Fetch(
+        IEnumerable<(int id, string name, decimal price, int qty)> items,
+        [Service] IOrderLineFactory lineFactory)
+    {
+        foreach (var item in items)
+        {
+            Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
+        }
+    }
+
+    /// <summary>
+    /// Domain method using stored factory to add children.
+    /// </summary>
+    public void AddLine(string name, decimal price, int qty)
+    {
+        var line = _lineFactory.Create(name, price, qty);
+        Add(line);
+    }
+}
+```
+
+Generated factory interface:
+```csharp
+public interface IOrderLineListFactory
+{
+    OrderLineList Create();
+    OrderLineList Fetch(IEnumerable<(int, string, decimal, int)> items);
+}
+```
+
+### Key Points
+
+**Collection inherits from List<T> or implements IList<T>:**
+Collections that need factory behavior inherit from `List<T>` or implement a list interface.
+
+**Child factory is constructor-injected:**
+Use constructor injection for the child factory so it survives serialization (see [Service Injection](service-injection.md#serialization-caveat-method-injected-services-are-lost)).
+
+**No [Remote] on collection:**
+Collections are part of their parent aggregate. The parent's `[Remote]` method is the entry point; collection operations run server-side within that call.
+
+**Parent creates collection via factory:**
+```csharp
+[Factory]
+public partial class Order
+{
+    public OrderLineList Lines { get; set; } = null!;
+
+    [Remote, Create]
+    public void Create(
+        string customerName,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        CustomerName = customerName;
+        Lines = lineListFactory.Create();  // Factory creates collection
+    }
+
+    [Remote, Fetch]
+    public void Fetch(
+        int id,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        Id = id;
+        // Factory fetches collection with data
+        Lines = lineListFactory.Fetch([
+            (1, "Widget A", 10.00m, 2),
+            (2, "Widget B", 25.00m, 1)
+        ]);
+    }
+}
+```
+
+This pattern ensures:
+1. Collections are properly initialized with child factories
+2. Children can be added after the aggregate is fetched
+3. Factory references survive serialization via constructor injection
+
 ## Remote Attribute
 
 Marks methods as **entry points from the client to the server**. Once execution crosses to the server, subsequent calls stay there.
