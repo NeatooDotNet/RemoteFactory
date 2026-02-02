@@ -3,6 +3,7 @@
   "TocLevel": 2,
   "MaxWidth": 120,
   "LinkFormat": "GitHub",
+  "TreatMissingAsWarning": true,
   "DocumentExtensions": [
     "md"
   ],

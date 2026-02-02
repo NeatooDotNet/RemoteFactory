@@ -24,28 +24,26 @@ Creates new instances via constructors or static factory methods.
 <a id='snippet-operations-create-constructor'></a>
 ```cs
 /// <summary>
-/// Employee aggregate with constructor-based creation.
+/// Employee with constructor-based Create operation.
 /// </summary>
 [Factory]
-public partial class EmployeeCreateConstructor
+public partial class EmployeeWithConstructorCreate
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
-    public DateTime HireDate { get; private set; }
 
     /// <summary>
-    /// Creates a new Employee with generated ID and current hire date.
+    /// Parameterless constructor marked as Create operation.
     /// </summary>
     [Create]
-    public EmployeeCreateConstructor()
+    public EmployeeWithConstructorCreate()
     {
         Id = Guid.NewGuid();
-        HireDate = DateTime.UtcNow;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/CreateOperationSamples.cs#L5-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L6-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory interface:
@@ -62,46 +60,41 @@ public interface IEmployeeFactory
 <a id='snippet-operations-create-static'></a>
 ```cs
 /// <summary>
-/// Employee aggregate with static factory method creation.
+/// Employee with static factory method Create operation.
 /// </summary>
 [Factory]
-public partial class EmployeeCreateStatic
+public partial class EmployeeWithStaticCreate
 {
     public Guid Id { get; private set; }
     public string EmployeeNumber { get; private set; } = "";
     public string FirstName { get; private set; } = "";
     public string LastName { get; private set; } = "";
-    public decimal Salary { get; private set; }
+    public decimal InitialSalary { get; private set; }
 
-    private EmployeeCreateStatic()
-    {
-    }
+    private EmployeeWithStaticCreate() { }
 
     /// <summary>
-    /// Creates a new Employee with validation and formatting.
+    /// Static factory method for parameterized creation.
     /// </summary>
     [Create]
-    public static EmployeeCreateStatic Create(
+    public static EmployeeWithStaticCreate Create(
         string employeeNumber,
         string firstName,
         string lastName,
         decimal initialSalary)
     {
-        if (string.IsNullOrWhiteSpace(employeeNumber))
-            throw new ArgumentException("Employee number is required.", nameof(employeeNumber));
-
-        return new EmployeeCreateStatic
+        return new EmployeeWithStaticCreate
         {
             Id = Guid.NewGuid(),
-            EmployeeNumber = employeeNumber.ToUpperInvariant(),
+            EmployeeNumber = employeeNumber,
             FirstName = firstName,
             LastName = lastName,
-            Salary = initialSalary
+            InitialSalary = initialSalary
         };
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/CreateOperationSamples.cs#L29-L69' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-static' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L28-L63' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-static' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory interface:
@@ -120,53 +113,38 @@ Create methods support multiple return types:
 <a id='snippet-operations-create-return-types'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating multiple Create patterns.
+/// Demonstrates Create method patterns.
 /// </summary>
 [Factory]
 public partial class EmployeeCreateReturnTypes
 {
     public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
-    public string LastName { get; set; } = "";
-    public bool Initialized { get; private set; }
+    public string EmployeeNumber { get; private set; } = "";
+    public bool IsValid { get; private set; }
 
     /// <summary>
-    /// Pattern 1: Constructor [Create] - returns the instance.
+    /// Constructor-based Create - simplest pattern.
     /// </summary>
     [Create]
     public EmployeeCreateReturnTypes()
     {
         Id = Guid.NewGuid();
+        IsValid = true;
     }
 
     /// <summary>
-    /// Pattern 2: Instance method [Create] void - sets properties and returns instance.
+    /// Create with parameters.
     /// </summary>
     [Create]
-    public void Initialize(string firstName, string lastName)
+    public EmployeeCreateReturnTypes(string employeeNumber)
     {
-        FirstName = firstName;
-        LastName = lastName;
-        Initialized = true;
-    }
-
-    /// <summary>
-    /// Pattern 3: Static method [Create] returning T - returns new instance with defaults.
-    /// </summary>
-    [Create]
-    public static EmployeeCreateReturnTypes CreateWithDefaults()
-    {
-        return new EmployeeCreateReturnTypes
-        {
-            Id = Guid.NewGuid(),
-            FirstName = "New",
-            LastName = "Employee",
-            Initialized = true
-        };
+        Id = Guid.NewGuid();
+        EmployeeNumber = employeeNumber;
+        IsValid = !string.IsNullOrEmpty(employeeNumber) && employeeNumber.StartsWith('E');
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/CreateOperationSamples.cs#L71-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-return-types' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L65-L97' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-return-types' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Factory return types:
@@ -187,43 +165,45 @@ Loads data into an existing instance.
 <a id='snippet-operations-fetch-instance'></a>
 ```cs
 /// <summary>
-/// Employee aggregate with instance Fetch method.
+/// Employee with instance method Fetch operation.
 /// </summary>
 [Factory]
-public partial class EmployeeFetchInstance
+public partial class EmployeeFetchSample : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
-    public string EmployeeNumber { get; private set; } = "";
-    public string FirstName { get; private set; } = "";
-    public string LastName { get; private set; } = "";
-    public decimal Salary { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
     public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeFetchInstance()
+    public EmployeeFetchSample()
     {
+        Id = Guid.NewGuid();
     }
 
     /// <summary>
-    /// Fetches an employee by ID from the repository.
+    /// Loads employee data from repository by ID.
+    /// [Service] marks the repository for DI injection.
     /// </summary>
     [Remote, Fetch]
-    public async Task Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+    public async Task<bool> Fetch(
+        Guid employeeId,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(employeeId);
-        if (entity == null)
-            throw new InvalidOperationException($"Employee with ID {employeeId} not found.");
+        var entity = await repository.GetByIdAsync(employeeId, ct);
+        if (entity == null) return false;
 
         Id = entity.Id;
-        EmployeeNumber = $"EMP-{entity.Id.ToString()[..8].ToUpperInvariant()}";
         FirstName = entity.FirstName;
         LastName = entity.LastName;
-        Salary = entity.SalaryAmount;
         IsNew = false;
+        return true;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/FetchOperationSamples.cs#L6-L43' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L99-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory interface:
@@ -249,41 +229,44 @@ Fetch supports:
 <a id='snippet-operations-fetch-bool-return'></a>
 ```cs
 /// <summary>
-/// Employee aggregate with bool-returning Fetch for nullable factory return.
+/// Demonstrates Fetch with bool return for optional entities.
 /// </summary>
 [Factory]
-public partial class EmployeeFetchBoolReturn
+public partial class EmployeeFetchOptional : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
-    public string EmployeeNumber { get; private set; } = "";
-    public string FirstName { get; private set; } = "";
-    public string LastName { get; private set; } = "";
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeFetchBoolReturn()
-    {
-    }
+    public EmployeeFetchOptional() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Attempts to fetch an employee by ID.
-    /// Returns false if not found (factory returns null).
+    /// Returns false when employee not found.
+    /// Factory method will return null for not-found case.
     /// </summary>
     [Remote, Fetch]
-    public async Task<bool> TryFetch(Guid employeeId, [Service] IEmployeeRepository repository)
+    public async Task<bool> Fetch(
+        Guid employeeId,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(employeeId);
+        var entity = await repository.GetByIdAsync(employeeId, ct);
         if (entity == null)
+        {
+            // Return false = not found, factory returns null
             return false;
+        }
 
         Id = entity.Id;
-        EmployeeNumber = $"EMP-{entity.Id.ToString()[..8].ToUpperInvariant()}";
         FirstName = entity.FirstName;
-        LastName = entity.LastName;
+        IsNew = false;
         return true;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/FetchOperationSamples.cs#L45-L80' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-bool-return' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L140-L178' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-bool-return' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory interface for bool return:
@@ -307,52 +290,48 @@ Write operations for persisting changes.
 <a id='snippet-operations-insert'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating Insert operation.
+/// Demonstrates Insert operation.
 /// </summary>
 [Factory]
-public partial class EmployeeInsertDemo : IFactorySaveMeta
+public partial class EmployeeInsertSample : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
-    public string EmployeeNumber { get; private set; } = "";
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
-    public decimal Salary { get; set; }
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    /// <summary>
-    /// Creates a new Employee with generated ID and employee number.
-    /// </summary>
     [Create]
-    public EmployeeInsertDemo()
-    {
-        Id = Guid.NewGuid();
-        EmployeeNumber = $"EMP-{DateTime.UtcNow:yyyyMMdd}-{Id.ToString()[..8].ToUpperInvariant()}";
-    }
+    public EmployeeInsertSample() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Inserts a new Employee into the repository.
+    /// Persists a new employee to the repository.
     /// </summary>
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository)
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
     {
         var entity = new EmployeeEntity
         {
             Id = Id,
             FirstName = FirstName,
             LastName = LastName,
-            SalaryAmount = Salary,
+            Email = $"{FirstName.ToLowerInvariant()}@example.com",
+            DepartmentId = Guid.Empty,
+            Position = "New Hire",
+            SalaryAmount = 0,
             SalaryCurrency = "USD",
             HireDate = DateTime.UtcNow
         };
 
-        await repository.AddAsync(entity);
-        await repository.SaveChangesAsync();
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
         IsNew = false;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/WriteOperationSamples.cs#L6-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L180-L222' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Update
@@ -361,68 +340,61 @@ public partial class EmployeeInsertDemo : IFactorySaveMeta
 <a id='snippet-operations-update'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating Update operation.
+/// Demonstrates Update operation.
 /// </summary>
 [Factory]
-public partial class EmployeeUpdateDemo : IFactorySaveMeta
+public partial class EmployeeUpdateSample : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
-    public string EmployeeNumber { get; private set; } = "";
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
-    public decimal Salary { get; set; }
-    public string Department { get; set; } = "";
+    public string Position { get; set; } = "";
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeUpdateDemo()
-    {
-        Id = Guid.NewGuid();
-    }
+    public EmployeeUpdateSample() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Fetches an existing Employee by ID.
-    /// </summary>
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(employeeId);
-        if (entity == null)
-            return false;
-
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity == null) return false;
         Id = entity.Id;
-        EmployeeNumber = $"EMP-{entity.Id.ToString()[..8].ToUpperInvariant()}";
         FirstName = entity.FirstName;
         LastName = entity.LastName;
-        Salary = entity.SalaryAmount;
-        Department = entity.Position;
+        Position = entity.Position;
         IsNew = false;
         return true;
     }
 
     /// <summary>
-    /// Updates an existing Employee in the repository.
+    /// Persists changes to an existing employee.
     /// </summary>
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository)
+    public async Task Update(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(Id);
-        if (entity == null)
-            throw new InvalidOperationException($"Employee with ID {Id} not found.");
+        var entity = new EmployeeEntity
+        {
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = $"{FirstName.ToLowerInvariant()}@example.com",
+            DepartmentId = Guid.Empty,
+            Position = Position,
+            SalaryAmount = 0,
+            SalaryCurrency = "USD",
+            HireDate = DateTime.UtcNow
+        };
 
-        // Update mutable properties
-        entity.FirstName = FirstName;
-        entity.LastName = LastName;
-        entity.SalaryAmount = Salary;
-        entity.Position = Department;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
+        await repository.UpdateAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/WriteOperationSamples.cs#L54-L116' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L224-L279' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Delete
@@ -431,48 +403,44 @@ public partial class EmployeeUpdateDemo : IFactorySaveMeta
 <a id='snippet-operations-delete'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating Delete operation.
+/// Demonstrates Delete operation.
 /// </summary>
 [Factory]
-public partial class EmployeeDeleteDemo : IFactorySaveMeta
+public partial class EmployeeDeleteSample : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeDeleteDemo()
-    {
-        Id = Guid.NewGuid();
-    }
+    public EmployeeDeleteSample() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Fetches an existing Employee by ID.
-    /// </summary>
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(employeeId);
-        if (entity == null)
-            return false;
-
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity == null) return false;
         Id = entity.Id;
+        FirstName = entity.FirstName;
         IsNew = false;
         return true;
     }
 
     /// <summary>
-    /// Deletes the Employee from the repository.
+    /// Removes the employee from the repository.
     /// </summary>
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository)
+    public async Task Delete(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
     {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
+        await repository.DeleteAsync(Id, ct);
+        await repository.SaveChangesAsync(ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/WriteOperationSamples.cs#L118-L160' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L281-L319' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Multiple attributes on one method:
@@ -481,63 +449,44 @@ Multiple attributes on one method:
 <a id='snippet-operations-insert-update'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating combined Insert/Update (upsert) pattern.
+/// Demonstrates Upsert pattern with both [Insert] and [Update] on same method.
 /// </summary>
 [Factory]
-public partial class EmployeeUpsertDemo : IFactorySaveMeta
+public partial class SettingItem : IFactorySaveMeta
 {
-    public Guid Id { get; private set; }
-    public string EmployeeNumber { get; private set; } = "";
-    public string FirstName { get; set; } = "";
-    public string LastName { get; set; } = "";
-    public decimal Salary { get; set; }
+    public string Key { get; private set; } = "";
+    public string Value { get; set; } = "";
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeUpsertDemo()
+    public SettingItem(string key)
     {
-        Id = Guid.NewGuid();
-        EmployeeNumber = $"EMP-{DateTime.UtcNow:yyyyMMdd}-{Id.ToString()[..8].ToUpperInvariant()}";
+        Key = key;
     }
 
     /// <summary>
-    /// Upserts the Employee - inserts if new, updates if existing.
+    /// Single method handles both insert and update (upsert pattern).
     /// </summary>
     [Remote, Insert, Update]
-    public async Task Upsert([Service] IEmployeeRepository repository)
+    public async Task Upsert(
+        [Service] ISettingsRepository repository,
+        CancellationToken ct)
     {
-        var existing = await repository.GetByIdAsync(Id);
-
-        if (existing == null)
-        {
-            // Insert new entity
-            var entity = new EmployeeEntity
-            {
-                Id = Id,
-                FirstName = FirstName,
-                LastName = LastName,
-                SalaryAmount = Salary,
-                SalaryCurrency = "USD",
-                HireDate = DateTime.UtcNow
-            };
-            await repository.AddAsync(entity);
-        }
-        else
-        {
-            // Update existing entity
-            existing.FirstName = FirstName;
-            existing.LastName = LastName;
-            existing.SalaryAmount = Salary;
-            await repository.UpdateAsync(existing);
-        }
-
-        await repository.SaveChangesAsync();
+        await repository.UpsertAsync(Key, Value, ct);
         IsNew = false;
     }
 }
+
+/// <summary>
+/// Repository for settings (used by SettingItem sample).
+/// </summary>
+public interface ISettingsRepository
+{
+    Task UpsertAsync(string key, string value, CancellationToken ct);
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/WriteOperationSamples.cs#L162-L219' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L321-L359' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory interfaces include methods that operate on the instance:
@@ -612,6 +561,54 @@ public static partial class EmployeePromotionCommand
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Operations/ExecuteOperationSamples.cs#L6-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-operations-execute-1'></a>
+```cs
+/// <summary>
+/// Demonstrates Execute operation for business commands.
+/// </summary>
+[Factory]
+public static partial class EmployeePromotionOperation
+{
+    /// <summary>
+    /// Promotes an employee with new title and salary increase.
+    /// The underscore prefix is removed in the generated delegate name.
+    /// </summary>
+    [Remote, Execute]
+    private static async Task<PromotionResult> _PromoteEmployee(
+        Guid employeeId,
+        string newTitle,
+        decimal salaryIncrease,
+        [Service] IEmployeeRepository repository,
+        [Service] IAuditLogService auditLog,
+        CancellationToken ct)
+    {
+        var employee = await repository.GetByIdAsync(employeeId, ct);
+        if (employee == null)
+        {
+            return new PromotionResult(false, "Employee not found");
+        }
+
+        var oldPosition = employee.Position;
+        employee.Position = newTitle;
+        employee.SalaryAmount += salaryIncrease;
+
+        await repository.UpdateAsync(employee, ct);
+        await repository.SaveChangesAsync(ct);
+
+        await auditLog.LogAsync(
+            "Promotion",
+            employeeId,
+            "Employee",
+            $"Promoted from {oldPosition} to {newTitle}",
+            ct);
+
+        return new PromotionResult(true, $"Promoted to {newTitle}");
+    }
+}
+
+public record PromotionResult(bool Success, string Message);
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L361-L406' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated delegate (not a factory interface):
@@ -674,6 +671,55 @@ public static partial class EmployeeTransferCommand
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Operations/ExecuteOperationSamples.cs#L43-L82' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-operations-execute-command-1'></a>
+```cs
+/// <summary>
+/// Command pattern using Execute operations.
+/// </summary>
+[Factory]
+public static partial class TransferEmployeeToNewDepartmentCommand
+{
+    /// <summary>
+    /// Transfers an employee to a different department.
+    /// </summary>
+    [Remote, Execute]
+    private static async Task<TransferResult> _Execute(
+        Guid employeeId,
+        Guid newDepartmentId,
+        string reason,
+        [Service] IEmployeeRepository employeeRepo,
+        [Service] IDepartmentRepository departmentRepo,
+        [Service] IAuditLogService auditLog,
+        CancellationToken ct)
+    {
+        var employee = await employeeRepo.GetByIdAsync(employeeId, ct);
+        if (employee == null)
+            return new TransferResult(false, "Employee not found");
+
+        var newDepartment = await departmentRepo.GetByIdAsync(newDepartmentId, ct);
+        if (newDepartment == null)
+            return new TransferResult(false, "Department not found");
+
+        var oldDepartmentId = employee.DepartmentId;
+        employee.DepartmentId = newDepartmentId;
+
+        await employeeRepo.UpdateAsync(employee, ct);
+        await employeeRepo.SaveChangesAsync(ct);
+
+        await auditLog.LogAsync(
+            "Transfer",
+            employeeId,
+            "Employee",
+            $"Transferred from {oldDepartmentId} to {newDepartmentId}. Reason: {reason}",
+            ct);
+
+        return new TransferResult(true, $"Transferred to {newDepartment.Name}");
+    }
+}
+
+public record TransferResult(bool Success, string Message);
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L408-L454' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Event Operation
@@ -718,6 +764,34 @@ public partial class EmployeeEventHandler
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Operations/EventOperationSamples.cs#L6-L38' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-operations-event-1'></a>
+```cs
+/// <summary>
+/// Demonstrates Event operations for fire-and-forget processing.
+/// </summary>
+[Factory]
+public partial class EmployeeNotificationEvents
+{
+    /// <summary>
+    /// Notifies HR when a new employee is hired.
+    /// CancellationToken is required as the last parameter.
+    /// </summary>
+    [Event]
+    public async Task NotifyHROfNewEmployee(
+        Guid employeeId,
+        string employeeName,
+        [Service] IEmailService emailService,
+        CancellationToken ct)
+    {
+        await emailService.SendAsync(
+            "hr@company.com",
+            $"New Employee: {employeeName}",
+            $"Employee {employeeName} (ID: {employeeId}) has been added.",
+            ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L456-L481' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated delegate (not a factory interface):
@@ -759,6 +833,35 @@ Track event completion for testing or shutdown:
 // var pending = eventTracker.PendingCount;
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Operations/EventOperationSamples.cs#L40-L51' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-tracker' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-operations-event-tracker-1'></a>
+```cs
+/// <summary>
+/// Demonstrates IEventTracker usage for monitoring events.
+/// </summary>
+[Factory]
+public static partial class EventTrackerSample
+{
+    /// <summary>
+    /// Waits for all pending events to complete.
+    /// Useful for testing and graceful shutdown.
+    /// Returns the number of events that were pending.
+    /// </summary>
+    [Execute]
+    private static async Task<int> _WaitForAllEvents(
+        [Service] IEventTracker eventTracker,
+        CancellationToken ct)
+    {
+        // Check how many events are still pending
+        var pendingCount = eventTracker.PendingCount;
+
+        // Wait for all events to complete
+        await eventTracker.WaitAllAsync(ct);
+
+        return pendingCount;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L483-L509' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-tracker-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Return value handling:
@@ -772,6 +875,50 @@ Collections can have `[Factory]` to support batch operations and child factory i
 ### Basic Collection Factory
 
 <!-- snippet: collection-factory-basic -->
+<a id='snippet-collection-factory-basic'></a>
+```cs
+/// <summary>
+/// Collection of OrderLines within an Order aggregate.
+/// </summary>
+[Factory]
+public partial class OrderLineList : List<OrderLine>
+{
+    private readonly IOrderLineFactory _lineFactory;
+
+    /// <summary>
+    /// Creates an empty collection with injected child factory.
+    /// </summary>
+    [Create]
+    public OrderLineList([Service] IOrderLineFactory lineFactory)
+    {
+        _lineFactory = lineFactory;
+    }
+
+    /// <summary>
+    /// Fetches a collection from data.
+    /// </summary>
+    [Fetch]
+    public void Fetch(
+        IEnumerable<(int id, string name, decimal price, int qty)> items,
+        [Service] IOrderLineFactory lineFactory)
+    {
+        foreach (var item in items)
+        {
+            Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
+        }
+    }
+
+    /// <summary>
+    /// Domain method using stored factory to add children.
+    /// </summary>
+    public void AddLine(string name, decimal price, int qty)
+    {
+        var line = _lineFactory.Create(name, price, qty);
+        Add(line);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/OrderLineCollectionSamples.cs#L43-L84' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory interface:
@@ -797,6 +944,45 @@ Collections are part of their parent aggregate. The parent's `[Remote]` method i
 **Parent creates collection via factory:**
 
 <!-- snippet: collection-factory-parent -->
+<a id='snippet-collection-factory-parent'></a>
+```cs
+/// <summary>
+/// Order aggregate root demonstrating collection factory usage.
+/// </summary>
+[Factory]
+public partial class Order
+{
+    public int Id { get; private set; }
+    public string CustomerName { get; set; } = "";
+    public OrderLineList Lines { get; set; } = null!;
+
+    public decimal OrderTotal => Lines?.Sum(l => l.LineTotal) ?? 0;
+
+    [Remote, Create]
+    public void Create(
+        string customerName,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        Id = Random.Shared.Next(1, 10000);
+        CustomerName = customerName;
+        Lines = lineListFactory.Create();  // Factory creates collection
+    }
+
+    [Remote, Fetch]
+    public void Fetch(
+        int id,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        Id = id;
+        // Factory fetches collection with data
+        Lines = lineListFactory.Fetch([
+            (1, "Widget A", 10.00m, 2),
+            (2, "Widget B", 25.00m, 1)
+        ]);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/OrderLineCollectionSamples.cs#L86-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-parent' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 This pattern ensures:
@@ -812,34 +998,72 @@ Marks methods as **entry points from the client to the server**. Once execution 
 <a id='snippet-operations-remote'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating the [Remote] attribute for server-side execution.
+/// Demonstrates [Remote] attribute for server execution.
 /// </summary>
 [Factory]
-public partial class EmployeeRemoteDemo
+public partial class EmployeeRemoteVsLocal : IFactorySaveMeta
 {
-    public string Result { get; private set; } = "";
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
 
+    /// <summary>
+    /// Local execution - runs on client without network call.
+    /// No [Remote] attribute means local execution.
+    /// </summary>
     [Create]
-    public EmployeeRemoteDemo()
+    public EmployeeRemoteVsLocal()
     {
+        Id = Guid.NewGuid();
     }
 
     /// <summary>
-    /// Fetches data from the server.
+    /// Remote execution - serialized and sent to server.
+    /// [Remote] ensures method runs on server where repository exists.
     /// </summary>
-    /// <remarks>
-    /// This code runs on the server - the [Remote] attribute marks it as a client entry point.
-    /// </remarks>
     [Remote, Fetch]
-    public Task FetchFromServer(string query, [Service] IEmployeeRepository repository)
+    public async Task<bool> Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
     {
-        // This code executes on the server
-        Result = $"Server executed query: {query}";
-        return Task.CompletedTask;
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity == null) return false;
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        IsNew = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Remote execution for write operations.
+    /// Repository is only available on server.
+    /// </summary>
+    [Remote, Insert]
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = new EmployeeEntity
+        {
+            Id = Id,
+            FirstName = FirstName,
+            LastName = "",
+            Email = $"{FirstName.ToLowerInvariant()}@example.com",
+            DepartmentId = Guid.Empty,
+            Position = "New",
+            SalaryAmount = 0,
+            SalaryCurrency = "USD",
+            HireDate = DateTime.UtcNow
+        };
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+        IsNew = false;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/EmployeeRemoteDemo.cs#L6-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L511-L577' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 When a factory is registered with `NeatooFactory.Remote`:
@@ -997,48 +1221,46 @@ All factory methods accept an optional CancellationToken:
 <a id='snippet-operations-cancellation'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating CancellationToken usage.
+/// Demonstrates CancellationToken usage in factory methods.
 /// </summary>
 [Factory]
-public partial class EmployeeCancellation
+public partial class EmployeeWithCancellation : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
-    public bool Completed { get; private set; }
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeCancellation()
-    {
-        Id = Guid.NewGuid();
-    }
+    public EmployeeWithCancellation() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Fetches an employee with proper CancellationToken handling.
+    /// Demonstrates proper cancellation handling.
     /// </summary>
     [Remote, Fetch]
-    public async Task Fetch(
+    public async Task<bool> Fetch(
         Guid id,
         [Service] IEmployeeRepository repository,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        // Check cancellation before starting
-        cancellationToken.ThrowIfCancellationRequested();
+        // Check cancellation before expensive operations
+        ct.ThrowIfCancellationRequested();
 
-        // Pass token to async repository call
-        var entity = await repository.GetByIdAsync(id, cancellationToken);
+        // Pass token to async repository calls
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity == null) return false;
 
-        // Check cancellation during processing
-        if (cancellationToken.IsCancellationRequested)
-            return;
+        // Check again after long-running operation
+        ct.ThrowIfCancellationRequested();
 
-        if (entity != null)
-        {
-            Id = entity.Id;
-            Completed = true;
-        }
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        IsNew = false;
+        return true;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ParameterSamples.cs#L6-L48' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L579-L619' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory methods automatically include CancellationToken:
@@ -1065,36 +1287,38 @@ Factory methods support:
 <a id='snippet-operations-params-value'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating value parameter types.
+/// Demonstrates value parameters that are serialized.
 /// </summary>
 [Factory]
-public partial class EmployeeParamsValue
+public partial class EmployeeSearchSample
 {
-    public int YearsOfService { get; private set; }
-    public string Department { get; private set; } = "";
-    public DateTime ReviewDate { get; private set; }
-    public decimal BonusAmount { get; private set; }
-
-    [Create]
-    public EmployeeParamsValue()
-    {
-    }
+    public List<string> Results { get; private set; } = [];
 
     /// <summary>
-    /// Fetches employee data using various serializable value parameter types.
+    /// Value parameters are serialized and sent to server.
     /// </summary>
     [Remote, Fetch]
-    public Task Fetch(int yearsOfService, string department, DateTime reviewDate, decimal bonusAmount)
+    public async Task<bool> Fetch(
+        Guid departmentId,
+        string? positionFilter,
+        int maxResults,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
     {
-        YearsOfService = yearsOfService;
-        Department = department;
-        ReviewDate = reviewDate;
-        BonusAmount = bonusAmount;
-        return Task.CompletedTask;
+        var employees = await repository.GetByDepartmentIdAsync(departmentId, ct);
+
+        Results = employees
+            .Where(e => positionFilter == null ||
+                       e.Position.Contains(positionFilter, StringComparison.OrdinalIgnoreCase))
+            .Take(maxResults)
+            .Select(e => $"{e.FirstName} {e.LastName}")
+            .ToList();
+
+        return Results.Count > 0;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ParameterSamples.cs#L50-L80' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L621-L653' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Service parameters**: Injected from DI, not serialized
@@ -1102,36 +1326,44 @@ public partial class EmployeeParamsValue
 <a id='snippet-operations-params-service'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating service parameter injection.
+/// Demonstrates [Service] parameters injected from DI.
 /// </summary>
 [Factory]
-public partial class EmployeeParamsService
+public partial class EmployeeWithServiceParams : IFactorySaveMeta
 {
-    public bool ServicesInjected { get; private set; }
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeParamsService()
-    {
-    }
+    public EmployeeWithServiceParams() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Fetches data with multiple injected services.
-    /// Services are resolved from DI container on server.
+    /// Mix of value parameters (serialized) and service parameters (DI injected).
     /// </summary>
     [Remote, Fetch]
-    public Task Fetch(
-        Guid id,
-        [Service] IEmployeeRepository employeeRepo,
-        [Service] IDepartmentRepository departmentRepo,
-        [Service] IUserContext userContext)
+    public async Task<bool> Fetch(
+        Guid employeeId,                          // Value: serialized
+        [Service] IEmployeeRepository repository, // Service: injected from DI
+        [Service] IAuditLogService auditLog,      // Service: injected from DI
+        CancellationToken ct)
     {
-        // Services are resolved from DI container on server
-        ServicesInjected = employeeRepo != null && departmentRepo != null && userContext != null;
-        return Task.CompletedTask;
+        var entity = await repository.GetByIdAsync(employeeId, ct);
+        if (entity == null) return false;
+
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        IsNew = false;
+
+        // Services are resolved on the server
+        await auditLog.LogAsync("Fetch", employeeId, "Employee", "Employee loaded", ct);
+
+        return true;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ParameterSamples.cs#L82-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L655-L693' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Params arrays**: Variable-length arguments
@@ -1163,6 +1395,39 @@ public static partial class BatchAssignmentCommand
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Operations/ExecuteOperationSamples.cs#L84-L108' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-operations-params-array-1'></a>
+```cs
+/// <summary>
+/// Demonstrates params array parameters.
+/// </summary>
+[Factory]
+public partial class BatchEmployeeFetch
+{
+    public List<string> EmployeeNames { get; private set; } = [];
+
+    /// <summary>
+    /// params arrays are supported for batch operations.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task<bool> Fetch(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct,
+        params Guid[] employeeIds)
+    {
+        EmployeeNames = [];
+        foreach (var id in employeeIds)
+        {
+            var entity = await repository.GetByIdAsync(id, ct);
+            if (entity != null)
+            {
+                EmployeeNames.Add($"{entity.FirstName} {entity.LastName}");
+            }
+        }
+        return EmployeeNames.Count > 0;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L695-L725' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **CancellationToken**: Optional, always last parameter
@@ -1170,34 +1435,47 @@ public static partial class BatchAssignmentCommand
 <a id='snippet-operations-params-cancellation'></a>
 ```cs
 /// <summary>
-/// Employee aggregate demonstrating optional CancellationToken parameter.
+/// Demonstrates proper parameter ordering with CancellationToken.
 /// </summary>
 [Factory]
-public partial class EmployeeParamsCancellation
+public partial class EmployeeCompleteParams : IFactorySaveMeta
 {
-    public bool Completed { get; private set; }
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeParamsCancellation()
-    {
-    }
+    public EmployeeCompleteParams() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Fetches data with optional CancellationToken.
-    /// CancellationToken is optional - receives default if not provided by caller.
+    /// Complete method signature with all parameter types.
+    /// Order: value params, service params, CancellationToken (always last).
     /// </summary>
     [Remote, Fetch]
-    public async Task Fetch(
-        Guid id,
-        [Service] IEmployeeRepository repository,
-        CancellationToken cancellationToken = default)
+    public async Task<bool> Fetch(
+        Guid employeeId,                          // Required value parameter
+        string? filter,                           // Optional value parameter
+        [Service] IEmployeeRepository repository, // Service parameter
+        [Service] IAuditLogService auditLog,      // Service parameter
+        CancellationToken ct)                     // CancellationToken (always last)
     {
-        await repository.GetByIdAsync(id, cancellationToken);
-        Completed = true;
+        var entity = await repository.GetByIdAsync(employeeId, ct);
+        if (entity == null) return false;
+
+        if (filter != null && !entity.Position.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        IsNew = false;
+
+        await auditLog.LogAsync("Fetch", employeeId, "Employee", "Filtered fetch", ct);
+        return true;
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ParameterSamples.cs#L114-L142' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L727-L768' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Parameter order rules:

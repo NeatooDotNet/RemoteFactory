@@ -57,7 +57,8 @@ public static class ClientServerContainers
         var localScope = localProvider.CreateScope();
 
         // Link client to server
-        clientScope.ServiceProvider.GetRequiredService<ServerServiceProvider>().ServerProvider = serverScope.ServiceProvider;
+        var serverRef = clientScope.ServiceProvider.GetRequiredService<ServerServiceProvider>();
+        serverRef.ServerProvider = serverScope.ServiceProvider;
 
         return (serverScope, clientScope, localScope);
     }
