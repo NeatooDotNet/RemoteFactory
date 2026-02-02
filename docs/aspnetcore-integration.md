@@ -74,7 +74,7 @@ public static class BasicSetupSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L18-L47' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L17-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The setup follows this pattern:
@@ -143,7 +143,7 @@ public static class AddNeatooSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L49-L68' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-addneatoo-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L48-L67' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-addneatoo-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Custom Serialization Options
@@ -196,7 +196,7 @@ public static class CustomSerializationSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L70-L87' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-custom-serialization-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L69-L86' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-custom-serialization-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Serialization](serialization.md) for format details.
@@ -266,7 +266,7 @@ public static class MiddlewareOrderSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L89-L111' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L88-L110' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Endpoint Details
@@ -406,7 +406,7 @@ public partial class EmployeeCancellationDemo : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L113-L157' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L112-L156' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Correlation IDs
@@ -419,7 +419,7 @@ RemoteFactory automatically manages correlation IDs for distributed tracing.
 
 **Server-side:**
 - Extracts correlation ID from request headers
-- Makes it available via `CorrelationContext.CorrelationId`
+- Makes it available via DI-injected `ICorrelationContext`
 - Includes it in response headers
 - Adds it to structured logs
 
@@ -451,12 +451,13 @@ public partial class EmployeeWithCorrelation
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // CorrelationId is auto-populated from X-Correlation-Id header
-        var correlationId = CorrelationContext.CorrelationId;
+        // CorrelationId is auto-populated from X-Correlation-Id header by middleware
+        var correlationId = correlationContext.CorrelationId;
 
         var entity = await repository.GetByIdAsync(id, ct);
 
@@ -480,7 +481,7 @@ public partial class EmployeeWithCorrelation
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/AspNetCore/CorrelationIdSamples.cs#L8-L60' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/AspNetCore/CorrelationIdSamples.cs#L7-L60' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
 <a id='snippet-aspnetcore-correlation-id-1'></a>
 ```cs
 /// <summary>
@@ -498,18 +499,18 @@ public partial class EmployeeCorrelationDemo : IFactorySaveMeta
     public EmployeeCorrelationDemo() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Access correlation ID via static CorrelationContext.
-    /// Note: This API may be redesigned to support DI in a future version.
+    /// Access correlation ID via injected ICorrelationContext.
     /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] ILogger<EmployeeCorrelationDemo> logger,
         CancellationToken ct)
     {
-        // Access correlation ID from static context
-        var correlationId = CorrelationContext.CorrelationId;
+        // Access correlation ID from injected context
+        var correlationId = correlationContext.CorrelationId;
 
         // Include in structured logs
         logger.LogInformation(
@@ -526,7 +527,7 @@ public partial class EmployeeCorrelationDemo : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L159-L202' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L158-L201' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Logging
@@ -604,11 +605,12 @@ public partial class EmployeeLoggingDemo : IFactorySaveMeta
     /// </summary>
     [Remote, Insert]
     public async Task Insert(
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] ILogger<EmployeeLoggingDemo> logger,
         CancellationToken ct)
     {
-        var correlationId = CorrelationContext.CorrelationId;
+        var correlationId = correlationContext.CorrelationId;
 
         logger.LogInformation(
             "Creating employee {EmployeeName} with correlation {CorrelationId}",
@@ -631,7 +633,7 @@ public partial class EmployeeLoggingDemo : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L204-L250' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L203-L250' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Event Tracking

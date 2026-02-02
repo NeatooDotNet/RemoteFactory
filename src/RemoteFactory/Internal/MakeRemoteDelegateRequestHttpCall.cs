@@ -7,17 +7,18 @@ public delegate Task<RemoteResponseDto> MakeRemoteDelegateRequestHttpCall(Remote
 
 public static class MakeRemoteDelegateRequestHttpCallImplementation
 {
-	public static MakeRemoteDelegateRequestHttpCall Create(HttpClient httpClient)
+	public static MakeRemoteDelegateRequestHttpCall Create(HttpClient httpClient, ICorrelationContext correlationContext)
 	{
-		return Create(httpClient, null);
+		return Create(httpClient, correlationContext, null);
 	}
 
-	public static MakeRemoteDelegateRequestHttpCall Create(HttpClient httpClient, ILogger? logger)
+	public static MakeRemoteDelegateRequestHttpCall Create(HttpClient httpClient, ICorrelationContext correlationContext, ILogger? logger)
 	{
 		return async (RemoteRequestDto request, CancellationToken cancellationToken) =>
 		{
 			var uri = new Uri(httpClient.BaseAddress!, "api/neatoo");
-			var correlationId = CorrelationContext.EnsureCorrelationId();
+			// Correlation ID should already be set by MakeRemoteDelegateRequest.EnsureCorrelationId()
+			var correlationId = correlationContext.CorrelationId ?? CorrelationContextImpl.GenerateCorrelationId();
 			var delegateTypeName = request.DelegateAssemblyType ?? "unknown";
 
 			// Add correlation ID header for server-side tracing
@@ -25,7 +26,7 @@ public static class MakeRemoteDelegateRequestHttpCallImplementation
 			{
 				Content = JsonContent.Create(request)
 			};
-			httpRequest.Headers.Add(CorrelationContext.HeaderName, correlationId);
+			httpRequest.Headers.Add(CorrelationContextImpl.HeaderName, correlationId);
 
 			var response = await httpClient.SendAsync(httpRequest, cancellationToken);
 

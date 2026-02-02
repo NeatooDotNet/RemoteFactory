@@ -31,20 +31,26 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 {
 	private readonly INeatooJsonSerializer NeatooJsonSerializer;
 	private readonly MakeRemoteDelegateRequestHttpCall MakeRemoteDelegateRequestCall;
+	private readonly ICorrelationContext _correlationContext;
 	private readonly ILogger<MakeRemoteDelegateRequest> logger;
 
-	public MakeRemoteDelegateRequest(INeatooJsonSerializer neatooJsonSerializer, MakeRemoteDelegateRequestHttpCall sendRemoteDelegateRequestToServer)
-		: this(neatooJsonSerializer, sendRemoteDelegateRequestToServer, null)
+	public MakeRemoteDelegateRequest(
+		INeatooJsonSerializer neatooJsonSerializer,
+		MakeRemoteDelegateRequestHttpCall sendRemoteDelegateRequestToServer,
+		ICorrelationContext correlationContext)
+		: this(neatooJsonSerializer, sendRemoteDelegateRequestToServer, correlationContext, null)
 	{
 	}
 
 	public MakeRemoteDelegateRequest(
 		INeatooJsonSerializer neatooJsonSerializer,
 		MakeRemoteDelegateRequestHttpCall sendRemoteDelegateRequestToServer,
+		ICorrelationContext correlationContext,
 		ILogger<MakeRemoteDelegateRequest>? logger)
 	{
 		this.NeatooJsonSerializer = neatooJsonSerializer;
 		this.MakeRemoteDelegateRequestCall = sendRemoteDelegateRequestToServer;
+		_correlationContext = correlationContext;
 		this.logger = logger ?? NullLogger<MakeRemoteDelegateRequest>.Instance;
 	}
 
@@ -64,7 +70,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 	{
 		ArgumentNullException.ThrowIfNull(delegateType);
 
-		var correlationId = CorrelationContext.EnsureCorrelationId();
+		var correlationId = EnsureCorrelationId();
 		var delegateTypeName = delegateType.Name;
 
 		logger.RemoteCallStarted(correlationId, delegateTypeName);
@@ -105,7 +111,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 	{
 		ArgumentNullException.ThrowIfNull(delegateType);
 
-		var correlationId = CorrelationContext.EnsureCorrelationId();
+		var correlationId = EnsureCorrelationId();
 		var delegateTypeName = delegateType.Name;
 
 		logger.RemoteCallStarted(correlationId, delegateTypeName);
@@ -128,5 +134,17 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 			logger.RemoteCallError(correlationId, delegateTypeName, ex.Message, ex);
 			throw;
 		}
+	}
+
+	/// <summary>
+	/// Ensures a correlation ID exists for the current request, generating one if needed.
+	/// </summary>
+	private string EnsureCorrelationId()
+	{
+		if (string.IsNullOrEmpty(_correlationContext.CorrelationId))
+		{
+			_correlationContext.CorrelationId = CorrelationContextImpl.GenerateCorrelationId();
+		}
+		return _correlationContext.CorrelationId!;
 	}
 }

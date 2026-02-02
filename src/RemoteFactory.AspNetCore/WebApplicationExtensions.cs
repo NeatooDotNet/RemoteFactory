@@ -32,19 +32,23 @@ public static class WebApplicationExtensions
 		// Add middleware for correlation ID extraction
 		app.Use(async (context, next) =>
 		{
+			// Get the scoped correlation context for this request
+			var correlationContext = context.RequestServices.GetRequiredService<ICorrelationContext>();
+
 			// Extract correlation ID from request headers or generate a new one
-			string? correlationId = null;
-			if (context.Request.Headers.TryGetValue(CorrelationContext.HeaderName, out var headerValue))
+			if (context.Request.Headers.TryGetValue(CorrelationContextImpl.HeaderName, out var headerValue)
+				&& !string.IsNullOrEmpty(headerValue.FirstOrDefault()))
 			{
-				correlationId = headerValue.FirstOrDefault();
+				correlationContext.CorrelationId = headerValue.FirstOrDefault();
+			}
+			else
+			{
+				correlationContext.CorrelationId = CorrelationContextImpl.GenerateCorrelationId();
 			}
 
-			using (CorrelationContext.BeginScope(correlationId))
-			{
-				// Add correlation ID to response headers for client-side tracing
-				context.Response.Headers[CorrelationContext.HeaderName] = CorrelationContext.CorrelationId;
-				await next();
-			}
+			// Add correlation ID to response headers for client-side tracing
+			context.Response.Headers[CorrelationContextImpl.HeaderName] = correlationContext.CorrelationId;
+			await next();
 		});
 
 		app.MapPost("/api/neatoo", async (HttpContext httpContext, RemoteRequestDto request) =>

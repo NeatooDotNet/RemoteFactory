@@ -31,23 +31,25 @@ public interface IFactoryCore<T>
 public class FactoryCore<T> : IFactoryCore<T>
 {
 	private readonly ILogger logger;
+	private readonly ICorrelationContext? _correlationContext;
 	private static readonly string TypeName = typeof(T).Name;
 
 	public FactoryCore()
-		: this(null)
+		: this(null, null)
 	{
 	}
 
-	public FactoryCore(ILogger<FactoryCore<T>>? logger)
+	public FactoryCore(ILogger<FactoryCore<T>>? logger, ICorrelationContext? correlationContext)
 	{
 		this.logger = logger ?? NullLogger<FactoryCore<T>>.Instance;
+		_correlationContext = correlationContext;
 	}
 
 	public virtual T DoFactoryMethodCall(FactoryOperation operation, Func<T> factoryMethodCall)
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		logger.FactoryOperationStarted(correlationId, operation, TypeName);
 		var sw = Stopwatch.StartNew();
 
@@ -77,7 +79,7 @@ public class FactoryCore<T> : IFactoryCore<T>
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		logger.FactoryOperationStarted(correlationId, operation, TypeName);
 		var sw = Stopwatch.StartNew();
 
@@ -107,7 +109,7 @@ public class FactoryCore<T> : IFactoryCore<T>
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		logger.FactoryOperationStarted(correlationId, operation, TypeName);
 		var sw = Stopwatch.StartNew();
 
@@ -137,7 +139,7 @@ public class FactoryCore<T> : IFactoryCore<T>
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		logger.FactoryOperationStarted(correlationId, operation, TypeName);
 		var sw = Stopwatch.StartNew();
 
@@ -173,7 +175,7 @@ public class FactoryCore<T> : IFactoryCore<T>
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		logger.FactoryOperationStarted(correlationId, operation, TypeName);
 		var sw = Stopwatch.StartNew();
 
@@ -216,7 +218,7 @@ public class FactoryCore<T> : IFactoryCore<T>
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		logger.FactoryOperationStarted(correlationId, operation, TypeName);
 		var sw = Stopwatch.StartNew();
 
@@ -280,7 +282,7 @@ public class FactoryCore<T> : IFactoryCore<T>
 	{
 		ArgumentNullException.ThrowIfNull(factoryMethodCall, nameof(factoryMethodCall));
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		logger.FactoryOperationStarted(correlationId, operation, TypeName);
 		var sw = Stopwatch.StartNew();
 

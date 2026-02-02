@@ -1,7 +1,6 @@
 using EmployeeManagement.Domain.Interfaces;
 using EmployeeManagement.Domain.ValueObjects;
 using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.Internal;
 
 namespace EmployeeManagement.Domain.Samples.AspNetCore;
 
@@ -29,12 +28,13 @@ public partial class EmployeeWithCorrelation
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // CorrelationId is auto-populated from X-Correlation-Id header
-        var correlationId = CorrelationContext.CorrelationId;
+        // CorrelationId is auto-populated from X-Correlation-Id header by middleware
+        var correlationId = correlationContext.CorrelationId;
 
         var entity = await repository.GetByIdAsync(id, ct);
 

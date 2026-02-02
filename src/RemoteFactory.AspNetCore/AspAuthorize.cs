@@ -14,6 +14,7 @@ public class AspAuthorize : IAspAuthorize
 	private readonly IAuthorizationPolicyProvider? policyProvider;
 	private readonly IPolicyEvaluator? policyEvaluator;
 	private readonly IHttpContextAccessor? httpContextAccessor;
+	private readonly ICorrelationContext? _correlationContext;
 	private readonly ILogger<AspAuthorize> logger;
 
 	public AspAuthorize()
@@ -21,8 +22,12 @@ public class AspAuthorize : IAspAuthorize
 		this.logger = NullLogger<AspAuthorize>.Instance;
 	}
 
-	public AspAuthorize(IAuthorizationPolicyProvider policyProvider, IPolicyEvaluator policyEvaluator, IHttpContextAccessor httpContextAccessor)
-		: this(policyProvider, policyEvaluator, httpContextAccessor, null)
+	public AspAuthorize(
+		IAuthorizationPolicyProvider policyProvider,
+		IPolicyEvaluator policyEvaluator,
+		IHttpContextAccessor httpContextAccessor,
+		ICorrelationContext correlationContext)
+		: this(policyProvider, policyEvaluator, httpContextAccessor, correlationContext, null)
 	{
 	}
 
@@ -30,11 +35,13 @@ public class AspAuthorize : IAspAuthorize
 		IAuthorizationPolicyProvider policyProvider,
 		IPolicyEvaluator policyEvaluator,
 		IHttpContextAccessor httpContextAccessor,
+		ICorrelationContext correlationContext,
 		ILogger<AspAuthorize>? logger)
 	{
 		this.policyProvider = policyProvider;
 		this.policyEvaluator = policyEvaluator;
 		this.httpContextAccessor = httpContextAccessor;
+		_correlationContext = correlationContext;
 		this.logger = logger ?? NullLogger<AspAuthorize>.Instance;
 	}
 
@@ -63,7 +70,7 @@ public class AspAuthorize : IAspAuthorize
 			throw new InvalidOperationException("No AspCoreNet Authorization registered");
 		}
 
-		var correlationId = CorrelationContext.CorrelationId;
+		var correlationId = _correlationContext?.CorrelationId;
 		var policyNames = string.Join(", ", authorizeData.Select(a => a.Policy ?? a.Roles ?? "Default"));
 
 		logger.AuthorizationCheck(correlationId, policyNames, "AspAuthorize");

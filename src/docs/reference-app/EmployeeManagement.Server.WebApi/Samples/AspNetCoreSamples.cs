@@ -4,7 +4,6 @@ using EmployeeManagement.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.AspNetCore;
-using Neatoo.RemoteFactory.Internal;
 
 // Sample code: suppressing logging performance warnings for readability
 #pragma warning disable CA1848 // Use LoggerMessage delegates for performance
@@ -172,18 +171,18 @@ public partial class EmployeeCorrelationDemo : IFactorySaveMeta
     public EmployeeCorrelationDemo() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Access correlation ID via static CorrelationContext.
-    /// Note: This API may be redesigned to support DI in a future version.
+    /// Access correlation ID via injected ICorrelationContext.
     /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] ILogger<EmployeeCorrelationDemo> logger,
         CancellationToken ct)
     {
-        // Access correlation ID from static context
-        var correlationId = CorrelationContext.CorrelationId;
+        // Access correlation ID from injected context
+        var correlationId = correlationContext.CorrelationId;
 
         // Include in structured logs
         logger.LogInformation(
@@ -221,11 +220,12 @@ public partial class EmployeeLoggingDemo : IFactorySaveMeta
     /// </summary>
     [Remote, Insert]
     public async Task Insert(
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] ILogger<EmployeeLoggingDemo> logger,
         CancellationToken ct)
     {
-        var correlationId = CorrelationContext.CorrelationId;
+        var correlationId = correlationContext.CorrelationId;
 
         logger.LogInformation(
             "Creating employee {EmployeeName} with correlation {CorrelationId}",

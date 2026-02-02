@@ -850,11 +850,12 @@ public partial class AspNetCoreEventHandlers
     public async Task OnEmployeeCreated(
         Guid employeeId,
         string employeeName,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmailService emailService,
         [Service] Microsoft.Extensions.Logging.ILogger<AspNetCoreEventHandlers> logger,
         CancellationToken ct)
     {
-        var correlationId = CorrelationContext.CorrelationId;
+        var correlationId = correlationContext.CorrelationId;
 
         logger.LogInformation(
             "Processing employee created event. EmployeeId: {EmployeeId}, CorrelationId: {CorrelationId}",
@@ -868,7 +869,7 @@ public partial class AspNetCoreEventHandlers
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L335-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-aspnetcore' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L334-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-aspnetcore' title='Start of snippet'>anchor</a></sup>
 <a id='snippet-events-aspnetcore-1'></a>
 ```cs
 // ASP.NET Core Integration for Events
@@ -1397,11 +1398,13 @@ public partial class EmployeeCorrelation
     public async Task LogWithCorrelation(
         Guid employeeId,
         string action,
+        [Service] ICorrelationContext correlationContext,
         [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // CorrelationContext.CorrelationId contains the ID from the triggering request
-        var correlationId = CorrelationContext.CorrelationId;
+        // ICorrelationContext contains the ID from the triggering request
+        // (captured and propagated by the generator)
+        var correlationId = correlationContext.CorrelationId;
 
         // Include correlation ID in audit log for tracing
         await auditLog.LogAsync(
@@ -1413,7 +1416,7 @@ public partial class EmployeeCorrelation
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/CorrelationSamples.cs#L7-L47' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-correlation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/CorrelationSamples.cs#L6-L48' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-correlation' title='Start of snippet'>anchor</a></sup>
 <a id='snippet-events-correlation-1'></a>
 ```cs
 /// <summary>
@@ -1429,11 +1432,12 @@ public partial class CorrelatedEventHandlers
     public async Task LogWithCorrelation(
         Guid entityId,
         string action,
+        [Service] ICorrelationContext correlationContext,
         [Service] IAuditLogService auditLog,
         [Service] Microsoft.Extensions.Logging.ILogger<CorrelatedEventHandlers> logger,
         CancellationToken ct)
     {
-        var correlationId = CorrelationContext.CorrelationId;
+        var correlationId = correlationContext.CorrelationId;
 
         logger.LogInformation(
             "Event processing with correlation {CorrelationId}",
@@ -1448,7 +1452,7 @@ public partial class CorrelatedEventHandlers
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L369-L401' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-correlation-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L369-L402' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-correlation-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Logs include:

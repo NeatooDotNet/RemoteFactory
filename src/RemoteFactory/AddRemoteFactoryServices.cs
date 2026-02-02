@@ -56,12 +56,15 @@ public static partial class RemoteFactoryServices
 		// Register serialization options as singleton
 		services.AddSingleton(serializationOptions);
 
+		// Register correlation context for distributed tracing (scoped per request)
+		services.AddScoped<ICorrelationContext, CorrelationContextImpl>();
+
 		services.AddSingleton<IServiceAssemblies>(new ServiceAssemblies(assemblies));
 		services.AddScoped<NeatooJsonTypeInfoResolver>();
 		services.AddTransient<NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
-		services.AddSingleton(typeof(IFactoryCore<>), typeof(FactoryCore<>));
+		services.AddScoped(typeof(IFactoryCore<>), typeof(FactoryCore<>));
 
 		// Register EventTracker for fire-and-forget event handling
 		services.TryAddSingleton<IEventTracker, EventTracker>();
@@ -83,10 +86,11 @@ public static partial class RemoteFactoryServices
 			// This being registered changes the behavior of every Factory
 			services.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
 
-			services.AddTransient(sp =>
+			services.AddScoped(sp =>
 			{
 				var httpClient = sp.GetRequiredKeyedService<HttpClient>(HttpClientKey);
-				return MakeRemoteDelegateRequestHttpCallImplementation.Create(httpClient);
+				var correlationContext = sp.GetRequiredService<ICorrelationContext>();
+				return MakeRemoteDelegateRequestHttpCallImplementation.Create(httpClient, correlationContext);
 			});
 		}
 		else if (remoteLocal == NeatooFactory.Server)

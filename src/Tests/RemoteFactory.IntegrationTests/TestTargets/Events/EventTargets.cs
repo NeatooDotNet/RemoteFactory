@@ -8,7 +8,9 @@ namespace RemoteFactory.IntegrationTests.TestTargets.Events;
 public interface IEventTestService
 {
     void RecordEventFired(string eventName, Guid entityId);
+    void RecordEventFiredWithCorrelation(string eventName, Guid entityId, string? correlationId);
     List<(string EventName, Guid EntityId)> GetRecordedEvents();
+    List<(string EventName, Guid EntityId, string? CorrelationId)> GetRecordedEventsWithCorrelation();
     void Clear();
 }
 
@@ -19,6 +21,7 @@ public interface IEventTestService
 public class EventTestService : IEventTestService
 {
     private readonly List<(string EventName, Guid EntityId)> _events = new();
+    private readonly List<(string EventName, Guid EntityId, string? CorrelationId)> _eventsWithCorrelation = new();
     private readonly object _lock = new();
 
     public void RecordEventFired(string eventName, Guid entityId)
@@ -26,6 +29,14 @@ public class EventTestService : IEventTestService
         lock (_lock)
         {
             _events.Add((eventName, entityId));
+        }
+    }
+
+    public void RecordEventFiredWithCorrelation(string eventName, Guid entityId, string? correlationId)
+    {
+        lock (_lock)
+        {
+            _eventsWithCorrelation.Add((eventName, entityId, correlationId));
         }
     }
 
@@ -37,11 +48,20 @@ public class EventTestService : IEventTestService
         }
     }
 
+    public List<(string EventName, Guid EntityId, string? CorrelationId)> GetRecordedEventsWithCorrelation()
+    {
+        lock (_lock)
+        {
+            return new List<(string EventName, Guid EntityId, string? CorrelationId)>(_eventsWithCorrelation);
+        }
+    }
+
     public void Clear()
     {
         lock (_lock)
         {
             _events.Clear();
+            _eventsWithCorrelation.Clear();
         }
     }
 }
@@ -93,6 +113,80 @@ public static partial class OrderEventHandler
     public static Task NotifyWarehouse(Guid orderId, [Service] IEventTestService eventService, CancellationToken ct)
     {
         eventService.RecordEventFired("NotifyWarehouse", orderId);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Test target for verifying correlation ID propagation to event handlers.
+/// </summary>
+[Factory]
+public partial class CorrelationEventTarget
+{
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Event handler that captures and records the correlation ID it receives.
+    /// </summary>
+    [Event]
+    public Task ProcessWithCorrelation(
+        Guid entityId,
+        [Service] ICorrelationContext correlationContext,
+        [Service] IEventTestService eventService,
+        CancellationToken ct)
+    {
+        eventService.RecordEventFiredWithCorrelation(
+            "ProcessWithCorrelation",
+            entityId,
+            correlationContext.CorrelationId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Event handler that captures correlation ID with additional message parameter.
+    /// </summary>
+    [Event]
+    public Task ProcessWithCorrelationAndMessage(
+        Guid entityId,
+        string message,
+        [Service] ICorrelationContext correlationContext,
+        [Service] IEventTestService eventService,
+        CancellationToken ct)
+    {
+        eventService.RecordEventFiredWithCorrelation(
+            $"ProcessWithMessage:{message}",
+            entityId,
+            correlationContext.CorrelationId);
+        return Task.CompletedTask;
+    }
+
+    [Create]
+    public static CorrelationEventTarget Create()
+    {
+        return new CorrelationEventTarget { Id = Guid.NewGuid() };
+    }
+}
+
+/// <summary>
+/// Static class with correlation-aware event handlers for testing.
+/// </summary>
+[Factory]
+public static partial class CorrelationEventHandler
+{
+    /// <summary>
+    /// Static event handler that captures correlation ID.
+    /// </summary>
+    [Event]
+    public static Task HandleWithCorrelation(
+        Guid entityId,
+        [Service] ICorrelationContext correlationContext,
+        [Service] IEventTestService eventService,
+        CancellationToken ct)
+    {
+        eventService.RecordEventFiredWithCorrelation(
+            "StaticHandleWithCorrelation",
+            entityId,
+            correlationContext.CorrelationId);
         return Task.CompletedTask;
     }
 }

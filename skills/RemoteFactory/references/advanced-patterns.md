@@ -264,7 +264,7 @@ public partial class PolicyProtectedEmployee2 : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L42-L93' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L41-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Server configuration:**
@@ -328,7 +328,7 @@ public static class AuthorizationPolicyConfigSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L11-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L10-L39' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Note:** Multiple [AspAuthorize] attributes use AND logic (all must pass).
@@ -365,12 +365,13 @@ public partial class EmployeeWithCorrelation
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // CorrelationId is auto-populated from X-Correlation-Id header
-        var correlationId = CorrelationContext.CorrelationId;
+        // CorrelationId is auto-populated from X-Correlation-Id header by middleware
+        var correlationId = correlationContext.CorrelationId;
 
         var entity = await repository.GetByIdAsync(id, ct);
 
@@ -394,7 +395,7 @@ public partial class EmployeeWithCorrelation
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/AspNetCore/CorrelationIdSamples.cs#L8-L60' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/AspNetCore/CorrelationIdSamples.cs#L7-L60' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
 <a id='snippet-aspnetcore-correlation-id-1'></a>
 ```cs
 /// <summary>
@@ -412,18 +413,18 @@ public partial class EmployeeCorrelationDemo : IFactorySaveMeta
     public EmployeeCorrelationDemo() { Id = Guid.NewGuid(); }
 
     /// <summary>
-    /// Access correlation ID via static CorrelationContext.
-    /// Note: This API may be redesigned to support DI in a future version.
+    /// Access correlation ID via injected ICorrelationContext.
     /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
         [Service] ILogger<EmployeeCorrelationDemo> logger,
         CancellationToken ct)
     {
-        // Access correlation ID from static context
-        var correlationId = CorrelationContext.CorrelationId;
+        // Access correlation ID from injected context
+        var correlationId = correlationContext.CorrelationId;
 
         // Include in structured logs
         logger.LogInformation(
@@ -440,13 +441,10 @@ public partial class EmployeeCorrelationDemo : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L159-L202' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L158-L201' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Register in DI:**
-```csharp
-builder.Services.AddScoped<ICorrelationContext, HttpCorrelationContext>();
-```
+`ICorrelationContext` is automatically registered by `AddNeatooRemoteFactory` and `AddNeatooAspNetCore`. No manual DI registration is required.
 
 ---
 

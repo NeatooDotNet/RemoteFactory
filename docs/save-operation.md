@@ -285,7 +285,7 @@ public partial class EmployeeSaveStateSample : IFactorySaveMeta
     public Task Delete(CancellationToken ct) { return Task.CompletedTask; }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L267-L333' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L266-L332' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The factory's `Save()` method examines `IsNew` and `IsDeleted` to determine which operation to call.
@@ -1548,7 +1548,7 @@ public partial class EmployeeWithExtensions : IFactorySaveMeta, IFactoryOnStart
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L182-L265' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-extensions-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L181-L264' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-extensions-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Track additional state without affecting Save routing.
