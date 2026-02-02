@@ -68,7 +68,7 @@ public static class BasicSetupSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L18-L47' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L17-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Multiple Assemblies

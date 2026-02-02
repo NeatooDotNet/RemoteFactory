@@ -447,7 +447,7 @@ public static class AuthorizationPolicyConfigSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L11-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L10-L39' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Step 2: Apply to Factory Methods
@@ -555,7 +555,7 @@ public partial class PolicyProtectedEmployee2 : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L42-L93' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L41-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Authorization Execution
@@ -630,7 +630,7 @@ public partial class MultiPolicyEmployee : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L151-L180' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L150-L179' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Roles-Based Authorization
@@ -754,7 +754,7 @@ public partial class RoleProtectedEmployee : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L95-L149' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L94-L148' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Comparing Approaches

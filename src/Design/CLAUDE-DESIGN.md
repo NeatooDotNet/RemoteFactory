@@ -489,7 +489,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
 - [ ] Value objects that serialize correctly (`Money` in `ValueObjects/`)
 - [ ] Event handlers with CancellationToken (`ExampleEvents._OnOrderPlaced`)
-- [ ] CorrelationContext usage (`CorrelationExample.cs`)
+- [x] CorrelationContext usage (`CorrelationExample.cs`)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 
 ---

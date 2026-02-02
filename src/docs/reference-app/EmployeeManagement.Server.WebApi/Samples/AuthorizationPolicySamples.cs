@@ -1,6 +1,5 @@
 using EmployeeManagement.Domain.Interfaces;
 using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.Internal;
 
 // Sample code: suppressing logging performance warnings for readability
 #pragma warning disable CA1848 // Use LoggerMessage delegates for performance
@@ -347,11 +346,12 @@ public partial class AspNetCoreEventHandlers
     public async Task OnEmployeeCreated(
         Guid employeeId,
         string employeeName,
+        [Service] ICorrelationContext correlationContext,
         [Service] IEmailService emailService,
         [Service] Microsoft.Extensions.Logging.ILogger<AspNetCoreEventHandlers> logger,
         CancellationToken ct)
     {
-        var correlationId = CorrelationContext.CorrelationId;
+        var correlationId = correlationContext.CorrelationId;
 
         logger.LogInformation(
             "Processing employee created event. EmployeeId: {EmployeeId}, CorrelationId: {CorrelationId}",
@@ -380,11 +380,12 @@ public partial class CorrelatedEventHandlers
     public async Task LogWithCorrelation(
         Guid entityId,
         string action,
+        [Service] ICorrelationContext correlationContext,
         [Service] IAuditLogService auditLog,
         [Service] Microsoft.Extensions.Logging.ILogger<CorrelatedEventHandlers> logger,
         CancellationToken ct)
     {
-        var correlationId = CorrelationContext.CorrelationId;
+        var correlationId = correlationContext.CorrelationId;
 
         logger.LogInformation(
             "Event processing with correlation {CorrelationId}",

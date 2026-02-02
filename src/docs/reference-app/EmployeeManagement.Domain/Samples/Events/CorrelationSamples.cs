@@ -1,6 +1,5 @@
 using EmployeeManagement.Domain.Interfaces;
 using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.Internal;
 
 namespace EmployeeManagement.Domain.Samples.Events;
 
@@ -29,11 +28,13 @@ public partial class EmployeeCorrelation
     public async Task LogWithCorrelation(
         Guid employeeId,
         string action,
+        [Service] ICorrelationContext correlationContext,
         [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // CorrelationContext.CorrelationId contains the ID from the triggering request
-        var correlationId = CorrelationContext.CorrelationId;
+        // ICorrelationContext contains the ID from the triggering request
+        // (captured and propagated by the generator)
+        var correlationId = correlationContext.CorrelationId;
 
         // Include correlation ID in audit log for tracing
         await auditLog.LogAsync(

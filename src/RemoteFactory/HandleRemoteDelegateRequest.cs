@@ -59,7 +59,10 @@ public static class LocalServer
 
 		return async (portalRequest, cancellationToken) =>
 		{
-			var correlationId = CorrelationContext.CorrelationId ?? CorrelationContext.EnsureCorrelationId();
+			// Resolve correlation context from request scope (set by middleware)
+			var correlationContext = serviceProvider.GetRequiredService<ICorrelationContext>();
+			// Correlation ID is set by middleware; generate if missing (e.g., direct server calls)
+			var correlationId = correlationContext.CorrelationId ?? CorrelationContextImpl.GenerateCorrelationId();
 			var delegateTypeName = portalRequest.DelegateAssemblyType ?? "unknown";
 
 			log.HandlingRemoteRequest(correlationId, delegateTypeName);
