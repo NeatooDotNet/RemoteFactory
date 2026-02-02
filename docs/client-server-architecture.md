@@ -39,6 +39,8 @@ Use `[Remote]` for **entry points from the client**:
 - Top-level Execute operations initiated by UI
 - Any method the client calls directly
 
+> **Rule of Thumb**: If your Blazor component (or other client code) calls the factory method directly, add `[Remote]`. If the method is only called from other server-side code after already crossing the boundary, no `[Remote]` needed.
+
 ## When [Remote] is NOT Needed
 
 Most methods don't need `[Remote]`:
