@@ -41,6 +41,26 @@ Full mode is the default. No assembly attribute needed:
 <!-- snippet: modes-full-config -->
 <a id='snippet-modes-full-config'></a>
 ```cs
+// Full mode configuration in Program.cs
+// Generates both local implementation and remote HTTP stubs
+builder.Services.AddNeatooRemoteFactory(
+    NeatooFactory.Full,  // Full mode
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L17-L24' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-config' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-full-config-1'></a>
+```cs
+// Full mode: Both local methods and remote stubs generated
+// Use in shared domain assemblies
+builder.Services.AddNeatooRemoteFactory(
+    NeatooFactory.Full,  // Generate both local and remote code
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L165-L172' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-config-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-full-config-2'></a>
+```cs
 /// <summary>
 /// Configures services for Full mode (server-side).
 /// Full mode is the default - no [assembly: FactoryMode] attribute needed.
@@ -57,7 +77,7 @@ public static void ConfigureFullMode(IServiceCollection services)
         domainAssembly);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L15-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L15-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-config-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Generated Code
@@ -143,6 +163,14 @@ Set at assembly level with `[assembly: FactoryMode(FactoryMode.RemoteOnly)]`:
 <!-- snippet: modes-remoteonly-config -->
 <a id='snippet-modes-remoteonly-config'></a>
 ```cs
+// RemoteOnly mode assembly attribute
+// Client assemblies that only generate HTTP stubs
+// Use when you have separate client and server projects
+[assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L48-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-config' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-remoteonly-config-1'></a>
+```cs
 // In AssemblyAttributes.cs or GlobalUsings.cs:
 // [assembly: FactoryMode(FactoryMode.RemoteOnly)]
 
@@ -167,7 +195,7 @@ public static void ConfigureRemoteOnlyMode(IServiceCollection services, string s
     });
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L33-L57' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L33-L57' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-config-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Place in `AssemblyAttributes.cs` or `GlobalUsings.cs`.
@@ -252,6 +280,27 @@ Server mode is typically configured via `AddNeatooAspNetCore`:
 <!-- snippet: modes-server-config -->
 <a id='snippet-modes-server-config'></a>
 ```cs
+// Server mode configuration with ASP.NET Core integration
+// Handles incoming remote requests from clients
+builder.Services.AddNeatooAspNetCore(
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+
+var app = builder.Build();
+app.UseNeatoo();  // Maps /api/neatoo endpoint
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L55-L64' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-server-config-1'></a>
+```cs
+// Server mode: Handle remote requests via ASP.NET Core
+// Use in server applications
+builder.Services.AddNeatooAspNetCore(
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L196-L202' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-server-config-2'></a>
+```cs
 /// <summary>
 /// Configures Server runtime mode with ASP.NET Core integration.
 /// AddNeatooAspNetCore internally uses NeatooFactory.Server.
@@ -269,7 +318,7 @@ public static void ConfigureServerMode(IServiceCollection services)
     services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/FactoryModes/ServerModeConfigurationSample.cs#L15-L32' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/FactoryModes/ServerModeConfigurationSample.cs#L15-L32' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Behavior
@@ -294,6 +343,34 @@ Register factories in Remote mode and configure HttpClient:
 <!-- snippet: modes-remote-config -->
 <a id='snippet-modes-remote-config'></a>
 ```cs
+// Remote mode configuration for Blazor WASM clients
+// Generates HTTP stubs that call server
+builder.Services.AddNeatooRemoteFactory(
+    NeatooFactory.Remote,  // Remote mode - HTTP client stubs
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+
+// Required: Register HttpClient for remote calls
+builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+    new HttpClient { BaseAddress = new Uri("https://api.example.com/") });
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L35-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remote-config' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-remote-config-1'></a>
+```cs
+// Remote mode: Client-side HTTP stubs only
+// Use in Blazor WASM clients
+builder.Services.AddNeatooRemoteFactory(
+    NeatooFactory.Remote,  // Generate HTTP stubs for remote calls
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+
+// Required: Register HttpClient for remote calls
+builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+    new HttpClient { BaseAddress = new Uri("https://api.example.com/") });
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L183-L194' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remote-config-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-remote-config-2'></a>
+```cs
 /// <summary>
 /// Configures Remote runtime mode for client applications.
 /// All factory operations go via HTTP to server.
@@ -315,7 +392,7 @@ public static void ConfigureRemoteMode(IServiceCollection services, string serve
     });
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L59-L80' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remote-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L59-L80' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remote-config-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Behavior
@@ -340,6 +417,26 @@ Executes all methods locally without HTTP infrastructure. Use with Full-generate
 <!-- snippet: modes-logical-config -->
 <a id='snippet-modes-logical-config'></a>
 ```cs
+// Logical mode configuration for testing
+// All methods execute locally without serialization
+builder.Services.AddNeatooRemoteFactory(
+    NeatooFactory.Logical,  // Logical mode - no HTTP, no serialization
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L26-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-logical-config-1'></a>
+```cs
+// Logical mode: Everything runs locally, no HTTP
+// Use for testing
+builder.Services.AddNeatooRemoteFactory(
+    NeatooFactory.Logical,  // All methods local, no serialization
+    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+    typeof(Employee).Assembly);
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L174-L181' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-logical-config-2'></a>
+```cs
 /// <summary>
 /// Configures Logical runtime mode for single-tier applications or tests.
 /// Direct execution, no serialization, no HTTP overhead.
@@ -355,7 +452,7 @@ public static void ConfigureLogicalMode(IServiceCollection services)
         domainAssembly);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L82-L97' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L82-L97' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Behavior
@@ -377,6 +474,93 @@ Logical mode:
 
 <!-- snippet: modes-logical-testing -->
 <a id='snippet-modes-logical-testing'></a>
+```cs
+/// <summary>
+/// Employee for Logical mode testing - all operations run locally.
+/// </summary>
+[Factory]
+public partial class EmployeeLogicalMode : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    // Logical mode: All methods execute locally in the same process
+    // [Remote] attribute is honored but no serialization occurs
+    // Ideal for unit testing domain logic without mocking HTTP
+
+    [Create]
+    public EmployeeLogicalMode()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// In Logical mode, runs locally with local DI resolution.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task<bool> Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(id, ct);
+        if (entity == null) return false;
+
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        IsNew = false;
+        return true;
+    }
+
+    [Remote, Insert]
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = LastName,
+            Email = $"{FirstName.ToLowerInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "New",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+
+    [Remote, Update]
+    public async Task Update(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = LastName,
+            Email = $"{FirstName.ToLowerInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "Updated",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+        await repository.UpdateAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+
+    [Remote, Delete]
+    public async Task Delete(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        await repository.DeleteAsync(Id, ct);
+        await repository.SaveChangesAsync(ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L73-L157' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-testing' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-logical-testing-1'></a>
 ```cs
 [Fact]
 public async Task TestEmployeeCreationWithLogicalMode()
@@ -439,7 +623,7 @@ private class TestHostLifetime : IHostApplicationLifetime
     public void StopApplication() { }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/FactoryModes/LogicalModeTestingSample.cs#L18-L79' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/FactoryModes/LogicalModeTestingSample.cs#L18-L79' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-testing-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Tests execute locally without HTTP server or serialization overhead.
@@ -450,6 +634,29 @@ Tests execute locally without HTTP server or serialization overhead.
 
 <!-- snippet: modes-full-example -->
 <a id='snippet-modes-full-example'></a>
+```cs
+// Complete server setup: Full mode (compile) + Server runtime.
+// Use this configuration for ASP.NET Core server applications.
+//
+// In Program.cs:
+//
+// var domainAssembly = typeof(Employee).Assembly;
+//
+// // Register RemoteFactory with ASP.NET Core integration
+// builder.Services.AddNeatooAspNetCore(
+//     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+//     domainAssembly);
+//
+// // Register interface -> implementation mappings
+// builder.Services.RegisterMatchingName(domainAssembly);
+//
+// // Configure middleware
+// app.UseAuthentication();
+// app.UseAuthorization();
+// app.UseNeatoo(); // Add /api/neatoo endpoint
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L206-L226' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-example' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-full-example-1'></a>
 ```cs
 /// <summary>
 /// Employee aggregate with full CRUD operations for server deployment.
@@ -548,13 +755,70 @@ public static class FullModeServerSetup
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/FactoryModes/FullModeServerExample.cs#L10-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-example' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/FactoryModes/FullModeServerExample.cs#L10-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-example-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-full-example-2'></a>
+```cs
+/// <summary>
+/// Full mode example - generates both local and remote code.
+/// </summary>
+public class FullModeExample
+{
+    [Fact]
+    public async Task FullMode_LocalAndRemoteCode()
+    {
+        // Full mode generates:
+        // - Local method implementations
+        // - Remote HTTP stubs
+        // Use in shared domain assemblies
+
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        // Local operations (no network)
+        var employee = factory.Create();
+        employee.FirstName = "FullMode";
+        employee.Email = new EmailAddress("full.mode@example.com");
+        employee.Position = "Test";
+        employee.Salary = new Money(50000, "USD");
+        employee.DepartmentId = Guid.NewGuid();
+
+        // Remote operations (would use HTTP in Remote mode)
+        await factory.Save(employee);
+        var fetched = await factory.Fetch(employee.Id);
+
+        Assert.NotNull(fetched);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L719-L751' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-example-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Client Setup (RemoteOnly + Remote):
 
 <!-- snippet: modes-remoteonly-example -->
 <a id='snippet-modes-remoteonly-example'></a>
+```cs
+// Complete client setup: RemoteOnly mode (compile) + Remote runtime.
+// Use this configuration for Blazor WASM or other HTTP clients.
+//
+// In AssemblyAttributes.cs:
+// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
+//
+// In Program.cs:
+// var domainAssembly = typeof(Employee).Assembly;
+//
+// // Register RemoteFactory in Remote mode
+// services.AddNeatooRemoteFactory(
+//     NeatooFactory.Remote,
+//     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+//     domainAssembly);
+//
+// // Required: Register keyed HttpClient for remote calls
+// services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
+//     new HttpClient { BaseAddress = new Uri("https://api.example.com/") });
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L228-L247' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-example' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-remoteonly-example-1'></a>
 ```cs
 /// <summary>
 /// Client-side state service (client-only dependency).
@@ -612,13 +876,61 @@ public static class RemoteOnlyModeClientSetup
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/CompleteSetupExamples.cs#L11-L67' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-example' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/CompleteSetupExamples.cs#L11-L67' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-example-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-remoteonly-example-2'></a>
+```cs
+/// <summary>
+/// RemoteOnly mode example - HTTP stubs for client assemblies.
+/// </summary>
+public class RemoteOnlyModeExample
+{
+    [Fact]
+    public void RemoteOnlyMode_GeneratesHttpStubs()
+    {
+        // RemoteOnly mode:
+        // - Generates HTTP client stubs only
+        // - No local method implementations
+        // - Use in Blazor WASM client assemblies
+
+        // Configuration:
+        // [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
+        // services.AddNeatooRemoteFactory(NeatooFactory.Remote, options, assembly);
+        // services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, ...);
+
+        // All [Remote] methods become HTTP calls to /api/neatoo
+        Assert.True(true);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L787-L810' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-example-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Single-Tier Setup (Full + Logical):
 
 <!-- snippet: modes-logical-example -->
 <a id='snippet-modes-logical-example'></a>
+```cs
+// Complete single-tier setup: Full mode (compile) + Logical runtime.
+// Use this configuration for console apps, tests, or single-tier apps.
+//
+// In Program.cs:
+// var domainAssembly = typeof(Employee).Assembly;
+//
+// // Register RemoteFactory in Logical mode
+// services.AddNeatooRemoteFactory(
+//     NeatooFactory.Logical,
+//     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+//     domainAssembly);
+//
+// // Register interface -> implementation mappings
+// services.RegisterMatchingName(domainAssembly);
+//
+// // Register infrastructure services directly
+// services.AddDbContext<AppDbContext>(...);
+// services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L249-L268' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-example' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-logical-example-1'></a>
 ```cs
 /// <summary>
 /// Logical mode setup for single-tier applications.
@@ -694,7 +1006,42 @@ public static class SingleTierAppExample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/CompleteSetupExamples.cs#L69-L143' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-example' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/CompleteSetupExamples.cs#L69-L143' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-example-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-logical-example-2'></a>
+```cs
+/// <summary>
+/// Logical mode example - everything runs locally for testing.
+/// </summary>
+public class LogicalModeExample
+{
+    [Fact]
+    public async Task LogicalMode_AllLocal()
+    {
+        // Logical mode:
+        // - All methods execute locally
+        // - No serialization, no HTTP
+        // - Ideal for unit testing domain logic
+
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        var employee = factory.Create();
+        employee.FirstName = "LogicalMode";
+        employee.Email = new EmailAddress("logical.mode@example.com");
+        employee.Position = "Test";
+        employee.Salary = new Money(50000, "USD");
+        employee.DepartmentId = Guid.NewGuid();
+
+        // All operations execute locally
+        await factory.Save(employee);
+
+        var fetched = await factory.Fetch(employee.Id);
+        Assert.NotNull(fetched);
+        Assert.Equal("LogicalMode", fetched.FirstName);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L753-L785' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-example-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Typical Solution Structure
@@ -803,6 +1150,74 @@ public partial class EmployeeModeDemo : IEmployeeModeDemo
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/FactoryModes/GeneratedCodeIllustrations.cs#L112-L165' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-local-remote-methods' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-modes-local-remote-methods-1'></a>
+```cs
+/// <summary>
+/// Demonstrates local vs remote method execution based on [Remote] attribute.
+/// </summary>
+[Factory]
+public partial class EmployeeLocalRemote : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    /// <summary>
+    /// Local execution - no [Remote] attribute.
+    /// Runs on client, no network call, no serialization.
+    /// </summary>
+    [Create]
+    public EmployeeLocalRemote()
+    {
+        Id = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Remote execution - [Remote] attribute present.
+    /// Serialized and sent to server where repository exists.
+    /// </summary>
+    [Remote, Fetch]
+    public async Task<bool> Fetch(
+        Guid employeeId,
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = await repository.GetByIdAsync(employeeId, ct);
+        if (entity == null) return false;
+
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        IsNew = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Remote execution for persistence operations.
+    /// Repository only available on server.
+    /// </summary>
+    [Remote, Insert]
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        CancellationToken ct)
+    {
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = LastName,
+            Email = $"{FirstName.ToLowerInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "New",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModesSamples.cs#L6-L71' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-local-remote-methods-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **How methods execute by mode:**

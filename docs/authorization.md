@@ -89,7 +89,7 @@ In the Domain layer, apply the authorization interface to the Employee aggregate
 /// </summary>
 [Factory]
 [AuthorizeFactory<IEmployeeAuthorization>]
-public partial class AuthorizedEmployee : IFactorySaveMeta
+public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
@@ -100,7 +100,7 @@ public partial class AuthorizedEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public AuthorizedEmployee()
+    public AuthorizedEmployeeEntity()
     {
         Id = Guid.NewGuid();
     }
@@ -179,14 +179,14 @@ RemoteFactory generates authorization checks in the factory:
 /// </summary>
 public class EmployeeManagementService
 {
-    private readonly IAuthorizedEmployeeFactory _employeeFactory;
+    private readonly IAuthorizedEmployeeEntityFactory _employeeFactory;
 
-    public EmployeeManagementService(IAuthorizedEmployeeFactory employeeFactory)
+    public EmployeeManagementService(IAuthorizedEmployeeEntityFactory employeeFactory)
     {
         _employeeFactory = employeeFactory;
     }
 
-    public AuthorizedEmployee? CreateNewEmployee()
+    public AuthorizedEmployeeEntity? CreateNewEmployee()
     {
         // Check authorization before attempting create
         // CanCreate() is generated from [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
@@ -198,7 +198,7 @@ public class EmployeeManagementService
         return _employeeFactory.Create();
     }
 
-    public async Task<AuthorizedEmployee?> GetEmployeeById(Guid employeeId)
+    public async Task<AuthorizedEmployeeEntity?> GetEmployeeById(Guid employeeId)
     {
         // Check authorization before attempting fetch
         // CanFetch() is generated from [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
@@ -416,6 +416,38 @@ public static class AuthorizationPolicyConfig
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Authorization/AuthorizationPolicyConfig.cs#L6-L30' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-authorization-policy-config-1'></a>
+```cs
+/// <summary>
+/// ASP.NET Core authorization policy configuration.
+/// </summary>
+public static class AuthorizationPolicyConfigSample
+{
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddAuthorization(options =>
+        {
+            // Policy requiring authentication
+            options.AddPolicy("RequireAuthenticated", policy =>
+                policy.RequireAuthenticatedUser());
+
+            // Policy requiring HR role
+            options.AddPolicy("RequireHR", policy =>
+                policy.RequireRole("HR"));
+
+            // Policy requiring Manager or HR role
+            options.AddPolicy("RequireManagerOrHR", policy =>
+                policy.RequireRole("Manager", "HR"));
+
+            // Custom policy with claim requirements
+            options.AddPolicy("RequireEmployeeAccess", policy =>
+                policy.RequireClaim("department")
+                      .RequireAuthenticatedUser());
+        });
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L11-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Step 2: Apply to Factory Methods
@@ -470,6 +502,60 @@ public partial class SalaryInfo
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L331-L375' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-authorization-policy-apply-1'></a>
+```cs
+/// <summary>
+/// Applying ASP.NET Core policies with [AspAuthorize].
+/// </summary>
+[Factory]
+public partial class PolicyProtectedEmployee2 : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public PolicyProtectedEmployee2() { Id = Guid.NewGuid(); }
+
+    /// <summary>
+    /// [AspAuthorize] with named policy via constructor.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize("RequireAuthenticated")]
+    public async Task<bool> Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repo,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        var entity = await repo.GetByIdAsync(id, ct);
+        if (entity == null) return false;
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        IsNew = false;
+        return true;
+    }
+
+    [Remote, Insert]
+    [AspAuthorize("RequireManagerOrHR")]
+    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = "",
+            Email = $"{FirstName.ToUpperInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "New",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+        await repo.AddAsync(entity, ct);
+        await repo.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L42-L93' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Authorization Execution
@@ -513,6 +599,38 @@ public static partial class PayrollOperations
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L381-L398' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-authorization-policy-multiple-1'></a>
+```cs
+/// <summary>
+/// Multiple [AspAuthorize] attributes - ALL must pass.
+/// </summary>
+[Factory]
+public partial class MultiPolicyEmployee : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public MultiPolicyEmployee() { Id = Guid.NewGuid(); }
+
+    /// <summary>
+    /// Multiple [AspAuthorize] - user must satisfy ALL requirements.
+    /// </summary>
+    [Remote, Delete]
+    [AspAuthorize("RequireAuthenticated")]
+    [AspAuthorize(Roles = "HR")]
+    public async Task Delete(
+        [Service] IAuditLogService auditLog,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(auditLog);
+        await auditLog.LogAsync("Delete", Id, "Employee", "Deleted", ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L151-L180' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Roles-Based Authorization
@@ -580,6 +698,63 @@ public static partial class TimeOffOperations
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L404-L461' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-authorization-policy-roles-1'></a>
+```cs
+/// <summary>
+/// Role-based authorization with [AspAuthorize].
+/// </summary>
+[Factory]
+public partial class RoleProtectedEmployee : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public RoleProtectedEmployee() { Id = Guid.NewGuid(); }
+
+    /// <summary>
+    /// Multiple roles - any of the listed roles can access.
+    /// </summary>
+    [Remote, Fetch]
+    [AspAuthorize(Roles = "Employee,Manager,HR")]
+    public async Task<bool> Fetch(
+        Guid id,
+        [Service] IEmployeeRepository repo,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        var entity = await repo.GetByIdAsync(id, ct);
+        if (entity == null) return false;
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        IsNew = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Restricted to HR and Manager roles only.
+    /// </summary>
+    [Remote, Insert]
+    [AspAuthorize(Roles = "HR,Manager")]
+    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = "",
+            Email = $"{FirstName.ToUpperInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "New",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+        await repo.AddAsync(entity, ct);
+        await repo.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L95-L149' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Comparing Approaches
@@ -711,9 +886,9 @@ Throw `NotAuthorizedException` for explicit auth failures:
 /// </summary>
 public class EmployeeAuthorizationHandler
 {
-    private readonly IAuthorizedEmployeeFactory _employeeFactory;
+    private readonly IAuthorizedEmployeeEntityFactory _employeeFactory;
 
-    public EmployeeAuthorizationHandler(IAuthorizedEmployeeFactory employeeFactory)
+    public EmployeeAuthorizationHandler(IAuthorizedEmployeeEntityFactory employeeFactory)
     {
         _employeeFactory = employeeFactory;
     }
@@ -808,9 +983,9 @@ Test authorization classes directly:
 /// </summary>
 public class EmployeeAuthorizationTests
 {
-    private readonly IAuthorizedEmployeeFactory _factory;
+    private readonly IAuthorizedEmployeeEntityFactory _factory;
 
-    public EmployeeAuthorizationTests(IAuthorizedEmployeeFactory factory)
+    public EmployeeAuthorizationTests(IAuthorizedEmployeeEntityFactory factory)
     {
         _factory = factory;
     }
@@ -848,6 +1023,84 @@ public class EmployeeAuthorizationTests
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L641-L686' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-authorization-testing-1'></a>
+```cs
+/// <summary>
+/// Testing authorization rules.
+/// </summary>
+public class AuthorizationTestingSamples
+{
+    [Fact]
+    public void CanCreate_WithHRRole_ReturnsTrue()
+    {
+        // Arrange - Create user context with HR role
+        var userContext = new TestUserContext
+        {
+            IsAuthenticated = true,
+            Roles = ["HR"]
+        };
+
+        var authorization = new EmployeeAuthorizationImpl(userContext);
+
+        // Act
+        var canCreate = authorization.CanCreate();
+
+        // Assert
+        Assert.True(canCreate);
+    }
+
+    [Fact]
+    public void CanCreate_WhenAuthenticatedWithAnyRole_ReturnsTrue()
+    {
+        // Arrange - Create user context with any role (no specific role required for Create)
+        var userContext = new TestUserContext
+        {
+            IsAuthenticated = true,
+            Roles = ["Employee"]
+        };
+
+        var authorization = new EmployeeAuthorizationImpl(userContext);
+
+        // Act
+        var canCreate = authorization.CanCreate();
+
+        // Assert - CanCreate only requires authentication, not specific roles
+        Assert.True(canCreate);
+    }
+
+    [Fact]
+    public void CanRead_WhenAuthenticated_ReturnsTrue()
+    {
+        // Arrange
+        var userContext = new TestUserContext
+        {
+            IsAuthenticated = true,
+            Roles = []
+        };
+
+        var authorization = new EmployeeAuthorizationImpl(userContext);
+
+        // Act
+        var canRead = authorization.CanRead();
+
+        // Assert - All authenticated users can read
+        Assert.True(canRead);
+    }
+}
+
+/// <summary>
+/// Test user context for authorization tests.
+/// </summary>
+internal class TestUserContext : EmployeeManagement.Domain.Interfaces.IUserContext
+{
+    public Guid UserId { get; set; } = Guid.NewGuid();
+    public string Username { get; set; } = "testuser";
+    public IReadOnlyList<string> Roles { get; set; } = [];
+    public bool IsAuthenticated { get; set; }
+    public bool IsInRole(string role) => Roles.Contains(role);
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L97-L172' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization Enforcement by Mode

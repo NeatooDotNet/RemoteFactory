@@ -217,6 +217,75 @@ public class SaveUsageDemo
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/SaveOperation/SaveUsageSamples.cs#L10-L49' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-save-usage-1'></a>
+```cs
+/// <summary>
+/// Demonstrates calling factory.Save() method.
+/// Generated factory interface follows naming: I{ClassName}Factory.
+/// </summary>
+public static class SaveUsageSample
+{
+    /// <summary>
+    /// Demonstrates Save workflow with generated factory.
+    /// Save returns IFactorySaveMeta which must be cast to the concrete type.
+    /// </summary>
+    public static async Task SaveWorkflow(
+        IEmployeeSaveStateSampleFactory factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+
+        // Create new employee - returns concrete EmployeeSaveStateSample type
+        EmployeeSaveStateSample employee = factory.Create();
+        employee.FirstName = "John";
+        employee.LastName = "Doe";
+
+        // Save routes to Insert (IsNew = true)
+        // Cast result back to concrete type
+        var saved = (EmployeeSaveStateSample?)await factory.Save(employee);
+
+        // Modify and save again (IsNew = false, routes to Update)
+        saved!.FirstName = "Jane";
+        saved = (EmployeeSaveStateSample?)await factory.Save(saved);
+
+        // Mark for deletion and save (routes to Delete)
+        // IsDeleted is settable on the concrete type
+        saved!.IsDeleted = true;
+        await factory.Save(saved);
+    }
+}
+
+/// <summary>
+/// Define factory interface to match the generated factory from EmployeeSaveStateSample.
+/// This interface is automatically generated for [Factory] classes with IFactorySaveMeta.
+/// </summary>
+public interface IEmployeeSaveStateSampleFactory : IFactorySave<EmployeeSaveStateSample>
+{
+    EmployeeSaveStateSample Create();
+}
+
+[Factory]
+public partial class EmployeeSaveStateSample : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public EmployeeSaveStateSample() { Id = Guid.NewGuid(); }
+
+    [Remote, Insert]
+    public Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
+
+    [Remote, Update]
+    public Task Update(CancellationToken ct) { return Task.CompletedTask; }
+
+    [Remote, Delete]
+    public Task Delete(CancellationToken ct) { return Task.CompletedTask; }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L267-L333' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The factory's `Save()` method examines `IsNew` and `IsDeleted` to determine which operation to call.
@@ -580,6 +649,58 @@ public class DepartmentCrudWorkflow
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/SaveOperation/DepartmentUsageSamples.cs#L10-L58' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-complete-usage' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-save-complete-usage-1'></a>
+```cs
+/// <summary>
+/// Complete Save workflow example.
+/// </summary>
+public class SaveCompleteUsageTests
+{
+    [Fact]
+    public async Task CompleteSaveWorkflow()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        // Create new employee
+        var employee = factory.Create();
+        employee.FirstName = "Jane";
+        employee.LastName = "Smith";
+        employee.Email = new EmailAddress("jane.smith@example.com");
+        employee.Position = "Designer";
+        employee.Salary = new Money(70000, "USD");
+        employee.DepartmentId = Guid.NewGuid();
+
+        // Save workflow: Create -> Insert -> Update -> Delete
+
+        // 1. Insert (IsNew = true)
+        Assert.True(employee.IsNew);
+        employee = await factory.Save(employee);
+        Assert.False(employee.IsNew);
+        var id = employee.Id;
+
+        // 2. Fetch existing
+        employee = await factory.Fetch(id);
+        Assert.NotNull(employee);
+        Assert.False(employee.IsNew);
+
+        // 3. Update (IsNew = false, IsDeleted = false)
+        employee.Position = "Senior Designer";
+        employee = await factory.Save(employee);
+        Assert.Equal("Senior Designer", employee.Position);
+
+        // 4. Delete (IsDeleted = true)
+        employee.IsDeleted = true;
+        await factory.Save(employee);
+
+        // Verify deleted
+        var deleted = await factory.Fetch(id);
+        Assert.Null(deleted);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L266-L315' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-complete-usage-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Return Values
@@ -871,7 +992,7 @@ In the Domain layer, use data annotations for validation:
 /// Employee aggregate with validation attributes for Save operations.
 /// </summary>
 [Factory]
-public partial class ValidatedEmployee : IFactorySaveMeta
+public partial class SaveValidatedEmployee : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
 
@@ -891,7 +1012,7 @@ public partial class ValidatedEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public ValidatedEmployee()
+    public SaveValidatedEmployee()
     {
         Id = Guid.NewGuid();
     }
@@ -949,7 +1070,7 @@ In the Domain layer, perform server-side validation in the Insert method:
 /// Employee aggregate with server-side validation in Insert method.
 /// </summary>
 [Factory]
-public partial class ServerValidatedEmployee : IFactorySaveMeta
+public partial class SaveServerValidatedEmployee : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
@@ -959,7 +1080,7 @@ public partial class ServerValidatedEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public ServerValidatedEmployee()
+    public SaveServerValidatedEmployee()
     {
         Id = Guid.NewGuid();
     }
@@ -1203,6 +1324,61 @@ public class SaveVsExplicitDemo
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/SaveOperation/SaveExplicitSamples.cs#L10-L59' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-explicit' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-save-explicit-1'></a>
+```cs
+/// <summary>
+/// Save method routing based on IsNew and IsDeleted flags.
+/// Note: Insert/Update/Delete are internal methods - use Save for routing.
+/// </summary>
+public class ExplicitMethodTests
+{
+    [Fact]
+    public async Task SaveRoutesToInsertUpdateDelete()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        var employee = factory.Create();
+        employee.FirstName = "Explicit";
+        employee.LastName = "Test";
+        employee.Email = new EmailAddress("explicit.test@example.com");
+        employee.Position = "Tester";
+        employee.Salary = new Money(60000, "USD");
+        employee.DepartmentId = Guid.NewGuid();
+
+        // Save routes to Insert when IsNew = true
+        Assert.True(employee.IsNew);
+        employee = await factory.Save(employee);
+        Assert.NotNull(employee);
+        Assert.False(employee.IsNew);
+
+        // Fetch and modify
+        var fetched = await factory.Fetch(employee.Id);
+        Assert.NotNull(fetched);
+        fetched.Position = "Lead Tester";
+
+        // Save routes to Update when IsNew = false, IsDeleted = false
+        Assert.False(fetched.IsNew);
+        Assert.False(fetched.IsDeleted);
+        fetched = await factory.Save(fetched);
+        Assert.NotNull(fetched);
+
+        // Verify update
+        var updated = await factory.Fetch(employee.Id);
+        Assert.Equal("Lead Tester", updated?.Position);
+
+        // Save routes to Delete when IsDeleted = true
+        updated!.IsDeleted = true;
+        await factory.Save(updated);
+
+        // Verify deleted
+        var deleted = await factory.Fetch(employee.Id);
+        Assert.Null(deleted);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L317-L369' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-explicit-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Use Save when:
@@ -1287,6 +1463,92 @@ public static class SaveUtilities
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/SaveOperation/SaveExtensionsSamples.cs#L9-L71' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-extensions' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-save-extensions-1'></a>
+```cs
+/// <summary>
+/// Save with validation and extensions pattern.
+/// </summary>
+[Factory]
+public partial class EmployeeWithExtensions : IFactorySaveMeta, IFactoryOnStart
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public EmployeeWithExtensions() { Id = Guid.NewGuid(); }
+
+    /// <summary>
+    /// Pre-save validation via IFactoryOnStart lifecycle hook.
+    /// </summary>
+    public void FactoryStart(FactoryOperation factoryOperation)
+    {
+        if (factoryOperation == FactoryOperation.Insert ||
+            factoryOperation == FactoryOperation.Update)
+        {
+            if (string.IsNullOrWhiteSpace(FirstName))
+                throw new System.ComponentModel.DataAnnotations.ValidationException("FirstName is required");
+            if (string.IsNullOrWhiteSpace(LastName))
+                throw new System.ComponentModel.DataAnnotations.ValidationException("LastName is required");
+        }
+    }
+
+    [Remote, Fetch]
+    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        var entity = await repo.GetByIdAsync(id, ct);
+        if (entity == null) return false;
+        Id = entity.Id;
+        FirstName = entity.FirstName;
+        LastName = entity.LastName;
+        IsNew = false;
+        return true;
+    }
+
+    [Remote, Insert]
+    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = LastName,
+            Email = $"{FirstName.ToUpperInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "New",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+        await repo.AddAsync(entity, ct);
+        await repo.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+
+    [Remote, Update]
+    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = LastName,
+            Email = $"{FirstName.ToUpperInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "Updated",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+        await repo.UpdateAsync(entity, ct);
+        await repo.SaveChangesAsync(ct);
+    }
+
+    [Remote, Delete]
+    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(repo);
+        await repo.DeleteAsync(Id, ct);
+        await repo.SaveChangesAsync(ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L182-L265' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-extensions-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Track additional state without affecting Save routing.
@@ -1380,6 +1642,99 @@ public class SaveRoutingTests
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/SaveOperation/SaveRoutingTestSample.cs#L11-L90' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-testing' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-save-testing-1'></a>
+```cs
+/// <summary>
+/// Testing Save operation state transitions.
+/// </summary>
+public class SaveOperationTests
+{
+    [Fact]
+    public async Task Save_NewEmployee_CallsInsert()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        var employee = factory.Create();
+        employee.FirstName = "Test";
+        employee.LastName = "Insert";
+        employee.Email = new EmailAddress("test.insert@example.com");
+        employee.Position = "Developer";
+        employee.Salary = new Money(50000, "USD");
+        employee.DepartmentId = Guid.NewGuid();
+
+        // Assert initial state
+        Assert.True(employee.IsNew);
+        Assert.False(employee.IsDeleted);
+
+        // Act - Save routes to Insert when IsNew = true
+        var saved = await factory.Save(employee);
+
+        // Assert - IsNew = false after insert
+        Assert.NotNull(saved);
+        Assert.False(saved.IsNew);
+    }
+
+    [Fact]
+    public async Task Save_ExistingEmployee_CallsUpdate()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        // Create and save initial employee
+        var employee = factory.Create();
+        employee.FirstName = "Test";
+        employee.LastName = "Update";
+        employee.Email = new EmailAddress("test.update@example.com");
+        employee.Position = "Developer";
+        employee.Salary = new Money(50000, "USD");
+        employee.DepartmentId = Guid.NewGuid();
+        employee = await factory.Save(employee);
+
+        // Assert existing state
+        Assert.False(employee.IsNew);
+        Assert.False(employee.IsDeleted);
+
+        // Act - Modify and save (routes to Update when IsNew = false)
+        employee.Position = "Senior Developer";
+        var updated = await factory.Save(employee);
+
+        // Assert
+        Assert.NotNull(updated);
+        Assert.Equal("Senior Developer", updated.Position);
+    }
+
+    [Fact]
+    public async Task Save_DeletedEmployee_CallsDelete()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        // Create and save employee
+        var employee = factory.Create();
+        employee.FirstName = "Test";
+        employee.LastName = "Delete";
+        employee.Email = new EmailAddress("test.delete@example.com");
+        employee.Position = "Developer";
+        employee.Salary = new Money(50000, "USD");
+        employee.DepartmentId = Guid.NewGuid();
+        employee = await factory.Save(employee);
+        var employeeId = employee.Id;
+
+        // Act - Mark for deletion and save (routes to Delete when IsDeleted = true)
+        employee.IsDeleted = true;
+        await factory.Save(employee);
+
+        // Assert - Employee no longer exists
+        var deleted = await factory.Fetch(employeeId);
+        Assert.Null(deleted);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L174-L264' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-testing-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Next Steps

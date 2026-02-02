@@ -52,8 +52,42 @@ RemoteFactory/
 │       ├── Person/                       # Complete Blazor WASM example
 │       └── ...
 ├── docs/                                 # Documentation (Jekyll-based)
+├── skills/RemoteFactory/                 # Claude Code skill (stand-alone)
 └── .github/workflows/                    # CI/CD (GitHub Actions)
 ```
+
+## RemoteFactory Skill
+
+The `skills/RemoteFactory/` directory contains a Claude Code skill for RemoteFactory guidance. **This skill must be completely self-contained.** It cannot reference `.cs` files, `docs/*.md` files, or any other files in the repository—only the markdown files within the skill directory itself (`SKILL.md` and `references/*.md`).
+
+This constraint exists because the skill may be distributed separately from the repository and must work without access to the codebase.
+
+### Skill Code Samples (MarkdownSnippets Integration)
+
+The skill uses MarkdownSnippets to embed compiled, tested code from the reference application (`src/docs/reference-app/`). This ensures all code samples in the skill actually compile and work.
+
+**Workflow for updating skill code:**
+1. Make changes to code in `src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/` (or other locations with `skill-*` regions)
+2. Build and test the reference app: `dotnet build && dotnet test src/docs/reference-app/EmployeeManagement.sln`
+3. Run mdsnippets to extract and embed code: `mdsnippets` (from repository root)
+4. Commit the updated skill files (they now contain embedded code)
+5. Push changes
+
+**Code block categories in skill files:**
+| Category | Source | How to Update |
+|----------|--------|---------------|
+| Full compilable examples | MarkdownSnippets extraction | Edit reference-app code, run mdsnippets |
+| Anti-pattern examples | Hand-written in markdown | Edit markdown directly (intentionally wrong) |
+| Partial/illustrative | Hand-written in markdown | Edit markdown directly (incomplete by design) |
+
+**Region naming convention:**
+- `skill-*` prefix: Regions created specifically for skill examples
+- No prefix: Shared with docs (`docs/*.md` files)
+
+**Key files:**
+- `src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/` - Skill-specific code samples
+- `src/docs/reference-app/EmployeeManagement.Client.Blazor/Samples/Skill/` - Blazor-specific samples
+- `mdsnippets.json` - Configuration (includes `skills/RemoteFactory/` directory)
 
 ## Key Build Commands
 

@@ -10,6 +10,27 @@ Events are asynchronous operations that run independently of the caller:
 <a id='snippet-events-basic'></a>
 ```cs
 /// <summary>
+/// Notifies HR when a new employee is created.
+/// CancellationToken is required as the last parameter.
+/// </summary>
+[Event]
+public async Task NotifyHROfNewEmployee(
+    Guid employeeId,
+    string employeeName,
+    [Service] IEmailService emailService,
+    CancellationToken ct)
+{
+    await emailService.SendAsync(
+        "hr@company.com",
+        $"New Employee: {employeeName}",
+        $"Employee {employeeName} (ID: {employeeId}) has been added to the system.",
+        ct);
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Events/EmployeeEventHandlers.cs#L13-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-basic' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-basic-1'></a>
+```cs
+/// <summary>
 /// Employee aggregate demonstrating basic event pattern.
 /// </summary>
 [Factory]
@@ -48,7 +69,7 @@ public partial class EmployeeBasicEvent
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/BasicEventSamples.cs#L6-L45' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-basic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/BasicEventSamples.cs#L6-L45' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-basic-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Key characteristics:
@@ -104,6 +125,33 @@ public class EmployeeEventCaller
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Events/EventCallerSamples.cs#L6-L45' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-caller' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-caller-1'></a>
+```cs
+/// <summary>
+/// Event handler class demonstrating event delegate generation.
+/// Events are invoked as delegates injected via [Service].
+/// Naming convention: {HandlerClass}.{MethodName}Event
+/// </summary>
+[Factory]
+public partial class EventCallerHandlers
+{
+    /// <summary>
+    /// This generates a delegate: EventCallerHandlers.OnInsertEvent
+    /// The delegate can be injected via [Service] in other factory methods.
+    /// Usage: _ = onInsert(Id, FirstName); // Fire-and-forget
+    /// </summary>
+    [Event]
+    public async Task OnInsert(
+        Guid employeeId,
+        string employeeName,
+        [Service] IAuditLogService auditLog,
+        CancellationToken ct)
+    {
+        await auditLog.LogAsync("Insert", employeeId, "Employee", $"Created {employeeName}", ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L202-L226' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-caller-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The factory immediately returns without waiting.
@@ -189,72 +237,31 @@ Event methods must:
 <a id='snippet-events-requirements'></a>
 ```cs
 /// <summary>
-/// Demonstrates valid event method signatures.
+/// Event methods must have CancellationToken as the last parameter.
 /// </summary>
 [Factory]
-public partial class EmployeeEventSignatures
+public partial class EventRequirements
 {
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = "";
-
-    [Create]
-    public void Create(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-    }
-
     /// <summary>
-    /// Returns Task with service injection - standard pattern.
+    /// Required: CancellationToken as last parameter.
+    /// Events return void or Task.
     /// </summary>
     [Event]
-    public async Task ValidEvent(
-        Guid employeeId,
+    public async Task NotifyOnChange(
+        Guid entityId,
+        string changeType,
         [Service] IEmailService emailService,
-        CancellationToken ct)
+        CancellationToken ct)  // Required last parameter
     {
         await emailService.SendAsync(
-            "notifications@company.com",
-            "Event Notification",
-            $"Event triggered for {employeeId}",
-            ct);
-    }
-
-    /// <summary>
-    /// Returns void - generator converts to Task delegate.
-    /// </summary>
-    [Event]
-    public void VoidEvent(
-        Guid employeeId,
-        string message,
-        CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        // Sync operation completed
-        Console.WriteLine($"Void event for {employeeId}: {message}");
-    }
-
-    /// <summary>
-    /// Async Task with explicit await.
-    /// </summary>
-    [Event]
-    public async Task AsyncEvent(
-        Guid employeeId,
-        int delayMs,
-        [Service] IAuditLogService auditLog,
-        CancellationToken ct)
-    {
-        await Task.Delay(delayMs, ct);
-        await auditLog.LogAsync(
-            "AsyncEvent",
-            employeeId,
-            "Employee",
-            $"Completed after {delayMs}ms delay",
+            "notify@company.com",
+            "Entity Changed",
+            $"Entity {entityId} changed: {changeType}",
             ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventRequirementsSamples.cs#L6-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-requirements' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L8-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-requirements' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The generator converts void methods to Task automatically.
@@ -286,48 +293,28 @@ Each event gets a new DI scope:
 <a id='snippet-events-scope-isolation'></a>
 ```cs
 /// <summary>
-/// Demonstrates scope isolation for event execution.
+/// Events run in isolated DI scopes.
 /// </summary>
 [Factory]
-public partial class EmployeeScopeIsolation
+public partial class EventScopeIsolation
 {
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = "";
-
-    [Create]
-    public void Create(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-    }
-
     /// <summary>
-    /// Event runs in isolated DI scope with fresh service instances.
+    /// Each event handler gets its own DI scope.
+    /// Scoped services are independent from the calling scope.
     /// </summary>
     [Event]
     public async Task ProcessInIsolatedScope(
-        Guid employeeId,
-        string action,
-        // NEW scoped instance - independent of caller's scope
-        [Service] IEmployeeRepository repository,
-        // NEW scoped instance - separate from any other concurrent events
-        [Service] IAuditLogService auditLog,
+        Guid entityId,
+        [Service] IAuditLogService auditLog, // Scoped - isolated instance
         CancellationToken ct)
     {
-        // Repository is a fresh scoped instance
-        var employee = await repository.GetByIdAsync(employeeId, ct);
-
-        // Audit service is also a fresh scoped instance
-        await auditLog.LogAsync(
-            action,
-            employeeId,
-            "Employee",
-            $"Processed {employee?.FirstName ?? "unknown"} in isolated scope",
-            ct);
+        // This auditLog instance is separate from the caller's instance
+        // Changes do not affect the original operation's scope
+        await auditLog.LogAsync("Event", entityId, "Entity", "Processed in isolated scope", ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/ScopeIsolationSamples.cs#L6-L48' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-scope-isolation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L112-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-scope-isolation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Benefits:
@@ -341,59 +328,32 @@ Benefits:
 <a id='snippet-events-scope-example'></a>
 ```cs
 /// <summary>
-/// Employee with transactional independence between operation and event.
+/// Complete example of scope isolation with parent-child pattern.
+/// Event handlers run in isolated DI scopes.
 /// </summary>
 [Factory]
-public partial class EmployeeTransactional : IFactorySaveMeta
+public partial class IsolatedEventHandlers
 {
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = "";
-    public string Status { get; set; } = "Pending";
-    public DateTime? HireDate { get; private set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public void Create(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-        Status = "Pending";
-    }
-
     /// <summary>
-    /// Hires employee and saves to repository.
+    /// Event handler runs in isolated scope.
+    /// Each event handler gets its own DI scope.
     /// </summary>
-    [Remote, Insert]
-    public async Task HireEmployee(
-        [Service] IEmployeeRepository repository,
-        [Service] TransactionalEventHandlers.LogEmployeeHiredEvent logHired,
+    [Event]
+    public async Task OnEmployeeCreated(
+        Guid employeeId,
+        string employeeName,
+        [Service] IEmailService emailService,
         CancellationToken ct)
     {
-        Status = "Active";
-        HireDate = DateTime.UtcNow;
-
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = Name,
-            LastName = "",
-            Email = $"{Name.ToLowerInvariant()}@company.com",
-            Position = "New Hire",
-            HireDate = HireDate.Value
-        };
-
-        await repository.AddAsync(entity, ct);
-        await repository.SaveChangesAsync(ct);
-        IsNew = false;
-
-        // Fire event in separate transaction (fire-and-forget)
-        // If event fails, HireEmployee still succeeds
-        _ = logHired(Id, Name, HireDate.Value);
+        await emailService.SendAsync(
+            "hr@company.com",
+            "New Employee Created",
+            $"Employee {employeeName} (ID: {employeeId}) created.",
+            ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/ScopeIsolationSamples.cs#L81-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-scope-example' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L136-L162' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-scope-example' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 If the event fails:
@@ -409,54 +369,37 @@ Events receive the application shutdown token:
 <a id='snippet-events-cancellation'></a>
 ```cs
 /// <summary>
-/// Demonstrates proper cancellation token handling in events.
+/// Events respect cancellation during graceful shutdown.
 /// </summary>
 [Factory]
-public partial class EmployeeCancellation
+public partial class EventWithCancellation
 {
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = "";
-
-    [Create]
-    public void Create(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-    }
-
     /// <summary>
-    /// Event with proper cancellation handling for graceful shutdown.
+    /// Event handlers should check cancellation for long-running operations.
     /// </summary>
     [Event]
-    public async Task SendBatchNotifications(
-        Guid employeeId,
-        string[] recipients,
-        [Service] IEmailService emailService,
+    public async Task ProcessLongRunningTask(
+        Guid taskId,
+        [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // Check cancellation before starting work
+        // Check before starting
         ct.ThrowIfCancellationRequested();
 
-        foreach (var recipient in recipients)
-        {
-            // Check cancellation in long-running loops
-            if (ct.IsCancellationRequested)
-            {
-                Console.WriteLine($"Cancellation requested, stopping batch for {employeeId}");
-                break;
-            }
+        await auditLog.LogAsync("Start", taskId, "Task", "Starting long process", ct);
 
-            // Pass token to async operations for cancellation-aware execution
-            await emailService.SendAsync(
-                recipient,
-                $"Notification for Employee {employeeId}",
-                "This is an automated notification.",
-                ct);
+        // Simulate work - check periodically
+        for (int i = 0; i < 10; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            await Task.Delay(100, ct);
         }
+
+        await auditLog.LogAsync("Complete", taskId, "Task", "Finished long process", ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/CancellationSamples.cs#L6-L54' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L35-L66' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The CancellationToken:
@@ -468,6 +411,47 @@ The CancellationToken:
 
 <!-- snippet: events-graceful-shutdown -->
 <a id='snippet-events-graceful-shutdown'></a>
+```cs
+/// <summary>
+/// Events support graceful shutdown via IEventTracker.
+/// </summary>
+[Factory]
+public partial class ShutdownAwareEvents
+{
+    /// <summary>
+    /// Event respects server shutdown cancellation.
+    /// IEventTracker waits for pending events during shutdown.
+    /// </summary>
+    [Event]
+    public async Task ProcessBeforeShutdown(
+        Guid entityId,
+        [Service] IAuditLogService auditLog,
+        [Service] ILogger<ShutdownAwareEvents> logger,
+        CancellationToken ct)
+    {
+        try
+        {
+            // Long operation - check cancellation
+            ct.ThrowIfCancellationRequested();
+
+            await auditLog.LogAsync("Processing", entityId, "Entity", "Started", ct);
+
+            // Simulate work
+            await Task.Delay(500, ct);
+
+            await auditLog.LogAsync("Complete", entityId, "Entity", "Finished", ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Server is shutting down - log and exit gracefully
+            logger.LogWarning("Event processing cancelled due to shutdown: {EntityId}", entityId);
+            throw; // Re-throw to signal cancellation
+        }
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L303-L341' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-graceful-shutdown' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-graceful-shutdown-1'></a>
 ```cs
 /// <summary>
 /// Demonstrates ASP.NET Core event tracking configuration.
@@ -492,7 +476,7 @@ public static class EventGracefulShutdownConfig
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Events/GracefulShutdownSamples.cs#L7-L30' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-graceful-shutdown' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Events/GracefulShutdownSamples.cs#L7-L30' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-graceful-shutdown-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## EventTracker
@@ -544,12 +528,84 @@ public class EventTrackerAccessDemo
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Events/EventTrackerSamples.cs#L6-L45' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-access' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-eventtracker-access-1'></a>
+```cs
+/// <summary>
+/// Demonstrates injecting and using IEventTracker.
+/// </summary>
+public static class EventTrackerAccessSample
+{
+    /// <summary>
+    /// IEventTracker is registered automatically by AddNeatooRemoteFactory/AddNeatooAspNetCore.
+    /// </summary>
+    public static void AccessEventTracker(IServiceProvider serviceProvider)
+    {
+        // Resolve IEventTracker from DI
+        var eventTracker = serviceProvider.GetRequiredService<IEventTracker>();
+
+        // Check pending event count
+        var pendingCount = eventTracker.PendingCount;
+        Console.WriteLine($"Pending events: {pendingCount}");
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L343-L362' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-access-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-eventtracker-access-2'></a>
+```cs
+/// <summary>
+/// Accessing IEventTracker for pending event monitoring.
+/// </summary>
+public class EventTrackerAccessTests
+{
+    [Fact]
+    public void EventTracker_ResolvedFromDI()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+
+        // Act - IEventTracker is registered by AddNeatooRemoteFactory
+        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
+
+        // Assert
+        Assert.NotNull(eventTracker);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L560-L579' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-access-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Waiting for Events (Testing)
 
 <!-- snippet: events-eventtracker-wait -->
 <a id='snippet-events-eventtracker-wait'></a>
+```cs
+/// <summary>
+/// Demonstrates waiting for all events in tests.
+/// </summary>
+public static class EventTrackerWaitSample
+{
+    /// <summary>
+    /// Use WaitAllAsync to ensure all events complete before assertions.
+    /// Essential for testing event-based functionality.
+    /// </summary>
+    public static async Task WaitForEventsInTest(IServiceProvider serviceProvider)
+    {
+        var eventTracker = serviceProvider.GetRequiredService<IEventTracker>();
+
+        // Wait for all pending events to complete
+        // Optionally pass CancellationToken for timeout
+        await eventTracker.WaitAllAsync();
+
+        // With timeout:
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await eventTracker.WaitAllAsync(cts.Token);
+
+        // Now safe to assert event side effects
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L364-L389' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-wait' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-eventtracker-wait-1'></a>
 ```cs
 /// <summary>
 /// Test demonstrating event side effect verification.
@@ -579,13 +635,66 @@ public static class EventWaitTestSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/Events/EventTestingSamples.cs#L8-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-wait' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/Events/EventTestingSamples.cs#L8-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-wait-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-eventtracker-wait-2'></a>
+```cs
+/// <summary>
+/// Waiting for all events to complete.
+/// </summary>
+public class EventTrackerWaitTests
+{
+    [Fact]
+    public async Task WaitAllAsync_CompletesWhenAllEventsFinish()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
+
+        // Act - Wait for all pending events
+        var waitTask = eventTracker.WaitAllAsync();
+
+        // Assert - WaitAllAsync completes
+        await waitTask;
+        Assert.Equal(0, eventTracker.PendingCount);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L603-L624' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-wait-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Monitoring Pending Events
 
 <!-- snippet: events-eventtracker-count -->
 <a id='snippet-events-eventtracker-count'></a>
+```cs
+/// <summary>
+/// Demonstrates monitoring pending events with PendingCount.
+/// </summary>
+public static class EventTrackerCountSample
+{
+    /// <summary>
+    /// PendingCount useful for health checks and monitoring.
+    /// </summary>
+    public static void MonitorPendingEvents(
+        IEventTracker eventTracker,
+        ILogger logger)
+    {
+        // Check pending event count
+        var pendingCount = eventTracker.PendingCount;
+
+        // Log if too many events are queued
+        if (pendingCount > 100)
+        {
+            logger.LogWarning("High pending event count: {Count}", pendingCount);
+        }
+
+        // Use in health check endpoints
+        // return pendingCount < threshold ? HealthCheckResult.Healthy() : HealthCheckResult.Degraded();
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L391-L417' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-count' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-eventtracker-count-1'></a>
 ```cs
 /// <summary>
 /// Test demonstrating PendingCount monitoring.
@@ -616,7 +725,30 @@ public static class EventCountTestSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/Events/EventTestingSamples.cs#L38-L67' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-count' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/Events/EventTestingSamples.cs#L38-L67' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-count-1' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-eventtracker-count-2'></a>
+```cs
+/// <summary>
+/// Monitoring pending event count.
+/// </summary>
+public class EventTrackerCountTests
+{
+    [Fact]
+    public async Task PendingCount_AfterWaitAll_IsZero()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
+
+        // Act - Wait for any pending events
+        await eventTracker.WaitAllAsync();
+
+        // Assert - No pending events after wait
+        Assert.Equal(0, eventTracker.PendingCount);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L581-L601' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-eventtracker-count-2' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Error Handling
@@ -627,52 +759,42 @@ Event exceptions should be handled within the event method. Unhandled exceptions
 <a id='snippet-events-error-handling'></a>
 ```cs
 /// <summary>
-/// Demonstrates proper error handling in event methods.
+/// Event errors are logged but do not fail the parent operation.
 /// </summary>
 [Factory]
-public partial class EmployeeErrorHandling
+public partial class EventErrorHandling
 {
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = "";
-
-    [Create]
-    public void Create(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-    }
-
     /// <summary>
-    /// Event with internal error handling to preserve fire-and-forget semantics.
+    /// Exceptions in event handlers are logged but suppressed.
+    /// The calling operation continues successfully.
     /// </summary>
     [Event]
-    public async Task SendNotificationWithRetry(
-        Guid employeeId,
-        string recipientEmail,
+    public async Task RiskyNotification(
+        Guid entityId,
         [Service] IEmailService emailService,
-        [Service] ILogger<EmployeeErrorHandling> logger,
+        [Service] ILogger<EventErrorHandling> logger,
         CancellationToken ct)
     {
         try
         {
             await emailService.SendAsync(
-                recipientEmail,
-                $"Notification for {employeeId}",
-                "Important notification content.",
+                "invalid-email", // May fail
+                "Notification",
+                $"Event for {entityId}",
                 ct);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+#pragma warning disable CA1031 // Intentionally catching all exceptions in fire-and-forget event handlers
+        catch (Exception ex)
         {
-            // Log error but do NOT rethrow - fire-and-forget semantics
-            logger.LogError(ex,
-                "Failed to send notification for employee {EmployeeId} to {Recipient}",
-                employeeId,
-                recipientEmail);
+            // Log error but do not re-throw
+            // The parent operation already completed
+            logger.LogError(ex, "Failed to send notification for {EntityId}", entityId);
         }
+#pragma warning restore CA1031
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/ErrorHandlingSamples.cs#L7-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L164-L200' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The generated event delegate wraps execution:
@@ -714,6 +836,41 @@ Events integrate with ASP.NET Core hosting:
 <!-- snippet: events-aspnetcore -->
 <a id='snippet-events-aspnetcore'></a>
 ```cs
+/// <summary>
+/// Events with ASP.NET Core integration.
+/// </summary>
+[Factory]
+public partial class AspNetCoreEventHandlers
+{
+    /// <summary>
+    /// Event handler running in ASP.NET Core context.
+    /// Events run in isolated scopes with their own DI resolution.
+    /// </summary>
+    [Event]
+    public async Task OnEmployeeCreated(
+        Guid employeeId,
+        string employeeName,
+        [Service] IEmailService emailService,
+        [Service] Microsoft.Extensions.Logging.ILogger<AspNetCoreEventHandlers> logger,
+        CancellationToken ct)
+    {
+        var correlationId = CorrelationContext.CorrelationId;
+
+        logger.LogInformation(
+            "Processing employee created event. EmployeeId: {EmployeeId}, CorrelationId: {CorrelationId}",
+            employeeId, correlationId);
+
+        await emailService.SendAsync(
+            "hr@company.com",
+            $"New Employee: {employeeName}",
+            $"Employee {employeeName} (ID: {employeeId}) created.",
+            ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L335-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-aspnetcore' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-aspnetcore-1'></a>
+```cs
 // ASP.NET Core Integration for Events
 //
 // When you call services.AddNeatooAspNetCore(assembly), it registers:
@@ -739,7 +896,7 @@ Events integrate with ASP.NET Core hosting:
 // This ensures events complete before the application stops,
 // preventing data loss or incomplete operations.
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Events/AspNetCoreIntegrationSamples.cs#L3-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-aspnetcore' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Events/AspNetCoreIntegrationSamples.cs#L3-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-aspnetcore-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `EventTrackerHostedService` waits for pending events during shutdown:
@@ -762,6 +919,32 @@ This ensures events complete before the application stops.
 
 <!-- snippet: events-domain-events -->
 <a id='snippet-events-domain-events'></a>
+```cs
+/// <summary>
+/// Domain event for employee promotion.
+/// </summary>
+[Event]
+public async Task NotifyManagerOfPromotion(
+    Guid employeeId,
+    string employeeName,
+    string oldPosition,
+    string newPosition,
+    [Service] IEmailService emailService,
+    [Service] IEmployeeRepository repository,
+    CancellationToken ct)
+{
+    var employee = await repository.GetByIdAsync(employeeId, ct);
+    var departmentId = employee?.DepartmentId ?? Guid.Empty;
+
+    await emailService.SendAsync(
+        "manager@company.com",
+        $"Employee Promotion: {employeeName}",
+        $"{employeeName} has been promoted from {oldPosition} to {newPosition}. Department: {departmentId}",
+        ct);
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Events/EmployeeEventHandlers.cs#L33-L56' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-domain-events' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-domain-events-1'></a>
 ```cs
 /// <summary>
 /// Employee aggregate with domain event pattern for read model updates.
@@ -808,7 +991,7 @@ public partial class EmployeeDomainEvent : IFactorySaveMeta
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/DomainEventSamples.cs#L43-L88' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-domain-events' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/DomainEventSamples.cs#L43-L88' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-domain-events-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Notifications
@@ -817,53 +1000,75 @@ public partial class EmployeeDomainEvent : IFactorySaveMeta
 <a id='snippet-events-notifications'></a>
 ```cs
 /// <summary>
-/// Notification event handlers for various notification channels.
+/// Events are ideal for notification dispatch.
 /// </summary>
 [Factory]
 public partial class NotificationEvents
 {
-    [Create]
-    public void Create()
-    {
-    }
-
     /// <summary>
-    /// Sends email notification.
+    /// Fire-and-forget email notification.
+    /// Does not block the calling operation.
     /// </summary>
     [Event]
-    public async Task SendEmailNotification(
-        string to,
-        string subject,
-        string body,
+    public async Task SendWelcomeEmail(
+        string recipientEmail,
+        string employeeName,
         [Service] IEmailService emailService,
         CancellationToken ct)
     {
-        await emailService.SendAsync(to, subject, body, ct);
+        await emailService.SendAsync(
+            recipientEmail,
+            $"Welcome, {employeeName}!",
+            "You have been added to our employee management system.",
+            ct);
     }
 
     /// <summary>
-    /// Sends push notification (placeholder implementation).
+    /// Notify manager of team changes.
     /// </summary>
     [Event]
-    public Task SendPushNotification(
-        Guid userId,
-        string message,
+    public async Task NotifyManagerOfTeamChange(
+        string managerEmail,
+        string changeDescription,
+        [Service] IEmailService emailService,
         CancellationToken ct)
     {
-        ct.ThrowIfCancellationRequested();
-        // Placeholder: would integrate with push notification service
-        Console.WriteLine($"Push notification to {userId}: {message}");
-        return Task.CompletedTask;
+        await emailService.SendAsync(
+            managerEmail,
+            "Team Update",
+            changeDescription,
+            ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/NotificationSamples.cs#L6-L47' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-notifications' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L68-L110' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-notifications' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Audit Logging
 
 <!-- snippet: events-audit -->
 <a id='snippet-events-audit'></a>
+```cs
+/// <summary>
+/// Audit logging event for employee departure.
+/// </summary>
+[Event]
+public async Task LogEmployeeDeparture(
+    Guid employeeId,
+    string reason,
+    [Service] IAuditLogService auditLog,
+    CancellationToken ct)
+{
+    await auditLog.LogAsync(
+        "Departure",
+        employeeId,
+        "Employee",
+        $"Employee departed. Reason: {reason}",
+        ct);
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Events/EmployeeEventHandlers.cs#L58-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-audit' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-audit-1'></a>
 ```cs
 /// <summary>
 /// Audit event handler for fire-and-forget audit logging.
@@ -892,7 +1097,7 @@ public partial class AuditEvents
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/AuditSamples.cs#L6-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-audit' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/AuditSamples.cs#L6-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-audit-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Integration Events
@@ -901,55 +1106,44 @@ public partial class AuditEvents
 <a id='snippet-events-integration'></a>
 ```cs
 /// <summary>
-/// External API client interface for integration events.
-/// </summary>
-public interface IExternalApiClient
-{
-    Task NotifyAsync(Guid entityId, string eventType, CancellationToken ct = default);
-}
-
-/// <summary>
-/// Mock implementation for testing integration events.
-/// </summary>
-public class MockExternalApiClient : IExternalApiClient
-{
-    public List<NotificationRecord> Notifications { get; } = new();
-
-    public Task NotifyAsync(Guid entityId, string eventType, CancellationToken ct = default)
-    {
-        Notifications.Add(new NotificationRecord(entityId, eventType, DateTime.UtcNow));
-        return Task.CompletedTask;
-    }
-
-    public record NotificationRecord(Guid EntityId, string EventType, DateTime SentAt);
-}
-
-/// <summary>
-/// Integration event handler for external system notifications.
+/// Events for external system integration.
 /// </summary>
 [Factory]
 public partial class IntegrationEvents
 {
-    [Create]
-    public void Create()
-    {
-    }
-
     /// <summary>
-    /// Notifies external system of entity changes.
+    /// Sync employee to external HR system.
+    /// Fire-and-forget prevents blocking main operation.
     /// </summary>
     [Event]
-    public async Task NotifyExternalSystem(
-        Guid entityId,
-        string eventType,
-        [Service] IExternalApiClient apiClient,
+    public async Task SyncToExternalHR(
+        Guid employeeId,
+        string firstName,
+        string lastName,
+        [Service] IExternalHRSync hrSync,
+        [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        await apiClient.NotifyAsync(entityId, eventType, ct);
+        var success = await hrSync.SyncEmployeeAsync(employeeId, firstName, lastName, ct);
+
+        await auditLog.LogAsync(
+            success ? "SyncSuccess" : "SyncFailed",
+            employeeId,
+            "ExternalHR",
+            $"External HR sync: {(success ? "completed" : "failed")}",
+            ct);
     }
 }
+
+/// <summary>
+/// External HR system integration service.
+/// </summary>
+public interface IExternalHRSync
+{
+    Task<bool> SyncEmployeeAsync(Guid employeeId, string firstName, string lastName, CancellationToken ct);
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/IntegrationSamples.cs#L5-L54' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-integration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L228-L266' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-integration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Events vs Background Jobs
@@ -981,74 +1175,39 @@ Use Background Jobs when:
 <a id='snippet-events-authorization'></a>
 ```cs
 /// <summary>
-/// Authorization interface for employee operations.
-/// </summary>
-public interface IEmployeeEventAuth
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-    Task<bool> CanCreateAsync();
-}
-
-/// <summary>
-/// Authorization implementation checking user context.
-/// </summary>
-public class EmployeeEventAuth : IEmployeeEventAuth
-{
-    private readonly IUserContext _userContext;
-
-    public EmployeeEventAuth(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public Task<bool> CanCreateAsync()
-    {
-        return Task.FromResult(_userContext.IsAuthenticated);
-    }
-}
-
-/// <summary>
-/// Employee with authorization on operations but events bypass authorization.
+/// Events bypass authorization - they are internal operations, not user requests.
 /// </summary>
 [Factory]
-[AuthorizeFactory<IEmployeeEventAuth>]
-public partial class EmployeeWithAuthEvents
+public partial class EventWithoutAuthorization
 {
-    public Guid Id { get; private set; }
-    public string Name { get; set; } = "";
-
     /// <summary>
-    /// Create requires authorization - IEmployeeEventAuth.CanCreateAsync is called.
-    /// </summary>
-    [Create]
-    public void Create(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-    }
-
-    /// <summary>
-    /// Event BYPASSES authorization - always executes regardless of user permissions.
-    /// Events are internal operations triggered by application code, not user requests.
+    /// No [AuthorizeFactory] attribute - events don't check authorization.
+    /// Events run in isolated scope without user context.
     /// </summary>
     [Event]
-    public async Task NotifySystemAdmin(
-        Guid employeeId,
-        string message,
-        [Service] IEmailService emailService,
+    public async Task ProcessInternalOperation(
+        Guid entityId,
+        string operationType,
+        [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
-        // This event executes without authorization checks
-        // It runs in a separate scope with no user context
-        await emailService.SendAsync(
-            "admin@company.com",
-            "System Notification",
-            $"Employee {employeeId}: {message}",
+        // Events are triggered by application code, not user requests.
+        // Authorization is not applicable - there's no user context.
+        //
+        // If you need to restrict who can trigger the event,
+        // implement that check in the code that calls the event delegate,
+        // NOT in the event handler itself.
+
+        await auditLog.LogAsync(
+            operationType,
+            entityId,
+            "Internal",
+            $"Internal operation: {operationType}",
             ct);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/AuthorizationSamples.cs#L6-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-authorization' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/EventsSamples.cs#L268-L301' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-authorization' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Events execute in a separate scope with no user context. If you need authorization for event-triggered logic, implement it manually within the event method.
@@ -1106,6 +1265,45 @@ public static class EventTestingPatternSample
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/Events/EventTestingSamples.cs#L69-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-testing' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-testing-1'></a>
+```cs
+/// <summary>
+/// Testing event handlers via delegate injection.
+/// Events are fired via generated delegates, not factory methods.
+/// </summary>
+public class EventsTests
+{
+    [Fact]
+    public async Task EventDelegate_FiresAsynchronously()
+    {
+        // Arrange - Clear any previous data
+        InMemoryEmailService.Clear();
+
+        var scopes = TestClientServerContainers.CreateScopes();
+
+        // Events are invoked via delegates resolved from DI
+        // The delegate is: EmployeeEventHandlers.NotifyHROfNewEmployeeEvent
+        var notifyDelegate = scopes.local.ServiceProvider
+            .GetRequiredService<EmployeeManagement.Domain.Events.EmployeeEventHandlers.NotifyHROfNewEmployeeEvent>();
+
+        // Act - Invoke event delegate (fire-and-forget)
+        await notifyDelegate(
+            Guid.NewGuid(),
+            "John Doe");
+
+        // Assert - Wait for event to complete
+        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
+        await eventTracker.WaitAllAsync();
+
+        // Verify email was sent
+        var emails = InMemoryEmailService.GetSentEmails();
+        Assert.Contains(emails, e =>
+            e.Recipient == "hr@company.com" &&
+            e.Subject.Contains("John Doe", StringComparison.Ordinal));
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L371-L407' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-testing-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Testing multiple events:
@@ -1142,6 +1340,30 @@ public static class MultipleEventTestSample
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/Events/EventTestingSamples.cs#L102-L130' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-testing-latch' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-testing-latch-1'></a>
+```cs
+/// <summary>
+/// Testing events with completion latch.
+/// </summary>
+public class EventLatchTests
+{
+    [Fact]
+    public async Task WaitForEventCompletion()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
+
+        // Act - Fire event (would be done via delegate injection in real code)
+        // Wait for all pending events
+        await eventTracker.WaitAllAsync();
+
+        // Assert - All events completed
+        Assert.Equal(0, eventTracker.PendingCount);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L409-L430' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-testing-latch-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Correlation ID Tracking
@@ -1192,6 +1414,41 @@ public partial class EmployeeCorrelation
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Events/CorrelationSamples.cs#L7-L47' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-correlation' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-events-correlation-1'></a>
+```cs
+/// <summary>
+/// Events with correlation ID propagation.
+/// </summary>
+[Factory]
+public partial class CorrelatedEventHandlers
+{
+    /// <summary>
+    /// Access correlation ID in event handlers for distributed tracing.
+    /// </summary>
+    [Event]
+    public async Task LogWithCorrelation(
+        Guid entityId,
+        string action,
+        [Service] IAuditLogService auditLog,
+        [Service] Microsoft.Extensions.Logging.ILogger<CorrelatedEventHandlers> logger,
+        CancellationToken ct)
+    {
+        var correlationId = CorrelationContext.CorrelationId;
+
+        logger.LogInformation(
+            "Event processing with correlation {CorrelationId}",
+            correlationId);
+
+        await auditLog.LogAsync(
+            action,
+            entityId,
+            "Event",
+            $"Processed with correlation {correlationId}",
+            ct);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AuthorizationPolicySamples.cs#L369-L401' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-correlation-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Logs include:

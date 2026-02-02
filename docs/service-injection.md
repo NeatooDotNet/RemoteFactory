@@ -71,6 +71,76 @@ See [Client-Server Architecture](client-server-architecture.md) for the complete
 **Important**: Services injected via method parameters and stored in fields are **not serialized**. After crossing the client-server boundary, these fields will be null.
 
 <!-- snippet: serialization-caveat-broken -->
+<a id='snippet-serialization-caveat-broken'></a>
+```cs
+/// <summary>
+/// BROKEN PATTERN: Method-injected services stored in fields are lost after serialization.
+/// </summary>
+/// <remarks>
+/// This demonstrates what NOT to do. After the object crosses the client-server
+/// boundary, _lineFactory will be null because service references are not serialized.
+/// </remarks>
+[Factory]
+public partial class OrderLineListBroken : List<OrderLineBroken>
+{
+    private IOrderLineBrokenFactory? _lineFactory;  // Lost after serialization!
+
+    [Create]
+    public OrderLineListBroken()
+    {
+    }
+
+    [Fetch]
+    public void Fetch(
+        IEnumerable<(int id, string name, decimal price, int qty)> items,
+        [Service] IOrderLineBrokenFactory lineFactory)  // Method injection
+    {
+        _lineFactory = lineFactory;  // Stored in field
+        foreach (var item in items)
+        {
+            Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
+        }
+    }
+
+    public void AddLine(string name, decimal price, int qty)
+    {
+        // This fails after serialization - _lineFactory is null!
+        var line = _lineFactory!.Create(name, price, qty);
+        Add(line);
+    }
+}
+
+/// <summary>
+/// Child entity for the broken pattern sample.
+/// </summary>
+[Factory]
+public partial class OrderLineBroken
+{
+    public int Id { get; private set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public int Quantity { get; set; }
+
+    [Create]
+    public void Create(string name, decimal price, int qty)
+    {
+        Id = Random.Shared.Next(1, 10000);
+        Name = name;
+        Price = price;
+        Quantity = qty;
+    }
+
+    [Fetch]
+    public void Fetch(int id, string name, decimal price, int qty)
+    {
+        Id = id;
+        Name = name;
+        Price = price;
+        Quantity = qty;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/SerializationCaveatSamples.cs#L5-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-caveat-broken' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 When the client fetches an `OrderLineList` via a remote call:
@@ -83,6 +153,78 @@ When the client fetches an `OrderLineList` via a remote call:
 **Solution: Use constructor injection for services needed on both sides**
 
 <!-- snippet: serialization-caveat-fixed -->
+<a id='snippet-serialization-caveat-fixed'></a>
+```cs
+/// <summary>
+/// CORRECT PATTERN: Constructor-injected services survive serialization.
+/// </summary>
+/// <remarks>
+/// With constructor injection, RemoteFactory resolves IOrderLineFixedFactory
+/// from DI on both client and server. After deserialization, the factory
+/// is resolved from the client's container.
+/// </remarks>
+[Factory]
+public partial class OrderLineListFixed : List<OrderLineFixed>
+{
+    private readonly IOrderLineFixedFactory _lineFactory;  // Survives serialization!
+
+    [Create]
+    public OrderLineListFixed([Service] IOrderLineFixedFactory lineFactory)
+    {
+        _lineFactory = lineFactory;  // Constructor injection
+    }
+
+    [Fetch]
+    public void Fetch(
+        IEnumerable<(int id, string name, decimal price, int qty)> items,
+        [Service] IOrderLineFixedFactory lineFactory)
+    {
+        // Can use lineFactory here for populating
+        foreach (var item in items)
+        {
+            Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
+        }
+    }
+
+    public void AddLine(string name, decimal price, int qty)
+    {
+        // Works! _lineFactory is resolved from DI on both client and server
+        var line = _lineFactory.Create(name, price, qty);
+        Add(line);
+    }
+}
+
+/// <summary>
+/// Child entity for the fixed pattern sample.
+/// </summary>
+[Factory]
+public partial class OrderLineFixed
+{
+    public int Id { get; private set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public int Quantity { get; set; }
+
+    [Create]
+    public void Create(string name, decimal price, int qty)
+    {
+        Id = Random.Shared.Next(1, 10000);
+        Name = name;
+        Price = price;
+        Quantity = qty;
+    }
+
+    [Fetch]
+    public void Fetch(int id, string name, decimal price, int qty)
+    {
+        Id = id;
+        Name = name;
+        Price = price;
+        Quantity = qty;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/SerializationCaveatSamples.cs#L74-L143' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-caveat-fixed' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 With constructor injection:
@@ -292,12 +434,12 @@ public class EmployeeDatabase : IEmployeeDatabase
 /// Employee report demonstrating server-only service injection.
 /// </summary>
 [Factory]
-public partial class EmployeeReport
+public partial class ServiceEmployeeReport
 {
     public string QueryResult { get; private set; } = "";
 
     [Create]
-    public EmployeeReport()
+    public ServiceEmployeeReport()
     {
     }
 
@@ -396,6 +538,29 @@ public static class EmployeeServiceRegistration
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/ServiceRegistrationSamples.cs#L8-L22' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-matching-name' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-service-injection-matching-name-1'></a>
+```cs
+/// <summary>
+/// RegisterMatchingName pattern for interface/implementation pairs.
+/// </summary>
+public class MatchingNameTests
+{
+    [Fact]
+    public void RegisterMatchingName_ResolvesCorrectImplementation()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+
+        // Act - IEmployeeRepository -> InMemoryEmployeeRepository
+        var repository = scopes.local.ServiceProvider
+            .GetRequiredService<IEmployeeRepository>();
+
+        // Assert - Correct implementation resolved
+        Assert.IsType<InMemoryEmployeeRepository>(repository);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L501-L521' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-matching-name-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 This registers interfaces to their implementations with **Transient** lifetime:
@@ -553,6 +718,61 @@ public partial class EmployeeContext
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L296-L343' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-httpcontext' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-service-injection-httpcontext-1'></a>
+```cs
+/// <summary>
+/// Demonstrates IHttpContextAccessor injection for HTTP context access.
+/// Use this to access request headers, user claims, or other HTTP-specific data.
+/// </summary>
+[Factory]
+public partial class EmployeeHttpContext : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string FirstName { get; set; } = "";
+    public string CreatedBy { get; private set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create]
+    public EmployeeHttpContext() { Id = Guid.NewGuid(); }
+
+    /// <summary>
+    /// Access HTTP context information via IHttpContextAccessor.
+    /// Available only in server-side methods.
+    /// </summary>
+    [Remote, Insert]
+    public async Task Insert(
+        [Service] IEmployeeRepository repository,
+        [Service] Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor,
+        CancellationToken ct)
+    {
+        // Access HTTP context (null in non-HTTP scenarios like testing)
+        var httpContext = httpContextAccessor.HttpContext;
+
+        // Get user identity from claims
+        CreatedBy = httpContext?.User?.Identity?.Name ?? "system";
+
+        // Access request headers
+        var correlationId = httpContext?.Request?.Headers["X-Correlation-ID"].FirstOrDefault();
+
+        // Access other request information
+        var userAgent = httpContext?.Request?.Headers.UserAgent.FirstOrDefault();
+
+        var entity = new EmployeeEntity
+        {
+            Id = Id, FirstName = FirstName, LastName = "",
+            Email = $"{FirstName.ToUpperInvariant()}@example.com",
+            DepartmentId = Guid.Empty, Position = "New",
+            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
+        };
+
+        await repository.AddAsync(entity, ct);
+        await repository.SaveChangesAsync(ct);
+        IsNew = false;
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L451-L503' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-httpcontext-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IServiceProvider
@@ -620,6 +840,48 @@ public static class EmployeeServiceLifetimes
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/ServiceRegistrationSamples.cs#L24-L47' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-lifetimes' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-service-injection-lifetimes-1'></a>
+```cs
+/// <summary>
+/// Demonstrates service lifetime scoping.
+/// </summary>
+public class ServiceLifetimeTests
+{
+    [Fact]
+    public void ScopedServices_SameWithinScope()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+
+        // Act - Get service twice within same scope
+        var repo1 = scopes.local.ServiceProvider
+            .GetRequiredService<IEmployeeRepository>();
+        var repo2 = scopes.local.ServiceProvider
+            .GetRequiredService<IEmployeeRepository>();
+
+        // Assert - Same instance within scope
+        Assert.Same(repo1, repo2);
+    }
+
+    [Fact]
+    public void ScopedServices_DifferentAcrossScopes()
+    {
+        // Arrange - Create two separate scopes
+        var scopes1 = TestClientServerContainers.CreateScopes();
+        var scopes2 = TestClientServerContainers.CreateScopes();
+
+        // Act
+        var repo1 = scopes1.local.ServiceProvider
+            .GetRequiredService<IEmployeeRepository>();
+        var repo2 = scopes2.local.ServiceProvider
+            .GetRequiredService<IEmployeeRepository>();
+
+        // Assert - Different instances across scopes
+        Assert.NotSame(repo1, repo2);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L460-L499' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-lifetimes-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Singleton**: Same instance across all requests
@@ -712,6 +974,35 @@ public class TestUserContext : IUserContext
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/ServiceRegistrationSamples.cs#L49-L125' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing' title='Start of snippet'>anchor</a></sup>
+<a id='snippet-service-injection-testing-1'></a>
+```cs
+/// <summary>
+/// Testing service injection patterns.
+/// </summary>
+public class ServiceInjectionTests
+{
+    [Fact]
+    public void ServiceParameter_ResolvedFromDI()
+    {
+        // Arrange
+        var scopes = TestClientServerContainers.CreateScopes();
+
+        // Services are resolved from DI container
+        var repository = scopes.local.ServiceProvider
+            .GetRequiredService<IEmployeeRepository>();
+        var emailService = scopes.local.ServiceProvider
+            .GetRequiredService<IEmailService>();
+        var auditLog = scopes.local.ServiceProvider
+            .GetRequiredService<IAuditLogService>();
+
+        // Assert - Services are not null
+        Assert.NotNull(repository);
+        Assert.NotNull(emailService);
+        Assert.NotNull(auditLog);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L432-L458' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Client/Server Container Testing
@@ -719,11 +1010,98 @@ public class TestUserContext : IUserContext
 For integration tests that validate remote call serialization without HTTP, use the **ClientServerContainers** pattern:
 
 <!-- snippet: clientserver-container-setup -->
+<a id='snippet-clientserver-container-setup'></a>
+```cs
+/// <summary>
+/// Creates isolated client, server, and local containers for integration testing.
+/// </summary>
+public static class ClientServerContainers
+{
+    /// <summary>
+    /// Creates scopes for testing client-server communication.
+    /// </summary>
+    /// <remarks>
+    /// - Client (NeatooFactory.Remote): Remote stubs, calls server via serialization
+    /// - Server (NeatooFactory.Server): Full implementations, handles remote requests
+    /// - Local (NeatooFactory.Logical): Full implementation, no remote calls
+    /// </remarks>
+    public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes()
+    {
+        var serializationOptions = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
+
+        var serverCollection = new ServiceCollection();
+        var clientCollection = new ServiceCollection();
+        var localCollection = new ServiceCollection();
+
+        // Configure containers with appropriate mode
+        serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, typeof(Employee).Assembly);
+        clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, serializationOptions, typeof(Employee).Assembly);
+        localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, serializationOptions, typeof(Employee).Assembly);
+
+        // Server-only services (repositories, etc.)
+        serverCollection.AddInfrastructureServices();
+        localCollection.AddInfrastructureServices();
+
+        // Both need IHostApplicationLifetime for event tracking
+        serverCollection.AddSingleton<IHostApplicationLifetime, TestHostLifetime>();
+        clientCollection.AddSingleton<IHostApplicationLifetime, TestHostLifetime>();
+        localCollection.AddSingleton<IHostApplicationLifetime, TestHostLifetime>();
+
+        // Client needs server reference for remote calls
+        clientCollection.AddScoped<ServerServiceProvider>();
+        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
+
+        var serverProvider = serverCollection.BuildServiceProvider();
+        var clientProvider = clientCollection.BuildServiceProvider();
+        var localProvider = localCollection.BuildServiceProvider();
+
+        var serverScope = serverProvider.CreateScope();
+        var clientScope = clientProvider.CreateScope();
+        var localScope = localProvider.CreateScope();
+
+        // Link client to server
+        var serverRef = clientScope.ServiceProvider.GetRequiredService<ServerServiceProvider>();
+        serverRef.ServerProvider = serverScope.ServiceProvider;
+
+        return (serverScope, clientScope, localScope);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/ClientServerContainerSamples.cs#L11-L66' title='Snippet source file'>snippet source</a> | <a href='#snippet-clientserver-container-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Example test using local (Logical) mode:
 
 <!-- snippet: clientserver-container-usage -->
+<a id='snippet-clientserver-container-usage'></a>
+```cs
+/// <summary>
+/// Example tests using the ClientServerContainers pattern.
+/// </summary>
+public class ClientServerContainerTests
+{
+    [Fact]
+    public void Local_Create_WorksWithoutSerialization()
+    {
+        var (server, client, local) = ClientServerContainers.Scopes();
+
+        // Get factory from local container - no serialization
+        var factory = local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
+
+        // Create runs entirely locally (Logical mode)
+        var employee = factory.Create();
+
+        Assert.NotNull(employee);
+        Assert.NotEqual(Guid.Empty, employee.Id);
+        Assert.True(employee.IsNew);
+
+        server.Dispose();
+        client.Dispose();
+        local.Dispose();
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/ClientServerContainerSamples.cs#L68-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-clientserver-container-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Benefits of this pattern:
