@@ -4,10 +4,7 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Aggregates;
 
-#region getting-started-employee-model
-/// <summary>
-/// Employee aggregate root with full CRUD operations.
-/// </summary>
+// Employee aggregate root with factory methods
 [Factory]
 public partial class Employee : IFactorySaveMeta
 {
@@ -23,9 +20,7 @@ public partial class Employee : IFactorySaveMeta
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    /// <summary>
-    /// Creates a new Employee with a generated ID.
-    /// </summary>
+    // Constructor initializes defaults (outside snippet for brevity)
     [Create]
     public Employee()
     {
@@ -34,52 +29,41 @@ public partial class Employee : IFactorySaveMeta
         HireDate = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Fetches an existing Employee by ID.
-    /// </summary>
+    #region getting-started-employee-model
+    // [Remote] executes on server; [Service] injects from DI (not serialized)
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(id, ct);
+        var entity = await repo.GetByIdAsync(id, ct);
         if (entity == null) return false;
-
         MapFromEntity(entity);
         IsNew = false;
         return true;
     }
 
-    /// <summary>
-    /// Inserts a new Employee into the repository.
-    /// </summary>
+    // Save() routes to Insert/Update/Delete based on IsNew and IsDeleted
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
-        var entity = MapToEntity();
-        await repository.AddAsync(entity, ct);
-        await repository.SaveChangesAsync(ct);
+        await repo.AddAsync(MapToEntity(), ct);
+        await repo.SaveChangesAsync(ct);
         IsNew = false;
     }
 
-    /// <summary>
-    /// Updates an existing Employee in the repository.
-    /// </summary>
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
-        var entity = MapToEntity();
-        await repository.UpdateAsync(entity, ct);
-        await repository.SaveChangesAsync(ct);
+        await repo.UpdateAsync(MapToEntity(), ct);
+        await repo.SaveChangesAsync(ct);
     }
 
-    /// <summary>
-    /// Deletes the Employee from the repository.
-    /// </summary>
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
     {
-        await repository.DeleteAsync(Id, ct);
-        await repository.SaveChangesAsync(ct);
+        await repo.DeleteAsync(Id, ct);
+        await repo.SaveChangesAsync(ct);
     }
+    #endregion
 
     private void MapFromEntity(EmployeeEntity entity)
     {
@@ -114,4 +98,3 @@ public partial class Employee : IFactorySaveMeta
         return new PhoneNumber(parts[0], parts.Length > 1 ? parts[1] : "");
     }
 }
-#endregion

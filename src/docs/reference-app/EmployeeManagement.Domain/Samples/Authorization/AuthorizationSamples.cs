@@ -8,13 +8,14 @@ namespace EmployeeManagement.Domain.Samples.Authorization;
 // Authorization Interface and Implementation
 // ============================================================================
 
-#region authorization-interface
 /// <summary>
 /// Authorization interface for Employee operations.
 /// Methods with [AuthorizeFactory] control access to specific operations.
 /// </summary>
 public interface IEmployeeAuthorization
 {
+    #region authorization-interface
+    // [AuthorizeFactory] declares which operations this method controls
     [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
     bool CanCreate();
 
@@ -23,10 +24,9 @@ public interface IEmployeeAuthorization
 
     [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
     bool CanWrite();
+    #endregion
 }
-#endregion
 
-#region authorization-implementation
 /// <summary>
 /// Authorization rules for Employee operations with realistic HR domain logic.
 /// </summary>
@@ -39,37 +39,30 @@ public partial class EmployeeAuthorizationImpl : IEmployeeAuthorization
         _userContext = userContext;
     }
 
-    public bool CanCreate()
-    {
-        // Only authenticated users can create employees
-        return _userContext.IsAuthenticated;
-    }
+    #region authorization-implementation
+    // Inject services via constructor for authorization decisions
+    public bool CanCreate() => _userContext.IsAuthenticated;
 
-    public bool CanRead()
-    {
-        // Only authenticated users can view employee data
-        return _userContext.IsAuthenticated;
-    }
+    public bool CanRead() => _userContext.IsAuthenticated;
 
-    public bool CanWrite()
-    {
-        // Only HRManager or Admin can modify employee records
-        return _userContext.IsInRole("HRManager") || _userContext.IsInRole("Admin");
-    }
+    public bool CanWrite() =>
+        _userContext.IsInRole("HRManager") || _userContext.IsInRole("Admin");
+    #endregion
 }
-#endregion
 
 // ============================================================================
 // Employee Aggregate with Authorization Applied
 // ============================================================================
 
-#region authorization-apply
 /// <summary>
 /// Employee aggregate with authorization applied via AuthorizeFactory attribute.
 /// </summary>
+#region authorization-apply
+// Apply authorization interface to entity - all operations check IEmployeeAuthorization
 [Factory]
 [AuthorizeFactory<IEmployeeAuthorization>]
 public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
+#endregion
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
@@ -142,13 +135,11 @@ public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
         await repository.SaveChangesAsync(ct);
     }
 }
-#endregion
 
 // ============================================================================
 // Generated Authorization Checks - Consumer Example
 // ============================================================================
 
-#region authorization-generated
 /// <summary>
 /// Example showing how consumers use the generated factory's authorization methods.
 /// The CanCreate() and CanFetch() methods are generated based on [AuthorizeFactory] attributes.
@@ -162,17 +153,15 @@ public class EmployeeManagementService
         _employeeFactory = employeeFactory;
     }
 
+    #region authorization-generated
+    // Generated CanCreate()/CanFetch() methods check authorization before operations
     public AuthorizedEmployeeEntity? CreateNewEmployee()
     {
-        // Check authorization before attempting create
-        // CanCreate() is generated from [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
         if (!_employeeFactory.CanCreate().HasAccess)
-        {
-            return null; // User not authorized to create
-        }
-
+            return null;
         return _employeeFactory.Create();
     }
+    #endregion
 
     public async Task<AuthorizedEmployeeEntity?> GetEmployeeById(Guid employeeId)
     {
@@ -186,28 +175,25 @@ public class EmployeeManagementService
         return await _employeeFactory.Fetch(employeeId);
     }
 }
-#endregion
 
 // ============================================================================
 // Combined Authorization Flags
 // ============================================================================
 
-#region authorization-combined-flags
 /// <summary>
 /// Authorization interface with combined flags to reduce boilerplate.
 /// </summary>
 public interface IDepartmentAuthorization
 {
-    // Single method handles both Create and Fetch operations
+    #region authorization-combined-flags
+    // Bitwise OR combines multiple operations into single authorization check
     [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
     bool CanCreateOrFetch();
 
-    // Single method handles all write operations
-    [AuthorizeFactory(
-        AuthorizeFactoryOperation.Insert |
-        AuthorizeFactoryOperation.Update |
-        AuthorizeFactoryOperation.Delete)]
+    [AuthorizeFactory(AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Update
+                    | AuthorizeFactoryOperation.Delete)]
     bool CanWrite();
+    #endregion
 }
 
 /// <summary>
@@ -250,13 +236,11 @@ public partial class AuthorizedDepartment
         Id = Guid.NewGuid();
     }
 }
-#endregion
 
 // ============================================================================
 // Method-Level Authorization
 // ============================================================================
 
-#region authorization-method-level
 /// <summary>
 /// Authorization interface for basic read access.
 /// </summary>
@@ -310,10 +294,9 @@ public partial class EmployeeWithMethodAuth : IFactorySaveMeta
         return Task.FromResult(true);
     }
 
-    /// <summary>
-    /// Terminate employee - requires HRManager role in addition to class-level authorization.
-    /// Both checks must pass: IEmployeeReadAuthorization.CanRead() AND [AspAuthorize(Roles = "HRManager")].
-    /// </summary>
+    #region authorization-method-level
+    // [AspAuthorize] adds method-level auth on top of class-level [AuthorizeFactory]
+    // Both checks must pass: IEmployeeReadAuthorization AND HRManager role
     [Remote, Update]
     [AspAuthorize(Roles = "HRManager")]
     public Task Terminate(CancellationToken ct = default)
@@ -321,14 +304,13 @@ public partial class EmployeeWithMethodAuth : IFactorySaveMeta
         IsTerminated = true;
         return Task.CompletedTask;
     }
+    #endregion
 }
-#endregion
 
 // ============================================================================
 // ASP.NET Core Policy-Based Authorization - Applied to Factory Methods
 // ============================================================================
 
-#region authorization-policy-apply
 /// <summary>
 /// Salary information with policy-based authorization for sensitive data.
 /// </summary>
@@ -346,18 +328,17 @@ public partial class SalaryInfo
         EffectiveDate = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Basic salary fetch - requires authenticated user.
-    /// </summary>
+    #region authorization-policy-apply
+    // [AspAuthorize] applies ASP.NET Core policies to factory methods
     [Remote, Fetch]
     [AspAuthorize("RequireAuthenticated")]
     public Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
     {
         EmployeeId = employeeId;
         AnnualSalary = 75000m;
-        EffectiveDate = DateTime.UtcNow;
         return Task.FromResult(true);
     }
+    #endregion
 
     /// <summary>
     /// Fetch with full compensation details - requires Payroll access.
@@ -372,13 +353,11 @@ public partial class SalaryInfo
         return Task.FromResult(true);
     }
 }
-#endregion
 
 // ============================================================================
 // Multiple Policies
 // ============================================================================
 
-#region authorization-policy-multiple
 /// <summary>
 /// Payroll operations requiring multiple authorization policies.
 /// Both RequireAuthenticated AND RequirePayroll policies must be satisfied.
@@ -386,22 +365,20 @@ public partial class SalaryInfo
 [SuppressFactory]
 public static partial class PayrollOperations
 {
+    #region authorization-policy-multiple
+    // Multiple [AspAuthorize] - ALL policies must pass
     [Remote, Execute]
     [AspAuthorize("RequireAuthenticated")]
     [AspAuthorize("RequirePayroll")]
     public static Task _ProcessPayroll(Guid departmentId, DateTime payPeriodEnd, CancellationToken ct = default)
-    {
-        // Process payroll for all employees in department
-        return Task.CompletedTask;
-    }
+        => Task.CompletedTask;
+    #endregion
 }
-#endregion
 
 // ============================================================================
 // Roles-Based Authorization
 // ============================================================================
 
-#region authorization-policy-roles
 /// <summary>
 /// Time off request with role-based authorization.
 /// </summary>
@@ -420,9 +397,8 @@ public partial class TimeOffRequest
         Id = Guid.NewGuid();
     }
 
-    /// <summary>
-    /// Any employee, HR, or admin can view time off requests.
-    /// </summary>
+    #region authorization-policy-roles
+    // Roles property - any listed role can access (comma-separated)
     [Remote, Fetch]
     [AspAuthorize(Roles = "Employee,HRManager,Admin")]
     public Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
@@ -430,6 +406,7 @@ public partial class TimeOffRequest
         Id = requestId;
         return Task.FromResult(true);
     }
+    #endregion
 }
 
 /// <summary>
@@ -458,13 +435,11 @@ public static partial class TimeOffOperations
         return Task.CompletedTask;
     }
 }
-#endregion
 
 // ============================================================================
 // Combining Both Approaches
 // ============================================================================
 
-#region authorization-combined
 /// <summary>
 /// Authorization interface for performance review access.
 /// </summary>
@@ -494,15 +469,25 @@ public partial class PerformanceReviewAuthorizationImpl : IPerformanceReviewAuth
 
 /// <summary>
 /// Performance review with combined custom and ASP.NET Core authorization.
-/// Execution order: 1) [AuthorizeFactory] checks run first (custom domain auth)
-///                  2) [AspAuthorize] checks run second (ASP.NET Core policies)
-///                  3) If both pass, domain method executes
 /// </summary>
+#region authorization-combined
+// Combine [AuthorizeFactory] (class-level) with [AspAuthorize] (method-level)
+// Execution order: AuthorizeFactory checks first, then AspAuthorize
 [Factory]
 [AuthorizeFactory<IPerformanceReviewAuthorization>]
 public partial class PerformanceReview
 {
     public Guid Id { get; private set; }
+
+    [Remote, Fetch]
+    [AspAuthorize("RequireAuthenticated")]
+    public Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
+    {
+        Id = reviewId;
+        return Task.FromResult(true);
+    }
+#endregion
+
     public Guid EmployeeId { get; set; }
     public DateTime ReviewDate { get; set; }
     public int Rating { get; set; }
@@ -513,14 +498,6 @@ public partial class PerformanceReview
     {
         Id = Guid.NewGuid();
         ReviewDate = DateTime.UtcNow;
-    }
-
-    [Remote, Fetch]
-    [AspAuthorize("RequireAuthenticated")]
-    public Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
-    {
-        Id = reviewId;
-        return Task.FromResult(true);
     }
 }
 
@@ -540,13 +517,11 @@ public static partial class PerformanceReviewOperations
         return Task.CompletedTask;
     }
 }
-#endregion
 
 // ============================================================================
 // NotAuthorizedException Handling
 // ============================================================================
 
-#region authorization-exception
 /// <summary>
 /// Demonstrates exception handling pattern for authorization failures.
 /// </summary>
@@ -561,30 +536,20 @@ public class EmployeeAuthorizationHandler
 
     public async Task HandleNotAuthorizedException()
     {
+        #region authorization-exception
+        // Save() throws NotAuthorizedException when write access denied
         try
         {
             var employee = _employeeFactory.Create();
-            if (employee == null)
-            {
-                // Create returned null - authorization failed
-                return;
-            }
-
-            employee.FirstName = "John";
-            employee.LastName = "Doe";
-
-            // Save throws NotAuthorizedException if user lacks write permission
-            await _employeeFactory.Save(employee);
+            await _employeeFactory.Save(employee!);
         }
         catch (NotAuthorizedException ex)
         {
-            // Handle authorization failure
-            // ex.Message contains the failure reason
             Console.WriteLine($"Authorization failed: {ex.Message}");
         }
+        #endregion
     }
 }
-#endregion
 
 // ============================================================================
 // Events - Bypass Authorization
@@ -598,7 +563,6 @@ public interface INotificationService
     Task SendNotificationAsync(string recipient, string message, CancellationToken ct = default);
 }
 
-#region authorization-events
 /// <summary>
 /// Employee lifecycle events that bypass authorization.
 /// Events are for internal operations like notifications and audit logging
@@ -615,30 +579,22 @@ public partial class EmployeeLifecycleEvents
         Id = Guid.NewGuid();
     }
 
-    /// <summary>
-    /// Notify HR when an employee is terminated.
-    /// Events bypass authorization - this runs regardless of user permissions.
-    /// </summary>
+    #region authorization-events
+    // [Event] methods bypass authorization - always execute
     [Event]
     public async Task NotifyHROnTermination(
-        Guid employeeId,
-        string reason,
-        [Service] INotificationService notificationService,
-        CancellationToken ct)
+        Guid employeeId, string reason,
+        [Service] INotificationService notificationService, CancellationToken ct)
     {
-        await notificationService.SendNotificationAsync(
-            "hr@company.com",
-            $"Employee {employeeId} terminated. Reason: {reason}",
-            ct);
+        await notificationService.SendNotificationAsync("hr@company.com", $"Terminated: {employeeId}", ct);
     }
+    #endregion
 }
-#endregion
 
 // ============================================================================
 // Testing Authorization
 // ============================================================================
 
-#region authorization-testing
 /// <summary>
 /// Demonstrates how to test authorization using the generated factory methods.
 /// Test setup would configure IUserContext with appropriate user state.
@@ -652,22 +608,14 @@ public class EmployeeAuthorizationTests
         _factory = factory;
     }
 
-    /// <summary>
-    /// Test that an authorized user can create employees.
-    /// Test setup configures IUserContext with IsAuthenticated = true.
-    /// </summary>
+    #region authorization-testing
+    // Test authorization by injecting mock IUserContext and calling Can* methods
     public void AuthorizedUser_CanCreate()
     {
-        // CanCreate() checks IEmployeeAuthorization.CanCreate()
         var canCreate = _factory.CanCreate().HasAccess;
-
-        if (canCreate)
-        {
-            var employee = _factory.Create();
-            // Verify employee was created
-            System.Diagnostics.Debug.Assert(employee != null);
-        }
+        System.Diagnostics.Debug.Assert(canCreate);
     }
+    #endregion
 
     /// <summary>
     /// Test that unauthorized users cannot delete employees.
@@ -683,13 +631,11 @@ public class EmployeeAuthorizationTests
         System.Diagnostics.Debug.Assert(!canDelete);
     }
 }
-#endregion
 
 // ============================================================================
 // Context-Specific Authorization
 // ============================================================================
 
-#region authorization-context
 /// <summary>
 /// Authorization interface for sensitive employee data.
 /// </summary>
@@ -711,24 +657,14 @@ public partial class EmployeeDataAuthorizationImpl : IEmployeeDataAuthorization
         _userContext = userContext;
     }
 
+    #region authorization-context
+    // Inject any service needed for authorization decisions (user context, repos, etc.)
     public bool CanRead()
     {
-        // Access user context for authorization decisions
-        var userId = _userContext.UserId;
-        var username = _userContext.Username;
-        var roles = _userContext.Roles;
-
-        // Must be authenticated
-        if (!_userContext.IsAuthenticated)
-        {
-            return false;
-        }
-
-        // Only HR staff can access sensitive personal data
-        return _userContext.IsInRole("HRStaff") ||
-               _userContext.IsInRole("HRManager") ||
-               _userContext.IsInRole("Admin");
+        if (!_userContext.IsAuthenticated) return false;
+        return _userContext.IsInRole("HRStaff") || _userContext.IsInRole("Admin");
     }
+    #endregion
 }
 
 /// <summary>
@@ -760,4 +696,3 @@ public partial class EmployeePersonalData
         return Task.FromResult(true);
     }
 }
-#endregion

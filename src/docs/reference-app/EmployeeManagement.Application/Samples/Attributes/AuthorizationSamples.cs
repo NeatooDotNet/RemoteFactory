@@ -3,10 +3,8 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Application.Samples.Attributes;
 
-#region attributes-authorizefactory-generic
-/// <summary>
-/// Authorization interface for Employee operations.
-/// </summary>
+// Full implementations for authorization - see MinimalAttributesSamples.cs for doc snippets
+
 public interface IEmployeeAuthorization
 {
     [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
@@ -16,9 +14,6 @@ public interface IEmployeeAuthorization
     bool CanWrite();
 }
 
-/// <summary>
-/// Implementation of Employee authorization rules.
-/// </summary>
 public class EmployeeAuthorizationImpl : IEmployeeAuthorization
 {
     private readonly IUserContext _userContext;
@@ -39,9 +34,6 @@ public class EmployeeAuthorizationImpl : IEmployeeAuthorization
     }
 }
 
-/// <summary>
-/// Employee aggregate with class-level authorization.
-/// </summary>
 [Factory]
 [AuthorizeFactory<IEmployeeAuthorization>]
 public partial class EmployeeWithAuth
@@ -71,12 +63,7 @@ public partial class EmployeeWithAuth
         }
     }
 }
-#endregion
 
-#region attributes-authorizefactory-interface
-/// <summary>
-/// Authorization interface with operation-specific methods.
-/// </summary>
 public interface IDepartmentAuthorization
 {
     [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
@@ -92,9 +79,6 @@ public interface IDepartmentAuthorization
     bool CanDelete(Guid departmentId);
 }
 
-/// <summary>
-/// Implementation with fine-grained authorization per operation.
-/// </summary>
 public class DepartmentAuthorizationImpl : IDepartmentAuthorization
 {
     private readonly IUserContext _userContext;
@@ -124,4 +108,3 @@ public class DepartmentAuthorizationImpl : IDepartmentAuthorization
         return _userContext.IsInRole("Administrator");
     }
 }
-#endregion

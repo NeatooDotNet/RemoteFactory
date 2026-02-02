@@ -37,38 +37,6 @@ public static class BasicSetup
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L8-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-aspnetcore-basic-setup-1'></a>
-```cs
-/// <summary>
-/// Complete server configuration in a single Program.cs pattern.
-/// </summary>
-public static class BasicSetupSample
-{
-    public static void ConfigureServices(WebApplicationBuilder builder)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        var domainAssembly = typeof(Employee).Assembly;
-
-        // Register RemoteFactory with ASP.NET Core integration
-        builder.Services.AddNeatooAspNetCore(
-            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-            domainAssembly);
-
-        // Register factory interface -> implementation mappings
-        builder.Services.RegisterMatchingName(domainAssembly);
-
-        // Register infrastructure services
-        builder.Services.AddInfrastructureServices();
-    }
-
-    public static void ConfigureApp(WebApplication app)
-    {
-        // Configure the /api/neatoo endpoint
-        app.UseNeatoo();
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L17-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Multiple Assemblies
@@ -78,54 +46,19 @@ If `[Factory]` types are in multiple assemblies:
 <!-- snippet: aspnetcore-multi-assembly -->
 <a id='snippet-aspnetcore-multi-assembly'></a>
 ```cs
-/// <summary>
-/// Registering multiple domain assemblies.
-/// </summary>
 public static class MultiAssemblySample
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        // Register factories from multiple assemblies
-        // Each assembly can contain domain models with [Factory] attributes
+        // Register factories from multiple domain assemblies
         services.AddNeatooAspNetCore(
-            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-            typeof(Employee).Assembly           // EmployeeManagement.Domain
-            // , typeof(OtherModel).Assembly    // Other domain assemblies
+            typeof(Employee).Assembly
+            // , typeof(OtherDomain.Entity).Assembly
         );
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L279-L296' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-aspnetcore-multi-assembly-1'></a>
-```cs
-public static class MultiAssemblySample
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        // Primary domain assembly
-        var employeeDomainAssembly = typeof(Employee).Assembly;
-
-        // Additional assemblies containing [Factory] types:
-        // var hrDomainAssembly = typeof(HR.Domain.HrEntity).Assembly;
-        // var payrollDomainAssembly = typeof(Payroll.Domain.PayrollEntity).Assembly;
-
-        // Register all assemblies with RemoteFactory
-        services.AddNeatooAspNetCore(
-            employeeDomainAssembly
-            // hrDomainAssembly,
-            // payrollDomainAssembly
-        );
-
-        // Auto-register services from all assemblies
-        services.RegisterMatchingName(
-            employeeDomainAssembly
-            // hrDomainAssembly,
-            // payrollDomainAssembly
-        );
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/ServiceRegistrationSamples.cs#L37-L64' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/ServiceRegistrationSamples.cs#L22-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### CORS Configuration (for Blazor WASM)
@@ -139,26 +72,13 @@ public static class CorsConfigurationSample
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Configure default CORS policy
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
-                policy.WithOrigins(
-                        "http://localhost:5001",  // Development
-                        "https://myapp.example.com" // Production
-                    )
+                policy.WithOrigins("https://client.example.com")
                     .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials(); // Required for auth cookies
-            });
-
-            // Named policy with specific headers for Neatoo API
-            options.AddPolicy("NeatooApi", policy =>
-            {
-                policy.WithOrigins("http://localhost:5001")
-                    .WithHeaders("Content-Type", "X-Correlation-Id")
-                    .WithMethods("POST");
+                    .AllowAnyMethod();
             });
         });
 
@@ -166,44 +86,14 @@ public static class CorsConfigurationSample
 
         var app = builder.Build();
 
-        // CORS must come before UseNeatoo
-        app.UseCors();
+        app.UseCors();    // CORS must be before UseNeatoo
         app.UseNeatoo();
 
         app.Run();
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L7-L48' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-aspnetcore-cors-1'></a>
-```cs
-/// <summary>
-/// CORS configuration for Blazor WASM clients.
-/// </summary>
-public static class CorsSample
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        services.AddCors(options =>
-        {
-            options.AddDefaultPolicy(policy =>
-            {
-                policy.AllowAnyOrigin()    // Or WithOrigins("https://client.example.com")
-                      .AllowAnyMethod()
-                      .AllowAnyHeader();
-            });
-        });
-    }
-
-    public static void ConfigureApp(WebApplication app)
-    {
-        // CORS must be before UseNeatoo for cross-origin requests
-        app.UseCors();
-        app.UseNeatoo();
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCoreSamples.cs#L354-L380' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L6-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ---
@@ -213,46 +103,17 @@ public static class CorsSample
 <!-- snippet: getting-started-client-program -->
 <a id='snippet-getting-started-client-program'></a>
 ```cs
-// Configure RemoteFactory for Remote (client) mode
-var domainAssembly = typeof(Employee).Assembly;
-
+// Register RemoteFactory for client mode with domain assembly
 builder.Services.AddNeatooRemoteFactory(
     NeatooFactory.Remote,
     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    domainAssembly);
+    typeof(Employee).Assembly);
 
-// Register the keyed HttpClient for RemoteFactory remote calls
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
-{
-    return new HttpClient { BaseAddress = new Uri(serverBaseAddress) };
-});
+// Register HttpClient for remote calls to server
+builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
+    (sp, key) => new HttpClient { BaseAddress = new Uri(serverBaseAddress) });
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L14-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-getting-started-client-program-1'></a>
-```cs
-public static class ClientProgram
-{
-    public static async Task ConfigureClient(string[] args, string serverBaseAddress)
-    {
-        var builder = WebAssemblyHostBuilder.CreateDefault(args);
-
-        // Configure RemoteFactory for Remote (client) mode with domain assembly
-        builder.Services.AddNeatooRemoteFactory(
-            NeatooFactory.Remote,
-            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-            typeof(EmployeeModel).Assembly);
-
-        // Register keyed HttpClient for RemoteFactory remote calls
-        builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
-        {
-            return new HttpClient { BaseAddress = new Uri(serverBaseAddress) };
-        });
-
-        await builder.Build().RunAsync();
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Samples/ClientProgramSample.cs#L7-L29' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L14-L24' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [assembly: FactoryMode] for Client Assemblies
@@ -262,30 +123,13 @@ Add to your client project to generate only remote stubs (no local execution cod
 <!-- snippet: attributes-factorymode -->
 <a id='snippet-attributes-factorymode'></a>
 ```cs
-// Assembly-level factory mode configuration examples:
-//
-// Server assembly (default mode):
-// [assembly: FactoryMode(FactoryMode.Full)]
-// - Generates local and remote execution paths
-// - Use in server/API projects
-//
-// Client assembly (remote-only mode):
-// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
-// - Generates HTTP stubs only, no local execution
-// - Use in Blazor WebAssembly and other client projects
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L6-L18' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factorymode' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-attributes-factorymode-1'></a>
-```cs
-// Full mode (default): Generate both local methods and remote stubs
-// Use in shared domain assemblies that can run on both client and server
-[assembly: FactoryMode(FactoryModeOption.Full)]
+// Full mode (default): generates local and remote code
+// [assembly: FactoryMode(FactoryModeOption.Full)]
 
-// RemoteOnly mode: Generate HTTP stubs only
-// Use in client-only assemblies (e.g., Blazor WASM)
+// RemoteOnly mode: generates HTTP stubs only (use in Blazor WASM)
 // [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L5-L15' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factorymode-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L5-L11' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factorymode' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Modes:**

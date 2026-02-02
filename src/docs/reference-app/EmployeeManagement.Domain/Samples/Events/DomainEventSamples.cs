@@ -3,47 +3,24 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Events;
 
-/// <summary>
-/// Event handlers for domain events.
-/// </summary>
+// Event handler for domain events - region removed (using events-domain-events in EmployeeEventHandlers.cs)
 [Factory]
 public partial class DomainEventHandlers
 {
     [Create]
-    public void Create()
-    {
-    }
+    public void Create() { }
 
-    /// <summary>
-    /// Domain event handler that updates read model or projection.
-    /// </summary>
     [Event]
-    public async Task OnEmployeeActivated(
-        Guid employeeId,
-        string employeeName,
-        [Service] IEmployeeRepository repository,
-        [Service] IAuditLogService auditLog,
-        CancellationToken ct)
+    public async Task OnEmployeeActivated(Guid employeeId, string employeeName,
+        [Service] IEmployeeRepository repository, [Service] IAuditLogService auditLog, CancellationToken ct)
     {
-        // Update read model/projection in isolated scope
         var employee = await repository.GetByIdAsync(employeeId, ct);
         if (employee != null)
-        {
-            // Update any projections or read models
-            await auditLog.LogAsync(
-                "Activated",
-                employeeId,
-                "Employee",
-                $"Employee {employeeName} is now active",
-                ct);
-        }
+            await auditLog.LogAsync("Activated", employeeId, "Employee", $"{employeeName} active", ct);
     }
 }
 
-#region events-domain-events
-/// <summary>
-/// Employee aggregate with domain event pattern for read model updates.
-/// </summary>
+// Aggregate with domain event pattern - full class needed for compilation/tests
 [Factory]
 public partial class EmployeeDomainEvent : IFactorySaveMeta
 {
@@ -54,24 +31,13 @@ public partial class EmployeeDomainEvent : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public void Create(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-        Status = "Pending";
-    }
+    public void Create(string name) { Id = Guid.NewGuid(); Name = name; Status = "Pending"; }
 
-    /// <summary>
-    /// Activates the employee and triggers domain event.
-    /// </summary>
     [Remote, Update]
-    public async Task Activate(
-        [Service] IEmployeeRepository repository,
-        [Service] DomainEventHandlers.EmployeeActivatedEvent onActivated,
-        CancellationToken ct)
+    public async Task Activate([Service] IEmployeeRepository repository,
+        [Service] DomainEventHandlers.EmployeeActivatedEvent onActivated, CancellationToken ct)
     {
         Status = "Active";
-
         var entity = await repository.GetByIdAsync(Id, ct);
         if (entity != null)
         {
@@ -80,9 +46,6 @@ public partial class EmployeeDomainEvent : IFactorySaveMeta
             await repository.SaveChangesAsync(ct);
         }
         IsNew = false;
-
-        // Fire domain event for read model update
-        _ = onActivated(Id, Name);
+        _ = onActivated(Id, Name); // Fire domain event
     }
 }
-#endregion

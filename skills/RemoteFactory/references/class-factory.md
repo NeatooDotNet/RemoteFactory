@@ -210,36 +210,13 @@ Use `[SuppressFactory]` to prevent factory generation on derived classes that in
 <!-- snippet: attributes-suppressfactory -->
 <a id='snippet-attributes-suppressfactory'></a>
 ```cs
-/// <summary>
-/// Base class with factory generation.
-/// </summary>
 [Factory]
-public partial class BaseEmployeeEntity
-{
-    public Guid Id { get; protected set; }
-    public string Name { get; set; } = "";
+public partial class BaseEntity { }
 
-    [Create]
-    public BaseEmployeeEntity()
-    {
-        Id = Guid.NewGuid();
-    }
-}
-
-/// <summary>
-/// [SuppressFactory] prevents factory generation for derived class.
-/// Use when base class has [Factory] but derived should not.
-/// </summary>
-[SuppressFactory]
-public partial class InternalEmployeeEntity : BaseEmployeeEntity
-{
-    public string InternalCode { get; set; } = "";
-
-    // No factory generated for this class
-    // Must be created via base factory or manually
-}
+[SuppressFactory]  // Prevents factory generation on derived class
+public partial class InternalEntity : BaseEntity { }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AttributesSamples.cs#L26-L55' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L19-L25' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Use when:**

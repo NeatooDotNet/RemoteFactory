@@ -5,61 +5,49 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Infrastructure.Samples;
 
-#region service-injection-matching-name
 /// <summary>
 /// Service registration using the RegisterMatchingName convention.
 /// </summary>
 public static class EmployeeServiceRegistration
 {
+    #region service-injection-matching-name
+    // Convention: IName -> Name (Transient lifetime)
     public static void ConfigureServices(IServiceCollection services)
     {
-        // RegisterMatchingName registers interfaces to their implementations
-        // using the naming convention: IEmployeeRepository -> EmployeeRepository
-        // All matches are registered with Transient lifetime
         services.RegisterMatchingName(typeof(IEmployeeRepository).Assembly);
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-lifetimes
 /// <summary>
 /// Service registration demonstrating different lifetimes.
 /// </summary>
-/// <remarks>
-/// - Singleton: same instance across all requests, use for caches/configuration
-/// - Scoped: same instance within a request, use for DbContext/unit of work
-/// - Transient: new instance each resolution
-/// </remarks>
 public static class EmployeeServiceLifetimes
 {
+    #region service-injection-lifetimes
+    // Standard ASP.NET Core lifetimes work with [Service] injection
     public static void ConfigureServices(IServiceCollection services)
     {
-        // Singleton: same instance for entire application lifetime
-        services.AddSingleton<ISalaryCalculator, SalaryCalculator>();
-
-        // Scoped: same instance within a single request
-        services.AddScoped<IAuditContext, AuditContext>();
-
-        // Transient: new instance each time requested
-        services.AddTransient<INotificationService, NotificationService>();
+        services.AddSingleton<ISalaryCalculator, SalaryCalculator>();  // App lifetime
+        services.AddScoped<IAuditContext, AuditContext>();             // Request lifetime
+        services.AddTransient<INotificationService, NotificationService>(); // Per-resolution
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-testing
 /// <summary>
 /// Test service registration for unit and integration tests.
 /// </summary>
 public static class EmployeeTestServices
 {
-    /// <summary>
-    /// Register test doubles instead of production services.
-    /// </summary>
+    #region service-injection-testing
+    // Register test doubles for unit/integration tests
     public static void ConfigureTestServices(IServiceCollection services)
     {
         services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
         services.AddScoped<IUserContext, TestUserContext>();
     }
+    #endregion
 }
 
 /// <summary>
@@ -75,16 +63,11 @@ public class InMemoryEmployeeRepository : IEmployeeRepository
         return Task.FromResult(employee);
     }
 
-    public Task<List<EmployeeEntity>> GetAllAsync(CancellationToken ct = default)
-    {
-        return Task.FromResult(_employees.Values.ToList());
-    }
+    public Task<List<EmployeeEntity>> GetAllAsync(CancellationToken ct = default) =>
+        Task.FromResult(_employees.Values.ToList());
 
-    public Task<List<EmployeeEntity>> GetByDepartmentIdAsync(Guid departmentId, CancellationToken ct = default)
-    {
-        var employees = _employees.Values.Where(e => e.DepartmentId == departmentId).ToList();
-        return Task.FromResult(employees);
-    }
+    public Task<List<EmployeeEntity>> GetByDepartmentIdAsync(Guid departmentId, CancellationToken ct = default) =>
+        Task.FromResult(_employees.Values.Where(e => e.DepartmentId == departmentId).ToList());
 
     public Task AddAsync(EmployeeEntity entity, CancellationToken ct = default)
     {
@@ -104,10 +87,7 @@ public class InMemoryEmployeeRepository : IEmployeeRepository
         return Task.CompletedTask;
     }
 
-    public Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        return Task.CompletedTask;
-    }
+    public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
 }
 
 /// <summary>
@@ -119,7 +99,5 @@ public class TestUserContext : IUserContext
     public string Username { get; set; } = "TestUser";
     public IReadOnlyList<string> Roles { get; set; } = new[] { "User" };
     public bool IsAuthenticated { get; set; } = true;
-
     public bool IsInRole(string role) => Roles.Contains(role);
 }
-#endregion

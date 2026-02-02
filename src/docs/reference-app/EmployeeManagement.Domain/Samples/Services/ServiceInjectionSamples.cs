@@ -3,7 +3,6 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Services;
 
-#region service-injection-basic
 /// <summary>
 /// Employee aggregate demonstrating basic [Service] injection.
 /// </summary>
@@ -20,25 +19,20 @@ public partial class EmployeeBasicService
         Id = Guid.NewGuid();
     }
 
-    /// <summary>
-    /// Fetches employee data using an injected repository.
-    /// IEmployeeRepository is injected from DI, not serialized.
-    /// </summary>
+    #region service-injection-basic
+    // [Service] marks parameters for DI injection (not serialized)
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
     {
         var entity = await repository.GetByIdAsync(employeeId);
         if (entity == null) return false;
-
         Id = entity.Id;
         Name = $"{entity.FirstName} {entity.LastName}";
-        Department = entity.Position;
         return true;
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-server-only
 /// <summary>
 /// Interface for database access (server-only service).
 /// </summary>
@@ -54,7 +48,6 @@ public class EmployeeDatabase : IEmployeeDatabase
 {
     public Task<string> ExecuteQueryAsync(string query)
     {
-        // Simulated query execution
         return Task.FromResult($"Query result for: {query}");
     }
 }
@@ -68,55 +61,42 @@ public partial class ServiceEmployeeReport
     public string QueryResult { get; private set; } = "";
 
     [Create]
-    public ServiceEmployeeReport()
-    {
-    }
+    public ServiceEmployeeReport() { }
 
-    /// <summary>
-    /// Fetches report data from the database.
-    /// </summary>
-    /// <remarks>
-    /// This service only exists on the server - [Remote] ensures the method runs there.
-    /// </remarks>
+    #region service-injection-server-only
+    // Server-only service - [Remote] ensures execution on server where IEmployeeDatabase exists
     [Remote, Fetch]
     public async Task Fetch(string query, [Service] IEmployeeDatabase database)
     {
         QueryResult = await database.ExecuteQueryAsync(query);
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-multiple
 /// <summary>
 /// Command demonstrating multiple service injection in [Execute] operation.
 /// </summary>
 [SuppressFactory]
 public static partial class DepartmentTransferCommand
 {
-    /// <summary>
-    /// Processes a department transfer with multiple injected services.
-    /// </summary>
+    #region service-injection-multiple
+    // Multiple [Service] parameters - all resolved from DI, none serialized
     [Remote, Execute]
     private static async Task<string> _ProcessTransfer(
-        Guid employeeId,
-        Guid newDepartmentId,
-        [Service] IEmployeeRepository employeeRepo,
-        [Service] IDepartmentRepository departmentRepo,
-        [Service] IUserContext userContext)
+        Guid employeeId,                               // Value: serialized
+        Guid newDepartmentId,                          // Value: serialized
+        [Service] IEmployeeRepository employeeRepo,    // Service: injected
+        [Service] IDepartmentRepository departmentRepo,// Service: injected
+        [Service] IUserContext userContext)            // Service: injected
     {
         var employee = await employeeRepo.GetByIdAsync(employeeId);
         var department = await departmentRepo.GetByIdAsync(newDepartmentId);
-
-        if (employee == null || department == null)
-            return "Transfer failed: Employee or department not found";
-
-        var employeeName = $"{employee.FirstName} {employee.LastName}";
-        return $"Transfer of {employeeName} to {department.Name} by {userContext.Username}";
+        if (employee == null || department == null) return "Not found";
+        return $"Transfer by {userContext.Username}";
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-scoped
 /// <summary>
 /// Audit context interface for tracking operations within a request scope.
 /// </summary>
@@ -132,13 +112,8 @@ public interface IAuditContext
 public class AuditContext : IAuditContext
 {
     private readonly List<string> _actions = new();
-
     public Guid CorrelationId { get; } = Guid.NewGuid();
-
-    public void LogAction(string action)
-    {
-        _actions.Add($"[{DateTime.UtcNow:O}] {action}");
-    }
+    public void LogAction(string action) => _actions.Add($"[{DateTime.UtcNow:O}] {action}");
 }
 
 /// <summary>
@@ -147,23 +122,17 @@ public class AuditContext : IAuditContext
 [SuppressFactory]
 public static partial class AuditExample
 {
-    /// <summary>
-    /// Logs an action and returns the correlation ID.
-    /// </summary>
-    /// <remarks>
-    /// Scoped services maintain state within a request - all operations
-    /// in the same request share the same CorrelationId.
-    /// </remarks>
+    #region service-injection-scoped
+    // Scoped services share state within a request
     [Remote, Execute]
     private static Task<Guid> _LogEmployeeAction(string action, [Service] IAuditContext auditContext)
     {
         auditContext.LogAction(action);
         return Task.FromResult(auditContext.CorrelationId);
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-constructor
 /// <summary>
 /// Service for calculating employee salary.
 /// </summary>
@@ -177,10 +146,7 @@ public interface ISalaryCalculator
 /// </summary>
 public class SalaryCalculator : ISalaryCalculator
 {
-    public decimal Calculate(decimal baseSalary, decimal bonus)
-    {
-        return baseSalary + bonus;
-    }
+    public decimal Calculate(decimal baseSalary, decimal bonus) => baseSalary + bonus;
 }
 
 /// <summary>
@@ -190,27 +156,23 @@ public class SalaryCalculator : ISalaryCalculator
 public partial class EmployeeCompensation
 {
     private readonly ISalaryCalculator _calculator;
-
     public decimal TotalCompensation { get; private set; }
 
-    /// <summary>
-    /// Constructor with service injection.
-    /// ISalaryCalculator is resolved from DI when the factory creates the instance.
-    /// </summary>
+    #region service-injection-constructor
+    // Constructor injection - service available on BOTH client and server
     [Create]
     public EmployeeCompensation([Service] ISalaryCalculator calculator)
     {
         _calculator = calculator;
     }
+    #endregion
 
     public void CalculateTotal(decimal baseSalary, decimal bonus)
     {
         TotalCompensation = _calculator.Calculate(baseSalary, bonus);
     }
 }
-#endregion
 
-#region service-injection-client
 /// <summary>
 /// Service for client-side notifications.
 /// </summary>
@@ -225,11 +187,7 @@ public interface INotificationService
 public class NotificationService : INotificationService
 {
     private readonly List<string> _messages = new();
-
-    public void Notify(string message)
-    {
-        _messages.Add(message);
-    }
+    public void Notify(string message) => _messages.Add(message);
 }
 
 /// <summary>
@@ -240,22 +198,17 @@ public partial class EmployeeNotifier
 {
     public bool Notified { get; private set; }
 
-    /// <summary>
-    /// Constructor with client-side service injection.
-    /// </summary>
-    /// <remarks>
-    /// This service is available on both client and server.
-    /// </remarks>
+    #region service-injection-client
+    // Constructor injection runs locally - available on client
     [Create]
     public EmployeeNotifier([Service] INotificationService notificationService)
     {
         notificationService.Notify("Employee created");
         Notified = true;
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-mixed
 /// <summary>
 /// Result of an employee transfer operation.
 /// </summary>
@@ -267,33 +220,25 @@ public record EmployeeTransferResult(Guid EmployeeId, string TransferredBy, bool
 [SuppressFactory]
 public static partial class EmployeeTransferCommand
 {
-    /// <summary>
-    /// Transfers an employee to a new department.
-    /// </summary>
+    #region service-injection-mixed
+    // Mix of value params (serialized), services (injected), and CancellationToken
     [Remote, Execute]
     private static async Task<EmployeeTransferResult> _TransferEmployee(
-        Guid employeeId,         // Value: serialized
-        Guid newDepartmentId,    // Value: serialized
+        Guid employeeId,                           // Value: serialized
+        Guid newDepartmentId,                      // Value: serialized
         [Service] IEmployeeRepository repository,  // Service: injected
         [Service] IUserContext userContext,        // Service: injected
         CancellationToken cancellationToken)       // CancellationToken: passed through
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         var employee = await repository.GetByIdAsync(employeeId, cancellationToken);
-        if (employee == null)
-            return new EmployeeTransferResult(employeeId, userContext.Username, true);
-
+        if (employee == null) return new EmployeeTransferResult(employeeId, userContext.Username, true);
         employee.DepartmentId = newDepartmentId;
         await repository.UpdateAsync(employee, cancellationToken);
-        await repository.SaveChangesAsync(cancellationToken);
-
         return new EmployeeTransferResult(employeeId, userContext.Username, false);
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-httpcontext
 /// <summary>
 /// Wrapper for accessing HTTP context information.
 /// </summary>
@@ -322,16 +267,10 @@ public partial class EmployeeContext
     public string? CorrelationId { get; private set; }
 
     [Create]
-    public EmployeeContext()
-    {
-    }
+    public EmployeeContext() { }
 
-    /// <summary>
-    /// Fetches context information from the HTTP request.
-    /// </summary>
-    /// <remarks>
-    /// Access HttpContext on server to get user info, headers, etc.
-    /// </remarks>
+    #region service-injection-httpcontext
+    // Access HTTP context via wrapper service (server-only)
     [Remote, Fetch]
     public Task Fetch([Service] IHttpContextAccessorWrapper accessor)
     {
@@ -339,29 +278,22 @@ public partial class EmployeeContext
         CorrelationId = accessor.GetCorrelationId();
         return Task.CompletedTask;
     }
+    #endregion
 }
-#endregion
 
-#region service-injection-serviceprovider
 /// <summary>
 /// Command demonstrating IServiceProvider injection.
 /// </summary>
 [SuppressFactory]
 public static partial class ServiceResolutionExample
 {
-    /// <summary>
-    /// Dynamically resolves services from the provider.
-    /// </summary>
-    /// <remarks>
-    /// Dynamically resolve services when needed - use sparingly.
-    /// </remarks>
+    #region service-injection-serviceprovider
+    // IServiceProvider for dynamic resolution - use sparingly
     [Remote, Execute]
     private static Task<bool> _ResolveEmployeeServices([Service] IServiceProvider serviceProvider)
     {
         var repository = serviceProvider.GetService(typeof(IEmployeeRepository));
-        var userContext = serviceProvider.GetService(typeof(IUserContext));
-
-        return Task.FromResult(repository != null && userContext != null);
+        return Task.FromResult(repository != null);
     }
+    #endregion
 }
-#endregion

@@ -3,25 +3,17 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Application.Samples.Attributes;
 
-#region attributes-pattern-command
-/// <summary>
-/// Result of a termination operation.
-/// </summary>
+// Full implementations for patterns - see MinimalAttributesSamples.cs for doc snippets
+
 public record TerminationResult(
     Guid EmployeeId,
     bool Success,
     DateTime EffectiveDate,
     string Message);
 
-/// <summary>
-/// Command pattern for employee termination.
-/// </summary>
 [Factory]
 public static partial class TerminateEmployeeCommand
 {
-    /// <summary>
-    /// Executes the termination process on the server.
-    /// </summary>
     [Remote, Execute]
     private static async Task<TerminationResult> _Execute(
         Guid employeeId,
@@ -50,20 +42,10 @@ public static partial class TerminateEmployeeCommand
             $"Terminated for: {reason}");
     }
 }
-#endregion
 
-#region attributes-pattern-event
-/// <summary>
-/// Domain event handlers for employee lifecycle events.
-/// Event handlers are fire-and-forget - caller does not wait for completion.
-/// </summary>
 [Factory]
 public partial class EmployeeLifecycleEvents
 {
-    /// <summary>
-    /// Sends welcome email when employee is hired.
-    /// CancellationToken must be the final parameter for [Event] methods.
-    /// </summary>
     [Event]
     public async Task OnEmployeeHired(
         Guid employeeId,
@@ -78,9 +60,6 @@ public partial class EmployeeLifecycleEvents
             ct);
     }
 
-    /// <summary>
-    /// Sends congratulations email when employee is promoted.
-    /// </summary>
     [Event]
     public async Task OnEmployeePromoted(
         Guid employeeId,
@@ -96,4 +75,3 @@ public partial class EmployeeLifecycleEvents
             ct);
     }
 }
-#endregion

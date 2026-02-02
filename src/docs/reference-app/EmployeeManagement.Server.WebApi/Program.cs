@@ -9,22 +9,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors();
 
 #region getting-started-server-program
-// Configure RemoteFactory for Server mode with ASP.NET Core integration
-var domainAssembly = typeof(Employee).Assembly;
-
+// Register RemoteFactory services and domain assembly
 builder.Services.AddNeatooAspNetCore(
     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    domainAssembly);
+    typeof(Employee).Assembly);
 
-// Register factory types from domain assembly (interfaces to implementations)
-builder.Services.RegisterMatchingName(domainAssembly);
+// Register factory types (IEmployeeFactory -> EmployeeFactory)
+builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
 
-// Register infrastructure services (repositories, etc.)
+// Register your infrastructure services
 builder.Services.AddInfrastructureServices();
 
 var app = builder.Build();
 
-// Configure the Neatoo RemoteFactory endpoint
+// Add the /api/neatoo endpoint for remote calls
 app.UseNeatoo();
 #endregion
 

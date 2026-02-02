@@ -15,9 +15,6 @@ public partial class OrderLine
 
     public decimal LineTotal => Price * Quantity;
 
-    /// <summary>
-    /// Creates a new order line.
-    /// </summary>
     [Create]
     public void Create(string name, decimal price, int qty)
     {
@@ -27,9 +24,6 @@ public partial class OrderLine
         Quantity = qty;
     }
 
-    /// <summary>
-    /// Fetches an order line from existing data.
-    /// </summary>
     [Fetch]
     public void Fetch(int id, string name, decimal price, int qty)
     {
@@ -40,7 +34,6 @@ public partial class OrderLine
     }
 }
 
-#region collection-factory-basic
 /// <summary>
 /// Collection of OrderLines within an Order aggregate.
 /// </summary>
@@ -49,41 +42,26 @@ public partial class OrderLineList : List<OrderLine>
 {
     private readonly IOrderLineFactory _lineFactory;
 
-    /// <summary>
-    /// Creates an empty collection with injected child factory.
-    /// </summary>
+    #region collection-factory-basic
+    // Constructor-injected child factory (survives serialization)
     [Create]
-    public OrderLineList([Service] IOrderLineFactory lineFactory)
-    {
-        _lineFactory = lineFactory;
-    }
+    public OrderLineList([Service] IOrderLineFactory lineFactory) => _lineFactory = lineFactory;
 
-    /// <summary>
-    /// Fetches a collection from data.
-    /// </summary>
+    // Fetch populates collection from data
     [Fetch]
     public void Fetch(
         IEnumerable<(int id, string name, decimal price, int qty)> items,
         [Service] IOrderLineFactory lineFactory)
     {
         foreach (var item in items)
-        {
             Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
-        }
     }
 
-    /// <summary>
-    /// Domain method using stored factory to add children.
-    /// </summary>
-    public void AddLine(string name, decimal price, int qty)
-    {
-        var line = _lineFactory.Create(name, price, qty);
-        Add(line);
-    }
+    // Domain method uses stored factory to add children
+    public void AddLine(string name, decimal price, int qty) => Add(_lineFactory.Create(name, price, qty));
+    #endregion
 }
-#endregion
 
-#region collection-factory-parent
 /// <summary>
 /// Order aggregate root demonstrating collection factory usage.
 /// </summary>
@@ -96,27 +74,21 @@ public partial class Order
 
     public decimal OrderTotal => Lines?.Sum(l => l.LineTotal) ?? 0;
 
+    #region collection-factory-parent
+    // Parent creates collection via factory - collection is properly initialized with child factory
     [Remote, Create]
-    public void Create(
-        string customerName,
-        [Service] IOrderLineListFactory lineListFactory)
+    public void Create(string customerName, [Service] IOrderLineListFactory lineListFactory)
     {
         Id = Random.Shared.Next(1, 10000);
         CustomerName = customerName;
-        Lines = lineListFactory.Create();  // Factory creates collection
+        Lines = lineListFactory.Create();
     }
 
     [Remote, Fetch]
-    public void Fetch(
-        int id,
-        [Service] IOrderLineListFactory lineListFactory)
+    public void Fetch(int id, [Service] IOrderLineListFactory lineListFactory)
     {
         Id = id;
-        // Factory fetches collection with data
-        Lines = lineListFactory.Fetch([
-            (1, "Widget A", 10.00m, 2),
-            (2, "Widget B", 25.00m, 1)
-        ]);
+        Lines = lineListFactory.Fetch([(1, "Widget A", 10.00m, 2), (2, "Widget B", 25.00m, 1)]);
     }
+    #endregion
 }
-#endregion

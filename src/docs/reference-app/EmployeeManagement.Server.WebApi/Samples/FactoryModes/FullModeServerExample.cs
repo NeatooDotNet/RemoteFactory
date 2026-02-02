@@ -7,9 +7,11 @@ using Neatoo.RemoteFactory.AspNetCore;
 
 namespace EmployeeManagement.Server.Samples.FactoryModes;
 
-#region modes-full-example
+// modes-full-example snippet is now in FactoryModesSamples.cs (minimal version)
+// This file contains supporting implementation code
+
 /// <summary>
-/// Employee aggregate with full CRUD operations for server deployment.
+/// Full mode server entity (implementation, not for docs).
 /// </summary>
 [Factory]
 public partial class EmployeeFullMode : IFactorySaveMeta
@@ -21,24 +23,14 @@ public partial class EmployeeFullMode : IFactorySaveMeta
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    /// <summary>
-    /// Creates a new Employee with generated ID.
-    /// </summary>
     [Create]
-    public EmployeeFullMode()
-    {
-        Id = Guid.NewGuid();
-    }
+    public EmployeeFullMode() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Fetches an existing Employee by ID.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
-
         Id = entity.Id;
         FirstName = entity.FirstName;
         LastName = entity.LastName;
@@ -47,61 +39,36 @@ public partial class EmployeeFullMode : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// Inserts a new Employee.
-    /// </summary>
     [Remote, Insert]
     public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            DepartmentId = DepartmentId
-        };
+        var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, DepartmentId = DepartmentId };
         await repository.AddAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
         IsNew = false;
     }
 
-    /// <summary>
-    /// Updates an existing Employee.
-    /// </summary>
     [Remote, Update]
     public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            DepartmentId = DepartmentId
-        };
+        var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, DepartmentId = DepartmentId };
         await repository.UpdateAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
     }
 }
 
 /// <summary>
-/// Server setup with Full mode and Server runtime.
+/// Server setup helper (implementation, not for docs).
 /// </summary>
 public static class FullModeServerSetup
 {
     public static void Configure(IServiceCollection services)
     {
         var domainAssembly = typeof(Employee).Assembly;
-
-        // AddNeatooAspNetCore uses Server mode - handles incoming HTTP requests
         services.AddNeatooAspNetCore(
             new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
             domainAssembly);
-
-        // Register factory types
         services.RegisterMatchingName(domainAssembly);
-
-        // Register server-side repositories
         services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
     }
 }
-#endregion

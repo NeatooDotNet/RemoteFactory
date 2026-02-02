@@ -7,27 +7,20 @@ using Neatoo.RemoteFactory.AspNetCore;
 
 namespace EmployeeManagement.Server.Samples.FactoryModes;
 
+// Server configuration is now in FactoryModeAttributes.cs (modes-server-config snippet)
+// This file contains supporting implementation code
+
 /// <summary>
-/// Server-specific factory mode configuration samples.
+/// Server-specific factory mode helpers (implementation, not for docs).
 /// </summary>
 public static class ServerModeConfigurationSample
 {
-    #region modes-server-config
-    /// <summary>
-    /// Configures Server runtime mode with ASP.NET Core integration.
-    /// AddNeatooAspNetCore internally uses NeatooFactory.Server.
-    /// </summary>
     public static void ConfigureServerMode(IServiceCollection services)
     {
         var domainAssembly = typeof(Employee).Assembly;
-
-        // AddNeatooAspNetCore handles incoming HTTP requests and executes locally
         services.AddNeatooAspNetCore(
             new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
             domainAssembly);
-
-        // Register server-side services
         services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
     }
-    #endregion
 }

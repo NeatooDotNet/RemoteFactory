@@ -8,59 +8,28 @@ namespace EmployeeManagement.Domain.Samples.SaveOperation;
 // ============================================================================
 
 #region save-authorization
-/// <summary>
-/// Authorization interface with granular control over Employee operations.
-/// </summary>
+// Granular authorization: CanCreate for Create, CanWrite for Insert/Update/Delete
 public interface IEmployeeWriteAuth
 {
-    /// <summary>
-    /// Controls Create operation authorization.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-    bool CanCreate();
-
-    /// <summary>
-    /// Controls Insert, Update, and Delete operations.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)] bool CanCreate();  // Any authenticated
+    [AuthorizeFactory(AuthorizeFactoryOperation.Write)] bool CanWrite();    // HR or Admin only
 }
 
-/// <summary>
-/// Authorization implementation with role-based rules.
-/// </summary>
+[Factory]
+[AuthorizeFactory<IEmployeeWriteAuth>]  // Factory checks auth before routing
+public partial class AuthorizedEmployeeWrite : IFactorySaveMeta { /* ... */ }
+#endregion
+
+// Full implementation
 public class EmployeeWriteAuth : IEmployeeWriteAuth
 {
     private readonly IUserContext _userContext;
-
-    public EmployeeWriteAuth(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    /// <summary>
-    /// Any authenticated user can create employees.
-    /// </summary>
-    public bool CanCreate()
-    {
-        return _userContext.IsAuthenticated;
-    }
-
-    /// <summary>
-    /// Only HR or Admin can modify employee records.
-    /// </summary>
-    public bool CanWrite()
-    {
-        return _userContext.IsInRole("HR") || _userContext.IsInRole("Admin");
-    }
+    public EmployeeWriteAuth(IUserContext userContext) => _userContext = userContext;
+    public bool CanCreate() => _userContext.IsAuthenticated;
+    public bool CanWrite() => _userContext.IsInRole("HR") || _userContext.IsInRole("Admin");
 }
 
-/// <summary>
-/// Employee aggregate with granular authorization on write operations.
-/// </summary>
-[Factory]
-[AuthorizeFactory<IEmployeeWriteAuth>]
-public partial class AuthorizedEmployeeWrite : IFactorySaveMeta
+public partial class AuthorizedEmployeeWrite
 {
     public Guid Id { get; private set; }
     public string FirstName { get; set; } = "";
@@ -69,14 +38,8 @@ public partial class AuthorizedEmployeeWrite : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public AuthorizedEmployeeWrite()
-    {
-        Id = Guid.NewGuid();
-    }
+    public AuthorizedEmployeeWrite() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Insert requires CanWrite() = true.
-    /// </summary>
     [Remote, Insert]
     public Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
@@ -84,71 +47,38 @@ public partial class AuthorizedEmployeeWrite : IFactorySaveMeta
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Update requires CanWrite() = true.
-    /// </summary>
     [Remote, Update]
-    public Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
-    {
-        return Task.CompletedTask;
-    }
+    public Task Update([Service] IEmployeeRepository repository, CancellationToken ct) => Task.CompletedTask;
 
-    /// <summary>
-    /// Delete requires CanWrite() = true.
-    /// </summary>
     [Remote, Delete]
-    public Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
-    {
-        return Task.CompletedTask;
-    }
+    public Task Delete([Service] IEmployeeRepository repository, CancellationToken ct) => Task.CompletedTask;
 }
-#endregion
 
 // ============================================================================
 // Combined Authorization for All Write Operations
 // ============================================================================
 
 #region save-authorization-combined
-/// <summary>
-/// Authorization interface with single check for all write operations.
-/// Write = Insert | Update | Delete
-/// </summary>
+// Single auth check for all writes: Write = Insert | Update | Delete
 public interface ICombinedWriteAuth
 {
-    /// <summary>
-    /// Single authorization check covering Insert, Update, and Delete.
-    /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
+    [AuthorizeFactory(AuthorizeFactoryOperation.Write)] bool CanWrite();  // Covers all writes
 }
 
-/// <summary>
-/// Combined authorization implementation.
-/// </summary>
+[Factory]
+[AuthorizeFactory<ICombinedWriteAuth>]  // Single check for Insert, Update, Delete
+public partial class AuthorizedDepartmentWrite : IFactorySaveMeta { /* ... */ }
+#endregion
+
+// Full implementation
 public class CombinedWriteAuth : ICombinedWriteAuth
 {
     private readonly IUserContext _userContext;
-
-    public CombinedWriteAuth(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    /// <summary>
-    /// Only Editor or Admin can perform any write operation.
-    /// </summary>
-    public bool CanWrite()
-    {
-        return _userContext.IsInRole("Editor") || _userContext.IsInRole("Admin");
-    }
+    public CombinedWriteAuth(IUserContext userContext) => _userContext = userContext;
+    public bool CanWrite() => _userContext.IsInRole("Editor") || _userContext.IsInRole("Admin");
 }
 
-/// <summary>
-/// Department aggregate with combined authorization for all write operations.
-/// </summary>
-[Factory]
-[AuthorizeFactory<ICombinedWriteAuth>]
-public partial class AuthorizedDepartmentWrite : IFactorySaveMeta
+public partial class AuthorizedDepartmentWrite
 {
     public Guid Id { get; private set; }
     public string Name { get; set; } = "";
@@ -156,28 +86,14 @@ public partial class AuthorizedDepartmentWrite : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public AuthorizedDepartmentWrite()
-    {
-        Id = Guid.NewGuid();
-    }
+    public AuthorizedDepartmentWrite() { Id = Guid.NewGuid(); }
 
     [Remote, Insert]
-    public Task Insert(CancellationToken ct)
-    {
-        IsNew = false;
-        return Task.CompletedTask;
-    }
+    public Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
 
     [Remote, Update]
-    public Task Update(CancellationToken ct)
-    {
-        return Task.CompletedTask;
-    }
+    public Task Update(CancellationToken ct) => Task.CompletedTask;
 
     [Remote, Delete]
-    public Task Delete(CancellationToken ct)
-    {
-        return Task.CompletedTask;
-    }
+    public Task Delete(CancellationToken ct) => Task.CompletedTask;
 }
-#endregion

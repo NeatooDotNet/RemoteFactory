@@ -3,7 +3,6 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Operations;
 
-#region operations-create-constructor
 /// <summary>
 /// Employee with constructor-based Create operation.
 /// </summary>
@@ -14,18 +13,13 @@ public partial class EmployeeWithConstructorCreate
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
 
-    /// <summary>
-    /// Parameterless constructor marked as Create operation.
-    /// </summary>
+    #region operations-create-constructor
+    // Constructor marked with [Create] - factory calls this to create instances
     [Create]
-    public EmployeeWithConstructorCreate()
-    {
-        Id = Guid.NewGuid();
-    }
+    public EmployeeWithConstructorCreate() => Id = Guid.NewGuid();
+    #endregion
 }
-#endregion
 
-#region operations-create-static
 /// <summary>
 /// Employee with static factory method Create operation.
 /// </summary>
@@ -40,15 +34,11 @@ public partial class EmployeeWithStaticCreate
 
     private EmployeeWithStaticCreate() { }
 
-    /// <summary>
-    /// Static factory method for parameterized creation.
-    /// </summary>
+    #region operations-create-static
+    // Static factory method with [Create] - returns instance with initialization
     [Create]
     public static EmployeeWithStaticCreate Create(
-        string employeeNumber,
-        string firstName,
-        string lastName,
-        decimal initialSalary)
+        string employeeNumber, string firstName, string lastName, decimal initialSalary)
     {
         return new EmployeeWithStaticCreate
         {
@@ -59,12 +49,11 @@ public partial class EmployeeWithStaticCreate
             InitialSalary = initialSalary
         };
     }
+    #endregion
 }
-#endregion
 
-#region operations-create-return-types
 /// <summary>
-/// Demonstrates Create method patterns.
+/// Demonstrates Create method return type patterns.
 /// </summary>
 [Factory]
 public partial class EmployeeCreateReturnTypes
@@ -73,19 +62,11 @@ public partial class EmployeeCreateReturnTypes
     public string EmployeeNumber { get; private set; } = "";
     public bool IsValid { get; private set; }
 
-    /// <summary>
-    /// Constructor-based Create - simplest pattern.
-    /// </summary>
+    #region operations-create-return-types
+    // Multiple [Create] overloads - factory generates method for each
     [Create]
-    public EmployeeCreateReturnTypes()
-    {
-        Id = Guid.NewGuid();
-        IsValid = true;
-    }
+    public EmployeeCreateReturnTypes() { Id = Guid.NewGuid(); IsValid = true; }
 
-    /// <summary>
-    /// Create with parameters.
-    /// </summary>
     [Create]
     public EmployeeCreateReturnTypes(string employeeNumber)
     {
@@ -93,10 +74,9 @@ public partial class EmployeeCreateReturnTypes
         EmployeeNumber = employeeNumber;
         IsValid = !string.IsNullOrEmpty(employeeNumber) && employeeNumber.StartsWith('E');
     }
+    #endregion
 }
-#endregion
 
-#region operations-fetch-instance
 /// <summary>
 /// Employee with instance method Fetch operation.
 /// </summary>
@@ -110,34 +90,24 @@ public partial class EmployeeFetchSample : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeFetchSample()
-    {
-        Id = Guid.NewGuid();
-    }
+    public EmployeeFetchSample() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Loads employee data from repository by ID.
-    /// [Service] marks the repository for DI injection.
-    /// </summary>
+    #region operations-fetch-instance
+    // [Fetch] loads data into instance; [Service] marks DI-injected parameters
     [Remote, Fetch]
-    public async Task<bool> Fetch(
-        Guid employeeId,
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(employeeId, ct);
-        if (entity == null) return false;
-
+        if (entity == null) return false;  // Return false = factory returns null
         Id = entity.Id;
         FirstName = entity.FirstName;
         LastName = entity.LastName;
         IsNew = false;
         return true;
     }
+    #endregion
 }
-#endregion
 
-#region operations-fetch-bool-return
 /// <summary>
 /// Demonstrates Fetch with bool return for optional entities.
 /// </summary>
@@ -150,34 +120,23 @@ public partial class EmployeeFetchOptional : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeFetchOptional() { Id = Guid.NewGuid(); }
+    public EmployeeFetchOptional() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Returns false when employee not found.
-    /// Factory method will return null for not-found case.
-    /// </summary>
+    #region operations-fetch-bool-return
+    // Return bool: true = success (instance), false = not found (factory returns null)
     [Remote, Fetch]
-    public async Task<bool> Fetch(
-        Guid employeeId,
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(employeeId, ct);
-        if (entity == null)
-        {
-            // Return false = not found, factory returns null
-            return false;
-        }
-
+        if (entity == null) return false;  // Factory returns null
         Id = entity.Id;
         FirstName = entity.FirstName;
         IsNew = false;
-        return true;
+        return true;  // Factory returns instance
     }
+    #endregion
 }
-#endregion
 
-#region operations-insert
 /// <summary>
 /// Demonstrates Insert operation.
 /// </summary>
@@ -191,37 +150,21 @@ public partial class EmployeeInsertSample : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeInsertSample() { Id = Guid.NewGuid(); }
+    public EmployeeInsertSample() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Persists a new employee to the repository.
-    /// </summary>
+    #region operations-insert
+    // [Insert] persists new entities to storage
     [Remote, Insert]
-    public async Task Insert(
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = $"{FirstName.ToLowerInvariant()}@example.com",
-            DepartmentId = Guid.Empty,
-            Position = "New Hire",
-            SalaryAmount = 0,
-            SalaryCurrency = "USD",
-            HireDate = DateTime.UtcNow
-        };
-
+        var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
         await repository.AddAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
         IsNew = false;
     }
+    #endregion
 }
-#endregion
 
-#region operations-update
 /// <summary>
 /// Demonstrates Update operation.
 /// </summary>
@@ -236,7 +179,7 @@ public partial class EmployeeUpdateSample : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeUpdateSample() { Id = Guid.NewGuid(); }
+    public EmployeeUpdateSample() => Id = Guid.NewGuid();
 
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
@@ -251,34 +194,18 @@ public partial class EmployeeUpdateSample : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// Persists changes to an existing employee.
-    /// </summary>
+    #region operations-update
+    // [Update] persists changes to existing entities
     [Remote, Update]
-    public async Task Update(
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = $"{FirstName.ToLowerInvariant()}@example.com",
-            DepartmentId = Guid.Empty,
-            Position = Position,
-            SalaryAmount = 0,
-            SalaryCurrency = "USD",
-            HireDate = DateTime.UtcNow
-        };
-
+        var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
         await repository.UpdateAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
     }
+    #endregion
 }
-#endregion
 
-#region operations-delete
 /// <summary>
 /// Demonstrates Delete operation.
 /// </summary>
@@ -291,7 +218,7 @@ public partial class EmployeeDeleteSample : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeDeleteSample() { Id = Guid.NewGuid(); }
+    public EmployeeDeleteSample() => Id = Guid.NewGuid();
 
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
@@ -304,21 +231,17 @@ public partial class EmployeeDeleteSample : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// Removes the employee from the repository.
-    /// </summary>
+    #region operations-delete
+    // [Delete] removes entities from storage
     [Remote, Delete]
-    public async Task Delete(
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);
     }
+    #endregion
 }
-#endregion
 
-#region operations-insert-update
 /// <summary>
 /// Demonstrates Upsert pattern with both [Insert] and [Update] on same method.
 /// </summary>
@@ -331,22 +254,17 @@ public partial class SettingItem : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public SettingItem(string key)
-    {
-        Key = key;
-    }
+    public SettingItem(string key) => Key = key;
 
-    /// <summary>
-    /// Single method handles both insert and update (upsert pattern).
-    /// </summary>
+    #region operations-insert-update
+    // Multiple attributes on one method - same handler for insert and update (upsert)
     [Remote, Insert, Update]
-    public async Task Upsert(
-        [Service] ISettingsRepository repository,
-        CancellationToken ct)
+    public async Task Upsert([Service] ISettingsRepository repository, CancellationToken ct)
     {
         await repository.UpsertAsync(Key, Value, ct);
         IsNew = false;
     }
+    #endregion
 }
 
 /// <summary>
@@ -356,159 +274,69 @@ public interface ISettingsRepository
 {
     Task UpsertAsync(string key, string value, CancellationToken ct);
 }
-#endregion
 
-#region operations-execute
 /// <summary>
 /// Demonstrates Execute operation for business commands.
 /// </summary>
 [Factory]
 public static partial class EmployeePromotionOperation
 {
-    /// <summary>
-    /// Promotes an employee with new title and salary increase.
-    /// The underscore prefix is removed in the generated delegate name.
-    /// </summary>
+    #region operations-execute
+    // [Execute] for business operations - underscore prefix removed in generated delegate name
     [Remote, Execute]
     private static async Task<PromotionResult> _PromoteEmployee(
-        Guid employeeId,
-        string newTitle,
-        decimal salaryIncrease,
-        [Service] IEmployeeRepository repository,
-        [Service] IAuditLogService auditLog,
-        CancellationToken ct)
+        Guid employeeId, string newTitle, decimal salaryIncrease,
+        [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var employee = await repository.GetByIdAsync(employeeId, ct);
-        if (employee == null)
-        {
-            return new PromotionResult(false, "Employee not found");
-        }
-
-        var oldPosition = employee.Position;
+        if (employee == null) return new PromotionResult(false, "Employee not found");
         employee.Position = newTitle;
         employee.SalaryAmount += salaryIncrease;
-
         await repository.UpdateAsync(employee, ct);
         await repository.SaveChangesAsync(ct);
-
-        await auditLog.LogAsync(
-            "Promotion",
-            employeeId,
-            "Employee",
-            $"Promoted from {oldPosition} to {newTitle}",
-            ct);
-
         return new PromotionResult(true, $"Promoted to {newTitle}");
     }
+    #endregion
 }
 
 public record PromotionResult(bool Success, string Message);
-#endregion
 
-#region operations-execute-command
-/// <summary>
-/// Command pattern using Execute operations.
-/// </summary>
-[Factory]
-public static partial class TransferEmployeeToNewDepartmentCommand
-{
-    /// <summary>
-    /// Transfers an employee to a different department.
-    /// </summary>
-    [Remote, Execute]
-    private static async Task<TransferResult> _Execute(
-        Guid employeeId,
-        Guid newDepartmentId,
-        string reason,
-        [Service] IEmployeeRepository employeeRepo,
-        [Service] IDepartmentRepository departmentRepo,
-        [Service] IAuditLogService auditLog,
-        CancellationToken ct)
-    {
-        var employee = await employeeRepo.GetByIdAsync(employeeId, ct);
-        if (employee == null)
-            return new TransferResult(false, "Employee not found");
-
-        var newDepartment = await departmentRepo.GetByIdAsync(newDepartmentId, ct);
-        if (newDepartment == null)
-            return new TransferResult(false, "Department not found");
-
-        var oldDepartmentId = employee.DepartmentId;
-        employee.DepartmentId = newDepartmentId;
-
-        await employeeRepo.UpdateAsync(employee, ct);
-        await employeeRepo.SaveChangesAsync(ct);
-
-        await auditLog.LogAsync(
-            "Transfer",
-            employeeId,
-            "Employee",
-            $"Transferred from {oldDepartmentId} to {newDepartmentId}. Reason: {reason}",
-            ct);
-
-        return new TransferResult(true, $"Transferred to {newDepartment.Name}");
-    }
-}
-
-public record TransferResult(bool Success, string Message);
-#endregion
-
-#region operations-event
 /// <summary>
 /// Demonstrates Event operations for fire-and-forget processing.
 /// </summary>
 [Factory]
 public partial class EmployeeNotificationEvents
 {
-    /// <summary>
-    /// Notifies HR when a new employee is hired.
-    /// CancellationToken is required as the last parameter.
-    /// </summary>
+    #region operations-event
+    // [Event] for fire-and-forget - CancellationToken required, receives ApplicationStopping
     [Event]
     public async Task NotifyHROfNewEmployee(
-        Guid employeeId,
-        string employeeName,
-        [Service] IEmailService emailService,
-        CancellationToken ct)
+        Guid employeeId, string employeeName,
+        [Service] IEmailService emailService, CancellationToken ct)
     {
-        await emailService.SendAsync(
-            "hr@company.com",
-            $"New Employee: {employeeName}",
-            $"Employee {employeeName} (ID: {employeeId}) has been added.",
-            ct);
+        await emailService.SendAsync("hr@company.com", $"New Employee: {employeeName}", $"ID: {employeeId}", ct);
     }
+    #endregion
 }
-#endregion
 
-#region operations-event-tracker
 /// <summary>
 /// Demonstrates IEventTracker usage for monitoring events.
 /// </summary>
 [Factory]
 public static partial class EventTrackerSample
 {
-    /// <summary>
-    /// Waits for all pending events to complete.
-    /// Useful for testing and graceful shutdown.
-    /// Returns the number of events that were pending.
-    /// </summary>
+    #region operations-event-tracker
+    // IEventTracker for waiting on pending events (useful in tests and shutdown)
     [Execute]
-    private static async Task<int> _WaitForAllEvents(
-        [Service] IEventTracker eventTracker,
-        CancellationToken ct)
+    private static async Task<int> _WaitForAllEvents([Service] IEventTracker eventTracker, CancellationToken ct)
     {
-        // Check how many events are still pending
         var pendingCount = eventTracker.PendingCount;
-
-        // Wait for all events to complete
         await eventTracker.WaitAllAsync(ct);
-
         return pendingCount;
     }
+    #endregion
 }
-#endregion
 
-#region operations-remote
 /// <summary>
 /// Demonstrates [Remote] attribute for server execution.
 /// </summary>
@@ -520,25 +348,14 @@ public partial class EmployeeRemoteVsLocal : IFactorySaveMeta
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    /// <summary>
-    /// Local execution - runs on client without network call.
-    /// No [Remote] attribute means local execution.
-    /// </summary>
+    #region operations-remote
+    // No [Remote] = local execution (client-side)
     [Create]
-    public EmployeeRemoteVsLocal()
-    {
-        Id = Guid.NewGuid();
-    }
+    public EmployeeRemoteVsLocal() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Remote execution - serialized and sent to server.
-    /// [Remote] ensures method runs on server where repository exists.
-    /// </summary>
+    // [Remote] = serialized to server where repository is available
     [Remote, Fetch]
-    public async Task<bool> Fetch(
-        Guid id,
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -547,36 +364,18 @@ public partial class EmployeeRemoteVsLocal : IFactorySaveMeta
         IsNew = false;
         return true;
     }
+    #endregion
 
-    /// <summary>
-    /// Remote execution for write operations.
-    /// Repository is only available on server.
-    /// </summary>
     [Remote, Insert]
-    public async Task Insert(
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = "",
-            Email = $"{FirstName.ToLowerInvariant()}@example.com",
-            DepartmentId = Guid.Empty,
-            Position = "New",
-            SalaryAmount = 0,
-            SalaryCurrency = "USD",
-            HireDate = DateTime.UtcNow
-        };
+        var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = "", /* ... */ };
         await repository.AddAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
         IsNew = false;
     }
 }
-#endregion
 
-#region operations-cancellation
 /// <summary>
 /// Demonstrates CancellationToken usage in factory methods.
 /// </summary>
@@ -589,36 +388,24 @@ public partial class EmployeeWithCancellation : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeWithCancellation() { Id = Guid.NewGuid(); }
+    public EmployeeWithCancellation() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Demonstrates proper cancellation handling.
-    /// </summary>
+    #region operations-cancellation
+    // CancellationToken always last - pass to async calls, check before expensive operations
     [Remote, Fetch]
-    public async Task<bool> Fetch(
-        Guid id,
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        // Check cancellation before expensive operations
         ct.ThrowIfCancellationRequested();
-
-        // Pass token to async repository calls
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
-
-        // Check again after long-running operation
-        ct.ThrowIfCancellationRequested();
-
         Id = entity.Id;
         FirstName = entity.FirstName;
         IsNew = false;
         return true;
     }
+    #endregion
 }
-#endregion
 
-#region operations-params-value
 /// <summary>
 /// Demonstrates value parameters that are serialized.
 /// </summary>
@@ -627,32 +414,22 @@ public partial class EmployeeSearchSample
 {
     public List<string> Results { get; private set; } = [];
 
-    /// <summary>
-    /// Value parameters are serialized and sent to server.
-    /// </summary>
+    #region operations-params-value
+    // Value parameters (without [Service]) are serialized and sent to server
     [Remote, Fetch]
     public async Task<bool> Fetch(
-        Guid departmentId,
-        string? positionFilter,
-        int maxResults,
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
+        Guid departmentId, string? positionFilter, int maxResults,
+        [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var employees = await repository.GetByDepartmentIdAsync(departmentId, ct);
-
         Results = employees
-            .Where(e => positionFilter == null ||
-                       e.Position.Contains(positionFilter, StringComparison.OrdinalIgnoreCase))
-            .Take(maxResults)
-            .Select(e => $"{e.FirstName} {e.LastName}")
-            .ToList();
-
+            .Where(e => positionFilter == null || e.Position.Contains(positionFilter))
+            .Take(maxResults).Select(e => $"{e.FirstName} {e.LastName}").ToList();
         return Results.Count > 0;
     }
+    #endregion
 }
-#endregion
 
-#region operations-params-service
 /// <summary>
 /// Demonstrates [Service] parameters injected from DI.
 /// </summary>
@@ -665,34 +442,28 @@ public partial class EmployeeWithServiceParams : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeWithServiceParams() { Id = Guid.NewGuid(); }
+    public EmployeeWithServiceParams() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Mix of value parameters (serialized) and service parameters (DI injected).
-    /// </summary>
+    #region operations-params-service
+    // [Service] parameters are DI-injected, not serialized
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid employeeId,                          // Value: serialized
-        [Service] IEmployeeRepository repository, // Service: injected from DI
-        [Service] IAuditLogService auditLog,      // Service: injected from DI
+        [Service] IEmployeeRepository repository, // Service: DI-injected
+        [Service] IAuditLogService auditLog,      // Service: DI-injected
         CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(employeeId, ct);
         if (entity == null) return false;
-
         Id = entity.Id;
         FirstName = entity.FirstName;
         IsNew = false;
-
-        // Services are resolved on the server
         await auditLog.LogAsync("Fetch", employeeId, "Employee", "Employee loaded", ct);
-
         return true;
     }
+    #endregion
 }
-#endregion
 
-#region operations-params-array
 /// <summary>
 /// Demonstrates params array parameters.
 /// </summary>
@@ -701,30 +472,23 @@ public partial class BatchEmployeeFetch
 {
     public List<string> EmployeeNames { get; private set; } = [];
 
-    /// <summary>
-    /// params arrays are supported for batch operations.
-    /// </summary>
+    #region operations-params-array
+    // params arrays supported for batch operations
     [Remote, Fetch]
     public async Task<bool> Fetch(
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct,
-        params Guid[] employeeIds)
+        [Service] IEmployeeRepository repository, CancellationToken ct, params Guid[] employeeIds)
     {
         EmployeeNames = [];
         foreach (var id in employeeIds)
         {
             var entity = await repository.GetByIdAsync(id, ct);
-            if (entity != null)
-            {
-                EmployeeNames.Add($"{entity.FirstName} {entity.LastName}");
-            }
+            if (entity != null) EmployeeNames.Add($"{entity.FirstName} {entity.LastName}");
         }
         return EmployeeNames.Count > 0;
     }
+    #endregion
 }
-#endregion
 
-#region operations-params-cancellation
 /// <summary>
 /// Demonstrates proper parameter ordering with CancellationToken.
 /// </summary>
@@ -737,32 +501,25 @@ public partial class EmployeeCompleteParams : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public EmployeeCompleteParams() { Id = Guid.NewGuid(); }
+    public EmployeeCompleteParams() => Id = Guid.NewGuid();
 
-    /// <summary>
-    /// Complete method signature with all parameter types.
-    /// Order: value params, service params, CancellationToken (always last).
-    /// </summary>
+    #region operations-params-cancellation
+    // Parameter order: value params, [Service] params, CancellationToken (always last)
     [Remote, Fetch]
     public async Task<bool> Fetch(
-        Guid employeeId,                          // Required value parameter
-        string? filter,                           // Optional value parameter
-        [Service] IEmployeeRepository repository, // Service parameter
-        [Service] IAuditLogService auditLog,      // Service parameter
-        CancellationToken ct)                     // CancellationToken (always last)
+        Guid employeeId, string? filter,          // Value parameters
+        [Service] IEmployeeRepository repository, // Service parameters
+        [Service] IAuditLogService auditLog,
+        CancellationToken ct)                     // CancellationToken last
     {
         var entity = await repository.GetByIdAsync(employeeId, ct);
         if (entity == null) return false;
-
-        if (filter != null && !entity.Position.Contains(filter, StringComparison.OrdinalIgnoreCase))
-            return false;
-
+        if (filter != null && !entity.Position.Contains(filter)) return false;
         Id = entity.Id;
         FirstName = entity.FirstName;
         IsNew = false;
-
         await auditLog.LogAsync("Fetch", employeeId, "Employee", "Filtered fetch", ct);
         return true;
     }
+    #endregion
 }
-#endregion

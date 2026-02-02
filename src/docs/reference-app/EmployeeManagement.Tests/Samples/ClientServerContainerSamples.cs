@@ -8,45 +8,37 @@ using System.Text.Json;
 
 namespace EmployeeManagement.Tests.Samples;
 
-#region clientserver-container-setup
 /// <summary>
 /// Creates isolated client, server, and local containers for integration testing.
 /// </summary>
 public static class ClientServerContainers
 {
-    /// <summary>
-    /// Creates scopes for testing client-server communication.
-    /// </summary>
-    /// <remarks>
-    /// - Client (NeatooFactory.Remote): Remote stubs, calls server via serialization
-    /// - Server (NeatooFactory.Server): Full implementations, handles remote requests
-    /// - Local (NeatooFactory.Logical): Full implementation, no remote calls
-    /// </remarks>
+    #region clientserver-container-setup
+    // Three containers: client (Remote), server (Server), local (Logical)
     public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes()
     {
-        var serializationOptions = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
-
+        var options = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
         var serverCollection = new ServiceCollection();
         var clientCollection = new ServiceCollection();
         var localCollection = new ServiceCollection();
 
-        // Configure containers with appropriate mode
-        serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, typeof(Employee).Assembly);
-        clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, serializationOptions, typeof(Employee).Assembly);
-        localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, serializationOptions, typeof(Employee).Assembly);
+        // Configure each container with appropriate mode
+        serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, options, typeof(Employee).Assembly);
+        clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, options, typeof(Employee).Assembly);
+        localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, options, typeof(Employee).Assembly);
 
-        // Server-only services (repositories, etc.)
+        // Server/local get infrastructure; client gets server reference
         serverCollection.AddInfrastructureServices();
         localCollection.AddInfrastructureServices();
+        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
 
-        // Both need IHostApplicationLifetime for event tracking
+        // ... build providers, create scopes, link client to server
+        #endregion
+
         serverCollection.AddSingleton<IHostApplicationLifetime, TestHostLifetime>();
         clientCollection.AddSingleton<IHostApplicationLifetime, TestHostLifetime>();
         localCollection.AddSingleton<IHostApplicationLifetime, TestHostLifetime>();
-
-        // Client needs server reference for remote calls
         clientCollection.AddScoped<ServerServiceProvider>();
-        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
 
         var serverProvider = serverCollection.BuildServiceProvider();
         var clientProvider = clientCollection.BuildServiceProvider();
@@ -56,42 +48,30 @@ public static class ClientServerContainers
         var clientScope = clientProvider.CreateScope();
         var localScope = localProvider.CreateScope();
 
-        // Link client to server
         var serverRef = clientScope.ServiceProvider.GetRequiredService<ServerServiceProvider>();
         serverRef.ServerProvider = serverScope.ServiceProvider;
 
         return (serverScope, clientScope, localScope);
     }
 }
-#endregion
 
-#region clientserver-container-usage
 /// <summary>
 /// Example tests using the ClientServerContainers pattern.
 /// </summary>
 public class ClientServerContainerTests
 {
+    #region clientserver-container-usage
     [Fact]
     public void Local_Create_WorksWithoutSerialization()
     {
         var (server, client, local) = ClientServerContainers.Scopes();
-
-        // Get factory from local container - no serialization
         var factory = local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
-
-        // Create runs entirely locally (Logical mode)
-        var employee = factory.Create();
-
+        var employee = factory.Create();  // Runs locally (Logical mode)
         Assert.NotNull(employee);
-        Assert.NotEqual(Guid.Empty, employee.Id);
-        Assert.True(employee.IsNew);
-
-        server.Dispose();
-        client.Dispose();
-        local.Dispose();
+        server.Dispose(); client.Dispose(); local.Dispose();
     }
+    #endregion
 }
-#endregion
 
 #region clientserver-infrastructure
 /// <summary>

@@ -4,7 +4,7 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.GettingStarted;
 
-#region getting-started-employee-model
+// Alternative model sample (snippet moved to Employee.cs for minimal example)
 public interface IEmployeeModel : IFactorySaveMeta
 {
     Guid Id { get; }
@@ -98,4 +98,3 @@ public partial class EmployeeModel : IEmployeeModel
         await repository.SaveChangesAsync(ct);
     }
 }
-#endregion

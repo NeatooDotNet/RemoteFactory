@@ -4,44 +4,20 @@ using Neatoo.RemoteFactory;
 namespace EmployeeManagement.Application.Samples.Interfaces;
 
 #region interfaces-factorysave
-/// <summary>
-/// Demonstrates IFactorySave&lt;T&gt; usage from the generated factory.
-/// </summary>
-public class EmployeeSaveDemo
+// IFactorySave<T>: Generated Save() routes to Insert/Update/Delete based on state
+public class SaveLifecycleDemo
 {
-    private readonly IEmployeeWithSaveMetaFactory _factory;
-
-    public EmployeeSaveDemo(IEmployeeWithSaveMetaFactory factory)
+    public async Task Demo(IEmployeeWithSaveMetaFactory factory)
     {
-        _factory = factory;
-    }
-
-    /// <summary>
-    /// Demonstrates the complete Save lifecycle: Create, Insert, Update, Delete.
-    /// </summary>
-    public async Task DemonstrateSaveLifecycleAsync()
-    {
-        // Create new employee
-        var employee = _factory.Create();
+        var employee = factory.Create();           // IsNew=true
         employee.Name = "John Smith";
 
-        // First Save (Insert): IsNew=true -> Insert
-        var saved = await _factory.Save(employee);
+        await factory.Save(employee);              // IsNew=true -> Insert
+        employee.Name = "Jane Smith";
+        await factory.Save(employee);              // IsNew=false -> Update
 
-        // Assert saved is not null and IsNew is false after save
-        if (saved == null)
-            throw new InvalidOperationException("Save returned null");
-        if (saved.IsNew)
-            throw new InvalidOperationException("IsNew should be false after insert");
-
-        // Second Save (Update): IsNew=false -> Update
-        var savedEmployee = (EmployeeWithSaveMeta)saved;
-        savedEmployee.Name = "Jane Smith";
-        await _factory.Save(savedEmployee);
-
-        // Third Save (Delete): IsDeleted=true -> Delete
-        savedEmployee.IsDeleted = true;
-        await _factory.Save(savedEmployee);
+        employee.IsDeleted = true;
+        await factory.Save(employee);              // IsDeleted=true -> Delete
     }
 }
 #endregion
