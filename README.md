@@ -4,6 +4,18 @@
 
 RemoteFactory eliminates DTOs, manual factories, and API controllers by generating everything at compile time. Write domain model methods once, get client and server implementations automatically.
 
+## The Opportunity
+
+With Blazor WebAssembly, the same .NET library can run on both client and server. This changes everything.
+
+**The old world (JavaScript SPA + ASP.NET Core):**
+Your domain model lived on the server. To get data to the browser, you serialized to JSON, wrote DTOs to receive it, and mapped back and forth. Two representations of the same thing.
+
+**The new world (Blazor WASM + ASP.NET Core):**
+Your domain model can run in the browser. The same `Employee` class executes client-side and server-side. No translation layer needed.
+
+**RemoteFactory makes this practical.** It generates the factories, serialization, and HTTP plumbing so your domain methods "just work" across the wire. One source of truth, zero boilerplate.
+
 ## Why RemoteFactory?
 
 **Traditional 3-tier architecture:**
@@ -557,7 +569,9 @@ See [Getting Started](docs/getting-started.md) for a complete walkthrough.
 
 ## Documentation
 
+- [What Problem Does RemoteFactory Solve?](docs/the-problem.md) - The opportunity and approach
 - [Getting Started](docs/getting-started.md) - Installation and first example
+- [Decision Guide](docs/decision-guide.md) - When to use what
 - [Factory Operations](docs/factory-operations.md) - Create, Fetch, Insert, Update, Delete, Execute, Event
 - [Service Injection](docs/service-injection.md) - DI integration with `[Service]` attribute
 - [Authorization](docs/authorization.md) - Custom auth and ASP.NET Core policies

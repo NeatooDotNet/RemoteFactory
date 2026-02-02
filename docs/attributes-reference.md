@@ -2,6 +2,29 @@
 
 Complete reference of all RemoteFactory attributes.
 
+## Quick Lookup
+
+| Attribute | Target | Purpose |
+|-----------|--------|---------|
+| `[Factory]` | Class, Interface | Enable factory generation |
+| `[SuppressFactory]` | Class, Interface | Disable factory generation |
+| `[Create]` | Constructor, Method | Instance creation |
+| `[Fetch]` | Method | Load existing data |
+| `[Insert]` | Method | Persist new entity |
+| `[Update]` | Method | Persist changes |
+| `[Delete]` | Method | Remove entity |
+| `[Execute]` | Method | Business operations |
+| `[Event]` | Method | Fire-and-forget events |
+| `[Remote]` | Method | Execute on server |
+| `[Service]` | Parameter | Inject from DI |
+| `[AuthorizeFactory<T>]` | Class, Interface | Custom authorization |
+| `[AuthorizeFactory]` | Method | Authorization check |
+| `[AspAuthorize]` | Method | ASP.NET Core policies |
+| `[assembly: FactoryMode]` | Assembly | Generation mode (Full/RemoteOnly) |
+| `[assembly: FactoryHintNameLength]` | Assembly | Limit generated file names |
+
+---
+
 ## Factory Discovery Attributes
 
 ### [Factory]
