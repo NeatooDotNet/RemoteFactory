@@ -1,5 +1,4 @@
 using EmployeeManagement.Domain.Aggregates;
-using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory.AspNetCore;
 
 namespace EmployeeManagement.Server.Samples.AspNetCore;
@@ -11,26 +10,13 @@ public static class CorsConfigurationSample
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Configure default CORS policy
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
-                policy.WithOrigins(
-                        "http://localhost:5001",  // Development
-                        "https://myapp.example.com" // Production
-                    )
+                policy.WithOrigins("https://client.example.com")
                     .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials(); // Required for auth cookies
-            });
-
-            // Named policy with specific headers for Neatoo API
-            options.AddPolicy("NeatooApi", policy =>
-            {
-                policy.WithOrigins("http://localhost:5001")
-                    .WithHeaders("Content-Type", "X-Correlation-Id")
-                    .WithMethods("POST");
+                    .AllowAnyMethod();
             });
         });
 
@@ -38,8 +24,7 @@ public static class CorsConfigurationSample
 
         var app = builder.Build();
 
-        // CORS must come before UseNeatoo
-        app.UseCors();
+        app.UseCors();    // CORS must be before UseNeatoo
         app.UseNeatoo();
 
         app.Run();

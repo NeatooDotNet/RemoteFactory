@@ -5,29 +5,25 @@ using Neatoo.RemoteFactory.AspNetCore;
 
 namespace EmployeeManagement.Server.Samples;
 
-#region getting-started-serialization-config
 public static class SerializationConfig
 {
+    #region getting-started-serialization-config
+    // Ordinal (default): Compact arrays ["Jane","Smith"] - 40-50% smaller
+    public static NeatooSerializationOptions Ordinal =>
+        new() { Format = SerializationFormat.Ordinal };
+
+    // Named: Property names {"FirstName":"Jane"} - easier to debug
+    public static NeatooSerializationOptions Named =>
+        new() { Format = SerializationFormat.Named };
+    #endregion
+
     public static void ConfigureOrdinal(IServiceCollection services)
     {
-        // Ordinal format (default): Compact array format, 40-50% smaller
-        // Example payload: ["Jane", "Smith", "jane@example.com"]
-        var options = new NeatooSerializationOptions
-        {
-            Format = SerializationFormat.Ordinal
-        };
-        services.AddNeatooAspNetCore(options, typeof(EmployeeModel).Assembly);
+        services.AddNeatooAspNetCore(Ordinal, typeof(EmployeeModel).Assembly);
     }
 
     public static void ConfigureNamed(IServiceCollection services)
     {
-        // Named format: Verbose with property names, easier to debug
-        // Example payload: {"FirstName":"Jane","LastName":"Smith","Email":"jane@example.com"}
-        var options = new NeatooSerializationOptions
-        {
-            Format = SerializationFormat.Named
-        };
-        services.AddNeatooAspNetCore(options, typeof(EmployeeModel).Assembly);
+        services.AddNeatooAspNetCore(Named, typeof(EmployeeModel).Assembly);
     }
 }
-#endregion

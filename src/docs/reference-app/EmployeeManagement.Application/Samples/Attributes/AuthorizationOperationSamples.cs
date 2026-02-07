@@ -3,15 +3,10 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Application.Samples.Attributes;
 
-#region attributes-authorization-operation
-/// <summary>
-/// Authorization interface with combined operation flags.
-/// </summary>
+// Full implementations for authorization operations - see MinimalAttributesSamples.cs for doc snippets
+
 public interface IEmployeeOperationAuth
 {
-    /// <summary>
-    /// Combined flags apply same check to multiple operations.
-    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
     bool CanCreateAndRead();
 
@@ -19,9 +14,6 @@ public interface IEmployeeOperationAuth
     bool CanDelete();
 }
 
-/// <summary>
-/// Implementation with operation-level authorization.
-/// </summary>
 public class EmployeeOperationAuthImpl : IEmployeeOperationAuth
 {
     private readonly IUserContext _userContext;
@@ -31,20 +23,13 @@ public class EmployeeOperationAuthImpl : IEmployeeOperationAuth
         _userContext = userContext;
     }
 
-    /// <summary>
-    /// Create and Fetch require only authentication.
-    /// </summary>
     public bool CanCreateAndRead()
     {
         return _userContext.IsAuthenticated;
     }
 
-    /// <summary>
-    /// Delete requires Administrator role.
-    /// </summary>
     public bool CanDelete()
     {
         return _userContext.IsInRole("Administrator");
     }
 }
-#endregion

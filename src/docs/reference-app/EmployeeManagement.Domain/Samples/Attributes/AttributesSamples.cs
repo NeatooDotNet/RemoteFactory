@@ -4,11 +4,9 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Attributes;
 
-#region attributes-factory
-/// <summary>
-/// [Factory] marks a class for factory generation.
-/// Generates IEmployeeFactory interface and EmployeeFactory implementation.
-/// </summary>
+// Full implementations for attributes - see MinimalAttributesSamples.cs for doc snippets
+// These classes are kept for compilation and testing purposes
+
 [Factory]
 public partial class SimpleEmployee
 {
@@ -21,12 +19,7 @@ public partial class SimpleEmployee
         Id = Guid.NewGuid();
     }
 }
-#endregion
 
-#region attributes-suppressfactory
-/// <summary>
-/// Base class with factory generation.
-/// </summary>
 [Factory]
 public partial class BaseEmployeeEntity
 {
@@ -40,24 +33,12 @@ public partial class BaseEmployeeEntity
     }
 }
 
-/// <summary>
-/// [SuppressFactory] prevents factory generation for derived class.
-/// Use when base class has [Factory] but derived should not.
-/// </summary>
 [SuppressFactory]
 public partial class InternalEmployeeEntity : BaseEmployeeEntity
 {
     public string InternalCode { get; set; } = "";
-
-    // No factory generated for this class
-    // Must be created via base factory or manually
 }
-#endregion
 
-#region attributes-create
-/// <summary>
-/// [Create] marks constructors and static methods for instance creation.
-/// </summary>
 [Factory]
 public partial class EmployeeWithCreate
 {
@@ -68,9 +49,6 @@ public partial class EmployeeWithCreate
 
     private EmployeeWithCreate() { }
 
-    /// <summary>
-    /// Parameterless constructor [Create].
-    /// </summary>
     [Create]
     public EmployeeWithCreate(string firstName)
     {
@@ -78,9 +56,6 @@ public partial class EmployeeWithCreate
         FirstName = firstName;
     }
 
-    /// <summary>
-    /// Static factory method [Create] for parameterized creation.
-    /// </summary>
     [Create]
     public static EmployeeWithCreate Create(
         string employeeNumber,
@@ -96,12 +71,7 @@ public partial class EmployeeWithCreate
         };
     }
 }
-#endregion
 
-#region attributes-fetch
-/// <summary>
-/// [Fetch] marks methods that load data into existing instances.
-/// </summary>
 [Factory]
 public partial class EmployeeWithFetch : IFactorySaveMeta
 {
@@ -113,10 +83,6 @@ public partial class EmployeeWithFetch : IFactorySaveMeta
     [Create]
     public EmployeeWithFetch() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// [Fetch] method loads employee by ID.
-    /// Returns bool - false means not found (factory returns null).
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid employeeId,
@@ -132,12 +98,7 @@ public partial class EmployeeWithFetch : IFactorySaveMeta
         return true;
     }
 }
-#endregion
 
-#region attributes-insert
-/// <summary>
-/// [Insert] marks methods that persist new entities.
-/// </summary>
 [Factory]
 public partial class EmployeeWithInsert : IFactorySaveMeta
 {
@@ -149,9 +110,6 @@ public partial class EmployeeWithInsert : IFactorySaveMeta
     [Create]
     public EmployeeWithInsert() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// [Insert] method persists a new entity.
-    /// </summary>
     [Remote, Insert]
     public async Task Insert(
         [Service] IEmployeeRepository repository,
@@ -169,12 +127,7 @@ public partial class EmployeeWithInsert : IFactorySaveMeta
         IsNew = false;
     }
 }
-#endregion
 
-#region attributes-update
-/// <summary>
-/// [Update] marks methods that persist changes to existing entities.
-/// </summary>
 [Factory]
 public partial class EmployeeWithUpdate : IFactorySaveMeta
 {
@@ -197,9 +150,6 @@ public partial class EmployeeWithUpdate : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// [Update] method persists changes to an existing entity.
-    /// </summary>
     [Remote, Update]
     public async Task Update(
         [Service] IEmployeeRepository repository,
@@ -216,12 +166,7 @@ public partial class EmployeeWithUpdate : IFactorySaveMeta
         await repository.SaveChangesAsync(ct);
     }
 }
-#endregion
 
-#region attributes-delete
-/// <summary>
-/// [Delete] marks methods that remove entities.
-/// </summary>
 [Factory]
 public partial class EmployeeWithDelete : IFactorySaveMeta
 {
@@ -244,9 +189,6 @@ public partial class EmployeeWithDelete : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// [Delete] method removes the entity from persistence.
-    /// </summary>
     [Remote, Delete]
     public async Task Delete(
         [Service] IEmployeeRepository repository,
@@ -256,19 +198,10 @@ public partial class EmployeeWithDelete : IFactorySaveMeta
         await repository.SaveChangesAsync(ct);
     }
 }
-#endregion
 
-#region attributes-execute
-/// <summary>
-/// [Execute] marks methods for business operations (commands).
-/// </summary>
 [Factory]
 public static partial class EmployeePromotion
 {
-    /// <summary>
-    /// [Execute] method performs a business operation.
-    /// Underscore prefix is removed in generated delegate name.
-    /// </summary>
     [Remote, Execute]
     private static async Task<bool> _PromoteEmployee(
         Guid employeeId,
@@ -294,20 +227,10 @@ public static partial class EmployeePromotion
         return true;
     }
 }
-#endregion
 
-#region attributes-event
-/// <summary>
-/// [Event] marks methods for fire-and-forget domain events.
-/// CancellationToken is required as the last parameter.
-/// </summary>
 [Factory]
 public partial class EmployeeEvents
 {
-    /// <summary>
-    /// [Event] method runs fire-and-forget.
-    /// CancellationToken must be the last parameter.
-    /// </summary>
     [Event]
     public async Task NotifyManager(
         Guid employeeId,
@@ -322,12 +245,7 @@ public partial class EmployeeEvents
             ct);
     }
 }
-#endregion
 
-#region attributes-remote
-/// <summary>
-/// [Remote] marks methods that execute on the server.
-/// </summary>
 [Factory]
 public partial class EmployeeRemoteExecution : IFactorySaveMeta
 {
@@ -336,20 +254,12 @@ public partial class EmployeeRemoteExecution : IFactorySaveMeta
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    /// <summary>
-    /// Local execution - no [Remote].
-    /// Runs on client without network call.
-    /// </summary>
     [Create]
     public EmployeeRemoteExecution()
     {
         Id = Guid.NewGuid();
     }
 
-    /// <summary>
-    /// [Remote, Fetch] - executes on server.
-    /// Request serialized, sent via HTTP, response deserialized.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid id,
@@ -364,12 +274,7 @@ public partial class EmployeeRemoteExecution : IFactorySaveMeta
         return true;
     }
 }
-#endregion
 
-#region attributes-service
-/// <summary>
-/// [Service] marks parameters for dependency injection.
-/// </summary>
 [Factory]
 public partial class EmployeeServiceParams : IFactorySaveMeta
 {
@@ -381,14 +286,11 @@ public partial class EmployeeServiceParams : IFactorySaveMeta
     [Create]
     public EmployeeServiceParams() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Mix of value parameters (serialized) and [Service] parameters (injected).
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
-        Guid employeeId,                          // Value: serialized to server
-        [Service] IEmployeeRepository repository, // Service: resolved from server DI
-        [Service] IAuditLogService auditLog,      // Service: resolved from server DI
+        Guid employeeId,
+        [Service] IEmployeeRepository repository,
+        [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(employeeId, ct);
@@ -402,12 +304,7 @@ public partial class EmployeeServiceParams : IFactorySaveMeta
         return true;
     }
 }
-#endregion
 
-#region attributes-authorizefactory-generic
-/// <summary>
-/// [AuthorizeFactory<T>] applies custom authorization to the factory.
-/// </summary>
 [Factory]
 [AuthorizeFactory<IEmployeeAuthorization>]
 public partial class AuthorizedEmployee : IFactorySaveMeta
@@ -431,40 +328,21 @@ public partial class AuthorizedEmployee : IFactorySaveMeta
         return true;
     }
 }
-#endregion
 
-#region attributes-authorizefactory-interface
-/// <summary>
-/// [AuthorizeFactory] on interface methods defines authorization checks.
-/// </summary>
 public interface IDocumentAuthorization
 {
-    /// <summary>
-    /// Check for Create operations.
-    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
     bool CanCreate();
 
-    /// <summary>
-    /// Check for Read operations (Fetch).
-    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
     bool CanRead();
 
-    /// <summary>
-    /// Check for Write operations (Insert, Update, Delete).
-    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
     bool CanWrite();
 }
-#endregion
 
-#region attributes-authorizefactory-method
-/// <summary>
-/// Method-level [AspAuthorize] adds ADDITIONAL authorization on top of class-level auth.
-/// </summary>
 [Factory]
-[AuthorizeFactory<IEmployeeAuthorization>]  // Class-level: runs first
+[AuthorizeFactory<IEmployeeAuthorization>]
 public partial class EmployeeWithMethodAuth2 : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
@@ -486,14 +364,8 @@ public partial class EmployeeWithMethodAuth2 : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// Delete requires BOTH:
-    /// 1. Class-level [AuthorizeFactory<IEmployeeAuthorization>] CanWrite check
-    /// 2. Method-level [AspAuthorize] HRManager role check
-    /// Both must pass for operation to succeed.
-    /// </summary>
     [Remote, Delete]
-    [AspAuthorize(Roles = "HRManager")]  // Method-level: runs after class-level
+    [AspAuthorize(Roles = "HRManager")]
     public async Task Delete(
         [Service] IEmployeeRepository repo,
         [Service] IAuditLogService auditLog,
@@ -504,12 +376,7 @@ public partial class EmployeeWithMethodAuth2 : IFactorySaveMeta
         await repo.SaveChangesAsync(ct);
     }
 }
-#endregion
 
-#region attributes-aspauthorize
-/// <summary>
-/// [AspAuthorize] applies ASP.NET Core authorization policies.
-/// </summary>
 [Factory]
 public partial class PolicyProtectedEmployee : IFactorySaveMeta
 {
@@ -521,11 +388,8 @@ public partial class PolicyProtectedEmployee : IFactorySaveMeta
     [Create]
     public PolicyProtectedEmployee() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Policy-based authorization via constructor parameter.
-    /// </summary>
     [Remote, Fetch]
-    [AspAuthorize("RequireEmployee")]  // Policy name via constructor
+    [AspAuthorize("RequireEmployee")]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = await repo.GetByIdAsync(id, ct);
@@ -536,9 +400,6 @@ public partial class PolicyProtectedEmployee : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// Role-based authorization via Roles property.
-    /// </summary>
     [Remote, Insert]
     [AspAuthorize(Roles = "HR,Manager")]
     public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
@@ -555,12 +416,7 @@ public partial class PolicyProtectedEmployee : IFactorySaveMeta
         IsNew = false;
     }
 }
-#endregion
 
-#region attributes-multiple-operations
-/// <summary>
-/// Multiple operation attributes on one method (upsert pattern).
-/// </summary>
 [Factory]
 public partial class SettingSample : IFactorySaveMeta
 {
@@ -575,24 +431,14 @@ public partial class SettingSample : IFactorySaveMeta
         Key = key;
     }
 
-    /// <summary>
-    /// Both [Insert] and [Update] point to same method.
-    /// Generated factory has both Insert() and Update() methods.
-    /// </summary>
     [Remote, Insert, Update]
     public Task Upsert(CancellationToken ct)
     {
-        // Handle both insert and update cases
         IsNew = false;
         return Task.CompletedTask;
     }
 }
-#endregion
 
-#region attributes-remote-operation
-/// <summary>
-/// [Remote] combined with operation attributes.
-/// </summary>
 [Factory]
 public partial class EmployeeRemoteOps : IFactorySaveMeta
 {
@@ -604,9 +450,6 @@ public partial class EmployeeRemoteOps : IFactorySaveMeta
     [Create]
     public EmployeeRemoteOps() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// [Remote, Fetch] - server-side data loading.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
@@ -618,9 +461,6 @@ public partial class EmployeeRemoteOps : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// [Remote, Insert] - server-side persistence.
-    /// </summary>
     [Remote, Insert]
     public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
@@ -636,12 +476,7 @@ public partial class EmployeeRemoteOps : IFactorySaveMeta
         IsNew = false;
     }
 }
-#endregion
 
-#region attributes-authorization-operation
-/// <summary>
-/// Authorization combined with operation attributes.
-/// </summary>
 [Factory]
 [AuthorizeFactory<IEmployeeAuthorization>]
 public partial class EmployeeAuthOps : IFactorySaveMeta
@@ -654,10 +489,6 @@ public partial class EmployeeAuthOps : IFactorySaveMeta
     [Create]
     public EmployeeAuthOps() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Authorization checked before Fetch executes.
-    /// IEmployeeAuthorization.CanRead() must return true.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
@@ -669,10 +500,6 @@ public partial class EmployeeAuthOps : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// Authorization checked before Insert executes.
-    /// IEmployeeAuthorization.CanWrite() must return true.
-    /// </summary>
     [Remote, Insert]
     public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
@@ -688,25 +515,20 @@ public partial class EmployeeAuthOps : IFactorySaveMeta
         IsNew = false;
     }
 }
-#endregion
 
-#region attributes-inheritance
-/// <summary>
-/// Demonstrates attribute inheritance behavior.
-/// </summary>
-[Factory]   // Inherited: Yes
+[Factory]
 public partial class BaseEntityWithFactory
 {
     public Guid Id { get; protected set; }
     public string Name { get; set; } = "";
 
-    [Create]    // Inherited: No - must be redeclared
+    [Create]
     public BaseEntityWithFactory()
     {
         Id = Guid.NewGuid();
     }
 
-    [Remote, Fetch]  // [Remote] Inherited: Yes
+    [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = await repo.GetByIdAsync(id, ct);
@@ -717,29 +539,17 @@ public partial class BaseEntityWithFactory
     }
 }
 
-/// <summary>
-/// Derived class inherits [Factory] and [Remote] but not [Create].
-/// </summary>
 public partial class DerivedWithInheritedFactory : BaseEntityWithFactory
 {
     public string DerivedProperty { get; set; } = "";
 
-    // Inherits: [Factory] from base
-    // Inherits: [Remote] from base.Fetch()
-    // Does NOT inherit: [Create] - must redeclare if needed
-
-    [Create]  // Must redeclare for this class to have a Create
+    [Create]
     public DerivedWithInheritedFactory() : base()
     {
         DerivedProperty = "Default";
     }
 }
-#endregion
 
-#region attributes-pattern-crud
-/// <summary>
-/// Complete CRUD entity pattern with all operations.
-/// </summary>
 [Factory]
 public partial class CrudEmployee : IFactorySaveMeta
 {
@@ -808,12 +618,7 @@ public partial class CrudEmployee : IFactorySaveMeta
         await repo.SaveChangesAsync(ct);
     }
 }
-#endregion
 
-#region attributes-pattern-readonly
-/// <summary>
-/// Read-only entity pattern with only Create and Fetch.
-/// </summary>
 [Factory]
 public partial class EmployeeReport
 {
@@ -828,10 +633,6 @@ public partial class EmployeeReport
         Id = Guid.NewGuid();
     }
 
-    /// <summary>
-    /// Read-only: Only Fetch operation defined.
-    /// No Insert, Update, or Delete.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(
         Guid employeeId,
@@ -847,22 +648,11 @@ public partial class EmployeeReport
         TotalSalary = entity.SalaryAmount;
         return true;
     }
-
-    // No Insert, Update, Delete - this is a read-only projection
 }
-#endregion
 
-#region attributes-pattern-command
-/// <summary>
-/// Command handler pattern using static class with [Execute].
-/// </summary>
 [Factory]
 public static partial class TransferEmployeeCmd
 {
-    /// <summary>
-    /// Command pattern: static class with [Execute] method.
-    /// Underscore prefix removed in generated delegate.
-    /// </summary>
     [Remote, Execute]
     private static async Task<CommandResult> _Execute(
         Guid employeeId,
@@ -895,4 +685,3 @@ public static partial class TransferEmployeeCmd
 }
 
 public record CommandResult(bool Success, string Message);
-#endregion

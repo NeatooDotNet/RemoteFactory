@@ -5,26 +5,22 @@ public class EmployeeModelUsage
     #region getting-started-usage
     public async Task UseEmployeeFactory(IEmployeeModelFactory factory)
     {
-        // Create: Call factory.Create() to instantiate a new employee
+        // Create new instance via generated factory
         var employee = factory.Create();
         employee.FirstName = "Jane";
-        employee.LastName = "Smith";
-        employee.Email = "jane.smith@example.com";
+        employee.Email = "jane@example.com";
 
-        // Insert: Save routes to Insert because IsNew = true
-        var saved = await factory.Save(employee);
-        if (saved == null) return;
-        // saved.IsNew is now false
+        // Save routes to Insert (IsNew=true), Update (IsNew=false), or Delete (IsDeleted=true)
+        employee = await factory.Save(employee);  // Insert: IsNew becomes false
 
-        // Fetch: Load an existing employee by ID
-        var fetched = await factory.Fetch(saved.Id);
-        if (fetched == null) return;
+        // Fetch loads existing data from server
+        var fetched = await factory.Fetch(employee!.Id);
 
-        // Update: Modify and save routes to Update because IsNew = false
-        fetched.Email = "jane.updated@example.com";
+        // Modify and save routes to Update
+        fetched!.FirstName = "Jane Updated";
         await factory.Save(fetched);
 
-        // Delete: Set IsDeleted = true and save routes to Delete
+        // Mark deleted and save routes to Delete
         fetched.IsDeleted = true;
         await factory.Save(fetched);
     }

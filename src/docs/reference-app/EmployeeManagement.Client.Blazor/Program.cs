@@ -12,19 +12,15 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var serverBaseAddress = builder.Configuration["ServerUrl"] ?? "http://localhost:5000/";
 
 #region getting-started-client-program
-// Configure RemoteFactory for Remote (client) mode
-var domainAssembly = typeof(Employee).Assembly;
-
+// Register RemoteFactory for client mode with domain assembly
 builder.Services.AddNeatooRemoteFactory(
     NeatooFactory.Remote,
     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    domainAssembly);
+    typeof(Employee).Assembly);
 
-// Register the keyed HttpClient for RemoteFactory remote calls
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
-{
-    return new HttpClient { BaseAddress = new Uri(serverBaseAddress) };
-});
+// Register HttpClient for remote calls to server
+builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
+    (sp, key) => new HttpClient { BaseAddress = new Uri(serverBaseAddress) });
 #endregion
 
 await builder.Build().RunAsync();

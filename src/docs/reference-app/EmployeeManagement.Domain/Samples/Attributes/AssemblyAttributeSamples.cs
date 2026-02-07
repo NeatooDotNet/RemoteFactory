@@ -1,30 +1,16 @@
-// Assembly-level attributes are configured in AssemblyAttributes.cs
-// These samples demonstrate the usage patterns.
+// Assembly-level attributes for RemoteFactory configuration
 
 namespace EmployeeManagement.Domain.Samples.Attributes;
 
 #region attributes-factorymode
-// Assembly-level factory mode configuration examples:
-//
-// Server assembly (default mode):
-// [assembly: FactoryMode(FactoryMode.Full)]
-// - Generates local and remote execution paths
-// - Use in server/API projects
-//
-// Client assembly (remote-only mode):
-// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
-// - Generates HTTP stubs only, no local execution
-// - Use in Blazor WebAssembly and other client projects
+// Full mode (default): generates local and remote code
+// [assembly: FactoryMode(FactoryModeOption.Full)]
+
+// RemoteOnly mode: generates HTTP stubs only (use in Blazor WASM)
+// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
 #endregion
 
 #region attributes-factoryhintnamelength
-// Assembly-level hint name length configuration:
-//
+// Limits generated file name length for Windows path limits
 // [assembly: FactoryHintNameLength(100)]
-// - Limits generated file hint name length to 100 characters
-// - Use when hitting Windows 260-character path limits
-// - Value is maximum characters for the generated file hint name
-//
-// Default behavior uses full type names which can be long
-// for deeply nested namespaces or generic types.
 #endregion

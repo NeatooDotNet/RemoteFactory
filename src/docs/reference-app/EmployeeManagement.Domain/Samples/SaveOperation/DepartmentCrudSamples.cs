@@ -8,11 +8,34 @@ namespace EmployeeManagement.Domain.Samples.SaveOperation;
 // ============================================================================
 
 #region save-complete-example
-/// <summary>
-/// Complete Department aggregate with full CRUD operations via IFactorySaveMeta.
-/// </summary>
+// Full CRUD: [Factory] + IFactorySaveMeta + Create/Fetch/Insert/Update/Delete
 [Factory]
 public partial class DepartmentCrud : IFactorySaveMeta
+{
+    public Guid Id { get; private set; }
+    public string Name { get; set; } = "";
+    public bool IsNew { get; private set; } = true;
+    public bool IsDeleted { get; set; }
+
+    [Create] public DepartmentCrud() { Id = Guid.NewGuid(); }
+
+    [Remote, Fetch]
+    public async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository r, CancellationToken ct) { return true; }
+
+    [Remote, Insert]
+    public async Task Insert([Service] IDepartmentRepository r, CancellationToken ct) { IsNew = false; }
+
+    [Remote, Update]
+    public async Task Update([Service] IDepartmentRepository r, CancellationToken ct) { }
+
+    [Remote, Delete]
+    public async Task Delete([Service] IDepartmentRepository r, CancellationToken ct) { }
+}
+#endregion
+
+// Full implementation for actual use
+[Factory]
+public partial class DepartmentCrudFull : IFactorySaveMeta
 {
     public Guid Id { get; private set; }
     public string Name { get; set; } = "";
@@ -23,19 +46,13 @@ public partial class DepartmentCrud : IFactorySaveMeta
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    /// <summary>
-    /// Creates a new department with generated Id and default active status.
-    /// </summary>
     [Create]
-    public DepartmentCrud()
+    public DepartmentCrudFull()
     {
         Id = Guid.NewGuid();
         IsActive = true;
     }
 
-    /// <summary>
-    /// Loads an existing department from the repository.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repository, CancellationToken ct)
     {
@@ -46,52 +63,30 @@ public partial class DepartmentCrud : IFactorySaveMeta
         Name = entity.Name;
         Code = entity.Code;
         ManagerId = entity.ManagerId;
-        // Budget and IsActive would be loaded from extended entity
         IsNew = false;
         return true;
     }
 
-    /// <summary>
-    /// Inserts a new department into the database.
-    /// </summary>
     [Remote, Insert]
     public async Task Insert([Service] IDepartmentRepository repository, CancellationToken ct)
     {
-        var entity = new DepartmentEntity
-        {
-            Id = Id,
-            Name = Name,
-            Code = Code,
-            ManagerId = ManagerId
-            // Budget, IsActive, Created/Modified timestamps would be set in extended entity
-        };
-
+        var entity = new DepartmentEntity { Id = Id, Name = Name, Code = Code, ManagerId = ManagerId };
         await repository.AddAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
         IsNew = false;
     }
 
-    /// <summary>
-    /// Updates an existing department in the database.
-    /// </summary>
     [Remote, Update]
     public async Task Update([Service] IDepartmentRepository repository, CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(Id, ct)
-            ?? throw new InvalidOperationException($"Department {Id} not found");
-
+        var entity = await repository.GetByIdAsync(Id, ct) ?? throw new InvalidOperationException($"Department {Id} not found");
         entity.Name = Name;
         entity.Code = Code;
         entity.ManagerId = ManagerId;
-        // Budget, IsActive, Modified timestamp would be updated in extended entity
-
         await repository.UpdateAsync(entity, ct);
         await repository.SaveChangesAsync(ct);
     }
 
-    /// <summary>
-    /// Deletes the department from the database.
-    /// </summary>
     [Remote, Delete]
     public async Task Delete([Service] IDepartmentRepository repository, CancellationToken ct)
     {
@@ -99,4 +94,3 @@ public partial class DepartmentCrud : IFactorySaveMeta
         await repository.SaveChangesAsync(ct);
     }
 }
-#endregion

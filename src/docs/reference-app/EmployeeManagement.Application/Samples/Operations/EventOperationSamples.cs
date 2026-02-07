@@ -3,7 +3,9 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Application.Samples.Operations;
 
-#region operations-event
+// Note: Primary Event operation snippet is in Domain/OperationsSamples.cs (operations-event)
+// This file contains supplementary event patterns
+
 /// <summary>
 /// Event handler for employee notifications.
 /// </summary>
@@ -35,17 +37,3 @@ public partial class EmployeeEventHandler
             ct);
     }
 }
-#endregion
-
-#region operations-event-tracker
-// EventTracker usage pattern:
-//
-// Fire event (fire-and-forget):
-// _ = sendWelcomeEmail(employeeId, employeeEmail);
-//
-// Wait for all pending events (useful for testing or shutdown):
-// await eventTracker.WaitAllAsync();
-//
-// Check pending event count:
-// var pending = eventTracker.PendingCount;
-#endregion

@@ -9,83 +9,55 @@ namespace EmployeeManagement.Domain.Samples.SaveOperation;
 // ============================================================================
 
 #region save-validation
-/// <summary>
-/// Employee aggregate with validation attributes for Save operations.
-/// </summary>
+// Use DataAnnotations for validation; call Validator.TryValidateObject before Save
 [Factory]
 public partial class SaveValidatedEmployee : IFactorySaveMeta
 {
-    public Guid Id { get; private set; }
-
-    [Required(ErrorMessage = "First name is required")]
-    public string FirstName { get; set; } = "";
-
-    [Required(ErrorMessage = "Last name is required")]
-    public string LastName { get; set; } = "";
-
-    [EmailAddress(ErrorMessage = "Invalid email format")]
-    public string? Email { get; set; }
-
-    [Range(0, double.MaxValue, ErrorMessage = "Salary must be non-negative")]
-    public decimal Salary { get; set; }
-
+    [Required] public string FirstName { get; set; } = "";
+    [Required] public string LastName { get; set; } = "";
+    [EmailAddress] public string? Email { get; set; }
+    [Range(0, double.MaxValue)] public decimal Salary { get; set; }
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
+    /* ... */
+}
+#endregion
+
+// Full implementation
+public partial class SaveValidatedEmployee
+{
+    public Guid Id { get; private set; }
 
     [Create]
-    public SaveValidatedEmployee()
-    {
-        Id = Guid.NewGuid();
-    }
+    public SaveValidatedEmployee() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Insert persists the employee after validation passes.
-    /// </summary>
     [Remote, Insert]
     public Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        // Validation happens before this method via SaveWithValidation helper
         IsNew = false;
         return Task.CompletedTask;
     }
 }
 
-/// <summary>
-/// Helper class for validating entities before save.
-/// </summary>
 public static class ValidationHelper
 {
-    /// <summary>
-    /// Validates an entity and saves if valid.
-    /// Returns null with validation errors if invalid.
-    /// </summary>
     public static async Task<(T? Result, ICollection<ValidationResult>? Errors)> SaveWithValidation<T>(
-        IFactorySave<T> factory,
-        T entity)
+        IFactorySave<T> factory, T entity)
         where T : class, IFactorySaveMeta
     {
-        var validationResults = new List<ValidationResult>();
-        var validationContext = new ValidationContext(entity);
-
-        if (!Validator.TryValidateObject(entity, validationContext, validationResults, validateAllProperties: true))
-        {
-            return (null, validationResults);
-        }
-
+        var results = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(entity, new ValidationContext(entity), results, true))
+            return (null, results);
         var result = await factory.Save(entity);
         return (result as T, null);
     }
 }
-#endregion
 
 // ============================================================================
 // Server-Side Validation with Exceptions
 // ============================================================================
 
-#region save-validation-throw
-/// <summary>
-/// Employee aggregate with server-side validation in Insert method.
-/// </summary>
+// Full implementation for SaveServerValidatedEmployee
 [Factory]
 public partial class SaveServerValidatedEmployee : IFactorySaveMeta
 {
@@ -97,50 +69,17 @@ public partial class SaveServerValidatedEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create]
-    public SaveServerValidatedEmployee()
-    {
-        Id = Guid.NewGuid();
-    }
+    public SaveServerValidatedEmployee() { Id = Guid.NewGuid(); }
 
-    /// <summary>
-    /// Insert with server-side validation.
-    /// Throws ValidationException if validation fails.
-    /// </summary>
+    #region save-validation-throw
+    // Throw ValidationException in Insert/Update for server-side validation
     [Remote, Insert]
     public Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        // Validate FirstName
-        if (string.IsNullOrWhiteSpace(FirstName))
-        {
-            throw new ValidationException("First name is required");
-        }
-
-        // Validate LastName
-        if (string.IsNullOrWhiteSpace(LastName))
-        {
-            throw new ValidationException("Last name is required");
-        }
-
-        // Validate Email format if provided
-        if (!string.IsNullOrEmpty(Email) && !Email.Contains('@'))
-        {
-            throw new ValidationException("Invalid email format");
-        }
-
-        // All validations passed - persist entity
+        if (string.IsNullOrWhiteSpace(FirstName)) throw new ValidationException("First name required");
+        if (string.IsNullOrWhiteSpace(LastName)) throw new ValidationException("Last name required");
         IsNew = false;
         return Task.CompletedTask;
     }
+    #endregion
 }
-
-// Usage pattern:
-// try
-// {
-//     await factory.Save(employee);
-// }
-// catch (ValidationException ex)
-// {
-//     // Handle validation failure
-//     Console.WriteLine($"Validation failed: {ex.Message}");
-// }
-#endregion

@@ -3,18 +3,11 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Application.Samples.Attributes;
 
-#region attributes-event
-/// <summary>
-/// Event handlers for employee onboarding.
-/// Events are fire-and-forget - caller does not wait for completion.
-/// </summary>
+// Full implementations for Event - see MinimalAttributesSamples.cs for doc snippets
+
 [Factory]
 public partial class EmployeeEventHandlers
 {
-    /// <summary>
-    /// Sends welcome email when an employee is hired.
-    /// CancellationToken must be the final parameter for [Event] methods.
-    /// </summary>
     [Event]
     public async Task SendWelcomeEmail(
         Guid employeeId,
@@ -29,4 +22,3 @@ public partial class EmployeeEventHandlers
             ct);
     }
 }
-#endregion

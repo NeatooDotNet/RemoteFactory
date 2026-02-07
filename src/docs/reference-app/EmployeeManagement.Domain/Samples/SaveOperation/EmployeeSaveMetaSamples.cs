@@ -7,7 +7,6 @@ namespace EmployeeManagement.Domain.Samples.SaveOperation;
 // IFactorySaveMeta Implementation
 // ============================================================================
 
-#region save-ifactorysavemeta
 /// <summary>
 /// Employee aggregate implementing IFactorySaveMeta for automatic Save routing.
 /// </summary>
@@ -19,31 +18,18 @@ public partial class EmployeeForSave : IFactorySaveMeta
     public string LastName { get; set; } = "";
     public string? Email { get; set; }
 
-    /// <summary>
-    /// True for new entities not yet persisted. Defaults to true.
-    /// </summary>
+    #region save-ifactorysavemeta
+    // IFactorySaveMeta requires: IsNew (true for new entities) and IsDeleted (true for deletion)
     public bool IsNew { get; private set; } = true;
-
-    /// <summary>
-    /// True for entities marked for deletion.
-    /// </summary>
     public bool IsDeleted { get; set; }
+    #endregion
 
-    /// <summary>
-    /// Creates a new employee with a generated Id.
-    /// IsNew defaults to true, so Save will route to Insert.
-    /// </summary>
     [Create]
     public EmployeeForSave()
     {
         Id = Guid.NewGuid();
-        // IsNew = true by default
     }
 
-    /// <summary>
-    /// Loads an existing employee from the repository.
-    /// Sets IsNew = false so Save will route to Update.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
@@ -58,13 +44,11 @@ public partial class EmployeeForSave : IFactorySaveMeta
         return true;
     }
 }
-#endregion
 
 // ============================================================================
 // Full CRUD Operations
 // ============================================================================
 
-#region save-write-operations
 /// <summary>
 /// Employee aggregate with full Insert, Update, Delete operations.
 /// </summary>
@@ -84,10 +68,6 @@ public partial class EmployeeCrud : IFactorySaveMeta
         Id = Guid.NewGuid();
     }
 
-    /// <summary>
-    /// Loads an existing employee from the repository.
-    /// Sets IsNew = false so Save will route to Update.
-    /// </summary>
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
@@ -102,94 +82,40 @@ public partial class EmployeeCrud : IFactorySaveMeta
         return true;
     }
 
-    /// <summary>
-    /// Inserts a new employee into the database.
-    /// Called by Save when IsNew = true.
-    /// </summary>
+    #region save-write-operations
+    // Save routes to Insert/Update/Delete based on IsNew and IsDeleted flags
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            DepartmentId = DepartmentId,
-            HireDate = DateTime.UtcNow // Created timestamp
-        };
-
-        await repository.AddAsync(entity, ct);
-        await repository.SaveChangesAsync(ct);
-        IsNew = false; // After insert, no longer new
+        await repo.AddAsync(new EmployeeEntity { Id = Id, FirstName = FirstName }, ct);
+        IsNew = false;
     }
 
-    /// <summary>
-    /// Updates an existing employee in the database.
-    /// Called by Save when IsNew = false and IsDeleted = false.
-    /// </summary>
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
-        var entity = await repository.GetByIdAsync(Id, ct)
-            ?? throw new InvalidOperationException($"Employee {Id} not found");
-
-        entity.FirstName = FirstName;
-        entity.LastName = LastName;
-        entity.DepartmentId = DepartmentId;
-        // Modified timestamp would be updated here
-
-        await repository.UpdateAsync(entity, ct);
-        await repository.SaveChangesAsync(ct);
+        var e = await repo.GetByIdAsync(Id, ct);
+        if (e != null) { e.FirstName = FirstName; await repo.UpdateAsync(e, ct); }
     }
 
-    /// <summary>
-    /// Deletes the employee from the database.
-    /// Called by Save when IsDeleted = true.
-    /// </summary>
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
+    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
     {
-        await repository.DeleteAsync(Id, ct);
-        await repository.SaveChangesAsync(ct);
+        await repo.DeleteAsync(Id, ct);
     }
+    #endregion
 }
-#endregion
 
 // ============================================================================
 // Generated Save Routing Logic (Conceptual)
 // ============================================================================
 
 #region save-generated
-/// <summary>
-/// Conceptual illustration of the generated Save method routing logic.
-/// The actual implementation is source-generated by RemoteFactory.
-/// </summary>
-public static class SaveRoutingLogic
-{
-    // The generated Save method follows this decision tree:
-    //
-    // async Task<T?> LocalSave(T entity, CancellationToken ct)
-    // {
-    //     if (entity.IsDeleted)
-    //     {
-    //         if (entity.IsNew)
-    //             return default;  // New entity deleted before save = no-op
-    //         else
-    //             return await LocalDelete(ct);  // Existing entity = delete
-    //     }
-    //
-    //     if (entity.IsNew)
-    //         return await LocalInsert(ct);  // New entity = insert
-    //
-    //     return await LocalUpdate(ct);  // Existing entity = update
-    // }
-    //
-    // Routing summary:
-    // | IsNew  | IsDeleted | Result      |
-    // |--------|-----------|-------------|
-    // | true   | false     | LocalInsert |
-    // | false  | false     | LocalUpdate |
-    // | false  | true      | LocalDelete |
-    // | true   | true      | null (no-op)|
-}
+// Save routing: IsNew=true -> Insert, IsNew=false -> Update, IsDeleted=true -> Delete
+// | IsNew | IsDeleted | Operation |
+// |-------|-----------|-----------|
+// | true  | false     | Insert    |
+// | false | false     | Update    |
+// | false | true      | Delete    |
+// | true  | true      | no-op     |
 #endregion

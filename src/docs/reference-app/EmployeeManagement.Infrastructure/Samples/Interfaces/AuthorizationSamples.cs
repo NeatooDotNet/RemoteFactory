@@ -3,12 +3,8 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Infrastructure.Samples.Interfaces;
 
-#region interfaces-aspauthorize
-// Custom IAspAuthorize for testing or non-ASP.NET Core environments
-
-/// <summary>
-/// Custom IAspAuthorize implementation for simplified authorization.
-/// </summary>
+// Additional IAspAuthorize example - compiled but no longer extracted as duplicate
+// Primary snippet is in InterfacesSamples.cs
 public class CustomAspAuthorize : IAspAuthorize
 {
     private readonly IUserContext _userContext;
@@ -18,15 +14,8 @@ public class CustomAspAuthorize : IAspAuthorize
         _userContext = userContext;
     }
 
-    /// <summary>
-    /// Performs authorization checks based on AspAuthorizeData requirements.
-    /// </summary>
-    /// <param name="authorizeData">Collection of authorization requirements.</param>
-    /// <param name="forbid">If true, throws AspForbidException on failure.</param>
-    /// <returns>Empty string if authorized, error message if not authorized.</returns>
     public Task<string?> Authorize(IEnumerable<AspAuthorizeData> authorizeData, bool forbid = false)
     {
-        // Check if user is authenticated
         if (!_userContext.IsAuthenticated)
         {
             if (forbid)
@@ -34,7 +23,6 @@ public class CustomAspAuthorize : IAspAuthorize
             return Task.FromResult<string?>("User is not authenticated.");
         }
 
-        // Iterate through AspAuthorizeData to check Roles requirements
         foreach (var data in authorizeData)
         {
             if (!string.IsNullOrEmpty(data.Roles))
@@ -45,14 +33,12 @@ public class CustomAspAuthorize : IAspAuthorize
                 if (!hasRequiredRole)
                 {
                     if (forbid)
-                        throw new AspForbidException($"User does not have required role(s): {data.Roles}");
-                    return Task.FromResult<string?>($"User does not have required role(s): {data.Roles}");
+                        throw new AspForbidException($"Missing role(s): {data.Roles}");
+                    return Task.FromResult<string?>($"Missing role(s): {data.Roles}");
                 }
             }
         }
 
-        // Return empty string on success
         return Task.FromResult<string?>(string.Empty);
     }
 }
-#endregion

@@ -3,10 +3,7 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Events;
 
-#region events-basic
-/// <summary>
-/// Employee aggregate demonstrating basic event pattern.
-/// </summary>
+// Full class needed for delegate generation used in tests
 [Factory]
 public partial class EmployeeBasicEvent
 {
@@ -24,10 +21,6 @@ public partial class EmployeeBasicEvent
         Email = email;
     }
 
-    /// <summary>
-    /// Sends a welcome email asynchronously.
-    /// Event executes in a new DI scope with fire-and-forget semantics.
-    /// </summary>
     [Event]
     public async Task SendWelcomeEmail(
         Guid employeeId,
@@ -42,4 +35,3 @@ public partial class EmployeeBasicEvent
             ct);
     }
 }
-#endregion

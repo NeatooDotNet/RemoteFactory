@@ -32,11 +32,6 @@ public static class AddNeatooSample
     {
         // Register with single domain assembly
         services.AddNeatooAspNetCore(typeof(Employee).Assembly);
-
-        // Register with multiple assemblies (if your domain spans multiple projects):
-        // services.AddNeatooAspNetCore(
-        //     typeof(Employee).Assembly,
-        //     typeof(Department).Assembly);
     }
 }
 #endregion
@@ -46,13 +41,10 @@ public static class CustomSerializationSample
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        // Named format produces larger but more readable JSON (useful for debugging)
-        var options = new NeatooSerializationOptions
-        {
-            Format = SerializationFormat.Named
-        };
-
-        services.AddNeatooAspNetCore(options, typeof(Employee).Assembly);
+        // Named format: human-readable JSON (useful for debugging)
+        services.AddNeatooAspNetCore(
+            new NeatooSerializationOptions { Format = SerializationFormat.Named },
+            typeof(Employee).Assembly);
     }
 }
 #endregion
@@ -62,18 +54,10 @@ public static class MiddlewareOrderSample
 {
     public static void Configure(WebApplication app)
     {
-        // 1. CORS - must be first for cross-origin requests
-        app.UseCors();
-
-        // 2. Authentication/Authorization - before protected endpoints
-        app.UseAuthentication();
+        app.UseCors();           // 1. CORS first
+        app.UseAuthentication(); // 2. Auth middleware
         app.UseAuthorization();
-
-        // 3. UseNeatoo - the /api/neatoo endpoint
-        app.UseNeatoo();
-
-        // 4. Other endpoints (controllers, minimal APIs, etc.)
-        // app.MapControllers();
+        app.UseNeatoo();         // 3. RemoteFactory endpoint (after auth)
     }
 }
 #endregion

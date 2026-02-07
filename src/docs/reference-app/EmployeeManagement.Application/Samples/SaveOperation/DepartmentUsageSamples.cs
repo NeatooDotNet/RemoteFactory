@@ -7,7 +7,6 @@ namespace EmployeeManagement.Application.Samples.SaveOperation;
 // Complete Department CRUD Workflow
 // ============================================================================
 
-#region save-complete-usage
 /// <summary>
 /// Demonstrates complete CRUD workflow with Department using Save.
 /// </summary>
@@ -22,37 +21,18 @@ public class DepartmentCrudWorkflow
 
     public async Task<Guid> DemonstrateCrudAsync()
     {
-        // CREATE: Create new department
-        var department = _factory.Create();
-        department.Name = "Engineering";
-        department.Code = "ENG";
-        department.Budget = 1_000_000m;
-        department.IsActive = true;
+        #region save-complete-usage
+        // Complete CRUD: Create -> Insert -> Fetch -> Update -> Delete
+        var dept = _factory.Create();
+        dept.Name = "Engineering";
+        dept = (DepartmentCrud)(await _factory.Save(dept))!;  // Insert
+        dept = (await _factory.Fetch(dept.Id))!;              // Fetch
+        dept.Name = "Engineering v2";
+        await _factory.Save(dept);                            // Update
+        dept.IsDeleted = true;
+        await _factory.Save(dept);                            // Delete
+        #endregion
 
-        // Save routes to Insert (IsNew = true)
-        var created = await _factory.Save(department);
-        var savedDept = (DepartmentCrud)created!;
-        var departmentId = savedDept.Id;
-
-        // READ: Fetch the department
-        var fetched = await _factory.Fetch(departmentId);
-
-        if (fetched == null)
-            throw new InvalidOperationException("Department not found");
-
-        // UPDATE: Modify budget
-        fetched.Budget = 1_500_000m;
-
-        // Save routes to Update (IsNew = false)
-        await _factory.Save(fetched);
-
-        // DELETE: Mark for deletion
-        fetched.IsDeleted = true;
-
-        // Save routes to Delete (IsDeleted = true)
-        await _factory.Save(fetched);
-
-        return departmentId;
+        return dept.Id;
     }
 }
-#endregion

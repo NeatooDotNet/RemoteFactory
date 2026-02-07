@@ -3,28 +3,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EmployeeManagement.Server.Samples.Authorization;
 
-#region authorization-policy-config
 /// <summary>
 /// ASP.NET Core authorization policy configuration for HR domain.
 /// </summary>
 public static class AuthorizationPolicyConfig
 {
-    public static void ConfigureServices(IServiceCollection services)
-    {
+    #region authorization-policy-config
+    // Configure ASP.NET Core policies for [AspAuthorize] to reference
+    public static void ConfigureServices(IServiceCollection services) =>
         services.AddAuthorization(options =>
         {
-            // HR Manager policy - only HR managers can access
-            options.AddPolicy("RequireHRManager", policy =>
-                policy.RequireRole("HRManager"));
-
-            // Payroll policy - payroll staff or HR managers can access
-            options.AddPolicy("RequirePayroll", policy =>
-                policy.RequireRole("Payroll", "HRManager"));
-
-            // Authenticated policy - any authenticated user can access
-            options.AddPolicy("RequireAuthenticated", policy =>
-                policy.RequireAuthenticatedUser());
+            options.AddPolicy("RequireHRManager", p => p.RequireRole("HRManager"));
+            options.AddPolicy("RequireAuthenticated", p => p.RequireAuthenticatedUser());
         });
-    }
+    #endregion
 }
-#endregion

@@ -3,12 +3,8 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Save;
 
-#region interfaces-lifecycle-order
-/// <summary>
-/// Employee aggregate demonstrating the complete IFactorySaveMeta workflow
-/// with all lifecycle hooks: IFactoryOnStart, IFactoryOnComplete, IFactoryOnCancelled.
-/// Execution order: FactoryStart -> Operation -> FactoryComplete (or FactoryCancelled).
-/// </summary>
+// Full working implementation for Save operation tests
+// Lifecycle hook snippets are now in LifecycleHooksSamples.cs
 [Factory]
 public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFactoryOnComplete, IFactoryOnCancelled
 {
@@ -23,7 +19,6 @@ public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFact
     public bool IsNew { get; private set; } = true;
     public bool IsDeleted { get; set; }
 
-    // Tracking properties for lifecycle demonstration
     public bool OnStartCalled { get; private set; }
     public bool OnCompleteCalled { get; private set; }
     public bool OnCancelledCalled { get; private set; }
@@ -53,64 +48,42 @@ public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFact
         return true;
     }
 
-    #region interfaces-factoryonstart
-    /// <summary>
-    /// Called before any factory operation begins.
-    /// Use for pre-operation validation or setup.
-    /// </summary>
     public void FactoryStart(FactoryOperation factoryOperation)
     {
         OnStartCalled = true;
         LastOperation = factoryOperation;
 
-        // Pre-save validation for write operations
         if (factoryOperation == FactoryOperation.Insert ||
             factoryOperation == FactoryOperation.Update)
         {
             if (string.IsNullOrWhiteSpace(FirstName))
                 throw new InvalidOperationException("FirstName is required");
-
             if (string.IsNullOrWhiteSpace(LastName))
                 throw new InvalidOperationException("LastName is required");
         }
     }
-    #endregion
 
-    #region interfaces-factoryoncomplete
-    /// <summary>
-    /// Called when factory operation succeeds.
-    /// Use for post-operation state updates, logging, or notifications.
-    /// </summary>
     public void FactoryComplete(FactoryOperation factoryOperation)
     {
         OnCompleteCalled = true;
         LastOperation = factoryOperation;
 
-        // Increment version after successful save
         if (factoryOperation == FactoryOperation.Insert ||
             factoryOperation == FactoryOperation.Update)
         {
             Version++;
         }
     }
-    #endregion
 
-    #region interfaces-factoryoncancelled
-    /// <summary>
-    /// Called when factory operation is cancelled via CancellationToken.
-    /// Use for cleanup or logging of cancellation.
-    /// </summary>
     public void FactoryCancelled(FactoryOperation factoryOperation)
     {
         OnCancelledCalled = true;
         LastOperation = factoryOperation;
     }
-    #endregion
 
     [Remote, Insert]
     public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
-        // Check cancellation before proceeding
         ct.ThrowIfCancellationRequested();
 
         var entity = new EmployeeEntity
@@ -158,4 +131,3 @@ public partial class EmployeeWithSave : IFactorySaveMeta, IFactoryOnStart, IFact
         await repository.SaveChangesAsync(ct);
     }
 }
-#endregion
