@@ -79,4 +79,35 @@ public class ClassExecuteTests : IDisposable
 
         Assert.NotNull(factory);
     }
+
+    [Fact]
+    public async Task ClassExecute_WithInterface_ReturnsInterfaceType()
+    {
+        var factory = _provider.GetRequiredService<IClassExecWithInterfaceFactory>();
+
+        IClassExecWithInterface result = await factory.RunWithInterface("test");
+
+        Assert.NotNull(result);
+        Assert.Equal(77, result.Id);
+        Assert.Equal("Interface: test", result.Name);
+    }
+
+    [Fact]
+    public async Task ClassExecute_WithInterface_CreateReturnsInterfaceType()
+    {
+        var factory = _provider.GetRequiredService<IClassExecWithInterfaceFactory>();
+
+        IClassExecWithInterface result = await factory.Create("from create");
+
+        Assert.NotNull(result);
+        Assert.Equal("from create", result.Name);
+    }
+
+    [Fact]
+    public void ClassExecute_WithInterface_FactoryCanBeResolved()
+    {
+        var factory = _provider.GetService<IClassExecWithInterfaceFactory>();
+
+        Assert.NotNull(factory);
+    }
 }

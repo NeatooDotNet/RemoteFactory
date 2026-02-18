@@ -124,4 +124,63 @@ public class ClassExecuteRoundTripTests
     }
 
     #endregion
+
+    #region Interface Return Type Tests (Remote)
+
+    [Fact]
+    public async Task ClassExecute_Remote_WithInterface_ReturnsInterfaceType()
+    {
+        var factory = _clientScope.ServiceProvider.GetRequiredService<IClassExecRemoteWithInterfaceFactory>();
+
+        IClassExecRemoteWithInterface result = await factory.RunWithInterface("test");
+
+        Assert.NotNull(result);
+        Assert.Equal(77, result.Id);
+        Assert.Equal("Interface: test", result.Name);
+    }
+
+    [Fact]
+    public async Task ClassExecute_Remote_WithInterface_CreateReturnsInterfaceType()
+    {
+        var factory = _clientScope.ServiceProvider.GetRequiredService<IClassExecRemoteWithInterfaceFactory>();
+
+        IClassExecRemoteWithInterface result = await factory.Create("created");
+
+        Assert.NotNull(result);
+        Assert.Equal("created", result.Name);
+    }
+
+    #endregion
+
+    #region Interface Return Type Tests (Local)
+
+    [Fact]
+    public async Task ClassExecute_Local_WithInterface_ReturnsInterfaceType()
+    {
+        var factory = _localScope.ServiceProvider.GetRequiredService<IClassExecRemoteWithInterfaceFactory>();
+
+        IClassExecRemoteWithInterface result = await factory.RunWithInterface("local");
+
+        Assert.NotNull(result);
+        Assert.Equal(77, result.Id);
+        Assert.Equal("Interface: local", result.Name);
+    }
+
+    #endregion
+
+    #region Interface Return Type Tests (Server)
+
+    [Fact]
+    public async Task ClassExecute_Server_WithInterface_ReturnsInterfaceType()
+    {
+        var factory = _serverScope.ServiceProvider.GetRequiredService<IClassExecRemoteWithInterfaceFactory>();
+
+        IClassExecRemoteWithInterface result = await factory.RunWithInterface("server");
+
+        Assert.NotNull(result);
+        Assert.Equal(77, result.Id);
+        Assert.Equal("Interface: server", result.Name);
+    }
+
+    #endregion
 }

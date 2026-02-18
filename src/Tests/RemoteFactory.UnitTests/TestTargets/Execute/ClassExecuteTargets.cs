@@ -85,3 +85,46 @@ public partial class ClassExecMultiSvc
         return Task.FromResult(instance);
     }
 }
+
+/// <summary>
+/// Interface for ClassExecWithInterface. When a [Factory] class implements
+/// a matching I{ClassName} interface, the factory interface methods should
+/// return the interface type instead of the concrete type.
+/// </summary>
+public interface IClassExecWithInterface
+{
+    int Id { get; set; }
+    string Name { get; set; }
+}
+
+/// <summary>
+/// [Execute] on a class factory that implements a matching interface.
+/// Verifies that the generated factory interface returns IClassExecWithInterface.
+/// </summary>
+[Factory]
+public partial class ClassExecWithInterface : IClassExecWithInterface
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+
+    public ClassExecWithInterface() { }
+
+    [Create]
+    public Task Create(string name)
+    {
+        Name = name;
+        return Task.CompletedTask;
+    }
+
+    [Remote, Execute]
+    public static Task<ClassExecWithInterface> RunWithInterface(
+        string input, [Service] IService service)
+    {
+        if (service == null)
+            throw new InvalidOperationException("Service was not injected");
+        var instance = new ClassExecWithInterface();
+        instance.Id = 77;
+        instance.Name = $"Interface: {input}";
+        return Task.FromResult(instance);
+    }
+}
