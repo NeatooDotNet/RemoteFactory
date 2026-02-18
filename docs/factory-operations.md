@@ -380,9 +380,46 @@ public interface IConsultationFactory
 }
 ```
 
+#### With a matching interface
+
+If the class implements a matching `I{ClassName}` interface, the generated factory returns the **interface type** instead of the concrete type:
+
+```csharp
+public interface IConsultation
+{
+    long Id { get; }
+    string Status { get; }
+}
+
+[Factory]
+public partial class Consultation : IConsultation
+{
+    public long Id { get; set; }
+    public string Status { get; set; } = string.Empty;
+
+    [Remote, Execute]
+    public static async Task<Consultation> StartForPatient(
+        long patientId,
+        [Service] IConsultationFactory factory,
+        [Service] IRepository repo)
+    { /* ... */ }
+}
+```
+
+Generated factory interface uses the interface type:
+```csharp
+public interface IConsultationFactory
+{
+    Task<IConsultation> StartForPatient(long patientId, CancellationToken ct = default);
+    // Create, Fetch, Save also return IConsultation
+}
+```
+
+This applies to all factory methods (Create, Fetch, Save, Execute) -- not just Execute.
+
 Key differences from static factory Execute:
 - Method is **`public static`** (no underscore prefix)
-- Must return the **containing type** (or its service interface) -- keeps the factory interface cohesive
+- Must return the **containing type** (or its matching interface if one exists) -- keeps the factory interface cohesive
 - Generates a **factory interface method**, not a delegate type
 - `[Service]` parameters are injected by the factory, not included in the caller's signature
 
