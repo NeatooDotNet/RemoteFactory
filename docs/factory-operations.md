@@ -347,46 +347,66 @@ private static async Task<TransferResult> _TransferEmployee(
 
 For orchestration logic that belongs with the aggregate. Generates a method on the factory interface alongside Create/Fetch/Save.
 
-```csharp
+<!-- snippet: operations-class-execute -->
+<a id='snippet-operations-class-execute'></a>
+```cs
 public interface IConsultation
 {
-    long Id { get; }
+    long PatientId { get; }
     string Status { get; }
 }
 
 [Factory]
 public partial class Consultation : IConsultation
 {
-    public long Id { get; set; }
+    public long PatientId { get; set; }
     public string Status { get; set; } = string.Empty;
 
-    [Remote, Create]
-    public Task CreateAcute(long patientId, [Service] IRepository repo) { /* ... */ }
+    public Consultation() { }
 
-    // Execute on class factory: public static, returns the containing type
+    [Remote, Create]
+    public Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
+    {
+        PatientId = patientId;
+        Status = "Acute";
+        return Task.CompletedTask;
+    }
+
+    [Remote, Fetch]
+    public Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
+    {
+        PatientId = patientId;
+        Status = "Active";
+        return Task.FromResult(true);
+    }
+
+    // Execute on class factory: public static, returns containing type's interface
     [Remote, Execute]
-    public static async Task<Consultation> StartForPatient(
+    public static async Task<IConsultation> StartForPatient(
         long patientId,
         [Service] IConsultationFactory factory,
-        [Service] IRepository repo)
+        [Service] IEmployeeRepository repo)
     {
-        var hasActive = await repo.HasActiveAsync(patientId);
-        if (hasActive)
-            return await factory.FetchActive(patientId);
+        var existing = await factory.FetchActive(patientId);
+        if (existing != null)
+            return existing;
 
         return await factory.CreateAcute(patientId);
     }
 }
 ```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ClassExecuteSamples.cs#L6-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 When the class implements a matching `I{ClassName}` interface, all generated factory methods return the interface type. Classes without a matching interface return the concrete type instead.
 
+Generated factory interface:
 ```csharp
 public interface IConsultationFactory
 {
     Task<IConsultation> CreateAcute(long patientId, CancellationToken ct = default);
+    Task<IConsultation?> FetchActive(long patientId, CancellationToken ct = default);
     Task<IConsultation> StartForPatient(long patientId, CancellationToken ct = default);
-    // ... Fetch, Save, etc.
 }
 ```
 

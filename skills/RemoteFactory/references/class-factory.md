@@ -208,36 +208,56 @@ If the operation returns a different type, use a static factory `[Execute]` inst
 
 ### Method Signature
 
-```csharp
-public interface IConsultation
+<!-- snippet: skill-class-execute -->
+<a id='snippet-skill-class-execute'></a>
+```cs
+public interface ISkillConsultation
 {
-    long Id { get; }
+    long PatientId { get; }
     string Status { get; }
 }
 
 [Factory]
-public partial class Consultation : IConsultation
+public partial class SkillConsultation : ISkillConsultation
 {
-    public long Id { get; set; }
+    public long PatientId { get; set; }
     public string Status { get; set; } = string.Empty;
 
-    [Remote, Create]
-    public Task CreateAcute(long patientId, [Service] IRepository repo) { /* ... */ }
+    public SkillConsultation() { }
 
-    [Remote, Execute]
-    public static async Task<Consultation> StartForPatient(
-        long patientId,
-        [Service] IConsultationFactory factory,
-        [Service] IRepository repo)
+    [Remote, Create]
+    public Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
     {
-        var hasActive = await repo.HasActiveAsync(patientId);
-        if (hasActive)
-            return await factory.FetchActive(patientId);
+        PatientId = patientId;
+        Status = "Acute";
+        return Task.CompletedTask;
+    }
+
+    [Remote, Fetch]
+    public Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
+    {
+        PatientId = patientId;
+        Status = "Active";
+        return Task.FromResult(true);
+    }
+
+    // Execute on class factory: public static, returns the interface type
+    [Remote, Execute]
+    public static async Task<ISkillConsultation> StartForPatient(
+        long patientId,
+        [Service] ISkillConsultationFactory factory,
+        [Service] IEmployeeRepository repo)
+    {
+        var existing = await factory.FetchActive(patientId);
+        if (existing != null)
+            return existing;
 
         return await factory.CreateAcute(patientId);
     }
 }
 ```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/ClassFactoryExecuteSamples.cs#L6-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-class-execute' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 Key differences from static factory `[Execute]`:
 - Method is **`public static`** (no underscore prefix, no `private`)
@@ -249,11 +269,11 @@ Key differences from static factory `[Execute]`:
 When the class implements a matching `I{ClassName}` interface, all generated factory methods return the interface type. Classes without a matching interface return the concrete type instead.
 
 ```csharp
-public interface IConsultationFactory
+public interface ISkillConsultationFactory
 {
-    Task<IConsultation> CreateAcute(long patientId, CancellationToken ct = default);
-    Task<IConsultation> StartForPatient(long patientId, CancellationToken ct = default);
-    // ... other Create/Fetch/Save methods
+    Task<ISkillConsultation> CreateAcute(long patientId, CancellationToken ct = default);
+    Task<ISkillConsultation?> FetchActive(long patientId, CancellationToken ct = default);
+    Task<ISkillConsultation> StartForPatient(long patientId, CancellationToken ct = default);
 }
 ```
 
