@@ -194,12 +194,76 @@ public partial class SkillEmployeeWithLifecycle : IFactorySaveMeta, IFactoryOnSt
 
 ---
 
+## Execute Methods on Class Factories
+
+Use `[Execute]` on `public static` methods within a class factory to co-locate orchestration logic with the aggregate it operates on.
+
+### When to Use
+
+- The operation creates or returns an instance of the containing type
+- The logic is tightly coupled to the aggregate (calls its factory methods, uses internal helpers)
+- You want the operation on the same factory interface as Create/Fetch/Save
+
+If the operation returns a different type, use a static factory `[Execute]` instead (see `references/static-factory.md`).
+
+### Method Signature
+
+```csharp
+[Factory]
+public partial class Consultation
+{
+    [Remote, Create]
+    public Task CreateAcute(long patientId, [Service] IRepository repo) { /* ... */ }
+
+    [Remote, Execute]
+    public static async Task<Consultation> StartForPatient(
+        long patientId,
+        [Service] IConsultationFactory factory,
+        [Service] IRepository repo)
+    {
+        var hasActive = await repo.HasActiveAsync(patientId);
+        if (hasActive)
+            return await factory.FetchActive(patientId);
+
+        return await factory.CreateAcute(patientId);
+    }
+}
+```
+
+Key differences from static factory `[Execute]`:
+- Method is **`public static`** (no underscore prefix, no `private`)
+- Must return the **containing type** (or its service interface)
+- Generates a **factory interface method**, not a delegate type
+
+### Generated Code
+
+```csharp
+public interface IConsultationFactory
+{
+    Task<Consultation> CreateAcute(long patientId, CancellationToken ct = default);
+    Task<Consultation> StartForPatient(long patientId, CancellationToken ct = default);
+    // ... other Create/Fetch/Save methods
+}
+```
+
+### Caller Usage
+
+```csharp
+// Inject the factory -- same as any other factory method
+var factory = serviceProvider.GetRequiredService<IConsultationFactory>();
+var consultation = await factory.StartForPatient(patientId);
+```
+
+---
+
 ## Key Rules
 
 1. **Classes must be `partial`** - Generator adds serialization code
 2. **Properties need public setters** - Required for deserialization
 3. **[Remote] marks client entry points** - Only on aggregate root operations
 4. **Business logic belongs in the entity** - Not in the factory
+5. **Execute methods must be `public static`** - No underscore prefix (unlike static factory Execute)
+6. **Execute must return the containing type** - Keeps the factory interface cohesive
 
 ---
 
