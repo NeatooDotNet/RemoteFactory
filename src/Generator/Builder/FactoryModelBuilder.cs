@@ -165,12 +165,37 @@ internal static class FactoryModelBuilder
         var factoryMethods = new List<FactoryMethodModel>();
         var events = new List<EventMethodModel>();
 
+        var diagnostics = new List<DiagnosticInfo>(typeInfo.Diagnostics.ToList());
+
         // First pass: separate events and build initial method list
         foreach (var method in typeInfo.FactoryMethods)
         {
             if (method.FactoryOperation == FactoryOperation.Event)
             {
                 events.Add(BuildEventMethod(method, typeInfo.ImplementationTypeName, isStaticClass: false));
+                continue;
+            }
+
+            if (method.FactoryOperation == FactoryOperation.Execute)
+            {
+                // NF0102: Execute method must return Task
+                if (!method.IsTask)
+                {
+                    diagnostics.Add(new DiagnosticInfo(
+                        "NF0102",
+                        method.MethodFilePath,
+                        method.MethodStartLine,
+                        method.MethodStartColumn,
+                        method.MethodEndLine,
+                        method.MethodEndColumn,
+                        method.MethodTextSpanStart,
+                        method.MethodTextSpanLength,
+                        method.Name,
+                        method.ReturnType ?? "void"));
+                    continue; // Skip this method - don't generate code for it
+                }
+
+                factoryMethods.Add(BuildClassExecuteMethod(method, typeInfo));
                 continue;
             }
 
@@ -240,7 +265,7 @@ internal static class FactoryModelBuilder
             usings: typeInfo.UsingStatements.ToList(),
             mode: typeInfo.FactoryMode,
             hintName: typeInfo.SafeHintName,
-            diagnostics: typeInfo.Diagnostics.ToList(),
+            diagnostics: diagnostics,
             classFactory: classFactory);
     }
 
@@ -359,6 +384,50 @@ internal static class FactoryModelBuilder
             isNullable: method.IsNullable,
             parameters: parameters,
             authorization: authorization);
+    }
+
+    private static ClassExecuteMethodModel BuildClassExecuteMethod(TypeFactoryMethodInfo method, TypeInfo typeInfo)
+    {
+        var parameters = method.Parameters
+            .Where(p => !p.IsService && !p.IsCancellationToken)
+            .Select(p => new ParameterModel(p.Name, p.Type, p.IsService, p.IsTarget, p.IsCancellationToken, p.IsParams))
+            .ToList();
+
+        var serviceParameters = method.Parameters
+            .Where(p => p.IsService)
+            .Select(p => new ParameterModel(p.Name, p.Type, p.IsService, p.IsTarget, p.IsCancellationToken, p.IsParams))
+            .ToList();
+
+        var authorization = BuildAuthorization(method);
+
+        var isRemote = method.IsRemote ||
+                       method.AuthMethodInfos.Any(m => m.IsRemote) ||
+                       method.AspAuthorizeCalls.Any();
+        var isTask = isRemote || method.IsTask ||
+                     method.AuthMethodInfos.Any(m => m.IsTask) ||
+                     method.AspAuthorizeCalls.Any();
+        var isAsync = (authorization != null && authorization.HasAuth && method.IsTask) ||
+                      method.AuthMethodInfos.Any(m => m.IsTask) ||
+                      method.AspAuthorizeCalls.Any();
+
+        var hasCancellationToken = method.Parameters.Any(p => p.IsCancellationToken);
+
+        // No name stripping needed -- method is public static, name is used as-is
+        return new ClassExecuteMethodModel(
+            name: method.Name,
+            uniqueName: method.Name,
+            returnType: typeInfo.ServiceTypeName,  // Enforced: must return the containing type
+            serviceType: typeInfo.ServiceTypeName,
+            implementationType: typeInfo.ImplementationTypeName,
+            operation: FactoryOperation.Execute,
+            isRemote: isRemote,
+            isTask: true,   // Execute always returns Task<T>
+            isAsync: isAsync,
+            isNullable: method.IsNullable,
+            parameters: parameters,
+            authorization: authorization,
+            serviceParameters: serviceParameters,
+            hasCancellationToken: hasCancellationToken);
     }
 
     private static EventMethodModel BuildEventMethod(TypeFactoryMethodInfo method, string containingTypeName, bool isStaticClass)
@@ -796,6 +865,10 @@ internal static class FactoryModelBuilder
             CanMethodModel cm => new CanMethodModel(
                 cm.Name, uniqueName, cm.ReturnType, cm.ServiceType, cm.ImplementationType, cm.Operation,
                 cm.IsRemote, cm.IsTask, cm.IsAsync, cm.IsNullable, cm.Parameters, cm.Authorization),
+            ClassExecuteMethodModel em => new ClassExecuteMethodModel(
+                em.Name, uniqueName, em.ReturnType, em.ServiceType, em.ImplementationType, em.Operation,
+                em.IsRemote, em.IsTask, em.IsAsync, em.IsNullable, em.Parameters, em.Authorization,
+                em.ServiceParameters, em.HasCancellationToken),
             _ => method
         };
     }
