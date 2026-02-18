@@ -209,9 +209,18 @@ If the operation returns a different type, use a static factory `[Execute]` inst
 ### Method Signature
 
 ```csharp
-[Factory]
-public partial class Consultation
+public interface IConsultation
 {
+    long Id { get; }
+    string Status { get; }
+}
+
+[Factory]
+public partial class Consultation : IConsultation
+{
+    public long Id { get; set; }
+    public string Status { get; set; } = string.Empty;
+
     [Remote, Create]
     public Task CreateAcute(long patientId, [Service] IRepository repo) { /* ... */ }
 
@@ -237,51 +246,16 @@ Key differences from static factory `[Execute]`:
 
 ### Generated Code
 
+When the class implements a matching `I{ClassName}` interface, all generated factory methods return the interface type. Classes without a matching interface return the concrete type instead.
+
 ```csharp
 public interface IConsultationFactory
 {
-    Task<Consultation> CreateAcute(long patientId, CancellationToken ct = default);
-    Task<Consultation> StartForPatient(long patientId, CancellationToken ct = default);
+    Task<IConsultation> CreateAcute(long patientId, CancellationToken ct = default);
+    Task<IConsultation> StartForPatient(long patientId, CancellationToken ct = default);
     // ... other Create/Fetch/Save methods
 }
 ```
-
-### With a Matching Interface
-
-If the class implements a matching `I{ClassName}` interface, the generated factory returns the **interface type**:
-
-```csharp
-public interface IConsultation
-{
-    long Id { get; }
-    string Status { get; }
-}
-
-[Factory]
-public partial class Consultation : IConsultation
-{
-    public long Id { get; set; }
-    public string Status { get; set; } = string.Empty;
-
-    [Remote, Execute]
-    public static async Task<Consultation> StartForPatient(
-        long patientId,
-        [Service] IConsultationFactory factory,
-        [Service] IRepository repo)
-    { /* ... */ }
-}
-```
-
-Generated factory uses the interface type for all methods:
-```csharp
-public interface IConsultationFactory
-{
-    Task<IConsultation> StartForPatient(long patientId, CancellationToken ct = default);
-    // Create, Fetch, Save also return IConsultation
-}
-```
-
-This applies to all factory methods (Create, Fetch, Save, Execute) -- not just Execute.
 
 ### Caller Usage
 
@@ -300,7 +274,7 @@ var consultation = await factory.StartForPatient(patientId);
 3. **[Remote] marks client entry points** - Only on aggregate root operations
 4. **Business logic belongs in the entity** - Not in the factory
 5. **Execute methods must be `public static`** - No underscore prefix (unlike static factory Execute)
-6. **Execute must return the containing type** (or its matching `I{ClassName}` interface) - Keeps the factory interface cohesive
+6. **Execute must return the containing type** (or concrete type if no matching interface) - Keeps the factory interface cohesive
 
 ---
 
