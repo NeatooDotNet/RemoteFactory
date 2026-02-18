@@ -1038,7 +1038,7 @@ public partial class Factory : IIncrementalGenerator
 		{
 			"NF0101" => DiagnosticDescriptors.ClassMustBePartial,
 			"NF0102" => DiagnosticDescriptors.ExecuteMustReturnTask,
-			"NF0103" => DiagnosticDescriptors.ExecuteRequiresStaticClass,
+			"NF0103" => DiagnosticDescriptors.ExecuteRequiresStaticMethod,
 			"NF0104" => DiagnosticDescriptors.HintNameTruncated,
 			"NF0201" => DiagnosticDescriptors.FactoryMethodMustBeStatic,
 			"NF0202" => DiagnosticDescriptors.AuthMethodWrongReturnType,

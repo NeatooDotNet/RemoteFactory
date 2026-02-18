@@ -188,6 +188,10 @@ internal static class ClassFactoryRenderer
             {
                 RenderSaveMethod(sb, sm, model, mode);
             }
+            else if (method is ClassExecuteMethodModel em)
+            {
+                RenderClassExecuteMethod(sb, em, model, mode);
+            }
             else if (method is ReadMethodModel rm)
             {
                 RenderReadMethod(sb, rm, model, mode);
@@ -430,6 +434,103 @@ internal static class ClassFactoryRenderer
         }
 
         return factoryCall;
+    }
+
+    #endregion
+
+    #region Class Execute Method Rendering
+
+    private static void RenderClassExecuteMethod(
+        StringBuilder sb, ClassExecuteMethodModel method,
+        ClassFactoryModel model, FactoryMode mode)
+    {
+        // Public method (delegates to local or remote)
+        RenderClassExecutePublicMethod(sb, method);
+
+        // Remote method
+        if (method.IsRemote)
+        {
+            RenderRemoteMethod(sb, method);
+        }
+
+        // Local method (in Full mode, or for non-remote methods)
+        if (mode == FactoryMode.Full || !method.IsRemote)
+        {
+            RenderClassExecuteLocalMethod(sb, method, model);
+        }
+    }
+
+    private static void RenderClassExecutePublicMethod(StringBuilder sb, ClassExecuteMethodModel method)
+    {
+        var hasAuth = method.HasAuth;
+        var asyncKeyword = method.IsTask && hasAuth ? "async" : "";
+        var awaitKeyword = method.IsTask && hasAuth ? "await" : "";
+        var returnType = GetReturnType(method, includeTask: true, includeAuth: false);
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+        var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
+
+        sb.AppendLine($"        public virtual {asyncKeyword} {returnType} {method.Name}({parameters})");
+        sb.AppendLine("        {");
+
+        var methodTarget = method.IsRemote ? $"{method.UniqueName}Property" : $"Local{method.UniqueName}";
+
+        if (!hasAuth)
+        {
+            sb.AppendLine($"            return {methodTarget}({paramIdentifiers});");
+        }
+        else
+        {
+            sb.AppendLine($"            return ({awaitKeyword} {methodTarget}({paramIdentifiers})).Result;");
+        }
+
+        sb.AppendLine("        }");
+        sb.AppendLine();
+    }
+
+    private static void RenderClassExecuteLocalMethod(
+        StringBuilder sb, ClassExecuteMethodModel method,
+        ClassFactoryModel model)
+    {
+        var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
+        var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+
+        sb.AppendLine($"        public async {returnType} Local{method.UniqueName}({parameters})");
+        sb.AppendLine("        {");
+
+        // Authorization checks
+        RenderAuthorizationChecks(sb, method);
+
+        // Service assignments
+        foreach (var sp in method.ServiceParameters)
+        {
+            sb.AppendLine($"            var {sp.Name} = ServiceProvider.GetRequiredService<{sp.Type}>();");
+        }
+
+        // Build invocation parameters: data params, then services, then CT if present
+        var allParams = new List<string>();
+        allParams.AddRange(method.Parameters.Select(p => p.Name));
+        allParams.AddRange(method.ServiceParameters.Select(p => p.Name));
+        if (method.HasCancellationToken)
+        {
+            allParams.Add("cancellationToken");
+        }
+        var paramList = string.Join(", ", allParams);
+
+        // Call the static method directly on the implementation type
+        var methodCall = $"{model.ImplementationTypeName}.{method.Name}({paramList})";
+
+        if (method.HasAuth)
+        {
+            sb.AppendLine($"            var result = await {methodCall};");
+            sb.AppendLine($"            return new Authorized<{model.ServiceTypeName}>(result);");
+        }
+        else
+        {
+            sb.AppendLine($"            return await {methodCall};");
+        }
+
+        sb.AppendLine("        }");
+        sb.AppendLine();
     }
 
     #endregion

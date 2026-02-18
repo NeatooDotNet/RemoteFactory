@@ -35,16 +35,16 @@ internal static class DiagnosticDescriptors
         description: "Execute operations are designed for remote execution and must be asynchronous. Change the return type to Task or Task<TResult>.");
 
     /// <summary>
-    /// NF0103: Execute method must be in a static class.
+    /// NF0103: Execute method must be a static method.
     /// </summary>
-    public static readonly DiagnosticDescriptor ExecuteRequiresStaticClass = new(
+    public static readonly DiagnosticDescriptor ExecuteRequiresStaticMethod = new(
         id: "NF0103",
-        title: "Execute method requires static class",
-        messageFormat: "Execute method '{0}' must be in a static class. Either make the containing class static, or use a non-Execute factory operation.",
+        title: "Execute method must be static",
+        messageFormat: "Execute method '{0}' must be a static method",
         category: CategoryUsage,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Static Execute operations require the containing class to be static. The Execute pattern is designed for stateless remote procedure calls.");
+        description: "Execute operations must be static methods. On static classes, the method generates a delegate type. On non-static classes, the method generates a factory interface method.");
 
     /// <summary>
     /// NF0104: Hint name truncated due to length limit.

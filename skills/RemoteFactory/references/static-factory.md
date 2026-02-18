@@ -6,6 +6,8 @@ Use for stateless operations like commands and events. No instance state - pure 
 
 Use `[Execute]` for operations that return a result. The client awaits the response.
 
+> **Note:** `[Execute]` also works on non-static `[Factory]` classes when the operation returns the containing type. See `references/class-factory.md` for that pattern.
+
 <!-- snippet: skill-static-execute-commands -->
 <a id='snippet-skill-static-execute-commands'></a>
 ```cs

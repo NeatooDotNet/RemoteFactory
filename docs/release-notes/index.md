@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v10.13.0](v10.13.0.md) | 2026-02-18 | [Execute] on class factories |
 | [v10.12.0](v10.12.0.md) | 2026-02-01 | CorrelationContext DI redesign, event correlation propagation fix |
 | [v10.11.2](v10.11.2.md) | 2026-01-18 | Fix nullable value type syntax in ordinal serialization |
 | [v10.11.1](v10.11.1.md) | 2026-01-18 | Fix nullable typeof() in ordinal serialization |
@@ -32,6 +33,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v10.13.0](v10.13.0.md) - 2026-02-18 - [Execute] on class factories
 - [v10.12.0](v10.12.0.md) - 2026-02-01 - CorrelationContext DI redesign
 - [v10.11.2](v10.11.2.md) - 2026-01-18 - Nullable value type syntax fix
 - [v10.11.1](v10.11.1.md) - 2026-01-18 - Nullable typeof() fix

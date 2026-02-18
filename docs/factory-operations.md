@@ -274,7 +274,16 @@ Return value handling:
 
 ## Execute Operation
 
-Business operations that don't fit Create/Fetch/Write patterns.
+Business operations that don't fit Create/Fetch/Write patterns. Execute works in two contexts with different conventions:
+
+| Context | Method Visibility | Naming | Generates |
+|---------|------------------|--------|-----------|
+| **Static factory** class | `private static` | Underscore prefix (`_MethodName`) | Delegate type |
+| **Class factory** | `public static` | No prefix (`MethodName`) | Factory interface method |
+
+### Static Factory Execute
+
+For stateless operations in static `[Factory]` classes. Generates delegate types registered in DI.
 
 <!-- snippet: operations-execute -->
 <a id='snippet-operations-execute'></a>
@@ -310,7 +319,7 @@ public static partial class EmployeePromotionCommand
 }
 ```
 
-Execute operations generate delegates registered in DI. The delegate name is derived from the method name with underscore prefix removed. They can return any type and accept any parameters.
+Execute operations on static classes generate delegates registered in DI. The delegate name is derived from the method name with underscore prefix removed. They can return any type and accept any parameters.
 
 ### Command Pattern
 
@@ -333,6 +342,81 @@ private static async Task<TransferResult> _TransferEmployee(
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Operations/ExecuteOperationSamples.cs#L20-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+### Class Factory Execute
+
+For orchestration logic that belongs with the aggregate. Generates a method on the factory interface alongside Create/Fetch/Save.
+
+<!-- snippet: operations-class-execute -->
+<a id='snippet-operations-class-execute'></a>
+```cs
+public interface IConsultation
+{
+    long PatientId { get; }
+    string Status { get; }
+}
+
+[Factory]
+public partial class Consultation : IConsultation
+{
+    public long PatientId { get; set; }
+    public string Status { get; set; } = string.Empty;
+
+    public Consultation() { }
+
+    [Remote, Create]
+    public Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
+    {
+        PatientId = patientId;
+        Status = "Acute";
+        return Task.CompletedTask;
+    }
+
+    [Remote, Fetch]
+    public Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
+    {
+        PatientId = patientId;
+        Status = "Active";
+        return Task.FromResult(true);
+    }
+
+    // Execute on class factory: public static, returns containing type's interface
+    [Remote, Execute]
+    public static async Task<IConsultation> StartForPatient(
+        long patientId,
+        [Service] IConsultationFactory factory,
+        [Service] IEmployeeRepository repo)
+    {
+        var existing = await factory.FetchActive(patientId);
+        if (existing != null)
+            return existing;
+
+        return await factory.CreateAcute(patientId);
+    }
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ClassExecuteSamples.cs#L6-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+When the class implements a matching `I{ClassName}` interface, all generated factory methods return the interface type. Classes without a matching interface return the concrete type instead.
+
+Generated factory interface:
+```csharp
+public interface IConsultationFactory
+{
+    Task<IConsultation> CreateAcute(long patientId, CancellationToken ct = default);
+    Task<IConsultation?> FetchActive(long patientId, CancellationToken ct = default);
+    Task<IConsultation> StartForPatient(long patientId, CancellationToken ct = default);
+}
+```
+
+Key differences from static factory Execute:
+- Method is **`public static`** (no underscore prefix)
+- Must return the **containing type** (or its matching interface) -- keeps the factory interface cohesive
+- Generates a **factory interface method**, not a delegate type
+- `[Service]` parameters are injected by the factory, not included in the caller's signature
+
+Use class factory Execute when the orchestration logic is tightly coupled to the aggregate (calls its own factory methods, uses internal helpers). If the operation returns a different type, use a static factory Execute instead.
 
 ## Event Operation
 

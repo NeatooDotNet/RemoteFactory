@@ -120,7 +120,38 @@ public partial class Factory
 				if (Enum.TryParse<FactoryOperation>(attributeName, out var factoryOperation))
 				{
 					hasFactoryOperationAttribute = true;
-					if (methodSymbol.ReturnType.ToDisplayString().Contains(serviceSymbol.Name))
+
+					// Execute check runs BEFORE the return-type check.
+					// This prevents Execute methods that return the target type from being
+					// misrouted into the NF0204/NF0201 logic for Create/Fetch.
+					if (factoryOperation == FactoryOperation.Execute
+								&& serviceSymbol.TypeKind != TypeKind.Interface)
+					{
+						if (!methodSymbol.IsStatic)
+						{
+							// NF0103: Execute method must be a static method
+							var methodLocation = methodSyntax switch
+							{
+								MethodDeclarationSyntax mds => mds.Identifier.GetLocation(),
+								ConstructorDeclarationSyntax cds => cds.Identifier.GetLocation(),
+								_ => methodSyntax.GetLocation()
+							};
+							var lineSpan = methodLocation.GetLineSpan();
+							diagnostics.Add(new DiagnosticInfo(
+								"NF0103",
+								lineSpan.Path ?? "",
+								lineSpan.StartLinePosition.Line,
+								lineSpan.StartLinePosition.Character,
+								lineSpan.EndLinePosition.Line,
+								lineSpan.EndLinePosition.Character,
+								methodLocation.SourceSpan.Start,
+								methodLocation.SourceSpan.Length,
+								methodSymbol.Name));
+							messages.Add($"Ignoring {methodSymbol.Name}. Execute Operations must be a static method");
+							continue;
+						}
+					}
+					else if (methodSymbol.ReturnType.ToDisplayString().Contains(serviceSymbol.Name))
 					{
 						if (methodType == serviceSymbol.ToDisplayString())
 						{
@@ -174,33 +205,6 @@ public partial class Factory
 								messages.Add($"Ignoring {methodSymbol.Name}; it must be static. Only static factories are allowed.");
 								continue;
 							}
-						}
-					}
-					else if (factoryOperation == FactoryOperation.Execute
-								&& serviceSymbol.TypeKind != TypeKind.Interface)
-					{
-						if (!methodSymbol.IsStatic || !serviceSymbol.IsStatic)
-						{
-							// NF0103: Execute method must be in a static class
-							var methodLocation = methodSyntax switch
-							{
-								MethodDeclarationSyntax mds => mds.Identifier.GetLocation(),
-								ConstructorDeclarationSyntax cds => cds.Identifier.GetLocation(),
-								_ => methodSyntax.GetLocation()
-							};
-							var lineSpan = methodLocation.GetLineSpan();
-							diagnostics.Add(new DiagnosticInfo(
-								"NF0103",
-								lineSpan.Path ?? "",
-								lineSpan.StartLinePosition.Line,
-								lineSpan.StartLinePosition.Character,
-								lineSpan.EndLinePosition.Line,
-								lineSpan.EndLinePosition.Character,
-								methodLocation.SourceSpan.Start,
-								methodLocation.SourceSpan.Length,
-								methodSymbol.Name));
-							messages.Add($"Ignoring {methodSymbol.Name}. Execute Operations must be a static method in a static class");
-							continue;
 						}
 					}
 
