@@ -3,11 +3,18 @@ using RemoteFactory.IntegrationTests.Shared;
 
 namespace RemoteFactory.IntegrationTests.TestTargets.Execute;
 
+public interface IClassExecRemote
+{
+    int Id { get; set; }
+    string Name { get; set; }
+}
+
 /// <summary>
 /// [Execute] on a non-static [Factory] class with [Remote] for client-server round-trip.
+/// Implements matching interface -- factory returns IClassExecRemote.
 /// </summary>
 [Factory]
-public partial class ClassExecRemote
+public partial class ClassExecRemote : IClassExecRemote
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -23,7 +30,7 @@ public partial class ClassExecRemote
     }
 
     [Remote, Execute]
-    public static Task<ClassExecRemote> Run(
+    public static Task<IClassExecRemote> Run(
         string input, [Service] IService service)
     {
         if (service == null)
@@ -31,12 +38,13 @@ public partial class ClassExecRemote
         var instance = new ClassExecRemote();
         instance.Id = 99;
         instance.Name = $"Remote: {input}";
-        return Task.FromResult(instance);
+        return Task.FromResult<IClassExecRemote>(instance);
     }
 }
 
 /// <summary>
-/// [Execute] on a class factory with multiple services and no service parameters.
+/// [Execute] on a class factory WITHOUT a matching interface.
+/// Factory returns the concrete type. This is the exception, not the norm.
 /// </summary>
 [Factory]
 public partial class ClassExecMulti
@@ -69,11 +77,6 @@ public partial class ClassExecMulti
     }
 }
 
-/// <summary>
-/// Interface for ClassExecRemoteWithInterface. When a [Factory] class implements
-/// a matching I{ClassName} interface, the factory interface methods should
-/// return the interface type instead of the concrete type.
-/// </summary>
 public interface IClassExecRemoteWithInterface
 {
     int Id { get; set; }
@@ -82,8 +85,7 @@ public interface IClassExecRemoteWithInterface
 
 /// <summary>
 /// [Execute] on a class factory that implements a matching interface, with [Remote]
-/// for client-server round-trip. Verifies that the generated factory returns
-/// IClassExecRemoteWithInterface through serialization.
+/// for client-server round-trip. Factory returns IClassExecRemoteWithInterface.
 /// </summary>
 [Factory]
 public partial class ClassExecRemoteWithInterface : IClassExecRemoteWithInterface
@@ -102,7 +104,7 @@ public partial class ClassExecRemoteWithInterface : IClassExecRemoteWithInterfac
     }
 
     [Remote, Execute]
-    public static Task<ClassExecRemoteWithInterface> RunWithInterface(
+    public static Task<IClassExecRemoteWithInterface> RunWithInterface(
         string input, [Service] IService service)
     {
         if (service == null)
@@ -110,6 +112,6 @@ public partial class ClassExecRemoteWithInterface : IClassExecRemoteWithInterfac
         var instance = new ClassExecRemoteWithInterface();
         instance.Id = 77;
         instance.Name = $"Interface: {input}";
-        return Task.FromResult(instance);
+        return Task.FromResult<IClassExecRemoteWithInterface>(instance);
     }
 }

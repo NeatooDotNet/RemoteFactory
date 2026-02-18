@@ -3,12 +3,18 @@ using RemoteFactory.UnitTests.Shared;
 
 namespace RemoteFactory.UnitTests.TestTargets.Execute;
 
+public interface IClassExecTarget
+{
+    int Id { get; set; }
+    string Name { get; set; }
+}
+
 /// <summary>
 /// [Execute] on a non-static [Factory] class with a [Service] parameter.
-/// Verifies that class factory Execute generates factory interface methods.
+/// Implements matching interface -- factory returns IClassExecTarget.
 /// </summary>
 [Factory]
-public partial class ClassExecTarget
+public partial class ClassExecTarget : IClassExecTarget
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -23,7 +29,7 @@ public partial class ClassExecTarget
     }
 
     [Remote, Execute]
-    public static async Task<ClassExecTarget> RunWithSvc(
+    public static async Task<IClassExecTarget> RunWithSvc(
         string input, [Service] IService service)
     {
         if (service == null)
@@ -34,11 +40,17 @@ public partial class ClassExecTarget
     }
 }
 
+public interface IClassExecNoSvc
+{
+    string Value { get; set; }
+}
+
 /// <summary>
 /// [Execute] on a class factory with no service parameters.
+/// Implements matching interface -- factory returns IClassExecNoSvc.
 /// </summary>
 [Factory]
-public partial class ClassExecNoSvc
+public partial class ClassExecNoSvc : IClassExecNoSvc
 {
     public string Value { get; set; } = string.Empty;
 
@@ -52,16 +64,17 @@ public partial class ClassExecNoSvc
     }
 
     [Remote, Execute]
-    public static Task<ClassExecNoSvc> RunNoService(string input)
+    public static Task<IClassExecNoSvc> RunNoService(string input)
     {
         var instance = new ClassExecNoSvc();
         instance.Value = $"NoSvc: {input}";
-        return Task.FromResult(instance);
+        return Task.FromResult<IClassExecNoSvc>(instance);
     }
 }
 
 /// <summary>
-/// [Execute] on a class factory with multiple [Service] parameters.
+/// [Execute] on a class factory WITHOUT a matching interface.
+/// Factory returns the concrete type. This is the exception, not the norm.
 /// </summary>
 [Factory]
 public partial class ClassExecMultiSvc
@@ -86,11 +99,6 @@ public partial class ClassExecMultiSvc
     }
 }
 
-/// <summary>
-/// Interface for ClassExecWithInterface. When a [Factory] class implements
-/// a matching I{ClassName} interface, the factory interface methods should
-/// return the interface type instead of the concrete type.
-/// </summary>
 public interface IClassExecWithInterface
 {
     int Id { get; set; }
@@ -99,7 +107,7 @@ public interface IClassExecWithInterface
 
 /// <summary>
 /// [Execute] on a class factory that implements a matching interface.
-/// Verifies that the generated factory interface returns IClassExecWithInterface.
+/// Factory returns IClassExecWithInterface.
 /// </summary>
 [Factory]
 public partial class ClassExecWithInterface : IClassExecWithInterface
@@ -117,7 +125,7 @@ public partial class ClassExecWithInterface : IClassExecWithInterface
     }
 
     [Remote, Execute]
-    public static Task<ClassExecWithInterface> RunWithInterface(
+    public static Task<IClassExecWithInterface> RunWithInterface(
         string input, [Service] IService service)
     {
         if (service == null)
@@ -125,6 +133,6 @@ public partial class ClassExecWithInterface : IClassExecWithInterface
         var instance = new ClassExecWithInterface();
         instance.Id = 77;
         instance.Name = $"Interface: {input}";
-        return Task.FromResult(instance);
+        return Task.FromResult<IClassExecWithInterface>(instance);
     }
 }
