@@ -1,24 +1,28 @@
 # Factory Operations
 
-Each operation type tells the source generator what stage of the object lifecycle a method belongs to — create it, load it, persist it, run a command, or fire an event. The generator uses this intent to produce the correct factory interface, return type handling, and routing logic.
+RemoteFactory is a persistence routing engine. It routes your domain objects to the right method for each stage of their persistence lifecycle — creation, loading, saving, and deletion — and injects the services needed to do the work. RemoteFactory doesn't care what you do inside those methods. It prepares for the call (creates the instance, resolves services, handles serialization across client/server) and trusts that when the method returns, the operation is complete.
+
+Each operation attribute tells RemoteFactory what persistence stage a method belongs to. You write the persistence logic; RemoteFactory gets you there.
 
 If you're new to RemoteFactory, start with [Getting Started](getting-started.md) for a walkthrough. This page is the complete reference for all seven operations.
 
 ## Overview
 
-| Operation | Lifecycle Stage | What the Generator Produces |
-|-----------|----------------|----------------------------|
-| `[Create]` | Object creation | Factory method that constructs and returns the instance |
-| `[Fetch]` | Data loading | Factory method that creates an instance, populates it from a data source, and returns it |
+| Operation | Persistence Stage | What RemoteFactory Does For You |
+|-----------|------------------|--------------------------------|
+| `[Create]` | Instantiation | Calls your constructor or static method, returns the new instance |
+| `[Fetch]` | Load existing data | Creates an instance, calls your method to populate it, returns the result |
 | `[Insert]` | First persist | `Save()` routes here when `IsNew = true` |
 | `[Update]` | Subsequent persist | `Save()` routes here when `IsNew = false` |
 | `[Delete]` | Removal | `Save()` routes here when `IsDeleted = true` |
-| `[Execute]` | Business commands | Orchestration logic — can call Create, Fetch, or other factory methods before committing to a path |
-| `[Event]` | Side effects | Fire-and-forget delegate in its own DI scope |
+| `[Execute]` | Orchestration | Runs logic that decides *which* persistence path to take |
+| `[Event]` | Side effects | Fire-and-forget in its own DI scope — independent of the main persistence operation |
 
 ## Create Operation
 
-Create gives the factory a way to construct new instances. For simple cases, mark a constructor with `[Create]` and the factory calls it directly.
+Create tells RemoteFactory how to instantiate your domain object. When the method returns, RemoteFactory assumes the object is properly initialized and ready to use.
+
+For simple cases, mark a constructor with `[Create]`:
 
 ### Constructor-based Creation
 
@@ -42,7 +46,7 @@ public interface IEmployeeFactory
 
 ### Static Factory Method
 
-Sometimes you need to make a decision *before* the object exists. For example: should you create a new employee or fetch an existing one? By the time you're inside a constructor or a `[Fetch]` method, you've already committed to one path. A static `[Create]` method runs before instantiation, so it can inspect data, call other factory methods, and choose the right path.
+Sometimes you need to make a decision *before* the object exists. Should you create a new consultation or fetch an existing one? By the time you're inside a constructor or a `[Fetch]` method, you've already committed to one path — it's too late to choose. A static `[Create]` method runs before instantiation, so it can inspect data, call other factory methods, and choose the right path. (See also [Execute on class factories](#class-factory-execute) for the full orchestration pattern.)
 
 <!-- snippet: operations-create-static -->
 <a id='snippet-operations-create-static'></a>
@@ -105,9 +109,11 @@ Factory return types:
 
 ## Fetch Operation
 
-Fetch loads data into an instance that the factory has already created. The caller sees a single step — `var employee = await factory.Fetch(id)` — but internally the factory does two things: creates the object via its constructor, then calls the `[Fetch]` method to populate it.
+Fetch is like Create — it produces a ready-to-use instance — but for *existing* data that might not be found. RemoteFactory assumes that when your Fetch method returns, the object is fully populated with `IsNew = false`.
 
-**Why two steps?** This design comes from how RemoteFactory handles service injection. Constructor-injected services (`[Service]` on the constructor) are "always needed" — they work on both client and server and survive serialization. Method-injected services (`[Service]` on the Fetch method) are server-only — things like repositories and database contexts that only exist where the data lives. Separating construction from population keeps this distinction clean: the constructor wires up what the object always needs, and Fetch brings in the server-side services for that one operation.
+The caller sees a single step — `var employee = await factory.Fetch(id)` — but internally RemoteFactory does two things: creates the object via its constructor, then calls the `[Fetch]` method to populate it.
+
+**Why two steps instead of one?** You might expect Fetch to just return a new, populated object in a single call. The two-step design exists because of how RemoteFactory handles services. Constructor-injected services (`[Service]` on the constructor) are services the object *always* needs — they work on both client and server and survive serialization. Method-injected services (`[Service]` on the Fetch method) are server-only — repositories, database contexts, things that only exist where the data lives. By separating construction from population, RemoteFactory keeps "always needed" services on the constructor and "server-only" services on the method. The alternative — different constructors for client and server — would be far less clear.
 
 ### Instance Method Fetch
 
@@ -143,7 +149,7 @@ The factory creates a new instance, calls Fetch, and returns the instance. If Fe
 
 ### Return Types and Not-Found Handling
 
-Fetch runs as an instance method — it executes *on* the object, so it can't return null directly (it *is* the instance). Instead, returning `bool` signals the factory: `true` means "keep this instance and return it to the caller," `false` means "discard it and return null." This keeps not-found as a normal business result rather than an exception, which matters when that signal has to cross an HTTP boundary.
+Because Fetch runs *on* the instance (it's an instance method), it can't return null — it *is* the instance. Instead, returning `bool` signals RemoteFactory: `true` means "this instance is populated, return it to the caller," `false` means "the data wasn't found, discard this instance and return null." This keeps not-found as a normal business result rather than an exception — which matters especially when that signal has to cross an HTTP boundary.
 
 <!-- snippet: operations-fetch-bool-return -->
 <a id='snippet-operations-fetch-bool-return'></a>
@@ -182,9 +188,11 @@ Fetch return types:
 
 ## Insert, Update, Delete Operations
 
-Callers don't invoke Insert, Update, or Delete directly — they call `factory.Save(instance)`, and the factory routes to the right operation based on state: `IsNew = true` routes to Insert, `IsNew = false` routes to Update, `IsDeleted = true` routes to Delete.
+These are the persistence write operations. Callers don't invoke them directly — they call `factory.Save(instance)`, and RemoteFactory routes to the right one based on entity metadata: `IsNew = true` routes to Insert, `IsNew = false` routes to Update, `IsDeleted = true` routes to Delete.
 
-**Why three separate methods instead of one Save?** In practice, these are very different problems. Insert creates new database records. Update modifies existing ones. Delete often involves cascading — removing child records, cleaning up references, or sometimes skipping children entirely and just deleting the aggregate root's records. Each operation may also need different injected services. Keeping them separate means each method contains exactly the logic for its case, with exactly the services it needs.
+RemoteFactory assumes that when your method returns, the persistence operation is complete. What you do inside the method is up to you.
+
+**Why three separate methods instead of one Save?** Because in practice, these are very different problems to solve. Insert creates new database records. Update modifies existing ones. Delete often involves cascading — removing child records, cleaning up references — or sometimes the aggregate root just deletes its own records without walking the children at all. Each operation may need different injected services too. Keeping them separate means each method contains exactly the logic for its case, with exactly the services it needs, rather than a single method with branching logic trying to handle everything.
 
 ### Insert
 
@@ -286,7 +294,9 @@ Return value handling:
 
 ## Execute Operation
 
-Create, Fetch, and Save cover the standard object lifecycle. Execute is for business operations that need to orchestrate *across* that lifecycle — making decisions that span multiple factory methods before committing to a path.
+Create, Fetch, and Save cover the standard persistence lifecycle. Execute is for operations that need to orchestrate *across* that lifecycle — deciding which persistence path to take before committing to one.
+
+The motivating example: "start a consultation for a patient" needs to check if an active consultation already exists. If it does, fetch it. If not, create a new one. You can't do this inside a `[Create]` constructor (you've already committed to creating) or a `[Fetch]` method (you've already committed to fetching). Execute runs before that commitment, with access to the factory itself, so it can call Create, Fetch, or any other factory method based on the situation.
 
 Execute works in two contexts with different conventions:
 
@@ -359,7 +369,7 @@ private static async Task<TransferResult> _TransferEmployee(
 
 ### Class Factory Execute
 
-When the orchestration logic belongs with the aggregate — especially when it needs to call the aggregate's own Create and Fetch methods — use Execute on a class factory. The key use case is "create or fetch": check whether something exists, and either load it or create a new one. Without Execute, you'd already be committed to one path by the time you're inside a `[Create]` constructor or `[Fetch]` method. Execute runs *before* that commitment.
+When the orchestration belongs with the aggregate — especially when it needs to call the aggregate's own Create and Fetch methods — use Execute on a class factory. This is the "create or fetch" pattern: check whether something exists, then load it or create a new one.
 
 <!-- snippet: operations-class-execute -->
 <a id='snippet-operations-class-execute'></a>
@@ -412,6 +422,8 @@ public partial class Consultation : IConsultation
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ClassExecuteSamples.cs#L6-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+`StartForPatient` receives its own factory via `[Service]`, checks for an existing consultation, and either fetches or creates. The caller just sees `factory.StartForPatient(patientId)` — the orchestration decision is encapsulated.
+
 When the class implements a matching `I{ClassName}` interface, all generated factory methods return the interface type. Classes without a matching interface return the concrete type instead.
 
 Generated factory interface:
@@ -434,9 +446,9 @@ Use class factory Execute when the orchestration logic is tightly coupled to the
 
 ## Event Operation
 
-Events are for side effects that shouldn't block the caller or affect the main operation's outcome. When an employee is created, you might want to send a welcome email or notify HR — but the caller shouldn't wait for that email to send, and a failed notification shouldn't roll back the employee creation.
+Events are for side effects that should happen independently of the main persistence operation. When you save an employee, you might want to send a welcome email or notify HR — but the caller shouldn't wait for that email to send, and a failed notification shouldn't roll back the employee insert.
 
-Events provide two guarantees: **fire-and-forget** (the caller continues immediately) and **scope isolation** (the event runs in its own DI scope, so failures don't affect the caller's transaction).
+Events provide two guarantees: **fire-and-forget** (the caller continues immediately) and **scope isolation** (the event runs in its own DI scope, so if it fails, the caller's persistence transaction is unaffected).
 
 <!-- snippet: operations-event -->
 <a id='snippet-operations-event'></a>
@@ -489,7 +501,7 @@ private static async Task<int> _WaitForAllEvents([Service] IEventTracker eventTr
     return pendingCount;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L328-L337' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-tracker' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L328-L337' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Return value handling:
@@ -576,7 +588,7 @@ This pattern ensures:
 
 ## Remote Attribute
 
-Marks methods as **entry points from the client to the server**. Once execution crosses to the server, subsequent calls stay there.
+`[Remote]` marks methods as **entry points from the client to the server**. It's how RemoteFactory knows which calls need to cross the network boundary. Once execution reaches the server, subsequent calls stay there — you don't need `[Remote]` on methods that are only called from server-side code.
 
 <!-- snippet: operations-remote -->
 <a id='snippet-operations-remote'></a>
