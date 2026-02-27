@@ -16,40 +16,42 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| [v10.14.0](v10.14.0.md) | 2026-02-26 | CanSave on IFactorySave\<T\> |
-| [v10.13.0](v10.13.0.md) | 2026-02-18 | [Execute] on class factories |
-| [v10.12.0](v10.12.0.md) | 2026-02-01 | CorrelationContext DI redesign, event correlation propagation fix |
-| [v10.11.2](v10.11.2.md) | 2026-01-18 | Fix nullable value type syntax in ordinal serialization |
-| [v10.11.1](v10.11.1.md) | 2026-01-18 | Fix nullable typeof() in ordinal serialization |
-| [v10.11.0](v10.11.0.md) | 2026-01-15 | Generator refactoring, exception stack trace fix |
-| [v10.10.0](v10.10.0.md) | 2026-01-15 | Support for `params` parameters in factory methods |
-| [v10.9.0](v10.9.0.md) | 2026-01-13 | Client-server code separation with FactoryMode.RemoteOnly |
-| [v10.8.0](v10.8.0.md) | 2026-01-13 | Optional CancellationToken on all factory methods |
-| [v10.7.0](v10.7.0.md) | 2026-01-11 | Fix duplicate Save method generation with multi-line parameters |
-| [v10.6.0](v10.6.0.md) | 2026-01-07 | Fire-and-forget domain events with [Event] attribute |
-| [v10.5.0](v10.5.0.md) | 2026-01-04 | Constructor injection compatibility, AOT documentation |
-| [v10.4.0](v10.4.0.md) | 2026-01-04 | CancellationToken support with IFactoryOnCancelled lifecycle hooks |
-| [v10.3.0](v10.3.0.md) | 2026-01-03 | Comprehensive logging with CorrelationId for distributed tracing |
-| [v10.2.0](v10.2.0.md) | 2026-01-01 | Ordinal serialization (40-50% smaller payloads), breaking: default format changed |
+| [v0.15.0](v0.15.0.md) | 2026-02-26 | Version reset from v10.x to v0.x pre-release |
+| [v0.14.0](v0.14.0.md) | 2026-02-26 | CanSave on IFactorySave\<T\> |
+| [v0.13.0](v0.13.0.md) | 2026-02-18 | [Execute] on class factories |
+| [v0.12.0](v0.12.0.md) | 2026-02-01 | CorrelationContext DI redesign, event correlation propagation fix |
+| [v0.11.2](v0.11.2.md) | 2026-01-18 | Fix nullable value type syntax in ordinal serialization |
+| [v0.11.1](v0.11.1.md) | 2026-01-18 | Fix nullable typeof() in ordinal serialization |
+| [v0.11.0](v0.11.0.md) | 2026-01-15 | Generator refactoring, exception stack trace fix |
+| [v0.10.0](v0.10.0.md) | 2026-01-15 | Support for `params` parameters in factory methods |
+| [v0.9.0](v0.9.0.md) | 2026-01-13 | Client-server code separation with FactoryMode.RemoteOnly |
+| [v0.8.0](v0.8.0.md) | 2026-01-13 | Optional CancellationToken on all factory methods |
+| [v0.7.0](v0.7.0.md) | 2026-01-11 | Fix duplicate Save method generation with multi-line parameters |
+| [v0.6.0](v0.6.0.md) | 2026-01-07 | Fire-and-forget domain events with [Event] attribute |
+| [v0.5.0](v0.5.0.md) | 2026-01-04 | Constructor injection compatibility, AOT documentation |
+| [v0.4.0](v0.4.0.md) | 2026-01-04 | CancellationToken support with IFactoryOnCancelled lifecycle hooks |
+| [v0.3.0](v0.3.0.md) | 2026-01-03 | Comprehensive logging with CorrelationId for distributed tracing |
+| [v0.2.0](v0.2.0.md) | 2026-01-01 | Ordinal serialization (40-50% smaller payloads), breaking: default format changed |
 
 ## All Releases
 
-- [v10.14.0](v10.14.0.md) - 2026-02-26 - CanSave on IFactorySave\<T\>
-- [v10.13.0](v10.13.0.md) - 2026-02-18 - [Execute] on class factories
-- [v10.12.0](v10.12.0.md) - 2026-02-01 - CorrelationContext DI redesign
-- [v10.11.2](v10.11.2.md) - 2026-01-18 - Nullable value type syntax fix
-- [v10.11.1](v10.11.1.md) - 2026-01-18 - Nullable typeof() fix
-- [v10.11.0](v10.11.0.md) - 2026-01-15 - Generator refactoring
-- [v10.10.0](v10.10.0.md) - 2026-01-15 - Support for params parameters
-- [v10.9.0](v10.9.0.md) - 2026-01-13 - Client-server code separation
-- [v10.8.0](v10.8.0.md) - 2026-01-13 - Optional CancellationToken on factory methods
-- [v10.7.0](v10.7.0.md) - 2026-01-11 - Parameter whitespace bug fix
-- [v10.6.0](v10.6.0.md) - 2026-01-07 - Fire-and-forget domain events
-- [v10.5.0](v10.5.0.md) - 2026-01-04 - Constructor injection compatibility
-- [v10.4.0](v10.4.0.md) - 2026-01-04 - CancellationToken support
-- [v10.3.0](v10.3.0.md) - 2026-01-03 - Logging with CorrelationId
-- [v10.2.0](v10.2.0.md) - 2026-01-01 - Ordinal serialization
-- [v10.1.1](v10.1.1.md) - 2026-01-01 - Version metadata fix
+- [v0.15.0](v0.15.0.md) - 2026-02-26 - Version reset from v10.x to v0.x
+- [v0.14.0](v0.14.0.md) - 2026-02-26 - CanSave on IFactorySave\<T\>
+- [v0.13.0](v0.13.0.md) - 2026-02-18 - [Execute] on class factories
+- [v0.12.0](v0.12.0.md) - 2026-02-01 - CorrelationContext DI redesign
+- [v0.11.2](v0.11.2.md) - 2026-01-18 - Nullable value type syntax fix
+- [v0.11.1](v0.11.1.md) - 2026-01-18 - Nullable typeof() fix
+- [v0.11.0](v0.11.0.md) - 2026-01-15 - Generator refactoring
+- [v0.10.0](v0.10.0.md) - 2026-01-15 - Support for params parameters
+- [v0.9.0](v0.9.0.md) - 2026-01-13 - Client-server code separation
+- [v0.8.0](v0.8.0.md) - 2026-01-13 - Optional CancellationToken on factory methods
+- [v0.7.0](v0.7.0.md) - 2026-01-11 - Parameter whitespace bug fix
+- [v0.6.0](v0.6.0.md) - 2026-01-07 - Fire-and-forget domain events
+- [v0.5.0](v0.5.0.md) - 2026-01-04 - Constructor injection compatibility
+- [v0.4.0](v0.4.0.md) - 2026-01-04 - CancellationToken support
+- [v0.3.0](v0.3.0.md) - 2026-01-03 - Logging with CorrelationId
+- [v0.2.0](v0.2.0.md) - 2026-01-01 - Ordinal serialization
+- [v0.1.1](v0.1.1.md) - 2026-01-01 - Version metadata fix
 
 ---
 

@@ -2,11 +2,11 @@
 
 ## Overview
 
-RemoteFactory 10.2.0+ generates ordinal serialization code that uses object initializer syntax, which breaks for Neatoo domain objects that require constructor-injected services.
+RemoteFactory 0.2.0+ generates ordinal serialization code that uses object initializer syntax, which breaks for Neatoo domain objects that require constructor-injected services.
 
 **Status:** READY FOR RELEASE (Fix implemented and tested)
 
-**Blocking:** Neatoo cannot upgrade to RemoteFactory 10.4.0
+**Blocking:** Neatoo cannot upgrade to RemoteFactory 0.4.0
 
 **Priority:** HIGH
 
@@ -66,7 +66,7 @@ It doesn't account for types that:
 
 ## Impact
 
-- **97 build errors** in Neatoo when upgrading to RemoteFactory 10.4.0
+- **97 build errors** in Neatoo when upgrading to RemoteFactory 0.4.0
 - All `[Factory]` types that inherit from Neatoo base classes are affected
 - Blocks adoption of new RemoteFactory features (CancellationToken support, logging)
 
@@ -179,7 +179,7 @@ Implement Option A to unblock Neatoo upgrade. This is safe and non-breaking.
 - [x] Skip `FromOrdinalArray` generation
 - [x] Skip `JsonConverter` generation
 - [x] Add tests for detection logic (12 tests in ConstructorInjectionTests.cs)
-- [ ] Release as patch (10.4.1)
+- [ ] Release as patch (0.4.1)
 
 ### Phase 2: DI-Aware Serialization (Future)
 
@@ -188,7 +188,7 @@ Implement Option B for full ordinal serialization support with DI.
 - [ ] Design `IServiceProvider` integration in JsonConverter
 - [ ] Update generator to use factory pattern
 - [ ] Add tests for DI-resolved types
-- [ ] Release as minor (10.5.0)
+- [ ] Release as minor (0.5.0)
 
 ---
 
@@ -227,13 +227,13 @@ public class Config(string env = "dev") { }
 
 ## Additional Fix: IMakeRemoteDelegateRequest CancellationToken
 
-RemoteFactory 10.4.0 added `CancellationToken` parameter to interface methods:
+RemoteFactory 0.4.0 added `CancellationToken` parameter to interface methods:
 
 ```csharp
 // Old (Neatoo implements this)
 Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters);
 
-// New (10.4.0)
+// New (0.4.0)
 Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken token);
 ```
 
@@ -286,7 +286,7 @@ public interface IMakeRemoteDelegateRequest
 
 ### Release
 
-- [x] Bump version to 10.5.0
+- [x] Bump version to 0.5.0
 - [x] Update release notes
 - [x] Add AOT compatibility documentation
 - [ ] Publish to NuGet
@@ -325,13 +325,13 @@ await remoteDelegateRequest.ForDelegate<Person>(typeof(CreatePerson), args, cts.
 | `src/Generator/OrdinalSerializationGenerator.cs` | Add constructor detection |
 | `src/RemoteFactory/IMakeRemoteDelegateRequest.cs` | Add overload methods |
 | `src/Tests/OrdinalSerializationTests.cs` | Add detection tests |
-| `docs/release-notes/v10.4.1.md` | Document fixes |
+| `docs/release-notes/v0.4.1.md` | Document fixes |
 
 ---
 
 ## Success Criteria
 
-- [ ] Neatoo solution builds with RemoteFactory 10.4.1+
+- [ ] Neatoo solution builds with RemoteFactory 0.4.1+
 - [ ] All existing RemoteFactory tests pass
 - [ ] All existing Neatoo tests pass
 - [ ] No breaking changes for existing POCOs using ordinal serialization
