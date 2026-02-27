@@ -186,4 +186,17 @@ public class ShowcaseAuthTests
         Assert.True(result.HasAccess);
         Assert.False(result.Result!.IsNew);
     }
+
+    [Fact]
+    public async Task ShowcaseAuth_CanSave_ViaIFactorySave()
+    {
+        // Resolve via IFactorySave<T> interface -- the explicit interface bridge
+        // should delegate to the concrete CanSave() which returns false (CanDelete is false)
+        var factorySave = _clientScope.ServiceProvider.GetRequiredService<IFactorySave<ShowcaseAuthObj>>();
+
+        var result = await factorySave.CanSave();
+
+        // CanSave aggregates all write auth checks; CanDelete is false so CanSave is false
+        Assert.False(result.HasAccess);
+    }
 }

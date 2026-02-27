@@ -510,7 +510,9 @@ Return value handling:
 
 ## Collection Factories
 
-Collections can have `[Factory]` to support batch operations and child factory injection.
+This is an advanced feature. Most developers won't need collection factories initially — a plain `List<Child>` works fine when children don't need their own persistence awareness.
+
+Collection factories exist for scenarios where a plain list isn't enough for persistence. The key example: when a user removes an item from a list on the client, the application considers it "deleted" — but the server still needs to know about that deletion to remove the database record. A persistence-aware collection can track deleted items and include them in the Save operation, even after the UI has moved on. Collection factories also ensure that each child entity is properly constructed through its own factory (with DI wiring), and that the child factory reference survives serialization so new children can be added after the aggregate crosses the client/server boundary.
 
 ### Basic Collection Factory
 
@@ -630,11 +632,13 @@ See [Client-Server Architecture](client-server-architecture.md) for the complete
 
 ## Lifecycle Hooks
 
-Interfaces for operation lifecycle:
+Most developers won't need lifecycle hooks — they're an advanced feature for cross-cutting concerns that apply across multiple operations without cluttering each method. Common uses include audit logging, cache invalidation, and guard rails like preventing deletion of unsaved entities.
+
+Implement the corresponding interface on your class to hook into the persistence lifecycle:
 
 ### IFactoryOnStart / IFactoryOnStartAsync
 
-Called before the operation executes. Use `IFactoryOnStartAsync` for async validation or preparation:
+Called before the operation executes. Use for validation gates or pre-operation setup:
 
 <!-- snippet: operations-lifecycle-onstart -->
 <a id='snippet-operations-lifecycle-onstart'></a>
@@ -653,7 +657,7 @@ public void FactoryStart(FactoryOperation factoryOperation)
 
 ### IFactoryOnComplete / IFactoryOnCompleteAsync
 
-Called after successful operation. Use `IFactoryOnCompleteAsync` for async post-processing:
+Called after successful operation. Use for audit logging, cache invalidation, or triggering follow-up actions:
 
 <!-- snippet: operations-lifecycle-oncomplete -->
 <a id='snippet-operations-lifecycle-oncomplete'></a>
@@ -670,7 +674,7 @@ public void FactoryComplete(FactoryOperation factoryOperation)
 
 ### IFactoryOnCancelled / IFactoryOnCancelledAsync
 
-Called when operation is cancelled via OperationCanceledException. Use `IFactoryOnCancelledAsync` for async cleanup:
+Called when operation is cancelled via CancellationToken. Use for cleanup or logging of cancelled operations:
 
 <!-- snippet: operations-lifecycle-oncancelled -->
 <a id='snippet-operations-lifecycle-oncancelled'></a>
@@ -693,7 +697,7 @@ Lifecycle execution order:
 
 ## CancellationToken Support
 
-All factory methods accept an optional CancellationToken:
+All generated factory methods include an optional CancellationToken as the last parameter. RemoteFactory threads it through the pipeline — linking it to `HttpContext.RequestAborted` on the server and `ApplicationStopping` for graceful shutdown. If you include CancellationToken in your operation method signature, you'll receive this linked token automatically.
 
 <!-- snippet: operations-cancellation -->
 <a id='snippet-operations-cancellation'></a>
@@ -724,14 +728,14 @@ public interface IEmployeeFactory
 ```
 
 CancellationToken is:
-- Automatically passed to async operation methods
-- Linked to HttpContext.RequestAborted on server
-- Linked to ApplicationStopping for graceful shutdown
-- Triggers IFactoryOnCancelled when fired
+- Automatically passed to your operation methods
+- Linked to `HttpContext.RequestAborted` on the server
+- Linked to `ApplicationStopping` for graceful shutdown
+- Triggers `IFactoryOnCancelled` lifecycle hook when fired
 
 ## Method Parameters
 
-Factory methods support:
+RemoteFactory requires a specific parameter ordering: **value parameters first, then service parameters, then CancellationToken last**. This isn't arbitrary — the generator uses this ordering to cleanly split parameters into three categories: values go on the generated factory interface (they cross the wire), services are injected from DI (they don't cross the wire), and the CancellationToken is managed by the framework. The caller only sees value parameters and the token; services are invisible to them.
 
 **Value parameters**: Serialized and sent to server
 <!-- snippet: operations-params-value -->

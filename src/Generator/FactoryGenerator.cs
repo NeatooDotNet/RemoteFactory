@@ -250,6 +250,18 @@ public partial class Factory : IIncrementalGenerator
 					methodNames.Add(method.UniqueName);
 				}
 
+				// Link CanSave method to the default save method (after unique names are assigned)
+				if (defaultSaveMethod != null)
+				{
+					var canSaveMethod = factoryMethods.OfType<CanFactoryMethod>()
+						.FirstOrDefault(m => m.Name == $"Can{defaultSaveMethod.Name}");
+					if (canSaveMethod != null)
+					{
+						defaultSaveMethod.CanSaveMethodUniqueName = canSaveMethod.UniqueName;
+						defaultSaveMethod.CanSaveMethodIsTask = canSaveMethod.IsTask;
+					}
+				}
+
 				foreach (var factoryMethod in factoryMethods)
 				{
 					factoryMethod.AddFactoryText(factoryText);

@@ -17,4 +17,13 @@ public interface IFactorySave<T>
     /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>The saved entity, or null if the operation was not authorized or the entity was not found.</returns>
     Task<IFactorySaveMeta?> Save(T entity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks whether saving is authorized for this factory.
+    /// When authorization is configured, delegates to the concrete CanSave() method.
+    /// When no authorization is configured, returns Authorized(true).
+    /// </summary>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
+    /// <returns>An Authorized result indicating whether saving is permitted.</returns>
+    Task<Authorized> CanSave(CancellationToken cancellationToken = default);
 }

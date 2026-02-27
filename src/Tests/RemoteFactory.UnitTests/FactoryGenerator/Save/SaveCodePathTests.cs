@@ -319,4 +319,51 @@ public class SaveCodePathTests
     }
 
     #endregion
+
+    #region IFactorySave.CanSave - No Authorization
+
+    /// <summary>
+    /// Tests that IFactorySave&lt;T&gt;.CanSave() returns Authorized(true) when
+    /// no authorization is configured. Uses the existing IFactorySaveTarget
+    /// which has Insert/Update but no authorization attributes.
+    /// </summary>
+    public class IFactorySaveCanSaveNoAuthTests : IDisposable
+    {
+        private readonly IServiceProvider _provider;
+
+        public IFactorySaveCanSaveNoAuthTests()
+        {
+            _provider = new ServerContainerBuilder().Build();
+        }
+
+        public void Dispose() => (_provider as IDisposable)?.Dispose();
+
+        [Fact]
+        public async Task CanSave_NoAuth_ReturnsAuthorizedTrue()
+        {
+            // Arrange - resolve via IFactorySave<T> interface (no auth configured)
+            var factorySave = _provider.GetRequiredService<IFactorySave<IFactorySaveTarget>>();
+
+            // Act
+            var result = await factorySave.CanSave(CancellationToken.None);
+
+            // Assert - no authorization = always allowed
+            Assert.True(result.HasAccess);
+        }
+
+        [Fact]
+        public async Task CanSave_NoAuth_DefaultCancellationToken()
+        {
+            // Arrange
+            var factorySave = _provider.GetRequiredService<IFactorySave<IFactorySaveTarget>>();
+
+            // Act - use default CancellationToken
+            var result = await factorySave.CanSave();
+
+            // Assert
+            Assert.True(result.HasAccess);
+        }
+    }
+
+    #endregion
 }
