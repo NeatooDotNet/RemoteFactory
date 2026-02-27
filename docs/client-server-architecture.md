@@ -1,10 +1,21 @@
 # Client-Server Architecture
 
-Understanding when to use `[Remote]` and how services flow between client and server.
+RemoteFactory lets you write your domain model as if it runs in a single process. The same `Employee` class works on both the client and the server — it validates on the client, persists on the server, and serializes across the wire without DTOs or mapping. The client/server boundary is there, but your code doesn't have to think about it.
 
-## The Core Concept
+This page is the big picture. [Factory Operations](factory-operations.md) covers each persistence operation in detail. [Service Injection](service-injection.md) covers how DI works across the boundary.
 
-`[Remote]` marks **entry points from the client to the server**. Once execution crosses to the server, it stays there—subsequent method calls don't need `[Remote]`.
+## One Domain, Two Containers
+
+Your domain assembly is referenced by both the client and the server. Each side has its own DI container with different service registrations:
+
+- **Client container**: UI services, validation, the factory interfaces that serialize calls to the server
+- **Server container**: Repositories, database contexts, secrets — plus everything the client has
+
+RemoteFactory generates the factory implementations for each side. The client factory knows to serialize and send. The server factory knows to resolve services and execute locally. Your domain code doesn't change — the same `[Fetch]` method works regardless of which side invokes it.
+
+## [Remote] — The Crossing Point
+
+`[Remote]` marks **entry points from the client to the server**. It's how RemoteFactory knows which calls need to cross the network boundary. Once execution reaches the server, it stays there — subsequent method calls don't need `[Remote]`.
 
 ```
 Client                          Server
@@ -21,59 +32,52 @@ Client                          Server
 ◄─────────────────────────────── Return result
 ```
 
-## Constructor vs Method Injection
-
-The two injection patterns exist to support the client-server split:
-
-| Injection Type | Available On | Typical Use |
-|---------------|--------------|-------------|
-| Constructor (`[Service]` on constructor) | Client + Server | Validation, logging, client-side services |
-| Method (`[Service]` on method parameters) | Server only | Repositories, database, secrets |
-
-**Method injection is the common case.** Most factory methods have method-injected services but are NOT marked `[Remote]`—they're called from server-side code after already crossing the boundary.
+This is the most important thing to understand: `[Remote]` is not "this method runs on the server." It's "this method is a **client entry point** that crosses to the server." The distinction matters because most server-side methods are *not* entry points — they're called from other server-side code after the boundary has already been crossed.
 
 ## When to Use [Remote]
 
-Use `[Remote]` for **entry points from the client**:
+Use `[Remote]` for methods the **client calls directly**:
 - Aggregate root Create/Fetch operations
-- Top-level Execute operations initiated by UI
-- Any method the client calls directly
+- Top-level Save (Insert/Update/Delete) operations
+- Execute operations initiated by the UI
 
-> **Rule of Thumb**: If your Blazor component (or other client code) calls the factory method directly, add `[Remote]`. If the method is only called from other server-side code after already crossing the boundary, no `[Remote]` needed.
+**Rule of thumb**: If your client code (Blazor component, MAUI page, etc.) calls the factory method directly, add `[Remote]`. If the method is only called from server-side code after already crossing the boundary, skip it.
 
 ## When [Remote] is NOT Needed
 
-Most methods don't need `[Remote]`:
-- Methods called from server-side code (the common case)
+Most methods don't need `[Remote]` — and this is the common case:
+- Methods called from server-side code (after already crossing the boundary)
 - Child entity operations within an aggregate
-- Any method invoked after already crossing to the server
+- Any method where the caller is already on the server
 
-## Entity Duality
+A parent aggregate's `[Remote, Fetch]` method crosses to the server. From there, it can call child entity factories, collection factories, validation methods — none of which need `[Remote]` because execution is already server-side.
 
-An entity can be an aggregate root in one object graph and a child in another. For example, `Employee` might be:
-- **Aggregate root**: When editing an employee directly → needs `[Remote]` factory methods
-- **Child entity**: When loaded as part of a `Department` → no `[Remote]` needed
+## What Happens If You Get It Wrong
 
-The same class may have `[Remote]` methods for aggregate root scenarios while other methods are server-only.
+Non-`[Remote]` methods still compile for client assemblies, but calling one from the client fails at runtime — the server-only services it needs aren't registered in the client's DI container. You'll get a standard DI resolution exception:
 
-## Runtime Enforcement
+```
+System.InvalidOperationException: No service for type 'IEmployeeRepository' has been registered.
+```
 
-Non-`[Remote]` methods are generated for client assemblies but fail at runtime with a "not-registered" DI exception if called—server-only services aren't in the client container.
+This is runtime enforcement, not compile-time. The code compiles, but the client container doesn't have the services to execute the method.
 
-This is **runtime enforcement**, not compile-time. The code compiles, but calling a server-only method from the client fails when resolving dependencies.
+## Best Practice: Exclude Server Packages from Client Projects
 
-## Blazor WASM Best Practice
-
-Exclude server-only packages from Blazor WASM client projects:
+Enforce the boundary at the package level by excluding server-only dependencies from client projects:
 
 ```xml
 <!-- Client.csproj -->
 <ItemGroup>
-  <!-- Reference domain project but exclude server packages -->
   <ProjectReference Include="..\Domain\Domain.csproj" />
-
-  <!-- Do NOT reference Entity Framework Core packages -->
+  <!-- Do NOT reference Entity Framework Core or other server-only packages -->
 </ItemGroup>
 ```
 
-This enforces the boundary at the package level and reduces client bundle size.
+This reduces client bundle size and makes the boundary explicit — if your client project can't even reference `DbContext`, you can't accidentally call server-only code.
+
+## Next Steps
+
+- [Factory Operations](factory-operations.md) — How each persistence operation works
+- [Service Injection](service-injection.md) — Constructor vs method injection across the boundary
+- [Factory Modes](factory-modes.md) — Remote, Logical, and Server registration modes
