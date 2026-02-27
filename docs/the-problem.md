@@ -1,64 +1,104 @@
-# What Problem Does RemoteFactory Solve?
+# Why RemoteFactory
 
-## The Shift
+## The Goal
 
-For years, .NET web applications followed a pattern: C# on the server, JavaScript in the browser. This created a fundamental tension—your domain model couldn't cross the boundary.
+Write your domain model as if it's a single layer. Don't think about client vs server, serialization, HTTP endpoints, or service resolution differences between tiers. Write the persistence logic where it belongs — on the domain object — and let the infrastructure figure out how to get there.
 
-The result was **translation layers**:
-- DTOs to serialize server state
-- API controllers to expose operations
-- Client-side models to receive data
-- Mapping code to convert between them
+That's what RemoteFactory does. It's a persistence routing engine: it routes your domain objects to the right method for each stage of their persistence lifecycle — creation, loading, saving, deletion — and handles the client/server split behind the scenes.
 
-Every property existed in multiple places. Every change rippled through layers.
+## The Traditional Problem
 
-## The Opportunity
+In a typical 3-tier .NET application, getting an entity from the client to the database requires layers of infrastructure:
 
-Blazor WebAssembly changed the equation. Now the same .NET library can execute in both the browser and on the server.
+- **DTOs** to serialize state across the wire
+- **API controllers** to expose each operation as an endpoint
+- **Factories or mapping code** to convert between DTOs and domain objects
+- **Different service wiring** on client vs server
 
-This means your `Employee` class doesn't need a `EmployeeDto` twin. The same type can:
-- Validate on the client (fast feedback)
-- Execute business logic on the server (with database access)
-- Serialize directly across the wire (no mapping)
+Every property exists in multiple places. Every new field means changes in three or four files. The domain model — the thing that matters — gets buried under plumbing.
 
-## The Gap
+## RemoteFactory's Approach
 
-But sharing the library isn't enough. You still need:
-- Factories to create instances with proper DI
-- Serialization that handles the client-server round trip
-- HTTP endpoints to route remote calls
-- Service injection that works differently on each side
+RemoteFactory eliminates those layers by generating them at compile time from attributes on your domain classes. But the real value isn't the code generation — that's just the mechanism. The value is that you write your domain model as a single-layer design, and RemoteFactory takes care of routing each operation to the right place with the right services.
 
-Writing this infrastructure by hand recreates the boilerplate problem.
+Consider what happens when you call `Save()` on an entity:
 
-## RemoteFactory's Solution
+**Traditional approach** — you write all of this:
+```csharp
+// Controller
+[HttpPost] public async Task<ActionResult<EmployeeDto>> Save(EmployeeDto dto) { ... }
+[HttpPut]  public async Task<ActionResult<EmployeeDto>> Update(EmployeeDto dto) { ... }
+[HttpDelete] public async Task Delete(Guid id) { ... }
 
-RemoteFactory generates all of it at compile time:
+// Mapping
+var entity = MapFromDto(dto);
+// ... persist ...
+return MapToDto(entity);
 
-1. **Mark your domain methods** with attributes (`[Factory]`, `[Remote]`, `[Fetch]`, etc.)
-2. **Generator creates** factory interfaces, implementations, serialization, and HTTP handling
-3. **Same class works** on client and server with appropriate behavior
-
-```
-Traditional 3-Tier          With RemoteFactory
-─────────────────          ─────────────────
-Domain Model               Domain Model + Attributes
-      ↓                           ↓
-DTOs                       (generated)
-      ↓                           ↓
-Factories/Mapping          (generated)
-      ↓                           ↓
-API Controllers            (generated endpoint)
+// Factory
+public Employee CreateFromDto(EmployeeDto dto) { ... }
 ```
 
-The domain model becomes the single source of truth. Changes happen in one place.
+**With RemoteFactory** — you write just the persistence logic:
+```csharp
+[Factory]
+public partial class Employee
+{
+    [Remote, Insert]
+    public async Task Insert([Service] IEmployeeRepository repo)
+    {
+        await repo.AddAsync(this);
+    }
 
-## Who Benefits Most
+    [Remote, Update]
+    public async Task Update([Service] IEmployeeRepository repo)
+    {
+        await repo.UpdateAsync(this);
+    }
 
-RemoteFactory is designed for:
+    [Remote, Delete]
+    public async Task Delete([Service] IEmployeeRepository repo)
+    {
+        await repo.DeleteAsync(Id);
+    }
+}
+```
 
-- **Blazor WebAssembly applications** with ASP.NET Core backends
+The caller just calls `factory.Save(employee)`. RemoteFactory routes to Insert, Update, or Delete based on entity metadata (`IsNew`, `IsDeleted`), serializes the object to the server, resolves the repository from server-side DI, and calls your method. No DTOs, no controllers, no mapping.
+
+## What Gets Generated
+
+RemoteFactory generates everything between your domain class and the wire:
+
+```
+Your Code                    Generated
+─────────                    ─────────
+Domain Model + Attributes →  Factory interfaces + implementations
+                             Serialization handling
+                             HTTP endpoint routing
+                             Service resolution per side
+```
+
+The domain model is the single source of truth. Changes happen in one place.
+
+## Coming from CSLA?
+
+If you know CSLA, RemoteFactory is the DataPortal pattern implemented through source generation instead of runtime reflection. Same concept — domain objects that know how to persist themselves — but resolved at compile time.
+
+## Who Benefits
+
+RemoteFactory is designed for any .NET client that needs to call a server:
+
+- **Blazor WebAssembly** with ASP.NET Core backends
+- **MAUI** applications with server-side persistence
+- **WPF, console, or any .NET client** that calls a .NET server
 - **Domain-driven designs** where entities have behavior, not just data
 - **Teams tired of maintaining** DTO layers and mapping code
 
-If you're building a JavaScript SPA with a .NET API, RemoteFactory won't help—you still need that translation layer. But if you're all-.NET, the translation layer is now optional.
+The pattern is the same regardless of client technology: your domain class declares its persistence operations, and RemoteFactory handles the rest.
+
+## Next Steps
+
+- [Getting Started](getting-started.md) — Build your first RemoteFactory application
+- [Factory Operations](factory-operations.md) — All seven persistence operations
+- [Client-Server Architecture](client-server-architecture.md) — How the client/server split works
