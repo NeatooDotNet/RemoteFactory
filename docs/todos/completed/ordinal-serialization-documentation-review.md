@@ -39,7 +39,7 @@ Documentation review findings for the compact/ordinal JSON serialization feature
 ---
 
 ### 3. Create Release Notes
-**File:** `docs/release-notes/v10.2.0.md` (or next version)
+**File:** `docs/release-notes/v0.2.0.md` (or next version)
 
 **Issue:** This significant feature has no release notes.
 

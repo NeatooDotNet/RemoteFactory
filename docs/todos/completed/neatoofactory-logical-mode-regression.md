@@ -102,12 +102,12 @@ See commit: `0bec5a4` in Neatoo repository.
 
 ## Resolution (2026-01-13)
 
-**Fixed by RemoteFactory 10.8.0** - The regression was fixed as part of the "optional CancellationToken on all factory methods" feature (commit `eab7726`).
+**Fixed by RemoteFactory 0.8.0** - The regression was fixed as part of the "optional CancellationToken on all factory methods" feature (commit `eab7726`).
 
 ### Verification
-- Upgraded Neatoo to RemoteFactory 10.9.0
+- Upgraded Neatoo to RemoteFactory 0.9.0
 - Added test `PersonSave_DirectSave_ShouldWork` that uses `person.Save()` directly in Logical mode
-- Test **passes** with 10.9.0, **fails** with 10.7.0
+- Test **passes** with 0.9.0, **fails** with 0.7.0
 - All 1,921 Neatoo tests pass
 
 ## Investigation Results (2026-01-13)

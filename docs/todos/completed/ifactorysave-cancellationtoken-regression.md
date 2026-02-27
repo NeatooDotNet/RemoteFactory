@@ -67,4 +67,4 @@ Generated factory should:
 
 ## Version
 
-First observed in RemoteFactory 10.7.0 (generator renamed from `Neatoo.RemoteFactory.FactoryGenerator` to `Neatoo.Generator`)
+First observed in RemoteFactory 0.7.0 (generator renamed from `Neatoo.RemoteFactory.FactoryGenerator` to `Neatoo.Generator`)

@@ -4,13 +4,13 @@
 **Priority:** High
 **Created:** 2026-01-18
 **Completed:** 2026-01-18
-**Version:** 10.11.1 -> 10.11.2
+**Version:** 0.11.1 -> 0.11.2
 
 ---
 
 ## Problem
 
-The `FromOrdinalArray()` method generation in version 10.11.1 produces invalid C# syntax for nullable types:
+The `FromOrdinalArray()` method generation in version 0.11.1 produces invalid C# syntax for nullable types:
 
 1. **Nullable value types**: Generates `(Type ?? )` instead of `(Type?)`
 2. **Nullable reference types**: Generates `(Type? )` with extra space instead of `(Type?)`

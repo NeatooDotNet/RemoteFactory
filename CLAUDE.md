@@ -204,9 +204,9 @@ Use conventional commits for automatic categorization:
    ```
 
 2. **Determine version bump**:
-   - `BREAKING CHANGE:` or `!` suffix → Major (e.g., 10.0.0 → 11.0.0)
-   - `feat:` or `perf:` → Minor (e.g., 10.1.0 → 10.2.0)
-   - `fix:` only → Patch (e.g., 10.1.0 → 10.1.1)
+   - `BREAKING CHANGE:` or `!` suffix → Major (e.g., 0.14.0 → 1.0.0)
+   - `feat:` or `perf:` → Minor (e.g., 0.1.0 → 0.2.0)
+   - `fix:` only → Patch (e.g., 0.1.0 → 0.1.1)
 
 3. **Create release notes file**: `docs/release-notes/vX.Y.Z.md`
    - Use template from `docs/release-notes/index.md`
