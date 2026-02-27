@@ -628,6 +628,9 @@ internal static class ClassFactoryRenderer
 
         // Explicit interface method (always needed)
         RenderSaveExplicitInterfaceMethod(sb, method, model);
+
+        // CanSave explicit interface method (for IFactorySave<T>.CanSave)
+        RenderCanSaveExplicitInterfaceMethod(sb, method, model);
     }
 
     private static void RenderSavePublicMethod(StringBuilder sb, SaveMethodModel method, ClassFactoryModel model)
@@ -826,6 +829,46 @@ internal static class ClassFactoryRenderer
         }
 
         sb.AppendLine("        }");
+        sb.AppendLine();
+    }
+
+    private static void RenderCanSaveExplicitInterfaceMethod(StringBuilder sb, SaveMethodModel method, ClassFactoryModel model)
+    {
+        if (!method.IsDefault)
+        {
+            return;
+        }
+
+        // Find the CanSave method that corresponds to this save method
+        var canSaveMethod = model.Methods.OfType<CanMethodModel>()
+            .FirstOrDefault(m => m.Name == $"Can{method.Name}");
+
+        if (canSaveMethod == null)
+        {
+            // No auth configured -- generate default returning Authorized(true)
+            sb.AppendLine($"        Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            return Task.FromResult(new Authorized(true));");
+            sb.AppendLine("        }");
+        }
+        else
+        {
+            // Auth configured -- delegate to concrete CanSave method
+            if (canSaveMethod.IsTask)
+            {
+                sb.AppendLine($"        async Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            return await {canSaveMethod.UniqueName}(cancellationToken);");
+                sb.AppendLine("        }");
+            }
+            else
+            {
+                sb.AppendLine($"        Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            return Task.FromResult({canSaveMethod.UniqueName}(cancellationToken));");
+                sb.AppendLine("        }");
+            }
+        }
         sb.AppendLine();
     }
 

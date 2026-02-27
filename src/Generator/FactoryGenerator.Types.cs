@@ -1355,6 +1355,16 @@ public partial class Factory
 		}
 
 		public bool IsDefault { get; set; } = false;
+		/// <summary>
+		/// Set externally after the method list is built. When non-null, the
+		/// ExplicitInterfaceMethod generates an IFactorySave&lt;T&gt;.CanSave bridge
+		/// that delegates to this concrete method.
+		/// </summary>
+		public string? CanSaveMethodUniqueName { get; set; }
+		/// <summary>
+		/// When CanSaveMethodUniqueName is set, indicates whether the concrete method is async (returns Task).
+		/// </summary>
+		public bool CanSaveMethodIsTask { get; set; }
 		public override bool IsSave => true;
 		public override bool IsRemote => this.WriteFactoryMethods.Any(m => m.IsRemote);
 		public override bool IsTask => this.IsRemote || this.WriteFactoryMethods.Any(m => m.IsTask);
@@ -1413,8 +1423,8 @@ public partial class Factory
 		}
 
 		/// <summary>
-		/// Generates the explicit IFactorySave&lt;T&gt;.Save implementation.
-		/// This must be generated regardless of FactoryMode because the class implements the interface.
+		/// Generates the explicit IFactorySave&lt;T&gt;.Save and IFactorySave&lt;T&gt;.CanSave implementations.
+		/// These must be generated regardless of FactoryMode because the class implements the interface.
 		/// </summary>
 		public override StringBuilder ExplicitInterfaceMethod()
 		{
@@ -1422,6 +1432,7 @@ public partial class Factory
 
 			if (this.IsDefault)
 			{
+				// IFactorySave<T>.Save explicit implementation
 				methodBuilder.AppendLine($"async Task<IFactorySaveMeta?> IFactorySave<{this.ImplementationType}>.Save({this.ImplementationType} target, CancellationToken cancellationToken)");
 				methodBuilder.AppendLine("{");
 
@@ -1434,6 +1445,34 @@ public partial class Factory
 					methodBuilder.AppendLine($"return await Task.FromResult((IFactorySaveMeta?) {this.Name}(target, cancellationToken));");
 				}
 				methodBuilder.AppendLine("}");
+
+				// IFactorySave<T>.CanSave explicit implementation
+				if (this.CanSaveMethodUniqueName != null)
+				{
+					// Auth configured -- delegate to concrete CanSave method
+					if (this.CanSaveMethodIsTask)
+					{
+						methodBuilder.AppendLine($"async Task<Authorized> IFactorySave<{this.ImplementationType}>.CanSave(CancellationToken cancellationToken)");
+						methodBuilder.AppendLine("{");
+						methodBuilder.AppendLine($"return await {this.CanSaveMethodUniqueName}(cancellationToken);");
+						methodBuilder.AppendLine("}");
+					}
+					else
+					{
+						methodBuilder.AppendLine($"Task<Authorized> IFactorySave<{this.ImplementationType}>.CanSave(CancellationToken cancellationToken)");
+						methodBuilder.AppendLine("{");
+						methodBuilder.AppendLine($"return Task.FromResult({this.CanSaveMethodUniqueName}(cancellationToken));");
+						methodBuilder.AppendLine("}");
+					}
+				}
+				else
+				{
+					// No auth configured -- default returns Authorized(true)
+					methodBuilder.AppendLine($"Task<Authorized> IFactorySave<{this.ImplementationType}>.CanSave(CancellationToken cancellationToken)");
+					methodBuilder.AppendLine("{");
+					methodBuilder.AppendLine("return Task.FromResult(new Authorized(true));");
+					methodBuilder.AppendLine("}");
+				}
 			}
 
 			return methodBuilder;

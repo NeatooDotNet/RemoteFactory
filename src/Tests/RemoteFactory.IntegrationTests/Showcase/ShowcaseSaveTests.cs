@@ -133,4 +133,16 @@ public class ShowcaseSaveTests
         var saved = await _factory.SaveRemote(result);
         Assert.False(saved.IsNew);
     }
+
+    [Fact]
+    public async Task ShowcaseSaveTests_CanSave_ViaIFactorySave_NoAuth()
+    {
+        // Resolve via IFactorySave<T> interface -- no authorization configured,
+        // so the explicit interface implementation returns Authorized(true)
+        var factorySave = _clientScope.ServiceProvider.GetRequiredService<IFactorySave<ShowcaseSave>>();
+
+        var result = await factorySave.CanSave();
+
+        Assert.True(result.HasAccess);
+    }
 }

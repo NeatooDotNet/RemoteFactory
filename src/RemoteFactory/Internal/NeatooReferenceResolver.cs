@@ -38,12 +38,6 @@ public sealed class NeatooReferenceResolver : ReferenceResolver, IDisposable
 	public override string GetReference(object value, out bool alreadyExists)
 	{
 		ArgumentNullException.ThrowIfNull(value, nameof(value));
-		var type = value.GetType();
-		if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
-		{
-			alreadyExists = false;
-			return string.Empty;
-		}
 
 		if (this._objectToReferenceIdMap.TryGetValue(value, out var referenceId))
 		{
