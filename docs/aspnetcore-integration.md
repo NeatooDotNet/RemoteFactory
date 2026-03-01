@@ -506,9 +506,9 @@ public class ErrorHandlingSample
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Samples/AspNetCore/ErrorHandlingSamples.cs#L6-L21' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-## CORS Configuration
+## CORS Configuration (Non-Hosted Deployments)
 
-Configure CORS for Blazor WASM clients:
+CORS is only needed when the client and server are on different origins -- for example, a standalone Blazor WASM app hosted separately from the API server. In hosted Blazor WASM mode (where the server hosts the client), CORS is unnecessary because both share the same origin.
 
 <!-- snippet: aspnetcore-cors -->
 <a id='snippet-aspnetcore-cors'></a>
@@ -519,6 +519,8 @@ public static class CorsConfigurationSample
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Only needed for non-hosted deployments where client and server
+        // are on different origins (e.g., separate Blazor WASM standalone app)
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
@@ -540,10 +542,10 @@ public static class CorsConfigurationSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L6-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L9-L38' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Place CORS middleware before `UseNeatoo()` to allow cross-origin requests.
+When CORS is needed, place it before `UseNeatoo()` to allow cross-origin requests.
 
 ## Minimal API Integration
 

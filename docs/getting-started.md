@@ -15,9 +15,11 @@ RemoteFactory's architecture needs three projects: one for the domain model (sha
 ```
 YourSolution/
 ├── YourApp.Domain/          # Shared: Domain models with factory methods
-├── YourApp.Server/          # ASP.NET Core server
+├── YourApp.Server/          # ASP.NET Core server (hosts the Blazor WASM client)
 └── YourApp.Client/          # Blazor WASM, MAUI, or other client
 ```
+
+For Blazor WebAssembly, the server project hosts the client (hosted WASM). A single `dotnet run` on the server starts both the API and the client application.
 
 ## Installation
 
@@ -37,7 +39,7 @@ The client project doesn't need direct package references — it gets RemoteFact
 
 ## Server Configuration
 
-The server registers RemoteFactory, maps the single HTTP endpoint, and registers your infrastructure services (repositories, database contexts, etc.):
+The server registers RemoteFactory, maps the HTTP endpoint, hosts the Blazor WASM client, and registers your infrastructure services (repositories, database contexts, etc.):
 
 <!-- snippet: getting-started-server-program -->
 <a id='snippet-getting-started-server-program'></a>
@@ -55,17 +57,24 @@ builder.Services.AddInfrastructureServices();
 
 var app = builder.Build();
 
+// Hosted Blazor WASM middleware
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
 // Add the /api/neatoo endpoint for remote calls
 app.UseNeatoo();
+
+// Fallback: serve index.html for unmatched routes (SPA routing)
+app.MapFallbackToFile("index.html");
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Program.cs#L11-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Program.cs#L8-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`AddNeatooAspNetCore()` registers factories, serialization, and server-side handlers. `UseNeatoo()` adds the `/api/neatoo` endpoint — the single entry point for all remote factory calls.
+`AddNeatooAspNetCore()` registers factories, serialization, and server-side handlers. `UseNeatoo()` adds the `/api/neatoo` endpoint — the single entry point for all remote factory calls. `UseBlazorFrameworkFiles()` and `MapFallbackToFile()` enable hosted Blazor WASM — the server serves the client application.
 
 ## Client Configuration
 
-The client registers RemoteFactory in Remote mode and provides an HttpClient pointed at the server:
+The client registers RemoteFactory in Remote mode and provides an HttpClient for server communication:
 
 <!-- snippet: getting-started-client-program -->
 <a id='snippet-getting-started-client-program'></a>
@@ -77,10 +86,11 @@ builder.Services.AddNeatooRemoteFactory(
     typeof(Employee).Assembly);
 
 // Register HttpClient for remote calls to server
+// In hosted WASM mode, HostEnvironment.BaseAddress targets the server that hosts the client
 builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
-    (sp, key) => new HttpClient { BaseAddress = new Uri(serverBaseAddress) });
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L14-L24' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L11-L22' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `NeatooFactory.Remote` tells RemoteFactory this is the client side — factory calls will be serialized and sent to the server via the keyed HttpClient.

@@ -61,7 +61,9 @@ public static class MultiAssemblySample
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/ServiceRegistrationSamples.cs#L22-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-### CORS Configuration (for Blazor WASM)
+### CORS Configuration (Non-Hosted Deployments Only)
+
+CORS is only needed when the client and server are on different origins (e.g., standalone Blazor WASM hosted separately from the API). In hosted WASM mode, CORS is unnecessary because both share the same origin.
 
 <!-- snippet: aspnetcore-cors -->
 <a id='snippet-aspnetcore-cors'></a>
@@ -72,6 +74,8 @@ public static class CorsConfigurationSample
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Only needed for non-hosted deployments where client and server
+        // are on different origins (e.g., separate Blazor WASM standalone app)
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
@@ -93,7 +97,7 @@ public static class CorsConfigurationSample
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L6-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L9-L38' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ---
@@ -110,10 +114,11 @@ builder.Services.AddNeatooRemoteFactory(
     typeof(Employee).Assembly);
 
 // Register HttpClient for remote calls to server
+// In hosted WASM mode, HostEnvironment.BaseAddress targets the server that hosts the client
 builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
-    (sp, key) => new HttpClient { BaseAddress = new Uri(serverBaseAddress) });
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L14-L24' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L11-L22' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [assembly: FactoryMode] for Client Assemblies
@@ -143,11 +148,12 @@ Add to your client project to generate only remote stubs (no local execution cod
 
 ```csharp
 // Configure HttpClient for server communication
+// In hosted Blazor WASM, HostEnvironment.BaseAddress targets the hosting server
 builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient
     {
-        BaseAddress = new Uri("https://localhost:5000/")  // Server URL
+        BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
     });
 
 await builder.Build().RunAsync();
