@@ -15,7 +15,7 @@ Complete reference of all RemoteFactory attributes.
 | `[Delete]` | Method | Remove entity |
 | `[Execute]` | Method | Business operations |
 | `[Event]` | Method | Fire-and-forget events |
-| `[Remote]` | Method | Execute on server |
+| `[Remote]` | Method | Client-to-server entry point |
 | `[Service]` | Parameter | Inject from DI |
 | `[AuthorizeFactory<T>]` | Class, Interface | Custom authorization |
 | `[AuthorizeFactory]` | Method | Authorization check |
@@ -25,13 +25,12 @@ Complete reference of all RemoteFactory attributes.
 
 ---
 
-## Factory Discovery Attributes
+## Factory Discovery
 
 ### [Factory]
 
-Marks a class or interface for factory generation.
+Marks a class or interface for factory generation. Generates `I{TypeName}Factory` interface and `{TypeName}Factory` implementation.
 
-**Target:** Class, Interface
 **Inherited:** Yes
 
 <!-- snippet: attributes-factory -->
@@ -47,15 +46,10 @@ public partial class MinimalEmployee
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L10-L17' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Generates:
-- `I{TypeName}Factory` interface
-- `{TypeName}Factory` implementation class with static `FactoryServiceRegistrar` method for DI registration
-
 ### [SuppressFactory]
 
-Prevents factory generation for a class or interface.
+Prevents factory generation for a class or interface. Use when a base class has `[Factory]` but a derived class shouldn't have its own factory.
 
-**Target:** Class, Interface
 **Inherited:** Yes
 
 <!-- snippet: attributes-suppressfactory -->
@@ -70,18 +64,13 @@ public partial class InternalEntity : BaseEntity { }
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L19-L25' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Use when:
-- Base class has `[Factory]` but derived class shouldn't
-- Type should not have a factory despite matching generation criteria
-
 ## Operation Attributes
 
 ### [Create]
 
-Marks constructors or methods that create new instances.
+Marks constructors or methods that create new instances. Supports multiple overloads with different signatures.
 
-**Target:** Constructor, Method, Class
-**Inherited:** No
+**Inherited:** No | **Auth flags:** `Create | Read`
 
 <!-- snippet: attributes-create -->
 <a id='snippet-attributes-create'></a>
@@ -102,14 +91,11 @@ public partial class EmployeeCreate
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L27-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-create' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Operation flags: `AuthorizeFactoryOperation.Create | Read`
-
 ### [Fetch]
 
-Marks methods that load data into existing instances.
+Marks methods that load data into existing instances. Returns `bool` or `Task<bool>` — `false` means not found (factory returns `null`).
 
-**Target:** Method, Constructor
-**Inherited:** No
+**Inherited:** No | **Auth flags:** `Fetch | Read`
 
 <!-- snippet: attributes-fetch -->
 <a id='snippet-attributes-fetch'></a>
@@ -125,14 +111,11 @@ public partial class EmployeeFetch
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L42-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-fetch' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Operation flags: `AuthorizeFactoryOperation.Fetch | Read`
+### [Insert], [Update], [Delete]
 
-### [Insert]
+Write operations routed by `Save()` based on `IsNew` and `IsDeleted` flags. Require `IFactorySaveMeta`. Can be combined on a single method (e.g., `[Insert, Update]` for upsert).
 
-Marks methods that persist new entities.
-
-**Target:** Method
-**Inherited:** No
+**Inherited:** No | **Auth flags:** `Insert|Write`, `Update|Write`, `Delete|Write`
 
 <!-- snippet: attributes-insert -->
 <a id='snippet-attributes-insert'></a>
@@ -150,64 +133,29 @@ public partial class EmployeeInsert : IFactorySaveMeta
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L52-L62' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Operation flags: `AuthorizeFactoryOperation.Insert | Write`
+Combining operations on one method:
 
-### [Update]
-
-Marks methods that persist changes to existing entities.
-
-**Target:** Method
-**Inherited:** No
-
-<!-- snippet: attributes-update -->
-<a id='snippet-attributes-update'></a>
+<!-- snippet: attributes-multiple-operations -->
+<a id='snippet-attributes-multiple-operations'></a>
 ```cs
 [Factory]
-public partial class EmployeeUpdate : IFactorySaveMeta
+public partial class UpsertSetting : IFactorySaveMeta
 {
     public bool IsNew { get; private set; }
     public bool IsDeleted { get; set; }
 
-    [Remote, Update]  // Persists changes to existing entity
-    public Task Update([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    [Remote, Insert, Update]  // Both operations point to same method
+    public Task Upsert(CancellationToken ct) => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L64-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L182-L192' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
-
-Operation flags: `AuthorizeFactoryOperation.Update | Write`
-
-### [Delete]
-
-Marks methods that remove entities.
-
-**Target:** Method
-**Inherited:** No
-
-<!-- snippet: attributes-delete -->
-<a id='snippet-attributes-delete'></a>
-```cs
-[Factory]
-public partial class EmployeeDelete : IFactorySaveMeta
-{
-    public bool IsNew { get; private set; }
-    public bool IsDeleted { get; set; }
-
-    [Remote, Delete]  // Removes entity from persistence
-    public Task Delete([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L76-L86' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-delete' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Operation flags: `AuthorizeFactoryOperation.Delete | Write`
 
 ### [Execute]
 
-Marks methods for business operations.
+Marks methods for business operations. Typically on static classes for a command pattern. Underscore prefix on method names is removed in the generated delegate name.
 
-**Target:** Method
-**Inherited:** No
+**Inherited:** No | **Auth flags:** `Execute | Read`
 
 <!-- snippet: attributes-execute -->
 <a id='snippet-attributes-execute'></a>
@@ -223,14 +171,11 @@ public static partial class PromoteCommand
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L88-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Operation flags: `AuthorizeFactoryOperation.Execute | Read`
-
 ### [Event]
 
-Marks methods for fire-and-forget domain events.
+Marks methods for fire-and-forget domain events. Must have `CancellationToken` as last parameter. Returns `void` or `Task`.
 
-**Target:** Method
-**Inherited:** No
+**Inherited:** No | **Auth flags:** `Event`
 
 <!-- snippet: attributes-event -->
 <a id='snippet-attributes-event'></a>
@@ -246,19 +191,12 @@ public partial class EmployeeEventsMinimal
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L98-L106' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-event' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Requirements:
-- Must have `CancellationToken` as last parameter
-- Returns `void` or `Task`
-
-Operation flags: `AuthorizeFactoryOperation.Event`
-
-## Execution Control Attributes
+## Execution Control
 
 ### [Remote]
 
-Marks methods that execute on the server.
+Marks methods as client-to-server entry points. Without `[Remote]`, methods execute locally. See [Client-Server Architecture](client-server-architecture.md) for when to use it.
 
-**Target:** Method
 **Inherited:** Yes
 
 <!-- snippet: attributes-remote -->
@@ -277,13 +215,10 @@ public partial class EmployeeRemote
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L108-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Without `[Remote]`, methods execute locally (no serialization, no HTTP).
-
 ### [Service]
 
-Marks parameters for dependency injection.
+Marks parameters for dependency injection. Service parameters are resolved from the DI container and never serialized. See [Service Injection](service-injection.md) for constructor vs method injection.
 
-**Target:** Parameter
 **Inherited:** No
 
 <!-- snippet: attributes-service -->
@@ -302,18 +237,12 @@ public partial class EmployeeWithService
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L120-L130' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Service parameters:
-- Resolved from DI container
-- Not serialized
-- Must be registered in the appropriate container (server for remote methods)
-
-## Authorization Attributes
+## Authorization
 
 ### [AuthorizeFactory\<T\>]
 
-Applies custom authorization class to the factory.
+Applies a custom authorization interface to the factory. The type parameter must be an interface with methods decorated with `[AuthorizeFactory]`. See [Authorization](authorization.md).
 
-**Target:** Class, Interface
 **Inherited:** No
 
 <!-- snippet: attributes-authorizefactory-generic -->
@@ -326,16 +255,11 @@ public partial class AuthEmployee { }
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L132-L136' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-The type parameter must be an interface with authorization methods decorated with `[AuthorizeFactory]`.
-
 ### [AuthorizeFactory]
 
-Marks methods in authorization interfaces or applies to specific factory methods.
+Marks methods in authorization interfaces, mapping them to operation flags.
 
-**Target:** Method
 **Inherited:** No
-
-**On authorization interface:**
 
 <!-- snippet: attributes-authorizefactory-interface -->
 <a id='snippet-attributes-authorizefactory-interface'></a>
@@ -352,36 +276,30 @@ public interface IMinimalDocAuth
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L138-L147' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**On factory method (additional check):**
+Combine flags with bitwise OR:
 
-<!-- snippet: attributes-authorizefactory-method -->
-<a id='snippet-attributes-authorizefactory-method'></a>
+<!-- snippet: attributes-authorization-operation -->
+<a id='snippet-attributes-authorization-operation'></a>
 ```cs
-[Factory]
-[AuthorizeFactory<IEmployeeAuthorization>]  // Class-level: checked first
-public partial class MethodAuthEmployee : IFactorySaveMeta
+public interface IOpAuth
 {
-    public bool IsNew { get; private set; }
-    public bool IsDeleted { get; set; }
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]  // Combined flags
+    bool CanCreateAndRead();
 
-    [Remote, Delete]
-    [AspAuthorize(Roles = "HRManager")]  // Method-level: additional check after class-level
-    public Task Delete([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
+    bool CanDelete();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L149-L161' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-method' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L209-L218' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
-
-**Parameters:**
-- `operation` (AuthorizeFactoryOperation): Flags indicating which operations require this authorization
 
 ### [AspAuthorize]
 
-Applies ASP.NET Core authorization policies to endpoints.
+Applies ASP.NET Core authorization policies to factory methods. Multiple `[AspAuthorize]` attributes require all policies to pass. See [Authorization](authorization.md).
 
-**Target:** Method
-**Inherited:** No
-**Multiple:** Yes
+**Inherited:** No | **Multiple:** Yes
+
+**Properties:** `Policy` (string?), `Roles` (string?, comma-delimited), `AuthenticationSchemes` (string?, comma-delimited)
 
 <!-- snippet: attributes-aspauthorize -->
 <a id='snippet-attributes-aspauthorize'></a>
@@ -406,21 +324,11 @@ public partial class PolicyEmployee : IFactorySaveMeta
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L163-L180' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Properties:**
-- `Policy` (string?): Authorization policy name
-- `Roles` (string?): Comma-delimited role list
-- `AuthenticationSchemes` (string?): Comma-delimited authentication schemes
-
-Applied to the generated `/api/neatoo` endpoint for the method.
-
 ## Assembly-Level Attributes
 
 ### [assembly: FactoryMode]
 
-Specifies factory generation mode for the assembly.
-
-**Target:** Assembly
-**Inherited:** No
+Controls what code the source generator produces. See [Factory Modes](factory-modes.md).
 
 <!-- snippet: attributes-factorymode -->
 <a id='snippet-attributes-factorymode'></a>
@@ -434,19 +342,9 @@ Specifies factory generation mode for the assembly.
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L5-L11' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factorymode' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Parameters:**
-- `mode` (FactoryMode): Full or RemoteOnly
-
-Modes:
-- **Full**: Generate local and remote code (default)
-- **RemoteOnly**: Generate HTTP stubs only (client assemblies)
-
 ### [assembly: FactoryHintNameLength]
 
-Limits generated file hint name length for long paths.
-
-**Target:** Assembly
-**Inherited:** No
+Limits generated file hint name length. Use when hitting Windows path length limits (260 characters).
 
 <!-- snippet: attributes-factoryhintnamelength -->
 <a id='snippet-attributes-factoryhintnamelength'></a>
@@ -464,95 +362,16 @@ Limits generated file hint name length for long paths.
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L13-L16' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Parameters:**
-- `maxHintNameLength` (int): Maximum hint name length
-
-Use when hitting Windows path length limits (260 characters).
-
-## Attribute Combinations
-
-### Multiple Operations on One Method
-
-<!-- snippet: attributes-multiple-operations -->
-<a id='snippet-attributes-multiple-operations'></a>
-```cs
-[Factory]
-public partial class UpsertSetting : IFactorySaveMeta
-{
-    public bool IsNew { get; private set; }
-    public bool IsDeleted { get; set; }
-
-    [Remote, Insert, Update]  // Both operations point to same method
-    public Task Upsert(CancellationToken ct) => Task.CompletedTask;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L182-L192' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Generated factory methods:
-```csharp
-Task Insert(IPerson person);
-Task Update(IPerson person);
-```
-
-Both route to the same method.
-
-### Remote + Operation
-
-<!-- snippet: attributes-remote-operation -->
-<a id='snippet-attributes-remote-operation'></a>
-```cs
-[Factory]
-public partial class RemoteOps : IFactorySaveMeta
-{
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Remote, Fetch]   // Server-side data loading
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
-
-    [Remote, Insert]  // Server-side persistence
-    public Task Insert([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L194-L207' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote-operation' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Executes on server (serialized call).
-
-### Authorization + Operation
-
-<!-- snippet: attributes-authorization-operation -->
-<a id='snippet-attributes-authorization-operation'></a>
-```cs
-public interface IOpAuth
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]  // Combined flags
-    bool CanCreateAndRead();
-
-    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
-    bool CanDelete();
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L209-L218' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Authorization checked before execution.
-
 ## Attribute Inheritance
 
-| Attribute | Inherited |
-|-----------|-----------|
-| `[Factory]` | Yes |
-| `[SuppressFactory]` | Yes |
-| `[Create]`, `[Fetch]`, etc. | No |
-| `[Remote]` | Yes |
-| `[Service]` | No |
-| `[AuthorizeFactory<T>]` | No |
-| `[AuthorizeFactory]` | No |
-| `[AspAuthorize]` | No |
-
-Example:
+| Attribute | Inherited | Note |
+|-----------|-----------|------|
+| `[Factory]` | Yes | Derived classes get their own factory |
+| `[SuppressFactory]` | Yes | Blocks factory on derived classes too |
+| `[Remote]` | Yes | Derived methods inherit remote execution |
+| `[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`, `[Event]` | No | Must redeclare on each class |
+| `[Service]` | No | Must apply to each parameter |
+| `[AuthorizeFactory<T>]`, `[AuthorizeFactory]`, `[AspAuthorize]` | No | Must redeclare on each class/method |
 
 <!-- snippet: attributes-inheritance -->
 <a id='snippet-attributes-inheritance'></a>
@@ -578,107 +397,8 @@ public partial class DerivedEntity : BaseWithFactory
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L220-L238' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`DerivedWithInheritedFactory` inherits:
-- `[Factory]` from `BaseEntityWithFactory`
-- `[Remote]` from `BaseEntityWithFactory.Fetch`
-
-`DerivedWithInheritedFactory` does NOT inherit:
-- `[Create]` from `BaseEntityWithFactory` constructor
-- `[AuthorizeFactory<T>]` (if it were applied to `BaseEntityWithFactory`)
-
-## Common Patterns
-
-### CRUD Entity
-
-<!-- snippet: attributes-pattern-crud -->
-<a id='snippet-attributes-pattern-crud'></a>
-```cs
-[Factory]
-public partial class CrudEntity : IFactorySaveMeta
-{
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public CrudEntity() { }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct)
-        => Task.FromResult(true);
-
-    [Remote, Insert]
-    public Task Insert([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
-
-    [Remote, Update]
-    public Task Update([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
-
-    [Remote, Delete]
-    public Task Delete([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L240-L263' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-crud' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### Read-Only Entity
-
-<!-- snippet: attributes-pattern-readonly -->
-<a id='snippet-attributes-pattern-readonly'></a>
-```cs
-[Factory]
-public partial class ReadOnlyEntity
-{
-    [Create]
-    public ReadOnlyEntity() { }
-
-    [Remote, Fetch]
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct)
-        => Task.FromResult(true);
-    // No Insert, Update, Delete - read-only projection
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L265-L277' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-readonly' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### Command Handler
-
-<!-- snippet: attributes-pattern-command -->
-<a id='snippet-attributes-pattern-command'></a>
-```cs
-[Factory]
-public static partial class TransferCommand
-{
-    [Remote, Execute]  // Static class with [Execute] for command pattern
-    private static Task<TransferCommandResult> _Execute(
-        Guid employeeId, Guid newDeptId, [Service] IEmployeeRepository repo, CancellationToken ct)
-        => Task.FromResult(new TransferCommandResult(true, "Transferred"));
-}
-public record TransferCommandResult(bool Success, string Message);
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L279-L289' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-command' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### Event Publisher
-
-<!-- snippet: attributes-pattern-event -->
-<a id='snippet-attributes-pattern-event'></a>
-```cs
-[Factory]
-public partial class LifecycleEvents
-{
-    [Event]  // Fire-and-forget domain events
-    public Task OnEmployeeHired(Guid id, string email, [Service] IEmailService svc, CancellationToken ct)
-        => svc.SendAsync(email, "Welcome!", $"ID: {id}", ct);
-
-    [Event]
-    public Task OnEmployeePromoted(Guid id, string title, [Service] IEmailService svc, CancellationToken ct)
-        => svc.SendAsync("hr@co.com", "Promotion", $"{id} to {title}", ct);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L291-L303' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-pattern-event' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
 ## Next Steps
 
-- [Interfaces Reference](interfaces-reference.md) - All RemoteFactory interfaces
-- [Factory Operations](factory-operations.md) - Operation details
-- [Authorization](authorization.md) - Authorization attribute usage
+- [Interfaces Reference](interfaces-reference.md) — All RemoteFactory interfaces
+- [Factory Operations](factory-operations.md) — Operation details and patterns
+- [Authorization](authorization.md) — Authorization attribute usage
