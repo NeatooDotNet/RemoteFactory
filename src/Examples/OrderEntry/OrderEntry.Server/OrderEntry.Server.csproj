@@ -1,11 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- Inherits TargetFramework, Nullable, and ImplicitUsings from Directory.Build.props -->
+  <!-- Inherits TargetFrameworks (net8.0;net9.0;net10.0), Nullable, and ImplicitUsings from Directory.Build.props -->
+
+  <!-- Framework-specific Blazor WebAssembly Server package -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" VersionOverride="8.0.11" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
     <ProjectReference Include="..\OrderEntry.Domain.Server\OrderEntry.Domain.Server.csproj" />
     <ProjectReference Include="..\OrderEntry.Ef\OrderEntry.Ef.csproj" />
+    <!-- ReferenceOutputAssembly="false" prevents transitive type conflicts between
+         OrderEntry.Domain.Client (from BlazorClient) and OrderEntry.Domain.Server.
+         The server still builds the client and serves its static web assets. -->
+    <ProjectReference Include="..\OrderEntry.BlazorClient\OrderEntry.BlazorClient.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

@@ -123,19 +123,12 @@ cd src/Design
 dotnet test Design.sln
 ```
 
-### Run Server
+### Run the Application
 ```bash
 cd src/Design/Design.Server
 dotnet run
 ```
-Server runs at `http://localhost:5000` with RemoteFactory endpoint at `/api/neatoo`.
-
-### Run Blazor Client
-```bash
-cd src/Design/Design.Client.Blazor
-dotnet run
-```
-Opens interactive sample demonstrating all three patterns.
+The server hosts the Blazor WASM client. A single `dotnet run` starts both the API and the client application at `http://localhost:5085`. The RemoteFactory endpoint is at `/api/neatoo`.
 
 ## Comment Patterns
 

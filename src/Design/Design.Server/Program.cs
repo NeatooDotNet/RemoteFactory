@@ -1,8 +1,10 @@
 // =============================================================================
-// DESIGN SOURCE OF TRUTH: Server Configuration
+// DESIGN SOURCE OF TRUTH: Server Configuration (Hosted Blazor WASM)
 // =============================================================================
 //
 // Demonstrates RemoteFactory server-side setup with ASP.NET Core.
+// The server hosts the Blazor WASM client -- a single `dotnet run` starts
+// both the API and the client application.
 //
 // DESIGN DECISION: Minimal server setup
 //
@@ -10,6 +12,7 @@
 // 1. AddNeatooAspNetCore() - registers factory services and endpoints
 // 2. UseNeatoo() - adds the middleware for handling factory requests
 // 3. Service registrations for server-only dependencies
+// 4. Hosted WASM middleware to serve the Blazor client
 //
 // =============================================================================
 
@@ -18,9 +21,6 @@ using Design.Domain.FactoryPatterns;
 using Neatoo.RemoteFactory.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Enable CORS for Blazor WASM client
-builder.Services.AddCors();
 
 // -------------------------------------------------------------------------
 // DESIGN DECISION: AddNeatooAspNetCore registers everything needed
@@ -60,6 +60,17 @@ builder.Services.AddScoped<IExampleService, ExampleService>();
 var app = builder.Build();
 
 // -------------------------------------------------------------------------
+// Hosted Blazor WASM middleware
+//
+// UseBlazorFrameworkFiles() configures the server to serve the client's
+// _framework files (blazor.webassembly.js, dotnet.wasm, etc.).
+// UseStaticFiles() serves the client's wwwroot content.
+// These must come BEFORE UseNeatoo() so static files are served directly.
+// -------------------------------------------------------------------------
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
+// -------------------------------------------------------------------------
 // DESIGN DECISION: UseNeatoo adds the RemoteFactory middleware
 //
 // This middleware:
@@ -72,15 +83,12 @@ var app = builder.Build();
 // -------------------------------------------------------------------------
 app.UseNeatoo();
 
-// Enable CORS for any origin (for demo purposes)
-app.UseCors(policy => policy
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
-
 // -------------------------------------------------------------------------
-// Minimal API endpoint for health check
+// Fallback: serve index.html for unmatched routes (SPA routing)
+//
+// This must come AFTER all other middleware and route mappings so that
+// API routes (/api/neatoo) are handled first.
 // -------------------------------------------------------------------------
-app.MapGet("/", () => "Design.Server is running. RemoteFactory endpoint: /api/neatoo");
+app.MapFallbackToFile("index.html");
 
 await app.RunAsync();

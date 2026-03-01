@@ -5,9 +5,6 @@ using Neatoo.RemoteFactory.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add CORS for Blazor WebAssembly client
-builder.Services.AddCors();
-
 #region getting-started-server-program
 // Register RemoteFactory services and domain assembly
 builder.Services.AddNeatooAspNetCore(
@@ -22,11 +19,15 @@ builder.Services.AddInfrastructureServices();
 
 var app = builder.Build();
 
+// Hosted Blazor WASM middleware
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
 // Add the /api/neatoo endpoint for remote calls
 app.UseNeatoo();
+
+// Fallback: serve index.html for unmatched routes (SPA routing)
+app.MapFallbackToFile("index.html");
 #endregion
 
-// Allow cross-origin requests from Blazor client
-app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-
-app.Run();
+await app.RunAsync();

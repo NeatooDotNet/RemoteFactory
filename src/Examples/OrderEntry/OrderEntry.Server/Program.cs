@@ -4,7 +4,6 @@ using OrderEntry.Domain;
 using OrderEntry.Ef;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddCors();
 
 // Neatoo - Register factories from Domain.Server assembly
 builder.Services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
@@ -21,8 +20,13 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine($"Database created at: {db.DbPath}");
 }
 
+// Hosted Blazor WASM middleware
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
 app.UseNeatoo();
 
-app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+// Fallback: serve index.html for unmatched routes (SPA routing)
+app.MapFallbackToFile("index.html");
 
 await app.RunAsync();

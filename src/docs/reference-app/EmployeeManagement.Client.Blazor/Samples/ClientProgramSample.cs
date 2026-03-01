@@ -7,7 +7,7 @@ namespace EmployeeManagement.Client.Samples;
 // Removed: duplicate snippet moved to Program.cs
 public static class ClientProgram
 {
-    public static async Task ConfigureClient(string[] args, string serverBaseAddress)
+    public static async Task ConfigureClient(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         builder.Services.AddNeatooRemoteFactory(
@@ -15,7 +15,7 @@ public static class ClientProgram
             new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
             typeof(EmployeeModel).Assembly);
         builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
-            (sp, key) => new HttpClient { BaseAddress = new Uri(serverBaseAddress) });
+            (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
         await builder.Build().RunAsync();
     }
 }

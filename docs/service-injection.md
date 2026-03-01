@@ -328,7 +328,7 @@ public void ServiceParameter_ResolvedFromDI()
     Assert.NotNull(repository);  // Services resolve from test container
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L338-L346' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L338-L346' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Client/Server Container Testing

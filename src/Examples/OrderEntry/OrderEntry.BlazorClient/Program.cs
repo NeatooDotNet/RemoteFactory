@@ -16,7 +16,7 @@ builder.Services.AddMudServices();
 builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
 builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 {
-    return new HttpClient { BaseAddress = new Uri("http://localhost:5184/") };
+    return new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
 });
 
 await builder.Build().RunAsync();

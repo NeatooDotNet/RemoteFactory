@@ -284,7 +284,7 @@ Test projects have relaxed analysis (`default` instead of `all`) and additional 
 
 ### Example/Demo Projects
 
-**Projects:** `Person.Server.csproj`, `PersonApp.csproj`, `Person.Ef.csproj`
+**Projects:** `Person.Server.csproj`, `Person.Client.csproj`, `Person.Ef.csproj`
 
 ```xml
 <TargetFramework>net8.0</TargetFramework>  <!-- May use older TFM -->
@@ -323,7 +323,7 @@ RemoteFactory/
 │       │   ├── Person.DomainModel/
 │       │   ├── Person.Ef/
 │       │   ├── Person.Server/
-│       │   └── PersonApp/      # Blazor client
+│       │   └── Person.Client/   # Blazor client
 │       └── HorseFarm/          # Additional example
 │
 ├── LICENSE
@@ -342,7 +342,7 @@ RemoteFactory/
 | Domain Model | `{Domain}.DomainModel` | `Person.DomainModel` |
 | EF/Data Layer | `{Domain}.Ef` | `Person.Ef` |
 | Server/API | `{Domain}.Server` | `Person.Server` |
-| Client App | `{Domain}App` | `PersonApp` |
+| Client App | `{Domain}.Client` | `Person.Client` |
 
 ---
 

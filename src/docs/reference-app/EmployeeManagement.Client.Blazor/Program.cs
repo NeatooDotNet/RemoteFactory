@@ -8,9 +8,6 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Configure the server base address
-var serverBaseAddress = builder.Configuration["ServerUrl"] ?? "http://localhost:5000/";
-
 #region getting-started-client-program
 // Register RemoteFactory for client mode with domain assembly
 builder.Services.AddNeatooRemoteFactory(
@@ -19,8 +16,9 @@ builder.Services.AddNeatooRemoteFactory(
     typeof(Employee).Assembly);
 
 // Register HttpClient for remote calls to server
+// In hosted WASM mode, HostEnvironment.BaseAddress targets the server that hosts the client
 builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
-    (sp, key) => new HttpClient { BaseAddress = new Uri(serverBaseAddress) });
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 #endregion
 
 await builder.Build().RunAsync();

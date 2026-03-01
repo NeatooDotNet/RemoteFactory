@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using Neatoo.RemoteFactory;
 using Person.DomainModel;
-using PersonApp;
+using Person.Client;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -15,7 +15,7 @@ builder.Services.AddMudServices();
 // Incorporate Neatoo RemoteFactory
 builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IPersonModel).Assembly);
 builder.Services.AddKeyedScoped(Neatoo.RemoteFactory.RemoteFactoryServices.HttpClientKey, (sp, key) => {
-		return new HttpClient { BaseAddress = new Uri("http://localhost:5183/") };
+		return new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
 });
 builder.Services.RegisterMatchingName(typeof(IPersonModelAuth).Assembly);
 builder.Services.AddScoped<IUser, User>();

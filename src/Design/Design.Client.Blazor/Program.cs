@@ -1,14 +1,15 @@
 // =============================================================================
-// DESIGN SOURCE OF TRUTH: Blazor Client Configuration
+// DESIGN SOURCE OF TRUTH: Blazor Client Configuration (Hosted WASM)
 // =============================================================================
 //
 // Demonstrates RemoteFactory client-side setup with Blazor WebAssembly.
+// In hosted mode, the server serves the client, so they share the same origin.
 //
 // DESIGN DECISION: Client setup is minimal
 //
 // The client only needs:
 // 1. AddNeatooRemoteFactory() - registers factory proxies
-// 2. HttpClient with server base address - for making remote calls
+// 2. HttpClient using HostEnvironment.BaseAddress - for making remote calls
 //
 // =============================================================================
 
@@ -54,17 +55,13 @@ builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Asse
 // This allows the app to have multiple HttpClients for different purposes
 // while RemoteFactory always uses the correct one.
 //
-// COMMON MISTAKE: Not setting the BaseAddress
-//
-// WRONG:
-// new HttpClient()  // <-- No BaseAddress = calls fail
-//
-// RIGHT:
-// new HttpClient { BaseAddress = new Uri("http://localhost:5000/") }
+// In hosted WASM mode, use builder.HostEnvironment.BaseAddress so the
+// client automatically targets the server that hosts it -- no hardcoded
+// URL needed.
 // -------------------------------------------------------------------------
 builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
-    (sp, key) => new HttpClient { BaseAddress = new Uri("http://localhost:5000/") });
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 // Standard Blazor HttpClient for other purposes
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });

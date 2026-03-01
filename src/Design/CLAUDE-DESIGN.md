@@ -466,14 +466,14 @@ app.UseNeatoo();  // Adds /api/neatoo endpoint
 
 ---
 
-## Client Setup (Blazor WASM)
+## Client Setup (Hosted Blazor WASM)
 
 ```csharp
 // Program.cs
 builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
-    (sp, key) => new HttpClient { BaseAddress = new Uri("http://localhost:5000/") });
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
 
 ---
