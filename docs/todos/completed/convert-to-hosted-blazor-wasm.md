@@ -39,7 +39,7 @@ Additionally updated all user-facing guidance:
 | Group | Server | Client |
 |---|---|---|
 | Design | `src/Design/Design.Server` | `src/Design/Design.Client.Blazor` |
-| Person Example | `src/Examples/Person/Person.Server` | `src/Examples/Person/PersonApp` |
+| Person Example | `src/Examples/Person/Person.Server` | `src/Examples/Person/Person.Client` |
 | OrderEntry Example | `src/Examples/OrderEntry/OrderEntry.Server` | `src/Examples/OrderEntry/OrderEntry.BlazorClient` |
 | Reference App | `src/docs/reference-app/EmployeeManagement.Server.WebApi` | `src/docs/reference-app/EmployeeManagement.Client.Blazor` |
 

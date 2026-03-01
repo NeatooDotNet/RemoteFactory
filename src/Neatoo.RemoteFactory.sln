@@ -27,7 +27,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Person.DomainModel", "Examp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Person.Server", "Examples\Person\Person.Server\Person.Server.csproj", "{D265CD52-7DEF-7A0F-878D-34A4313A6798}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PersonApp", "Examples\Person\PersonApp\PersonApp.csproj", "{5B31C8D4-E923-433F-EE6F-40E3F16F281C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Person.Client", "Examples\Person\Person.Client\Person.Client.csproj", "{5B31C8D4-E923-433F-EE6F-40E3F16F281C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteFactory.AspNetCore", "RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj", "{515552DB-4C6D-4371-A957-EFED41DC12D3}"
 EndProject

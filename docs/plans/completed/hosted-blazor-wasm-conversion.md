@@ -104,10 +104,10 @@ The Design project is the source of truth for RemoteFactory patterns, so it must
 
 | File | Change |
 |------|--------|
-| `src/Examples/Person/Person.Server/Person.Server.csproj` | Add `Microsoft.AspNetCore.Components.WebAssembly.Server` package reference (framework-conditional). Add `<ProjectReference>` to `PersonApp`. |
+| `src/Examples/Person/Person.Server/Person.Server.csproj` | Add `Microsoft.AspNetCore.Components.WebAssembly.Server` package reference (framework-conditional). Add `<ProjectReference>` to `Person.Client`. |
 | `src/Examples/Person/Person.Server/Program.cs` | Add `app.UseBlazorFrameworkFiles()`, `app.UseStaticFiles()`, `app.MapFallbackToFile("index.html")`. Remove `builder.Services.AddCors()` and `app.UseCors(...)`. |
-| `src/Examples/Person/PersonApp/Program.cs` | Change keyed HttpClient BaseAddress from `new Uri("http://localhost:5183/")` to `new Uri(builder.HostEnvironment.BaseAddress)`. |
-| `src/Examples/Person/PersonApp/PersonApp.csproj` | Remove `Microsoft.AspNetCore.Components.WebAssembly.DevServer` package references. |
+| `src/Examples/Person/Person.Client/Program.cs` | Change keyed HttpClient BaseAddress from `new Uri("http://localhost:5183/")` to `new Uri(builder.HostEnvironment.BaseAddress)`. |
+| `src/Examples/Person/Person.Client/Person.Client.csproj` | Remove `Microsoft.AspNetCore.Components.WebAssembly.DevServer` package references. |
 | `src/Examples/Person/Person.Server/Properties/launchSettings.json` | Set `"launchBrowser": true`. Clean up IIS Express profile if desired. |
 
 **Verification:** Build via main solution, verify Person.Server serves the Blazor client.
@@ -232,7 +232,7 @@ The Design.Client.Blazor currently uses `http://localhost:5000/` as BaseAddress,
 
 ### 7. Person.Server Single-Target vs Multi-Target
 
-The `Person.Server.csproj` comment says "Inherits TargetFramework (net9.0)" suggesting it may single-target despite the global props setting multi-target. Need to verify what it actually resolves to. If it single-targets net9.0, referencing the multi-targeting PersonApp client could require `SetTargetFramework` on the ProjectReference. The developer should check this during implementation.
+The `Person.Server.csproj` comment says "Inherits TargetFramework (net9.0)" suggesting it may single-target despite the global props setting multi-target. Need to verify what it actually resolves to. If it single-targets net9.0, referencing the multi-targeting Person.Client client could require `SetTargetFramework` on the ProjectReference. The developer should check this during implementation.
 
 ### 8. Test Impact Assessment
 
@@ -404,7 +404,7 @@ app.MapFallbackToFile("index.html");  // LAST - catches unmatched routes
 ### Non-blocking Observations
 
 - The Design README says "Server runs at `http://localhost:5000`" but the actual launchSettings port is 5085. This should be corrected during the README update.
-- Client launchSettings.json files (Design.Client.Blazor, PersonApp) can be deleted or left as-is. In hosted mode they're unused. Leaving them avoids accidental breakage if someone tries to run the client independently and gets a confusing error.
+- Client launchSettings.json files (Design.Client.Blazor, Person.Client) can be deleted or left as-is. In hosted mode they're unused. Leaving them avoids accidental breakage if someone tries to run the client independently and gets a confusing error.
 
 ---
 
@@ -432,10 +432,10 @@ N/A -- no design project code generation changes.
 - [ ] `src/Design/CLAUDE-DESIGN.md`: Update "Client Setup (Blazor WASM)" section
 
 #### Phase 3: Person Example Conversion
-- [ ] `src/Examples/Person/Person.Server/Person.Server.csproj`: Add framework-conditional `WebAssembly.Server` package refs + ProjectReference to `PersonApp`
+- [ ] `src/Examples/Person/Person.Server/Person.Server.csproj`: Add framework-conditional `WebAssembly.Server` package refs + ProjectReference to `Person.Client`
 - [ ] `src/Examples/Person/Person.Server/Program.cs`: Add hosted WASM middleware; remove CORS; preserve custom `UserRoles` middleware
-- [ ] `src/Examples/Person/PersonApp/Program.cs`: Replace hardcoded `localhost:5183` with `builder.HostEnvironment.BaseAddress`
-- [ ] `src/Examples/Person/PersonApp/PersonApp.csproj`: Remove both DevServer package reference blocks
+- [ ] `src/Examples/Person/Person.Client/Program.cs`: Replace hardcoded `localhost:5183` with `builder.HostEnvironment.BaseAddress`
+- [ ] `src/Examples/Person/Person.Client/Person.Client.csproj`: Remove both DevServer package reference blocks
 - [ ] `src/Examples/Person/Person.Server/Properties/launchSettings.json`: Update `launchUrl` from `weatherforecast` to empty/root; clean up IIS Express profile
 
 #### Phase 4: OrderEntry Example Conversion
@@ -613,7 +613,7 @@ Zero test failures across all solutions and all target frameworks.
 **Client Program.cs files (all 4 verified):**
 - All use `builder.HostEnvironment.BaseAddress` -- confirmed via grep (zero matches for hardcoded localhost BaseAddress)
 - Design.Client.Blazor: DESIGN SOURCE OF TRUTH comments updated, hardcoded `localhost:5000` replaced
-- PersonApp: `localhost:5183` replaced with `HostEnvironment.BaseAddress`
+- Person.Client: `localhost:5183` replaced with `HostEnvironment.BaseAddress`
 - OrderEntry.BlazorClient: `localhost:5184` replaced with `HostEnvironment.BaseAddress`
 - EmployeeManagement.Client.Blazor: `serverBaseAddress` variable removed, `#region getting-started-client-program` updated
 

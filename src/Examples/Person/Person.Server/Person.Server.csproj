@@ -14,7 +14,7 @@
     <ProjectReference Include="..\..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
     <ProjectReference Include="..\Person.DomainModel\Person.DomainModel.csproj" />
     <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" />
-    <ProjectReference Include="..\PersonApp\PersonApp.csproj" />
+    <ProjectReference Include="..\Person.Client\Person.Client.csproj" />
   </ItemGroup>
 
 </Project>
