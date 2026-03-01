@@ -6,14 +6,14 @@ Quick answers to common "when should I use...?" questions.
 
 ## When Do I Need [Remote]?
 
+`[Remote]` marks entry points from the client to the server. Once execution crosses to the server, it stays there — subsequent calls don't need `[Remote]`.
+
 ```
 Is this method called directly from client code (UI, Blazor component)?
 ├── YES → Add [Remote]
 └── NO (called from other server-side code)
     └── No [Remote] needed
 ```
-
-**Rule of thumb**: `[Remote]` marks **entry points** from client to server. Once you're on the server, subsequent calls stay there.
 
 **Examples**:
 - `Fetch()` called by Blazor component → `[Remote, Fetch]`
@@ -23,6 +23,8 @@ Is this method called directly from client code (UI, Blazor component)?
 ---
 
 ## Constructor vs Method Injection?
+
+Constructor injection puts services on both client and server. Method injection puts them only where the method executes — typically the server. This is how you control which services are available on each side.
 
 ```
 Does the client need this service?
@@ -34,91 +36,79 @@ Does the client need this service?
 
 **Rule of thumb**: Method injection is the common case. Use constructor injection only when clients need the service too.
 
-**Examples**:
-- `IEmployeeRepository` → Method injection (server-only, database access)
-- `IValidator<Employee>` → Constructor injection (validate on client and server)
-- `ILogger` → Constructor injection (log on both sides)
-- `DbContext` → Method injection (server-only)
+See [Service Injection](service-injection.md) for details.
 
 ---
 
 ## Which Serialization Format?
 
+Ordinal is the default. It's compact and fast. Switch to Named if you need to debug payloads — it produces standard JSON with property names.
+
 ```
-Can you deploy client and server together?
-├── YES (same release cycle)
-│   └── Ordinal (40-50% smaller payloads)
-└── NO (independent deployments, rolling updates)
-    └── Named (version tolerant)
+Use Ordinal (default)
+└── Switch to Named only if you need to debug payloads
 ```
 
-**Rule of thumb**: Ordinal is the default and works well when client and server are released together. Use Named if you need independent version compatibility.
-
-**Trade-offs**:
-| Format | Payload Size | Version Tolerance | Debugging |
-|--------|--------------|-------------------|-----------|
-| Ordinal | Smaller (40-50%) | Requires matching versions | Harder to read |
-| Named | Larger | Tolerates property changes | Easier to read |
+See [Serialization](serialization.md) for a practical dev/production configuration pattern.
 
 ---
 
 ## Do I Need IFactorySaveMeta?
 
+`IFactorySaveMeta` enables the `Save()` routing pattern — one call that routes to Insert, Update, or Delete based on entity state. If your entity only needs `Fetch()`, skip it.
+
 ```
-Does your entity support Insert, Update, and Delete via Save()?
+Does your entity support Insert, Update, or Delete via Save()?
 ├── YES → Implement IFactorySaveMeta
 │         (adds IsNew, IsDeleted properties)
 └── NO (read-only, or explicit Insert/Update/Delete calls)
     └── Don't implement it
 ```
 
-**Rule of thumb**: `IFactorySaveMeta` enables the `factory.Save()` routing pattern. If you only need `Fetch()`, skip it.
+See [Save Operation](save-operation.md) for details.
 
 ---
 
 ## Full vs RemoteOnly Mode?
 
+Full mode (the default) generates both local execution code and remote stubs. RemoteOnly generates only the HTTP stubs — your data mapper methods (Fetch, Insert, Update, Delete implementations) are not included in the client assembly.
+
+This matters when you don't want your business logic available to the client. It also reduces Blazor WASM bundle size. The tradeoff is more setup — you need a separate client assembly with RemoteOnly and a server assembly with Full.
+
 ```
-What type of assembly is this?
-├── Server (ASP.NET Core)
-│   └── Full mode (default) + NeatooFactory.Server
-├── Client (Blazor WASM)
-│   └── RemoteOnly mode + NeatooFactory.Remote
-└── Shared domain library
-    └── Full mode (default) - works in both contexts
+Do you want business logic excluded from the client assembly?
+├── YES → RemoteOnly mode on client assembly + Full on server
+└── NO (or not sure yet)
+    └── Full mode (default) — works everywhere
 ```
 
-**Configuration**:
-```csharp
-// Client assembly - add to AssemblyAttributes.cs
-[assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
-
-// Server registration
-services.AddNeatooAspNetCore(...);  // Implies Server mode
-
-// Client registration
-services.AddNeatooRemoteFactory(NeatooFactory.Remote, ...);
-```
+See [Factory Modes](factory-modes.md) for configuration.
 
 ---
 
-## When to Use [Execute] vs Entity Methods?
+## When to Use [Execute]?
+
+`[Execute]` is for operations that don't follow the entity lifecycle (Create → Fetch → Save). Two common scenarios: one-shot command delegates, and static methods where you need to make a decision before instantiating an entity — like choosing Create vs Fetch based on existing data.
 
 ```
-Is this operation tied to a specific entity instance?
-├── YES → Use entity method with [Insert], [Update], etc.
-└── NO (cross-cutting, batch, or stateless operation)
-    └── Use static class with [Execute]
+Does this operation follow the entity lifecycle (Create/Fetch/Save)?
+├── YES → Use [Create], [Fetch], [Insert], [Update], [Delete]
+└── NO
+    ├── One-shot command → Static class with [Execute]
+    └── Pre-instantiation decision → Static method with [Execute] on the entity
 ```
 
 **Examples**:
-- Promote an employee → Entity method: `employee.Promote()` with `[Update]`
-- Transfer employee to new department → Static: `TransferEmployeeCommand` with `[Execute]`
-- Generate monthly report → Static: `GenerateReportCommand` with `[Execute]`
+- Generate monthly report → Static command with `[Execute]`
+- Check if employee exists, then Create or Fetch → Static method on Employee with `[Execute]`
+
+See [Factory Operations](factory-operations.md) for details.
 
 ---
 
 ## When to Use [Event]?
+
+Events are fire-and-forget. The caller continues immediately. Use them for side effects that shouldn't block the main operation — notifications, audit logging, external system updates.
 
 ```
 Should the caller wait for this operation to complete?
@@ -127,52 +117,30 @@ Should the caller wait for this operation to complete?
     └── Use [Event]
 ```
 
-**Rule of thumb**: Events are fire-and-forget. The caller continues immediately. Use for side effects that shouldn't block the main operation.
-
 **Requirements**:
 - `CancellationToken` must be the last parameter
 - Returns `void` or `Task`
 
 ---
 
-## Custom Authorization vs [AspAuthorize]?
+## AuthorizeFactory vs [AspAuthorize]?
+
+Use whichever fits your situation. `AuthorizeFactory` gives you a unified authorization layer that works on both client and server with full DI support. `[AspAuthorize]` applies standard ASP.NET Core policies — use it if that already fits your enterprise's broader auth model. You can mix both on the same entity.
 
 ```
-What authorization style do you need?
-├── Fine-grained, operation-specific logic
-│   └── [AuthorizeFactory<T>] with custom interface
-├── ASP.NET Core policies/roles
-│   └── [AspAuthorize] on methods
-└── Both
-    └── Combine them (both checks must pass)
+What fits your auth model?
+├── Domain-specific rules with DI → [AuthorizeFactory<T>]
+├── ASP.NET Core policies/roles already in use → [AspAuthorize]
+└── Both → Combine them (both checks must pass)
 ```
 
-**Examples**:
-```csharp
-// Custom authorization - full control
-[AuthorizeFactory<IEmployeeAuthorization>]
-public class Employee { ... }
-
-// ASP.NET Core policies - simple roles/policies
-[Remote, Delete]
-[AspAuthorize(Roles = "Admin")]
-public Task Delete(...) { ... }
-
-// Combined - both must pass
-[AuthorizeFactory<IEmployeeAuthorization>]  // Check 1
-public class Employee
-{
-    [Remote, Delete]
-    [AspAuthorize(Roles = "Admin")]  // Check 2
-    public Task Delete(...) { ... }
-}
-```
+See [Authorization](authorization.md) for details.
 
 ---
 
 ## Next Steps
 
-- [Attributes Reference](attributes-reference.md) - Complete attribute documentation
-- [Client-Server Architecture](client-server-architecture.md) - Understanding `[Remote]`
-- [Service Injection](service-injection.md) - DI patterns
-- [Factory Modes](factory-modes.md) - Full vs RemoteOnly configuration
+- [Attributes Reference](attributes-reference.md) — Complete attribute documentation
+- [Client-Server Architecture](client-server-architecture.md) — Understanding `[Remote]`
+- [Service Injection](service-injection.md) — DI patterns
+- [Factory Modes](factory-modes.md) — Full vs RemoteOnly configuration
