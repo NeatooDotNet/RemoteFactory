@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.16.0](v0.16.0.md) | 2026-02-28 | Hosted Blazor WebAssembly, PersonApp renamed to Person.Client |
 | [v0.15.0](v0.15.0.md) | 2026-02-26 | Version reset from v10.x to v0.x pre-release |
 | [v0.14.0](v0.14.0.md) | 2026-02-26 | CanSave on IFactorySave\<T\> |
 | [v0.13.0](v0.13.0.md) | 2026-02-18 | [Execute] on class factories |
@@ -35,6 +36,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.16.0](v0.16.0.md) - 2026-02-28 - Hosted Blazor WebAssembly
 - [v0.15.0](v0.15.0.md) - 2026-02-26 - Version reset from v10.x to v0.x
 - [v0.14.0](v0.14.0.md) - 2026-02-26 - CanSave on IFactorySave\<T\>
 - [v0.13.0](v0.13.0.md) - 2026-02-18 - [Execute] on class factories
