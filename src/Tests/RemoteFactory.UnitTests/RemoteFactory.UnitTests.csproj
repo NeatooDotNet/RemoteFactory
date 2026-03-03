@@ -26,8 +26,12 @@
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" VersionOverride="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Logging" VersionOverride="8.0.1" />
 	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
-		<!-- Use stable 9.x version for both net9.0 and net10.0 -->
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" VersionOverride="9.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" VersionOverride="9.0.2" />
+		<PackageReference Include="Microsoft.Extensions.Logging" VersionOverride="9.0.5" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
 		<PackageReference Include="Microsoft.Extensions.Logging" />
