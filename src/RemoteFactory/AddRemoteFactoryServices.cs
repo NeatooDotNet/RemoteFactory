@@ -64,8 +64,6 @@ public static partial class RemoteFactoryServices
 		services.AddTransient<NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
-		services.AddScoped(typeof(IFactoryCore<>), typeof(FactoryCore<>));
-
 		// Register EventTracker for fire-and-forget event handling
 		services.TryAddSingleton<IEventTracker, EventTracker>();
 

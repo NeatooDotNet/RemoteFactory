@@ -281,6 +281,11 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
+        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
+        sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+        sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+        sb.AppendLine();
+
         // CanXxx methods only perform authorization checks and return the result
         if (method.Name.StartsWith("Can"))
         {

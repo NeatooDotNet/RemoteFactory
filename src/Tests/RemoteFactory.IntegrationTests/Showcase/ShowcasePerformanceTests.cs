@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory;
-using Neatoo.RemoteFactory.Internal;
-
 namespace RemoteFactory.IntegrationTests.Showcase;
 
 /// <summary>
@@ -156,8 +154,6 @@ public class ShowcasePerformanceTests
 
                 serviceCollection.AddTransient<IShowcasePerformanceDIObj, ShowcasePerformanceDIObj>();
                 serviceCollection.AddSingleton(ShowcasePerformanceDIObj.Factory);
-
-                serviceCollection.AddScoped(typeof(IFactoryCore<>), typeof(FactoryCore<>));
 
                 ShowcasePerformanceNeatooObjFactory.FactoryServiceRegistrar(serviceCollection, NeatooFactory.Logical);
 

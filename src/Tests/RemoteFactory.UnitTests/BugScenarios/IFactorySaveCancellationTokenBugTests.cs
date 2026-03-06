@@ -8,10 +8,8 @@ namespace RemoteFactory.UnitTests.BugScenarios;
 /// <summary>
 /// Regression test for IFactorySave not being generated when CancellationToken is used with save operations.
 ///
-/// Bug: When Insert/Update/Delete methods have CancellationToken parameters, the generator:
-/// - Extends FactoryBase&lt;T&gt; instead of FactorySaveBase&lt;T&gt;
-/// - Does NOT implement IFactorySave&lt;T&gt;
-/// - Does NOT register IFactorySave&lt;T&gt; in DI
+/// Bug: When Insert/Update/Delete methods have CancellationToken parameters, the generator
+/// did not implement IFactorySave&lt;T&gt; or register IFactorySave&lt;T&gt; in DI.
 ///
 /// This causes EntityBase.Save() to fail because it relies on IFactorySave&lt;T&gt; being registered.
 /// </summary>

@@ -73,57 +73,6 @@ internal static partial class Log
         string errorMessage,
         Exception? exception);
 
-    // ===== Factory Operations (2xxx) =====
-
-    [LoggerMessage(
-        EventId = 2001,
-        Level = LogLevel.Information,
-        Message = "[{CorrelationId}] Factory operation {Operation} started for {TypeName}")]
-    public static partial void FactoryOperationStarted(
-        this ILogger logger,
-        string? correlationId,
-        FactoryOperation operation,
-        string typeName);
-
-    [LoggerMessage(
-        EventId = 2002,
-        Level = LogLevel.Information,
-        Message = "[{CorrelationId}] Factory operation {Operation} completed for {TypeName} in {ElapsedMs}ms")]
-    public static partial void FactoryOperationCompleted(
-        this ILogger logger,
-        string? correlationId,
-        FactoryOperation operation,
-        string typeName,
-        long elapsedMs);
-
-    [LoggerMessage(
-        EventId = 2003,
-        Level = LogLevel.Debug,
-        Message = "Invoking IFactoryOnStart for {TypeName}")]
-    public static partial void InvokingFactoryOnStart(
-        this ILogger logger,
-        string typeName);
-
-    [LoggerMessage(
-        EventId = 2004,
-        Level = LogLevel.Debug,
-        Message = "Invoking IFactoryOnComplete for {TypeName}")]
-    public static partial void InvokingFactoryOnComplete(
-        this ILogger logger,
-        string typeName);
-
-    [LoggerMessage(
-        EventId = 2005,
-        Level = LogLevel.Error,
-        Message = "[{CorrelationId}] Factory operation {Operation} failed for {TypeName}: {ErrorMessage}")]
-    public static partial void FactoryOperationFailed(
-        this ILogger logger,
-        string? correlationId,
-        FactoryOperation operation,
-        string typeName,
-        string errorMessage,
-        Exception? exception);
-
     // ===== Remote Calls (3xxx) =====
 
     [LoggerMessage(
@@ -355,26 +304,6 @@ internal static partial class Log
         this ILogger logger,
         string correlationId,
         string delegateType);
-
-    // ===== Factory Lifecycle (8xxx) =====
-
-    [LoggerMessage(
-        EventId = 8001,
-        Level = LogLevel.Debug,
-        Message = "Invoking IFactoryOnCancelled for {TypeName}")]
-    public static partial void InvokingFactoryOnCancelled(
-        this ILogger logger,
-        string typeName);
-
-    [LoggerMessage(
-        EventId = 8002,
-        Level = LogLevel.Information,
-        Message = "[{CorrelationId}] Factory operation {Operation} cancelled for {TypeName}")]
-    public static partial void FactoryOperationCancelled(
-        this ILogger logger,
-        string? correlationId,
-        FactoryOperation operation,
-        string typeName);
 
     // ===== Event Tracking (9xxx) =====
 
