@@ -9,9 +9,7 @@ namespace Neatoo.RemoteFactory;
 /// </summary>
 public static class NeatooRuntime
 {
-#if NET9_0_OR_GREATER
 	[FeatureSwitchDefinition("Neatoo.RemoteFactory.IsServerRuntime")]
-#endif
 	public static bool IsServerRuntime =>
 		AppContext.TryGetSwitch("Neatoo.RemoteFactory.IsServerRuntime", out bool isEnabled)
 			? isEnabled

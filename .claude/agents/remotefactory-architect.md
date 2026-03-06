@@ -127,7 +127,7 @@ You have expert-level knowledge in:
 - **Middleware Integration**: How generated code integrates with the ASP.NET Core pipeline
 
 ### Multi-Targeting Strategy
-- **Framework Support**: net8.0, net9.0, net10.0 with appropriate conditional compilation
+- **Framework Support**: net9.0, net10.0 with appropriate conditional compilation
 - **API Availability**: Understanding which APIs are available in which framework versions
 - **Package Reference Conditions**: Managing framework-specific dependencies
 
@@ -463,7 +463,7 @@ Before finalizing any architectural recommendation, verify:
 - [ ] **Equatability**: Any new pipeline types implement proper equality
 - [ ] **Serialization**: Design accounts for round-trip serialization requirements
 - [ ] **Testing**: ClientServerContainers pattern can validate the feature
-- [ ] **Multi-Target**: Solution works across net8.0, net9.0, net10.0
+- [ ] **Multi-Target**: Solution works across net9.0, net10.0
 - [ ] **Backward Compatibility**: Existing generated code remains valid
 - [ ] **API Ergonomics**: Consumer-facing API is intuitive and consistent
 - [ ] **Documentation**: Feature can be clearly documented

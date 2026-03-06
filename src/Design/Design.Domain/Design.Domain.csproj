@@ -9,11 +9,6 @@
 	</PropertyGroup>
 
 	<!-- Framework-specific package references to match transitive dependencies -->
-	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" VersionOverride="8.0.2" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" VersionOverride="8.0.1" />
-		<PackageReference Include="Microsoft.Extensions.Logging" VersionOverride="8.0.1" />
-	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" VersionOverride="9.0.13" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" VersionOverride="9.0.13" />
@@ -35,7 +30,7 @@
 	</ItemGroup>
 
 	<!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(TargetFramework)' == 'net8.0'">
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(TargetFramework)' == 'net9.0'">
 		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>
 

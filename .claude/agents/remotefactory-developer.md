@@ -308,7 +308,7 @@ When working with NeatooJsonSerializer:
 ### Key Source Directories
 
 - `src/Generator/` - Roslyn source generator (must target netstandard2.0)
-- `src/RemoteFactory/` - Core library (multi-target net8.0/net9.0/net10.0)
+- `src/RemoteFactory/` - Core library (multi-target net9.0/net10.0)
 - `src/RemoteFactory.AspNetCore/` - ASP.NET Core integration
 - `src/Tests/RemoteFactory.UnitTests/` - Unit tests for generator, diagnostics
 - `src/Tests/RemoteFactory.IntegrationTests/` - Integration tests with ClientServerContainers

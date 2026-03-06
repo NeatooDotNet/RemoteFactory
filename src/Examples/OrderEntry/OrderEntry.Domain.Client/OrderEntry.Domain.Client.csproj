@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
-  <Target Name="PreBuild" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net8.0'">
+  <Target Name="PreBuild" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net9.0'">
     <RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
   </Target>
 

@@ -29,7 +29,7 @@ ilspycmd bin/Release/net9.0/win-x64/publish/RemoteFactory.TrimmingTests.dll
 
 ## Important: TargetFrameworks Override
 
-The `Directory.Build.props` sets `TargetFrameworks` (plural) to `net8.0;net9.0;net10.0`.
+The `Directory.Build.props` sets `TargetFrameworks` (plural) to `net9.0;net10.0`.
 This project explicitly clears that and sets `TargetFramework` (singular) to `net9.0`.
 Without clearing `TargetFrameworks`, the ILLink trimmer targets are not properly imported
 by the SDK, and trimming silently does not run.

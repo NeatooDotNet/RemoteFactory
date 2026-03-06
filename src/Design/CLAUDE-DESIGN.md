@@ -3,7 +3,7 @@
 ---
 design_version: 1.0
 last_updated: 2026-02-01
-target_frameworks: [net8.0, net9.0, net10.0]
+target_frameworks: [net9.0, net10.0]
 ---
 
 This file provides Claude Code with the authoritative reference for RemoteFactory's design. When proposing changes or implementing features, consult this document and the Design.Domain code.

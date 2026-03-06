@@ -8,11 +8,10 @@ This file provides guidance to Claude Code (claude.ai/claude-code) when working 
 
 ## Supported Frameworks
 
-- **.NET 8.0** (LTS)
 - **.NET 9.0** (STS)
 - **.NET 10.0** (LTS)
 
-All three frameworks are included in the NuGet packages.
+Both frameworks are included in the NuGet packages.
 
 ## Design Source of Truth
 
@@ -147,7 +146,7 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 
 ## Testing
 
-Tests run against all three target frameworks (net8.0, net9.0, net10.0).
+Tests run against both target frameworks (net9.0, net10.0).
 
 ### Test Projects
 
