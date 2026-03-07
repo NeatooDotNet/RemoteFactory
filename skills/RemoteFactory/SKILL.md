@@ -33,6 +33,7 @@ RemoteFactory is a Roslyn Source Generator-powered Data Mapper Factory for 3-tie
 | Should interface methods have attributes? | No - interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always |
 | Should child entities have [Remote]? | No - causes N+1 remote calls |
+| Should child entity methods be `internal`? | Yes - server-only, trimmable, invisible to client |
 | Can [Execute] return void? | No, must return Task<T> |
 | Can [Execute] go on a class factory? | Yes, if `public static` and returns containing type |
 | Do [Event] methods need CancellationToken? | Yes, as final parameter |

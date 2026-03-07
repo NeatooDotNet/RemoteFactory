@@ -20,7 +20,8 @@ internal abstract record FactoryMethodModel
         bool isAsync = false,
         bool isNullable = false,
         IReadOnlyList<ParameterModel>? parameters = null,
-        AuthorizationModel? authorization = null)
+        AuthorizationModel? authorization = null,
+        bool isInternal = false)
     {
         Name = name;
         UniqueName = uniqueName;
@@ -34,6 +35,7 @@ internal abstract record FactoryMethodModel
         IsNullable = isNullable;
         Parameters = parameters ?? System.Array.Empty<ParameterModel>();
         Authorization = authorization;
+        IsInternal = isInternal;
     }
 
     public string Name { get; }
@@ -46,6 +48,7 @@ internal abstract record FactoryMethodModel
     public bool IsTask { get; }
     public bool IsAsync { get; }
     public bool IsNullable { get; }
+    public bool IsInternal { get; }
     public IReadOnlyList<ParameterModel> Parameters { get; }
     public AuthorizationModel? Authorization { get; }
     public bool HasAuth => Authorization != null && Authorization.HasAuth;

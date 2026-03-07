@@ -28,6 +28,13 @@ The Design projects are the **single source of truth** for RemoteFactory's API. 
 
 When in doubt about how something should work, read the Design code first.
 
+## Business Requirements
+
+This is an open-source library, not a business application. The "business requirements" are the API contracts and behavioral guarantees. The Design projects are the requirements verification: any new feature or behavioral change must be reflected in Design project code and tests. Requirements verification (Step 7B) means confirming the Design projects have been updated to demonstrate the new/changed behavior as the source of truth going forward. Sources:
+
+- **`src/Design/`** — Authoritative examples, comments, and passing tests
+- **`docs/`** — Published documentation (Jekyll-based)
+
 ## Solution Structure
 
 ```
