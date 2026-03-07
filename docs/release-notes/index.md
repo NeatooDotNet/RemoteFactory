@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.19.0](v0.19.0.md) | 2026-03-07 | Trim-safe ordinal serialization |
 | [v0.18.0](v0.18.0.md) | 2026-03-07 | Auth type trimming fix, IsTrimmable on domain assemblies |
 | [v0.17.0](v0.17.0.md) | 2026-03-06 | Internal factory visibility, IL trimming, drop .NET 8 |
 | [v0.16.1](v0.16.1.md) | 2026-03-02 | Fix net10.0 forced to v9 Microsoft.Extensions packages |
@@ -32,13 +33,14 @@ Releases with new features, breaking changes, or bug fixes.
 | [v0.8.0](v0.8.0.md) | 2026-01-13 | Optional CancellationToken on all factory methods |
 | [v0.7.0](v0.7.0.md) | 2026-01-11 | Fix duplicate Save method generation with multi-line parameters |
 | [v0.6.0](v0.6.0.md) | 2026-01-07 | Fire-and-forget domain events with [Event] attribute |
-| [v0.5.0](v0.5.0.md) | 2026-01-04 | Constructor injection compatibility, AOT documentation |
+| [v0.5.0](v0.5.0.md) | 2026-01-04 | Constructor injection compatibility, IL trimming documentation |
 | [v0.4.0](v0.4.0.md) | 2026-01-04 | CancellationToken support with IFactoryOnCancelled lifecycle hooks |
 | [v0.3.0](v0.3.0.md) | 2026-01-03 | Comprehensive logging with CorrelationId for distributed tracing |
 | [v0.2.0](v0.2.0.md) | 2026-01-01 | Ordinal serialization (40-50% smaller payloads), breaking: default format changed |
 
 ## All Releases
 
+- [v0.19.0](v0.19.0.md) - 2026-03-07 - Trim-safe ordinal serialization
 - [v0.18.0](v0.18.0.md) - 2026-03-07 - Auth type trimming fix, IsTrimmable
 - [v0.17.0](v0.17.0.md) - 2026-03-06 - Internal factory visibility & IL trimming
 - [v0.16.1](v0.16.1.md) - 2026-03-02 - Fix net10.0 package versions

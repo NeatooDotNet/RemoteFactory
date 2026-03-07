@@ -92,17 +92,28 @@ internal static class OrdinalRenderer
         sb.AppendLine("            reader.Read(); // Move past StartArray");
         sb.AppendLine();
 
-        // Read each property
+        // Read each property using trim-safe Deserialize overload with GetTypeInfo.
+        // Cast to the correct type since the non-generic overload returns object?.
+        // Non-nullable types get null-forgiving operator; nullable types allow null.
+        // For nullable properties, check for null token first to avoid deserialization errors
+        // when the JsonTypeInfo is for the non-nullable base type (e.g., int vs int?).
         for (int i = 0; i < model.Properties.Count; i++)
         {
             var prop = model.Properties[i];
-            // For nullable types, append ? to the type for proper null handling.
-            // Nullable value types (int?) need Deserialize<int?> to handle null values.
-            // TrimEnd ensures no trailing whitespace in the type string.
             var baseType = prop.Type.TrimEnd();
-            var deserializeType = prop.IsNullable ? $"{baseType}?" : baseType;
-            sb.AppendLine($"            // {prop.Name} ({deserializeType}) - position {i}");
-            sb.AppendLine($"            var prop{i} = global::System.Text.Json.JsonSerializer.Deserialize<{deserializeType}>(ref reader, options);");
+            var castType = prop.IsNullable ? $"{baseType}?" : baseType;
+            var nullForgiving = prop.IsNullable ? "" : "!";
+            sb.AppendLine($"            // {prop.Name} ({castType}) - position {i}");
+            if (prop.IsNullable)
+            {
+                sb.AppendLine($"            {castType} prop{i} = reader.TokenType == global::System.Text.Json.JsonTokenType.Null");
+                sb.AppendLine($"                ? default({castType})");
+                sb.AppendLine($"                : ({baseType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({baseType})))!;");
+            }
+            else
+            {
+                sb.AppendLine($"            var prop{i} = ({castType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({baseType}))){nullForgiving};");
+            }
             sb.AppendLine("            reader.Read();");
         }
 
@@ -136,11 +147,24 @@ internal static class OrdinalRenderer
 
         sb.AppendLine("            writer.WriteStartArray();");
 
-        // Write each property
+        // Write each property using trim-safe Serialize overload with GetTypeInfo.
+        // For nullable properties, emit a null check and write null directly to avoid
+        // unboxing failures when passing null to Serialize with a non-nullable JsonTypeInfo.
         for (int i = 0; i < model.Properties.Count; i++)
         {
             var prop = model.Properties[i];
-            sb.AppendLine($"            global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options);");
+            var baseType = prop.Type.TrimEnd();
+            if (prop.IsNullable)
+            {
+                sb.AppendLine($"            if (value.{prop.Name} is not null)");
+                sb.AppendLine($"                global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options.GetTypeInfo(typeof({baseType})));");
+                sb.AppendLine($"            else");
+                sb.AppendLine($"                writer.WriteNullValue();");
+            }
+            else
+            {
+                sb.AppendLine($"            global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options.GetTypeInfo(typeof({baseType})));");
+            }
         }
 
         sb.AppendLine("            writer.WriteEndArray();");
@@ -195,7 +219,7 @@ internal static class OrdinalRenderer
 
         // CreateOrdinalConverter static method
         sb.AppendLine("        /// <summary>");
-        sb.AppendLine("        /// Creates an AOT-compatible ordinal converter for this type.");
+        sb.AppendLine("        /// Creates a trimming-compatible ordinal converter for this type.");
         sb.AppendLine("        /// </summary>");
         sb.AppendLine($"        public static global::System.Text.Json.Serialization.JsonConverter<{model.FullTypeName}> CreateOrdinalConverter()");
         sb.AppendLine($"            => new {model.TypeName}OrdinalConverter();");

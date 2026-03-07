@@ -68,7 +68,7 @@ public partial class ExampleClassFactory
     // DID NOT DO THIS: Support private setters via reflection
     //
     // Reasons:
-    // 1. Reflection is slow and breaks AOT compilation
+    // 1. Reflection is slow and incompatible with IL trimming
     // 2. Source generation requires compile-time accessible setters
     // 3. Explicit public setters make serialization behavior obvious
     //

@@ -139,7 +139,7 @@ public static partial class MyCommands
 |----------|--------|-----------|--------|
 | Should this method be [Remote]? | Only aggregate root entry points | `Order.cs` vs `OrderLine.cs` | Once on server, stay on server |
 | Should this method be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
-| Can I use private setters? | No | `AllPatterns.cs:73` | AOT compilation + source generation |
+| Can I use private setters? | No | `AllPatterns.cs:73` | IL trimming + source generation |
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
 | Should child entities have [Remote]? | No | `OrderLine.cs:27-41` | Would cause N+1 remote calls |
@@ -630,7 +630,7 @@ These are known limitations or open questions. They are documented here to preve
 
 | Topic | Current State | Why Deferred | Reconsider When |
 |-------|--------------|--------------|-----------------|
-| Private setter support | Not supported | Breaks AOT, adds reflection | If .NET adds AOT-compatible private member access |
+| Private setter support | Not supported | Adds reflection, incompatible with IL trimming | If .NET adds source-generator-accessible private member access |
 | OR logic for [AspAuthorize] | Only AND logic | Matches ASP.NET Core behavior, safer default | User demand + clear use case |
 | Automatic [Remote] detection | Must be explicit | Security risk of accidental exposure | Never - explicit is a core principle |
 | Collection factory injection | Requires local mode for AddLine | Serialize factories would add complexity | If common complaint from users |

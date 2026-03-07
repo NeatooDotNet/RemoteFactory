@@ -4,7 +4,7 @@ namespace Neatoo.RemoteFactory;
 
 /// <summary>
 /// Implemented by [Factory] types to provide a pre-compiled ordinal JSON converter.
-/// Eliminates reflection-based converter creation for AOT compatibility.
+/// Eliminates reflection-based converter creation for IL trimming compatibility.
 /// </summary>
 /// <typeparam name="TSelf">The implementing type (self-referencing generic).</typeparam>
 public interface IOrdinalConverterProvider<TSelf> where TSelf : class

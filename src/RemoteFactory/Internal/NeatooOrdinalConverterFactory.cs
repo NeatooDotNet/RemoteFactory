@@ -15,7 +15,7 @@ public class NeatooOrdinalConverterFactory : JsonConverterFactory
 	private readonly NeatooSerializationOptions options;
 
 	/// <summary>
-	/// Static cache for registered converters (AOT path).
+	/// Static cache for registered converters (trimming-safe path).
 	/// Converters registered here bypass reflection-based creation.
 	/// </summary>
 	private static readonly ConcurrentDictionary<Type, JsonConverter> _registeredConverters = new();
@@ -75,7 +75,7 @@ public class NeatooOrdinalConverterFactory : JsonConverterFactory
 
 		var typeName = typeToConvert.Name;
 
-		// AOT path: Try registered converters first (fastest path)
+		// Trimming-safe path: Try registered converters first (fastest path)
 		if (_registeredConverters.TryGetValue(typeToConvert, out var registered))
 		{
 			Logger.ConverterCacheHit(typeName);

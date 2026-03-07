@@ -479,7 +479,7 @@ See [Serialization](serialization.md) for details on ordinal format.
 
 ### IOrdinalConverterProvider&lt;TSelf&gt;
 
-Provides a custom `JsonConverter` for ordinal serialization. Uses static abstract interface members for AOT compatibility.
+Provides a custom `JsonConverter` for ordinal serialization. Uses static abstract interface members for IL trimming compatibility.
 
 ```csharp
 public interface IOrdinalConverterProvider<TSelf> where TSelf : class
