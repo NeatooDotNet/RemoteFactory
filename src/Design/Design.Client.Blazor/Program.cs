@@ -28,7 +28,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 //
 // Parameters:
 // - NeatooFactory.Remote: Tells the client to serialize calls to server
-// - typeof(Order).Assembly: Scans for [Factory] types to create proxies
+// - typeof(IOrder).Assembly: Scans for [Factory] types to create proxies
 //
 // What this does:
 // - Registers generated delegate types that serialize to server
@@ -44,7 +44,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // RIGHT:
 // builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, ...);
 // -------------------------------------------------------------------------
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
 
 // -------------------------------------------------------------------------
 // DESIGN DECISION: Keyed HttpClient for RemoteFactory

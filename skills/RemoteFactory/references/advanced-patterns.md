@@ -179,6 +179,8 @@ public partial class SkillDepartment
 
 **Key insight:** [Remote] is about *how the method is called*, not *what the type is*.
 
+For entity duality, consider using `internal` on child-context methods. The child context method (`FetchAsChild` above) is only called from server-side aggregate operations and benefits from `internal` visibility: it gets an `IsServerRuntime` guard, becomes trimmable on the client, and is excluded from the public factory interface. The aggregate root context method (`Fetch`) stays `public` with `[Remote]`.
+
 ---
 
 ## Value Objects
@@ -401,11 +403,10 @@ When consuming RemoteFactory via NuGet:
 ## Framework Support
 
 RemoteFactory supports:
-- .NET 8.0 (LTS)
 - .NET 9.0 (STS)
 - .NET 10.0 (LTS)
 
-All three frameworks are included in the NuGet packages.
+Both frameworks are included in the NuGet packages.
 
 ---
 

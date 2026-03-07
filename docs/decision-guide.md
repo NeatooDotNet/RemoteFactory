@@ -86,6 +86,26 @@ See [Factory Modes](factory-modes.md) for configuration.
 
 ---
 
+## IL Trimming or RemoteOnly?
+
+Both keep server-only code off the client — business logic IP, server-only dependencies (EF Core, etc.), and their transitive packages. They work differently and can be combined.
+
+```
+Want server-only code removed from published client output?
+├── At publish time only (keep everything during development)
+│   └── IL Trimming — add 3 MSBuild properties, no code changes
+├── At compile time (never generate server code in client assembly)
+│   └── RemoteOnly mode — strictest separation, requires assembly split
+└── Maximum reduction
+    └── Both — RemoteOnly skips generation, trimming removes leftovers
+```
+
+**Start with IL trimming** — it's the simplest option, requires no project restructuring, and solves runtime failures from partial trimming of server-only packages.
+
+See [IL Trimming](trimming.md) for configuration.
+
+---
+
 ## When to Use [Execute]?
 
 `[Execute]` is for operations that don't follow the entity lifecycle (Create → Fetch → Save). Two common scenarios: one-shot command delegates, and static methods where you need to make a decision before instantiating an entity — like choosing Create vs Fetch based on existing data.
@@ -144,3 +164,4 @@ See [Authorization](authorization.md) for details.
 - [Client-Server Architecture](client-server-architecture.md) — Understanding `[Remote]`
 - [Service Injection](service-injection.md) — DI patterns
 - [Factory Modes](factory-modes.md) — Full vs RemoteOnly configuration
+- [IL Trimming](trimming.md) — Remove server-only code from published Blazor WASM output

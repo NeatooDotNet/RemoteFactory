@@ -21,9 +21,10 @@ internal sealed record CanMethodModel : FactoryMethodModel
         bool isAsync = false,
         bool isNullable = false,
         IReadOnlyList<ParameterModel>? parameters = null,
-        AuthorizationModel? authorization = null)
+        AuthorizationModel? authorization = null,
+        bool isInternal = false)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
-               isRemote, isTask, isAsync, isNullable, parameters, authorization)
+               isRemote, isTask, isAsync, isNullable, parameters, authorization, isInternal)
     {
     }
 }

@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<!-- Only target net9.0+ where [FeatureSwitchDefinition] is supported -->
+		<!-- Clear TargetFrameworks from Directory.Build.props; use single TFM for trimming test -->
+		<TargetFrameworks></TargetFrameworks>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>RemoteFactory.TrimmingTests</RootNamespace>
+
+		<!-- Trimming configuration -->
+		<PublishTrimmed>true</PublishTrimmed>
+		<TrimMode>full</TrimMode>
+		<!-- Suppress trimming warnings for this prototype -->
+		<SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+		<!-- Source generator output for inspection -->
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+		<CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+
+		<!-- Suppress code analysis noise for prototype -->
+		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA1050, CA1822</NoWarn>
+	</PropertyGroup>
+
+	<!-- Feature switch: set IsServerRuntime to false for client/trimming scenario -->
+	<ItemGroup>
+		<RuntimeHostConfigurationOption Include="Neatoo.RemoteFactory.IsServerRuntime"
+		                                 Value="false"
+		                                 Trim="true" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\RemoteFactory\RemoteFactory.csproj" />
+		<ProjectReference Include="..\..\Generator\Generator.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<!-- Exclude generated files from compilation (they're included automatically) -->
+	<ItemGroup>
+		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+	</ItemGroup>
+
+</Project>

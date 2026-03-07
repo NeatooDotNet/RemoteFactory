@@ -23,9 +23,10 @@ internal sealed record WriteMethodModel : FactoryMethodModel
         IReadOnlyList<ParameterModel>? parameters = null,
         AuthorizationModel? authorization = null,
         bool isDomainMethodTask = false,
-        bool isBool = false)
+        bool isBool = false,
+        bool isInternal = false)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
-               isRemote, isTask, isAsync, isNullable, parameters, authorization)
+               isRemote, isTask, isAsync, isNullable, parameters, authorization, isInternal)
     {
         IsDomainMethodTask = isDomainMethodTask;
         IsBool = isBool;

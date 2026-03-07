@@ -1,11 +1,36 @@
 // =============================================================================
-// DESIGN SOURCE OF TRUTH: Child Entity (No [Remote])
+// DESIGN SOURCE OF TRUTH: Child Entity (No [Remote]) with Internal Visibility
 // =============================================================================
 //
-// This file demonstrates the CLASS FACTORY pattern for a child entity.
+// This file demonstrates the CLASS FACTORY pattern for a child entity
+// using INTERNAL class visibility with public interfaces.
+//
 // Child entities are created and managed within their aggregate root's
 // operations - they don't need [Remote] because they never cross the
 // client/server boundary independently.
+//
+// DESIGN PATTERN: Internal classes with public interfaces
+//
+// Making child entity classes `internal` while exposing public interfaces
+// enables IL trimming of server-only factory code. The key insight:
+//
+//   The generator checks only the method's DeclaredAccessibility to
+//   determine whether a factory method is internal. Methods declared
+//   `internal` produce internal factory interfaces.
+//
+// 1. OrderLine is `internal class` with `internal` factory methods
+//    -> DeclaredAccessibility = internal -> IOrderLineFactory = internal
+//
+// 2. OrderLineList is `internal class` with `internal` factory methods
+//    -> DeclaredAccessibility = internal -> IOrderLineListFactory = internal
+//
+// 3. OrderLineList.Create([Service] IOrderLineFactory) compiles because
+//    the method is `internal` and IOrderLineFactory is `internal`. No CS0051.
+//
+// 4. Order.Create([Service] IOrderLineListFactory) - Order is a public class
+//    with [Remote] public methods. The [Service] parameter IOrderLineListFactory
+//    is internal, but [Service] parameters are injected by DI (not exposed
+//    in the generated interface), so no CS0051.
 //
 // =============================================================================
 
@@ -15,9 +40,41 @@ using Neatoo.RemoteFactory;
 namespace Design.Domain.Entities;
 
 /// <summary>
+/// Public interface for OrderLine child entity.
+/// Exposed to callers outside the assembly (e.g., Blazor client).
+/// </summary>
+public interface IOrderLine
+{
+    int Id { get; }
+    string ProductName { get; }
+    Money UnitPrice { get; }
+    int Quantity { get; }
+    Money LineTotal { get; }
+    void UpdateQuantity(int newQuantity);
+    void UpdatePrice(decimal newUnitPrice);
+}
+
+/// <summary>
+/// Public interface for the OrderLine collection.
+/// Provides read access and domain operations to callers outside the assembly.
+/// </summary>
+public interface IOrderLineList : IReadOnlyList<IOrderLine>
+{
+    void AddLine(string productName, decimal unitPrice, int quantity);
+    Money CalculateTotal();
+}
+
+/// <summary>
 /// Child entity representing a line item in an Order.
 /// </summary>
 /// <remarks>
+/// DESIGN DECISION: Internal class with public interface
+///
+/// The class is `internal` with `internal` factory methods, so the generator
+/// produces an `internal` factory interface (IOrderLineFactory). This enables
+/// IL trimming of factory code on the client. The public IOrderLine interface
+/// exposes domain properties and methods to external callers.
+///
 /// DESIGN DECISION: Child entities do NOT have [Remote] on factory methods
 ///
 /// Once execution reaches the server via the aggregate root's [Remote] method,
@@ -28,33 +85,28 @@ namespace Design.Domain.Entities;
 ///
 /// WRONG:
 /// [Factory]
-/// public partial class OrderLine {
-///     [Remote, Create]  // <-- WRONG: Child doesn't need [Remote]
+/// internal partial class OrderLine : IOrderLine {
+///     [Remote, Create]  // <-- WRONG: [Remote] + internal triggers NF0105
 ///     public void Create(...) { }
 /// }
 ///
 /// RIGHT:
 /// [Factory]
-/// public partial class OrderLine {
+/// internal partial class OrderLine : IOrderLine {
 ///     [Create]  // <-- No [Remote] - called from server-side Order operations
 ///     public void Create(...) { }
 /// }
 ///
-/// Why this matters:
-/// 1. No unnecessary network round-trips for each child
-/// 2. Atomic aggregate operations (all children created in one call)
-/// 3. Consistent with DDD - children are part of aggregate transaction
-///
 /// GENERATOR BEHAVIOR: Without [Remote], the generator still creates:
-/// - Factory interface: IOrderLineFactory
-/// - Local Create/Fetch methods
+/// - Factory interface: IOrderLineFactory (internal, since class is internal)
+/// - Local Create/Fetch methods with IsServerRuntime guards
 /// - Serialization support
 ///
 /// But it does NOT create remote stubs or delegates. The factory methods
-/// execute directly in-process.
+/// execute directly in-process on the server.
 /// </remarks>
 [Factory]
-public partial class OrderLine
+internal partial class OrderLine : IOrderLine
 {
     // -------------------------------------------------------------------------
     // Properties
@@ -73,6 +125,9 @@ public partial class OrderLine
     //
     // These operations are called from within the aggregate root's operations,
     // which are already executing on the server. No remote crossing needed.
+    //
+    // The methods are declared `internal`, so the generator sets IsInternal=true
+    // and generates an internal IOrderLineFactory with IsServerRuntime guards.
     // -------------------------------------------------------------------------
 
     /// <summary>
@@ -83,7 +138,7 @@ public partial class OrderLine
     /// execute server-side within an Order operation.
     /// </remarks>
     [Create]
-    public void Create(string productName, decimal unitPrice, int quantity)
+    internal void Create(string productName, decimal unitPrice, int quantity)
     {
         ProductName = productName;
         UnitPrice = new Money(unitPrice);
@@ -109,7 +164,7 @@ public partial class OrderLine
     /// Everything else executes server-side within that call.
     /// </remarks>
     [Fetch]
-    public void Fetch(int id, string productName, decimal unitPrice, int quantity)
+    internal void Fetch(int id, string productName, decimal unitPrice, int quantity)
     {
         Id = id;
         ProductName = productName;
@@ -140,6 +195,13 @@ public partial class OrderLine
 /// Collection of OrderLines within an Order.
 /// </summary>
 /// <remarks>
+/// DESIGN DECISION: Internal class with public interface
+///
+/// Like OrderLine, this class is `internal` with `internal` factory methods,
+/// so the generator produces an `internal` IOrderLineListFactory. The public
+/// IOrderLineList interface provides read access and domain operations to
+/// external callers.
+///
 /// DESIGN DECISION: Collection types get their own [Factory]
 ///
 /// This enables:
@@ -151,9 +213,29 @@ public partial class OrderLine
 /// called from within Order operations.
 /// </remarks>
 [Factory]
-public partial class OrderLineList : List<OrderLine>
+internal partial class OrderLineList : List<OrderLine>, IOrderLineList
 {
     private IOrderLineFactory? _lineFactory;
+
+    // -------------------------------------------------------------------------
+    // IReadOnlyList<IOrderLine> implementation
+    //
+    // List<OrderLine> implements IReadOnlyList<OrderLine>, but we need
+    // IReadOnlyList<IOrderLine> for the public interface. Since
+    // IReadOnlyList<T> is covariant (out T), this is satisfied implicitly.
+    // However, the explicit interface member for the indexer is needed
+    // because IReadOnlyList<IOrderLine>[int] returns IOrderLine, not OrderLine.
+    // -------------------------------------------------------------------------
+
+    IOrderLine IReadOnlyList<IOrderLine>.this[int index] => this[index];
+
+    int IReadOnlyCollection<IOrderLine>.Count => Count;
+
+    IEnumerator<IOrderLine> IEnumerable<IOrderLine>.GetEnumerator()
+    {
+        for (int i = 0; i < Count; i++)
+            yield return this[i];
+    }
 
     /// <summary>
     /// Creates a list with injected factory for adding lines.
@@ -179,7 +261,7 @@ public partial class OrderLineList : List<OrderLine>
     /// RIGHT: Have one Create method that includes all needed services.
     /// </remarks>
     [Create]
-    public void Create([Service] IOrderLineFactory lineFactory)
+    internal void Create([Service] IOrderLineFactory lineFactory)
     {
         _lineFactory = lineFactory;
     }
@@ -188,7 +270,7 @@ public partial class OrderLineList : List<OrderLine>
     /// Fetches a list of OrderLines from data.
     /// </summary>
     [Fetch]
-    public void Fetch(
+    internal void Fetch(
         IEnumerable<(int id, string productName, decimal unitPrice, int quantity)> items,
         [Service] IOrderLineFactory lineFactory)
     {
@@ -196,7 +278,7 @@ public partial class OrderLineList : List<OrderLine>
 
         foreach (var item in items)
         {
-            var line = lineFactory.Fetch(item.id, item.productName, item.unitPrice, item.quantity);
+            var line = (OrderLine)lineFactory.Fetch(item.id, item.productName, item.unitPrice, item.quantity);
             Add(line);
         }
     }
@@ -226,13 +308,13 @@ public partial class OrderLineList : List<OrderLine>
         if (_lineFactory == null)
             throw new InvalidOperationException("OrderLineList was not properly initialized with a factory");
 
-        var line = _lineFactory.Create(productName, unitPrice, quantity);
+        var line = (OrderLine)_lineFactory.Create(productName, unitPrice, quantity);
         Add(line);
     }
 
     public Money CalculateTotal()
     {
-        return this.Aggregate(Money.Zero, (total, line) => total.Add(line.LineTotal));
+        return ((IEnumerable<OrderLine>)this).Aggregate(Money.Zero, (total, line) => total.Add(line.LineTotal));
     }
 
     public void RemoveLine(OrderLine line)

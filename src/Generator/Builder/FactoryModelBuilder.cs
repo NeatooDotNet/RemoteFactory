@@ -176,6 +176,22 @@ internal static class FactoryModelBuilder
                 continue;
             }
 
+            // NF0105: [Remote] cannot be used with internal methods
+            if (method.IsRemote && method.IsInternal)
+            {
+                diagnostics.Add(new DiagnosticInfo(
+                    "NF0105",
+                    method.MethodFilePath,
+                    method.MethodStartLine,
+                    method.MethodStartColumn,
+                    method.MethodEndLine,
+                    method.MethodEndColumn,
+                    method.MethodTextSpanStart,
+                    method.MethodTextSpanLength,
+                    method.Name));
+                continue; // Skip this method - don't generate code for it
+            }
+
             if (method.FactoryOperation == FactoryOperation.Execute)
             {
                 // NF0102: Execute method must return Task
@@ -308,7 +324,8 @@ internal static class FactoryModelBuilder
             isStaticFactory: method.IsStaticFactory,
             isBool: method.IsBool,
             isDomainMethodTask: method.IsTask,
-            isDomainMethodNullable: method.IsNullable);
+            isDomainMethodNullable: method.IsNullable,
+            isInternal: method.IsInternal);
     }
 
     private static WriteMethodModel BuildWriteMethod(TypeFactoryMethodInfo method, TypeInfo typeInfo)
@@ -355,7 +372,8 @@ internal static class FactoryModelBuilder
             parameters: allParameters,
             authorization: authorization,
             isDomainMethodTask: method.IsTask,
-            isBool: method.IsBool);
+            isBool: method.IsBool,
+            isInternal: method.IsInternal);
     }
 
     private static InterfaceMethodModel BuildInterfaceMethod(TypeFactoryMethodInfo method, TypeInfo typeInfo)
@@ -427,7 +445,8 @@ internal static class FactoryModelBuilder
             parameters: parameters,
             authorization: authorization,
             serviceParameters: serviceParameters,
-            hasCancellationToken: hasCancellationToken);
+            hasCancellationToken: hasCancellationToken,
+            isInternal: method.IsInternal);
     }
 
     private static EventMethodModel BuildEventMethod(TypeFactoryMethodInfo method, string containingTypeName, bool isStaticClass)
@@ -499,7 +518,7 @@ internal static class FactoryModelBuilder
             hasCancellationToken: hasCancellationToken);
     }
 
-    private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize)
+    private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false)
     {
         // Collect parameters from auth methods
         var parameters = new List<ParameterModel>();
@@ -538,7 +557,8 @@ internal static class FactoryModelBuilder
             isAsync: isAsync,
             isNullable: false,
             parameters: parameters,
-            authorization: authorization);
+            authorization: authorization,
+            isInternal: isInternal);
     }
 
     #endregion
@@ -602,7 +622,8 @@ internal static class FactoryModelBuilder
                 insertMethod: defaultSave.InsertMethod,
                 updateMethod: defaultSave.UpdateMethod,
                 deleteMethod: defaultSave.DeleteMethod,
-                isDefault: true);
+                isDefault: true,
+                isInternal: defaultSave.IsInternal);
         }
 
         return saveMethods;
@@ -646,6 +667,8 @@ internal static class FactoryModelBuilder
         var isAsync = methods.Any(m => m.IsAsync);
         var isNullable = methods.Any(m => m.Operation == FactoryOperation.Delete || m.IsNullable);
         var hasAuth = methods.Any(m => m.HasAuth);
+        // Save is internal only if ALL its constituent write methods are internal
+        var isInternal = methods.All(m => m.IsInternal);
 
         return new SaveMethodModel(
             name: name,
@@ -663,7 +686,8 @@ internal static class FactoryModelBuilder
             insertMethod: insertMethod,
             updateMethod: updateMethod,
             deleteMethod: deleteMethod,
-            isDefault: false);
+            isDefault: false,
+            isInternal: isInternal);
     }
 
     private static string GetParameterSignature(IReadOnlyList<ParameterModel> parameters)
@@ -796,7 +820,8 @@ internal static class FactoryModelBuilder
                 method.Name,
                 typeInfo,
                 method.Authorization?.AuthMethods ?? Array.Empty<AuthMethodCall>(),
-                method.Authorization?.AspAuthorize ?? Array.Empty<AspAuthorizeCall>());
+                method.Authorization?.AspAuthorize ?? Array.Empty<AspAuthorizeCall>(),
+                isInternal: method.IsInternal);
 
             canMethodsToAdd.Add(canMethod);
             existingMethodNames.Add(canMethodName);
@@ -854,21 +879,24 @@ internal static class FactoryModelBuilder
             ReadMethodModel rm => new ReadMethodModel(
                 rm.Name, uniqueName, rm.ReturnType, rm.ServiceType, rm.ImplementationType, rm.Operation,
                 rm.IsRemote, rm.IsTask, rm.IsAsync, rm.IsNullable, rm.Parameters, rm.Authorization,
-                rm.IsConstructor, rm.IsStaticFactory, rm.IsBool, rm.IsDomainMethodTask, rm.IsDomainMethodNullable),
+                rm.IsConstructor, rm.IsStaticFactory, rm.IsBool, rm.IsDomainMethodTask, rm.IsDomainMethodNullable,
+                rm.IsInternal),
             WriteMethodModel wm => new WriteMethodModel(
                 wm.Name, uniqueName, wm.ReturnType, wm.ServiceType, wm.ImplementationType, wm.Operation,
-                wm.IsRemote, wm.IsTask, wm.IsAsync, wm.IsNullable, wm.Parameters, wm.Authorization, wm.IsDomainMethodTask, wm.IsBool),
+                wm.IsRemote, wm.IsTask, wm.IsAsync, wm.IsNullable, wm.Parameters, wm.Authorization,
+                wm.IsDomainMethodTask, wm.IsBool, wm.IsInternal),
             SaveMethodModel sm => new SaveMethodModel(
                 sm.Name, uniqueName, sm.ReturnType, sm.ServiceType, sm.ImplementationType, sm.Operation,
                 sm.IsRemote, sm.IsTask, sm.IsAsync, sm.IsNullable, sm.Parameters, sm.Authorization,
-                sm.InsertMethod, sm.UpdateMethod, sm.DeleteMethod, sm.IsDefault),
+                sm.InsertMethod, sm.UpdateMethod, sm.DeleteMethod, sm.IsDefault, sm.IsInternal),
             CanMethodModel cm => new CanMethodModel(
                 cm.Name, uniqueName, cm.ReturnType, cm.ServiceType, cm.ImplementationType, cm.Operation,
-                cm.IsRemote, cm.IsTask, cm.IsAsync, cm.IsNullable, cm.Parameters, cm.Authorization),
+                cm.IsRemote, cm.IsTask, cm.IsAsync, cm.IsNullable, cm.Parameters, cm.Authorization,
+                cm.IsInternal),
             ClassExecuteMethodModel em => new ClassExecuteMethodModel(
                 em.Name, uniqueName, em.ReturnType, em.ServiceType, em.ImplementationType, em.Operation,
                 em.IsRemote, em.IsTask, em.IsAsync, em.IsNullable, em.Parameters, em.Authorization,
-                em.ServiceParameters, em.HasCancellationToken),
+                em.ServiceParameters, em.HasCancellationToken, em.IsInternal),
             _ => method
         };
     }
@@ -898,7 +926,8 @@ internal static class FactoryModelBuilder
                 methodName: am.Name,
                 isTask: am.IsTask,
                 isRemote: am.IsRemote,
-                parameters: BuildParameters(am.Parameters)))
+                parameters: BuildParameters(am.Parameters),
+                concreteClassName: am.ConcreteClassName))
             .ToList();
 
         var aspAuthorize = method.AspAuthorizeCalls

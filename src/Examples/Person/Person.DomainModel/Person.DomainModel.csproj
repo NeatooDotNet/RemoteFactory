@@ -3,6 +3,7 @@
   <PropertyGroup>
 	  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 	  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+	  <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
 	<ItemGroup>
@@ -20,8 +21,7 @@
 	  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
 	</ItemGroup>
 	
-	<!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(TargetFramework)' == 'net8.0'">
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
 		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>
 	

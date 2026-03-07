@@ -24,9 +24,10 @@ internal sealed record ClassExecuteMethodModel : FactoryMethodModel
         IReadOnlyList<ParameterModel>? parameters = null,
         AuthorizationModel? authorization = null,
         IReadOnlyList<ParameterModel>? serviceParameters = null,
-        bool hasCancellationToken = false)
+        bool hasCancellationToken = false,
+        bool isInternal = false)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
-               isRemote, isTask, isAsync, isNullable, parameters, authorization)
+               isRemote, isTask, isAsync, isNullable, parameters, authorization, isInternal)
     {
         ServiceParameters = serviceParameters ?? System.Array.Empty<ParameterModel>();
         HasCancellationToken = hasCancellationToken;

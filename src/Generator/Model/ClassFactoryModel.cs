@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Neatoo.RemoteFactory.Generator.Model;
 
@@ -41,4 +42,12 @@ internal sealed record ClassFactoryModel
     public bool HasDefaultSave { get; }
     public bool RequiresEntityRegistration { get; }
     public bool RegisterOrdinalConverter { get; }
+    /// <summary>
+    /// True if ALL factory methods are internal. When true, the generated factory interface is internal.
+    /// </summary>
+    public bool AllMethodsInternal => Methods.Count > 0 && Methods.All(m => m.IsInternal);
+    /// <summary>
+    /// True if ANY factory method is public. Inverse of AllMethodsInternal (when methods exist).
+    /// </summary>
+    public bool HasPublicMethods => Methods.Any(m => !m.IsInternal);
 }

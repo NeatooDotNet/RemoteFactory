@@ -33,13 +33,15 @@ internal sealed record AuthMethodCall
         string methodName,
         bool isTask = false,
         bool isRemote = false,
-        IReadOnlyList<ParameterModel>? parameters = null)
+        IReadOnlyList<ParameterModel>? parameters = null,
+        string? concreteClassName = null)
     {
         ClassName = className;
         MethodName = methodName;
         IsTask = isTask;
         IsRemote = isRemote;
         Parameters = parameters ?? System.Array.Empty<ParameterModel>();
+        ConcreteClassName = concreteClassName;
     }
 
     public string ClassName { get; }
@@ -47,6 +49,12 @@ internal sealed record AuthMethodCall
     public bool IsTask { get; }
     public bool IsRemote { get; }
     public IReadOnlyList<ParameterModel> Parameters { get; }
+
+    /// <summary>
+    /// When ClassName is an interface, this holds the concrete implementing class name.
+    /// Null when ClassName is already a concrete class or no implementation was found.
+    /// </summary>
+    public string? ConcreteClassName { get; }
 }
 
 /// <summary>

@@ -5,6 +5,22 @@
 // This file demonstrates the CLASS FACTORY pattern for an aggregate root,
 // including all lifecycle hooks and the IFactorySaveMeta interface.
 //
+// DESIGN PATTERN: Internal class with public interface
+//
+// The aggregate root class is `internal` with a `public interface IOrder`.
+// The generator detects the matching interface by naming convention
+// (class Order -> interface IOrder) and uses IOrder in the generated
+// factory interface signatures:
+//
+//   public interface IOrderFactory {
+//       Task<IOrder> Create(string customerName, ...);
+//       Task<IOrder> Fetch(int id, ...);
+//       Task<IOrder?> Save(IOrder target, ...);
+//   }
+//
+// This enables IL trimming of the concrete Order class on the client
+// while keeping the public IOrder interface accessible everywhere.
+//
 // =============================================================================
 
 using Design.Domain.Entities;
@@ -14,24 +30,50 @@ using Neatoo.RemoteFactory;
 namespace Design.Domain.Aggregates;
 
 /// <summary>
+/// Public interface for Order aggregate root.
+/// Exposed to callers outside the assembly (e.g., Blazor client).
+/// </summary>
+public interface IOrder : IFactorySaveMeta
+{
+    int Id { get; set; }
+    string CustomerName { get; set; }
+    OrderStatus Status { get; set; }
+    IOrderLineList Lines { get; set; }
+    Money Total { get; }
+    void AddLine(string productName, decimal unitPrice, int quantity);
+    void Submit();
+    void Cancel();
+    void MarkDeleted();
+}
+
+/// <summary>
 /// Order aggregate root demonstrating lifecycle hooks and Save routing.
 /// </summary>
 /// <remarks>
+/// DESIGN DECISION: Internal class with public interface
+///
+/// The class is `internal` so the generator produces factory interface
+/// methods that use `IOrder` (the public interface) instead of `Order`.
+/// This enables:
+/// 1. IL trimming of the concrete class on Blazor WASM clients
+/// 2. Clean API surface -- callers depend on the interface, not the impl
+/// 3. Consistent pattern with child entities (OrderLine, OrderLineList)
+///
 /// DESIGN DECISION: Aggregate roots implement IFactorySaveMeta for Save routing
 ///
 /// The factory's Save() method examines IsNew and IsDeleted to determine
 /// which operation to call:
-/// - IsNew=true, IsDeleted=false → Insert
-/// - IsNew=false, IsDeleted=false → Update
-/// - IsNew=false, IsDeleted=true → Delete
-/// - IsNew=true, IsDeleted=true → No operation (new item deleted before save)
+/// - IsNew=true, IsDeleted=false -> Insert
+/// - IsNew=false, IsDeleted=false -> Update
+/// - IsNew=false, IsDeleted=true -> Delete
+/// - IsNew=true, IsDeleted=true -> No operation (new item deleted before save)
 ///
 /// GENERATOR BEHAVIOR: For IFactorySaveMeta implementations, the generator
 /// creates a Save() method on the factory that routes to Insert/Update/Delete
 /// based on the IsNew and IsDeleted properties.
 /// </remarks>
 [Factory]
-public partial class Order : IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnCompleteAsync
+internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnCompleteAsync
 {
     // -------------------------------------------------------------------------
     // Properties
@@ -40,7 +82,7 @@ public partial class Order : IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnC
     public int Id { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public OrderStatus Status { get; set; } = OrderStatus.Draft;
-    public OrderLineList Lines { get; set; } = null!;
+    public IOrderLineList Lines { get; set; } = null!;
     public Money Total => Lines?.CalculateTotal() ?? Money.Zero;
 
     // -------------------------------------------------------------------------
@@ -293,12 +335,15 @@ public enum OrderStatus
 /// <remarks>
 /// Note: This is NOT a [Factory] interface - it's a plain service interface
 /// for server-side use. The Order's Insert/Update/Delete methods use it.
+///
+/// Uses IOrder (public interface) so the repository interface can be public
+/// even though the Order concrete class is internal.
 /// </remarks>
 public interface IOrderRepository
 {
-    Task InsertAsync(Order order);
-    Task UpdateAsync(Order order);
-    Task DeleteAsync(Order order);
+    Task InsertAsync(IOrder order);
+    Task UpdateAsync(IOrder order);
+    Task DeleteAsync(IOrder order);
 }
 
 /// <summary>
@@ -306,21 +351,21 @@ public interface IOrderRepository
 /// </summary>
 public class InMemoryOrderRepository : IOrderRepository
 {
-    private readonly List<Order> _orders = [];
+    private readonly List<IOrder> _orders = [];
 
-    public Task InsertAsync(Order order)
+    public Task InsertAsync(IOrder order)
     {
         _orders.Add(order);
         return Task.CompletedTask;
     }
 
-    public Task UpdateAsync(Order order)
+    public Task UpdateAsync(IOrder order)
     {
         // In-memory - nothing to do
         return Task.CompletedTask;
     }
 
-    public Task DeleteAsync(Order order)
+    public Task DeleteAsync(IOrder order)
     {
         _orders.Remove(order);
         return Task.CompletedTask;

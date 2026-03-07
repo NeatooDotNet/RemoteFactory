@@ -287,7 +287,7 @@ Test projects have relaxed analysis (`default` instead of `all`) and additional 
 **Projects:** `Person.Server.csproj`, `Person.Client.csproj`, `Person.Ef.csproj`
 
 ```xml
-<TargetFramework>net8.0</TargetFramework>  <!-- May use older TFM -->
+<TargetFramework>net9.0</TargetFramework>  <!-- May use older TFM -->
 <NoWarn>CA1062, IDE0022</NoWarn>  <!-- EF-specific suppressions -->
 ```
 
@@ -541,7 +541,7 @@ dotnet_diagnostic.CA1002.severity = none
 ### 2. Inconsistent Target Frameworks
 
 - Core libraries target `net9.0`
-- Example projects target `net8.0`
+- Example projects target `net9.0`
 - Source generator targets `netstandard2.0`
 
 **Consideration:** While the source generator must remain `netstandard2.0`, example projects could be upgraded to match core libraries.

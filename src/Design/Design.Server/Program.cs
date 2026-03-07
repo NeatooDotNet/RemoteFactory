@@ -37,9 +37,9 @@ var builder = WebApplication.CreateBuilder(args);
 // builder.Services.AddNeatooAspNetCore();  // <-- No assembly = nothing registered
 //
 // RIGHT:
-// builder.Services.AddNeatooAspNetCore(typeof(Order).Assembly);
+// builder.Services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 // -------------------------------------------------------------------------
-builder.Services.AddNeatooAspNetCore(typeof(Order).Assembly);
+builder.Services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 
 // -------------------------------------------------------------------------
 // Register server-only services

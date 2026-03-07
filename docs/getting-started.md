@@ -4,7 +4,7 @@ In [Why RemoteFactory](the-problem.md) you saw the single-layer concept: write y
 
 ## Prerequisites
 
-- .NET 8.0, 9.0, or 10.0 SDK
+- .NET 9.0 or 10.0 SDK
 - ASP.NET Core for server (optional — can use Logical mode for single-tier)
 - Any .NET client (Blazor WebAssembly, MAUI, WPF, console)
 

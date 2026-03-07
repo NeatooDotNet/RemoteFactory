@@ -16,6 +16,8 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.18.0](v0.18.0.md) | 2026-03-07 | Auth type trimming fix, IsTrimmable on domain assemblies |
+| [v0.17.0](v0.17.0.md) | 2026-03-06 | Internal factory visibility, IL trimming, drop .NET 8 |
 | [v0.16.1](v0.16.1.md) | 2026-03-02 | Fix net10.0 forced to v9 Microsoft.Extensions packages |
 | [v0.16.0](v0.16.0.md) | 2026-02-28 | Hosted Blazor WebAssembly, PersonApp renamed to Person.Client |
 | [v0.15.0](v0.15.0.md) | 2026-02-26 | Version reset from v10.x to v0.x pre-release |
@@ -37,6 +39,8 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.18.0](v0.18.0.md) - 2026-03-07 - Auth type trimming fix, IsTrimmable
+- [v0.17.0](v0.17.0.md) - 2026-03-06 - Internal factory visibility & IL trimming
 - [v0.16.1](v0.16.1.md) - 2026-03-02 - Fix net10.0 package versions
 - [v0.16.0](v0.16.0.md) - 2026-02-28 - Hosted Blazor WebAssembly
 - [v0.15.0](v0.15.0.md) - 2026-02-26 - Version reset from v10.x to v0.x

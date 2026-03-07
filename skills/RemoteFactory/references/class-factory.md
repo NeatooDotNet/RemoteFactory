@@ -287,6 +287,39 @@ var consultation = await factory.StartForPatient(patientId);
 
 ---
 
+## Internal Visibility for Child Entities
+
+Child entity factory methods should be `internal` to signal that they are server-only. This produces an `internal` factory interface (invisible to the client) and enables IL trimming of the method bodies.
+
+```csharp
+// Internal class with public interface — recommended pattern
+public interface IOrderLine
+{
+    int Id { get; set; }
+    string ProductName { get; set; }
+}
+
+[Factory]
+internal partial class OrderLine : IOrderLine
+{
+    public int Id { get; set; }
+    public string ProductName { get; set; } = "";
+
+    [Create]
+    internal void Create(string productName, decimal price, int qty) { }
+
+    [Fetch]
+    internal void Fetch(int id, string productName, decimal price, int qty) { }
+}
+// Generated: internal interface IOrderLineFactory — client can't inject or see it
+```
+
+For aggregate roots, keep factory methods `public` (with `[Remote]` for operations that cross to the server). For child entities called only from server-side aggregate operations, use `internal`.
+
+**CS0051 constraint:** When a generated factory interface is `internal`, it cannot be used as a `[Service]` parameter type in a `public` method on another class. This limits `internal` to leaf entities whose factory interfaces are not passed as `[Service]` parameters to public methods. If you hit CS0051, keep the method `public` — the feature is opt-in and all `public` methods work identically to before.
+
+---
+
 ## Key Rules
 
 1. **Classes must be `partial`** - Generator adds serialization code
@@ -295,6 +328,7 @@ var consultation = await factory.StartForPatient(patientId);
 4. **Business logic belongs in the entity** - Not in the factory
 5. **Execute methods must be `public static`** - No underscore prefix (unlike static factory Execute)
 6. **Execute must return the containing type** (or concrete type if no matching interface) - Keeps the factory interface cohesive
+7. **Use `internal` for child entity factory methods** - Server-only, trimmable, invisible to client
 
 ---
 

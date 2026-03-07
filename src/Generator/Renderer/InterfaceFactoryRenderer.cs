@@ -38,6 +38,12 @@ internal static class InterfaceFactoryRenderer
             sb.AppendLine(u);
         }
 
+        // Add using for TryAddTransient (auth type registrations)
+        if (!unit.Usings.Any(u => u.Contains("Microsoft.Extensions.DependencyInjection.Extensions")))
+        {
+            sb.AppendLine("using Microsoft.Extensions.DependencyInjection.Extensions;");
+        }
+
         sb.AppendLine();
         sb.AppendLine("/*");
         sb.AppendLine("    READONLY - DO NOT EDIT!!!!");
@@ -281,6 +287,11 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
+        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
+        sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+        sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+        sb.AppendLine();
+
         // CanXxx methods only perform authorization checks and return the result
         if (method.Name.StartsWith("Can"))
         {
@@ -469,6 +480,35 @@ internal static class InterfaceFactoryRenderer
         }
 
         sb.AppendLine("            }");
+
+        // Auth type registrations (preserves types from IL trimming)
+        var authTypes = model.Methods
+            .Where(m => m.HasAuth && m.Authorization != null)
+            .SelectMany(m => m.Authorization!.AuthMethods)
+            .Select(am => new { am.ClassName, am.ConcreteClassName })
+            .GroupBy(a => a.ClassName)
+            .Select(g => g.First())
+            .ToList();
+
+        if (authTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // Explicit auth type registrations (IL trimming support)");
+            foreach (var authType in authTypes)
+            {
+                if (authType.ConcreteClassName != null)
+                {
+                    // Interface with known concrete implementation
+                    sb.AppendLine($"            services.TryAddTransient<{authType.ClassName}, {authType.ConcreteClassName}>();");
+                }
+                else
+                {
+                    // Concrete class used directly
+                    sb.AppendLine($"            services.TryAddTransient<{authType.ClassName}>();");
+                }
+            }
+        }
+
         sb.AppendLine("        }");
     }
 

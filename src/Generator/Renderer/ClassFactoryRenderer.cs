@@ -43,6 +43,24 @@ internal static class ClassFactoryRenderer
             sb.AppendLine("using Microsoft.Extensions.Hosting;");
         }
 
+        // Add usings required by the inline factory pipeline (avoid duplicates)
+        if (!unit.Usings.Any(u => u.Contains("Microsoft.Extensions.Logging")))
+        {
+            sb.AppendLine("using Microsoft.Extensions.Logging;");
+        }
+
+        // Add using for DynamicDependency attribute (IL trimming support)
+        if (!unit.Usings.Any(u => u.Contains("System.Diagnostics.CodeAnalysis")))
+        {
+            sb.AppendLine("using System.Diagnostics.CodeAnalysis;");
+        }
+
+        // Add using for TryAddTransient (auth type registrations)
+        if (!unit.Usings.Any(u => u.Contains("Microsoft.Extensions.DependencyInjection.Extensions")))
+        {
+            sb.AppendLine("using Microsoft.Extensions.DependencyInjection.Extensions;");
+        }
+
         sb.AppendLine();
         sb.AppendLine("/*");
         sb.AppendLine("    READONLY - DO NOT EDIT!!!!");
@@ -90,14 +108,28 @@ internal static class ClassFactoryRenderer
 
     private static void RenderFactoryInterface(StringBuilder sb, ClassFactoryModel model)
     {
-        sb.AppendLine($"    public interface I{model.ImplementationTypeName}Factory");
+        var interfaceVisibility = model.AllMethodsInternal ? "internal" : "public";
+        sb.AppendLine($"    {interfaceVisibility} interface I{model.ImplementationTypeName}Factory");
         sb.AppendLine("    {");
 
+        bool firstMethod = true;
         foreach (var method in model.Methods)
         {
+            // Skip internal methods from public interface (mixed-visibility case)
+            if (!model.AllMethodsInternal && method.IsInternal)
+                continue;
+
             var interfaceMethod = RenderInterfaceMethodSignature(method);
             if (!string.IsNullOrEmpty(interfaceMethod))
             {
+                // [DynamicDependency] on the first interface method preserves the factory class
+                // during IL trimming. The interface is kept (client code injects it), so this
+                // ensures the concrete factory — discovered via reflection — survives trimming.
+                if (firstMethod)
+                {
+                    sb.AppendLine($"        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof({model.ImplementationTypeName}Factory))]");
+                    firstMethod = false;
+                }
                 sb.AppendLine($"        {interfaceMethod}");
             }
         }
@@ -131,13 +163,12 @@ internal static class ClassFactoryRenderer
 
     private static void RenderFactoryClass(StringBuilder sb, ClassFactoryModel model, FactoryMode mode)
     {
-        // Determine base class
-        var baseClass = model.HasDefaultSave ? "FactorySaveBase" : "FactoryBase";
+        // Factory pipeline is inlined directly into the generated class.
         var implementsInterfaces = model.HasDefaultSave
-            ? $", IFactorySave<{model.ImplementationTypeName}>, I{model.ImplementationTypeName}Factory"
-            : $", I{model.ImplementationTypeName}Factory";
+            ? $"IFactorySave<{model.ImplementationTypeName}>, I{model.ImplementationTypeName}Factory"
+            : $"I{model.ImplementationTypeName}Factory";
 
-        sb.AppendLine($"    internal class {model.ImplementationTypeName}Factory : {baseClass}<{model.ServiceTypeName}>{implementsInterfaces}");
+        sb.AppendLine($"    internal class {model.ImplementationTypeName}Factory : {implementsInterfaces}");
         sb.AppendLine("    {");
 
         // Fields
@@ -233,7 +264,7 @@ internal static class ClassFactoryRenderer
         if (mode == FactoryMode.RemoteOnly)
         {
             // RemoteOnly mode: Only generate remote constructor
-            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{model.ServiceTypeName}> factoryCore) : base(factoryCore)");
+            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)");
             sb.AppendLine("        {");
             sb.AppendLine("            this.ServiceProvider = serviceProvider;");
             sb.AppendLine("            this.MakeRemoteDelegateRequest = remoteMethodDelegate;");
@@ -250,7 +281,7 @@ internal static class ClassFactoryRenderer
         {
             // Full mode: Generate both constructors
             // Local constructor
-            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IFactoryCore<{model.ServiceTypeName}> factoryCore) : base(factoryCore)");
+            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider)");
             sb.AppendLine("        {");
             sb.AppendLine("            this.ServiceProvider = serviceProvider;");
 
@@ -264,7 +295,7 @@ internal static class ClassFactoryRenderer
             sb.AppendLine();
 
             // Remote constructor
-            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate, IFactoryCore<{model.ServiceTypeName}> factoryCore) : base(factoryCore)");
+            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)");
             sb.AppendLine("        {");
             sb.AppendLine("            this.ServiceProvider = serviceProvider;");
             sb.AppendLine("            this.MakeRemoteDelegateRequest = remoteMethodDelegate;");
@@ -352,7 +383,10 @@ internal static class ClassFactoryRenderer
 
     private static void RenderReadLocalMethod(StringBuilder sb, ReadMethodModel method, ClassFactoryModel model)
     {
-        var asyncKeyword = method.IsAsync ? "async" : "";
+        // Use async when the method uses await: domain method returns Task,
+        // or the original factory method was async, or auth checks need await
+        var needsAsync = method.IsAsync || method.IsDomainMethodTask;
+        var asyncKeyword = needsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
         // Local method signature excludes services - they're obtained via ServiceProvider inside
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
@@ -360,11 +394,33 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Authorization checks
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
+
+        // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
 
+        // Determine if this is a "read-style" (constructor/static factory) or "write-style" (instance target) invocation.
+        // Constructor/static factory: Read lifecycle (only IFactoryOnComplete on result)
+        // Instance method with target: Write lifecycle (IFactoryOnStart before, IFactoryOnComplete after, etc.)
+        var isWriteStyleLifecycle = !method.IsConstructor && !method.IsStaticFactory;
+
+        // Inline factory pipeline: logger, correlation, stopwatch
+        sb.AppendLine($"            var _logger = ServiceProvider.GetService<ILogger<{model.ImplementationTypeName}Factory>>();");
+        sb.AppendLine("            var _correlationContext = ServiceProvider.GetService<ICorrelationContext>();");
+        sb.AppendLine("            var _correlationId = _correlationContext?.CorrelationId;");
+        EmitLogOperationStarted(sb, "            ", method.Operation, model.ServiceTypeName);
+        sb.AppendLine("            var _sw = System.Diagnostics.Stopwatch.StartNew();");
+        sb.AppendLine();
+
         // Get target if not constructor or static factory
-        if (!method.IsConstructor && !method.IsStaticFactory)
+        if (isWriteStyleLifecycle)
         {
             sb.AppendLine($"            var target = ServiceProvider.GetRequiredService<{model.ImplementationTypeName}>();");
         }
@@ -372,68 +428,326 @@ internal static class ClassFactoryRenderer
         // Service assignments
         RenderServiceAssignments(sb, method.Parameters);
 
-        // Method call
-        var methodCall = BuildDoFactoryMethodCall(method, model);
-        sb.AppendLine($"            return {methodCall};");
+        sb.AppendLine("            try");
+        sb.AppendLine("            {");
+
+        // For write-style lifecycle: IFactoryOnStart before method call
+        if (isWriteStyleLifecycle)
+        {
+            RenderWriteLifecycleOnStart(sb, method.IsDomainMethodTask, model, "target", method.Operation);
+        }
+
+        // Build domain method invocation
+        var domainParams = GetParameterIdentifiersForDomainInvocation(method.Parameters);
+
+        if (method.IsConstructor)
+        {
+            // Constructor: result is the new instance
+            if (method.IsDomainMethodTask)
+            {
+                // Async constructor is not possible in C#, but the model might represent it via Task
+                sb.AppendLine($"                var _result = await new {model.ImplementationTypeName}({domainParams});");
+            }
+            else
+            {
+                sb.AppendLine($"                var _result = new {model.ImplementationTypeName}({domainParams});");
+            }
+        }
+        else if (method.IsStaticFactory)
+        {
+            if (method.IsDomainMethodTask)
+            {
+                sb.AppendLine($"                var _result = await {model.ImplementationTypeName}.{method.Name}({domainParams});");
+            }
+            else
+            {
+                sb.AppendLine($"                var _result = {model.ImplementationTypeName}.{method.Name}({domainParams});");
+            }
+        }
+        else
+        {
+            // Instance method on target -- the domain method may return void/Task (mutates target)
+            // or return bool/Task<bool>
+            if (method.IsBool)
+            {
+                if (method.IsDomainMethodTask)
+                {
+                    sb.AppendLine($"                var _succeeded = await target.{method.Name}({domainParams});");
+                }
+                else
+                {
+                    sb.AppendLine($"                var _succeeded = target.{method.Name}({domainParams});");
+                }
+            }
+            else if (method.IsDomainMethodTask)
+            {
+                sb.AppendLine($"                await target.{method.Name}({domainParams});");
+            }
+            else
+            {
+                sb.AppendLine($"                target.{method.Name}({domainParams});");
+            }
+        }
+
+        // Bool check: if domain method returned false, return default without calling IFactoryOnComplete
+        if (method.IsBool && !method.IsConstructor && !method.IsStaticFactory)
+        {
+            sb.AppendLine("                if (!_succeeded)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    _sw.Stop();");
+            EmitLogOperationCompleted(sb, "                    ", method.Operation, model.ServiceTypeName);
+            // For non-async methods returning Task, wrap default in Task.FromResult to avoid null Task.
+            // Use null-forgiving operator (!) when returning default for non-nullable return types
+            // (e.g., Authorized<T>), matching original DoFactoryMethodCallBool behavior.
+            if (!needsAsync && method.IsTask)
+            {
+                var nullableServiceType = method.IsNullable ? $"{model.ServiceTypeName}?" : model.ServiceTypeName;
+                sb.AppendLine($"                    return Task.FromResult<{nullableServiceType}>(default)!;");
+            }
+            else
+            {
+                sb.AppendLine("                    return default!;");
+            }
+            sb.AppendLine("                }");
+        }
+
+        // Determine the result variable for IFactoryOnComplete and return
+        string resultVar;
+        if (method.IsConstructor || method.IsStaticFactory)
+        {
+            resultVar = "_result";
+        }
+        else
+        {
+            resultVar = "target";
+        }
+
+        // IFactoryOnComplete check -- on result for read-style, on target for write-style
+        if (isWriteStyleLifecycle)
+        {
+            RenderWriteLifecycleOnComplete(sb, method.IsDomainMethodTask, model, "target", method.Operation);
+        }
+        else
+        {
+            // Read-style: only IFactoryOnComplete (sync) on the result
+            if (method.IsDomainMethodNullable)
+            {
+                sb.AppendLine($"                if ({resultVar} is IFactoryOnComplete _factoryOnComplete)");
+            }
+            else
+            {
+                sb.AppendLine($"                if ({resultVar} is IFactoryOnComplete _factoryOnComplete)");
+            }
+            sb.AppendLine("                {");
+            EmitLogInvokingOnComplete(sb, "                    ", model.ServiceTypeName);
+            sb.AppendLine($"                    _factoryOnComplete.FactoryComplete(FactoryOperation.{method.Operation});");
+            sb.AppendLine("                }");
+        }
+
+        sb.AppendLine("                _sw.Stop();");
+        EmitLogOperationCompleted(sb, "                ", method.Operation, model.ServiceTypeName);
+
+        // Build return value -- cast to ServiceTypeName if it differs from ImplementationTypeName
+        // (e.g., IOrder vs Order) to ensure correct Task<T> type inference
+        var returnExpr = model.ServiceTypeName != model.ImplementationTypeName
+            ? $"({model.ServiceTypeName}) {resultVar}"
+            : resultVar;
+        if (method.HasAuth)
+        {
+            returnExpr = $"new Authorized<{model.ServiceTypeName}>({returnExpr})";
+        }
+        // Wrap in Task.FromResult if domain method doesn't return Task but factory method needs to
+        if (!method.IsDomainMethodTask && method.IsTask && !method.IsAsync)
+        {
+            // Use explicit type argument when nullable to avoid Task<T> vs Task<T?> mismatch
+            if (method.IsNullable && !method.HasAuth)
+            {
+                returnExpr = $"Task.FromResult<{model.ServiceTypeName}?>({returnExpr})";
+            }
+            else
+            {
+                returnExpr = $"Task.FromResult({returnExpr})";
+            }
+        }
+        sb.AppendLine($"                return {returnExpr};");
+
+        sb.AppendLine("            }");
+
+        // For write-style async methods: catch OperationCanceledException
+        if (isWriteStyleLifecycle && method.IsDomainMethodTask)
+        {
+            RenderWriteLifecycleOnCancelled(sb, method, model, resultVar);
+        }
+
+        // Catch general exceptions
+        sb.AppendLine("            catch (Exception _ex)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                _sw.Stop();");
+        EmitLogOperationFailed(sb, "                ", method.Operation, model.ServiceTypeName);
+        sb.AppendLine("                throw;");
+        sb.AppendLine("            }");
 
         sb.AppendLine("        }");
         sb.AppendLine();
     }
 
-    private static string BuildDoFactoryMethodCall(ReadMethodModel method, ClassFactoryModel model)
+    #endregion
+
+    #region Inline Pipeline Log Helpers
+
+    /// <summary>
+    /// Emits a log call for factory operation started.
+    /// </summary>
+    private static void EmitLogOperationStarted(StringBuilder sb, string indent, FactoryOperation operation, string typeName)
     {
-        var callMethod = "DoFactoryMethodCall";
+        sb.Append(indent);
+        sb.Append("_logger?.LogInformation(\"[{CorrelationId}] Factory operation {Operation} started for {TypeName}\", _correlationId, FactoryOperation.");
+        sb.Append(operation);
+        sb.Append(", \"");
+        sb.Append(typeName);
+        sb.AppendLine("\");");
+    }
 
-        if (method.IsBool)
-        {
-            callMethod += "Bool";
-        }
+    /// <summary>
+    /// Emits a log call for factory operation completed.
+    /// </summary>
+    private static void EmitLogOperationCompleted(StringBuilder sb, string indent, FactoryOperation operation, string typeName)
+    {
+        sb.Append(indent);
+        sb.Append("_logger?.LogInformation(\"[{CorrelationId}] Factory operation {Operation} completed for {TypeName} in {ElapsedMs}ms\", _correlationId, FactoryOperation.");
+        sb.Append(operation);
+        sb.Append(", \"");
+        sb.Append(typeName);
+        sb.AppendLine("\", _sw.ElapsedMilliseconds);");
+    }
 
-        // Use IsDomainMethodTask (underlying method's async status) not IsTask (factory method's return type)
-        if (method.IsDomainMethodTask)
-        {
-            callMethod += "Async";
-            if (method.IsDomainMethodNullable)
-            {
-                callMethod += "Nullable";
-            }
-        }
+    /// <summary>
+    /// Emits a log call for factory operation failed.
+    /// </summary>
+    private static void EmitLogOperationFailed(StringBuilder sb, string indent, FactoryOperation operation, string typeName)
+    {
+        sb.Append(indent);
+        sb.Append("_logger?.LogError(_ex, \"[{CorrelationId}] Factory operation {Operation} failed for {TypeName}: {ErrorMessage}\", _correlationId, FactoryOperation.");
+        sb.Append(operation);
+        sb.Append(", \"");
+        sb.Append(typeName);
+        sb.AppendLine("\", _ex.Message);");
+    }
 
-        // Build domain method invocation parameters
-        var domainParams = GetParameterIdentifiersForDomainInvocation(method.Parameters);
+    /// <summary>
+    /// Emits a log call for factory operation cancelled.
+    /// </summary>
+    private static void EmitLogOperationCancelled(StringBuilder sb, string indent, FactoryOperation operation, string typeName)
+    {
+        sb.Append(indent);
+        sb.Append("_logger?.LogInformation(\"[{CorrelationId}] Factory operation {Operation} cancelled for {TypeName}\", _correlationId, FactoryOperation.");
+        sb.Append(operation);
+        sb.Append(", \"");
+        sb.Append(typeName);
+        sb.AppendLine("\");");
+    }
 
-        string factoryCall;
-        if (method.IsConstructor)
-        {
-            factoryCall = $"{callMethod}(FactoryOperation.{method.Operation}, () => new {model.ImplementationTypeName}({domainParams}))";
-        }
-        else if (method.IsStaticFactory)
-        {
-            factoryCall = $"{callMethod}(FactoryOperation.{method.Operation}, () => {model.ImplementationTypeName}.{method.Name}({domainParams}))";
-        }
-        else
-        {
-            factoryCall = $"{callMethod}(target, FactoryOperation.{method.Operation}, () => target.{method.Name}({domainParams}))";
-        }
+    /// <summary>
+    /// Emits a log call for invoking IFactoryOnStart.
+    /// </summary>
+    private static void EmitLogInvokingOnStart(StringBuilder sb, string indent, string typeName)
+    {
+        sb.Append(indent);
+        sb.Append("_logger?.LogDebug(\"Invoking IFactoryOnStart for {TypeName}\", \"");
+        sb.Append(typeName);
+        sb.AppendLine("\");");
+    }
 
-        // Add await if factory method is async AND domain method returns Task
-        if (method.IsAsync && method.IsDomainMethodTask)
-        {
-            factoryCall = $"await {factoryCall}";
-        }
+    /// <summary>
+    /// Emits a log call for invoking IFactoryOnComplete.
+    /// </summary>
+    private static void EmitLogInvokingOnComplete(StringBuilder sb, string indent, string typeName)
+    {
+        sb.Append(indent);
+        sb.Append("_logger?.LogDebug(\"Invoking IFactoryOnComplete for {TypeName}\", \"");
+        sb.Append(typeName);
+        sb.AppendLine("\");");
+    }
 
-        if (method.HasAuth)
-        {
-            factoryCall = $"new Authorized<{model.ServiceTypeName}>({factoryCall})";
-        }
+    /// <summary>
+    /// Emits a log call for invoking IFactoryOnCancelled.
+    /// </summary>
+    private static void EmitLogInvokingOnCancelled(StringBuilder sb, string indent, string typeName)
+    {
+        sb.Append(indent);
+        sb.Append("_logger?.LogDebug(\"Invoking IFactoryOnCancelled for {TypeName}\", \"");
+        sb.Append(typeName);
+        sb.AppendLine("\");");
+    }
 
-        // Wrap in Task.FromResult if domain method doesn't return Task but factory method needs to
-        if (!method.IsDomainMethodTask && method.IsTask && !method.IsAsync)
-        {
-            factoryCall = $"Task.FromResult({factoryCall})";
-        }
+    #endregion
 
-        return factoryCall;
+    #region Inline Pipeline Lifecycle Helpers
+
+    /// <summary>
+    /// Renders IFactoryOnStart and IFactoryOnStartAsync checks (Write lifecycle, before method call).
+    /// Only the async Write variant includes IFactoryOnStartAsync.
+    /// </summary>
+    private static void RenderWriteLifecycleOnStart(StringBuilder sb, bool isDomainMethodTask, ClassFactoryModel model, string targetVar, FactoryOperation operation)
+    {
+        sb.AppendLine($"                if ({targetVar} is IFactoryOnStart _factoryOnStart)");
+        sb.AppendLine("                {");
+        EmitLogInvokingOnStart(sb, "                    ", model.ServiceTypeName);
+        sb.AppendLine($"                    _factoryOnStart.FactoryStart(FactoryOperation.{operation});");
+        sb.AppendLine("                }");
+
+        // Async start hook only for async domain methods
+        if (isDomainMethodTask)
+        {
+            sb.AppendLine($"                if ({targetVar} is IFactoryOnStartAsync _factoryOnStartAsync)");
+            sb.AppendLine("                {");
+            sb.AppendLine($"                    await _factoryOnStartAsync.FactoryStartAsync(FactoryOperation.{operation});");
+            sb.AppendLine("                }");
+        }
+    }
+
+    /// <summary>
+    /// Renders IFactoryOnComplete and IFactoryOnCompleteAsync checks (Write lifecycle, after method call).
+    /// Only the async Write variant includes IFactoryOnCompleteAsync.
+    /// </summary>
+    private static void RenderWriteLifecycleOnComplete(StringBuilder sb, bool isDomainMethodTask, ClassFactoryModel model, string targetVar, FactoryOperation operation)
+    {
+        sb.AppendLine($"                if ({targetVar} is IFactoryOnComplete _factoryOnComplete)");
+        sb.AppendLine("                {");
+        EmitLogInvokingOnComplete(sb, "                    ", model.ServiceTypeName);
+        sb.AppendLine($"                    _factoryOnComplete.FactoryComplete(FactoryOperation.{operation});");
+        sb.AppendLine("                }");
+
+        // Async complete hook only for async domain methods
+        if (isDomainMethodTask)
+        {
+            sb.AppendLine($"                if ({targetVar} is IFactoryOnCompleteAsync _factoryOnCompleteAsync)");
+            sb.AppendLine("                {");
+            sb.AppendLine($"                    await _factoryOnCompleteAsync.FactoryCompleteAsync(FactoryOperation.{operation});");
+            sb.AppendLine("                }");
+        }
+    }
+
+    /// <summary>
+    /// Renders OperationCanceledException catch block with IFactoryOnCancelled hooks (async Write lifecycle only).
+    /// </summary>
+    private static void RenderWriteLifecycleOnCancelled(StringBuilder sb, FactoryMethodModel method, ClassFactoryModel model, string targetVar)
+    {
+        sb.AppendLine("            catch (OperationCanceledException)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                _sw.Stop();");
+        EmitLogOperationCancelled(sb, "                ", method.Operation, model.ServiceTypeName);
+        sb.AppendLine($"                if ({targetVar} is IFactoryOnCancelled _factoryOnCancelled)");
+        sb.AppendLine("                {");
+        EmitLogInvokingOnCancelled(sb, "                    ", model.ServiceTypeName);
+        sb.AppendLine($"                    _factoryOnCancelled.FactoryCancelled(FactoryOperation.{method.Operation});");
+        sb.AppendLine("                }");
+        sb.AppendLine($"                if ({targetVar} is IFactoryOnCancelledAsync _factoryOnCancelledAsync)");
+        sb.AppendLine("                {");
+        sb.AppendLine($"                    await _factoryOnCancelledAsync.FactoryCancelledAsync(FactoryOperation.{method.Operation});");
+        sb.AppendLine("                }");
+        sb.AppendLine("                throw;");
+        sb.AppendLine("            }");
     }
 
     #endregion
@@ -497,7 +811,16 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public async {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Authorization checks
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
+
+        // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
 
         // Service assignments
@@ -539,7 +862,10 @@ internal static class ClassFactoryRenderer
 
     private static void RenderLocalMethod(StringBuilder sb, WriteMethodModel method, ClassFactoryModel model, FactoryMode mode)
     {
-        var asyncKeyword = method.IsAsync ? "async" : "";
+        // Use async when the method uses await: domain method returns Task,
+        // or the original factory method was async
+        var needsAsync = method.IsAsync || method.IsDomainMethodTask;
+        var asyncKeyword = needsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
         // Local method signature excludes services - they're obtained via ServiceProvider inside
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
@@ -547,62 +873,131 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Authorization checks
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
+
+        // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
 
-        // Cast target
+        // Cast target to implementation type
         sb.AppendLine($"            var cTarget = ({model.ImplementationTypeName}) target ?? throw new Exception(\"{model.ServiceTypeName} must implement {model.ImplementationTypeName}\");");
+
+        // Inline factory pipeline: logger, correlation, stopwatch
+        sb.AppendLine($"            var _logger = ServiceProvider.GetService<ILogger<{model.ImplementationTypeName}Factory>>();");
+        sb.AppendLine("            var _correlationContext = ServiceProvider.GetService<ICorrelationContext>();");
+        sb.AppendLine("            var _correlationId = _correlationContext?.CorrelationId;");
+        EmitLogOperationStarted(sb, "            ", method.Operation, model.ServiceTypeName);
+        sb.AppendLine("            var _sw = System.Diagnostics.Stopwatch.StartNew();");
+        sb.AppendLine();
 
         // Service assignments
         RenderServiceAssignments(sb, method.Parameters);
 
-        // Method call
-        var methodCall = BuildWriteDoFactoryMethodCall(method, model);
-        sb.AppendLine($"            return {methodCall};");
+        sb.AppendLine("            try");
+        sb.AppendLine("            {");
 
-        sb.AppendLine("        }");
-        sb.AppendLine();
-    }
+        // IFactoryOnStart before method call (Write lifecycle)
+        RenderWriteLifecycleOnStart(sb, method.IsDomainMethodTask, model, "cTarget", method.Operation);
 
-    private static string BuildWriteDoFactoryMethodCall(WriteMethodModel method, ClassFactoryModel model)
-    {
-        var callMethod = "DoFactoryMethodCall";
-
-        // Add Bool suffix if domain method returns bool
-        if (method.IsBool)
-        {
-            callMethod += "Bool";
-        }
-
-        // Use IsDomainMethodTask (underlying method's async status) not IsTask (factory method's return type)
-        if (method.IsDomainMethodTask)
-        {
-            callMethod += "Async";
-        }
-
-        // Build domain method invocation parameters
+        // Build domain method invocation
         var domainParams = GetParameterIdentifiersForDomainInvocation(method.Parameters);
 
-        var factoryCall = $"{callMethod}(cTarget, FactoryOperation.{method.Operation}, () => cTarget.{method.Name}({domainParams}))";
-
-        // Add await if factory method is async AND domain method returns Task
-        if (method.IsAsync && method.IsDomainMethodTask)
+        if (method.IsBool)
         {
-            factoryCall = $"await {factoryCall}";
+            if (method.IsDomainMethodTask)
+            {
+                sb.AppendLine($"                var _succeeded = await cTarget.{method.Name}({domainParams});");
+            }
+            else
+            {
+                sb.AppendLine($"                var _succeeded = cTarget.{method.Name}({domainParams});");
+            }
+
+            // Bool check: if domain method returned false, return default without calling IFactoryOnComplete
+            sb.AppendLine("                if (!_succeeded)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    _sw.Stop();");
+            EmitLogOperationCompleted(sb, "                    ", method.Operation, model.ServiceTypeName);
+            // For non-async methods returning Task, wrap default in Task.FromResult to avoid null Task.
+            // Use null-forgiving operator (!) when returning default for non-nullable return types
+            // (e.g., Authorized<T>), matching original DoFactoryMethodCallBool behavior.
+            if (!needsAsync && method.IsTask)
+            {
+                var nullableServiceType = method.IsNullable ? $"{model.ServiceTypeName}?" : model.ServiceTypeName;
+                sb.AppendLine($"                    return Task.FromResult<{nullableServiceType}>(default)!;");
+            }
+            else
+            {
+                sb.AppendLine("                    return default!;");
+            }
+            sb.AppendLine("                }");
+        }
+        else
+        {
+            if (method.IsDomainMethodTask)
+            {
+                sb.AppendLine($"                await cTarget.{method.Name}({domainParams});");
+            }
+            else
+            {
+                sb.AppendLine($"                cTarget.{method.Name}({domainParams});");
+            }
         }
 
+        // IFactoryOnComplete after method call (Write lifecycle)
+        RenderWriteLifecycleOnComplete(sb, method.IsDomainMethodTask, model, "cTarget", method.Operation);
+
+        sb.AppendLine("                _sw.Stop();");
+        EmitLogOperationCompleted(sb, "                ", method.Operation, model.ServiceTypeName);
+
+        // Build return value -- cast to ServiceTypeName if it differs from ImplementationTypeName
+        // (e.g., IOrder vs Order) to ensure correct Task<T> type inference
+        var returnExpr = model.ServiceTypeName != model.ImplementationTypeName
+            ? $"({model.ServiceTypeName}) cTarget"
+            : "cTarget";
         if (method.HasAuth)
         {
-            factoryCall = $"new Authorized<{model.ServiceTypeName}>({factoryCall})";
+            returnExpr = $"new Authorized<{model.ServiceTypeName}>({returnExpr})";
         }
-
         // Wrap in Task.FromResult if domain method doesn't return Task but factory method needs to
         if (!method.IsDomainMethodTask && method.IsTask && !method.IsAsync)
         {
-            factoryCall = $"Task.FromResult({factoryCall})";
+            // Use explicit type argument when nullable to avoid Task<T> vs Task<T?> mismatch
+            if (method.IsNullable && !method.HasAuth)
+            {
+                returnExpr = $"Task.FromResult<{model.ServiceTypeName}?>({returnExpr})";
+            }
+            else
+            {
+                returnExpr = $"Task.FromResult({returnExpr})";
+            }
+        }
+        sb.AppendLine($"                return {returnExpr};");
+
+        sb.AppendLine("            }");
+
+        // For async Write methods: catch OperationCanceledException
+        if (method.IsDomainMethodTask)
+        {
+            RenderWriteLifecycleOnCancelled(sb, method, model, "cTarget");
         }
 
-        return factoryCall;
+        // Catch general exceptions
+        sb.AppendLine("            catch (Exception _ex)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                _sw.Stop();");
+        EmitLogOperationFailed(sb, "                ", method.Operation, model.ServiceTypeName);
+        sb.AppendLine("                throw;");
+        sb.AppendLine("            }");
+
+        sb.AppendLine("        }");
+        sb.AppendLine();
     }
 
     #endregion
@@ -691,6 +1086,15 @@ internal static class ClassFactoryRenderer
 
         sb.AppendLine($"        public virtual {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
+
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+        }
+        sb.AppendLine();
 
         // Default return value
         var defaultReturn = method.HasAuth
@@ -933,7 +1337,16 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Authorization checks
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
+
+        // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
 
         // Return success
@@ -1097,6 +1510,34 @@ internal static class ClassFactoryRenderer
         if (mode == FactoryMode.Full && model.HasDefaultSave)
         {
             sb.AppendLine($"            services.AddScoped<IFactorySave<{model.ImplementationTypeName}>, {model.ImplementationTypeName}Factory>();");
+        }
+
+        // Auth type registrations (preserves types from IL trimming)
+        var authTypes = model.Methods
+            .Where(m => m.HasAuth && m.Authorization != null)
+            .SelectMany(m => m.Authorization!.AuthMethods)
+            .Select(am => new { am.ClassName, am.ConcreteClassName })
+            .GroupBy(a => a.ClassName)
+            .Select(g => g.First())
+            .ToList();
+
+        if (authTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // Explicit auth type registrations (IL trimming support)");
+            foreach (var authType in authTypes)
+            {
+                if (authType.ConcreteClassName != null)
+                {
+                    // Interface with known concrete implementation
+                    sb.AppendLine($"            services.TryAddTransient<{authType.ClassName}, {authType.ConcreteClassName}>();");
+                }
+                else
+                {
+                    // Concrete class used directly
+                    sb.AppendLine($"            services.TryAddTransient<{authType.ClassName}>();");
+                }
+            }
         }
 
         // Ordinal converter registration

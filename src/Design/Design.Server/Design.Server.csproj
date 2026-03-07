@@ -7,11 +7,8 @@
 	</PropertyGroup>
 
 	<!-- Framework-specific Blazor WebAssembly Server package -->
-	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" VersionOverride="8.0.11" />
-	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" VersionOverride="9.0.5" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" VersionOverride="9.0.13" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />

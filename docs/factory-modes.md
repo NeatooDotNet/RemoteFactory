@@ -87,6 +87,8 @@ The compile-time mode controls what code the source generator produces. Set via 
 
 RemoteOnly produces smaller assemblies (~120 KB vs ~450 KB for Full) because it excludes local method implementations and server dependencies. This matters for Blazor WASM where bundle size affects load time.
 
+For an alternative approach that doesn't require assembly splitting, see [IL Trimming](trimming.md) — it removes server-only code at publish time using .NET's IL trimmer.
+
 ## Typical Solution Structure
 
 ```
@@ -113,5 +115,6 @@ MySolution/
 
 - [Getting Started](getting-started.md) — Configure modes in a new solution
 - [Client-Server Architecture](client-server-architecture.md) — How [Remote] controls the boundary
+- [IL Trimming](trimming.md) — Publish-time alternative to RemoteOnly for reducing bundle size
 - [Serialization](serialization.md) — Ordinal vs Named formats
 - [ASP.NET Core Integration](aspnetcore-integration.md) — Server configuration details

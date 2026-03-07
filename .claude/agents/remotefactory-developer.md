@@ -57,6 +57,24 @@ tools:
   - TaskGet
   - mcp__plugin_context7_context7__resolve-library-id
   - mcp__plugin_context7_context7__query-docs
+  - mcp__serena-RemoteFactory__find_symbol
+  - mcp__serena-RemoteFactory__find_referencing_symbols
+  - mcp__serena-RemoteFactory__get_symbols_overview
+  - mcp__serena-RemoteFactory__replace_symbol_body
+  - mcp__serena-RemoteFactory__insert_after_symbol
+  - mcp__serena-RemoteFactory__insert_before_symbol
+  - mcp__serena-RemoteFactory__search_for_pattern
+  - mcp__serena-RemoteFactory__replace_content
+  - mcp__serena-RemoteFactory__read_file
+  - mcp__serena-RemoteFactory__list_dir
+  - mcp__serena-RemoteFactory__find_file
+  - mcp__serena-RemoteFactory__rename_symbol
+  - mcp__serena-RemoteFactory__create_text_file
+  - mcp__serena-RemoteFactory__activate_project
+  - mcp__serena-RemoteFactory__switch_modes
+  - mcp__serena-RemoteFactory__check_onboarding_performed
+  - mcp__serena-RemoteFactory__onboarding
+  - mcp__serena-RemoteFactory__execute_shell_command
 skills:
   - project-todos
 ---
@@ -290,7 +308,7 @@ When working with NeatooJsonSerializer:
 ### Key Source Directories
 
 - `src/Generator/` - Roslyn source generator (must target netstandard2.0)
-- `src/RemoteFactory/` - Core library (multi-target net8.0/net9.0/net10.0)
+- `src/RemoteFactory/` - Core library (multi-target net9.0/net10.0)
 - `src/RemoteFactory.AspNetCore/` - ASP.NET Core integration
 - `src/Tests/RemoteFactory.UnitTests/` - Unit tests for generator, diagnostics
 - `src/Tests/RemoteFactory.IntegrationTests/` - Integration tests with ClientServerContainers

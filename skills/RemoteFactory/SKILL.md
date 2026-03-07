@@ -1,7 +1,7 @@
 ---
 name: RemoteFactory
 description: |
-  This skill should be used when the user mentions "RemoteFactory", "Neatoo.RemoteFactory", "[Factory] attribute", "[Remote] attribute", "[Execute] attribute", "[Event] attribute", "IFactorySaveMeta", "[AspAuthorize]", "[AuthorizeFactory]", "Save routing", "fire-and-forget events", "client-server factory", or asks about factory patterns for 3-tier .NET applications. Provides guidance for building enterprise line-of-business applications using RemoteFactory's source-generated factory patterns.
+  This skill should be used when the user mentions "RemoteFactory", "Neatoo.RemoteFactory", "[Factory] attribute", "[Remote] attribute", "[Execute] attribute", "[Event] attribute", "IFactorySaveMeta", "[AspAuthorize]", "[AuthorizeFactory]", "Save routing", "fire-and-forget events", "client-server factory", "IL trimming", "bundle size", "PublishTrimmed", "NeatooRuntime", or asks about factory patterns for 3-tier .NET applications. Provides guidance for building enterprise line-of-business applications using RemoteFactory's source-generated factory patterns.
 version: 1.0.0
 ---
 
@@ -33,10 +33,12 @@ RemoteFactory is a Roslyn Source Generator-powered Data Mapper Factory for 3-tie
 | Should interface methods have attributes? | No - interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always |
 | Should child entities have [Remote]? | No - causes N+1 remote calls |
+| Should child entity methods be `internal`? | Yes - server-only, trimmable, invisible to client |
 | Can [Execute] return void? | No, must return Task<T> |
 | Can [Execute] go on a class factory? | Yes, if `public static` and returns containing type |
 | Do [Event] methods need CancellationToken? | Yes, as final parameter |
 | Where does business logic go? | In the entity, not the factory |
+| How do I reduce Blazor WASM bundle size? | IL trimming (simplest) or RemoteOnly mode |
 
 ## Reference Files
 
@@ -54,6 +56,7 @@ Consult these files for detailed patterns and examples:
 
 ### Advanced Topics
 - **`references/advanced-patterns.md`** - Authorization, correlation context, complex aggregates, testing
+- **`references/trimming.md`** - IL trimming for Blazor WASM bundle size reduction
 
 ---
 
