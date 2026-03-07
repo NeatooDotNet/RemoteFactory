@@ -76,8 +76,11 @@ Enforce the boundary at the package level by excluding server-only dependencies 
 
 This reduces client bundle size and makes the boundary explicit — if your client project can't even reference `DbContext`, you can't accidentally call server-only code.
 
+For Blazor WASM apps where the domain assembly is shared, [IL Trimming](trimming.md) goes further — the IL trimmer removes server-only method bodies, their transitive dependencies, and the decompilable business logic from the published output. No assembly splitting required.
+
 ## Next Steps
 
 - [Factory Operations](factory-operations.md) — How each persistence operation works
 - [Service Injection](service-injection.md) — Constructor vs method injection across the boundary
 - [Factory Modes](factory-modes.md) — Remote, Logical, and Server registration modes
+- [IL Trimming](trimming.md) — Remove server-only code from Blazor WASM published output

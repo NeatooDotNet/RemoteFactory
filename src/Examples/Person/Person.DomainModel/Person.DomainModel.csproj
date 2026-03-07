@@ -10,11 +10,7 @@
 		<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
 	</ItemGroup>
 
-	<!-- Framework-specific Entity Framework Core package -->
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-		<PackageReference Include="Microsoft.EntityFrameworkCore" VersionOverride="9.0.13" PrivateAssets="all" />
-	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore" PrivateAssets="all" />
 	</ItemGroup>
 	
@@ -24,8 +20,7 @@
 	  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
 	</ItemGroup>
 	
-	<!-- Only delete Generated folder for first TFM to preserve files across multi-target builds -->
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(TargetFramework)' == 'net9.0'">
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
 		<RemoveDir Directories="$(CompilerGeneratedFilesOutputPath)" />
 	</Target>
 	

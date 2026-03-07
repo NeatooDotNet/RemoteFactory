@@ -6,12 +6,17 @@
 		<PackageReference Include="MudBlazor" />
 	</ItemGroup>
 
-	<!-- Framework-specific Blazor WebAssembly packages -->
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" VersionOverride="9.0.13" />
-	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<TrimmableAssembly Include="Person.DomainModel" />
+		<TrimmableAssembly Include="Person.Ef" />
+		<TrimmableAssembly Include="Neatoo.Generator" />
+		<RuntimeHostConfigurationOption Include="Neatoo.RemoteFactory.IsServerRuntime"
+		                                 Value="false"
+		                                 Trim="true" />
 	</ItemGroup>
 
 	<ItemGroup>

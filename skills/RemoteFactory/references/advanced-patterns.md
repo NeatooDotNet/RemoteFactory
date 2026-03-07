@@ -401,11 +401,10 @@ When consuming RemoteFactory via NuGet:
 ## Framework Support
 
 RemoteFactory supports:
-- .NET 8.0 (LTS)
 - .NET 9.0 (STS)
 - .NET 10.0 (LTS)
 
-All three frameworks are included in the NuGet packages.
+Both frameworks are included in the NuGet packages.
 
 ---
 

@@ -49,6 +49,12 @@ internal static class ClassFactoryRenderer
             sb.AppendLine("using Microsoft.Extensions.Logging;");
         }
 
+        // Add using for DynamicDependency attribute (IL trimming support)
+        if (!unit.Usings.Any(u => u.Contains("System.Diagnostics.CodeAnalysis")))
+        {
+            sb.AppendLine("using System.Diagnostics.CodeAnalysis;");
+        }
+
         sb.AppendLine();
         sb.AppendLine("/*");
         sb.AppendLine("    READONLY - DO NOT EDIT!!!!");
@@ -99,11 +105,20 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"    public interface I{model.ImplementationTypeName}Factory");
         sb.AppendLine("    {");
 
+        bool firstMethod = true;
         foreach (var method in model.Methods)
         {
             var interfaceMethod = RenderInterfaceMethodSignature(method);
             if (!string.IsNullOrEmpty(interfaceMethod))
             {
+                // [DynamicDependency] on the first interface method preserves the factory class
+                // during IL trimming. The interface is kept (client code injects it), so this
+                // ensures the concrete factory — discovered via reflection — survives trimming.
+                if (firstMethod)
+                {
+                    sb.AppendLine($"        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof({model.ImplementationTypeName}Factory))]");
+                    firstMethod = false;
+                }
                 sb.AppendLine($"        {interfaceMethod}");
             }
         }
