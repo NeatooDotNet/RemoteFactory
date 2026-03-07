@@ -273,6 +273,13 @@ public partial class Factory
 		{
 			var authorizationRuleType = authorizeAttribute.AttributeClass?.TypeArguments[0];
 
+			// If the auth type is an interface, find the concrete implementing class
+			string? concreteClassName = null;
+			if (authorizationRuleType is INamedTypeSymbol authNamedType && authNamedType.TypeKind == TypeKind.Interface)
+			{
+				concreteClassName = FindConcreteImplementation(semanticModel.Compilation, authNamedType);
+			}
+
 			if (authorizationRuleType?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is TypeDeclarationSyntax syntax)
 			{
 				var authSemanticModel = semanticModel.Compilation.GetSemanticModel(syntax.SyntaxTree);
@@ -357,7 +364,7 @@ public partial class Factory
 								continue;
 							}
 
-							callAuthMethods.Add(new TypeAuthMethodInfo(authorizeFactoryOperation, methodSymbol, methodSyntax));
+							callAuthMethods.Add(new TypeAuthMethodInfo(authorizeFactoryOperation, methodSymbol, methodSyntax, concreteClassName));
 						}
 						else
 						{
@@ -378,6 +385,30 @@ public partial class Factory
 		}
 
 		return new EquatableArray<TypeAuthMethodInfo>([.. callAuthMethods]);
+	}
+
+	/// <summary>
+	/// Finds a concrete class implementing the given interface within the compilation.
+	/// Returns the simple name of the first implementing class found, or null if none.
+	/// </summary>
+	private static string? FindConcreteImplementation(Compilation compilation, INamedTypeSymbol interfaceSymbol)
+	{
+		foreach (var syntaxTree in compilation.SyntaxTrees)
+		{
+			var model = compilation.GetSemanticModel(syntaxTree);
+			var root = syntaxTree.GetRoot();
+
+			foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+			{
+				var classSymbol = model.GetDeclaredSymbol(classDecl) as INamedTypeSymbol;
+				if (classSymbol != null && !classSymbol.IsAbstract && classSymbol.AllInterfaces.Contains(interfaceSymbol))
+				{
+					return classSymbol.Name;
+				}
+			}
+		}
+
+		return null;
 	}
 
 	/// <summary>

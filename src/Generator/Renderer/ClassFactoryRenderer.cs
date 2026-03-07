@@ -55,6 +55,12 @@ internal static class ClassFactoryRenderer
             sb.AppendLine("using System.Diagnostics.CodeAnalysis;");
         }
 
+        // Add using for TryAddTransient (auth type registrations)
+        if (!unit.Usings.Any(u => u.Contains("Microsoft.Extensions.DependencyInjection.Extensions")))
+        {
+            sb.AppendLine("using Microsoft.Extensions.DependencyInjection.Extensions;");
+        }
+
         sb.AppendLine();
         sb.AppendLine("/*");
         sb.AppendLine("    READONLY - DO NOT EDIT!!!!");
@@ -1504,6 +1510,34 @@ internal static class ClassFactoryRenderer
         if (mode == FactoryMode.Full && model.HasDefaultSave)
         {
             sb.AppendLine($"            services.AddScoped<IFactorySave<{model.ImplementationTypeName}>, {model.ImplementationTypeName}Factory>();");
+        }
+
+        // Auth type registrations (preserves types from IL trimming)
+        var authTypes = model.Methods
+            .Where(m => m.HasAuth && m.Authorization != null)
+            .SelectMany(m => m.Authorization!.AuthMethods)
+            .Select(am => new { am.ClassName, am.ConcreteClassName })
+            .GroupBy(a => a.ClassName)
+            .Select(g => g.First())
+            .ToList();
+
+        if (authTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // Explicit auth type registrations (IL trimming support)");
+            foreach (var authType in authTypes)
+            {
+                if (authType.ConcreteClassName != null)
+                {
+                    // Interface with known concrete implementation
+                    sb.AppendLine($"            services.TryAddTransient<{authType.ClassName}, {authType.ConcreteClassName}>();");
+                }
+                else
+                {
+                    // Concrete class used directly
+                    sb.AppendLine($"            services.TryAddTransient<{authType.ClassName}>();");
+                }
+            }
         }
 
         // Ordinal converter registration

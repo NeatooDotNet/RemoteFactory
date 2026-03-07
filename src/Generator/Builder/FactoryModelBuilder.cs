@@ -926,7 +926,8 @@ internal static class FactoryModelBuilder
                 methodName: am.Name,
                 isTask: am.IsTask,
                 isRemote: am.IsRemote,
-                parameters: BuildParameters(am.Parameters)))
+                parameters: BuildParameters(am.Parameters),
+                concreteClassName: am.ConcreteClassName))
             .ToList();
 
         var aspAuthorize = method.AspAuthorizeCalls

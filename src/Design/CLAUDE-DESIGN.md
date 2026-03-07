@@ -462,6 +462,12 @@ internal partial class Order : IOrder, IFactorySaveMeta { ... }
 // }
 ```
 
+#### Auth Type Auto-Registration for Trimming
+
+The generator emits explicit `services.TryAddTransient<IFooAuth, FooAuth>()` registrations in `FactoryServiceRegistrar` for every `[AuthorizeFactory<T>]` type. This creates static references that the IL trimmer preserves — without this, auth classes (often `internal`) would be trimmed because they're only discovered at runtime via `RegisterMatchingName` reflection.
+
+The concrete type is resolved at compile time using the naming convention (`IPersonModelAuth` → `PersonModelAuth`). If the auth type argument is already a concrete class (not an interface), the generator registers it directly. If no matching concrete type is found in the compilation, no registration is emitted and the user must register it explicitly.
+
 #### CS0051 Constraint
 
 When a generated factory interface becomes `internal` (all methods are internal), it cannot be used as a `[Service]` parameter type in a `public` method on another class. C# enforces that parameter types must be at least as accessible as the method. This means `internal` is not applicable to entities whose factory interfaces are referenced in more-accessible methods' `[Service]` parameters. Use `internal` for leaf entities and standalone factories where the factory interface is not passed as a service parameter to public methods.

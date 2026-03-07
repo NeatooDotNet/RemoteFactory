@@ -573,12 +573,19 @@ public partial class Factory
 	/// </summary>
 	internal record TypeAuthMethodInfo : MethodInfo
 	{
-		public TypeAuthMethodInfo(AuthorizeFactoryOperation authorizeFactoryOperation, IMethodSymbol methodSymbol, BaseMethodDeclarationSyntax methodDeclarationSyntax) : base(methodSymbol, methodDeclarationSyntax)
+		public TypeAuthMethodInfo(AuthorizeFactoryOperation authorizeFactoryOperation, IMethodSymbol methodSymbol, BaseMethodDeclarationSyntax methodDeclarationSyntax, string? concreteClassName = null) : base(methodSymbol, methodDeclarationSyntax)
 		{
 			this.AuthorizeFactoryOperation = authorizeFactoryOperation;
+			this.ConcreteClassName = concreteClassName;
 		}
 
 		public AuthorizeFactoryOperation AuthorizeFactoryOperation { get; private set; }
+
+		/// <summary>
+		/// When ClassName is an interface, this holds the concrete implementing class name.
+		/// Null when ClassName is already a concrete class or no implementation was found.
+		/// </summary>
+		public string? ConcreteClassName { get; private set; }
 
 		public void MakeAuthCall(FactoryMethod inMethod, StringBuilder methodBuilder)
 		{

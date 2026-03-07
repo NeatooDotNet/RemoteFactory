@@ -55,13 +55,25 @@ Domain assembly                     Domain assembly
 
 ## Configuration
 
-Add two settings to your **Blazor WASM client project** (or any client `.csproj` that publishes with trimming):
+### Step 1: Mark your domain assembly as trimmable
+
+In your **domain model project** `.csproj`:
 
 ```xml
 <PropertyGroup>
-  <TrimMode>full</TrimMode>
+  <IsTrimmable>true</IsTrimmable>
 </PropertyGroup>
+```
 
+This tells the trimmer your assembly is safe to trim. Without it, the trimmer only trims framework assemblies and your domain model ships to the client intact — with all server-only code and dependencies.
+
+The library author declares trimmability once, rather than every consuming client project needing to add `<TrimmableAssembly>` entries.
+
+### Step 2: Configure the client project
+
+In your **Blazor WASM client project** `.csproj`:
+
+```xml
 <ItemGroup>
   <RuntimeHostConfigurationOption Include="Neatoo.RemoteFactory.IsServerRuntime"
                                    Value="false"
@@ -71,14 +83,14 @@ Add two settings to your **Blazor WASM client project** (or any client `.csproj`
 
 That's it. No changes to your domain code, no assembly splitting, no conditional compilation.
 
-Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true` is the SDK default). `TrimMode=full` upgrades from the default `partial` mode — which only trims framework assemblies — to trimming all assemblies including your domain model. The `RuntimeHostConfigurationOption` tells the trimmer to treat `IsServerRuntime` as `false`, enabling dead code elimination of server-only code paths.
+Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true` is the SDK default). The `RuntimeHostConfigurationOption` tells the trimmer to treat `IsServerRuntime` as `false`, enabling dead code elimination of server-only code paths.
 
 ### What Each Setting Does
 
-| Setting | Purpose |
-|---------|---------|
-| `TrimMode=full` | Trims all assemblies, not just framework ones (default is `partial`) |
-| `RuntimeHostConfigurationOption` | Tells the trimmer to treat `IsServerRuntime` as `false` at compile time |
+| Setting | Where | Purpose |
+|---------|-------|---------|
+| `IsTrimmable=true` | Domain `.csproj` | Opts the assembly into trimming |
+| `RuntimeHostConfigurationOption` | Client `.csproj` | Tells the trimmer to treat `IsServerRuntime` as `false` at compile time |
 
 The `Trim="true"` on the `RuntimeHostConfigurationOption` is critical — without it, the switch is just a runtime value and the trimmer can't use it for dead code elimination.
 
@@ -136,6 +148,21 @@ If server-only type names still appear in the output, check that:
 1. `TrimMode` is set to `full` (not `partial` or omitted)
 2. The `RuntimeHostConfigurationOption` has `Trim="true"`
 3. You're inspecting the `publish/` output, not the `build/` output
+
+## Authorization Types and Trimming
+
+RemoteFactory's generator automatically emits explicit DI registrations for `[AuthorizeFactory<T>]` types in the generated `FactoryServiceRegistrar`. This creates static references that the IL trimmer preserves — your auth classes survive trimming without any additional configuration.
+
+For example, if your factory uses `[AuthorizeFactory<IPersonModelAuth>]`, the generator emits `services.TryAddTransient<IPersonModelAuth, PersonModelAuth>()` in the generated registration code. The concrete type is discovered by the generator at compile time using the naming convention (`IPersonModelAuth` → `PersonModelAuth`).
+
+### RegisterMatchingName and Trimming
+
+`RegisterMatchingName` uses `assembly.GetTypes()` reflection to discover services at runtime. The IL trimmer cannot see these runtime-only references and may trim types that are only registered through this convention.
+
+**Factory auth types are handled automatically** by the generator (see above). For other services registered via `RegisterMatchingName`, you have two options if they get trimmed:
+
+1. **Explicit registration** — Register the service directly in your DI setup instead of relying on convention discovery.
+2. **`[DynamicDependency]`** — Apply this attribute to preserve specific types from trimming. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
 
 ## Limitations
 

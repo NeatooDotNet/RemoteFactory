@@ -11,7 +11,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<TrimmableAssembly Include="Person.DomainModel" />
 		<TrimmableAssembly Include="Person.Ef" />
 		<TrimmableAssembly Include="Neatoo.Generator" />
 		<RuntimeHostConfigurationOption Include="Neatoo.RemoteFactory.IsServerRuntime"

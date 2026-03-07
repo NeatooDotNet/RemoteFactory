@@ -40,13 +40,23 @@ Mark child entity factory methods as `internal` to make them trimmable. The trim
 
 ## Configuration
 
-Add these settings to the **Blazor WASM client project** `.csproj`:
+### Domain model project
+
+Mark the assembly as trimmable in the domain model `.csproj`:
 
 ```xml
 <PropertyGroup>
-  <TrimMode>full</TrimMode>
+  <IsTrimmable>true</IsTrimmable>
 </PropertyGroup>
+```
 
+Without this, the trimmer only trims framework assemblies and the domain model ships intact to the client. The library author declares trimmability once — consuming projects don't need `<TrimmableAssembly>` entries.
+
+### Client project
+
+Add the feature switch to the **Blazor WASM client project** `.csproj`:
+
+```xml
 <ItemGroup>
   <RuntimeHostConfigurationOption Include="Neatoo.RemoteFactory.IsServerRuntime"
                                    Value="false"
@@ -54,12 +64,12 @@ Add these settings to the **Blazor WASM client project** `.csproj`:
 </ItemGroup>
 ```
 
-Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true` is the SDK default). These two settings are all that's needed.
+Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true` is the SDK default). The `RuntimeHostConfigurationOption` is all that's needed on the client side.
 
-| Setting | Purpose |
-|---------|---------|
-| `TrimMode=full` | Trim all assemblies, not just framework ones (default is `partial`) |
-| `RuntimeHostConfigurationOption` | Tell the trimmer to treat `IsServerRuntime` as `false` at compile time |
+| Setting | Where | Purpose |
+|---------|-------|---------|
+| `IsTrimmable=true` | Domain `.csproj` | Opts the assembly into trimming |
+| `RuntimeHostConfigurationOption` | Client `.csproj` | Tell the trimmer to treat `IsServerRuntime` as `false` at compile time |
 
 The `Trim="true"` attribute on the `RuntimeHostConfigurationOption` is critical — without it, the switch is just a runtime value and the trimmer cannot use it for dead code elimination.
 
@@ -98,6 +108,16 @@ If server-only type names still appear:
 1. Confirm `TrimMode` is `full` (not `partial` or omitted)
 2. Confirm `RuntimeHostConfigurationOption` has `Trim="true"`
 3. Inspect the `publish/` output, not the `build/` output
+
+## Authorization Types and Trimming
+
+The generator automatically emits explicit DI registrations for `[AuthorizeFactory<T>]` types in `FactoryServiceRegistrar`. This creates static references that survive trimming — no additional configuration needed for auth classes.
+
+The concrete type is resolved at compile time using the naming convention (`IPersonModelAuth` → `PersonModelAuth`).
+
+### RegisterMatchingName and Trimming
+
+`RegisterMatchingName` uses reflection (`assembly.GetTypes()`) at runtime. The trimmer cannot see these references and may trim types only registered through convention. Factory auth types are handled automatically by the generator. For other convention-registered services, either register them explicitly or use `[DynamicDependency]` to preserve them.
 
 ## Limitations
 
