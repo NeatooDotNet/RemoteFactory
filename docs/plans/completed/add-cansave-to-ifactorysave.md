@@ -1,9 +1,9 @@
 # Add CanSave to IFactorySave<T>
 
 **Date:** 2026-02-26
-**Related Todo:** [Add CanSave to IFactorySave<T>](../todos/add-cansave-to-ifactorysave.md)
-**Status:** Awaiting Verification
-**Last Updated:** 2026-02-26
+**Related Todo:** [Add CanSave to IFactorySave<T>](../todos/completed/add-cansave-to-ifactorysave.md)
+**Status:** Complete
+**Last Updated:** 2026-03-07
 
 ---
 
@@ -537,16 +537,25 @@ If any occur, STOP and report:
 
 ## Architect Verification
 
-[Architect fills this section after independently verifying the developer's work.]
-
-**Verified:** [date]
-**Verdict:** VERIFIED | SENT BACK
+**Verified:** 2026-03-07
+**Verdict:** VERIFIED
 
 **Independent test results:**
-- Design.Tests: [X passed, Y failed]
-- Production code: [Build result]
-- All tests: [X passed, Y failed]
+- Production code (Neatoo.RemoteFactory.sln): Build succeeded, 0 warnings, 0 errors (net9.0, net10.0)
+- RemoteFactory.UnitTests: 475 passed, 0 failed (net9.0, net10.0)
+- RemoteFactory.IntegrationTests: 476 passed, 3 skipped (performance), 0 failed (net9.0, net10.0)
+- RemoteOnlyTests.Integration: 19 passed, 0 failed (net9.0, net10.0)
+- Design.sln: Build fails with 53 IL2026 trimming errors in generated `*.Ordinal.g.cs` files. These are pre-existing errors unrelated to CanSave (none reference CanSave code). The Design.sln is not part of the main solution and these errors exist on the main branch.
 
-**Design match:** [Does the implementation match the original plan?]
+**Design match:**
 
-**Issues found:** [List any issues, or "None"]
+The implementation matches the plan with one documented design correction (already noted in the plan's Implementation Progress section): The original plan expected `FactorySaveBase<T>` to provide a default `CanSave()` implementation for factories without auth. However, no `FactorySaveBase<T>` class exists in the codebase. The developer correctly identified that generated factory classes re-declare `IFactorySave<T>` in their interface list, so the generator must emit an explicit `IFactorySave<T>.CanSave()` implementation for ALL factories with `HasDefaultSave`, not just those with auth. For no-auth factories, the bridge returns `Task.FromResult(new Authorized(true))`. This is a sound architectural correction.
+
+All other design elements are correctly implemented:
+1. `IFactorySave<T>` interface has `Task<Authorized> CanSave(CancellationToken cancellationToken = default)` -- confirmed
+2. New renderer (`ClassFactoryRenderer.cs`) has `RenderCanSaveExplicitInterfaceMethod` handling both auth/no-auth and IsTask/non-IsTask cases -- confirmed
+3. Legacy generator (`FactoryGenerator.Types.cs`) has `CanSaveMethodUniqueName` and `CanSaveMethodIsTask` properties on `SaveFactoryMethod`, with `ExplicitInterfaceMethod()` generating the CanSave bridge for both auth and no-auth cases -- confirmed
+4. Test coverage: 2 unit tests (no-auth via `IFactorySave<T>`), 1 integration test (auth via `IFactorySave<T>`), 1 integration test (no-auth through ClientServerContainers) -- confirmed
+5. Never-block rule: sync case uses `Task.FromResult()`, async case uses `async/await` -- confirmed in both renderer paths
+
+**Issues found:** None. The Design.sln build failure is pre-existing and unrelated to this work.

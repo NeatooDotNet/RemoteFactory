@@ -1,9 +1,9 @@
 # Explore IL Trimming Feature Switches for Remote-Only Code Separation
 
-**Status:** In Progress
+**Status:** Complete
 **Priority:** Medium
 **Created:** 2026-03-03
-**Last Updated:** 2026-03-03 (plan created)
+**Last Updated:** 2026-03-07
 
 ---
 
@@ -29,7 +29,7 @@ Key questions to answer:
 
 ## Plans
 
-- [Exploration: IL Trimming Feature Switches](../plans/explore-trimming-remote-only.md)
+- [Exploration: IL Trimming Feature Switches](../plans/completed/explore-trimming-remote-only.md)
 
 ---
 
@@ -67,4 +67,4 @@ Before marking this todo as Complete, verify:
 
 ## Results / Conclusions
 
-_(pending exploration)_
+IL trimming feature was implemented independently of this todo workflow (commits ea3efd7, a277ff5, 3b5635f, 3ba9852). All four exploration questions answered affirmatively. Feature shipped with `NeatooRuntime.IsServerRuntime` feature switch, generator-emitted guards, and internal factory visibility. Remaining issue: generated ordinal converters use reflection-based `JsonSerializer` overloads causing IL2026 warnings — tracked separately in [aot-safe-ordinal-serialization](../aot-safe-ordinal-serialization.md).

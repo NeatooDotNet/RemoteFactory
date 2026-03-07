@@ -15,7 +15,7 @@ description: |
   </example>
 
   <example>
-  Context: A todo resolved a design debt item — private setter support was added because .NET added AOT-compatible private member access. The documenter needs to remove this from the Design Debt table and add the new pattern to the documentation.
+  Context: A todo resolved a design debt item — private setter support was added because .NET added trimming-safe private member access. The documenter needs to remove this from the Design Debt table and add the new pattern to the documentation.
   user: "Everything verified. Let's document."
   assistant: "I'll invoke the business-requirements-documenter to remove private setter support from the Design Debt table, add the new pattern to the Critical Rules section, and update the serialization docs."
   <commentary>

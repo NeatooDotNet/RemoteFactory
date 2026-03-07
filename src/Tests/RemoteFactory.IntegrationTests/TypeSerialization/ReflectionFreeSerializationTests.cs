@@ -15,7 +15,7 @@ namespace RemoteFactory.IntegrationTests.TypeSerialization;
 public class ReflectionFreeSerializationTests
 {
     // ============================================================================
-    // Converter Registration Tests (PROVES AOT PATH IS USED)
+    // Converter Registration Tests (PROVES TRIMMING-SAFE PATH IS USED)
     // ============================================================================
 
     [Fact]

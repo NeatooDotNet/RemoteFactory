@@ -1544,7 +1544,7 @@ internal static class ClassFactoryRenderer
         if (model.RegisterOrdinalConverter)
         {
             sb.AppendLine();
-            sb.AppendLine("            // Register AOT-compatible ordinal converter");
+            sb.AppendLine("            // Register trimming-compatible ordinal converter");
             sb.AppendLine($"            global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(");
             sb.AppendLine($"                {model.ImplementationTypeName}.CreateOrdinalConverter());");
         }
