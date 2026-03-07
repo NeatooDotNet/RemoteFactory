@@ -260,6 +260,32 @@ public partial class Order
 
 ---
 
+## 11. [Remote] on Internal Methods
+
+**Problem**: Contradictory declaration -- diagnostic error NF0105.
+
+```csharp
+// WRONG - [Remote] means client entry point, internal means server-only
+[Factory]
+internal partial class OrderLine : IOrderLine
+{
+    [Remote, Create]  // NF0105: [Remote] cannot be used with internal methods
+    internal void Create(string name) { }
+}
+
+// RIGHT - child entity methods are internal without [Remote]
+[Factory]
+internal partial class OrderLine : IOrderLine
+{
+    [Create]  // No [Remote] on child entity
+    internal void Create(string name) { }
+}
+```
+
+**Why**: `[Remote]` marks a client-to-server entry point. `internal` means the method is server-only. These are contradictory. Remove `[Remote]` if the method is server-only, or make it `public` if clients should call it.
+
+---
+
 ## Summary Table
 
 | Anti-Pattern | Problem | Solution |
@@ -274,3 +300,4 @@ public partial class Order
 | [Execute] returning Task | No confirmation | Return Task<T> |
 | [Event] missing CancellationToken | Can't cancel | Add as final parameter |
 | Class [Execute] wrong return type | Won't compile | Must return containing type |
+| [Remote] on internal methods | NF0105 diagnostic | Remove [Remote] or make method public |

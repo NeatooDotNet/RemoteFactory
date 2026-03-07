@@ -20,9 +20,19 @@ No changes to domain code required. The guards are in the **generated** factory 
 
 ### What Gets Guarded
 
-- **Class factories** — Local method bodies (Create, Fetch, Insert, Update, Delete) wrapped in `if (NeatooRuntime.IsServerRuntime)` checks
+Guards are conditional based on method visibility:
+
+- **Class factories** — `[Remote]` and `internal` method bodies are wrapped in `if (NeatooRuntime.IsServerRuntime)` checks. `public` non-`[Remote]` methods (like `Create` or `CanCreate`) have **no guard** and survive trimming — they run locally on both client and server.
 - **Static factories** — Delegate and event registrations guarded; trimmer removes registration lambdas and captured dependencies
 - **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`
+
+| Method Declaration | Guard? | Trimming Behavior |
+|---|---|---|
+| `[Remote] public` | Yes | Trimmed on client. Client uses delegate fork to route to server. |
+| `public` (no `[Remote]`) | No | Survives trimming. Runs locally on client and server. |
+| `internal` (no `[Remote]`) | Yes | Trimmed on client. Server-only. |
+
+Mark child entity factory methods as `internal` to make them trimmable. The trimmer eliminates their method bodies, `[Service]` dependencies, and transitive references.
 
 ### The Feature Switch
 

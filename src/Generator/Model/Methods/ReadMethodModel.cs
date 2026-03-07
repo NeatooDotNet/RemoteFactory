@@ -25,9 +25,10 @@ internal sealed record ReadMethodModel : FactoryMethodModel
         bool isStaticFactory = false,
         bool isBool = false,
         bool isDomainMethodTask = false,
-        bool isDomainMethodNullable = false)
+        bool isDomainMethodNullable = false,
+        bool isInternal = false)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
-               isRemote, isTask, isAsync, isNullable, parameters, authorization)
+               isRemote, isTask, isAsync, isNullable, parameters, authorization, isInternal)
     {
         IsConstructor = isConstructor;
         IsStaticFactory = isStaticFactory;

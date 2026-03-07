@@ -694,6 +694,7 @@ public partial class Factory : IIncrementalGenerator
 			"NF0102" => DiagnosticDescriptors.ExecuteMustReturnTask,
 			"NF0103" => DiagnosticDescriptors.ExecuteRequiresStaticMethod,
 			"NF0104" => DiagnosticDescriptors.HintNameTruncated,
+			"NF0105" => DiagnosticDescriptors.RemoteInternalContradiction,
 			"NF0201" => DiagnosticDescriptors.FactoryMethodMustBeStatic,
 			"NF0202" => DiagnosticDescriptors.AuthMethodWrongReturnType,
 			"NF0203" => DiagnosticDescriptors.AmbiguousSaveOperations,

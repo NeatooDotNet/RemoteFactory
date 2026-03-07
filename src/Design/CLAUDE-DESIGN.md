@@ -63,10 +63,12 @@ Follow this workflow when working with RemoteFactory patterns:
 
 ## Quick Reference: The Three Factory Patterns
 
-### Pattern 1: Class Factory
+### Pattern 1: Class Factory (Aggregate Root)
 ```csharp
+public interface IMyEntity { int Id { get; set; } }
+
 [Factory]
-public partial class MyEntity
+internal partial class MyEntity : IMyEntity
 {
     public int Id { get; set; }  // Public setter required for serialization
 
@@ -77,7 +79,25 @@ public partial class MyEntity
     public void Fetch(int id, [Service] IMyService service) { }
 }
 ```
-**Generates**: `IMyEntityFactory` with `Create()`, `Fetch()` methods.
+**Generates**: `public IMyEntityFactory` with `Create()`, `Fetch()` methods returning `IMyEntity`.
+
+### Pattern 1b: Class Factory (Child Entity)
+```csharp
+public interface IMyChild { int Id { get; set; } }
+
+[Factory]
+internal partial class MyChild : IMyChild
+{
+    public int Id { get; set; }
+
+    [Create]
+    internal void Create(string name) { }  // internal = server-only, trimmable
+
+    [Fetch]
+    internal void Fetch(int id, string name) { }
+}
+```
+**Generates**: `internal IMyChildFactory` with `Create()`, `Fetch()` methods. Not visible to client.
 
 ### Pattern 2: Interface Factory
 ```csharp
@@ -118,6 +138,7 @@ public static partial class MyCommands
 | Question | Answer | Reference | Reason |
 |----------|--------|-----------|--------|
 | Should this method be [Remote]? | Only aggregate root entry points | `Order.cs` vs `OrderLine.cs` | Once on server, stay on server |
+| Should this method be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
 | Can I use private setters? | No | `AllPatterns.cs:73` | AOT compilation + source generation |
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
@@ -321,6 +342,32 @@ public partial class Product
 
 ---
 
+### Anti-Pattern 8: [Remote] on Internal Methods
+
+**WRONG:**
+```csharp
+[Factory]
+internal partial class OrderLine : IOrderLine
+{
+    [Remote, Create]   // WRONG: Diagnostic NF0105
+    internal void Create(string name, decimal price, int qty) { }
+}
+```
+
+**RIGHT:**
+```csharp
+[Factory]
+internal partial class OrderLine : IOrderLine
+{
+    [Create]           // No [Remote] - server-only
+    internal void Create(string name, decimal price, int qty) { }
+}
+```
+
+**Why it matters:** `[Remote]` means "client entry point." `internal` means "server-only." These are contradictory. The generator emits diagnostic error NF0105 and skips the method. Remove `[Remote]` if the method is server-only, or make it `public` if clients should call it.
+
+---
+
 ## Critical Rules
 
 ### 1. [Remote] is ONLY for Aggregate Root Entry Points
@@ -335,14 +382,91 @@ public partial class Order
 
 // CORRECT: Child entity does NOT have [Remote]
 [Factory]
-public partial class OrderLine
+internal partial class OrderLine : IOrderLine
 {
     [Create]  // Server-side only - called from Order operations
-    public void Create(...) { }
+    internal void Create(...) { }
 }
 ```
 
-### 2. Static Factory Method Signatures
+### 2. Factory Method Visibility Controls Guard Emission and Trimming
+
+The developer's `public` vs `internal` on factory methods tells the generator who is allowed to call each method. This determines whether an `IsServerRuntime` guard is emitted and whether the method body survives IL trimming on the client.
+
+| Method Declaration | Guard Emitted? | Client Behavior | Trimmable? |
+|---|---|---|---|
+| `[Remote] public` | Yes | Routes to server via delegate fork | Yes (guarded) |
+| `public` (no Remote) | No | Runs locally on client | No (always available) |
+| `internal` (no Remote) | Yes | Throws if called when `IsServerRuntime=false` | Yes (guarded) |
+| `[Remote] internal` | N/A | **Diagnostic NF0105** -- contradiction | N/A |
+
+**Why this matters:** Before this feature, ALL `Local*` methods had `IsServerRuntime` guards, which broke `Can*` and `Create` on the client. Now, `public` non-`[Remote]` methods (the ones clients actually call directly) have no guard and work on both sides.
+
+```csharp
+// Aggregate root: public + [Remote] for client entry points
+[Factory]
+internal partial class Order : IOrder
+{
+    [Remote, Create]  // Guard: yes (Remote). Client routes to server.
+    public void Create(string name, [Service] IOrderLineListFactory lines) { }
+
+    [Remote, Fetch]   // Guard: yes (Remote). Client routes to server.
+    public Task<bool> Fetch(int id, [Service] IOrderRepository repo) { }
+}
+
+// Child entity: internal methods for server-only operations
+[Factory]
+internal partial class OrderLine : IOrderLine
+{
+    [Create]           // Guard: yes (internal). Server-only.
+    internal void Create(string name, decimal price, int qty) { }
+
+    [Fetch]            // Guard: yes (internal). Server-only.
+    internal void Fetch(int id, string name, decimal price, int qty) { }
+}
+```
+
+#### Factory Interface Visibility Rules
+
+The generated factory interface visibility derives from the methods:
+
+| Method Visibility | Generated Interface | Interface Members |
+|---|---|---|
+| All methods `public` | `public interface IXxxFactory` | All methods included |
+| All methods `internal` | `internal interface IXxxFactory` | All methods included |
+| Mix of `public` and `internal` | `public interface IXxxFactory` | Only `public` methods included |
+
+An `internal` factory interface (e.g., `IOrderLineFactory`) is not injectable from the client container. The client cannot even see it. This is the desired behavior for child entity factories.
+
+#### Internal Class with Public Interface Pattern
+
+Entity classes are `internal` with a matching `public interface` (naming convention: `Order` -> `IOrder`). The generator detects the `I{ClassName}` interface and uses it in all factory signatures instead of the concrete class:
+
+```csharp
+// Public interface -- visible to client
+public interface IOrder : IFactorySaveMeta
+{
+    int Id { get; set; }
+    string CustomerName { get; set; }
+}
+
+// Internal class -- invisible to client
+[Factory]
+internal partial class Order : IOrder, IFactorySaveMeta { ... }
+
+// Generated factory uses the interface type:
+// public interface IOrderFactory
+// {
+//     Task<IOrder> Create(string customerName, ...);
+//     Task<IOrder?> Save(IOrder target, ...);
+// }
+```
+
+#### CS0051 Constraint
+
+When a generated factory interface becomes `internal` (all methods are internal), it cannot be used as a `[Service]` parameter type in a `public` method on another class. C# enforces that parameter types must be at least as accessible as the method. This means `internal` is not applicable to entities whose factory interfaces are referenced in more-accessible methods' `[Service]` parameters. Use `internal` for leaf entities and standalone factories where the factory interface is not passed as a service parameter to public methods.
+
+### 3. Static Factory Method Signatures
 ```csharp
 // WRONG
 [Remote, Execute]
@@ -353,7 +477,7 @@ public static Task<bool> SendNotification(...) { }  // Public, no underscore
 private static Task<bool> _SendNotification(...) { }  // Private, underscore prefix
 ```
 
-### 3. Interface Factory Methods Need NO Attributes
+### 4. Interface Factory Methods Need NO Attributes
 ```csharp
 // WRONG
 [Factory]
@@ -371,7 +495,7 @@ public interface IMyRepository
 }
 ```
 
-### 4. Properties Need Public Setters
+### 5. Properties Need Public Setters
 ```csharp
 // WRONG - won't deserialize
 public int Id { get; private set; }
@@ -380,7 +504,7 @@ public int Id { get; private set; }
 public int Id { get; set; }
 ```
 
-### 5. Event Delegate Types Have `Event` Suffix
+### 6. Event Delegate Types Have `Event` Suffix
 ```csharp
 // In static class:
 [Remote, Event]
@@ -518,6 +642,7 @@ These are known limitations or open questions. They are documented here to preve
 6. **Method-injected services stored in fields** - Lost after serialization; use constructor injection
 7. **Missing partial keyword** - Generator needs to extend your class
 8. **Missing CancellationToken on events** - Required for graceful shutdown
+9. **[Remote] on internal methods** - Contradictory: `[Remote]` = client entry point, `internal` = server-only. Emits NF0105.
 
 ---
 

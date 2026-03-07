@@ -227,6 +227,21 @@ public Task Terminate(CancellationToken ct = default)
 
 Execution order: AuthorizeFactory checks first, then AspAuthorize. If either fails, the operation is denied.
 
+## Client-Side Can* Methods
+
+`Can*` methods generated from `public` factory methods run locally on the client without a server round-trip. This means `CanCreate()` can drive UI decisions (show/hide a "New" button) instantly, with no network call.
+
+For this to work, the authorization service must be resolvable on the client. Register your authorization implementation on the client via `RegisterMatchingName` or manual DI registration:
+
+```csharp
+// Client Program.cs — register auth services so Can* methods resolve locally
+builder.Services.RegisterMatchingName(typeof(IEmployeeAuthorization).Assembly);
+```
+
+If the authorization service is not registered on the client, calling `CanCreate()` will produce a standard DI resolution exception. This is a developer configuration choice, not a framework error — some apps intentionally keep auth server-only.
+
+`Can*` methods generated from `internal` factory methods retain the `IsServerRuntime` guard and are not callable on the client. This is correct because internal factory methods represent server-only operations.
+
 ## Authorization Failures
 
 - `Create()` and `Fetch()` return null when authorization fails

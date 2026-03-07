@@ -673,6 +673,7 @@ public partial class Factory
 			this.ClassName = methodSymbol.ContainingType.Name;
 			this.IsBool = methodSymbol.ReturnType.ToString().Contains("bool");
 			this.IsRemote = otherAttributes.Any(a => a == "Remote");
+			this.IsInternal = methodSymbol.DeclaredAccessibility != Accessibility.Public;
 
 			this.ReturnType = methodSymbol.ReturnType.ToString();
 			this.IsNullable = methodSymbol.ReturnType.NullableAnnotation == NullableAnnotation.Annotated;
@@ -709,6 +710,7 @@ public partial class Factory
 			this.ClassName = constructorSymbol.ContainingType.Name;
 			this.IsBool = false; // Constructors don't return bool
 			this.IsRemote = otherAttributes.Any(a => a == "Remote");
+			this.IsInternal = constructorSymbol.DeclaredAccessibility != Accessibility.Public;
 
 			this.ReturnType = constructorSymbol.ContainingType.ToDisplayString();
 			this.IsNullable = false; // Constructor return is not nullable
@@ -731,6 +733,7 @@ public partial class Factory
 		public bool IsBool { get; private set; }
 		public bool IsTask { get; private set; }
 		public bool IsRemote { get; protected set; }
+		public bool IsInternal { get; protected set; }
 		public string? ReturnType { get; protected set; }
 		public EquatableArray<MethodParameterInfo> Parameters { get; private set; }
 		public EquatableArray<AspAuthorizeInfo> AspAuthorizeCalls { get; set; } = [];

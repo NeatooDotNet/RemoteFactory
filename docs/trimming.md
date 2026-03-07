@@ -14,13 +14,24 @@ RemoteFactory solves all three problems with **feature switch guards**. The sour
 
 ## How It Works
 
-RemoteFactory's source generator emits guards around server-only code in three places:
+RemoteFactory's source generator emits `if (NeatooRuntime.IsServerRuntime)` guards around server-only code. Which methods get guards depends on method visibility:
 
-1. **Class factories** — Local method bodies (Create, Fetch, Insert, Update, Delete) are wrapped in `if (NeatooRuntime.IsServerRuntime)` checks. When trimmed, the entire method body — including calls to your `[Remote]` methods and their `[Service]` dependencies — becomes dead code.
+### Class Factories — Conditional Guards
 
-2. **Static factories** — Delegate and event registrations are guarded. The trimmer removes the registration lambdas and their captured dependencies.
+Not all factory methods get guards. The generator uses the developer's `public` vs `internal` declaration to decide:
 
-3. **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`, making the server-only code path unreachable to the trimmer.
+| Method Declaration | Guard? | Trimming Behavior |
+|---|---|---|
+| `[Remote] public` | Yes | Method body trimmed. Client routes to server via delegate fork. |
+| `public` (no `[Remote]`) | **No** | Method body **survives** trimming. Runs locally on both client and server. |
+| `internal` (no `[Remote]`) | Yes | Method body trimmed. Server-only. |
+
+`public` non-`[Remote]` methods like `Create(string name)` or `CanCreate()` have no guard because they are designed to run on the client. Marking child entity factory methods as `internal` makes them trimmable — the trimmer eliminates their method bodies, `[Service]` dependencies, and transitive references from the published output.
+
+### Static and Interface Factories
+
+- **Static factories** — Delegate and event registrations are guarded. The trimmer removes the registration lambdas and their captured dependencies.
+- **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`, making the server-only code path unreachable to the trimmer.
 
 The key insight: the guards are in RemoteFactory's **generated** code, not in your application code. You don't need to modify your domain model at all.
 

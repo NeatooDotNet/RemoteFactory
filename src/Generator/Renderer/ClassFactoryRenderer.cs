@@ -102,12 +102,17 @@ internal static class ClassFactoryRenderer
 
     private static void RenderFactoryInterface(StringBuilder sb, ClassFactoryModel model)
     {
-        sb.AppendLine($"    public interface I{model.ImplementationTypeName}Factory");
+        var interfaceVisibility = model.AllMethodsInternal ? "internal" : "public";
+        sb.AppendLine($"    {interfaceVisibility} interface I{model.ImplementationTypeName}Factory");
         sb.AppendLine("    {");
 
         bool firstMethod = true;
         foreach (var method in model.Methods)
         {
+            // Skip internal methods from public interface (mixed-visibility case)
+            if (!model.AllMethodsInternal && method.IsInternal)
+                continue;
+
             var interfaceMethod = RenderInterfaceMethodSignature(method);
             if (!string.IsNullOrEmpty(interfaceMethod))
             {
@@ -383,10 +388,14 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
-        sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-        sb.AppendLine();
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
@@ -796,10 +805,14 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public async {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
-        sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-        sb.AppendLine();
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
@@ -854,10 +867,14 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
-        sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-        sb.AppendLine();
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
@@ -1064,9 +1081,13 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public virtual {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
-        sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+        }
         sb.AppendLine();
 
         // Default return value
@@ -1310,10 +1331,14 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
-        sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-        sb.AppendLine();
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (method.IsInternal || method.IsRemote)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine();
+        }
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);

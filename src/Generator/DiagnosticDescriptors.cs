@@ -47,6 +47,18 @@ internal static class DiagnosticDescriptors
         description: "Execute operations must be static methods. On static classes, the method generates a delegate type. On non-static classes, the method generates a factory interface method.");
 
     /// <summary>
+    /// NF0105: [Remote] cannot be used with internal methods.
+    /// </summary>
+    public static readonly DiagnosticDescriptor RemoteInternalContradiction = new(
+        id: "NF0105",
+        title: "[Remote] cannot be used with internal methods",
+        messageFormat: "Method '{0}' is marked [Remote] but has internal accessibility. [Remote] methods are client entry points and must be public.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "[Remote] marks a method as a client-to-server entry point. Internal methods are not visible to clients. These modifiers are contradictory. Remove [Remote] if the method is server-only, or make it public if clients should call it.");
+
+    /// <summary>
     /// NF0104: Hint name truncated due to length limit.
     /// </summary>
     public static readonly DiagnosticDescriptor HintNameTruncated = new(

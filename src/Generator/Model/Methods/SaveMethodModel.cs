@@ -25,9 +25,10 @@ internal sealed record SaveMethodModel : FactoryMethodModel
         WriteMethodModel? insertMethod = null,
         WriteMethodModel? updateMethod = null,
         WriteMethodModel? deleteMethod = null,
-        bool isDefault = false)
+        bool isDefault = false,
+        bool isInternal = false)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
-               isRemote, isTask, isAsync, isNullable, parameters, authorization)
+               isRemote, isTask, isAsync, isNullable, parameters, authorization, isInternal)
     {
         InsertMethod = insertMethod;
         UpdateMethod = updateMethod;

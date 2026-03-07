@@ -11,7 +11,7 @@ builder.Services.AddNeatooAspNetCore(
     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
     typeof(Employee).Assembly);
 
-// Register factory types (IEmployeeFactory -> EmployeeFactory)
+// Register IName -> Name pairs (auth services, repositories, etc.)
 builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
 
 // Register your infrastructure services

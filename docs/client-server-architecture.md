@@ -62,6 +62,54 @@ System.InvalidOperationException: No service for type 'IEmployeeRepository' has 
 
 This is runtime enforcement, not compile-time. The code compiles, but the client container doesn't have the services to execute the method.
 
+## Method Visibility and the Client/Server Boundary
+
+Method visibility (`public` vs `internal`) gives the generator a second signal alongside `[Remote]` for controlling what the client can access:
+
+| Declaration | Client Can Call? | Crosses Network? | Factory Interface |
+|---|---|---|---|
+| `[Remote] public` | Yes | Yes — serializes to server | Included in public interface |
+| `public` (no Remote) | Yes | No — runs locally | Included in public interface |
+| `internal` (no Remote) | No | N/A — server-only | Excluded (or internal interface) |
+
+Use `internal` on child entity factory methods. The generator produces an `internal` factory interface when all methods on a class are `internal`. An `internal` factory interface is not injectable from the client's DI container — the client cannot even see it. This prevents accidental client-side calls to server-only operations and enables IL trimming of those method bodies.
+
+```csharp
+// Aggregate root: public interface, client-visible factory
+public interface IOrder : IFactorySaveMeta { ... }
+
+[Factory]
+internal partial class Order : IOrder
+{
+    [Remote, Create] public void Create(...) { }    // Client calls this
+    [Remote, Fetch]  public Task<bool> Fetch(...) { }  // Client calls this
+}
+
+// Child entity: internal interface, invisible to client
+public interface IOrderLine { ... }
+
+[Factory]
+internal partial class OrderLine : IOrderLine
+{
+    [Create] internal void Create(...) { }   // Only callable on server
+    [Fetch]  internal void Fetch(...) { }    // Only callable on server
+}
+// Generated: internal interface IOrderLineFactory — client can't inject it
+```
+
+For entities with mixed visibility (aggregate root in one context, child in another), the generator creates a `public` interface containing only the `public` methods. Internal methods exist on the concrete factory class for server-side use:
+
+```csharp
+[Factory]
+internal partial class Product : IProduct
+{
+    [Remote, Fetch] public Task<bool> Fetch(int id, ...) { }       // On public interface
+    [Fetch]         internal void FetchAsChild(int id, ...) { }    // Server-only, not on interface
+}
+// Generated: public interface IProductFactory { Task<IProduct?> Fetch(...); }
+// FetchAsChild is on the concrete ProductFactory class, server-side only
+```
+
 ## Best Practice: Exclude Server Packages from Client Projects
 
 Enforce the boundary at the package level by excluding server-only dependencies from client projects:
