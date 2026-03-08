@@ -299,9 +299,9 @@ The generator determines factory interface visibility from **method** accessibil
 |---|---|---|---|
 | All methods `internal` | `internal` | All (internal interface) | All get `IsServerRuntime` guard |
 | All methods `public` | `public` | All | Only `[Remote]` methods |
-| Mix of `public` and `internal` | `public` | **Public methods only** — internal methods excluded | `internal`: guarded; `public`: only if `[Remote]` |
+| Mix of `public` and `internal` | `public` | **All methods** — internal methods get `internal` modifier on interface | `internal`: guarded; `public`: only if `[Remote]` |
 
-**"Excluded from the interface" does not mean "gone."** When a class has both public and internal methods, internal methods are excluded from the **public factory interface** but still exist on the **factory implementation class**. Within the assembly, the generated factory implementation still contains and can call the internal methods — they are used by server-side aggregate operations that resolve the factory from DI and call methods directly. External consumers (like a Blazor WASM client in a separate assembly) cannot see or call them because they only see the public interface.
+**Internal methods on public interfaces.** When a class has both public and internal methods, internal methods appear on the **public factory interface** with the `internal` access modifier. This makes them accessible to same-assembly callers (server-side aggregate operations) while hiding them from external consumers (like a Blazor WASM client in a separate assembly). All-internal interfaces (where every method is internal) use an `internal` interface instead, so no per-method modifier is needed.
 
 ### Class Accessibility vs Method Accessibility
 
@@ -312,7 +312,7 @@ This means class accessibility and method accessibility serve **different purpos
 | Accessibility | What It Controls |
 |---|---|
 | **Class** `internal` | Hides the concrete type from external assemblies. Use with a `public` interface (`IOrder`) so the factory returns the interface type. |
-| **Method** `internal` | Tells the generator: emit `IsServerRuntime` guard, exclude from public factory interface, make trimmable. |
+| **Method** `internal` | Tells the generator: emit `IsServerRuntime` guard, add `internal` modifier on public factory interface, make trimmable. |
 | **Method** `public` | Tells the generator: include on factory interface, no guard (unless `[Remote]`). |
 
 A `public` method on an `internal` class does **not** behave like an `internal` method for code generation. The method is still unguarded, untrimmable, and included on the public factory interface — even though C# caps its effective accessibility to `internal`.
@@ -353,12 +353,16 @@ internal partial class Department : IDepartment
     [Remote, Fetch]
     public async Task<bool> Fetch(Guid id, [Service] IDeptRepo repo, CancellationToken ct) { ... }
 
-    // Internal: child context — excluded from public interface, gets IsServerRuntime guard
+    // Internal: child context — on public interface with `internal` modifier, gets IsServerRuntime guard
     [Fetch]
     internal void FetchAsChild(Guid id, string name) { ... }
 }
-// Generated: public IDepartmentFactory has Fetch() only
-// FetchAsChild() is on the factory implementation but NOT on IDepartmentFactory
+// Generated:
+// public interface IDepartmentFactory
+// {
+//     Task<IDepartment?> Fetch(...);
+//     internal IDepartment FetchAsChild(...);  // internal modifier — same-assembly only
+// }
 ```
 
 For aggregate roots, keep factory methods `public` (with `[Remote]` for operations that cross to the server). For child entities called only from server-side aggregate operations, use `internal`.

@@ -280,7 +280,7 @@ Server automatically exposes the endpoint at `/api/neatoo`. No controllers neede
 - **Compact serialization**: Ordinal format reduces payloads by 40-50%
 - **Lifecycle hooks**: `IFactoryOnStart`, `IFactoryOnComplete`, `IFactoryOnCancelled`
 - **Fire-and-forget events**: Domain events with scope isolation via `[Event]` attribute
-- **Flexible modes**: Full (server), RemoteOnly (client), or Logical (single-tier)
+- **Flexible modes**: Server, Remote, or Logical runtime modes
 
 ## Installation
 
@@ -302,22 +302,7 @@ dotnet add package Neatoo.RemoteFactory
 dotnet add package Neatoo.RemoteFactory
 ```
 
-Configure client assembly for smaller output:
-
-<!-- snippet: readme-client-assembly-mode -->
-<a id='snippet-readme-client-assembly-mode'></a>
-```cs
-// In client assembly's AssemblyAttributes.cs:
-// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L124-L127' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-assembly-mode' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-readme-client-assembly-mode-1'></a>
-```cs
-// In client assembly's AssemblyAttributes.cs:
-// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
-```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L153-L156' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-assembly-mode-1' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+For reducing client bundle size, see [IL Trimming](docs/trimming.md) — it removes server-only code at publish time.
 
 ## Getting Started
 
@@ -577,7 +562,7 @@ See [Getting Started](docs/getting-started.md) for a complete walkthrough.
 - [Authorization](docs/authorization.md) - Custom auth and ASP.NET Core policies
 - [Serialization](docs/serialization.md) - Ordinal vs Named formats
 - [Save Operation](docs/save-operation.md) - IFactorySave routing pattern
-- [Factory Modes](docs/factory-modes.md) - Full, RemoteOnly, Logical
+- [Factory Modes](docs/factory-modes.md) - Server, Remote, Logical runtime modes
 - [Events](docs/events.md) - Fire-and-forget domain events
 - [ASP.NET Core Integration](docs/aspnetcore-integration.md) - Server-side configuration
 - [Attributes Reference](docs/attributes-reference.md) - All available attributes

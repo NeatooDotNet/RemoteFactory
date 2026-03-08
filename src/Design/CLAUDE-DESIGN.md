@@ -434,9 +434,9 @@ The generated factory interface visibility derives from the methods:
 |---|---|---|
 | All methods `public` | `public interface IXxxFactory` | All methods included |
 | All methods `internal` | `internal interface IXxxFactory` | All methods included |
-| Mix of `public` and `internal` | `public interface IXxxFactory` | Only `public` methods included |
+| Mix of `public` and `internal` | `public interface IXxxFactory` | All methods included; `internal` methods get `internal` modifier |
 
-An `internal` factory interface (e.g., `IOrderLineFactory`) is not injectable from the client container. The client cannot even see it. This is the desired behavior for child entity factories.
+When a factory has mixed visibility, `internal` methods appear on the `public` interface with the `internal` access modifier, making them accessible to same-assembly callers while hidden from external consumers. An all-`internal` factory interface (e.g., `IOrderLineFactory`) is not injectable from the client container. The client cannot even see it. This is the desired behavior for child entity factories.
 
 #### Internal Class with Public Interface Pattern
 
@@ -667,4 +667,3 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |
 | `Design.Server/Program.cs` | Server configuration |
 | `Design.Client.Blazor/Program.cs` | Client configuration |
-| `Design.Client.Blazor/AssemblyAttributes.cs` | Assembly-level [FactoryMode] configuration |

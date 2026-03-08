@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Neatoo.RemoteFactory.FactoryGenerator;
 
 namespace Neatoo.RemoteFactory.Generator.Model;
 
@@ -12,7 +11,6 @@ internal sealed record FactoryGenerationUnit
     public FactoryGenerationUnit(
         string @namespace,
         IReadOnlyList<string>? usings,
-        FactoryMode mode,
         string hintName,
         IReadOnlyList<DiagnosticInfo>? diagnostics = null,
         ClassFactoryModel? classFactory = null,
@@ -21,7 +19,6 @@ internal sealed record FactoryGenerationUnit
     {
         Namespace = @namespace;
         Usings = usings ?? System.Array.Empty<string>();
-        Mode = mode;
         HintName = hintName;
         Diagnostics = diagnostics ?? System.Array.Empty<DiagnosticInfo>();
         ClassFactory = classFactory;
@@ -31,7 +28,6 @@ internal sealed record FactoryGenerationUnit
 
     public string Namespace { get; }
     public IReadOnlyList<string> Usings { get; }
-    public FactoryMode Mode { get; }
     public string HintName { get; }
     public IReadOnlyList<DiagnosticInfo> Diagnostics { get; }
 

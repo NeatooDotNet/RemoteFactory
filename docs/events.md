@@ -496,10 +496,10 @@ Events execute in a separate scope with no user context. If you need authorizati
 
 ## Events in Different Modes
 
-**Server (Full) mode:**
+**Server mode:**
 - Events execute in background on server
 
-**RemoteOnly mode:**
+**Remote mode:**
 - Event call serialized, sent to server
 - Executes in background on server
 - Client returns immediately

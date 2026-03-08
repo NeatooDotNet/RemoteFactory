@@ -70,7 +70,7 @@ Method visibility (`public` vs `internal`) gives the generator a second signal a
 |---|---|---|---|
 | `[Remote] public` | Yes | Yes — serializes to server | Included in public interface |
 | `public` (no Remote) | Yes | No — runs locally | Included in public interface |
-| `internal` (no Remote) | No | N/A — server-only | Excluded (or internal interface) |
+| `internal` (no Remote) | No | N/A — server-only | Included with `internal` modifier (or `internal` interface if all methods are internal) |
 
 Use `internal` on child entity factory methods. The generator produces an `internal` factory interface when all methods on a class are `internal`. An `internal` factory interface is not injectable from the client's DI container — the client cannot even see it. This prevents accidental client-side calls to server-only operations and enables IL trimming of those method bodies.
 
@@ -97,17 +97,21 @@ internal partial class OrderLine : IOrderLine
 // Generated: internal interface IOrderLineFactory — client can't inject it
 ```
 
-For entities with mixed visibility (aggregate root in one context, child in another), the generator creates a `public` interface containing only the `public` methods. Internal methods exist on the concrete factory class for server-side use:
+For entities with mixed visibility (aggregate root in one context, child in another), the generator creates a `public` interface containing all methods. Internal methods appear on the interface with the `internal` access modifier, making them accessible to same-assembly callers while hidden from external consumers:
 
 ```csharp
 [Factory]
 internal partial class Product : IProduct
 {
-    [Remote, Fetch] public Task<bool> Fetch(int id, ...) { }       // On public interface
-    [Fetch]         internal void FetchAsChild(int id, ...) { }    // Server-only, not on interface
+    [Remote, Fetch] public Task<bool> Fetch(int id, ...) { }       // Public on interface
+    [Fetch]         internal void FetchAsChild(int id, ...) { }    // Internal on interface
 }
-// Generated: public interface IProductFactory { Task<IProduct?> Fetch(...); }
-// FetchAsChild is on the concrete ProductFactory class, server-side only
+// Generated:
+// public interface IProductFactory
+// {
+//     Task<IProduct?> Fetch(...);
+//     internal IProduct FetchAsChild(...);  // internal modifier — same-assembly only
+// }
 ```
 
 ## Best Practice: Exclude Server Packages from Client Projects

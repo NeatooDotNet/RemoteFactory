@@ -150,11 +150,6 @@ public static class ClientSetup
 }
 #endregion
 
-#region readme-client-assembly-mode
-// In client assembly's AssemblyAttributes.cs:
-// [assembly: FactoryMode(FactoryMode.RemoteOnly)]
-#endregion
-
 #region readme-full-example
 [Factory]
 [AuthorizeFactory<IPersonAuthorization>]

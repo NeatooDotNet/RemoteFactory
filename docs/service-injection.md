@@ -293,7 +293,7 @@ If a service can't be resolved:
 System.InvalidOperationException: No service for type 'IEmployeeRepository' has been registered.
 ```
 
-**Client-side (RemoteOnly mode):**
+**Client-side (Remote mode):**
 ```
 System.InvalidOperationException: No service for type 'IEmployeeDatabase' has been registered.
 ```

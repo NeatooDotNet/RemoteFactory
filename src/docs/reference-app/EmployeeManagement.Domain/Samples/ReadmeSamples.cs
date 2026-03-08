@@ -121,11 +121,6 @@ public static class ClientUsageExample
 }
 #endregion
 
-#region readme-client-assembly-mode
-// In client assembly's AssemblyAttributes.cs:
-// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
-#endregion
-
 #region readme-server-setup
 // Server setup (Program.cs):
 // services.AddNeatooAspNetCore(typeof(Person).Assembly);

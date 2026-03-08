@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Neatoo.RemoteFactory.FactoryGenerator;
 using Neatoo.RemoteFactory.Generator.Model;
 
 namespace Neatoo.RemoteFactory.Generator.Renderer;
@@ -23,7 +22,6 @@ internal static class StaticFactoryRenderer
     public static string Render(FactoryGenerationUnit unit)
     {
         var model = unit.StaticFactory!;
-        var mode = unit.Mode;
 
         var sb = new StringBuilder();
 
@@ -71,7 +69,7 @@ internal static class StaticFactoryRenderer
         sb.AppendLine();
 
         // FactoryServiceRegistrar
-        RenderFactoryServiceRegistrar(sb, model, mode);
+        RenderFactoryServiceRegistrar(sb, model);
 
         sb.AppendLine("    }");
         sb.AppendLine("}");
@@ -103,7 +101,7 @@ internal static class StaticFactoryRenderer
         sb.AppendLine($"        public delegate Task {evt.DelegateName}({paramDecl});");
     }
 
-    private static void RenderFactoryServiceRegistrar(StringBuilder sb, StaticFactoryModel model, FactoryMode mode)
+    private static void RenderFactoryServiceRegistrar(StringBuilder sb, StaticFactoryModel model)
     {
         sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
         sb.AppendLine("        {");
@@ -125,21 +123,18 @@ internal static class StaticFactoryRenderer
         sb.AppendLine("            }");
         sb.AppendLine();
 
-        // Local registrations (only in Full mode)
+        // Local registrations
         sb.AppendLine("            if(remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)");
         sb.AppendLine("            {");
 
-        if (mode == FactoryMode.Full)
+        foreach (var del in model.Delegates)
         {
-            foreach (var del in model.Delegates)
-            {
-                RenderLocalDelegateRegistration(sb, del, model.TypeName);
-            }
+            RenderLocalDelegateRegistration(sb, del, model.TypeName);
+        }
 
-            foreach (var evt in model.Events)
-            {
-                RenderLocalEventRegistration(sb, evt, model.TypeName);
-            }
+        foreach (var evt in model.Events)
+        {
+            RenderLocalEventRegistration(sb, evt, model.TypeName);
         }
 
         sb.AppendLine("            }");

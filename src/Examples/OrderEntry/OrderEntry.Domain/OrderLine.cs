@@ -2,16 +2,13 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using Neatoo.RemoteFactory;
-#if !CLIENT
 using OrderEntry.Ef;
-#endif
 
 namespace OrderEntry.Domain;
 
-#region docs:concepts/client-server-separation:simple-child-entity
 /// <summary>
 /// Order line item entity.
-/// Simple entity with local [Create] - runs on both client and server.
+/// Local [Create] runs on both client and server. Server-only [Fetch] loads from EF.
 /// </summary>
 [Factory]
 internal class OrderLine : IOrderLine
@@ -46,7 +43,6 @@ internal class OrderLine : IOrderLine
         Id = Guid.NewGuid();
     }
 
-#if !CLIENT
     /// <summary>
     /// Server-only Fetch - loads line from EF entity.
     /// Called by OrderLineList.Fetch to populate children.
@@ -59,6 +55,4 @@ internal class OrderLine : IOrderLine
         Quantity = entity.Quantity;
         UnitPrice = entity.UnitPrice;
     }
-#endif
 }
-#endregion
