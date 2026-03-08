@@ -289,10 +289,38 @@ var consultation = await factory.StartForPatient(patientId);
 
 ## Internal Visibility for Child Entities
 
-Child entity factory methods should be `internal` to signal that they are server-only. This produces an `internal` factory interface (invisible to the client) and enables IL trimming of the method bodies.
+Child entity factory methods should be `internal` to signal that they are server-only. This enables IL trimming of the method bodies and affects the generated factory interface.
+
+### Factory Interface Visibility Rules
+
+The generator determines factory interface visibility from **method** accessibility, not class accessibility:
+
+| Method Visibility in Class | Generated Factory Interface | Which Methods on Interface? | Guards? |
+|---|---|---|---|
+| All methods `internal` | `internal` | All (internal interface) | All get `IsServerRuntime` guard |
+| All methods `public` | `public` | All | Only `[Remote]` methods |
+| Mix of `public` and `internal` | `public` | **Public methods only** — internal methods excluded | `internal`: guarded; `public`: only if `[Remote]` |
+
+**"Excluded from the interface" does not mean "gone."** When a class has both public and internal methods, internal methods are excluded from the **public factory interface** but still exist on the **factory implementation class**. Within the assembly, the generated factory implementation still contains and can call the internal methods — they are used by server-side aggregate operations that resolve the factory from DI and call methods directly. External consumers (like a Blazor WASM client in a separate assembly) cannot see or call them because they only see the public interface.
+
+### Class Accessibility vs Method Accessibility
+
+The generator checks the **method's** `DeclaredAccessibility`, not the class's effective accessibility. A `public` method on an `internal` class is treated as `public` by the generator — no `IsServerRuntime` guard, included in the public factory interface.
+
+This means class accessibility and method accessibility serve **different purposes** in RemoteFactory:
+
+| Accessibility | What It Controls |
+|---|---|
+| **Class** `internal` | Hides the concrete type from external assemblies. Use with a `public` interface (`IOrder`) so the factory returns the interface type. |
+| **Method** `internal` | Tells the generator: emit `IsServerRuntime` guard, exclude from public factory interface, make trimmable. |
+| **Method** `public` | Tells the generator: include on factory interface, no guard (unless `[Remote]`). |
+
+A `public` method on an `internal` class does **not** behave like an `internal` method for code generation. The method is still unguarded, untrimmable, and included on the public factory interface — even though C# caps its effective accessibility to `internal`.
+
+### Example: All Internal Methods
 
 ```csharp
-// Internal class with public interface — recommended pattern
+// Internal class with public interface — recommended pattern for child entities
 public interface IOrderLine
 {
     int Id { get; set; }
@@ -312,11 +340,30 @@ internal partial class OrderLine : IOrderLine
     internal void Fetch(int id, string productName, decimal price, int qty) { }
 }
 // Generated: internal interface IOrderLineFactory — client can't inject or see it
+// Both methods get IsServerRuntime guards — trimmable on client
+```
+
+### Example: Mixed Visibility (Entity Duality)
+
+```csharp
+[Factory]
+internal partial class Department : IDepartment
+{
+    // Public: aggregate root entry point — on public factory interface, no guard (unless [Remote])
+    [Remote, Fetch]
+    public async Task<bool> Fetch(Guid id, [Service] IDeptRepo repo, CancellationToken ct) { ... }
+
+    // Internal: child context — excluded from public interface, gets IsServerRuntime guard
+    [Fetch]
+    internal void FetchAsChild(Guid id, string name) { ... }
+}
+// Generated: public IDepartmentFactory has Fetch() only
+// FetchAsChild() is on the factory implementation but NOT on IDepartmentFactory
 ```
 
 For aggregate roots, keep factory methods `public` (with `[Remote]` for operations that cross to the server). For child entities called only from server-side aggregate operations, use `internal`.
 
-**CS0051 constraint:** When a generated factory interface is `internal`, it cannot be used as a `[Service]` parameter type in a `public` method on another class. This limits `internal` to leaf entities whose factory interfaces are not passed as `[Service]` parameters to public methods. If you hit CS0051, keep the method `public` — the feature is opt-in and all `public` methods work identically to before.
+**CS0051 constraint:** CS0051 occurs when an `internal` type appears in a `public` method on a **`public`** class. When the consuming class is also `internal`, there is no CS0051 — C# caps the effective accessibility of `public` methods to the containing type's level, so `internal` service types are allowed. In practice, this means `internal` factory interfaces (from child entities with all-internal methods) can freely be injected as `[Service]` parameters into other `internal` classes. The constraint only applies when injecting into a **`public`** class. If you hit CS0051, either make the consuming class `internal` or keep the child entity methods `public` — the feature is opt-in and all `public` methods work identically to before.
 
 ---
 

@@ -286,6 +286,66 @@ internal partial class OrderLine : IOrderLine
 
 ---
 
+## 12. Optional Parameters in Factory Methods
+
+**Problem**: Default values are silently dropped — generated factory methods require all arguments.
+
+```csharp
+// WRONG - default value is lost in generated code
+[Factory]
+public partial class EmployeeSearch
+{
+    [Remote, Create]
+    public void Create(string? searchQuery = null) { }  // = null is stripped!
+}
+
+// Generated factory method becomes:
+// Task<EmployeeSearch> Create(string? searchQuery)  -- no default, caller must pass argument
+
+// RIGHT - don't use optional parameters; pass explicitly
+[Factory]
+public partial class EmployeeSearch
+{
+    [Remote, Create]
+    public void Create(string? searchQuery) { }  // Caller always passes value (or null)
+}
+```
+
+**Why**: The source generator captures parameter name and type but discards default values. The generated factory interface and implementation will not include `= null`, `= ""`, `= 0`, or any other defaults. Callers will get a compile error if they omit the argument.
+
+---
+
+## 13. Assuming CS0051 Blocks Internal Services on Internal Classes
+
+**Problem**: Avoiding `internal` factory methods because their `internal` factory interface would be injected as `[Service]` into another class — when that other class is itself `internal`.
+
+```csharp
+// WRONG - avoiding internal out of CS0051 fear
+[Factory]
+internal partial class PersonPhoneList
+{
+    [Create]
+    public void Create([Service] IPersonPhoneFactory phoneFactory) { }
+    // "Can't make this internal because IPersonPhoneListFactory would be internal
+    //  and couldn't be injected as [Service] elsewhere"
+    // WRONG — PersonPhoneList is internal, so CS0051 doesn't apply!
+}
+
+// RIGHT - when the consuming class is internal, internal services are fine
+[Factory]
+internal partial class PersonPhoneList
+{
+    [Create]
+    internal void Create([Service] IPersonPhoneFactory phoneFactory) { }
+    // IPersonPhoneFactory is internal, IPersonPhoneListFactory will be internal
+    // No CS0051 because PersonPhoneList is also internal
+}
+```
+
+**Why**: CS0051 only occurs when an `internal` type appears in a `public` method on a **`public`** class. When the consuming class is `internal`, C# caps the effective accessibility of its `public` methods to `internal`, so referencing `internal` service types is allowed. Child entities in an aggregate are typically all `internal` classes, so their `internal` factory interfaces can be freely injected into each other.
+
+---
+
 ## Summary Table
 
 | Anti-Pattern | Problem | Solution |
@@ -301,3 +361,5 @@ internal partial class OrderLine : IOrderLine
 | [Event] missing CancellationToken | Can't cancel | Add as final parameter |
 | Class [Execute] wrong return type | Won't compile | Must return containing type |
 | [Remote] on internal methods | NF0105 diagnostic | Remove [Remote] or make method public |
+| Optional parameters | Defaults silently dropped | Don't use defaults; pass all args explicitly |
+| CS0051 fear on internal classes | Avoids `internal` unnecessarily | Internal classes can take internal services even in public methods |

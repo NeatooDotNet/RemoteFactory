@@ -9,6 +9,8 @@ version: 1.0.0
 
 RemoteFactory is a Roslyn Source Generator-powered Data Mapper Factory for 3-tier .NET applications. It eliminates the need for DTOs, manual factories, and API controllers by generating everything at compile time.
 
+RemoteFactory + Neatoo together provide the complete DDD framework. For domain model, validation, properties, and collections, see the Neatoo skill. This skill covers factory generation, serialization, authorization, and client-server patterns.
+
 ## What RemoteFactory Does
 
 - **Generates factory interfaces and implementations** from attributed classes
