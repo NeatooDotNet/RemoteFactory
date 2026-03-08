@@ -6,6 +6,8 @@
 // authorization on factory methods. Use this when you want to leverage
 // ASP.NET Core's authorization infrastructure (policies, roles, claims).
 //
+// For domain-specific authorization with [AuthorizeFactory<T>], see AuthorizedOrder.cs.
+//
 // =============================================================================
 
 using Neatoo.RemoteFactory;
