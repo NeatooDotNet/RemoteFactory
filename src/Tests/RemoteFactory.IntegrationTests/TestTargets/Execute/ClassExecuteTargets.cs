@@ -22,7 +22,7 @@ public partial class ClassExecRemote : IClassExecRemote
     public ClassExecRemote() { }
 
     [Remote, Create]
-    public Task Create(string name, [Service] IService service)
+    internal Task Create(string name, [Service] IService service)
     {
         Id = 1;
         Name = name;
@@ -96,7 +96,7 @@ public partial class ClassExecRemoteWithInterface : IClassExecRemoteWithInterfac
     public ClassExecRemoteWithInterface() { }
 
     [Remote, Create]
-    public Task Create(string name, [Service] IService service)
+    internal Task Create(string name, [Service] IService service)
     {
         Id = 1;
         Name = name;

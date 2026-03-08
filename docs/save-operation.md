@@ -56,21 +56,21 @@ Each write operation is a method on your domain class. You write the persistence
 ```cs
 // Save routes to Insert/Update/Delete based on IsNew and IsDeleted flags
 [Remote, Insert]
-public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
 {
     await repo.AddAsync(new EmployeeEntity { Id = Id, FirstName = FirstName }, ct);
     IsNew = false;
 }
 
 [Remote, Update]
-public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
 {
     var e = await repo.GetByIdAsync(Id, ct);
     if (e != null) { e.FirstName = FirstName; await repo.UpdateAsync(e, ct); }
 }
 
 [Remote, Delete]
-public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
 {
     await repo.DeleteAsync(Id, ct);
 }
@@ -115,7 +115,7 @@ public partial class AuditLog : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create] public AuditLog() { Id = Guid.NewGuid(); }
-    [Remote, Insert] public Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
+    [Remote, Insert] internal Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
     // No [Update] or [Delete] = immutable after insert
 }
 ```

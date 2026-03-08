@@ -17,7 +17,7 @@ public partial class SkillEmployeeWithAssignments : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Create]
-    public void Create(
+    internal void Create(
         string firstName,
         string lastName,
         [Service] ISkillAssignmentListFactory assignmentListFactory)
@@ -30,7 +30,7 @@ public partial class SkillEmployeeWithAssignments : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] ISkillAssignmentListFactory assignmentListFactory,
         [Service] IEmployeeRepository repo,

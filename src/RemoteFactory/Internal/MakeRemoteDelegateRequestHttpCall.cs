@@ -24,7 +24,7 @@ public static class MakeRemoteDelegateRequestHttpCallImplementation
 			// Add correlation ID header for server-side tracing
 			using var httpRequest = new HttpRequestMessage(HttpMethod.Post, uri)
 			{
-				Content = JsonContent.Create(request)
+				Content = JsonContent.Create(request, NeatooTransportJsonContext.Default.RemoteRequestDto)
 			};
 			httpRequest.Headers.Add(CorrelationContextImpl.HeaderName, correlationId);
 
@@ -37,7 +37,7 @@ public static class MakeRemoteDelegateRequestHttpCallImplementation
 				throw new HttpRequestException($"Failed to call remotefactory. Status code: {response.StatusCode} {issue}");
 			}
 
-			var result = await response.Content.ReadFromJsonAsync<RemoteResponseDto>(cancellationToken) ?? throw new HttpRequestException($"Successful Code but empty response.");
+			var result = await response.Content.ReadFromJsonAsync(NeatooTransportJsonContext.Default.RemoteResponseDto, cancellationToken) ?? throw new HttpRequestException($"Successful Code but empty response.");
 
 			return result;
 		};

@@ -26,7 +26,7 @@ public class RemoteSaveWithCancellation : IFactorySaveMeta
 
     [Remote]
     [Insert]
-    public async Task InsertAsync(CancellationToken cancellationToken, [Service] IServerOnlyService service)
+    internal async Task InsertAsync(CancellationToken cancellationToken, [Service] IServerOnlyService service)
     {
         ArgumentNullException.ThrowIfNull(service);
         cancellationToken.ThrowIfCancellationRequested();
@@ -36,7 +36,7 @@ public class RemoteSaveWithCancellation : IFactorySaveMeta
 
     [Remote]
     [Update]
-    public async Task UpdateAsync(CancellationToken cancellationToken, [Service] IServerOnlyService service)
+    internal async Task UpdateAsync(CancellationToken cancellationToken, [Service] IServerOnlyService service)
     {
         ArgumentNullException.ThrowIfNull(service);
         cancellationToken.ThrowIfCancellationRequested();
@@ -46,7 +46,7 @@ public class RemoteSaveWithCancellation : IFactorySaveMeta
 
     [Remote]
     [Delete]
-    public async Task DeleteAsync(CancellationToken cancellationToken, [Service] IServerOnlyService service)
+    internal async Task DeleteAsync(CancellationToken cancellationToken, [Service] IServerOnlyService service)
     {
         ArgumentNullException.ThrowIfNull(service);
         cancellationToken.ThrowIfCancellationRequested();

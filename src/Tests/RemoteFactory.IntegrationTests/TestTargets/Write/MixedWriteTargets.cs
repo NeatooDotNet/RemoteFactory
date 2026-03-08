@@ -148,7 +148,7 @@ public class MixedWriteTarget : IFactorySaveMeta
 
     [Remote]
     [Update]
-    public bool UpdateBoolTrueRemote([Service] IService service)
+    internal bool UpdateBoolTrueRemote([Service] IService service)
     {
         UpdateCalled = true;
         ServiceInjected = service != null;
@@ -157,7 +157,7 @@ public class MixedWriteTarget : IFactorySaveMeta
 
     [Remote]
     [Update]
-    public bool UpdateBoolTrueRemoteParam(int? param, [Service] IService service)
+    internal bool UpdateBoolTrueRemoteParam(int? param, [Service] IService service)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -219,7 +219,7 @@ public class MixedWriteTarget : IFactorySaveMeta
 
     [Remote]
     [Delete]
-    public bool DeleteBoolTrueRemote(int? param)
+    internal bool DeleteBoolTrueRemote(int? param)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -228,7 +228,7 @@ public class MixedWriteTarget : IFactorySaveMeta
 
     [Remote]
     [Delete]
-    public void DeleteVoidRemote([Service] IService service)
+    internal void DeleteVoidRemote([Service] IService service)
     {
         DeleteCalled = true;
         ServiceInjected = service != null;
@@ -236,7 +236,7 @@ public class MixedWriteTarget : IFactorySaveMeta
 
     [Remote]
     [Delete]
-    public bool DeleteBoolFalseRemote(int? param, [Service] IService service)
+    internal bool DeleteBoolFalseRemote(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -246,7 +246,7 @@ public class MixedWriteTarget : IFactorySaveMeta
 
     [Remote]
     [Delete]
-    public Task DeleteTaskRemote(int? param, [Service] IService service)
+    internal Task DeleteTaskRemote(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;

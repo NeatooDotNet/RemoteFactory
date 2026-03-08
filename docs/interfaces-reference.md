@@ -224,7 +224,7 @@ public partial class EmployeeWithLifecycleOrder : IFactoryOnStart, IFactoryOnCom
     public EmployeeWithLifecycleOrder() => EmployeeId = Guid.NewGuid();
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -283,7 +283,7 @@ public partial class EmployeeSaveDemo : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = await repo.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -295,7 +295,7 @@ public partial class EmployeeSaveDemo : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = new EmployeeEntity
         {
@@ -310,7 +310,7 @@ public partial class EmployeeSaveDemo : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = new EmployeeEntity
         {
@@ -324,7 +324,7 @@ public partial class EmployeeSaveDemo : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         await repo.DeleteAsync(Id, ct);
         await repo.SaveChangesAsync(ct);

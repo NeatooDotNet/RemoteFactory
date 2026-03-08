@@ -30,7 +30,7 @@ public partial class EmployeeWithEvents : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -47,7 +47,7 @@ public partial class EmployeeWithEvents : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert(
+    internal async Task Insert(
         [Service] IEmployeeRepository repository,
         [Service] EmployeeEventHandlers.NotifyHROfNewEmployeeEvent notifyHR,
         CancellationToken ct)
@@ -74,7 +74,7 @@ public partial class EmployeeWithEvents : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update(
+    internal async Task Update(
         [Service] IEmployeeRepository repository,
         [Service] EmployeeEventHandlers.NotifyManagerOfPromotionEvent notifyPromotion,
         CancellationToken ct)
@@ -106,7 +106,7 @@ public partial class EmployeeWithEvents : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete(
+    internal async Task Delete(
         [Service] IEmployeeRepository repository,
         [Service] EmployeeEventHandlers.LogEmployeeDepartureEvent logDeparture,
         CancellationToken ct)

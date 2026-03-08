@@ -41,17 +41,17 @@ public partial class AuthorizedEmployeeWrite
     public AuthorizedEmployeeWrite() { Id = Guid.NewGuid(); }
 
     [Remote, Insert]
-    public Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         IsNew = false;
         return Task.CompletedTask;
     }
 
     [Remote, Update]
-    public Task Update([Service] IEmployeeRepository repository, CancellationToken ct) => Task.CompletedTask;
+    internal Task Update([Service] IEmployeeRepository repository, CancellationToken ct) => Task.CompletedTask;
 
     [Remote, Delete]
-    public Task Delete([Service] IEmployeeRepository repository, CancellationToken ct) => Task.CompletedTask;
+    internal Task Delete([Service] IEmployeeRepository repository, CancellationToken ct) => Task.CompletedTask;
 }
 
 // ============================================================================
@@ -89,11 +89,11 @@ public partial class AuthorizedDepartmentWrite
     public AuthorizedDepartmentWrite() { Id = Guid.NewGuid(); }
 
     [Remote, Insert]
-    public Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
+    internal Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
 
     [Remote, Update]
-    public Task Update(CancellationToken ct) => Task.CompletedTask;
+    internal Task Update(CancellationToken ct) => Task.CompletedTask;
 
     [Remote, Delete]
-    public Task Delete(CancellationToken ct) => Task.CompletedTask;
+    internal Task Delete(CancellationToken ct) => Task.CompletedTask;
 }

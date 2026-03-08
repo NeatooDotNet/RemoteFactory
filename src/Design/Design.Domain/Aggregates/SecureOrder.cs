@@ -6,6 +6,8 @@
 // authorization on factory methods. Use this when you want to leverage
 // ASP.NET Core's authorization infrastructure (policies, roles, claims).
 //
+// For domain-specific authorization with [AuthorizeFactory<T>], see AuthorizedOrder.cs.
+//
 // =============================================================================
 
 using Neatoo.RemoteFactory;
@@ -54,7 +56,7 @@ public partial class SecureOrder : IFactorySaveMeta
     // -------------------------------------------------------------------------
 
     [Remote, Create]
-    public void Create(string customerName)
+    internal void Create(string customerName)
     {
         CustomerName = customerName;
         IsNew = true;
@@ -87,7 +89,7 @@ public partial class SecureOrder : IFactorySaveMeta
     /// </remarks>
     [Remote, Fetch]
     [AspAuthorize("RequireAuthenticated")]
-    public void Fetch(int id)
+    internal void Fetch(int id)
     {
         Id = id;
         CustomerName = $"Customer_{id}";
@@ -110,7 +112,7 @@ public partial class SecureOrder : IFactorySaveMeta
     /// </summary>
     [Remote, Insert]
     [AspAuthorize(Roles = "Admin,Manager")]
-    public Task Insert()
+    internal Task Insert()
     {
         Id = Random.Shared.Next(1000, 9999);
         return Task.CompletedTask;
@@ -140,7 +142,7 @@ public partial class SecureOrder : IFactorySaveMeta
     [Remote, Update]
     [AspAuthorize("RequireAuthenticated")]
     [AspAuthorize(Roles = "Manager")]
-    public Task Update()
+    internal Task Update()
     {
         return Task.CompletedTask;
     }
@@ -154,7 +156,7 @@ public partial class SecureOrder : IFactorySaveMeta
     /// </summary>
     [Remote, Delete]
     [AspAuthorize(Roles = "Admin")]
-    public Task Delete()
+    internal Task Delete()
     {
         return Task.CompletedTask;
     }

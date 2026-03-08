@@ -39,7 +39,7 @@ public partial class EmployeeModel : IEmployeeModel
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct = default)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -56,7 +56,7 @@ public partial class EmployeeModel : IEmployeeModel
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         var entity = new EmployeeEntity
         {
@@ -76,7 +76,7 @@ public partial class EmployeeModel : IEmployeeModel
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         var entity = await repository.GetByIdAsync(Id, ct);
         if (entity != null)
@@ -92,7 +92,7 @@ public partial class EmployeeModel : IEmployeeModel
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    internal async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);

@@ -51,7 +51,7 @@ public class ValidatedEntity : IFactorySaveMeta
     public bool IsNew { get; set; } = true;
 
     [Remote, Create]
-    public void Create()
+    internal void Create()
     {
         Id = Guid.NewGuid();
     }
@@ -61,7 +61,7 @@ public class ValidatedEntity : IFactorySaveMeta
     /// When triggerValidationError is true, validates the entity and populates ValidationErrors.
     /// </summary>
     [Remote, Fetch]
-    public Task<bool> Fetch(Guid id, bool triggerValidationError)
+    internal Task<bool> Fetch(Guid id, bool triggerValidationError)
     {
         Id = id;
         // Name and Value left as default (null and 0) to trigger validation errors
@@ -81,7 +81,7 @@ public class ValidatedEntity : IFactorySaveMeta
     /// Fetch with pre-set valid values and optional validation.
     /// </summary>
     [Remote, Fetch]
-    public Task<bool> FetchValid(Guid id, string name, int value, bool runValidation)
+    internal Task<bool> FetchValid(Guid id, string name, int value, bool runValidation)
     {
         Id = id;
         Name = name;
@@ -99,14 +99,14 @@ public class ValidatedEntity : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public Task Insert()
+    internal Task Insert()
     {
         IsNew = false;
         return Task.CompletedTask;
     }
 
     [Remote, Update]
-    public Task Update()
+    internal Task Update()
     {
         return Task.CompletedTask;
     }

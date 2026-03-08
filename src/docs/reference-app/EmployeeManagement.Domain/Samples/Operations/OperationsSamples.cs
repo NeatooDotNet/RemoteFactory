@@ -95,7 +95,7 @@ public partial class EmployeeFetchSample : IFactorySaveMeta
     #region operations-fetch-instance
     // [Fetch] loads data into instance; [Service] marks DI-injected parameters
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(employeeId, ct);
         if (entity == null) return false;  // Return false = factory returns null
@@ -125,7 +125,7 @@ public partial class EmployeeFetchOptional : IFactorySaveMeta
     #region operations-fetch-bool-return
     // Return bool: true = success (instance), false = not found (factory returns null)
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(employeeId, ct);
         if (entity == null) return false;  // Factory returns null
@@ -155,7 +155,7 @@ public partial class EmployeeInsertSample : IFactorySaveMeta
     #region operations-insert
     // [Insert] persists new entities to storage
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
         await repository.AddAsync(entity, ct);
@@ -182,7 +182,7 @@ public partial class EmployeeUpdateSample : IFactorySaveMeta
     public EmployeeUpdateSample() => Id = Guid.NewGuid();
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -197,7 +197,7 @@ public partial class EmployeeUpdateSample : IFactorySaveMeta
     #region operations-update
     // [Update] persists changes to existing entities
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
         await repository.UpdateAsync(entity, ct);
@@ -221,7 +221,7 @@ public partial class EmployeeDeleteSample : IFactorySaveMeta
     public EmployeeDeleteSample() => Id = Guid.NewGuid();
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -234,7 +234,7 @@ public partial class EmployeeDeleteSample : IFactorySaveMeta
     #region operations-delete
     // [Delete] removes entities from storage
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);
@@ -259,7 +259,7 @@ public partial class SettingItem : IFactorySaveMeta
     #region operations-insert-update
     // Multiple attributes on one method - same handler for insert and update (upsert)
     [Remote, Insert, Update]
-    public async Task Upsert([Service] ISettingsRepository repository, CancellationToken ct)
+    internal async Task Upsert([Service] ISettingsRepository repository, CancellationToken ct)
     {
         await repository.UpsertAsync(Key, Value, ct);
         IsNew = false;
@@ -355,7 +355,7 @@ public partial class EmployeeRemoteVsLocal : IFactorySaveMeta
 
     // [Remote] = serialized to server where repository is available
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -367,7 +367,7 @@ public partial class EmployeeRemoteVsLocal : IFactorySaveMeta
     #endregion
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = "", /* ... */ };
         await repository.AddAsync(entity, ct);
@@ -393,7 +393,7 @@ public partial class EmployeeWithCancellation : IFactorySaveMeta
     #region operations-cancellation
     // CancellationToken always last - pass to async calls, check before expensive operations
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         var entity = await repository.GetByIdAsync(id, ct);
@@ -417,7 +417,7 @@ public partial class EmployeeSearchSample
     #region operations-params-value
     // Value parameters (without [Service]) are serialized and sent to server
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid departmentId, string? positionFilter, int maxResults,
         [Service] IEmployeeRepository repository, CancellationToken ct)
     {
@@ -447,7 +447,7 @@ public partial class EmployeeWithServiceParams : IFactorySaveMeta
     #region operations-params-service
     // [Service] parameters are DI-injected, not serialized
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid employeeId,                          // Value: serialized
         [Service] IEmployeeRepository repository, // Service: DI-injected
         [Service] IAuditLogService auditLog,      // Service: DI-injected
@@ -475,7 +475,7 @@ public partial class BatchEmployeeFetch
     #region operations-params-array
     // params arrays supported for batch operations
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         [Service] IEmployeeRepository repository, CancellationToken ct, params Guid[] employeeIds)
     {
         EmployeeNames = [];
@@ -506,7 +506,7 @@ public partial class EmployeeCompleteParams : IFactorySaveMeta
     #region operations-params-cancellation
     // Parameter order: value params, [Service] params, CancellationToken (always last)
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid employeeId, string? filter,          // Value parameters
         [Service] IEmployeeRepository repository, // Service parameters
         [Service] IAuditLogService auditLog,

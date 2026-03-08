@@ -1,8 +1,8 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.0
-last_updated: 2026-02-01
+design_version: 1.1
+last_updated: 2026-03-08
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -73,13 +73,13 @@ internal partial class MyEntity : IMyEntity
     public int Id { get; set; }  // Public setter required for serialization
 
     [Remote, Create]
-    public void Create(string name, [Service] IMyService service) { }
+    internal void Create(string name, [Service] IMyService service) { }
 
     [Remote, Fetch]
-    public void Fetch(int id, [Service] IMyService service) { }
+    internal void Fetch(int id, [Service] IMyService service) { }
 }
 ```
-**Generates**: `public IMyEntityFactory` with `Create()`, `Fetch()` methods returning `IMyEntity`.
+**Generates**: `public IMyEntityFactory` with `Create()`, `Fetch()` methods returning `IMyEntity`. `[Remote]` promotes `internal` methods to `public` on the factory interface.
 
 ### Pattern 1b: Class Factory (Child Entity)
 ```csharp
@@ -138,7 +138,8 @@ public static partial class MyCommands
 | Question | Answer | Reference | Reason |
 |----------|--------|-----------|--------|
 | Should this method be [Remote]? | Only aggregate root entry points | `Order.cs` vs `OrderLine.cs` | Once on server, stay on server |
-| Should this method be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
+| Should a [Remote] method be `internal`? | Yes, always -- `[Remote]` requires `internal` (NF0105 error if `public`) | `Order.cs` | Enables IL trimming; `[Remote]` promotes to `public` on factory interface |
+| Should non-[Remote] methods be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
 | Can I use private setters? | No | `AllPatterns.cs:73` | IL trimming + source generation |
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
@@ -147,6 +148,8 @@ public static partial class MyCommands
 | Do [Event] methods need CancellationToken? | Yes, as final parameter | `AllPatterns.cs:417-427` | Graceful shutdown support |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
+| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | `AuthorizedOrder.cs`, `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
+| Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 
 ---
 
@@ -157,20 +160,20 @@ public static partial class MyCommands
 **WRONG:**
 ```csharp
 [Factory]
-public partial class OrderLine
+internal partial class OrderLine : IOrderLine
 {
     [Remote, Create]  // WRONG: Causes N+1 remote calls
-    public void Create(string productName, decimal price, int qty) { }
+    internal void Create(string productName, decimal price, int qty) { }
 }
 ```
 
 **RIGHT:**
 ```csharp
 [Factory]
-public partial class OrderLine
+internal partial class OrderLine : IOrderLine
 {
     [Create]  // No [Remote] - called from server-side Order operations
-    public void Create(string productName, decimal price, int qty) { }
+    internal void Create(string productName, decimal price, int qty) { }
 }
 ```
 
@@ -250,12 +253,12 @@ public int Id { get; set; }  // Public setter for serialization
 **WRONG:**
 ```csharp
 [Factory]
-public partial class MyEntity
+internal partial class MyEntity
 {
     private IMyService _service;  // WRONG: Lost after serialization
 
     [Remote, Create]
-    public void Create([Service] IMyService service)
+    internal void Create([Service] IMyService service)
     {
         _service = service;  // This field will be null on client after round-trip
     }
@@ -282,7 +285,7 @@ public partial class MyEntity
 **RIGHT (Option B - Call from Server Operation):**
 ```csharp
 [Remote, Update]
-public void Update([Service] IMyService service)
+internal void Update([Service] IMyService service)
 {
     service.Execute();  // Use immediately, don't store
 }
@@ -314,27 +317,30 @@ public partial class MyEntity { }  // partial required
 
 An entity can be an aggregate root in one context and a child in another. The mistake is applying [Remote] based on the type, not the context.
 
-**WRONG (applying [Remote] because "it's a Product"):**
+**WRONG (applying [Remote] to all operations because "it's a Product"):**
 ```csharp
 // Product.cs - used as aggregate root AND as child of Order
 [Factory]
-public partial class Product
+internal partial class Product : IProduct
 {
-    [Remote, Fetch]  // WRONG if Product is also fetched as part of Order
-    public void Fetch(int id, [Service] IProductRepository repo) { }
+    [Remote, Fetch]  // OK as aggregate root entry point
+    internal void Fetch(int id, [Service] IProductRepository repo) { }
+
+    [Remote, Fetch]  // WRONG: This child-context method doesn't need [Remote]
+    internal void FetchAsChild(int id, string name, decimal price) { }
 }
 ```
 
 **RIGHT (separate operations for different contexts):**
 ```csharp
 [Factory]
-public partial class Product
+internal partial class Product : IProduct
 {
-    [Remote, Fetch]  // Aggregate root context - client entry point
-    public void Fetch(int id, [Service] IProductRepository repo) { }
+    [Remote, Fetch]  // Aggregate root context - client entry point (internal + [Remote] = promoted to public on interface)
+    internal void Fetch(int id, [Service] IProductRepository repo) { }
 
     [Fetch]  // Child context - called from Order.Fetch on server
-    public void FetchAsChild(int id, string name, decimal price) { }
+    internal void FetchAsChild(int id, string name, decimal price) { }
 }
 ```
 
@@ -342,29 +348,29 @@ public partial class Product
 
 ---
 
-### Anti-Pattern 8: [Remote] on Internal Methods
+### Anti-Pattern 8: [Remote] on Public Methods
 
 **WRONG:**
 ```csharp
 [Factory]
-internal partial class OrderLine : IOrderLine
+internal partial class Order : IOrder
 {
-    [Remote, Create]   // WRONG: Diagnostic NF0105
-    internal void Create(string name, decimal price, int qty) { }
+    [Remote, Create]   // WRONG: Diagnostic NF0105 -- [Remote] requires internal
+    public void Create(string name, [Service] IMyService service) { }
 }
 ```
 
 **RIGHT:**
 ```csharp
 [Factory]
-internal partial class OrderLine : IOrderLine
+internal partial class Order : IOrder
 {
-    [Create]           // No [Remote] - server-only
-    internal void Create(string name, decimal price, int qty) { }
+    [Remote, Create]   // Correct: [Remote] + internal, promoted to public on factory interface
+    internal void Create(string name, [Service] IMyService service) { }
 }
 ```
 
-**Why it matters:** `[Remote]` means "client entry point." `internal` means "server-only." These are contradictory. The generator emits diagnostic error NF0105 and skips the method. Remove `[Remote]` if the method is server-only, or make it `public` if clients should call it.
+**Why it matters:** `[Remote]` requires `internal` to enable IL trimming of method bodies on client assemblies. The generator promotes `[Remote] internal` methods to `public` on the factory interface, so clients still call them through the factory. `[Remote] public` emits diagnostic error NF0105.
 
 ---
 
@@ -372,12 +378,12 @@ internal partial class OrderLine : IOrderLine
 
 ### 1. [Remote] is ONLY for Aggregate Root Entry Points
 ```csharp
-// CORRECT: Aggregate root has [Remote]
+// CORRECT: Aggregate root has [Remote] + internal (promoted to public on factory interface)
 [Factory]
-public partial class Order
+internal partial class Order : IOrder
 {
-    [Remote, Create]  // Client entry point
-    public void Create(...) { }
+    [Remote, Create]  // Client entry point -- internal required by [Remote]
+    internal void Create(...) { }
 }
 
 // CORRECT: Child entity does NOT have [Remote]
@@ -395,23 +401,23 @@ The developer's `public` vs `internal` on factory methods tells the generator wh
 
 | Method Declaration | Guard Emitted? | Client Behavior | Trimmable? |
 |---|---|---|---|
-| `[Remote] public` | Yes | Routes to server via delegate fork | Yes (guarded) |
+| `[Remote] internal` | Yes | Routes to server via delegate fork; promoted to `public` on factory interface | Yes (guarded) |
 | `public` (no Remote) | No | Runs locally on client | No (always available) |
 | `internal` (no Remote) | Yes | Throws if called when `IsServerRuntime=false` | Yes (guarded) |
-| `[Remote] internal` | N/A | **Diagnostic NF0105** -- contradiction | N/A |
+| `[Remote] public` | N/A | **Diagnostic NF0105** -- `[Remote]` requires `internal` | N/A |
 
-**Why this matters:** Before this feature, ALL `Local*` methods had `IsServerRuntime` guards, which broke `Can*` and `Create` on the client. Now, `public` non-`[Remote]` methods (the ones clients actually call directly) have no guard and work on both sides.
+**Why this matters:** `[Remote]` requires `internal` so the IL trimmer can remove method bodies from client assemblies. The generator promotes `[Remote] internal` methods to `public` on the factory interface, so clients call them through the factory. `public` non-`[Remote]` methods have no guard and work on both sides.
 
 ```csharp
-// Aggregate root: public + [Remote] for client entry points
+// Aggregate root: internal + [Remote] for client entry points (promoted to public on interface)
 [Factory]
 internal partial class Order : IOrder
 {
-    [Remote, Create]  // Guard: yes (Remote). Client routes to server.
-    public void Create(string name, [Service] IOrderLineListFactory lines) { }
+    [Remote, Create]  // Guard: yes (Remote). Client routes to server. Promoted to public on IOrderFactory.
+    internal void Create(string name, [Service] IOrderLineListFactory lines) { }
 
-    [Remote, Fetch]   // Guard: yes (Remote). Client routes to server.
-    public Task<bool> Fetch(int id, [Service] IOrderRepository repo) { }
+    [Remote, Fetch]   // Guard: yes (Remote). Client routes to server. Promoted to public on IOrderFactory.
+    internal Task<bool> Fetch(int id, [Service] IOrderRepository repo) { }
 }
 
 // Child entity: internal methods for server-only operations
@@ -426,17 +432,50 @@ internal partial class OrderLine : IOrderLine
 }
 ```
 
+#### Can* Method Guard Derivation (Auth-Method-Driven)
+
+Can* methods (e.g., `CanCreate()`, `CanFetch()`, `CanSave()`) derive their guard behavior from the **auth class methods**, not from the parent factory method. This is because Can* methods call the auth methods, not the factory method. The auth method's accessibility determines whether the Can* check can run on the client.
+
+| Auth Method Declaration | Can* Guard? | Can* Client Behavior | Can* Interface Promotion |
+|---|---|---|---|
+| `public` (no `[Remote]`) | No | Runs locally on client (sync, returns `Authorized`) | Not independently promoted |
+| `internal` (no `[Remote]`) | Yes | Throws if called when `IsServerRuntime=false` | Not promoted |
+| `[Remote] internal` | Yes | Routes to server via remote delegate (async, returns `Task<Authorized>`) | Promoted to `public` on factory interface |
+
+**CanSave aggregation:** CanSave aggregates auth methods from Insert, Update, and Delete operations. If ANY constituent auth method is `internal` or `[Remote]`, CanSave gets the guard (most restrictive wins for security).
+
+**`[AspAuthorize]` interaction:** When `[AspAuthorize]` is present on a factory method alongside `[AuthorizeFactory<T>]`, the Can* method always gets the guard because `[AspAuthorize]` requires server-side `HttpContext`.
+
+```csharp
+// Public auth methods => Can* runs on client, no guard
+public interface IMyAuth
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    bool CanCreate();  // public => CanCreate() has no guard, runs on client
+}
+
+// [Remote] internal auth methods => Can* routes to server
+public interface IServerAuth
+{
+    [Remote]
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    internal bool CanCreate();  // [Remote] internal => CanCreate() has guard, routes to server
+}
+```
+
+See `AuthorizedOrder.cs` and `AuthorizedOrderAuth.cs` for the public auth pattern. See `ShowcaseAuthRemoteTests.cs` for the `[Remote]` auth method pattern.
+
 #### Factory Interface Visibility Rules
 
-The generated factory interface visibility derives from the methods:
+The generated factory interface visibility derives from the methods. `[Remote]` promotes `internal` methods to `public` on the factory interface:
 
 | Method Visibility | Generated Interface | Interface Members |
 |---|---|---|
-| All methods `public` | `public interface IXxxFactory` | All methods included |
-| All methods `internal` | `internal interface IXxxFactory` | All methods included |
-| Mix of `public` and `internal` | `public interface IXxxFactory` | All methods included; `internal` methods get `internal` modifier |
+| All methods `public` (or `[Remote] internal`) | `public interface IXxxFactory` | All methods included as `public` |
+| All methods `internal` (no `[Remote]`) | `internal interface IXxxFactory` | All methods included |
+| Mix of `public`/`[Remote] internal` and plain `internal` | `public interface IXxxFactory` | All methods included; plain `internal` methods get `internal` modifier; `[Remote] internal` methods are promoted to `public` |
 
-When a factory has mixed visibility, `internal` methods appear on the `public` interface with the `internal` access modifier, making them accessible to same-assembly callers while hidden from external consumers. An all-`internal` factory interface (e.g., `IOrderLineFactory`) is not injectable from the client container. The client cannot even see it. This is the desired behavior for child entity factories.
+`[Remote] internal` methods are treated as `public` for interface visibility purposes -- they appear as `public` members on the factory interface because clients need to call them. Plain `internal` methods (without `[Remote]`) appear with the `internal` access modifier. An all-`internal` factory interface (e.g., `IOrderLineFactory` where no methods have `[Remote]`) is not injectable from the client container. The client cannot even see it. This is the desired behavior for child entity factories.
 
 #### Internal Class with Public Interface Pattern
 
@@ -533,7 +572,7 @@ Services injected via constructor are resolved from DI on both client and server
 ### Method Injection = Server Only (Common Case)
 ```csharp
 [Remote, Create]
-public void Create(string name, [Service] IRepository repo)  // Server only
+internal void Create(string name, [Service] IRepository repo)  // Server only
 ```
 Method-injected services stored in fields are NOT serialized - they'll be null after crossing the client/server boundary. If you need a service reference after serialization, use constructor injection.
 
@@ -548,13 +587,13 @@ public partial class Order : IFactorySaveMeta
     public bool IsDeleted { get; set; }  // Public setter required
 
     [Remote, Insert]
-    public Task Insert(...) { }  // Called when IsNew=true, IsDeleted=false
+    internal Task Insert(...) { }  // Called when IsNew=true, IsDeleted=false
 
     [Remote, Update]
-    public Task Update(...) { }  // Called when IsNew=false, IsDeleted=false
+    internal Task Update(...) { }  // Called when IsNew=false, IsDeleted=false
 
     [Remote, Delete]
-    public Task Delete(...) { }  // Called when IsDeleted=true
+    internal Task Delete(...) { }  // Called when IsDeleted=true
 }
 ```
 
@@ -621,6 +660,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] Event handlers with CancellationToken (`ExampleEvents._OnOrderPlaced`)
 - [x] CorrelationContext usage (`CorrelationExample.cs`)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
+- [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 
 ---
 
@@ -648,7 +688,7 @@ These are known limitations or open questions. They are documented here to preve
 6. **Method-injected services stored in fields** - Lost after serialization; use constructor injection
 7. **Missing partial keyword** - Generator needs to extend your class
 8. **Missing CancellationToken on events** - Required for graceful shutdown
-9. **[Remote] on internal methods** - Contradictory: `[Remote]` = client entry point, `internal` = server-only. Emits NF0105.
+9. **[Remote] on public methods** - `[Remote]` requires `internal` for IL trimming. `[Remote] public` emits NF0105. Change to `internal`.
 
 ---
 
@@ -658,6 +698,8 @@ These are known limitations or open questions. They are documented here to preve
 |------|----------|
 | `Design.Domain/FactoryPatterns/AllPatterns.cs` | All three patterns side-by-side with extensive comments |
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle hooks and IFactorySaveMeta |
+| `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] custom domain authorization with Can* methods |
+| `Design.Domain/Aggregates/AuthorizedOrderAuth.cs` | Auth interface and implementation for AuthorizedOrder |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |

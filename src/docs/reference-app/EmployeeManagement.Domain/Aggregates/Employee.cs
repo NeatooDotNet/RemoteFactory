@@ -32,7 +32,7 @@ public partial class Employee : IFactorySaveMeta
     #region getting-started-employee-model
     // [Remote] executes on server; [Service] injects from DI (not serialized)
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = await repo.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -43,7 +43,7 @@ public partial class Employee : IFactorySaveMeta
 
     // Save() routes to Insert/Update/Delete based on IsNew and IsDeleted
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         await repo.AddAsync(MapToEntity(), ct);
         await repo.SaveChangesAsync(ct);
@@ -51,14 +51,14 @@ public partial class Employee : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         await repo.UpdateAsync(MapToEntity(), ct);
         await repo.SaveChangesAsync(ct);
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         await repo.DeleteAsync(Id, ct);
         await repo.SaveChangesAsync(ct);

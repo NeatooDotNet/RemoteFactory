@@ -211,7 +211,7 @@ public partial class EmployeeWithCancellation
 
     // CancellationToken fires on: client disconnect, server shutdown
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] IEmployeeRepository repository,
         CancellationToken ct)
@@ -257,7 +257,7 @@ public partial class EmployeeWithCorrelation
     public EmployeeWithCorrelation() => Id = Guid.NewGuid();
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,

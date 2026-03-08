@@ -64,15 +64,17 @@ This is runtime enforcement, not compile-time. The code compiles, but the client
 
 ## Method Visibility and the Client/Server Boundary
 
-Method visibility (`public` vs `internal`) gives the generator a second signal alongside `[Remote]` for controlling what the client can access:
+Method visibility (`public` vs `internal`) and the `[Remote]` attribute together control what the client can access:
 
 | Declaration | Client Can Call? | Crosses Network? | Factory Interface |
 |---|---|---|---|
-| `[Remote] public` | Yes | Yes — serializes to server | Included in public interface |
+| `[Remote] internal` | Yes | Yes — serializes to server | Promoted to `public` on interface |
 | `public` (no Remote) | Yes | No — runs locally | Included in public interface |
 | `internal` (no Remote) | No | N/A — server-only | Included with `internal` modifier (or `internal` interface if all methods are internal) |
 
-Use `internal` on child entity factory methods. The generator produces an `internal` factory interface when all methods on a class are `internal`. An `internal` factory interface is not injectable from the client's DI container — the client cannot even see it. This prevents accidental client-side calls to server-only operations and enables IL trimming of those method bodies.
+`[Remote]` requires `internal` — `[Remote] public` is a compile-time error (NF0105). The `[Remote] internal` combination means the method body is trimmable on the client, but the generated factory interface exposes it as `public` so clients can call it through the factory.
+
+Use `internal` on child entity factory methods. The generator produces an `internal` factory interface when all methods on a class are `internal` (and none have `[Remote]`). An `internal` factory interface is not injectable from the client's DI container — the client cannot even see it. This prevents accidental client-side calls to server-only operations and enables IL trimming of those method bodies.
 
 ```csharp
 // Aggregate root: public interface, client-visible factory
@@ -81,8 +83,8 @@ public interface IOrder : IFactorySaveMeta { ... }
 [Factory]
 internal partial class Order : IOrder
 {
-    [Remote, Create] public void Create(...) { }    // Client calls this
-    [Remote, Fetch]  public Task<bool> Fetch(...) { }  // Client calls this
+    [Remote, Create] internal void Create(...) { }    // Client calls via factory (promoted to public on IOrderFactory)
+    [Remote, Fetch]  internal Task<bool> Fetch(...) { }  // Client calls via factory (promoted to public on IOrderFactory)
 }
 
 // Child entity: internal interface, invisible to client
@@ -97,20 +99,20 @@ internal partial class OrderLine : IOrderLine
 // Generated: internal interface IOrderLineFactory — client can't inject it
 ```
 
-For entities with mixed visibility (aggregate root in one context, child in another), the generator creates a `public` interface containing all methods. Internal methods appear on the interface with the `internal` access modifier, making them accessible to same-assembly callers while hidden from external consumers:
+For entities with mixed visibility (aggregate root in one context, child in another), the generator creates a `public` interface containing all methods. `[Remote] internal` methods are promoted to `public` on the interface. Plain `internal` methods appear with the `internal` access modifier:
 
 ```csharp
 [Factory]
 internal partial class Product : IProduct
 {
-    [Remote, Fetch] public Task<bool> Fetch(int id, ...) { }       // Public on interface
+    [Remote, Fetch] internal Task<bool> Fetch(int id, ...) { }     // Promoted to public on interface
     [Fetch]         internal void FetchAsChild(int id, ...) { }    // Internal on interface
 }
 // Generated:
 // public interface IProductFactory
 // {
-//     Task<IProduct?> Fetch(...);
-//     internal IProduct FetchAsChild(...);  // internal modifier — same-assembly only
+//     Task<IProduct?> Fetch(...);                  // public — promoted by [Remote]
+//     internal IProduct FetchAsChild(...);          // internal modifier — same-assembly only
 // }
 ```
 

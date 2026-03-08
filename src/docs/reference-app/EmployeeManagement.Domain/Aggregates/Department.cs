@@ -29,7 +29,7 @@ public partial class Department : IFactorySaveMeta
     /// Fetches an existing Department by ID.
     /// </summary>
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -43,7 +43,7 @@ public partial class Department : IFactorySaveMeta
     /// Inserts a new Department into the repository.
     /// </summary>
     [Remote, Insert]
-    public async Task Insert([Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task Insert([Service] IDepartmentRepository repository, CancellationToken ct)
     {
         var entity = MapToEntity();
         await repository.AddAsync(entity, ct);
@@ -55,7 +55,7 @@ public partial class Department : IFactorySaveMeta
     /// Updates an existing Department in the repository.
     /// </summary>
     [Remote, Update]
-    public async Task Update([Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task Update([Service] IDepartmentRepository repository, CancellationToken ct)
     {
         var entity = MapToEntity();
         await repository.UpdateAsync(entity, ct);
@@ -66,7 +66,7 @@ public partial class Department : IFactorySaveMeta
     /// Deletes the Department from the repository.
     /// </summary>
     [Remote, Delete]
-    public async Task Delete([Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task Delete([Service] IDepartmentRepository repository, CancellationToken ct)
     {
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);

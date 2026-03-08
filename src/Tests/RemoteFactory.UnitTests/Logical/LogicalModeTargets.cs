@@ -19,7 +19,7 @@ public partial class LogicalModeTarget_Remote : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task Insert()
+    internal Task Insert()
     {
         InsertCalled = true;
         return Task.CompletedTask;
@@ -27,7 +27,7 @@ public partial class LogicalModeTarget_Remote : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task Update()
+    internal Task Update()
     {
         UpdateCalled = true;
         return Task.CompletedTask;
@@ -35,7 +35,7 @@ public partial class LogicalModeTarget_Remote : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task Delete()
+    internal Task Delete()
     {
         DeleteCalled = true;
         return Task.CompletedTask;
@@ -58,7 +58,7 @@ public partial class LogicalModeTarget_RemoteWithService : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task Insert([Service] IService service)
+    internal Task Insert([Service] IService service)
     {
         InsertCalled = true;
         ServiceWasInjected = service != null;
@@ -67,7 +67,7 @@ public partial class LogicalModeTarget_RemoteWithService : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task Update([Service] IService service)
+    internal Task Update([Service] IService service)
     {
         UpdateCalled = true;
         ServiceWasInjected = service != null;
@@ -76,7 +76,7 @@ public partial class LogicalModeTarget_RemoteWithService : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task Delete([Service] IService service)
+    internal Task Delete([Service] IService service)
     {
         DeleteCalled = true;
         ServiceWasInjected = service != null;

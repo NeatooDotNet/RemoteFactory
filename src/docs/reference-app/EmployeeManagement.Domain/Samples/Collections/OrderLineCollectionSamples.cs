@@ -77,7 +77,7 @@ public partial class Order
     #region collection-factory-parent
     // Parent creates collection via factory - collection is properly initialized with child factory
     [Remote, Create]
-    public void Create(string customerName, [Service] IOrderLineListFactory lineListFactory)
+    internal void Create(string customerName, [Service] IOrderLineListFactory lineListFactory)
     {
         Id = Random.Shared.Next(1, 10000);
         CustomerName = customerName;
@@ -85,7 +85,7 @@ public partial class Order
     }
 
     [Remote, Fetch]
-    public void Fetch(int id, [Service] IOrderLineListFactory lineListFactory)
+    internal void Fetch(int id, [Service] IOrderLineListFactory lineListFactory)
     {
         Id = id;
         Lines = lineListFactory.Fetch([(1, "Widget A", 10.00m, 2), (2, "Widget B", 25.00m, 1)]);

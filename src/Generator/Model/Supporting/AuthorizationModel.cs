@@ -33,6 +33,7 @@ internal sealed record AuthMethodCall
         string methodName,
         bool isTask = false,
         bool isRemote = false,
+        bool isInternal = false,
         IReadOnlyList<ParameterModel>? parameters = null,
         string? concreteClassName = null)
     {
@@ -40,6 +41,7 @@ internal sealed record AuthMethodCall
         MethodName = methodName;
         IsTask = isTask;
         IsRemote = isRemote;
+        IsInternal = isInternal;
         Parameters = parameters ?? System.Array.Empty<ParameterModel>();
         ConcreteClassName = concreteClassName;
     }
@@ -48,6 +50,12 @@ internal sealed record AuthMethodCall
     public string MethodName { get; }
     public bool IsTask { get; }
     public bool IsRemote { get; }
+
+    /// <summary>
+    /// Whether this auth method is internal (non-public). Used to derive
+    /// Can* method guard behavior from auth method accessibility.
+    /// </summary>
+    public bool IsInternal { get; }
     public IReadOnlyList<ParameterModel> Parameters { get; }
 
     /// <summary>

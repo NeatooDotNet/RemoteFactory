@@ -26,14 +26,14 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public void CreateVoid()
+    internal void CreateVoid()
     {
         CreateCalled = true;
     }
 
     [Create]
     [Remote]
-    public void CreateVoidParam(int? param)
+    internal void CreateVoidParam(int? param)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -41,7 +41,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public void CreateVoidDep([Service] IService service)
+    internal void CreateVoidDep([Service] IService service)
     {
         CreateCalled = true;
         ServiceWasInjected = service != null;
@@ -49,7 +49,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public void CreateVoidParamDep(int? param, [Service] IService service)
+    internal void CreateVoidParamDep(int? param, [Service] IService service)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -62,7 +62,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolTrue()
+    internal bool CreateBoolTrue()
     {
         CreateCalled = true;
         return true;
@@ -70,7 +70,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolFalse()
+    internal bool CreateBoolFalse()
     {
         CreateCalled = true;
         return false;
@@ -78,7 +78,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolTrueParam(int? param)
+    internal bool CreateBoolTrueParam(int? param)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -87,7 +87,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolFalseParam(int? param)
+    internal bool CreateBoolFalseParam(int? param)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -96,7 +96,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolTrueDep([Service] IService service)
+    internal bool CreateBoolTrueDep([Service] IService service)
     {
         CreateCalled = true;
         ServiceWasInjected = service != null;
@@ -105,7 +105,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolFalseDep([Service] IService service)
+    internal bool CreateBoolFalseDep([Service] IService service)
     {
         CreateCalled = true;
         ServiceWasInjected = service != null;
@@ -114,7 +114,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolTrueParamDep(int? param, [Service] IService service)
+    internal bool CreateBoolTrueParamDep(int? param, [Service] IService service)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -124,7 +124,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public bool CreateBoolFalseParamDep(int? param, [Service] IService service)
+    internal bool CreateBoolFalseParamDep(int? param, [Service] IService service)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -138,7 +138,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task CreateTask()
+    internal Task CreateTask()
     {
         CreateCalled = true;
         return Task.CompletedTask;
@@ -146,7 +146,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task CreateTaskParam(int? param)
+    internal Task CreateTaskParam(int? param)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -155,7 +155,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task CreateTaskDep([Service] IService service)
+    internal Task CreateTaskDep([Service] IService service)
     {
         CreateCalled = true;
         ServiceWasInjected = service != null;
@@ -164,7 +164,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task CreateTaskParamDep(int? param, [Service] IService service)
+    internal Task CreateTaskParamDep(int? param, [Service] IService service)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -178,7 +178,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolTrue()
+    internal Task<bool> CreateTaskBoolTrue()
     {
         CreateCalled = true;
         return Task.FromResult(true);
@@ -186,7 +186,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolFalse()
+    internal Task<bool> CreateTaskBoolFalse()
     {
         CreateCalled = true;
         return Task.FromResult(false);
@@ -194,7 +194,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolTrueParam(int? param)
+    internal Task<bool> CreateTaskBoolTrueParam(int? param)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -203,7 +203,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolFalseParam(int? param)
+    internal Task<bool> CreateTaskBoolFalseParam(int? param)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -212,7 +212,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolTrueDep([Service] IService service)
+    internal Task<bool> CreateTaskBoolTrueDep([Service] IService service)
     {
         CreateCalled = true;
         ServiceWasInjected = service != null;
@@ -221,7 +221,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolFalseDep([Service] IService service)
+    internal Task<bool> CreateTaskBoolFalseDep([Service] IService service)
     {
         CreateCalled = true;
         ServiceWasInjected = service != null;
@@ -230,7 +230,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolTrueParamDep(int? param, [Service] IService service)
+    internal Task<bool> CreateTaskBoolTrueParamDep(int? param, [Service] IService service)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -240,7 +240,7 @@ public partial class RemoteCreateTarget
 
     [Create]
     [Remote]
-    public Task<bool> CreateTaskBoolFalseParamDep(int? param, [Service] IService service)
+    internal Task<bool> CreateTaskBoolFalseParamDep(int? param, [Service] IService service)
     {
         CreateCalled = true;
         ReceivedParam = param;
@@ -274,14 +274,14 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public void FetchVoid()
+    internal void FetchVoid()
     {
         FetchCalled = true;
     }
 
     [Fetch]
     [Remote]
-    public void FetchVoidParam(int? param)
+    internal void FetchVoidParam(int? param)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -289,7 +289,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public void FetchVoidDep([Service] IService service)
+    internal void FetchVoidDep([Service] IService service)
     {
         FetchCalled = true;
         ServiceWasInjected = service != null;
@@ -297,7 +297,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public void FetchVoidParamDep(int? param, [Service] IService service)
+    internal void FetchVoidParamDep(int? param, [Service] IService service)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -310,7 +310,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolTrue()
+    internal bool FetchBoolTrue()
     {
         FetchCalled = true;
         return true;
@@ -318,7 +318,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolFalse()
+    internal bool FetchBoolFalse()
     {
         FetchCalled = true;
         return false;
@@ -326,7 +326,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolTrueParam(int? param)
+    internal bool FetchBoolTrueParam(int? param)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -335,7 +335,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolFalseParam(int? param)
+    internal bool FetchBoolFalseParam(int? param)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -344,7 +344,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolTrueDep([Service] IService service)
+    internal bool FetchBoolTrueDep([Service] IService service)
     {
         FetchCalled = true;
         ServiceWasInjected = service != null;
@@ -353,7 +353,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolFalseDep([Service] IService service)
+    internal bool FetchBoolFalseDep([Service] IService service)
     {
         FetchCalled = true;
         ServiceWasInjected = service != null;
@@ -362,7 +362,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolTrueParamDep(int? param, [Service] IService service)
+    internal bool FetchBoolTrueParamDep(int? param, [Service] IService service)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -372,7 +372,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public bool FetchBoolFalseParamDep(int? param, [Service] IService service)
+    internal bool FetchBoolFalseParamDep(int? param, [Service] IService service)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -386,7 +386,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task FetchTask()
+    internal Task FetchTask()
     {
         FetchCalled = true;
         return Task.CompletedTask;
@@ -394,7 +394,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task FetchTaskParam(int? param)
+    internal Task FetchTaskParam(int? param)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -403,7 +403,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task FetchTaskDep([Service] IService service)
+    internal Task FetchTaskDep([Service] IService service)
     {
         FetchCalled = true;
         ServiceWasInjected = service != null;
@@ -412,7 +412,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task FetchTaskParamDep(int? param, [Service] IService service)
+    internal Task FetchTaskParamDep(int? param, [Service] IService service)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -426,7 +426,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolTrue()
+    internal Task<bool> FetchTaskBoolTrue()
     {
         FetchCalled = true;
         return Task.FromResult(true);
@@ -434,7 +434,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolFalse()
+    internal Task<bool> FetchTaskBoolFalse()
     {
         FetchCalled = true;
         return Task.FromResult(false);
@@ -442,7 +442,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolTrueParam(int? param)
+    internal Task<bool> FetchTaskBoolTrueParam(int? param)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -451,7 +451,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolFalseParam(int? param)
+    internal Task<bool> FetchTaskBoolFalseParam(int? param)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -460,7 +460,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolTrueDep([Service] IService service)
+    internal Task<bool> FetchTaskBoolTrueDep([Service] IService service)
     {
         FetchCalled = true;
         ServiceWasInjected = service != null;
@@ -469,7 +469,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolFalseDep([Service] IService service)
+    internal Task<bool> FetchTaskBoolFalseDep([Service] IService service)
     {
         FetchCalled = true;
         ServiceWasInjected = service != null;
@@ -478,7 +478,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolTrueParamDep(int? param, [Service] IService service)
+    internal Task<bool> FetchTaskBoolTrueParamDep(int? param, [Service] IService service)
     {
         FetchCalled = true;
         ReceivedParam = param;
@@ -488,7 +488,7 @@ public partial class RemoteFetchTarget
 
     [Fetch]
     [Remote]
-    public Task<bool> FetchTaskBoolFalseParamDep(int? param, [Service] IService service)
+    internal Task<bool> FetchTaskBoolFalseParamDep(int? param, [Service] IService service)
     {
         FetchCalled = true;
         ReceivedParam = param;

@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.21.0](v0.21.0.md) | 2026-03-08 | [Remote] requires internal (breaking), Can* auth-driven guards, trimming fixes |
 | [v0.20.1](v0.20.1.md) | 2026-03-07 | Fix internal methods excluded from public factory interfaces |
 | [v0.20.0](v0.20.0.md) | 2026-03-07 | Serialization property rename (breaking wire format), internals appendix |
 | [v0.19.0](v0.19.0.md) | 2026-03-07 | Trim-safe ordinal serialization |
@@ -42,6 +43,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.21.0](v0.21.0.md) - 2026-03-08 - [Remote] requires internal, trimming fixes
 - [v0.20.1](v0.20.1.md) - 2026-03-07 - Fix internal methods on public factory interfaces
 - [v0.20.0](v0.20.0.md) - 2026-03-07 - Serialization property rename & internals appendix
 - [v0.19.0](v0.19.0.md) - 2026-03-07 - Trim-safe ordinal serialization

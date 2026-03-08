@@ -193,7 +193,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// within Order operations that are already on the server.
     /// </remarks>
     [Remote, Create]
-    public void Create(
+    internal void Create(
         string customerName,
         [Service] IOrderLineListFactory lineListFactory)
     {
@@ -207,7 +207,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// Fetches an existing Order from the server.
     /// </summary>
     [Remote, Fetch]
-    public void Fetch(
+    internal void Fetch(
         int id,
         [Service] IOrderLineListFactory lineListFactory)
     {
@@ -231,7 +231,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// the factory routes to this Insert method.
     /// </remarks>
     [Remote, Insert]
-    public Task Insert([Service] IOrderRepository repository)
+    internal Task Insert([Service] IOrderRepository repository)
     {
         // In real code: repository.InsertAsync(this)
         // Simulate ID assignment
@@ -247,7 +247,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// the factory routes to this Update method.
     /// </remarks>
     [Remote, Update]
-    public Task Update([Service] IOrderRepository repository)
+    internal Task Update([Service] IOrderRepository repository)
     {
         // In real code: repository.UpdateAsync(this)
         return Task.CompletedTask;
@@ -261,7 +261,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// the factory routes to this Delete method.
     /// </remarks>
     [Remote, Delete]
-    public Task Delete([Service] IOrderRepository repository)
+    internal Task Delete([Service] IOrderRepository repository)
     {
         // In real code: repository.DeleteAsync(this)
         return Task.CompletedTask;

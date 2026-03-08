@@ -66,7 +66,7 @@ Apply ASP.NET Core policy-based authorization to factory operations:
 // [AspAuthorize] applies ASP.NET Core policies to factory methods
 [Remote, Fetch]
 [AspAuthorize("RequireAuthenticated")]
-public Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+internal Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
 {
     EmployeeId = employeeId;
     AnnualSalary = 75000m;
@@ -113,7 +113,7 @@ public partial class EmployeeWithCorrelation
     public EmployeeWithCorrelation() => Id = Guid.NewGuid();
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] ICorrelationContext correlationContext,
         [Service] IEmployeeRepository repository,
@@ -153,7 +153,7 @@ public partial class SkillDepartment
 
     // Aggregate root context - client entry point
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repo, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repo, CancellationToken ct)
     {
         var data = await repo.GetByIdAsync(id, ct);
         if (data == null) return false;
@@ -179,7 +179,7 @@ public partial class SkillDepartment
 
 **Key insight:** [Remote] is about *how the method is called*, not *what the type is*.
 
-For entity duality, consider using `internal` on child-context methods. The child context method (`FetchAsChild` above) is only called from server-side aggregate operations and benefits from `internal` visibility: it gets an `IsServerRuntime` guard, becomes trimmable on the client, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only). The aggregate root context method (`Fetch`) stays `public` with `[Remote]`.
+For entity duality, use `internal` on all factory methods. The aggregate root entry point (`Fetch` above) uses `[Remote] internal` -- `[Remote]` promotes it to `public` on the factory interface so clients can call it, while `internal` enables IL trimming of the method body. The child context method (`FetchAsChild`) is `internal` without `[Remote]` -- it gets an `IsServerRuntime` guard, becomes trimmable, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only).
 
 ---
 
@@ -243,7 +243,7 @@ public partial class SkillEmployeeWithAssignments : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Create]
-    public void Create(
+    internal void Create(
         string firstName,
         string lastName,
         [Service] ISkillAssignmentListFactory assignmentListFactory)
@@ -256,7 +256,7 @@ public partial class SkillEmployeeWithAssignments : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] ISkillAssignmentListFactory assignmentListFactory,
         [Service] IEmployeeRepository repo,
@@ -442,7 +442,7 @@ Limits generated file hint name length for Windows path limits:
 // Limits generated file name length for Windows path limits
 // [assembly: FactoryHintNameLength(100)]
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L13-L16' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L5-L8' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Use when hitting Windows 260-character path limits with deeply nested namespaces or generic types.
@@ -473,7 +473,7 @@ public partial class BaseWithFactory
     public BaseWithFactory() { }
 
     [Remote, Fetch]  // [Remote] Inherited: Yes
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
 }
 
 public partial class DerivedEntity : BaseWithFactory
@@ -484,7 +484,7 @@ public partial class DerivedEntity : BaseWithFactory
     public DerivedEntity() : base() { }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L220-L238' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L221-L239' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ---
@@ -525,7 +525,7 @@ Services injected via method parameters are NOT serialized:
 private IService _service;
 
 [Remote, Create]
-public void Create([Service] IService service)
+internal void Create([Service] IService service)
 {
     _service = service;  // WRONG - will be null on client
 }
@@ -545,9 +545,9 @@ Child entities should NOT have `[Remote]`:
 ```csharp
 // WRONG - each line causes a remote call
 [Factory]
-public partial class Assignment
+internal partial class Assignment : IAssignment
 {
     [Remote, Create]  // Remove [Remote]
-    public void Create() { }
+    internal void Create() { }
 }
 ```

@@ -45,19 +45,19 @@ public Employee CreateFromDto(EmployeeDto dto) { ... }
 public partial class Employee
 {
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo)
+    internal async Task Insert([Service] IEmployeeRepository repo)
     {
         await repo.AddAsync(this);
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repo)
+    internal async Task Update([Service] IEmployeeRepository repo)
     {
         await repo.UpdateAsync(this);
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repo)
+    internal async Task Delete([Service] IEmployeeRepository repo)
     {
         await repo.DeleteAsync(Id);
     }

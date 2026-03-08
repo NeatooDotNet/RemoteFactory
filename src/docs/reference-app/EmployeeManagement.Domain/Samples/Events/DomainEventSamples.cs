@@ -34,7 +34,7 @@ public partial class EmployeeDomainEvent : IFactorySaveMeta
     public void Create(string name) { Id = Guid.NewGuid(); Name = name; Status = "Pending"; }
 
     [Remote, Update]
-    public async Task Activate([Service] IEmployeeRepository repository,
+    internal async Task Activate([Service] IEmployeeRepository repository,
         [Service] DomainEventHandlers.EmployeeActivatedEvent onActivated, CancellationToken ct)
     {
         Status = "Active";

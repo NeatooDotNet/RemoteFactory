@@ -53,7 +53,7 @@ internal class PersonModel : IPersonModel
 
 	[Remote]
 	[Fetch]
-	public async Task<bool> Fetch([Service] IPersonContext personContext)
+	internal async Task<bool> Fetch([Service] IPersonContext personContext)
 	{
 		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
 		if (personEntity == null)
@@ -74,7 +74,7 @@ internal class PersonModel : IPersonModel
 	[Remote]
 	[Update]
 	[Insert]
-	public async Task Upsert([Service] IPersonContext personContext)
+	internal async Task Upsert([Service] IPersonContext personContext)
 	{
 		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
 		if(personEntity == null)
@@ -94,7 +94,7 @@ internal class PersonModel : IPersonModel
 
 	[Remote]
 	[Delete]
-	public async Task Delete([Service] IPersonContext personContext)
+	internal async Task Delete([Service] IPersonContext personContext)
 	{
 		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
 

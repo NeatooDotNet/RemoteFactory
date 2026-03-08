@@ -35,7 +35,7 @@ Services injected via method parameters are **server-only**.
 ```cs
 // Server-only service - [Remote] ensures execution on server where IEmployeeDatabase exists
 [Remote, Fetch]
-public async Task Fetch(string query, [Service] IEmployeeDatabase database)
+internal async Task Fetch(string query, [Service] IEmployeeDatabase database)
 {
     QueryResult = await database.ExecuteQueryAsync(query);
 }

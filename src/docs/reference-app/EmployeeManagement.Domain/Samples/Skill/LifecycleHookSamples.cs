@@ -35,7 +35,7 @@ public partial class SkillEmployeeWithLifecycle : IFactorySaveMeta, IFactoryOnSt
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = new EmployeeEntity
         {
@@ -57,7 +57,7 @@ public partial class SkillEmployeeWithLifecycle : IFactorySaveMeta, IFactoryOnSt
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = await repo.GetByIdAsync(Id, ct);
         if (entity != null)

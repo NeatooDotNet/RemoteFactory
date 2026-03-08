@@ -20,16 +20,16 @@ public partial class DepartmentCrud : IFactorySaveMeta
     [Create] public DepartmentCrud() { Id = Guid.NewGuid(); }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository r, CancellationToken ct) { return true; }
+    internal async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository r, CancellationToken ct) { return true; }
 
     [Remote, Insert]
-    public async Task Insert([Service] IDepartmentRepository r, CancellationToken ct) { IsNew = false; }
+    internal async Task Insert([Service] IDepartmentRepository r, CancellationToken ct) { IsNew = false; }
 
     [Remote, Update]
-    public async Task Update([Service] IDepartmentRepository r, CancellationToken ct) { }
+    internal async Task Update([Service] IDepartmentRepository r, CancellationToken ct) { }
 
     [Remote, Delete]
-    public async Task Delete([Service] IDepartmentRepository r, CancellationToken ct) { }
+    internal async Task Delete([Service] IDepartmentRepository r, CancellationToken ct) { }
 }
 #endregion
 
@@ -54,7 +54,7 @@ public partial class DepartmentCrudFull : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -68,7 +68,7 @@ public partial class DepartmentCrudFull : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task Insert([Service] IDepartmentRepository repository, CancellationToken ct)
     {
         var entity = new DepartmentEntity { Id = Id, Name = Name, Code = Code, ManagerId = ManagerId };
         await repository.AddAsync(entity, ct);
@@ -77,7 +77,7 @@ public partial class DepartmentCrudFull : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task Update([Service] IDepartmentRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(Id, ct) ?? throw new InvalidOperationException($"Department {Id} not found");
         entity.Name = Name;
@@ -88,7 +88,7 @@ public partial class DepartmentCrudFull : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IDepartmentRepository repository, CancellationToken ct)
+    internal async Task Delete([Service] IDepartmentRepository repository, CancellationToken ct)
     {
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);

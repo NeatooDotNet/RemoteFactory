@@ -117,10 +117,11 @@ public static class TargetClassGenerator
     {
         var paramList = BuildParameterList(parameters);
         var remoteAttr = isRemote ? "[Remote]" : "";
+        var accessModifier = isRemote ? "internal" : "public";
 
         sb.AppendLine($"    {remoteAttr}");
         sb.AppendLine($"    [Create]");
-        sb.AppendLine($"    public {className}({paramList})");
+        sb.AppendLine($"    {accessModifier} {className}({paramList})");
         sb.AppendLine("    {");
         sb.AppendLine("        OperationCalled = true;");
         GenerateParameterAssignments(sb, parameters);
@@ -224,9 +225,10 @@ public static class TargetClassGenerator
         var remoteAttr = isRemote ? "[Remote]" : "";
         var methodReturnType = GetWriteMethodReturnType(returnType);
 
+        var accessModifier = isRemote ? "internal" : "public";
         sb.AppendLine($"    {remoteAttr}");
         sb.AppendLine($"    [{combination.Operation}]");
-        sb.AppendLine($"    public {methodReturnType} {combination.Operation}Method({paramList})");
+        sb.AppendLine($"    {accessModifier} {methodReturnType} {combination.Operation}Method({paramList})");
         sb.AppendLine("    {");
         sb.AppendLine("        OperationCalled = true;");
         sb.AppendLine($"        LastOperationCalled = \"{combination.Operation}\";");
@@ -346,9 +348,10 @@ public static class TargetClassGenerator
         var remoteAttr = isRemote ? "[Remote]" : "";
         var methodReturnType = returnType.IsAsync ? "Task" : "void";
 
+        var accessModifier = isRemote ? "internal" : "public";
         sb.AppendLine($"    {remoteAttr}");
         sb.AppendLine("    [Event]");
-        sb.AppendLine($"    public {methodReturnType} OnEvent({paramList})");
+        sb.AppendLine($"    {accessModifier} {methodReturnType} OnEvent({paramList})");
         sb.AppendLine("    {");
         sb.AppendLine("        EventFired = true;");
         GenerateParameterAssignmentsStatic(sb, eventParams);

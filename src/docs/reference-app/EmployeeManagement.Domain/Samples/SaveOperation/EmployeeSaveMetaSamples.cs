@@ -31,7 +31,7 @@ public partial class EmployeeForSave : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -69,7 +69,7 @@ public partial class EmployeeCrud : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -85,21 +85,21 @@ public partial class EmployeeCrud : IFactorySaveMeta
     #region save-write-operations
     // Save routes to Insert/Update/Delete based on IsNew and IsDeleted flags
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         await repo.AddAsync(new EmployeeEntity { Id = Id, FirstName = FirstName }, ct);
         IsNew = false;
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var e = await repo.GetByIdAsync(Id, ct);
         if (e != null) { e.FirstName = FirstName; await repo.UpdateAsync(e, ct); }
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         await repo.DeleteAsync(Id, ct);
     }

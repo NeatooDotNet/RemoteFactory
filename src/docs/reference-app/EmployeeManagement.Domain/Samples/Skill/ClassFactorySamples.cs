@@ -15,7 +15,7 @@ public partial class SkillEmployee : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Create]
-    public void Create(string firstName, string lastName, [Service] IEmployeeRepository repo)
+    internal void Create(string firstName, string lastName, [Service] IEmployeeRepository repo)
     {
         Id = Guid.NewGuid();
         FirstName = firstName;
@@ -24,7 +24,7 @@ public partial class SkillEmployee : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var data = await repo.GetByIdAsync(id, ct);
         if (data == null) return false;
@@ -37,7 +37,7 @@ public partial class SkillEmployee : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = new EmployeeEntity
         {
@@ -60,7 +60,7 @@ public partial class SkillEmployee : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         var entity = await repo.GetByIdAsync(Id, ct);
         if (entity != null)
@@ -73,7 +73,7 @@ public partial class SkillEmployee : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         await repo.DeleteAsync(Id, ct);
         await repo.SaveChangesAsync(ct);

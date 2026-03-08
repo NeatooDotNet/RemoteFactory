@@ -174,8 +174,8 @@ internal static class FactoryModelBuilder
                 continue;
             }
 
-            // NF0105: [Remote] cannot be used with internal methods
-            if (method.IsRemote && method.IsInternal)
+            // NF0105: [Remote] requires internal methods (public is an error, static factories exempt)
+            if (method.IsRemote && !method.IsInternal && !method.IsStaticFactory)
             {
                 diagnostics.Add(new DiagnosticInfo(
                     "NF0105",
@@ -515,7 +515,7 @@ internal static class FactoryModelBuilder
             hasCancellationToken: hasCancellationToken);
     }
 
-    private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false)
+    private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false, bool isSourceAuthMethodRemote = false)
     {
         // Collect parameters from auth methods
         var parameters = new List<ParameterModel>();
@@ -555,7 +555,8 @@ internal static class FactoryModelBuilder
             isNullable: false,
             parameters: parameters,
             authorization: authorization,
-            isInternal: isInternal);
+            isInternal: isInternal,
+            isSourceAuthMethodRemote: isSourceAuthMethodRemote);
     }
 
     #endregion
@@ -813,12 +814,27 @@ internal static class FactoryModelBuilder
                 continue;
             }
 
+            // Derive Can* method behavior from auth methods, not the factory method.
+            // This follows the RemoteFactory accessibility paradigm:
+            // - public auth methods => Can* runs on client (no guard)
+            // - internal auth methods => Can* is server-only (guarded)
+            // - [Remote] auth methods => Can* routes to server via remote delegate
+            var authMethods = method.Authorization?.AuthMethods ?? Array.Empty<AuthMethodCall>();
+            var aspAuthorize = method.Authorization?.AspAuthorize ?? Array.Empty<AspAuthorizeCall>();
+            var authMethodsAreInternal = authMethods.Any(am => am.IsInternal);
+            var authMethodsAreRemote = authMethods.Any(am => am.IsRemote);
+
+            // AspAuthorize always requires server (HttpContext)
+            var hasAspAuthorize = aspAuthorize.Count > 0;
+            authMethodsAreInternal = authMethodsAreInternal || hasAspAuthorize;
+
             var canMethod = BuildCanMethod(
                 method.Name,
                 typeInfo,
-                method.Authorization?.AuthMethods ?? Array.Empty<AuthMethodCall>(),
-                method.Authorization?.AspAuthorize ?? Array.Empty<AspAuthorizeCall>(),
-                isInternal: method.IsInternal);
+                authMethods,
+                aspAuthorize,
+                isInternal: authMethodsAreInternal,
+                isSourceAuthMethodRemote: authMethodsAreRemote);
 
             canMethodsToAdd.Add(canMethod);
             existingMethodNames.Add(canMethodName);
@@ -889,7 +905,7 @@ internal static class FactoryModelBuilder
             CanMethodModel cm => new CanMethodModel(
                 cm.Name, uniqueName, cm.ReturnType, cm.ServiceType, cm.ImplementationType, cm.Operation,
                 cm.IsRemote, cm.IsTask, cm.IsAsync, cm.IsNullable, cm.Parameters, cm.Authorization,
-                cm.IsInternal),
+                cm.IsInternal, cm.IsSourceAuthMethodRemote),
             ClassExecuteMethodModel em => new ClassExecuteMethodModel(
                 em.Name, uniqueName, em.ReturnType, em.ServiceType, em.ImplementationType, em.Operation,
                 em.IsRemote, em.IsTask, em.IsAsync, em.IsNullable, em.Parameters, em.Authorization,
@@ -923,6 +939,7 @@ internal static class FactoryModelBuilder
                 methodName: am.Name,
                 isTask: am.IsTask,
                 isRemote: am.IsRemote,
+                isInternal: am.IsInternal,
                 parameters: BuildParameters(am.Parameters),
                 concreteClassName: am.ConcreteClassName))
             .ToList();

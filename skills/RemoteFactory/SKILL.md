@@ -31,6 +31,7 @@ RemoteFactory + Neatoo together provide the complete DDD framework. For domain m
 | Question | Answer |
 |----------|--------|
 | Should this method be [Remote]? | Only aggregate root entry points |
+| Must [Remote] methods be `internal`? | Yes - `[Remote] public` is error NF0105; `[Remote] internal` promotes to `public` on factory interface |
 | Can I use private setters? | No - breaks serialization |
 | Should interface methods have attributes? | No - interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always |

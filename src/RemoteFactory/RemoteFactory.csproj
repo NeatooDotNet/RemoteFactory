@@ -7,6 +7,8 @@
 	</ItemGroup>
 	<PropertyGroup>
 		<RootNamespace>Neatoo.RemoteFactory</RootNamespace>
+		<IsTrimmable>true</IsTrimmable>
+		<EnableTrimAnalyzer>false</EnableTrimAnalyzer>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<AssemblyName>Neatoo.RemoteFactory</AssemblyName>
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
@@ -41,5 +43,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all"  />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ILLink.Descriptors.xml">
+      <LogicalName>ILLink.Descriptors.xml</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

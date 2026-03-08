@@ -21,7 +21,7 @@ public partial class EmployeeWithSaveMeta : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -32,7 +32,7 @@ public partial class EmployeeWithSaveMeta : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var parts = Name.Split(' ', 2);
         var entity = new EmployeeEntity
@@ -53,7 +53,7 @@ public partial class EmployeeWithSaveMeta : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(EmployeeId, ct);
         if (entity == null) return;
@@ -65,7 +65,7 @@ public partial class EmployeeWithSaveMeta : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         await repository.DeleteAsync(EmployeeId, ct);
         await repository.SaveChangesAsync(ct);

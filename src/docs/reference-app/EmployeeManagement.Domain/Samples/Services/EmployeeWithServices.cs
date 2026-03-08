@@ -29,7 +29,7 @@ public partial class EmployeeWithServices : IFactorySaveMeta
     /// Demonstrates multiple service injection in a single operation.
     /// </summary>
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] IEmployeeRepository repository,
         [Service] IAuditLogService auditLog,
@@ -57,7 +57,7 @@ public partial class EmployeeWithServices : IFactorySaveMeta
     /// Demonstrates service injection with email notification.
     /// </summary>
     [Remote, Insert]
-    public async Task Insert(
+    internal async Task Insert(
         [Service] IEmployeeRepository repository,
         [Service] IEmailService emailService,
         [Service] IAuditLogService auditLog,
@@ -95,7 +95,7 @@ public partial class EmployeeWithServices : IFactorySaveMeta
     /// Demonstrates service injection with IUserContext for authorization checks.
     /// </summary>
     [Remote, Update]
-    public async Task Update(
+    internal async Task Update(
         [Service] IEmployeeRepository repository,
         [Service] IUserContext userContext,
         [Service] IAuditLogService auditLog,
@@ -136,7 +136,7 @@ public partial class EmployeeWithServices : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete(
+    internal async Task Delete(
         [Service] IEmployeeRepository repository,
         [Service] IAuditLogService auditLog,
         CancellationToken ct)

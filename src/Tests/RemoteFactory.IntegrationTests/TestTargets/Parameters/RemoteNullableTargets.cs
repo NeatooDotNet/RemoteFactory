@@ -16,7 +16,7 @@ public partial class RemoteNullableTarget
 
     [Remote]
     [Create]
-    public void CreateRemote(int? p)
+    internal void CreateRemote(int? p)
     {
         CreateCalled = true;
         ReceivedValue = p;

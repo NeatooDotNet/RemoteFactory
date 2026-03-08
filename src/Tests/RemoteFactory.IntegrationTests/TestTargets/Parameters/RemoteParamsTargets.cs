@@ -18,7 +18,7 @@ public partial class RemoteParamsTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithParamsInt(params int[] ids)
+    internal void CreateRemoteWithParamsInt(params int[] ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
         CreateCalled = true;
@@ -30,7 +30,7 @@ public partial class RemoteParamsTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithMixedParams(int id, params string[] tags)
+    internal void CreateRemoteWithMixedParams(int id, params string[] tags)
     {
         ArgumentNullException.ThrowIfNull(tags);
         CreateCalled = true;
@@ -42,7 +42,7 @@ public partial class RemoteParamsTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithParamsAndCancellation(CancellationToken ct, params int[] ids)
+    internal void CreateRemoteWithParamsAndCancellation(CancellationToken ct, params int[] ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
         CreateCalled = true;

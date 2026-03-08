@@ -22,7 +22,7 @@ public partial class EmployeeBasicService
     #region service-injection-basic
     // [Service] marks parameters for DI injection (not serialized)
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+    internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
     {
         var entity = await repository.GetByIdAsync(employeeId);
         if (entity == null) return false;
@@ -66,7 +66,7 @@ public partial class ServiceEmployeeReport
     #region service-injection-server-only
     // Server-only service - [Remote] ensures execution on server where IEmployeeDatabase exists
     [Remote, Fetch]
-    public async Task Fetch(string query, [Service] IEmployeeDatabase database)
+    internal async Task Fetch(string query, [Service] IEmployeeDatabase database)
     {
         QueryResult = await database.ExecuteQueryAsync(query);
     }
@@ -272,7 +272,7 @@ public partial class EmployeeContext
     #region service-injection-httpcontext
     // Access HTTP context via wrapper service (server-only)
     [Remote, Fetch]
-    public Task Fetch([Service] IHttpContextAccessorWrapper accessor)
+    internal Task Fetch([Service] IHttpContextAccessorWrapper accessor)
     {
         UserId = accessor.GetUserId();
         CorrelationId = accessor.GetCorrelationId();

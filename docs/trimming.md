@@ -18,15 +18,17 @@ RemoteFactory's source generator emits `if (NeatooRuntime.IsServerRuntime)` guar
 
 ### Class Factories — Conditional Guards
 
-Not all factory methods get guards. The generator uses the developer's `public` vs `internal` declaration to decide:
+Not all factory methods get guards. The generator uses the developer's `public` vs `internal` declaration and the presence of `[Remote]` to decide:
 
 | Method Declaration | Guard? | Trimming Behavior |
 |---|---|---|
-| `[Remote] public` | Yes | Method body trimmed. Client routes to server via delegate fork. |
+| `[Remote] internal` | Yes | Method body trimmed. Client routes to server via delegate fork. Promoted to `public` on factory interface. |
 | `public` (no `[Remote]`) | **No** | Method body **survives** trimming. Runs locally on both client and server. |
 | `internal` (no `[Remote]`) | Yes | Method body trimmed. Server-only. |
 
-`public` non-`[Remote]` methods like `Create(string name)` or `CanCreate()` have no guard because they are designed to run on the client. Marking child entity factory methods as `internal` makes them trimmable — the trimmer eliminates their method bodies, `[Service]` dependencies, and transitive references from the published output.
+`[Remote]` requires `internal` — `[Remote] public` is a compile-time error (NF0105). The `[Remote] internal` pattern enables IL trimming: the trimmer eliminates the method bodies, `[Service]` dependencies, and transitive references from the published output, while the generated factory interface exposes the method as `public` for clients to call.
+
+`public` non-`[Remote]` methods like `Create(string name)` or `CanCreate()` have no guard because they are designed to run on the client. Marking child entity factory methods as `internal` (without `[Remote]`) also makes them trimmable.
 
 ### Static and Interface Factories
 
@@ -81,9 +83,39 @@ In your **Blazor WASM client project** `.csproj`:
 </ItemGroup>
 ```
 
-That's it. No changes to your domain code, no assembly splitting, no conditional compilation.
-
 Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true` is the SDK default). The `RuntimeHostConfigurationOption` tells the trimmer to treat `IsServerRuntime` as `false`, enabling dead code elimination of server-only code paths.
+
+### Step 3: Isolate server-only dependencies with `PrivateAssets="all"`
+
+Your domain model often references server-only packages (like EF Core) and server-only projects (like a data access layer). Without intervention, these flow as transitive dependencies to the client project — the trimmer then has to deal with assemblies it may not be able to trim cleanly, causing warnings or runtime failures.
+
+Mark server-only references with `PrivateAssets="all"` in your **domain model project** `.csproj` to prevent transitive flow:
+
+```xml
+<!-- Server-only packages -->
+<PackageReference Include="Microsoft.EntityFrameworkCore" PrivateAssets="all" />
+
+<!-- Server-only project references -->
+<ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
+```
+
+`PrivateAssets="all"` means these dependencies are available at compile time (so your domain code can reference EF Core types and repository implementations) but they are **not** forwarded to projects that reference your domain model. The server project references both the domain model and the data access layer directly, so it gets everything it needs.
+
+### Step 4: Mark residual assemblies as trimmable in the client
+
+Some assemblies may still end up in the client output through indirect paths — for example, if the build resolves them as transitive dependencies despite `PrivateAssets="all"` on the primary path. These assemblies are not marked `IsTrimmable` themselves, so the trimmer leaves them intact by default.
+
+Add `<TrimmableAssembly>` entries in your **client project** `.csproj` to tell the trimmer it is safe to trim them:
+
+```xml
+<ItemGroup>
+  <TrimmableAssembly Include="Person.Ef" />
+  <TrimmableAssembly Include="Neatoo.Generator" />
+</ItemGroup>
+```
+
+- **`Person.Ef`** — The data access layer. Even with `PrivateAssets="all"` on the domain model's project reference, the build may resolve it through other dependency paths. Marking it trimmable ensures it gets stripped from the published client.
+- **`Neatoo.Generator`** — The RemoteFactory source generator assembly. It runs at compile time only, but its output assembly may appear in the client output. Marking it trimmable removes it from the published binary.
 
 ### What Each Setting Does
 
@@ -91,8 +123,55 @@ Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true
 |---------|-------|---------|
 | `IsTrimmable=true` | Domain `.csproj` | Opts the assembly into trimming |
 | `RuntimeHostConfigurationOption` | Client `.csproj` | Tells the trimmer to treat `IsServerRuntime` as `false` at compile time |
+| `PrivateAssets="all"` | Domain `.csproj` | Prevents server-only dependencies from flowing transitively to client |
+| `TrimmableAssembly` | Client `.csproj` | Marks residual assemblies as safe to trim even though they lack `IsTrimmable` |
 
 The `Trim="true"` on the `RuntimeHostConfigurationOption` is critical — without it, the switch is just a runtime value and the trimmer can't use it for dead code elimination.
+
+### Complete Example
+
+Here are all three project files showing the full trimming configuration, based on the [Person example](https://github.com/NeatooDotNet/RemoteFactory/tree/main/src/Examples/Person):
+
+**Domain Model (`Person.DomainModel.csproj`):**
+```xml
+<PropertyGroup>
+  <IsTrimmable>true</IsTrimmable>
+</PropertyGroup>
+
+<ItemGroup>
+  <!-- Server-only packages: PrivateAssets="all" prevents transitive flow to client -->
+  <PackageReference Include="Microsoft.EntityFrameworkCore" PrivateAssets="all" />
+</ItemGroup>
+
+<ItemGroup>
+  <!-- Server-only project references: same treatment -->
+  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
+</ItemGroup>
+```
+
+**Client (`Person.Client.csproj`):**
+```xml
+<ItemGroup>
+  <!-- Tell trimmer IsServerRuntime is false at compile time -->
+  <RuntimeHostConfigurationOption Include="Neatoo.RemoteFactory.IsServerRuntime"
+                                   Value="false"
+                                   Trim="true" />
+  <!-- Mark additional assemblies as trimmable -->
+  <TrimmableAssembly Include="Person.Ef" />
+  <TrimmableAssembly Include="Neatoo.Generator" />
+</ItemGroup>
+```
+
+**Server (`Person.Server.csproj`):**
+```xml
+<!-- No trimming configuration needed — server runs everything.
+     The server references both the domain model and data access layer directly. -->
+<ItemGroup>
+  <ProjectReference Include="..\Person.DomainModel\Person.DomainModel.csproj" />
+  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" />
+  <ProjectReference Include="..\Person.Client\Person.Client.csproj" />
+</ItemGroup>
+```
 
 ### Requirements
 

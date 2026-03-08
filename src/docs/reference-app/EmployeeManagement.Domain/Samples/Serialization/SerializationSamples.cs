@@ -204,7 +204,7 @@ public partial class ServerValidatedEmployee : IFactorySaveMeta
     #region serialization-validation-server
     // Validate after deserialization using DataAnnotations.
     [Remote, Insert]
-    public Task Insert(CancellationToken ct)
+    internal Task Insert(CancellationToken ct)
     {
         var context = new ValidationContext(this);
         var results = new List<ValidationResult>();
