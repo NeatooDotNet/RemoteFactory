@@ -63,7 +63,7 @@ public static class LocalServer
 			var correlationContext = serviceProvider.GetRequiredService<ICorrelationContext>();
 			// Correlation ID is set by middleware; generate if missing (e.g., direct server calls)
 			var correlationId = correlationContext.CorrelationId ?? CorrelationContextImpl.GenerateCorrelationId();
-			var delegateTypeName = portalRequest.DelegateAssemblyType ?? "unknown";
+			var delegateTypeName = portalRequest.DelegateFullName ?? "unknown";
 
 			log.HandlingRemoteRequest(correlationId, delegateTypeName);
 			var sw = Stopwatch.StartNew();

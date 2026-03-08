@@ -18,13 +18,13 @@ public class ObjectJson
 	public string Json { get; }
 
 	/// <summary>
-	/// The full type name for deserialization.
+	/// The full type name (namespace-qualified) for deserialization.
 	/// </summary>
-	public string AssemblyType { get; }
+	public string TypeFullName { get; }
 
-	public ObjectJson(string json, string assemblyType)
+	public ObjectJson(string json, string typeFullName)
 	{
 		this.Json = json;
-		this.AssemblyType = assemblyType;
+		this.TypeFullName = typeFullName;
 	}
 }

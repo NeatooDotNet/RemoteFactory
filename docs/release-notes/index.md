@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.20.0](v0.20.0.md) | 2026-03-07 | Serialization property rename (breaking wire format), internals appendix |
 | [v0.19.0](v0.19.0.md) | 2026-03-07 | Trim-safe ordinal serialization |
 | [v0.18.0](v0.18.0.md) | 2026-03-07 | Auth type trimming fix, IsTrimmable on domain assemblies |
 | [v0.17.0](v0.17.0.md) | 2026-03-06 | Internal factory visibility, IL trimming, drop .NET 8 |
@@ -40,6 +41,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.20.0](v0.20.0.md) - 2026-03-07 - Serialization property rename & internals appendix
 - [v0.19.0](v0.19.0.md) - 2026-03-07 - Trim-safe ordinal serialization
 - [v0.18.0](v0.18.0.md) - 2026-03-07 - Auth type trimming fix, IsTrimmable
 - [v0.17.0](v0.17.0.md) - 2026-03-06 - Internal factory visibility & IL trimming
