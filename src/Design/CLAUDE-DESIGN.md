@@ -148,6 +148,8 @@ public static partial class MyCommands
 | Do [Event] methods need CancellationToken? | Yes, as final parameter | `AllPatterns.cs:417-427` | Graceful shutdown support |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
+| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | `AuthorizedOrder.cs`, `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
+| Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 
 ---
 
@@ -430,6 +432,39 @@ internal partial class OrderLine : IOrderLine
 }
 ```
 
+#### Can* Method Guard Derivation (Auth-Method-Driven)
+
+Can* methods (e.g., `CanCreate()`, `CanFetch()`, `CanSave()`) derive their guard behavior from the **auth class methods**, not from the parent factory method. This is because Can* methods call the auth methods, not the factory method. The auth method's accessibility determines whether the Can* check can run on the client.
+
+| Auth Method Declaration | Can* Guard? | Can* Client Behavior | Can* Interface Promotion |
+|---|---|---|---|
+| `public` (no `[Remote]`) | No | Runs locally on client (sync, returns `Authorized`) | Not independently promoted |
+| `internal` (no `[Remote]`) | Yes | Throws if called when `IsServerRuntime=false` | Not promoted |
+| `[Remote] internal` | Yes | Routes to server via remote delegate (async, returns `Task<Authorized>`) | Promoted to `public` on factory interface |
+
+**CanSave aggregation:** CanSave aggregates auth methods from Insert, Update, and Delete operations. If ANY constituent auth method is `internal` or `[Remote]`, CanSave gets the guard (most restrictive wins for security).
+
+**`[AspAuthorize]` interaction:** When `[AspAuthorize]` is present on a factory method alongside `[AuthorizeFactory<T>]`, the Can* method always gets the guard because `[AspAuthorize]` requires server-side `HttpContext`.
+
+```csharp
+// Public auth methods => Can* runs on client, no guard
+public interface IMyAuth
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    bool CanCreate();  // public => CanCreate() has no guard, runs on client
+}
+
+// [Remote] internal auth methods => Can* routes to server
+public interface IServerAuth
+{
+    [Remote]
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    internal bool CanCreate();  // [Remote] internal => CanCreate() has guard, routes to server
+}
+```
+
+See `AuthorizedOrder.cs` and `AuthorizedOrderAuth.cs` for the public auth pattern. See `ShowcaseAuthRemoteTests.cs` for the `[Remote]` auth method pattern.
+
 #### Factory Interface Visibility Rules
 
 The generated factory interface visibility derives from the methods. `[Remote]` promotes `internal` methods to `public` on the factory interface:
@@ -625,6 +660,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] Event handlers with CancellationToken (`ExampleEvents._OnOrderPlaced`)
 - [x] CorrelationContext usage (`CorrelationExample.cs`)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
+- [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 
 ---
 
@@ -662,6 +698,8 @@ These are known limitations or open questions. They are documented here to preve
 |------|----------|
 | `Design.Domain/FactoryPatterns/AllPatterns.cs` | All three patterns side-by-side with extensive comments |
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle hooks and IFactorySaveMeta |
+| `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] custom domain authorization with Can* methods |
+| `Design.Domain/Aggregates/AuthorizedOrderAuth.cs` | Auth interface and implementation for AuthorizedOrder |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |

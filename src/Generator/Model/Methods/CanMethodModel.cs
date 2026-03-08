@@ -10,11 +10,11 @@ namespace Neatoo.RemoteFactory.Generator.Model;
 internal sealed record CanMethodModel : FactoryMethodModel
 {
     /// <summary>
-    /// Whether the source operation method (e.g., Fetch for CanFetch) has [Remote].
+    /// Whether any auth method for this Can* operation has [Remote].
     /// Used for interface visibility promotion: when true, the CanXxx method is promoted
     /// to public on the factory interface even if the source method is internal.
     /// </summary>
-    public bool IsSourceMethodRemote { get; }
+    public bool IsSourceAuthMethodRemote { get; }
 
     public CanMethodModel(
         string name,
@@ -30,10 +30,10 @@ internal sealed record CanMethodModel : FactoryMethodModel
         IReadOnlyList<ParameterModel>? parameters = null,
         AuthorizationModel? authorization = null,
         bool isInternal = false,
-        bool isSourceMethodRemote = false)
+        bool isSourceAuthMethodRemote = false)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
                isRemote, isTask, isAsync, isNullable, parameters, authorization, isInternal)
     {
-        IsSourceMethodRemote = isSourceMethodRemote;
+        IsSourceAuthMethodRemote = isSourceAuthMethodRemote;
     }
 }

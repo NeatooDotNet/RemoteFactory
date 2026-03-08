@@ -34,8 +34,9 @@ public partial class PublicMethodWithAuth
 }
 
 /// <summary>
-/// Test target with internal Create and authorization.
-/// CanCreate should HAVE IsServerRuntime guard (internal method => guard on Can).
+/// Test target with internal Create and public authorization.
+/// CanCreate should have NO IsServerRuntime guard (public auth method => no guard on Can,
+/// regardless of factory method visibility).
 /// </summary>
 [Factory]
 [AuthorizeFactory<VisibilityTestAuth>]

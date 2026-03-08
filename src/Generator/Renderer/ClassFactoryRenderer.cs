@@ -118,7 +118,7 @@ internal static class ClassFactoryRenderer
             // On an all-internal interface, no modifier is needed (the interface itself is internal).
             // [Remote] internal methods are promoted to public on the interface — no 'internal' prefix.
             // For CanXxx methods, promotion also applies when the source operation method has [Remote].
-            var isPromotedByRemote = method.IsRemote || (method is CanMethodModel cm && cm.IsSourceMethodRemote);
+            var isPromotedByRemote = method.IsRemote || (method is CanMethodModel cm && cm.IsSourceAuthMethodRemote);
             bool needsInternalPrefix = !model.AllMethodsInternal && method.IsInternal && !isPromotedByRemote;
 
             var interfaceMethod = RenderInterfaceMethodSignature(method, needsInternalPrefix);

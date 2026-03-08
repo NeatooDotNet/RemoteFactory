@@ -227,9 +227,21 @@ internal Task Terminate(CancellationToken ct = default)
 
 Execution order: AuthorizeFactory checks first, then AspAuthorize. If either fails, the operation is denied.
 
-## Client-Side Can* Methods
+## Can* Method Behavior
 
-`Can*` methods generated from `public` factory methods run locally on the client without a server round-trip. This means `CanCreate()` can drive UI decisions (show/hide a "New" button) instantly, with no network call.
+`Can*` methods derive their guard and remote behavior from the **auth class methods**, not from the parent factory method. This follows the same accessibility paradigm as all other methods in RemoteFactory: the method being called determines the behavior.
+
+| Auth Method Accessibility | Can* Behavior | Use When |
+|---|---|---|
+| `public` (no `[Remote]`) | Runs locally on client, no guard, synchronous | Auth logic uses client-available services (e.g., `IUser` registered on both sides) |
+| `internal` (no `[Remote]`) | Server-only, `IsServerRuntime` guard | Auth logic uses server-only services but doesn't need remote routing |
+| `[Remote] internal` | Routes to server via remote delegate, asynchronous | Auth logic needs server-only services and must be callable from the client |
+
+This means a factory method can be `[Remote] internal` (server-side execution) while its `Can*` methods run on the client -- as long as the auth class has `public` methods with no server-only dependencies. The factory method's visibility is irrelevant to whether the auth check can run locally.
+
+### Client-Side Can* (Public Auth Methods)
+
+When auth methods are `public`, `Can*` runs locally on the client without a server round-trip. This means `CanCreate()` can drive UI decisions (show/hide a "New" button) instantly, with no network call.
 
 For this to work, the authorization service must be resolvable on the client. Register your authorization implementation on the client via `RegisterMatchingName` or manual DI registration:
 
@@ -238,9 +250,31 @@ For this to work, the authorization service must be resolvable on the client. Re
 builder.Services.RegisterMatchingName(typeof(IEmployeeAuthorization).Assembly);
 ```
 
-If the authorization service is not registered on the client, calling `CanCreate()` will produce a standard DI resolution exception. This is a developer configuration choice, not a framework error — some apps intentionally keep auth server-only.
+If the authorization service is not registered on the client, calling `CanCreate()` will produce a standard DI resolution exception. This is a developer configuration choice, not a framework error -- some apps intentionally keep auth server-only.
 
-`Can*` methods generated from `internal` factory methods retain the `IsServerRuntime` guard and are not callable on the client. This is correct because internal factory methods represent server-only operations.
+### Server-Side Can* ([Remote] Auth Methods)
+
+When auth methods have `[Remote] internal`, `Can*` routes to the server. Use this when your authorization logic depends on server-only services (e.g., a database query to check permissions):
+
+```csharp
+// Auth interface with [Remote] — Can* routes to server
+public interface ISecureEntityAuth
+{
+    [Remote]
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    internal bool CanCreate();  // Can* will route to server
+}
+
+// Auth implementation with server-only dependency
+internal class SecureEntityAuth(IPermissionRepository repo) : ISecureEntityAuth
+{
+    public bool CanCreate() => repo.HasPermission("create");
+}
+```
+
+### CanSave Aggregation
+
+`CanSave` aggregates auth methods from Insert, Update, and Delete operations. If ANY constituent auth method is `internal` or `[Remote]`, CanSave gets the guard (most restrictive wins for security). This means CanSave is server-only if even one write operation requires server-side authorization.
 
 ## Authorization Failures
 
