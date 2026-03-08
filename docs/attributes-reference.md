@@ -103,7 +103,7 @@ Marks methods that load data into existing instances. Returns `bool` or `Task<bo
 public partial class EmployeeFetch
 {
     [Remote, Fetch]  // Returns bool: false = not found (factory returns null)
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
         => Task.FromResult(true);
 }
 ```
@@ -126,7 +126,7 @@ public partial class EmployeeInsert : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Insert]  // Persists new entity
-    public Task Insert([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    internal Task Insert([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L52-L62' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-insert' title='Start of snippet'>anchor</a></sup>
@@ -144,10 +144,10 @@ public partial class UpsertSetting : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Insert, Update]  // Both operations point to same method
-    public Task Upsert(CancellationToken ct) => Task.CompletedTask;
+    internal Task Upsert(CancellationToken ct) => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L182-L192' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L183-L193' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Execute]
@@ -207,11 +207,12 @@ public partial class EmployeeRemote
     [Create]  // No [Remote] - executes locally without network call
     public EmployeeRemote() { }
 
-    [Remote, Fetch]  // [Remote] - serializes request, sends via HTTP, deserializes response
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct) => Task.FromResult(true);
+    [Remote, Fetch]  // [Remote] - crosses client/server boundary via HTTP
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+        => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L108-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L108-L119' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Service]
@@ -227,13 +228,13 @@ Marks parameters for dependency injection. Service parameters are resolved from 
 public partial class EmployeeWithService
 {
     [Remote, Fetch]
-    public Task<bool> Fetch(
+    internal Task<bool> Fetch(
         Guid employeeId,                          // Value parameter: serialized to server
         [Service] IEmployeeRepository repository, // [Service]: resolved from DI container
         CancellationToken ct) => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L120-L130' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L121-L131' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization
@@ -251,7 +252,7 @@ Applies a custom authorization interface to the factory. The type parameter must
 [AuthorizeFactory<IEmployeeAuthorization>]  // Class-level authorization
 public partial class AuthEmployee { }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L132-L136' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L133-L137' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [AuthorizeFactory]
@@ -272,7 +273,7 @@ public interface IMinimalDocAuth
     bool CanWrite();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L138-L147' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L139-L148' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Combine flags with bitwise OR:
@@ -289,7 +290,7 @@ public interface IOpAuth
     bool CanDelete();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L209-L218' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L210-L219' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [AspAuthorize]
@@ -311,16 +312,16 @@ public partial class PolicyEmployee : IFactorySaveMeta
 
     [Remote, Fetch]
     [AspAuthorize("RequireEmployee")]  // Policy-based authorization
-    public Task<bool> FetchWithPolicy(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal Task<bool> FetchWithPolicy(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
         => Task.FromResult(true);
 
     [Remote, Insert]
     [AspAuthorize(Roles = "HR,Manager")]  // Role-based authorization
-    public Task InsertWithRoles([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal Task InsertWithRoles([Service] IEmployeeRepository repo, CancellationToken ct)
         => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L163-L180' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L164-L181' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Assembly-Level Attributes
@@ -342,7 +343,7 @@ Limits generated file hint name length. Use when hitting Windows path length lim
 // Limits generated file name length for Windows path limits
 // [assembly: FactoryHintNameLength(100)]
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L13-L16' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L5-L8' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Attribute Inheritance
@@ -366,7 +367,7 @@ public partial class BaseWithFactory
     public BaseWithFactory() { }
 
     [Remote, Fetch]  // [Remote] Inherited: Yes
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
 }
 
 public partial class DerivedEntity : BaseWithFactory
@@ -377,7 +378,7 @@ public partial class DerivedEntity : BaseWithFactory
     public DerivedEntity() : base() { }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L220-L238' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L221-L239' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Next Steps

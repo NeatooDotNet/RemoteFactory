@@ -122,7 +122,7 @@ The caller sees a single step — `var employee = await factory.Fetch(id)` — b
 ```cs
 // [Fetch] loads data into instance; [Service] marks DI-injected parameters
 [Remote, Fetch]
-public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
 {
     var entity = await repository.GetByIdAsync(employeeId, ct);
     if (entity == null) return false;  // Return false = factory returns null
@@ -156,7 +156,7 @@ Because Fetch runs *on* the instance (it's an instance method), it can't return 
 ```cs
 // Return bool: true = success (instance), false = not found (factory returns null)
 [Remote, Fetch]
-public async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
 {
     var entity = await repository.GetByIdAsync(employeeId, ct);
     if (entity == null) return false;  // Factory returns null
@@ -201,7 +201,7 @@ RemoteFactory assumes that when your method returns, the persistence operation i
 ```cs
 // [Insert] persists new entities to storage
 [Remote, Insert]
-public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
 {
     var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
     await repository.AddAsync(entity, ct);
@@ -219,7 +219,7 @@ public async Task Insert([Service] IEmployeeRepository repository, CancellationT
 ```cs
 // [Update] persists changes to existing entities
 [Remote, Update]
-public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
 {
     var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
     await repository.UpdateAsync(entity, ct);
@@ -236,7 +236,7 @@ public async Task Update([Service] IEmployeeRepository repository, CancellationT
 ```cs
 // [Delete] removes entities from storage
 [Remote, Delete]
-public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
 {
     await repository.DeleteAsync(Id, ct);
     await repository.SaveChangesAsync(ct);
@@ -254,7 +254,7 @@ When insert and update use the same logic (e.g., an upsert), you can combine att
 ```cs
 // Multiple attributes on one method - same handler for insert and update (upsert)
 [Remote, Insert, Update]
-public async Task Upsert([Service] ISettingsRepository repository, CancellationToken ct)
+internal async Task Upsert([Service] ISettingsRepository repository, CancellationToken ct)
 {
     await repository.UpsertAsync(Key, Value, ct);
     IsNew = false;
@@ -389,7 +389,7 @@ public partial class Consultation : IConsultation
     public Consultation() { }
 
     [Remote, Create]
-    public Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
+    internal Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
     {
         PatientId = patientId;
         Status = "Acute";
@@ -397,7 +397,7 @@ public partial class Consultation : IConsultation
     }
 
     [Remote, Fetch]
-    public Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
+    internal Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
     {
         PatientId = patientId;
         Status = "Active";
@@ -566,7 +566,7 @@ Collections are part of their parent aggregate. The parent's `[Remote]` method i
 ```cs
 // Parent creates collection via factory - collection is properly initialized with child factory
 [Remote, Create]
-public void Create(string customerName, [Service] IOrderLineListFactory lineListFactory)
+internal void Create(string customerName, [Service] IOrderLineListFactory lineListFactory)
 {
     Id = Random.Shared.Next(1, 10000);
     CustomerName = customerName;
@@ -574,7 +574,7 @@ public void Create(string customerName, [Service] IOrderLineListFactory lineList
 }
 
 [Remote, Fetch]
-public void Fetch(int id, [Service] IOrderLineListFactory lineListFactory)
+internal void Fetch(int id, [Service] IOrderLineListFactory lineListFactory)
 {
     Id = id;
     Lines = lineListFactory.Fetch([(1, "Widget A", 10.00m, 2), (2, "Widget B", 25.00m, 1)]);
@@ -601,7 +601,7 @@ public EmployeeRemoteVsLocal() => Id = Guid.NewGuid();
 
 // [Remote] = serialized to server where repository is available
 [Remote, Fetch]
-public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
 {
     var entity = await repository.GetByIdAsync(id, ct);
     if (entity == null) return false;
@@ -704,7 +704,7 @@ All generated factory methods include an optional CancellationToken as the last 
 ```cs
 // CancellationToken always last - pass to async calls, check before expensive operations
 [Remote, Fetch]
-public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
 {
     ct.ThrowIfCancellationRequested();
     var entity = await repository.GetByIdAsync(id, ct);
@@ -743,7 +743,7 @@ RemoteFactory requires a specific parameter ordering: **value parameters first, 
 ```cs
 // Value parameters (without [Service]) are serialized and sent to server
 [Remote, Fetch]
-public async Task<bool> Fetch(
+internal async Task<bool> Fetch(
     Guid departmentId, string? positionFilter, int maxResults,
     [Service] IEmployeeRepository repository, CancellationToken ct)
 {
@@ -763,7 +763,7 @@ public async Task<bool> Fetch(
 ```cs
 // [Service] parameters are DI-injected, not serialized
 [Remote, Fetch]
-public async Task<bool> Fetch(
+internal async Task<bool> Fetch(
     Guid employeeId,                          // Value: serialized
     [Service] IEmployeeRepository repository, // Service: DI-injected
     [Service] IAuditLogService auditLog,      // Service: DI-injected
@@ -787,7 +787,7 @@ public async Task<bool> Fetch(
 ```cs
 // params arrays supported for batch operations
 [Remote, Fetch]
-public async Task<bool> Fetch(
+internal async Task<bool> Fetch(
     [Service] IEmployeeRepository repository, CancellationToken ct, params Guid[] employeeIds)
 {
     EmployeeNames = [];
@@ -808,7 +808,7 @@ public async Task<bool> Fetch(
 ```cs
 // Parameter order: value params, [Service] params, CancellationToken (always last)
 [Remote, Fetch]
-public async Task<bool> Fetch(
+internal async Task<bool> Fetch(
     Guid employeeId, string? filter,          // Value parameters
     [Service] IEmployeeRepository repository, // Service parameters
     [Service] IAuditLogService auditLog,

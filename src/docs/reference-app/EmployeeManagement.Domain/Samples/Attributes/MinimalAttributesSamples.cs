@@ -112,8 +112,9 @@ public partial class EmployeeRemote
     [Create]  // No [Remote] - executes locally without network call
     public EmployeeRemote() { }
 
-    [Remote, Fetch]  // [Remote] - serializes request, sends via HTTP, deserializes response
-    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct) => Task.FromResult(true);
+    [Remote, Fetch]  // [Remote] - crosses client/server boundary via HTTP
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+        => Task.FromResult(true);
 }
 #endregion
 

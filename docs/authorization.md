@@ -143,7 +143,7 @@ public static void ConfigureServices(IServiceCollection services) =>
 // [AspAuthorize] applies ASP.NET Core policies to factory methods
 [Remote, Fetch]
 [AspAuthorize("RequireAuthenticated")]
-public Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+internal Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
 {
     EmployeeId = employeeId;
     AnnualSalary = 75000m;
@@ -174,7 +174,7 @@ public static Task _ProcessPayroll(Guid departmentId, DateTime payPeriodEnd, Can
 // Roles property - any listed role can access (comma-separated)
 [Remote, Fetch]
 [AspAuthorize(Roles = "Employee,HRManager,Admin")]
-public Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
+internal Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
 {
     Id = requestId;
     return Task.FromResult(true);
@@ -200,7 +200,7 @@ public partial class PerformanceReview
 
     [Remote, Fetch]
     [AspAuthorize("RequireAuthenticated")]
-    public Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
+    internal Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
     {
         Id = reviewId;
         return Task.FromResult(true);
@@ -216,7 +216,7 @@ public partial class PerformanceReview
 // Both checks must pass: IEmployeeReadAuthorization AND HRManager role
 [Remote, Update]
 [AspAuthorize(Roles = "HRManager")]
-public Task Terminate(CancellationToken ct = default)
+internal Task Terminate(CancellationToken ct = default)
 {
     IsTerminated = true;
     return Task.CompletedTask;

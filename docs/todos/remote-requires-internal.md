@@ -1,6 +1,6 @@
 # [Remote] Requires Internal Methods
 
-**Status:** In Progress
+**Status:** Complete
 **Priority:** High
 **Created:** 2026-03-08
 **Last Updated:** 2026-03-08
@@ -220,9 +220,9 @@ The change is internally consistent: `[Remote]` will mean "client entry point th
 - [x] Business requirements review (Step 3)
 - [x] Architect plan creation & design (Step 4)
 - [x] Developer review (Step 5) — Approved with 2 scope additions (integration test targets, reference-app)
-- [ ] Implementation (Step 7)
-- [ ] Verification (Step 8)
-- [ ] Documentation (Step 9)
+- [x] Implementation (Step 7) — Commit b77da02
+- [x] Verification (Step 8) — Architect VERIFIED, Requirements SATISFIED
+- [x] Documentation (Step 9) — mdsnippets re-run, hand-written examples fixed
 
 ---
 
@@ -240,16 +240,17 @@ The change is internally consistent: `[Remote]` will mean "client entry point th
 
 Before marking this todo as Complete, verify:
 
-- [ ] All builds pass
-- [ ] All tests pass
-- [ ] Person example domain model library trims correctly
+- [x] All builds pass
+- [x] All tests pass
+- [x] Person example domain model library trims correctly
 
 **Verification results:**
-- Build: [Pending]
-- Tests: [Pending]
-- Trimming: [Pending]
+- Build: 0 errors, all projects build (net9.0 + net10.0)
+- Tests: 986 passed (UnitTests 481x2, IntegrationTests 476x2, Design.Tests 29x2), 0 failed
+- Trimming: Person.Client publishes with IL trimming, no trimming warnings
 
 ---
 
 ## Results / Conclusions
 
+Implementation complete. NF0105 flipped: `[Remote] public` is now a compile-time error, `[Remote] internal` is the correct pattern. The generator promotes `[Remote] internal` methods to `public` on the factory interface. Static factory methods (`[Remote, Execute] public static`) are exempt. All Design projects, reference-app, integration test targets, Person example, docs, and skill files updated.

@@ -65,7 +65,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
+    internal async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(id);
         if (entity == null) return false;
@@ -80,7 +80,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Insert]
-    public async Task Insert([Service] IPersonRepository repository)
+    internal async Task Insert([Service] IPersonRepository repository)
     {
         var entity = new PersonEntity
         {
@@ -98,7 +98,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Update]
-    public async Task Update([Service] IPersonRepository repository)
+    internal async Task Update([Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(Id)
             ?? throw new InvalidOperationException($"Person {Id} not found");
@@ -114,7 +114,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Delete]
-    public async Task Delete([Service] IPersonRepository repository)
+    internal async Task Delete([Service] IPersonRepository repository)
     {
         await repository.DeleteAsync(Id);
         await repository.SaveChangesAsync();
@@ -315,7 +315,7 @@ For reducing client bundle size, see [IL Trimming](docs/trimming.md) — it remo
 // services.AddNeatooAspNetCore(typeof(Person).Assembly);
 // app.UseNeatoo();
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L129-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L124-L128' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <a id='snippet-readme-server-setup-1'></a>
 ```cs
 public static class ServerSetup
@@ -346,7 +346,7 @@ public static class ServerSetup
 // services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
 //     new HttpClient { BaseAddress = new Uri("https://api.example.com/") });
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L135-L143' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L130-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
 <a id='snippet-readme-client-setup-1'></a>
 ```cs
 public static class ClientSetup
@@ -388,7 +388,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     public PersonWithAuth() { Id = Guid.NewGuid(); }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] IPersonRepository repository)
     {
@@ -402,7 +402,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IPersonRepository repository)
+    internal async Task Insert([Service] IPersonRepository repository)
     {
         await repository.AddAsync(new PersonEntity
         {
@@ -414,7 +414,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IPersonRepository repository)
+    internal async Task Update([Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(Id)
             ?? throw new InvalidOperationException();
@@ -426,7 +426,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IPersonRepository repository)
+    internal async Task Delete([Service] IPersonRepository repository)
     {
         await repository.DeleteAsync(Id);
         await repository.SaveChangesAsync();
@@ -442,7 +442,7 @@ public interface IPersonAuthorization
     bool CanWrite();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L145-L214' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L140-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
 <a id='snippet-readme-full-example-1'></a>
 ```cs
 [Factory]
@@ -547,7 +547,7 @@ public class PersonAuthorization : IPersonAuthorization
         _userContext.IsInRole("Admin") || _userContext.IsInRole("Manager");
 }
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L158-L260' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/samples/ReadmeSamples.cs#L153-L255' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Getting Started](docs/getting-started.md) for a complete walkthrough.

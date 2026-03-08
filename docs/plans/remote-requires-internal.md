@@ -682,15 +682,59 @@ If any occur, STOP and report:
 
 ## Requirements Verification
 
-**Reviewer:** [agent name]
-**Verified:** [date]
-**Verdict:** [REQUIREMENTS SATISFIED | REQUIREMENTS VIOLATION]
+**Reviewer:** business-requirements-reviewer
+**Verified:** 2026-03-08
+**Verdict:** REQUIREMENTS SATISFIED
 
 ### Requirements Compliance
 
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
+| NF0105 flipped: `[Remote] public` = error | SATISFIED | `src/Generator/Builder/FactoryModelBuilder.cs` line 178: condition is `method.IsRemote && !method.IsInternal && !method.IsStaticFactory`. Tests `NF0105_RemotePublic_ReportsDiagnostic`, `NF0105_RemotePublicFetch_ReportsDiagnostic`, `NF0105_RemotePublicInsert_ReportsDiagnostic` confirm. |
+| NF0105 flipped: `[Remote] internal` = no error | SATISFIED | Tests `NF0105_RemoteInternal_NoDiagnostic`, `NF0105_RemoteInternalFetch_NoDiagnostic`, `NF0105_RemoteInternalInsert_NoDiagnostic` confirm. |
+| Static factory exempt from NF0105 | SATISFIED | `FactoryModelBuilder.cs` line 178: `!method.IsStaticFactory`. Test `NF0105_RemotePublicStaticExecute_NoDiagnostic` confirms. |
+| NF0105 diagnostic message updated | SATISFIED | `DiagnosticDescriptors.cs`: field renamed to `RemotePublicContradiction`, message says "public accessibility" and "must be internal." |
+| `[Remote] internal` promotes to `public` on factory interface | SATISFIED | `ClassFactoryModel.cs` line 49: `AllMethodsInternal` excludes `[Remote]` methods. `ClassFactoryRenderer.cs` line 122: `needsInternalPrefix` respects `isPromotedByRemote`. |
+| Non-`[Remote]` `internal` methods retain `internal` on interface | SATISFIED | `ClassFactoryRenderer.cs` line 122: `needsInternalPrefix = true` when `method.IsInternal && !isPromotedByRemote`. |
+| Guard emission unchanged | SATISFIED | Guard logic (`IsInternal \|\| IsRemote`) not modified. Covers `[Remote] internal` correctly. |
+| CLAUDE-DESIGN.md updated | SATISFIED | Critical Rule 2, Anti-Pattern 8, Common Mistake 9, Quick Decisions, Interface Visibility Rules, Quick Reference patterns, IFactorySaveMeta section all reflect new rule. |
+| Order.cs updated | SATISFIED | All 5 `[Remote]` methods are `internal` (lines 195-268). |
+| SecureOrder.cs updated | SATISFIED | All 5 `[Remote]` methods are `internal` (lines 56-161). |
+| AllPatterns.cs updated | SATISFIED | Create (line 110) and Fetch (line 129) are `[Remote] internal`. Static methods unchanged. |
+| ClassFactoryWithExecute.cs updated | SATISFIED | Create is `[Remote, Create] internal` (line 50). RunCommand stays `[Remote, Execute] public static` (line 69). |
+| OrderLine.cs updated | SATISFIED | Comments correctly reflect new pattern. No `[Remote]` on child entity methods. |
+| CorrelationExample.cs updated | SATISFIED | AuditedOrder Create (line 55) and Fetch (line 76) are `[Remote] internal`. |
+| Person example updated | SATISFIED | PersonModel.cs: Fetch (line 56), Upsert (line 77), Delete (line 97) all `internal`. |
+| Integration test targets updated | SATISFIED | No `[Remote] public` instance methods found in `src/Tests/RemoteFactory.IntegrationTests/TestTargets/`. |
+| Reference-app source updated | SATISFIED | No `[Remote] public` instance methods found in `src/docs/reference-app/`. |
+| CLAUDE.md updated | SATISFIED | Line 135: "[Remote] requires `internal`" with correct explanation. |
 
 ### Unintended Side Effects
 
+None found. Static factory patterns, guard emission, serialization, DI registration, and interface factory processing are all unaffected.
+
 ### Issues Found
+
+**Issue 1 (Documentation -- Step 8 task): MarkdownSnippets not re-run.**
+
+The reference-app source code has been updated (all `[Remote]` instance methods are `internal`), but `mdsnippets` has not been re-run. All MarkdownSnippets-generated code blocks in published docs and skill files still show the old `public` pattern. Affected files:
+
+- `docs/factory-operations.md` -- 10+ stale snippets
+- `docs/save-operation.md` -- 3 stale snippets
+- `docs/attributes-reference.md` -- 5+ stale snippets
+- `docs/getting-started.md` -- 4 stale snippets
+- `docs/service-injection.md` -- 4+ stale snippets
+- `docs/authorization.md` -- 5+ stale snippets
+- `skills/RemoteFactory/references/class-factory.md` -- 10+ stale snippets
+- `skills/RemoteFactory/references/advanced-patterns.md` -- 5+ stale snippets
+- `skills/RemoteFactory/references/service-injection.md` -- 4+ stale snippets
+
+**Resolution:** Run `mdsnippets` from the repository root to regenerate all embedded code blocks.
+
+**Issue 2 (Documentation -- Step 8 task): Hand-written anti-pattern examples.**
+
+`skills/RemoteFactory/references/anti-patterns.md` lines 298-299 and 309-310 show `[Remote, Create] public` in the default-parameter anti-pattern examples. These should be `internal` so readers see only one mistake per example.
+
+**Issue 3 (Process -- non-blocking): Plan metadata not filled in.**
+
+The Implementation Progress and Completion Evidence sections still contain placeholder text despite commit `b77da02` being present.

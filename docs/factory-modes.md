@@ -23,7 +23,7 @@ The server registers factories that execute locally and handles incoming HTTP re
 // services.AddNeatooAspNetCore(options, domainAssembly);
 // app.UseNeatoo();  // Maps /api/neatoo endpoint
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L30-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L25-L29' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Remote

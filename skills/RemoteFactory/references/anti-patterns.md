@@ -296,7 +296,7 @@ internal partial class Order : IOrder
 public partial class EmployeeSearch
 {
     [Remote, Create]
-    public void Create(string? searchQuery = null) { }  // = null is stripped!
+    internal void Create(string? searchQuery = null) { }  // = null is stripped!
 }
 
 // Generated factory method becomes:
@@ -307,7 +307,7 @@ public partial class EmployeeSearch
 public partial class EmployeeSearch
 {
     [Remote, Create]
-    public void Create(string? searchQuery) { }  // Caller always passes value (or null)
+    internal void Create(string? searchQuery) { }  // Caller always passes value (or null)
 }
 ```
 

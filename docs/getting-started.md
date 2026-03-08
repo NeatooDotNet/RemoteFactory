@@ -49,7 +49,7 @@ builder.Services.AddNeatooAspNetCore(
     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
     typeof(Employee).Assembly);
 
-// Register factory types (IEmployeeFactory -> EmployeeFactory)
+// Register IName -> Name pairs (auth services, repositories, etc.)
 builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
 
 // Register your infrastructure services
@@ -89,8 +89,13 @@ builder.Services.AddNeatooRemoteFactory(
 // In hosted WASM mode, HostEnvironment.BaseAddress targets the server that hosts the client
 builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+
+// Optional: Register IName -> Name pairs (auth services, etc.) on the client.
+// Enables factory Can* methods and Create to run locally without a server round-trip.
+// If omitted, these methods will fall back to remote calls.
+builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L11-L22' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L11-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `NeatooFactory.Remote` tells RemoteFactory this is the client side — factory calls will be serialized and sent to the server via the keyed HttpClient.
@@ -104,7 +109,7 @@ This is where RemoteFactory's value shows up. You write the persistence logic di
 ```cs
 // [Remote] executes on server; [Service] injects from DI (not serialized)
 [Remote, Fetch]
-public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
 {
     var entity = await repo.GetByIdAsync(id, ct);
     if (entity == null) return false;
@@ -115,7 +120,7 @@ public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, Cance
 
 // Save() routes to Insert/Update/Delete based on IsNew and IsDeleted
 [Remote, Insert]
-public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
 {
     await repo.AddAsync(MapToEntity(), ct);
     await repo.SaveChangesAsync(ct);
@@ -123,14 +128,14 @@ public async Task Insert([Service] IEmployeeRepository repo, CancellationToken c
 }
 
 [Remote, Update]
-public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
 {
     await repo.UpdateAsync(MapToEntity(), ct);
     await repo.SaveChangesAsync(ct);
 }
 
 [Remote, Delete]
-public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
 {
     await repo.DeleteAsync(Id, ct);
     await repo.SaveChangesAsync(ct);
