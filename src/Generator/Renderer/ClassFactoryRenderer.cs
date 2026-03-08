@@ -115,11 +115,11 @@ internal static class ClassFactoryRenderer
         bool firstMethod = true;
         foreach (var method in model.Methods)
         {
-            // Skip internal methods from public interface (mixed-visibility case)
-            if (!model.AllMethodsInternal && method.IsInternal)
-                continue;
+            // Internal methods on a public interface need the 'internal' modifier.
+            // On an all-internal interface, no modifier is needed (the interface itself is internal).
+            bool needsInternalPrefix = !model.AllMethodsInternal && method.IsInternal;
 
-            var interfaceMethod = RenderInterfaceMethodSignature(method);
+            var interfaceMethod = RenderInterfaceMethodSignature(method, needsInternalPrefix);
             if (!string.IsNullOrEmpty(interfaceMethod))
             {
                 // [DynamicDependency] on the first interface method preserves the factory class
@@ -138,7 +138,7 @@ internal static class ClassFactoryRenderer
         sb.AppendLine();
     }
 
-    private static string RenderInterfaceMethodSignature(FactoryMethodModel method)
+    private static string RenderInterfaceMethodSignature(FactoryMethodModel method, bool needsInternalPrefix)
     {
         // Skip write methods as they're only used internally by Save
         if (method is WriteMethodModel)
@@ -149,13 +149,14 @@ internal static class ClassFactoryRenderer
         var returnType = GetReturnType(method, includeTask: true, includeAuth: false);
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
 
-        var result = $"{returnType} {method.Name}({parameters});";
+        var prefix = needsInternalPrefix ? "internal " : "";
+        var result = $"{prefix}{returnType} {method.Name}({parameters});";
 
         // For Save methods with auth, also add TrySave interface method
         if (method is SaveMethodModel sm && sm.HasAuth)
         {
             var authReturnType = GetReturnType(method, includeTask: true, includeAuth: true);
-            result += $"\n        {authReturnType} Try{method.Name}({parameters});";
+            result += $"\n        {prefix}{authReturnType} Try{method.Name}({parameters});";
         }
 
         return result;

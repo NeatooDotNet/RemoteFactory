@@ -1,44 +1,21 @@
-# IL Trimming for Blazor WASM
+# IL Trimming — Keeping Server Logic Off the Client
 
-## The Problem
+## Recommended Pattern
 
-RemoteFactory's single-assembly model means `[Remote]` methods can take server-only services like `DbContext` and `IEmployeeRepository` directly. When that assembly ships to the browser in Blazor WASM, three problems emerge:
+Use `internal` classes with `public [Remote]` entry points. When configured, RemoteFactory optimizes the client binary with IL trimming — removing server-only business logic and its dependencies, reducing client library size.
 
-1. **Runtime failures.** Blazor WASM publishes with trimming by default. The trimmer sees Entity Framework referenced, partially strips its internals, and EF crashes at runtime — even though the client never calls those code paths.
-
-2. **IP exposure.** `[Remote]` method bodies — SQL queries, business rules, data transformations — ship in decompilable IL. Anyone with a disassembler can read the server-side logic.
-
-3. **Bundle bloat.** Server-only packages and their transitive dependencies inflate download size unnecessarily.
-
-The traditional workaround is splitting into separate client and server assemblies. IL trimming eliminates that need.
-
-## How RemoteFactory Solves It
-
-RemoteFactory's source generator wraps server-only code paths in `if (NeatooRuntime.IsServerRuntime)` guards. When a Blazor WASM project sets this switch to `false`, the IL trimmer treats the guarded branches as dead code and removes them — along with their transitive dependencies.
-
-No changes to domain code required. The guards are in the **generated** factory code, not in application code.
-
-### What Gets Guarded
-
-Guards are conditional based on method visibility:
-
-- **Class factories** — `[Remote]` and `internal` method bodies are wrapped in `if (NeatooRuntime.IsServerRuntime)` checks. `public` non-`[Remote]` methods (like `Create` or `CanCreate`) have **no guard** and survive trimming — they run locally on both client and server.
-- **Static factories** — Delegate and event registrations guarded; trimmer removes registration lambdas and captured dependencies
-- **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`
-
-| Method Declaration | Guard? | Trimming Behavior |
+| Element | Recommended Visibility | Why |
 |---|---|---|
-| `[Remote] public` | Yes | Trimmed on client. Client uses delegate fork to route to server. |
-| `public` (no `[Remote]`) | No | Survives trimming. Runs locally on client and server. |
-| `internal` (no `[Remote]`) | Yes | Trimmed on client. Server-only. |
+| Domain class | `internal` with `public` interface | Hides implementation from client assemblies |
+| Aggregate root factory methods | `public` with `[Remote]` | Client entry points — routed to server |
+| Child entity factory methods | `internal` | Server-only — removed from client |
+| Methods that run locally (e.g. `CanCreate`) | `public` (no `[Remote]`) | Needed on both client and server |
 
-Mark child entity factory methods as `internal` to make them trimmable. The trimmer eliminates their method bodies, `[Service]` dependencies, and transitive references.
+With this pattern and trimming configured, the deployed client contains only remote stubs and locally-needed methods — no server-only logic, no server-only dependencies, no IP exposure.
 
-### The Feature Switch
+## Setup
 
-`NeatooRuntime.IsServerRuntime` uses .NET's `[FeatureSwitchDefinition]` attribute. At runtime it defaults to `true` (server behavior). When set via `RuntimeHostConfigurationOption` with `Trim="true"`, the IL trimmer constant-folds it into the binary and eliminates all code behind the `false` branch.
-
-## Configuration
+Two settings, one in each project:
 
 ### Domain model project
 
@@ -50,11 +27,11 @@ Mark the assembly as trimmable in the domain model `.csproj`:
 </PropertyGroup>
 ```
 
-Without this, the trimmer only trims framework assemblies and the domain model ships intact to the client. The library author declares trimmability once — consuming projects don't need `<TrimmableAssembly>` entries.
+Without this, the trimmer only trims framework assemblies and the domain model ships intact to the client.
 
-### Client project
+### Client project (Blazor WASM)
 
-Add the feature switch to the **Blazor WASM client project** `.csproj`:
+Add the feature switch to the client `.csproj`:
 
 ```xml
 <ItemGroup>
@@ -69,28 +46,14 @@ Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true
 | Setting | Where | Purpose |
 |---------|-------|---------|
 | `IsTrimmable=true` | Domain `.csproj` | Opts the assembly into trimming |
-| `RuntimeHostConfigurationOption` | Client `.csproj` | Tell the trimmer to treat `IsServerRuntime` as `false` at compile time |
+| `RuntimeHostConfigurationOption` | Client `.csproj` | Tells the trimmer that `IsServerRuntime` is `false` |
 
-The `Trim="true"` attribute on the `RuntimeHostConfigurationOption` is critical — without it, the switch is just a runtime value and the trimmer cannot use it for dead code elimination.
+The `Trim="true"` attribute on the `RuntimeHostConfigurationOption` is critical — without it, the switch is a runtime value only and the trimmer cannot eliminate server code.
 
 ### Requirements
 
 - **.NET 9 or later** — `[FeatureSwitchDefinition]` was introduced in .NET 9
-- **`dotnet publish`** — Trimming only runs during publish, not during `dotnet build` or `dotnet run`
-
-## Trimming vs RemoteOnly
-
-Both keep server-only code off the client. They are complementary.
-
-| | IL Trimming | RemoteOnly Mode |
-|---|---|---|
-| **When it acts** | Publish time (IL trimmer) | Compile time (source generator) |
-| **What it removes** | Server-only code paths and transitive dependencies | Local method implementations entirely |
-| **Configuration** | MSBuild properties in client `.csproj` | `[assembly: FactoryMode(FactoryModeOption.RemoteOnly)]` |
-| **Domain code changes** | None | None |
-| **Project structure** | Single shared domain assembly | Works with single or split assemblies |
-
-**Recommendation:** Start with IL trimming — simplest setup, no project restructuring. Add RemoteOnly later if compile-time separation is required (e.g., security policy demands server logic never exists in client binaries, even during development).
+- **`dotnet publish`** — Trimming runs during publish, not during `dotnet build` or `dotnet run`
 
 ## Verifying Results
 
@@ -109,17 +72,12 @@ If server-only type names still appear:
 2. Confirm `RuntimeHostConfigurationOption` has `Trim="true"`
 3. Inspect the `publish/` output, not the `build/` output
 
-## Authorization Types and Trimming
+## Authorization Types
 
 The generator automatically emits explicit DI registrations for `[AuthorizeFactory<T>]` types in `FactoryServiceRegistrar`. This creates static references that survive trimming — no additional configuration needed for auth classes.
 
-The concrete type is resolved at compile time using the naming convention (`IPersonModelAuth` → `PersonModelAuth`).
+The concrete type is resolved at compile time using the naming convention (`IPersonModelAuth` -> `PersonModelAuth`).
 
-### RegisterMatchingName and Trimming
+### RegisterMatchingName
 
 `RegisterMatchingName` uses reflection (`assembly.GetTypes()`) at runtime. The trimmer cannot see these references and may trim types only registered through convention. Factory auth types are handled automatically by the generator. For other convention-registered services, either register them explicitly or use `[DynamicDependency]` to preserve them.
-
-## Limitations
-
-- **Development builds are not trimmed.** `dotnet run` and `dotnet build` include all code. Trimming applies only to `dotnet publish`.
-- **Trimming warnings.** Domain code or dependencies using reflection may produce standard .NET trimming warnings. These are not RemoteFactory-specific.
