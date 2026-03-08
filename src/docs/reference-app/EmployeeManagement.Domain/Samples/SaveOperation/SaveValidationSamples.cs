@@ -32,7 +32,7 @@ public partial class SaveValidatedEmployee
     public SaveValidatedEmployee() { Id = Guid.NewGuid(); }
 
     [Remote, Insert]
-    public Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         IsNew = false;
         return Task.CompletedTask;
@@ -74,7 +74,7 @@ public partial class SaveServerValidatedEmployee : IFactorySaveMeta
     #region save-validation-throw
     // Throw ValidationException in Insert/Update for server-side validation
     [Remote, Insert]
-    public Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(FirstName)) throw new ValidationException("First name required");
         if (string.IsNullOrWhiteSpace(LastName)) throw new ValidationException("Last name required");

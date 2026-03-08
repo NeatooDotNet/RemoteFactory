@@ -44,7 +44,7 @@ public partial class EmployeeModeDemo : IEmployeeModeDemo
     }
 
     [Remote, Fetch]
-    public async Task<bool> FetchFromServer(
+    internal async Task<bool> FetchFromServer(
         Guid id,
         [Service] IEmployeeRepository repository,
         CancellationToken ct)

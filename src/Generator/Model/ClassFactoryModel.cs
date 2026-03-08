@@ -43,11 +43,12 @@ internal sealed record ClassFactoryModel
     public bool RequiresEntityRegistration { get; }
     public bool RegisterOrdinalConverter { get; }
     /// <summary>
-    /// True if ALL factory methods are internal. When true, the generated factory interface is internal.
+    /// True if ALL factory methods are internal (excluding [Remote] methods, which are promoted to public).
+    /// When true, the generated factory interface is internal.
     /// </summary>
-    public bool AllMethodsInternal => Methods.Count > 0 && Methods.All(m => m.IsInternal);
+    public bool AllMethodsInternal => Methods.Count > 0 && Methods.All(m => m.IsInternal && !m.IsRemote);
     /// <summary>
-    /// True if ANY factory method is public. Inverse of AllMethodsInternal (when methods exist).
+    /// True if ANY factory method is public or [Remote] (promoted to public on the interface).
     /// </summary>
-    public bool HasPublicMethods => Methods.Any(m => !m.IsInternal);
+    public bool HasPublicMethods => Methods.Any(m => !m.IsInternal || m.IsRemote);
 }

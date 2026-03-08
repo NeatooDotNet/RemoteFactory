@@ -27,7 +27,7 @@ public partial class EmployeeFullMode : IFactorySaveMeta
     public EmployeeFullMode() => Id = Guid.NewGuid();
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -40,7 +40,7 @@ public partial class EmployeeFullMode : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, DepartmentId = DepartmentId };
         await repository.AddAsync(entity, ct);
@@ -49,7 +49,7 @@ public partial class EmployeeFullMode : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, DepartmentId = DepartmentId };
         await repository.UpdateAsync(entity, ct);

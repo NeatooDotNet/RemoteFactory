@@ -35,7 +35,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
+    internal async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(id);
         if (entity == null) return false;
@@ -50,7 +50,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Insert]
-    public async Task Insert([Service] IPersonRepository repository)
+    internal async Task Insert([Service] IPersonRepository repository)
     {
         var entity = new PersonEntity
         {
@@ -68,7 +68,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Update]
-    public async Task Update([Service] IPersonRepository repository)
+    internal async Task Update([Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(Id)
             ?? throw new InvalidOperationException($"Person {Id} not found");
@@ -84,7 +84,7 @@ public partial class Person : IPerson
 
     [Remote]
     [Delete]
-    public async Task Delete([Service] IPersonRepository repository)
+    internal async Task Delete([Service] IPersonRepository repository)
     {
         await repository.DeleteAsync(Id);
         await repository.SaveChangesAsync();
@@ -153,7 +153,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     public PersonWithAuth() { Id = Guid.NewGuid(); }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] IPersonRepository repository)
     {
@@ -167,7 +167,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IPersonRepository repository)
+    internal async Task Insert([Service] IPersonRepository repository)
     {
         await repository.AddAsync(new PersonEntity
         {
@@ -179,7 +179,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IPersonRepository repository)
+    internal async Task Update([Service] IPersonRepository repository)
     {
         var entity = await repository.GetByIdAsync(Id)
             ?? throw new InvalidOperationException();
@@ -191,7 +191,7 @@ public partial class PersonWithAuth : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IPersonRepository repository)
+    internal async Task Delete([Service] IPersonRepository repository)
     {
         await repository.DeleteAsync(Id);
         await repository.SaveChangesAsync();

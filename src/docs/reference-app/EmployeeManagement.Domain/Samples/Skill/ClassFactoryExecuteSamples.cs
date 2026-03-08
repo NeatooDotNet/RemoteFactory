@@ -20,7 +20,7 @@ public partial class SkillConsultation : ISkillConsultation
     public SkillConsultation() { }
 
     [Remote, Create]
-    public Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
+    internal Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
     {
         PatientId = patientId;
         Status = "Acute";
@@ -28,7 +28,7 @@ public partial class SkillConsultation : ISkillConsultation
     }
 
     [Remote, Fetch]
-    public Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
+    internal Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
     {
         PatientId = patientId;
         Status = "Active";

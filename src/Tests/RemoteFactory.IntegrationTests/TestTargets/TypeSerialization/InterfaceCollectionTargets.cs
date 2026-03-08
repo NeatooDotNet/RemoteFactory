@@ -221,7 +221,7 @@ public class InterfaceCollectionContainer : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task Insert()
+    internal Task Insert()
     {
         IsNew = false;
         return Task.CompletedTask;
@@ -229,14 +229,14 @@ public class InterfaceCollectionContainer : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task Update()
+    internal Task Update()
     {
         return Task.CompletedTask;
     }
 
     [Delete]
     [Remote]
-    public Task Delete()
+    internal Task Delete()
     {
         return Task.CompletedTask;
     }

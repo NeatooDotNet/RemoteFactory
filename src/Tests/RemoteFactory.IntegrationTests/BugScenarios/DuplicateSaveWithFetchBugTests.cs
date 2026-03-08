@@ -99,7 +99,7 @@ internal partial class DuplicateSaveWithFetchBug : IDuplicateSaveWithFetchBug
     // Fetch with TWO services + CancellationToken (EXACT match of Person.Fetch)
     [Remote]
     [Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         [Service] IServerOnlyService db,
         [Service] ISecondTestService secondService,
         CancellationToken cancellationToken)
@@ -112,7 +112,7 @@ internal partial class DuplicateSaveWithFetchBug : IDuplicateSaveWithFetchBug
     // Insert returns Task<TestEntityForBug?> with TWO services (EXACT match of Person.Insert)
     [Remote]
     [Insert]
-    public async Task<TestEntityForBug?> Insert(
+    internal async Task<TestEntityForBug?> Insert(
         [Service] IServerOnlyService db,
         [Service] ISecondTestService secondService,
         CancellationToken cancellationToken)
@@ -125,7 +125,7 @@ internal partial class DuplicateSaveWithFetchBug : IDuplicateSaveWithFetchBug
     // Update returns Task<TestEntityForBug?> with TWO services (EXACT match of Person.Update)
     [Remote]
     [Update]
-    public async Task<TestEntityForBug?> Update(
+    internal async Task<TestEntityForBug?> Update(
         [Service] IServerOnlyService db,
         [Service] ISecondTestService secondService,
         CancellationToken cancellationToken)
@@ -138,7 +138,7 @@ internal partial class DuplicateSaveWithFetchBug : IDuplicateSaveWithFetchBug
     // NOTE: Delete has FEWER services than Insert/Update!
     [Remote]
     [Delete]
-    public async Task Delete(
+    internal async Task Delete(
         [Service] IServerOnlyService db,
         CancellationToken cancellationToken)
     {

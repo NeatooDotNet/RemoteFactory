@@ -14,7 +14,7 @@ public partial class RemoteCreateTarget_Simple
 
     [Create]
     [Remote]
-    public void Create(int value)
+    internal void Create(int value)
     {
         CreateCalled = true;
         ReceivedValue = value;
@@ -33,7 +33,7 @@ public partial class RemoteCreateTarget_WithService
 
     [Create]
     [Remote]
-    public void Create(int value, [Service] IService service)
+    internal void Create(int value, [Service] IService service)
     {
         CreateCalled = true;
         ReceivedValue = value;
@@ -52,7 +52,7 @@ public partial class RemoteFetchTarget_Simple
 
     [Fetch]
     [Remote]
-    public void Fetch(int id)
+    internal void Fetch(int id)
     {
         FetchCalled = true;
         ReceivedId = id;
@@ -74,7 +74,7 @@ public partial class RemoteSaveTarget_Simple : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task Insert()
+    internal Task Insert()
     {
         InsertCalled = true;
         return Task.CompletedTask;
@@ -82,7 +82,7 @@ public partial class RemoteSaveTarget_Simple : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task Update()
+    internal Task Update()
     {
         UpdateCalled = true;
         return Task.CompletedTask;
@@ -90,7 +90,7 @@ public partial class RemoteSaveTarget_Simple : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task Delete()
+    internal Task Delete()
     {
         DeleteCalled = true;
         return Task.CompletedTask;

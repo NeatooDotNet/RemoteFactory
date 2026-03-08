@@ -19,7 +19,7 @@ public partial class EmployeeList
     /// Fetches all employees.
     /// </summary>
     [Remote, Fetch]
-    public async Task FetchAll([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task FetchAll([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entities = await repository.GetAllAsync(ct);
         Items = entities.Select(MapToItem).ToList();
@@ -29,7 +29,7 @@ public partial class EmployeeList
     /// Fetches employees by department.
     /// </summary>
     [Remote, Fetch]
-    public async Task FetchByDepartment(Guid departmentId, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task FetchByDepartment(Guid departmentId, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entities = await repository.GetByDepartmentIdAsync(departmentId, ct);
         Items = entities.Select(MapToItem).ToList();

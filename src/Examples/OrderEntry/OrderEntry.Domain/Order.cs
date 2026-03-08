@@ -43,7 +43,7 @@ internal class Order : IOrder
     /// Creates a new order with an empty Lines collection.
     /// </summary>
     [Remote, Create]
-    public void Create([Service] IOrderLineListFactory lineListFactory)
+    internal void Create([Service] IOrderLineListFactory lineListFactory)
     {
         Id = Guid.NewGuid();
         OrderDate = DateTime.Now;
@@ -56,7 +56,7 @@ internal class Order : IOrder
     /// Loads order and its lines from database.
     /// </summary>
     [Remote, Fetch]
-    public async Task Fetch(
+    internal async Task Fetch(
         Guid id,
         [Service] IOrderEntryContext db,
         [Service] IOrderLineListFactory lineListFactory)
@@ -76,7 +76,7 @@ internal class Order : IOrder
     /// Server-side Insert - persists new order and lines to database.
     /// </summary>
     [Remote, Insert]
-    public async Task Insert([Service] IOrderEntryContext db)
+    internal async Task Insert([Service] IOrderEntryContext db)
     {
         var entity = new OrderEntity
         {
@@ -108,7 +108,7 @@ internal class Order : IOrder
     /// Server-side Update - updates order and syncs lines.
     /// </summary>
     [Remote, Update]
-    public async Task Update([Service] IOrderEntryContext db)
+    internal async Task Update([Service] IOrderEntryContext db)
     {
         var entity = await db.Orders
             .Include(o => o.Lines)
@@ -158,7 +158,7 @@ internal class Order : IOrder
     /// Lines are cascade deleted by EF.
     /// </summary>
     [Remote, Delete]
-    public async Task Delete([Service] IOrderEntryContext db)
+    internal async Task Delete([Service] IOrderEntryContext db)
     {
         var entity = await db.Orders.FirstAsync(o => o.Id == Id);
         db.Orders.Remove(entity);

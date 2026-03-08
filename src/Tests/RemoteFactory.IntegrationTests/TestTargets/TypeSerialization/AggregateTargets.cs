@@ -80,7 +80,7 @@ public class AggregateRoot : IFactorySaveMeta
     /// Server-side Create - injects child list factory to initialize children.
     /// </summary>
     [Remote, Create]
-    public void Create([Service] IAggregateChildListFactory childListFactory)
+    internal void Create([Service] IAggregateChildListFactory childListFactory)
     {
         Id = Guid.NewGuid();
         Children = childListFactory.Create();
@@ -91,7 +91,7 @@ public class AggregateRoot : IFactorySaveMeta
     /// Server-side Fetch - loads aggregate with children.
     /// </summary>
     [Remote, Fetch]
-    public void Fetch(
+    internal void Fetch(
         Guid id,
         [Service] IAggregateChildListFactory childListFactory)
     {
@@ -111,7 +111,7 @@ public class AggregateRoot : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public Task Insert()
+    internal Task Insert()
     {
         InsertWasCalled = true;
         IsNew = false;
@@ -119,14 +119,14 @@ public class AggregateRoot : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public Task Update()
+    internal Task Update()
     {
         UpdateWasCalled = true;
         return Task.CompletedTask;
     }
 
     [Remote, Delete]
-    public Task Delete()
+    internal Task Delete()
     {
         DeleteWasCalled = true;
         return Task.CompletedTask;

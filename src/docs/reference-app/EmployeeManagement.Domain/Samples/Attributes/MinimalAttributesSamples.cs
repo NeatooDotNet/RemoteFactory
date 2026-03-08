@@ -44,7 +44,7 @@ public partial class EmployeeCreate
 public partial class EmployeeFetch
 {
     [Remote, Fetch]  // Returns bool: false = not found (factory returns null)
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
         => Task.FromResult(true);
 }
 #endregion
@@ -57,7 +57,7 @@ public partial class EmployeeInsert : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Insert]  // Persists new entity
-    public Task Insert([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    internal Task Insert([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
 }
 #endregion
 
@@ -69,7 +69,7 @@ public partial class EmployeeUpdate : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Update]  // Persists changes to existing entity
-    public Task Update([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    internal Task Update([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
 }
 #endregion
 
@@ -81,7 +81,7 @@ public partial class EmployeeDelete : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Delete]  // Removes entity from persistence
-    public Task Delete([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    internal Task Delete([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
 }
 #endregion
 
@@ -113,7 +113,7 @@ public partial class EmployeeRemote
     public EmployeeRemote() { }
 
     [Remote, Fetch]  // [Remote] - serializes request, sends via HTTP, deserializes response
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct) => Task.FromResult(true);
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct) => Task.FromResult(true);
 }
 #endregion
 
@@ -122,7 +122,7 @@ public partial class EmployeeRemote
 public partial class EmployeeWithService
 {
     [Remote, Fetch]
-    public Task<bool> Fetch(
+    internal Task<bool> Fetch(
         Guid employeeId,                          // Value parameter: serialized to server
         [Service] IEmployeeRepository repository, // [Service]: resolved from DI container
         CancellationToken ct) => Task.FromResult(true);
@@ -156,7 +156,7 @@ public partial class MethodAuthEmployee : IFactorySaveMeta
 
     [Remote, Delete]
     [AspAuthorize(Roles = "HRManager")]  // Method-level: additional check after class-level
-    public Task Delete([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    internal Task Delete([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
 }
 #endregion
 
@@ -169,12 +169,12 @@ public partial class PolicyEmployee : IFactorySaveMeta
 
     [Remote, Fetch]
     [AspAuthorize("RequireEmployee")]  // Policy-based authorization
-    public Task<bool> FetchWithPolicy(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal Task<bool> FetchWithPolicy(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
         => Task.FromResult(true);
 
     [Remote, Insert]
     [AspAuthorize(Roles = "HR,Manager")]  // Role-based authorization
-    public Task InsertWithRoles([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal Task InsertWithRoles([Service] IEmployeeRepository repo, CancellationToken ct)
         => Task.CompletedTask;
 }
 #endregion
@@ -187,7 +187,7 @@ public partial class UpsertSetting : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Insert, Update]  // Both operations point to same method
-    public Task Upsert(CancellationToken ct) => Task.CompletedTask;
+    internal Task Upsert(CancellationToken ct) => Task.CompletedTask;
 }
 #endregion
 
@@ -199,10 +199,10 @@ public partial class RemoteOps : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Remote, Fetch]   // Server-side data loading
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
 
     [Remote, Insert]  // Server-side persistence
-    public Task Insert([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
+    internal Task Insert([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
 }
 #endregion
 
@@ -225,7 +225,7 @@ public partial class BaseWithFactory
     public BaseWithFactory() { }
 
     [Remote, Fetch]  // [Remote] Inherited: Yes
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
 }
 
 public partial class DerivedEntity : BaseWithFactory
@@ -248,17 +248,17 @@ public partial class CrudEntity : IFactorySaveMeta
     public CrudEntity() { }
 
     [Remote, Fetch]
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct)
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct)
         => Task.FromResult(true);
 
     [Remote, Insert]
-    public Task Insert([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
+    internal Task Insert([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
 
     [Remote, Update]
-    public Task Update([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
+    internal Task Update([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
 
     [Remote, Delete]
-    public Task Delete([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
+    internal Task Delete([Service] IEmployeeRepository r, CancellationToken ct) => Task.CompletedTask;
 }
 #endregion
 
@@ -270,7 +270,7 @@ public partial class ReadOnlyEntity
     public ReadOnlyEntity() { }
 
     [Remote, Fetch]
-    public Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct)
+    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct)
         => Task.FromResult(true);
     // No Insert, Update, Delete - read-only projection
 }

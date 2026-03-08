@@ -48,7 +48,7 @@ public partial class ClassExecuteDemo
     /// Standard Create method -- establishes that this is a class factory.
     /// </summary>
     [Remote, Create]
-    public Task Create(string name, [Service] IExampleService service)
+    internal Task Create(string name, [Service] IExampleService service)
     {
         Id = service.GenerateId();
         Name = name;

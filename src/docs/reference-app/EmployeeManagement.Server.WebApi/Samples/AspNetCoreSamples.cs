@@ -30,7 +30,7 @@ public partial class EmployeeHttpContext : IFactorySaveMeta
     #region service-injection-httpcontext-aspnetcore
     // IHttpContextAccessor for accessing HTTP request info (server-only)
     [Remote, Insert]
-    public async Task Insert(
+    internal async Task Insert(
         [Service] IEmployeeRepository repository,
         [Service] Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor,
         CancellationToken ct)

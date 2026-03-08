@@ -79,7 +79,7 @@ public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid employeeId,
         [Service] IEmployeeRepository repository,
         CancellationToken ct = default)
@@ -97,7 +97,7 @@ public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         var entity = new EmployeeEntity
         {
@@ -114,7 +114,7 @@ public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         var entity = new EmployeeEntity
         {
@@ -129,7 +129,7 @@ public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct = default)
+    internal async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct = default)
     {
         await repository.DeleteAsync(Id, ct);
         await repository.SaveChangesAsync(ct);
@@ -287,7 +287,7 @@ public partial class EmployeeWithMethodAuth : IFactorySaveMeta
     }
 
     [Remote, Fetch]
-    public Task<bool> Fetch(Guid id, CancellationToken ct = default)
+    internal Task<bool> Fetch(Guid id, CancellationToken ct = default)
     {
         Id = id;
         IsNew = false;
@@ -299,7 +299,7 @@ public partial class EmployeeWithMethodAuth : IFactorySaveMeta
     // Both checks must pass: IEmployeeReadAuthorization AND HRManager role
     [Remote, Update]
     [AspAuthorize(Roles = "HRManager")]
-    public Task Terminate(CancellationToken ct = default)
+    internal Task Terminate(CancellationToken ct = default)
     {
         IsTerminated = true;
         return Task.CompletedTask;
@@ -332,7 +332,7 @@ public partial class SalaryInfo
     // [AspAuthorize] applies ASP.NET Core policies to factory methods
     [Remote, Fetch]
     [AspAuthorize("RequireAuthenticated")]
-    public Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+    internal Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
     {
         EmployeeId = employeeId;
         AnnualSalary = 75000m;
@@ -345,7 +345,7 @@ public partial class SalaryInfo
     /// </summary>
     [Remote, Fetch]
     [AspAuthorize("RequirePayroll")]
-    public Task<bool> FetchWithCompensation(Guid employeeId, decimal bonusAmount, CancellationToken ct = default)
+    internal Task<bool> FetchWithCompensation(Guid employeeId, decimal bonusAmount, CancellationToken ct = default)
     {
         EmployeeId = employeeId;
         AnnualSalary = 75000m + bonusAmount;
@@ -401,7 +401,7 @@ public partial class TimeOffRequest
     // Roles property - any listed role can access (comma-separated)
     [Remote, Fetch]
     [AspAuthorize(Roles = "Employee,HRManager,Admin")]
-    public Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
+    internal Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
     {
         Id = requestId;
         return Task.FromResult(true);
@@ -481,7 +481,7 @@ public partial class PerformanceReview
 
     [Remote, Fetch]
     [AspAuthorize("RequireAuthenticated")]
-    public Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
+    internal Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
     {
         Id = reviewId;
         return Task.FromResult(true);
@@ -686,7 +686,7 @@ public partial class EmployeePersonalData
     }
 
     [Remote, Fetch]
-    public Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+    internal Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
     {
         Id = employeeId;
         // Load sensitive data from repository

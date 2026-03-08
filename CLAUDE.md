@@ -132,6 +132,8 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 
 **Core concept:** `[Remote]` marks entry points from the client to the server. Once execution crosses to the server, it stays there—subsequent method calls don't need `[Remote]`.
 
+**[Remote] requires `internal`:** `[Remote] public` is a compile-time error (NF0105). Use `[Remote] internal`—the generator promotes the method to `public` on the factory interface, so clients call it through the factory. This enables IL trimming of method bodies on client assemblies.
+
 **Constructor vs Method Injection:**
 - **Constructor injection** (`[Service]` on constructor): Services available on both client and server
 - **Method injection** (`[Service]` on method parameters): Server-only services—the common case for most factory methods
@@ -139,13 +141,14 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 **When to use `[Remote]`:**
 - Factory methods that are entry points from the client
 - Typically aggregate root operations (Create, Fetch, Save)
+- Always paired with `internal` visibility
 
 **When `[Remote]` is NOT needed (the common case):**
 - Methods called from server-side code (most methods with method-injected services)
 - Child entity operations within an aggregate
 - Any method invoked after already crossing to the server
 
-**Entity duality (Neatoo/CSLA pattern):** An entity can be an aggregate root in one object graph and a child in another. The same class may have `[Remote]` methods for aggregate root scenarios while other methods are server-only.
+**Entity duality (Neatoo/CSLA pattern):** An entity can be an aggregate root in one object graph and a child in another. The same class may have `[Remote] internal` methods for aggregate root scenarios while other methods are plain `internal` (server-only).
 
 **Runtime enforcement:** Non-`[Remote]` methods are generated for client assemblies but result in "not-registered" DI exceptions if called—server-only services aren't in the client container.
 

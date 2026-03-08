@@ -17,7 +17,7 @@ public partial class AuditLog : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create] public AuditLog() { Id = Guid.NewGuid(); }
-    [Remote, Insert] public Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
+    [Remote, Insert] internal Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
     // No [Update] or [Delete] = immutable after insert
 }
 #endregion
@@ -37,8 +37,8 @@ public partial class EmployeeNoDelete : IFactorySaveMeta
     public bool IsDeleted { get; set; }
 
     [Create] public EmployeeNoDelete() { Id = Guid.NewGuid(); }
-    [Remote, Insert] public Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
-    [Remote, Update] public Task Update(CancellationToken ct) { return Task.CompletedTask; }
+    [Remote, Insert] internal Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
+    [Remote, Update] internal Task Update(CancellationToken ct) { return Task.CompletedTask; }
     // No [Delete] = cannot delete, use for soft-delete patterns
 }
 #endregion

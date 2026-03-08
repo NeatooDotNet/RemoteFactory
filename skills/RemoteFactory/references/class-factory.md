@@ -297,11 +297,11 @@ The generator determines factory interface visibility from **method** accessibil
 
 | Method Visibility in Class | Generated Factory Interface | Which Methods on Interface? | Guards? |
 |---|---|---|---|
-| All methods `internal` | `internal` | All (internal interface) | All get `IsServerRuntime` guard |
-| All methods `public` | `public` | All | Only `[Remote]` methods |
-| Mix of `public` and `internal` | `public` | **All methods** — internal methods get `internal` modifier on interface | `internal`: guarded; `public`: only if `[Remote]` |
+| All methods `internal` (no `[Remote]`) | `internal` | All (internal interface) | All get `IsServerRuntime` guard |
+| All methods `public` or `[Remote] internal` | `public` | All | `[Remote]`: guarded; `public`: no guard |
+| Mix of `public`/`[Remote] internal` and plain `internal` | `public` | **All methods** — plain `internal` methods get `internal` modifier; `[Remote] internal` promoted to `public` | `internal` and `[Remote]`: guarded; `public`: no guard |
 
-**Internal methods on public interfaces.** When a class has both public and internal methods, internal methods appear on the **public factory interface** with the `internal` access modifier. This makes them accessible to same-assembly callers (server-side aggregate operations) while hiding them from external consumers (like a Blazor WASM client in a separate assembly). All-internal interfaces (where every method is internal) use an `internal` interface instead, so no per-method modifier is needed.
+**[Remote] promotes to public.** `[Remote] internal` methods are treated as `public` for interface visibility — they appear as `public` members on the factory interface because clients call them. Plain `internal` methods (without `[Remote]`) appear with the `internal` access modifier. All-internal interfaces (where every method is internal and none have `[Remote]`) use an `internal` interface, making them invisible to the client container.
 
 ### Class Accessibility vs Method Accessibility
 
@@ -312,8 +312,9 @@ This means class accessibility and method accessibility serve **different purpos
 | Accessibility | What It Controls |
 |---|---|
 | **Class** `internal` | Hides the concrete type from external assemblies. Use with a `public` interface (`IOrder`) so the factory returns the interface type. |
-| **Method** `internal` | Tells the generator: emit `IsServerRuntime` guard, add `internal` modifier on public factory interface, make trimmable. |
-| **Method** `public` | Tells the generator: include on factory interface, no guard (unless `[Remote]`). |
+| **Method** `internal` (no `[Remote]`) | Tells the generator: emit `IsServerRuntime` guard, add `internal` modifier on public factory interface, make trimmable. |
+| **Method** `internal` with `[Remote]` | Tells the generator: emit `IsServerRuntime` guard, promote to `public` on factory interface, make trimmable. Client calls via factory. |
+| **Method** `public` | Tells the generator: include on factory interface, no guard. Cannot have `[Remote]` (NF0105 error). |
 
 A `public` method on an `internal` class does **not** behave like an `internal` method for code generation. The method is still unguarded, untrimmable, and included on the public factory interface — even though C# caps its effective accessibility to `internal`.
 
@@ -349,23 +350,23 @@ internal partial class OrderLine : IOrderLine
 [Factory]
 internal partial class Department : IDepartment
 {
-    // Public: aggregate root entry point — on public factory interface, no guard (unless [Remote])
+    // [Remote] internal: aggregate root entry point — promoted to public on factory interface, gets guard
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IDeptRepo repo, CancellationToken ct) { ... }
+    internal async Task<bool> Fetch(Guid id, [Service] IDeptRepo repo, CancellationToken ct) { ... }
 
-    // Internal: child context — on public interface with `internal` modifier, gets IsServerRuntime guard
+    // Plain internal: child context — on public interface with `internal` modifier, gets IsServerRuntime guard
     [Fetch]
     internal void FetchAsChild(Guid id, string name) { ... }
 }
 // Generated:
 // public interface IDepartmentFactory
 // {
-//     Task<IDepartment?> Fetch(...);
-//     internal IDepartment FetchAsChild(...);  // internal modifier — same-assembly only
+//     Task<IDepartment?> Fetch(...);            // public — promoted by [Remote]
+//     internal IDepartment FetchAsChild(...);    // internal modifier — same-assembly only
 // }
 ```
 
-For aggregate roots, keep factory methods `public` (with `[Remote]` for operations that cross to the server). For child entities called only from server-side aggregate operations, use `internal`.
+For aggregate roots, use `[Remote] internal` for operations that cross to the server (the generator promotes these to `public` on the factory interface). For child entities called only from server-side aggregate operations, use `internal` without `[Remote]`.
 
 **CS0051 constraint:** CS0051 occurs when an `internal` type appears in a `public` method on a **`public`** class. When the consuming class is also `internal`, there is no CS0051 — C# caps the effective accessibility of `public` methods to the containing type's level, so `internal` service types are allowed. In practice, this means `internal` factory interfaces (from child entities with all-internal methods) can freely be injected as `[Service]` parameters into other `internal` classes. The constraint only applies when injecting into a **`public`** class. If you hit CS0051, either make the consuming class `internal` or keep the child entity methods `public` — the feature is opt-in and all `public` methods work identically to before.
 
@@ -375,7 +376,7 @@ For aggregate roots, keep factory methods `public` (with `[Remote]` for operatio
 
 1. **Classes must be `partial`** - Generator adds serialization code
 2. **Properties need public setters** - Required for deserialization
-3. **[Remote] marks client entry points** - Only on aggregate root operations
+3. **[Remote] requires `internal`** - `[Remote] public` is a compile-time error (NF0105); `[Remote] internal` is promoted to `public` on the factory interface
 4. **Business logic belongs in the entity** - Not in the factory
 5. **Execute methods must be `public static`** - No underscore prefix (unlike static factory Execute)
 6. **Execute must return the containing type** (or concrete type if no matching interface) - Keeps the factory interface cohesive

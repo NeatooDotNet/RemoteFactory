@@ -18,15 +18,17 @@ RemoteFactory's source generator emits `if (NeatooRuntime.IsServerRuntime)` guar
 
 ### Class Factories — Conditional Guards
 
-Not all factory methods get guards. The generator uses the developer's `public` vs `internal` declaration to decide:
+Not all factory methods get guards. The generator uses the developer's `public` vs `internal` declaration and the presence of `[Remote]` to decide:
 
 | Method Declaration | Guard? | Trimming Behavior |
 |---|---|---|
-| `[Remote] public` | Yes | Method body trimmed. Client routes to server via delegate fork. |
+| `[Remote] internal` | Yes | Method body trimmed. Client routes to server via delegate fork. Promoted to `public` on factory interface. |
 | `public` (no `[Remote]`) | **No** | Method body **survives** trimming. Runs locally on both client and server. |
 | `internal` (no `[Remote]`) | Yes | Method body trimmed. Server-only. |
 
-`public` non-`[Remote]` methods like `Create(string name)` or `CanCreate()` have no guard because they are designed to run on the client. Marking child entity factory methods as `internal` makes them trimmable — the trimmer eliminates their method bodies, `[Service]` dependencies, and transitive references from the published output.
+`[Remote]` requires `internal` — `[Remote] public` is a compile-time error (NF0105). The `[Remote] internal` pattern enables IL trimming: the trimmer eliminates the method bodies, `[Service]` dependencies, and transitive references from the published output, while the generated factory interface exposes the method as `public` for clients to call.
+
+`public` non-`[Remote]` methods like `Create(string name)` or `CanCreate()` have no guard because they are designed to run on the client. Marking child entity factory methods as `internal` (without `[Remote]`) also makes them trimmable.
 
 ### Static and Interface Factories
 

@@ -49,7 +49,7 @@ public partial class EmployeeWithAuth
     }
 
     [Remote, Fetch]
-    public async Task Fetch(
+    internal async Task Fetch(
         Guid id,
         [Service] IEmployeeRepository repository,
         CancellationToken ct)

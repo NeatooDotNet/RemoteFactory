@@ -62,11 +62,11 @@ public class ShowcaseSave : IShowcaseSave
 
     [Remote]
     [Insert]
-    public void InsertRemote([Service] IServerOnlyService service) { IsNew = false; Assert.NotNull(service); }
+    internal void InsertRemote([Service] IServerOnlyService service) { IsNew = false; Assert.NotNull(service); }
 
     [Remote]
     [Update]
-    public void UpdateRemote([Service] IServerOnlyService service) { }
+    internal void UpdateRemote([Service] IServerOnlyService service) { }
 }
 
 #endregion

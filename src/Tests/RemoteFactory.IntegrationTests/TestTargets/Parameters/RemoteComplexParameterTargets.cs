@@ -49,7 +49,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithIntList(List<int> ids)
+    internal void CreateRemoteWithIntList(List<int> ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
         CreateCalled = true;
@@ -61,7 +61,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithStringList(List<string> names)
+    internal void CreateRemoteWithStringList(List<string> names)
     {
         ArgumentNullException.ThrowIfNull(names);
         CreateCalled = true;
@@ -73,7 +73,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithDictionary(Dictionary<string, int> data)
+    internal void CreateRemoteWithDictionary(Dictionary<string, int> data)
     {
         ArgumentNullException.ThrowIfNull(data);
         CreateCalled = true;
@@ -85,7 +85,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithDto(SimpleDto dto)
+    internal void CreateRemoteWithDto(SimpleDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
         CreateCalled = true;
@@ -97,7 +97,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithNestedDto(NestedDto dto)
+    internal void CreateRemoteWithNestedDto(NestedDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
         CreateCalled = true;
@@ -109,7 +109,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithNullableList(List<int>? optionalIds)
+    internal void CreateRemoteWithNullableList(List<int>? optionalIds)
     {
         CreateCalled = true;
         Result = optionalIds == null
@@ -122,7 +122,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithNullableDto(SimpleDto? optionalDto)
+    internal void CreateRemoteWithNullableDto(SimpleDto? optionalDto)
     {
         CreateCalled = true;
         Result = optionalDto == null
@@ -135,7 +135,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto)
+    internal void CreateRemoteWithMixedParams(int id, List<string> tags, SimpleDto dto)
     {
         ArgumentNullException.ThrowIfNull(tags);
         ArgumentNullException.ThrowIfNull(dto);
@@ -148,7 +148,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public Task<bool> CreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data)
+    internal Task<bool> CreateRemoteWithComplexParamsAsync(List<int> ids, Dictionary<string, int> data)
     {
         ArgumentNullException.ThrowIfNull(ids);
         ArgumentNullException.ThrowIfNull(data);
@@ -162,7 +162,7 @@ public partial class ComplexParamRemoteTarget
     /// </summary>
     [Fetch]
     [Remote]
-    public void FetchRemoteWithIntList(List<int> ids)
+    internal void FetchRemoteWithIntList(List<int> ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
         FetchCalled = true;
@@ -171,7 +171,7 @@ public partial class ComplexParamRemoteTarget
 
     [Fetch]
     [Remote]
-    public void FetchRemoteWithDto(SimpleDto dto)
+    internal void FetchRemoteWithDto(SimpleDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
         FetchCalled = true;
@@ -205,7 +205,7 @@ public partial class ComplexParamRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Insert]
     [Remote]
-    public void InsertRemoteWithIntList(List<int> ids)
+    internal void InsertRemoteWithIntList(List<int> ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
         InsertCalled = true;
@@ -217,7 +217,7 @@ public partial class ComplexParamRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Insert]
     [Remote]
-    public void InsertRemoteWithDto(SimpleDto dto)
+    internal void InsertRemoteWithDto(SimpleDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
         InsertCalled = true;
@@ -229,7 +229,7 @@ public partial class ComplexParamRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Update]
     [Remote]
-    public void UpdateRemoteWithDictionary(Dictionary<string, int> data)
+    internal void UpdateRemoteWithDictionary(Dictionary<string, int> data)
     {
         ArgumentNullException.ThrowIfNull(data);
         UpdateCalled = true;
@@ -241,7 +241,7 @@ public partial class ComplexParamRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Delete]
     [Remote]
-    public void DeleteRemoteWithIntList(List<int> ids)
+    internal void DeleteRemoteWithIntList(List<int> ids)
     {
         ArgumentNullException.ThrowIfNull(ids);
         DeleteCalled = true;
@@ -253,7 +253,7 @@ public partial class ComplexParamRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Insert]
     [Remote]
-    public Task InsertRemoteWithComplexParamsAsync(List<string> tags, SimpleDto dto)
+    internal Task InsertRemoteWithComplexParamsAsync(List<string> tags, SimpleDto dto)
     {
         ArgumentNullException.ThrowIfNull(tags);
         ArgumentNullException.ThrowIfNull(dto);

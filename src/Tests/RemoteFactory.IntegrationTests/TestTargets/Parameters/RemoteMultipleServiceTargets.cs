@@ -24,7 +24,7 @@ public partial class MultiServiceRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
+    internal void CreateRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
     {
         ArgumentNullException.ThrowIfNull(service1);
         ArgumentNullException.ThrowIfNull(service2);
@@ -37,7 +37,7 @@ public partial class MultiServiceRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithThreeServices(
+    internal void CreateRemoteWithThreeServices(
         [Service] IService service1,
         [Service] IService2 service2,
         [Service] IService3 service3)
@@ -54,7 +54,7 @@ public partial class MultiServiceRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public void CreateRemoteWithParamsAndServices(
+    internal void CreateRemoteWithParamsAndServices(
         int id,
         string name,
         [Service] IService service1,
@@ -71,7 +71,7 @@ public partial class MultiServiceRemoteTarget
     /// </summary>
     [Fetch]
     [Remote]
-    public void FetchRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
+    internal void FetchRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
     {
         ArgumentNullException.ThrowIfNull(service1);
         ArgumentNullException.ThrowIfNull(service2);
@@ -84,7 +84,7 @@ public partial class MultiServiceRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public Task CreateRemoteWithTwoServicesAsync([Service] IService service1, [Service] IService2 service2)
+    internal Task CreateRemoteWithTwoServicesAsync([Service] IService service1, [Service] IService2 service2)
     {
         ArgumentNullException.ThrowIfNull(service1);
         ArgumentNullException.ThrowIfNull(service2);
@@ -98,7 +98,7 @@ public partial class MultiServiceRemoteTarget
     /// </summary>
     [Create]
     [Remote]
-    public Task<bool> CreateRemoteWithTwoServicesBoolAsync([Service] IService service1, [Service] IService2 service2)
+    internal Task<bool> CreateRemoteWithTwoServicesBoolAsync([Service] IService service1, [Service] IService2 service2)
     {
         ArgumentNullException.ThrowIfNull(service1);
         ArgumentNullException.ThrowIfNull(service2);
@@ -134,7 +134,7 @@ public partial class MultiServiceRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Insert]
     [Remote]
-    public void InsertRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
+    internal void InsertRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
     {
         ArgumentNullException.ThrowIfNull(service1);
         ArgumentNullException.ThrowIfNull(service2);
@@ -147,7 +147,7 @@ public partial class MultiServiceRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Update]
     [Remote]
-    public void UpdateRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
+    internal void UpdateRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
     {
         ArgumentNullException.ThrowIfNull(service1);
         ArgumentNullException.ThrowIfNull(service2);
@@ -160,7 +160,7 @@ public partial class MultiServiceRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Delete]
     [Remote]
-    public void DeleteRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
+    internal void DeleteRemoteWithTwoServices([Service] IService service1, [Service] IService2 service2)
     {
         ArgumentNullException.ThrowIfNull(service1);
         ArgumentNullException.ThrowIfNull(service2);
@@ -173,7 +173,7 @@ public partial class MultiServiceRemoteWriteTarget : IFactorySaveMeta
     /// </summary>
     [Insert]
     [Remote]
-    public Task InsertRemoteWithThreeServicesAsync(
+    internal Task InsertRemoteWithThreeServicesAsync(
         int priority,
         [Service] IService service1,
         [Service] IService2 service2,

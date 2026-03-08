@@ -55,7 +55,7 @@ public partial class PolicyProtectedEmployee2 : IFactorySaveMeta
     /// </summary>
     [Remote, Fetch]
     [AspAuthorize("RequireAuthenticated")]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] IEmployeeRepository repo,
         CancellationToken ct)
@@ -71,7 +71,7 @@ public partial class PolicyProtectedEmployee2 : IFactorySaveMeta
 
     [Remote, Insert]
     [AspAuthorize("RequireManagerOrHR")]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(repo);
         var entity = new EmployeeEntity
@@ -106,7 +106,7 @@ public partial class RoleProtectedEmployee : IFactorySaveMeta
     /// </summary>
     [Remote, Fetch]
     [AspAuthorize(Roles = "Employee,Manager,HR")]
-    public async Task<bool> Fetch(
+    internal async Task<bool> Fetch(
         Guid id,
         [Service] IEmployeeRepository repo,
         CancellationToken ct)
@@ -125,7 +125,7 @@ public partial class RoleProtectedEmployee : IFactorySaveMeta
     /// </summary>
     [Remote, Insert]
     [AspAuthorize(Roles = "HR,Manager")]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(repo);
         var entity = new EmployeeEntity
@@ -161,7 +161,7 @@ public partial class MultiPolicyEmployee : IFactorySaveMeta
     [Remote, Delete]
     [AspAuthorize("RequireAuthenticated")]
     [AspAuthorize(Roles = "HR")]
-    public async Task Delete(
+    internal async Task Delete(
         [Service] IAuditLogService auditLog,
         CancellationToken ct)
     {
@@ -196,7 +196,7 @@ public partial class EmployeeWithExtensions : IFactorySaveMeta, IFactoryOnStart
     }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(repo);
         var entity = await repo.GetByIdAsync(id, ct);
@@ -209,7 +209,7 @@ public partial class EmployeeWithExtensions : IFactorySaveMeta, IFactoryOnStart
     }
 
     [Remote, Insert]
-    public async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(repo);
         var entity = new EmployeeEntity
@@ -225,7 +225,7 @@ public partial class EmployeeWithExtensions : IFactorySaveMeta, IFactoryOnStart
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(repo);
         var entity = new EmployeeEntity
@@ -240,7 +240,7 @@ public partial class EmployeeWithExtensions : IFactorySaveMeta, IFactoryOnStart
     }
 
     [Remote, Delete]
-    public async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+    internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(repo);
         await repo.DeleteAsync(Id, ct);
@@ -285,13 +285,13 @@ public partial class EmployeeSaveStateSample : IFactorySaveMeta
     public EmployeeSaveStateSample() { Id = Guid.NewGuid(); }
 
     [Remote, Insert]
-    public Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
+    internal Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
 
     [Remote, Update]
-    public Task Update(CancellationToken ct) { return Task.CompletedTask; }
+    internal Task Update(CancellationToken ct) { _ = IsNew; return Task.CompletedTask; }
 
     [Remote, Delete]
-    public Task Delete(CancellationToken ct) { return Task.CompletedTask; }
+    internal Task Delete(CancellationToken ct) { _ = IsNew; return Task.CompletedTask; }
 }
 
 // Event samples moved to EmployeeEventHandlers.cs and EventsSamples.cs - no duplicate regions

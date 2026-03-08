@@ -174,8 +174,8 @@ internal static class FactoryModelBuilder
                 continue;
             }
 
-            // NF0105: [Remote] cannot be used with internal methods
-            if (method.IsRemote && method.IsInternal)
+            // NF0105: [Remote] requires internal methods (public is an error, static factories exempt)
+            if (method.IsRemote && !method.IsInternal && !method.IsStaticFactory)
             {
                 diagnostics.Add(new DiagnosticInfo(
                     "NF0105",
@@ -515,7 +515,7 @@ internal static class FactoryModelBuilder
             hasCancellationToken: hasCancellationToken);
     }
 
-    private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false)
+    private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false, bool isSourceMethodRemote = false)
     {
         // Collect parameters from auth methods
         var parameters = new List<ParameterModel>();
@@ -555,7 +555,8 @@ internal static class FactoryModelBuilder
             isNullable: false,
             parameters: parameters,
             authorization: authorization,
-            isInternal: isInternal);
+            isInternal: isInternal,
+            isSourceMethodRemote: isSourceMethodRemote);
     }
 
     #endregion
@@ -818,7 +819,8 @@ internal static class FactoryModelBuilder
                 typeInfo,
                 method.Authorization?.AuthMethods ?? Array.Empty<AuthMethodCall>(),
                 method.Authorization?.AspAuthorize ?? Array.Empty<AspAuthorizeCall>(),
-                isInternal: method.IsInternal);
+                isInternal: method.IsInternal,
+                isSourceMethodRemote: method.IsRemote);
 
             canMethodsToAdd.Add(canMethod);
             existingMethodNames.Add(canMethodName);
@@ -889,7 +891,7 @@ internal static class FactoryModelBuilder
             CanMethodModel cm => new CanMethodModel(
                 cm.Name, uniqueName, cm.ReturnType, cm.ServiceType, cm.ImplementationType, cm.Operation,
                 cm.IsRemote, cm.IsTask, cm.IsAsync, cm.IsNullable, cm.Parameters, cm.Authorization,
-                cm.IsInternal),
+                cm.IsInternal, cm.IsSourceMethodRemote),
             ClassExecuteMethodModel em => new ClassExecuteMethodModel(
                 em.Name, uniqueName, em.ReturnType, em.ServiceType, em.ImplementationType, em.Operation,
                 em.IsRemote, em.IsTask, em.IsAsync, em.IsNullable, em.Parameters, em.Authorization,

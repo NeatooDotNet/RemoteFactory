@@ -179,7 +179,7 @@ public partial class SkillDepartment
 
 **Key insight:** [Remote] is about *how the method is called*, not *what the type is*.
 
-For entity duality, consider using `internal` on child-context methods. The child context method (`FetchAsChild` above) is only called from server-side aggregate operations and benefits from `internal` visibility: it gets an `IsServerRuntime` guard, becomes trimmable on the client, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only). The aggregate root context method (`Fetch`) stays `public` with `[Remote]`.
+For entity duality, use `internal` on all factory methods. The aggregate root entry point (`Fetch` above) uses `[Remote] internal` -- `[Remote]` promotes it to `public` on the factory interface so clients can call it, while `internal` enables IL trimming of the method body. The child context method (`FetchAsChild`) is `internal` without `[Remote]` -- it gets an `IsServerRuntime` guard, becomes trimmable, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only).
 
 ---
 
@@ -525,7 +525,7 @@ Services injected via method parameters are NOT serialized:
 private IService _service;
 
 [Remote, Create]
-public void Create([Service] IService service)
+internal void Create([Service] IService service)
 {
     _service = service;  // WRONG - will be null on client
 }
@@ -545,9 +545,9 @@ Child entities should NOT have `[Remote]`:
 ```csharp
 // WRONG - each line causes a remote call
 [Factory]
-public partial class Assignment
+internal partial class Assignment : IAssignment
 {
     [Remote, Create]  // Remove [Remote]
-    public void Create() { }
+    internal void Create() { }
 }
 ```

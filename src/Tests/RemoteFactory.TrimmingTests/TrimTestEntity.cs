@@ -18,7 +18,7 @@ public class TrimTestEntity
 
     [Remote]
     [Create]
-    public void Create(string name, [Service] IServerOnlyRepository repo)
+    internal void Create(string name, [Service] IServerOnlyRepository repo)
     {
         Name = name;
         ServerResult = repo.DoServerWork(name);

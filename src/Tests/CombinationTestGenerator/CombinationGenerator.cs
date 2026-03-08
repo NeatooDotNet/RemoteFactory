@@ -420,12 +420,13 @@ public class CombinationGenerator : IIncrementalGenerator
             // Constructor-based create
             var paramList = BuildParameterList(parameters);
             var remoteAttr = isRemote ? "    [Remote]" : "";
+            var accessModifier = isRemote ? "internal" : "public";
             if (!string.IsNullOrEmpty(remoteAttr))
             {
                 sb.AppendLine(remoteAttr);
             }
             sb.AppendLine("    [Create]");
-            sb.AppendLine($"    public {className}({paramList})");
+            sb.AppendLine($"    {accessModifier} {className}({paramList})");
             sb.AppendLine("    {");
             sb.AppendLine("        OperationCalled = true;");
             GenerateParameterAssignments(sb, parameters);
@@ -523,12 +524,13 @@ public class CombinationGenerator : IIncrementalGenerator
         var remoteAttr = isRemote ? "    [Remote]" : "";
         var methodReturnType = GetWriteMethodReturnType(returnType);
 
+        var accessModifier = isRemote ? "internal" : "public";
         if (!string.IsNullOrEmpty(remoteAttr))
         {
             sb.AppendLine(remoteAttr);
         }
         sb.AppendLine($"    [{combination.Operation}]");
-        sb.AppendLine($"    public {methodReturnType} {combination.Operation}Op({paramList})");
+        sb.AppendLine($"    {accessModifier} {methodReturnType} {combination.Operation}Op({paramList})");
         sb.AppendLine("    {");
         sb.AppendLine("        OperationCalled = true;");
         sb.AppendLine($"        LastOperationCalled = \"{combination.Operation}\";");
@@ -647,12 +649,13 @@ public class CombinationGenerator : IIncrementalGenerator
         var remoteAttr = isRemote ? "    [Remote]" : "";
         var methodReturnType = returnType.IsAsync ? "Task" : "void";
 
+        var accessModifier = isRemote ? "internal" : "public";
         if (!string.IsNullOrEmpty(remoteAttr))
         {
             sb.AppendLine(remoteAttr);
         }
         sb.AppendLine("    [Event]");
-        sb.AppendLine($"    public {methodReturnType} OnEvent({paramList})");
+        sb.AppendLine($"    {accessModifier} {methodReturnType} OnEvent({paramList})");
         sb.AppendLine("    {");
         sb.AppendLine("        EventFired = true;");
         GenerateParameterAssignmentsStatic(sb, eventParams);

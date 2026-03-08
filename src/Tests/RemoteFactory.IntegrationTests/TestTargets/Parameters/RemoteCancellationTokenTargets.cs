@@ -20,7 +20,7 @@ public partial class RemoteCancellableTarget
 
     [Create]
     [Remote]
-    public async Task CreateAsync(CancellationToken cancellationToken)
+    internal async Task CreateAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         CancellationWasChecked = true;
@@ -30,7 +30,7 @@ public partial class RemoteCancellableTarget
 
     [Fetch]
     [Remote]
-    public async Task FetchAsync(int param, CancellationToken cancellationToken)
+    internal async Task FetchAsync(int param, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         BusinessParam = param;
@@ -41,7 +41,7 @@ public partial class RemoteCancellableTarget
 
     [Fetch]
     [Remote]
-    public async Task FetchWithServiceAsync(
+    internal async Task FetchWithServiceAsync(
         int param,
         CancellationToken cancellationToken,
         [Service] IServerOnlyService service)

@@ -13,7 +13,7 @@ public partial class SkillDepartment
 
     // Aggregate root context - client entry point
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repo, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repo, CancellationToken ct)
     {
         var data = await repo.GetByIdAsync(id, ct);
         if (data == null) return false;

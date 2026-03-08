@@ -107,7 +107,7 @@ public partial class ExampleClassFactory
     /// - Remote stub: Serializes call to server, deserializes response
     /// </remarks>
     [Remote, Create]
-    public Task Create(string name, [Service] IExampleService service)
+    internal Task Create(string name, [Service] IExampleService service)
     {
         // COMMON MISTAKE: Calling service methods in Create without [Service]
         //
@@ -126,7 +126,7 @@ public partial class ExampleClassFactory
     /// Entry point from client. Fetches an existing instance from the server.
     /// </summary>
     [Remote, Fetch]
-    public Task Fetch(int id, [Service] IExampleService service)
+    internal Task Fetch(int id, [Service] IExampleService service)
     {
         var data = service.LoadData(id);
         Id = data.Id;

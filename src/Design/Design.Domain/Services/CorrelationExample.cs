@@ -53,7 +53,7 @@ public partial class AuditedOrder
     /// Creates an order and captures the correlation ID for audit purposes.
     /// </summary>
     [Remote, Create]
-    public void Create(
+    internal void Create(
         string customerName,
         [Service] ICorrelationContext correlationContext,
         [Service] IAuditLogger auditLogger)
@@ -74,7 +74,7 @@ public partial class AuditedOrder
     /// Fetches an order with correlation-aware logging.
     /// </summary>
     [Remote, Fetch]
-    public void Fetch(
+    internal void Fetch(
         int id,
         [Service] ICorrelationContext correlationContext,
         [Service] IAuditLogger auditLogger)

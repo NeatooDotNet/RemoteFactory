@@ -7,18 +7,18 @@
 ```csharp
 // WRONG - 10 assignments = 10 HTTP calls!
 [Factory]
-public partial class Assignment
+internal partial class Assignment : IAssignment
 {
     [Remote, Create]  // DON'T DO THIS
-    public void Create(string name) { }
+    internal void Create(string name) { }
 }
 
 // RIGHT - all children created in parent's single server call
 [Factory]
-public partial class Assignment
+internal partial class Assignment : IAssignment
 {
     [Create]  // No [Remote] on children
-    public void Create(string name) { }
+    internal void Create(string name) { }
 }
 ```
 
@@ -102,12 +102,12 @@ public string Name { get; set; }
 ```csharp
 // WRONG - service reference lost after serialization
 [Factory]
-public partial class Employee
+internal partial class Employee
 {
     private IEmployeeRepository _repo;  // Will be null on client!
 
     [Remote, Create]
-    public void Create([Service] IEmployeeRepository repo)
+    internal void Create([Service] IEmployeeRepository repo)
     {
         _repo = repo;  // Lost after serialization!
     }
@@ -120,10 +120,10 @@ public partial class Employee
 
 // RIGHT - use immediately, don't store
 [Factory]
-public partial class Employee
+internal partial class Employee
 {
     [Remote, Create]
-    public void Create([Service] IEmployeeRepository repo)
+    internal void Create([Service] IEmployeeRepository repo)
     {
         repo.Initialize(this);  // Use it here, don't store
     }
@@ -260,29 +260,29 @@ public partial class Order
 
 ---
 
-## 11. [Remote] on Internal Methods
+## 11. [Remote] on Public Methods
 
-**Problem**: Contradictory declaration -- diagnostic error NF0105.
+**Problem**: `[Remote]` requires `internal` -- diagnostic error NF0105.
 
 ```csharp
-// WRONG - [Remote] means client entry point, internal means server-only
+// WRONG - [Remote] requires internal for IL trimming
 [Factory]
-internal partial class OrderLine : IOrderLine
+internal partial class Order : IOrder
 {
-    [Remote, Create]  // NF0105: [Remote] cannot be used with internal methods
-    internal void Create(string name) { }
+    [Remote, Create]  // NF0105: [Remote] requires internal methods
+    public void Create(string name, [Service] IMyService service) { }
 }
 
-// RIGHT - child entity methods are internal without [Remote]
+// RIGHT - [Remote] + internal, promoted to public on factory interface
 [Factory]
-internal partial class OrderLine : IOrderLine
+internal partial class Order : IOrder
 {
-    [Create]  // No [Remote] on child entity
-    internal void Create(string name) { }
+    [Remote, Create]  // Correct: internal enables trimming; promoted to public on IOrderFactory
+    internal void Create(string name, [Service] IMyService service) { }
 }
 ```
 
-**Why**: `[Remote]` marks a client-to-server entry point. `internal` means the method is server-only. These are contradictory. Remove `[Remote]` if the method is server-only, or make it `public` if clients should call it.
+**Why**: `[Remote]` requires `internal` to enable IL trimming of method bodies on client assemblies. The generator promotes `[Remote] internal` methods to `public` on the factory interface, so clients call them through the factory. Change `public` to `internal` on `[Remote]` methods.
 
 ---
 
@@ -360,6 +360,6 @@ internal partial class PersonPhoneList
 | [Execute] returning Task | No confirmation | Return Task<T> |
 | [Event] missing CancellationToken | Can't cancel | Add as final parameter |
 | Class [Execute] wrong return type | Won't compile | Must return containing type |
-| [Remote] on internal methods | NF0105 diagnostic | Remove [Remote] or make method public |
+| [Remote] on public methods | NF0105 diagnostic | Change method to `internal` |
 | Optional parameters | Defaults silently dropped | Don't use defaults; pass all args explicitly |
 | CS0051 fear on internal classes | Avoids `internal` unnecessarily | Internal classes can take internal services even in public methods |

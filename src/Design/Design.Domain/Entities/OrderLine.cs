@@ -27,8 +27,8 @@
 // 3. OrderLineList.Create([Service] IOrderLineFactory) compiles because
 //    the method is `internal` and IOrderLineFactory is `internal`. No CS0051.
 //
-// 4. Order.Create([Service] IOrderLineListFactory) - Order is a public class
-//    with [Remote] public methods. The [Service] parameter IOrderLineListFactory
+// 4. Order.Create([Service] IOrderLineListFactory) - Order is an internal class
+//    with [Remote] internal methods. The [Service] parameter IOrderLineListFactory
 //    is internal, but [Service] parameters are injected by DI (not exposed
 //    in the generated interface), so no CS0051.
 //
@@ -86,15 +86,15 @@ public interface IOrderLineList : IReadOnlyList<IOrderLine>
 /// WRONG:
 /// [Factory]
 /// internal partial class OrderLine : IOrderLine {
-///     [Remote, Create]  // <-- WRONG: [Remote] + internal triggers NF0105
-///     public void Create(...) { }
+///     [Remote, Create]  // <-- WRONG: unnecessary remote boundary for child entity
+///     internal void Create(...) { }
 /// }
 ///
 /// RIGHT:
 /// [Factory]
 /// internal partial class OrderLine : IOrderLine {
 ///     [Create]  // <-- No [Remote] - called from server-side Order operations
-///     public void Create(...) { }
+///     internal void Create(...) { }
 /// }
 ///
 /// GENERATOR BEHAVIOR: Without [Remote], the generator still creates:

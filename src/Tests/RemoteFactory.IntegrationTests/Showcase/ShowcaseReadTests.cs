@@ -74,7 +74,7 @@ internal class ShowcaseRead : IShowcaseRead
 
     [Remote]
     [Create]
-    public void CreateRemote(List<int> intList, [Service] IServerOnlyService service)
+    internal void CreateRemote(List<int> intList, [Service] IServerOnlyService service)
     {
         IntList = intList;
         Assert.NotNull(service);

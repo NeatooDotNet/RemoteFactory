@@ -35,14 +35,14 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public void InsertVoid()
+    internal void InsertVoid()
     {
         InsertCalled = true;
     }
 
     [Insert]
     [Remote]
-    public void InsertVoidParam(int? param)
+    internal void InsertVoidParam(int? param)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -50,7 +50,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public void InsertVoidDep([Service] IService service)
+    internal void InsertVoidDep([Service] IService service)
     {
         InsertCalled = true;
         ServiceWasInjected = service != null;
@@ -58,7 +58,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public void InsertVoidParamDep(int? param, [Service] IService service)
+    internal void InsertVoidParamDep(int? param, [Service] IService service)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -71,7 +71,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolTrue()
+    internal bool InsertBoolTrue()
     {
         InsertCalled = true;
         return true;
@@ -79,7 +79,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolFalse()
+    internal bool InsertBoolFalse()
     {
         InsertCalled = true;
         return false;
@@ -87,7 +87,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolTrueParam(int? param)
+    internal bool InsertBoolTrueParam(int? param)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -96,7 +96,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolFalseParam(int? param)
+    internal bool InsertBoolFalseParam(int? param)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -105,7 +105,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolTrueDep([Service] IService service)
+    internal bool InsertBoolTrueDep([Service] IService service)
     {
         InsertCalled = true;
         ServiceWasInjected = service != null;
@@ -114,7 +114,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolFalseDep([Service] IService service)
+    internal bool InsertBoolFalseDep([Service] IService service)
     {
         InsertCalled = true;
         ServiceWasInjected = service != null;
@@ -123,7 +123,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolTrueParamDep(int? param, [Service] IService service)
+    internal bool InsertBoolTrueParamDep(int? param, [Service] IService service)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -133,7 +133,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public bool InsertBoolFalseParamDep(int? param, [Service] IService service)
+    internal bool InsertBoolFalseParamDep(int? param, [Service] IService service)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -147,7 +147,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task InsertTask()
+    internal Task InsertTask()
     {
         InsertCalled = true;
         return Task.CompletedTask;
@@ -155,7 +155,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task InsertTaskParam(int? param)
+    internal Task InsertTaskParam(int? param)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -164,7 +164,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task InsertTaskDep([Service] IService service)
+    internal Task InsertTaskDep([Service] IService service)
     {
         InsertCalled = true;
         ServiceWasInjected = service != null;
@@ -173,7 +173,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task InsertTaskParamDep(int? param, [Service] IService service)
+    internal Task InsertTaskParamDep(int? param, [Service] IService service)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -187,7 +187,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolTrue()
+    internal Task<bool> InsertTaskBoolTrue()
     {
         InsertCalled = true;
         return Task.FromResult(true);
@@ -195,7 +195,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolFalse()
+    internal Task<bool> InsertTaskBoolFalse()
     {
         InsertCalled = true;
         return Task.FromResult(false);
@@ -203,7 +203,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolTrueParam(int? param)
+    internal Task<bool> InsertTaskBoolTrueParam(int? param)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -212,7 +212,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolFalseParam(int? param)
+    internal Task<bool> InsertTaskBoolFalseParam(int? param)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -221,7 +221,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolTrueDep([Service] IService service)
+    internal Task<bool> InsertTaskBoolTrueDep([Service] IService service)
     {
         InsertCalled = true;
         ServiceWasInjected = service != null;
@@ -230,7 +230,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolFalseDep([Service] IService service)
+    internal Task<bool> InsertTaskBoolFalseDep([Service] IService service)
     {
         InsertCalled = true;
         ServiceWasInjected = service != null;
@@ -239,7 +239,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolTrueParamDep(int? param, [Service] IService service)
+    internal Task<bool> InsertTaskBoolTrueParamDep(int? param, [Service] IService service)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -249,7 +249,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Insert]
     [Remote]
-    public Task<bool> InsertTaskBoolFalseParamDep(int? param, [Service] IService service)
+    internal Task<bool> InsertTaskBoolFalseParamDep(int? param, [Service] IService service)
     {
         InsertCalled = true;
         ReceivedParam = param;
@@ -263,14 +263,14 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public void UpdateVoid()
+    internal void UpdateVoid()
     {
         UpdateCalled = true;
     }
 
     [Update]
     [Remote]
-    public void UpdateVoidParam(int? param)
+    internal void UpdateVoidParam(int? param)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -278,7 +278,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public void UpdateVoidDep([Service] IService service)
+    internal void UpdateVoidDep([Service] IService service)
     {
         UpdateCalled = true;
         ServiceWasInjected = service != null;
@@ -286,7 +286,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public void UpdateVoidParamDep(int? param, [Service] IService service)
+    internal void UpdateVoidParamDep(int? param, [Service] IService service)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -299,7 +299,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolTrue()
+    internal bool UpdateBoolTrue()
     {
         UpdateCalled = true;
         return true;
@@ -307,7 +307,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolFalse()
+    internal bool UpdateBoolFalse()
     {
         UpdateCalled = true;
         return false;
@@ -315,7 +315,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolTrueParam(int? param)
+    internal bool UpdateBoolTrueParam(int? param)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -324,7 +324,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolFalseParam(int? param)
+    internal bool UpdateBoolFalseParam(int? param)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -333,7 +333,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolTrueDep([Service] IService service)
+    internal bool UpdateBoolTrueDep([Service] IService service)
     {
         UpdateCalled = true;
         ServiceWasInjected = service != null;
@@ -342,7 +342,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolFalseDep([Service] IService service)
+    internal bool UpdateBoolFalseDep([Service] IService service)
     {
         UpdateCalled = true;
         ServiceWasInjected = service != null;
@@ -351,7 +351,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolTrueParamDep(int? param, [Service] IService service)
+    internal bool UpdateBoolTrueParamDep(int? param, [Service] IService service)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -361,7 +361,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public bool UpdateBoolFalseParamDep(int? param, [Service] IService service)
+    internal bool UpdateBoolFalseParamDep(int? param, [Service] IService service)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -375,7 +375,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task UpdateTask()
+    internal Task UpdateTask()
     {
         UpdateCalled = true;
         return Task.CompletedTask;
@@ -383,7 +383,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task UpdateTaskParam(int? param)
+    internal Task UpdateTaskParam(int? param)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -392,7 +392,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task UpdateTaskDep([Service] IService service)
+    internal Task UpdateTaskDep([Service] IService service)
     {
         UpdateCalled = true;
         ServiceWasInjected = service != null;
@@ -401,7 +401,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task UpdateTaskParamDep(int? param, [Service] IService service)
+    internal Task UpdateTaskParamDep(int? param, [Service] IService service)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -415,7 +415,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolTrue()
+    internal Task<bool> UpdateTaskBoolTrue()
     {
         UpdateCalled = true;
         return Task.FromResult(true);
@@ -423,7 +423,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolFalse()
+    internal Task<bool> UpdateTaskBoolFalse()
     {
         UpdateCalled = true;
         return Task.FromResult(false);
@@ -431,7 +431,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolTrueParam(int? param)
+    internal Task<bool> UpdateTaskBoolTrueParam(int? param)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -440,7 +440,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolFalseParam(int? param)
+    internal Task<bool> UpdateTaskBoolFalseParam(int? param)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -449,7 +449,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolTrueDep([Service] IService service)
+    internal Task<bool> UpdateTaskBoolTrueDep([Service] IService service)
     {
         UpdateCalled = true;
         ServiceWasInjected = service != null;
@@ -458,7 +458,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolFalseDep([Service] IService service)
+    internal Task<bool> UpdateTaskBoolFalseDep([Service] IService service)
     {
         UpdateCalled = true;
         ServiceWasInjected = service != null;
@@ -467,7 +467,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolTrueParamDep(int? param, [Service] IService service)
+    internal Task<bool> UpdateTaskBoolTrueParamDep(int? param, [Service] IService service)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -477,7 +477,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Update]
     [Remote]
-    public Task<bool> UpdateTaskBoolFalseParamDep(int? param, [Service] IService service)
+    internal Task<bool> UpdateTaskBoolFalseParamDep(int? param, [Service] IService service)
     {
         UpdateCalled = true;
         ReceivedParam = param;
@@ -491,14 +491,14 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public void DeleteVoid()
+    internal void DeleteVoid()
     {
         DeleteCalled = true;
     }
 
     [Delete]
     [Remote]
-    public void DeleteVoidParam(int? param)
+    internal void DeleteVoidParam(int? param)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -506,7 +506,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public void DeleteVoidDep([Service] IService service)
+    internal void DeleteVoidDep([Service] IService service)
     {
         DeleteCalled = true;
         ServiceWasInjected = service != null;
@@ -514,7 +514,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public void DeleteVoidParamDep(int? param, [Service] IService service)
+    internal void DeleteVoidParamDep(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -527,7 +527,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolTrue()
+    internal bool DeleteBoolTrue()
     {
         DeleteCalled = true;
         return true;
@@ -535,7 +535,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolFalse()
+    internal bool DeleteBoolFalse()
     {
         DeleteCalled = true;
         return false;
@@ -543,7 +543,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolTrueParam(int? param)
+    internal bool DeleteBoolTrueParam(int? param)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -552,7 +552,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolFalseParam(int? param)
+    internal bool DeleteBoolFalseParam(int? param)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -561,7 +561,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolTrueDep([Service] IService service)
+    internal bool DeleteBoolTrueDep([Service] IService service)
     {
         DeleteCalled = true;
         ServiceWasInjected = service != null;
@@ -570,7 +570,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolFalseDep([Service] IService service)
+    internal bool DeleteBoolFalseDep([Service] IService service)
     {
         DeleteCalled = true;
         ServiceWasInjected = service != null;
@@ -579,7 +579,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolTrueParamDep(int? param, [Service] IService service)
+    internal bool DeleteBoolTrueParamDep(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -589,7 +589,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public bool DeleteBoolFalseParamDep(int? param, [Service] IService service)
+    internal bool DeleteBoolFalseParamDep(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -603,7 +603,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task DeleteTask()
+    internal Task DeleteTask()
     {
         DeleteCalled = true;
         return Task.CompletedTask;
@@ -611,7 +611,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task DeleteTaskParam(int? param)
+    internal Task DeleteTaskParam(int? param)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -620,7 +620,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task DeleteTaskDep([Service] IService service)
+    internal Task DeleteTaskDep([Service] IService service)
     {
         DeleteCalled = true;
         ServiceWasInjected = service != null;
@@ -629,7 +629,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task DeleteTaskParamDep(int? param, [Service] IService service)
+    internal Task DeleteTaskParamDep(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -643,7 +643,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolTrue()
+    internal Task<bool> DeleteTaskBoolTrue()
     {
         DeleteCalled = true;
         return Task.FromResult(true);
@@ -651,7 +651,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolFalse()
+    internal Task<bool> DeleteTaskBoolFalse()
     {
         DeleteCalled = true;
         return Task.FromResult(false);
@@ -659,7 +659,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolTrueParam(int? param)
+    internal Task<bool> DeleteTaskBoolTrueParam(int? param)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -668,7 +668,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolFalseParam(int? param)
+    internal Task<bool> DeleteTaskBoolFalseParam(int? param)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -677,7 +677,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolTrueDep([Service] IService service)
+    internal Task<bool> DeleteTaskBoolTrueDep([Service] IService service)
     {
         DeleteCalled = true;
         ServiceWasInjected = service != null;
@@ -686,7 +686,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolFalseDep([Service] IService service)
+    internal Task<bool> DeleteTaskBoolFalseDep([Service] IService service)
     {
         DeleteCalled = true;
         ServiceWasInjected = service != null;
@@ -695,7 +695,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolTrueParamDep(int? param, [Service] IService service)
+    internal Task<bool> DeleteTaskBoolTrueParamDep(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;
@@ -705,7 +705,7 @@ public partial class RemoteWriteTarget : IFactorySaveMeta
 
     [Delete]
     [Remote]
-    public Task<bool> DeleteTaskBoolFalseParamDep(int? param, [Service] IService service)
+    internal Task<bool> DeleteTaskBoolFalseParamDep(int? param, [Service] IService service)
     {
         DeleteCalled = true;
         ReceivedParam = param;

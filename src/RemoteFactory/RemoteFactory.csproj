@@ -7,6 +7,8 @@
 	</ItemGroup>
 	<PropertyGroup>
 		<RootNamespace>Neatoo.RemoteFactory</RootNamespace>
+		<IsTrimmable>true</IsTrimmable>
+		<EnableTrimAnalyzer>false</EnableTrimAnalyzer>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<AssemblyName>Neatoo.RemoteFactory</AssemblyName>
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>

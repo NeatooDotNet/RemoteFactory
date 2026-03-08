@@ -30,7 +30,7 @@ public partial class ConcurrentEmployee
     public ConcurrentEmployee() { Id = Guid.NewGuid(); }
 
     [Remote, Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var entity = await repository.GetByIdAsync(id, ct);
         if (entity == null) return false;
@@ -43,7 +43,7 @@ public partial class ConcurrentEmployee
     }
 
     [Remote, Update]
-    public async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+    internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
     {
         var current = await repository.GetByIdAsync(Id, ct) ?? throw new InvalidOperationException($"Employee {Id} not found");
         // EF Core checks RowVersion automatically; throws DbUpdateConcurrencyException on conflict

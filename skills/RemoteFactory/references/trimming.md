@@ -2,16 +2,16 @@
 
 ## Recommended Pattern
 
-Use `internal` classes with `public [Remote]` entry points. When configured, RemoteFactory optimizes the client binary with IL trimming — removing server-only business logic and its dependencies, reducing client library size.
+Use `internal` classes with `[Remote] internal` entry points. When configured, RemoteFactory optimizes the client binary with IL trimming — removing server-only business logic and its dependencies, reducing client library size.
 
 | Element | Recommended Visibility | Why |
 |---|---|---|
 | Domain class | `internal` with `public` interface | Hides implementation from client assemblies |
-| Aggregate root factory methods | `public` with `[Remote]` | Client entry points — routed to server |
-| Child entity factory methods | `internal` | Server-only — removed from client |
+| Aggregate root factory methods | `internal` with `[Remote]` | Client entry points — `[Remote]` promotes to `public` on factory interface; method bodies trimmed on client |
+| Child entity factory methods | `internal` (no `[Remote]`) | Server-only — removed from client |
 | Methods that run locally (e.g. `CanCreate`) | `public` (no `[Remote]`) | Needed on both client and server |
 
-With this pattern and trimming configured, the deployed client contains only remote stubs and locally-needed methods — no server-only logic, no server-only dependencies, no IP exposure.
+`[Remote]` requires `internal` — `[Remote] public` is a compile-time error (NF0105). With this pattern and trimming configured, the deployed client contains only remote stubs and locally-needed methods — no server-only logic, no server-only dependencies, no IP exposure.
 
 ## Setup
 
