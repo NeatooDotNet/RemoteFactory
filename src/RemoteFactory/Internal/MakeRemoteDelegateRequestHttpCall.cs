@@ -19,7 +19,7 @@ public static class MakeRemoteDelegateRequestHttpCallImplementation
 			var uri = new Uri(httpClient.BaseAddress!, "api/neatoo");
 			// Correlation ID should already be set by MakeRemoteDelegateRequest.EnsureCorrelationId()
 			var correlationId = correlationContext.CorrelationId ?? CorrelationContextImpl.GenerateCorrelationId();
-			var delegateTypeName = request.DelegateAssemblyType ?? "unknown";
+			var delegateTypeName = request.DelegateFullName ?? "unknown";
 
 			// Add correlation ID header for server-side tracing
 			using var httpRequest = new HttpRequestMessage(HttpMethod.Post, uri)

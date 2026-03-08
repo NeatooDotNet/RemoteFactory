@@ -226,7 +226,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 
 		return new RemoteRequestDto
 		{
-			DelegateAssemblyType = delegateType.FullName,
+			DelegateFullName = delegateType.FullName,
 			Parameters = parameterJson
 		};
 	}
@@ -250,7 +250,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		}
 		return new RemoteRequestDto
 		{
-			DelegateAssemblyType = delegateType.FullName,
+			DelegateFullName = delegateType.FullName,
 			Parameters = parameterJson,
 			Target = this.ToObjectJson(saveTarget)
 		};
@@ -272,7 +272,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 	{
 		ArgumentNullException.ThrowIfNull(remoteDelegateRequest, nameof(remoteDelegateRequest));
 
-		var delegateTypeName = remoteDelegateRequest.DelegateAssemblyType ?? "unknown";
+		var delegateTypeName = remoteDelegateRequest.DelegateFullName ?? "unknown";
 		logger.DeserializingRemoteRequest(delegateTypeName);
 
 		var sw = Stopwatch.StartNew();
@@ -291,11 +291,11 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 				parameters = remoteDelegateRequest.Parameters.Select(c => this.FromObjectJson(c)).ToImmutableList();
 			}
 
-			var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateAssemblyType!);
+			var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateFullName!);
 
 			if (delegateType == null)
 			{
-				throw new MissingDelegateException($"Cannot find delegate type {remoteDelegateRequest.DelegateAssemblyType} in the registered assemblies");
+				throw new MissingDelegateException($"Cannot find delegate type {remoteDelegateRequest.DelegateFullName} in the registered assemblies");
 			}
 
 			var result = new RemoteRequest()
@@ -335,8 +335,8 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			return null;
 		}
 
-		var targetType = this.serviceAssemblies.FindType(objectTypeJson.AssemblyType);
-		ArgumentNullException.ThrowIfNull(targetType, nameof(objectTypeJson.AssemblyType));
+		var targetType = this.serviceAssemblies.FindType(objectTypeJson.TypeFullName);
+		ArgumentNullException.ThrowIfNull(targetType, nameof(objectTypeJson.TypeFullName));
 		return this.Deserialize(objectTypeJson.Json, targetType);
 	}
 

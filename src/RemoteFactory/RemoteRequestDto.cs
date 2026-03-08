@@ -4,7 +4,7 @@ namespace Neatoo.RemoteFactory;
 
 public class RemoteRequestDto
 {
-	public string DelegateAssemblyType { get; set; } = null!;
+	public string DelegateFullName { get; set; } = null!;
 	public IReadOnlyCollection<ObjectJson?>? Parameters { get; set; }
 	public ObjectJson? Target { get; set; }
 }
