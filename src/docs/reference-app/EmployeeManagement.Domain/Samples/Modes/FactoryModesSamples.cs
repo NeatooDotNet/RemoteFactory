@@ -120,13 +120,6 @@ public partial class EmployeeLogicalMode : IFactorySaveMeta
 // app.UseNeatoo();  // /api/neatoo endpoint
 #endregion
 
-#region modes-remoteonly-example
-// Client: [assembly: FactoryMode(RemoteOnly)] + Remote runtime
-// services.AddNeatooRemoteFactory(NeatooFactory.Remote, options, domainAssembly);
-// services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
-//     new HttpClient { BaseAddress = new Uri(serverUrl) });
-#endregion
-
 #region modes-logical-example
 // Single-tier: Full mode + Logical runtime (no HTTP)
 // services.AddNeatooRemoteFactory(NeatooFactory.Logical, options, domainAssembly);

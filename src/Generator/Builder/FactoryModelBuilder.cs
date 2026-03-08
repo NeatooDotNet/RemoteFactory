@@ -99,7 +99,6 @@ internal static class FactoryModelBuilder
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
             usings: typeInfo.UsingStatements.ToList(),
-            mode: typeInfo.FactoryMode,
             hintName: typeInfo.SafeHintName,
             diagnostics: diagnostics,
             staticFactory: staticFactory);
@@ -151,7 +150,6 @@ internal static class FactoryModelBuilder
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
             usings: typeInfo.UsingStatements.ToList(),
-            mode: typeInfo.FactoryMode,
             hintName: typeInfo.SafeHintName,
             diagnostics: typeInfo.Diagnostics.ToList(),
             interfaceFactory: interfaceFactory);
@@ -279,7 +277,6 @@ internal static class FactoryModelBuilder
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
             usings: typeInfo.UsingStatements.ToList(),
-            mode: typeInfo.FactoryMode,
             hintName: typeInfo.SafeHintName,
             diagnostics: diagnostics,
             classFactory: classFactory);

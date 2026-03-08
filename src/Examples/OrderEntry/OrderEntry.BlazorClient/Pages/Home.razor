@@ -8,20 +8,21 @@
 
 <MudText Class="mb-4">
     This application demonstrates the <strong>client-server separation</strong> pattern with Neatoo RemoteFactory.
-    The client assembly uses <code>[assembly: FactoryMode(FactoryMode.RemoteOnly)]</code> to generate factories with remote HTTP stubs only.
+    A single <code>OrderEntry.Domain</code> project is shared by both client and server.
+    IL Trimming removes server-only code from the published client bundle.
 </MudText>
 
 <MudPaper Class="pa-4 mb-4">
     <MudText Typo="Typo.h6" GutterBottom="true">Architecture</MudText>
     <MudList T="string">
+        <MudListItem T="string" Icon="@Icons.Material.Filled.Code">
+            <strong>OrderEntry.Domain</strong> - Single domain project with full factory code
+        </MudListItem>
         <MudListItem T="string" Icon="@Icons.Material.Filled.Cloud">
-            <strong>OrderEntry.Domain.Client</strong> - RemoteOnly factories (HTTP stubs only, no EF dependencies)
+            <strong>OrderEntry.BlazorClient</strong> - Blazor WASM client (remote factory calls via HTTP)
         </MudListItem>
         <MudListItem T="string" Icon="@Icons.Material.Filled.Storage">
-            <strong>OrderEntry.Domain.Server</strong> - Full factories with EF Core integration
-        </MudListItem>
-        <MudListItem T="string" Icon="@Icons.Material.Filled.Code">
-            <strong>OrderEntry.Domain</strong> - Shared source with #if CLIENT / #else
+            <strong>OrderEntry.Server</strong> - ASP.NET Core server with EF Core integration
         </MudListItem>
     </MudList>
 </MudPaper>

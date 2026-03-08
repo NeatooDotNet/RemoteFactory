@@ -22,11 +22,6 @@ namespace EmployeeManagement.Domain.Samples.Modes;
 //     new HttpClient { BaseAddress = new Uri(serverUrl) });
 #endregion
 
-#region modes-remoteonly-config
-// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
-// Generates HTTP stubs only - smaller client assemblies
-#endregion
-
 #region modes-server-config
 // Server mode: handles incoming HTTP + local execution
 // services.AddNeatooAspNetCore(options, domainAssembly);

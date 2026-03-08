@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- No CLIENT constant - this is the server version -->
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
     <!-- Suppress warnings for example code: CA1852 (seal type), CS0067 (unused event) -->
@@ -12,15 +11,10 @@
     <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
   </ItemGroup>
 
-  <!-- Link to shared Domain source files -->
-  <ItemGroup>
-    <Compile Include="..\OrderEntry.Domain\*.cs" Link="%(Filename)%(Extension)" />
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
-    <!-- Server references EF for database operations -->
+    <!-- Domain code directly references OrderEntry.Ef types in [Service]-injected method bodies -->
     <ProjectReference Include="..\OrderEntry.Ef\OrderEntry.Ef.csproj" />
   </ItemGroup>
 

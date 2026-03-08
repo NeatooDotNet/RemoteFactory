@@ -56,47 +56,13 @@ Everything executes locally in a single process — no HTTP, no serialization. U
 
 For testing patterns using Logical mode and the Client/Server Container approach, see [Service Injection — Client/Server Container Testing](service-injection.md#clientserver-container-testing).
 
-## Compile-Time Modes (Advanced)
-
-Most developers can ignore compile-time modes initially — the default (Full) works everywhere. Compile-time modes are an optimization for client assemblies.
-
-The compile-time mode controls what code the source generator produces. Set via `[assembly: FactoryMode(...)]`:
-
-| Mode | What Gets Generated | When to Use |
-|------|---------------------|-------------|
-| **Full** (default) | Local execution code + remote request handlers | Server, tests, single-tier apps |
-| **RemoteOnly** | HTTP stubs only — no local implementation | Client assemblies that only need to call the server |
-
-<!-- snippet: modes-full-config -->
-<a id='snippet-modes-full-config'></a>
-```cs
-// Full mode (default): no assembly attribute needed
-// services.AddNeatooRemoteFactory(NeatooFactory.Server, options, domainAssembly);
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L8-L11' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-full-config' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-<!-- snippet: modes-remoteonly-config -->
-<a id='snippet-modes-remoteonly-config'></a>
-```cs
-// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
-// Generates HTTP stubs only - smaller client assemblies
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L25-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remoteonly-config' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-RemoteOnly produces smaller assemblies (~120 KB vs ~450 KB for Full) because it excludes local method implementations and server dependencies. This matters for Blazor WASM where bundle size affects load time.
-
-For an alternative approach that doesn't require assembly splitting, see [IL Trimming](trimming.md) — it removes server-only code at publish time using .NET's IL trimmer.
-
 ## Typical Solution Structure
 
 ```
 MySolution/
-├── MySolution.Domain/    # Full (default) — no assembly attribute needed
+├── MySolution.Domain/    # Shared domain assembly — referenced by both server and client
 ├── MySolution.Server/    # Server runtime — AddNeatooAspNetCore()
 └── MySolution.Client/    # Remote runtime — AddNeatooRemoteFactory(NeatooFactory.Remote, ...)
-                          # Optional: [assembly: FactoryMode(RemoteOnly)] for smaller bundle
 ```
 
 ## Debugging
@@ -115,6 +81,6 @@ MySolution/
 
 - [Getting Started](getting-started.md) — Configure modes in a new solution
 - [Client-Server Architecture](client-server-architecture.md) — How [Remote] controls the boundary
-- [IL Trimming](trimming.md) — Publish-time alternative to RemoteOnly for reducing bundle size
+- [IL Trimming](trimming.md) — Remove server-only code from published client bundles
 - [Serialization](serialization.md) — Ordinal vs Named formats
 - [ASP.NET Core Integration](aspnetcore-integration.md) — Server configuration details

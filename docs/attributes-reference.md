@@ -20,7 +20,6 @@ Complete reference of all RemoteFactory attributes.
 | `[AuthorizeFactory<T>]` | Class, Interface | Custom authorization |
 | `[AuthorizeFactory]` | Method | Authorization check |
 | `[AspAuthorize]` | Method | ASP.NET Core policies |
-| `[assembly: FactoryMode]` | Assembly | Generation mode (Full/RemoteOnly) |
 | `[assembly: FactoryHintNameLength]` | Assembly | Limit generated file names |
 
 ---
@@ -325,22 +324,6 @@ public partial class PolicyEmployee : IFactorySaveMeta
 <!-- endSnippet -->
 
 ## Assembly-Level Attributes
-
-### [assembly: FactoryMode]
-
-Controls what code the source generator produces. See [Factory Modes](factory-modes.md).
-
-<!-- snippet: attributes-factorymode -->
-<a id='snippet-attributes-factorymode'></a>
-```cs
-// Full mode (default): generates local and remote code
-// [assembly: FactoryMode(FactoryModeOption.Full)]
-
-// RemoteOnly mode: generates HTTP stubs only (use in Blazor WASM)
-// [assembly: FactoryMode(FactoryModeOption.RemoteOnly)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L5-L11' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factorymode' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
 
 ### [assembly: FactoryHintNameLength]
 

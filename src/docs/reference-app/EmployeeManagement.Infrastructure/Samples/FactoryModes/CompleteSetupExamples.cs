@@ -32,7 +32,7 @@ public class ClientStateService : IClientStateService
 /// <summary>
 /// Client setup helper (implementation, not for docs).
 /// </summary>
-public static class RemoteOnlyModeClientSetup
+public static class RemoteModeClientSetup
 {
     public static void Configure(IServiceCollection services, string serverUrl)
     {

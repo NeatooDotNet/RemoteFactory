@@ -2,9 +2,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Neatoo.RemoteFactory;
-#if !CLIENT
 using OrderEntry.Ef;
-#endif
 
 namespace OrderEntry.Domain;
 
@@ -59,7 +57,6 @@ internal class OrderLineList : IOrderLineList
     {
     }
 
-#if !CLIENT
     /// <summary>
     /// Server-only Fetch - loads lines from EF entities.
     /// Called by parent Order.Fetch to populate children.
@@ -76,5 +73,4 @@ internal class OrderLineList : IOrderLineList
             _lines.Add(line);
         }
     }
-#endif
 }

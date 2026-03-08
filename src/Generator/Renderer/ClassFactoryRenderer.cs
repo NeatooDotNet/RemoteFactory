@@ -23,7 +23,6 @@ internal static class ClassFactoryRenderer
     public static string Render(FactoryGenerationUnit unit)
     {
         var model = unit.ClassFactory!;
-        var mode = unit.Mode;
 
         var sb = new StringBuilder();
 
@@ -80,7 +79,7 @@ internal static class ClassFactoryRenderer
         RenderFactoryInterface(sb, model);
 
         // Factory class
-        RenderFactoryClass(sb, model, mode);
+        RenderFactoryClass(sb, model);
 
         sb.AppendLine("}");
 
@@ -162,7 +161,7 @@ internal static class ClassFactoryRenderer
         return result;
     }
 
-    private static void RenderFactoryClass(StringBuilder sb, ClassFactoryModel model, FactoryMode mode)
+    private static void RenderFactoryClass(StringBuilder sb, ClassFactoryModel model)
     {
         // Factory pipeline is inlined directly into the generated class.
         var implementsInterfaces = model.HasDefaultSave
@@ -174,15 +173,7 @@ internal static class ClassFactoryRenderer
 
         // Fields
         sb.AppendLine("        private readonly IServiceProvider ServiceProvider;");
-
-        if (mode == FactoryMode.RemoteOnly)
-        {
-            sb.AppendLine("        private readonly IMakeRemoteDelegateRequest MakeRemoteDelegateRequest;");
-        }
-        else
-        {
-            sb.AppendLine("        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;");
-        }
+        sb.AppendLine("        private readonly IMakeRemoteDelegateRequest? MakeRemoteDelegateRequest;");
 
         sb.AppendLine();
 
@@ -203,39 +194,35 @@ internal static class ClassFactoryRenderer
         sb.AppendLine();
 
         // Constructors
-        RenderConstructors(sb, model, mode);
+        RenderConstructors(sb, model);
 
         // Methods
         foreach (var method in model.Methods)
         {
             if (method is WriteMethodModel wm)
             {
-                // Write methods only get LocalMethod generated (in Full mode)
-                if (mode == FactoryMode.Full || !method.IsRemote)
-                {
-                    RenderLocalMethod(sb, wm, model, mode);
-                }
+                RenderLocalMethod(sb, wm, model);
             }
             else if (method is SaveMethodModel sm)
             {
-                RenderSaveMethod(sb, sm, model, mode);
+                RenderSaveMethod(sb, sm, model);
             }
             else if (method is ClassExecuteMethodModel em)
             {
-                RenderClassExecuteMethod(sb, em, model, mode);
+                RenderClassExecuteMethod(sb, em, model);
             }
             else if (method is ReadMethodModel rm)
             {
-                RenderReadMethod(sb, rm, model, mode);
+                RenderReadMethod(sb, rm, model);
             }
             else if (method is CanMethodModel cm)
             {
-                RenderCanMethod(sb, cm, model, mode);
+                RenderCanMethod(sb, cm, model);
             }
         }
 
         // FactoryServiceRegistrar
-        RenderFactoryServiceRegistrar(sb, model, mode);
+        RenderFactoryServiceRegistrar(sb, model);
 
         sb.AppendLine("    }");
     }
@@ -260,55 +247,35 @@ internal static class ClassFactoryRenderer
 
     #region Constructor Rendering
 
-    private static void RenderConstructors(StringBuilder sb, ClassFactoryModel model, FactoryMode mode)
+    private static void RenderConstructors(StringBuilder sb, ClassFactoryModel model)
     {
-        if (mode == FactoryMode.RemoteOnly)
+        // Local constructor
+        sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            this.ServiceProvider = serviceProvider;");
+
+        // Local property assignments
+        foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
         {
-            // RemoteOnly mode: Only generate remote constructor
-            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            this.ServiceProvider = serviceProvider;");
-            sb.AppendLine("            this.MakeRemoteDelegateRequest = remoteMethodDelegate;");
-
-            // Remote property assignments
-            foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
-            {
-                sb.AppendLine($"            {method.UniqueName}Property = Remote{method.UniqueName};");
-            }
-
-            sb.AppendLine("        }");
+            sb.AppendLine($"            {method.UniqueName}Property = Local{method.UniqueName};");
         }
-        else
+
+        sb.AppendLine("        }");
+        sb.AppendLine();
+
+        // Remote constructor
+        sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            this.ServiceProvider = serviceProvider;");
+        sb.AppendLine("            this.MakeRemoteDelegateRequest = remoteMethodDelegate;");
+
+        // Remote property assignments
+        foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
         {
-            // Full mode: Generate both constructors
-            // Local constructor
-            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            this.ServiceProvider = serviceProvider;");
-
-            // Local property assignments
-            foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
-            {
-                sb.AppendLine($"            {method.UniqueName}Property = Local{method.UniqueName};");
-            }
-
-            sb.AppendLine("        }");
-            sb.AppendLine();
-
-            // Remote constructor
-            sb.AppendLine($"        public {model.ImplementationTypeName}Factory(IServiceProvider serviceProvider, IMakeRemoteDelegateRequest remoteMethodDelegate)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            this.ServiceProvider = serviceProvider;");
-            sb.AppendLine("            this.MakeRemoteDelegateRequest = remoteMethodDelegate;");
-
-            // Remote property assignments
-            foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
-            {
-                sb.AppendLine($"            {method.UniqueName}Property = Remote{method.UniqueName};");
-            }
-
-            sb.AppendLine("        }");
+            sb.AppendLine($"            {method.UniqueName}Property = Remote{method.UniqueName};");
         }
+
+        sb.AppendLine("        }");
 
         sb.AppendLine();
     }
@@ -317,7 +284,7 @@ internal static class ClassFactoryRenderer
 
     #region Read Method Rendering
 
-    private static void RenderReadMethod(StringBuilder sb, ReadMethodModel method, ClassFactoryModel model, FactoryMode mode)
+    private static void RenderReadMethod(StringBuilder sb, ReadMethodModel method, ClassFactoryModel model)
     {
         // Public method
         RenderPublicMethod(sb, method);
@@ -328,11 +295,8 @@ internal static class ClassFactoryRenderer
             RenderRemoteMethod(sb, method);
         }
 
-        // Local method (in Full mode, or for non-remote methods)
-        if (mode == FactoryMode.Full || !method.IsRemote)
-        {
-            RenderReadLocalMethod(sb, method, model);
-        }
+        // Local method
+        RenderReadLocalMethod(sb, method, model);
     }
 
     private static void RenderPublicMethod(StringBuilder sb, FactoryMethodModel method)
@@ -757,7 +721,7 @@ internal static class ClassFactoryRenderer
 
     private static void RenderClassExecuteMethod(
         StringBuilder sb, ClassExecuteMethodModel method,
-        ClassFactoryModel model, FactoryMode mode)
+        ClassFactoryModel model)
     {
         // Public method (delegates to local or remote)
         RenderClassExecutePublicMethod(sb, method);
@@ -768,11 +732,8 @@ internal static class ClassFactoryRenderer
             RenderRemoteMethod(sb, method);
         }
 
-        // Local method (in Full mode, or for non-remote methods)
-        if (mode == FactoryMode.Full || !method.IsRemote)
-        {
-            RenderClassExecuteLocalMethod(sb, method, model);
-        }
+        // Local method
+        RenderClassExecuteLocalMethod(sb, method, model);
     }
 
     private static void RenderClassExecutePublicMethod(StringBuilder sb, ClassExecuteMethodModel method)
@@ -861,7 +822,7 @@ internal static class ClassFactoryRenderer
 
     #region Write Method Rendering
 
-    private static void RenderLocalMethod(StringBuilder sb, WriteMethodModel method, ClassFactoryModel model, FactoryMode mode)
+    private static void RenderLocalMethod(StringBuilder sb, WriteMethodModel method, ClassFactoryModel model)
     {
         // Use async when the method uses await: domain method returns Task,
         // or the original factory method was async
@@ -1005,7 +966,7 @@ internal static class ClassFactoryRenderer
 
     #region Save Method Rendering
 
-    private static void RenderSaveMethod(StringBuilder sb, SaveMethodModel method, ClassFactoryModel model, FactoryMode mode)
+    private static void RenderSaveMethod(StringBuilder sb, SaveMethodModel method, ClassFactoryModel model)
     {
         // Public method (with auth handling)
         RenderSavePublicMethod(sb, method, model);
@@ -1016,11 +977,8 @@ internal static class ClassFactoryRenderer
             RenderRemoteMethod(sb, method);
         }
 
-        // Local method (in Full mode, or for non-remote methods)
-        if (mode == FactoryMode.Full || !method.IsRemote)
-        {
-            RenderSaveLocalMethod(sb, method, model);
-        }
+        // Local method
+        RenderSaveLocalMethod(sb, method, model);
 
         // Explicit interface method (always needed)
         RenderSaveExplicitInterfaceMethod(sb, method, model);
@@ -1281,7 +1239,7 @@ internal static class ClassFactoryRenderer
 
     #region Can Method Rendering
 
-    private static void RenderCanMethod(StringBuilder sb, CanMethodModel method, ClassFactoryModel model, FactoryMode mode)
+    private static void RenderCanMethod(StringBuilder sb, CanMethodModel method, ClassFactoryModel model)
     {
         var returnType = method.IsTask ? "Task<Authorized>" : "Authorized";
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
@@ -1303,11 +1261,8 @@ internal static class ClassFactoryRenderer
             RenderCanRemoteMethod(sb, method);
         }
 
-        // Local method (in Full mode, or for non-remote methods)
-        if (mode == FactoryMode.Full || !method.IsRemote)
-        {
-            RenderCanLocalMethod(sb, method, model);
-        }
+        // Local method
+        RenderCanLocalMethod(sb, method, model);
     }
 
     private static void RenderCanRemoteMethod(StringBuilder sb, CanMethodModel method)
@@ -1490,15 +1445,15 @@ internal static class ClassFactoryRenderer
 
     #region Service Registration Rendering
 
-    private static void RenderFactoryServiceRegistrar(StringBuilder sb, ClassFactoryModel model, FactoryMode mode)
+    private static void RenderFactoryServiceRegistrar(StringBuilder sb, ClassFactoryModel model)
     {
         sb.AppendLine("        public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
         sb.AppendLine("        {");
         sb.AppendLine($"            services.AddScoped<{model.ImplementationTypeName}Factory>();");
         sb.AppendLine($"            services.AddScoped<I{model.ImplementationTypeName}Factory, {model.ImplementationTypeName}Factory>();");
 
-        // Entity registration (only in Full mode)
-        if (mode == FactoryMode.Full && model.RequiresEntityRegistration)
+        // Entity registration
+        if (model.RequiresEntityRegistration)
         {
             sb.AppendLine($"            services.AddTransient<{model.ImplementationTypeName}>();");
             if (model.ServiceTypeName != model.ImplementationTypeName)
@@ -1507,8 +1462,8 @@ internal static class ClassFactoryRenderer
             }
         }
 
-        // IFactorySave registration (only in Full mode)
-        if (mode == FactoryMode.Full && model.HasDefaultSave)
+        // IFactorySave registration
+        if (model.HasDefaultSave)
         {
             sb.AppendLine($"            services.AddScoped<IFactorySave<{model.ImplementationTypeName}>, {model.ImplementationTypeName}Factory>();");
         }
@@ -1550,20 +1505,17 @@ internal static class ClassFactoryRenderer
             sb.AppendLine($"                {model.ImplementationTypeName}.CreateOrdinalConverter());");
         }
 
-        // Delegate service registrations (only in Full mode)
-        if (mode == FactoryMode.Full)
+        // Delegate service registrations
+        foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
         {
-            foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))
-            {
-                // Delegate registration excludes services - matches the delegate signature
-                var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
-                var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
+            // Delegate registration excludes services - matches the delegate signature
+            var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+            var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
-                sb.AppendLine($"            services.AddScoped<{method.UniqueName}Delegate>(cc => {{");
-                sb.AppendLine($"                var factory = cc.GetRequiredService<{model.ImplementationTypeName}Factory>();");
-                sb.AppendLine($"                return ({parameters}) => factory.Local{method.UniqueName}({paramIdentifiers});");
-                sb.AppendLine("            });");
-            }
+            sb.AppendLine($"            services.AddScoped<{method.UniqueName}Delegate>(cc => {{");
+            sb.AppendLine($"                var factory = cc.GetRequiredService<{model.ImplementationTypeName}Factory>();");
+            sb.AppendLine($"                return ({parameters}) => factory.Local{method.UniqueName}({paramIdentifiers});");
+            sb.AppendLine("            });");
         }
 
         // Event registrations

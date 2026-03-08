@@ -499,15 +499,3 @@ public class LogicalModeExample
     }
 }
 
-/// <summary>
-/// RemoteOnly mode verification test (implementation, not for docs).
-/// </summary>
-public class RemoteOnlyModeExample
-{
-    [Fact]
-    public void RemoteOnlyMode_GeneratesHttpStubs()
-    {
-        // Verifies RemoteOnly mode configuration pattern
-        Assert.True(true);
-    }
-}

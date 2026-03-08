@@ -69,43 +69,6 @@ See [Save Operation](save-operation.md) for details.
 
 ---
 
-## Full vs RemoteOnly Mode?
-
-Full mode (the default) generates both local execution code and remote stubs. RemoteOnly generates only the HTTP stubs — your data mapper methods (Fetch, Insert, Update, Delete implementations) are not included in the client assembly.
-
-This matters when you don't want your business logic available to the client. It also reduces Blazor WASM bundle size. The tradeoff is more setup — you need a separate client assembly with RemoteOnly and a server assembly with Full.
-
-```
-Do you want business logic excluded from the client assembly?
-├── YES → RemoteOnly mode on client assembly + Full on server
-└── NO (or not sure yet)
-    └── Full mode (default) — works everywhere
-```
-
-See [Factory Modes](factory-modes.md) for configuration.
-
----
-
-## IL Trimming or RemoteOnly?
-
-Both keep server-only code off the client — business logic IP, server-only dependencies (EF Core, etc.), and their transitive packages. They work differently and can be combined.
-
-```
-Want server-only code removed from published client output?
-├── At publish time only (keep everything during development)
-│   └── IL Trimming — add 3 MSBuild properties, no code changes
-├── At compile time (never generate server code in client assembly)
-│   └── RemoteOnly mode — strictest separation, requires assembly split
-└── Maximum reduction
-    └── Both — RemoteOnly skips generation, trimming removes leftovers
-```
-
-**Start with IL trimming** — it's the simplest option, requires no project restructuring, and solves runtime failures from partial trimming of server-only packages.
-
-See [IL Trimming](trimming.md) for configuration.
-
----
-
 ## When to Use [Execute]?
 
 `[Execute]` is for operations that don't follow the entity lifecycle (Create → Fetch → Save). Two common scenarios: one-shot command delegates, and static methods where you need to make a decision before instantiating an entity — like choosing Create vs Fetch based on existing data.
@@ -163,5 +126,5 @@ See [Authorization](authorization.md) for details.
 - [Attributes Reference](attributes-reference.md) — Complete attribute documentation
 - [Client-Server Architecture](client-server-architecture.md) — Understanding `[Remote]`
 - [Service Injection](service-injection.md) — DI patterns
-- [Factory Modes](factory-modes.md) — Full vs RemoteOnly configuration
+- [Factory Modes](factory-modes.md) — Runtime modes (Server, Remote, Logical)
 - [IL Trimming](trimming.md) — Remove server-only code from published Blazor WASM output

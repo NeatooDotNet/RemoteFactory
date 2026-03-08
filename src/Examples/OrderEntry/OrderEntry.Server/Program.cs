@@ -5,7 +5,7 @@ using OrderEntry.Ef;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Neatoo - Register factories from Domain.Server assembly
+// Neatoo - Register factories from Domain assembly
 builder.Services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 builder.Services.AddScoped<IOrderEntryContext, OrderEntryContext>();
 builder.Services.AddDbContext<OrderEntryContext>();

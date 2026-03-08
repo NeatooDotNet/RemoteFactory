@@ -14,13 +14,6 @@ namespace EmployeeManagement.Domain.Samples.FactoryModes;
 // public static void RegisterRemoteDelegates(...)  // Server: handles incoming HTTP
 #endregion
 
-#region modes-remoteonly-generated
-// RemoteOnly mode: HTTP stubs only (no local implementation)
-// public Task<IEmployee?> Fetch(Guid id) => callRemoteFetch(id);  // Always HTTP
-// No RegisterRemoteDelegates - client doesn't handle incoming requests
-// Benefits: smaller assembly, no server dependencies in client bundle
-#endregion
-
 // Supporting interface for mode demonstration
 public interface IEmployeeModeDemo
 {

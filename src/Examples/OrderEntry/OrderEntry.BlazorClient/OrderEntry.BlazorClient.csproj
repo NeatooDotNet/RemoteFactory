@@ -15,8 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Reference the CLIENT version of the domain (RemoteOnly factories) -->
-    <ProjectReference Include="..\OrderEntry.Domain.Client\OrderEntry.Domain.Client.csproj" />
+    <ProjectReference Include="..\OrderEntry.Domain\OrderEntry.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -179,7 +179,7 @@ public partial class SkillDepartment
 
 **Key insight:** [Remote] is about *how the method is called*, not *what the type is*.
 
-For entity duality, consider using `internal` on child-context methods. The child context method (`FetchAsChild` above) is only called from server-side aggregate operations and benefits from `internal` visibility: it gets an `IsServerRuntime` guard, becomes trimmable on the client, and is excluded from the public factory interface. The aggregate root context method (`Fetch`) stays `public` with `[Remote]`.
+For entity duality, consider using `internal` on child-context methods. The child context method (`FetchAsChild` above) is only called from server-side aggregate operations and benefits from `internal` visibility: it gets an `IsServerRuntime` guard, becomes trimmable on the client, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only). The aggregate root context method (`Fetch`) stays `public` with `[Remote]`.
 
 ---
 

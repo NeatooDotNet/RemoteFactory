@@ -99,35 +99,6 @@ The `Trim="true"` on the `RuntimeHostConfigurationOption` is critical — withou
 - **.NET 9 or later** — `[FeatureSwitchDefinition]` was introduced in .NET 9
 - **`dotnet publish`** — Trimming only runs during publish, not during `dotnet build` or `dotnet run`
 
-## Trimming vs RemoteOnly
-
-RemoteFactory offers two complementary approaches for keeping server-only code off the client:
-
-| | IL Trimming | RemoteOnly Mode |
-|---|---|---|
-| **When it acts** | Publish time (IL trimmer) | Compile time (source generator) |
-| **What it removes** | Server-only code paths and transitive dependencies | Local method implementations entirely |
-| **Configuration** | MSBuild properties in client `.csproj` | `[assembly: FactoryMode(FactoryModeOption.RemoteOnly)]` |
-| **Domain code changes** | None | None |
-| **Project structure** | Single shared domain assembly | Works with single or split assemblies |
-| **Debugging** | Full code available during development; trimmed only on publish | Stubs only — can't debug local execution on client |
-
-**Which should you use?**
-
-```
-Do you need server-only code completely absent from client assemblies?
-├── At publish time only (development builds keep everything)
-│   └── IL Trimming — simplest setup, no code changes
-├── At compile time (client assembly never contains server code)
-│   └── RemoteOnly — strictest separation
-└── Both
-    └── They compose — RemoteOnly skips generation, trimming removes leftovers
-```
-
-For most Blazor WASM apps, IL trimming alone is sufficient. RemoteOnly is useful when you need the separation guarantee at compile time — for example, if security policy requires that server logic never exists in client binaries, even during development.
-
-See [Factory Modes](factory-modes.md) for RemoteOnly configuration.
-
 ## Verifying Trimming Results
 
 After publishing, you can verify that server-only types were removed:
@@ -172,5 +143,5 @@ For example, if your factory uses `[AuthorizeFactory<IPersonModelAuth>]`, the ge
 ## Next Steps
 
 - [Client-Server Architecture](client-server-architecture.md) — Understanding the `[Remote]` boundary that trimming leverages
-- [Factory Modes](factory-modes.md) — RemoteOnly as a compile-time alternative
+- [Factory Modes](factory-modes.md) — Runtime modes (Server, Remote, Logical)
 - [Getting Started](getting-started.md) — Initial project setup

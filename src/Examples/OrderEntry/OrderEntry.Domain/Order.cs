@@ -2,18 +2,14 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using Neatoo.RemoteFactory;
-#if !CLIENT
 using OrderEntry.Ef;
 using Microsoft.EntityFrameworkCore;
-#endif
 
 namespace OrderEntry.Domain;
 
-#region docs:concepts/client-server-separation:order-entity
 /// <summary>
-/// Order aggregate root with client-server separation.
-/// Client: Placeholder methods (never called directly - factory handles remote calls).
-/// Server: Full implementations with [Service] parameters including child factories.
+/// Order aggregate root.
+/// Server-side methods use [Service] parameters for EF and child factories.
 /// </summary>
 [Factory]
 internal class Order : IOrder
@@ -41,44 +37,6 @@ internal class Order : IOrder
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
-
-#if CLIENT
-    // CLIENT: Placeholder methods - RemoteOnly factory generates remote stubs only
-    // These method signatures define what the factory will generate.
-    // The implementations throw if called directly (they shouldn't be).
-
-    [Remote, Create]
-    public void Create()
-    {
-        throw new InvalidOperationException("Client should call through IOrderFactory.Create()");
-    }
-
-    [Remote, Fetch]
-    public Task Fetch(Guid id)
-    {
-        throw new InvalidOperationException("Client should call through IOrderFactory.Fetch()");
-    }
-
-    [Remote, Insert]
-    public Task Insert()
-    {
-        throw new InvalidOperationException("Client should call through IOrderFactory.Save()");
-    }
-
-    [Remote, Update]
-    public Task Update()
-    {
-        throw new InvalidOperationException("Client should call through IOrderFactory.Save()");
-    }
-
-    [Remote, Delete]
-    public Task Delete()
-    {
-        throw new InvalidOperationException("Client should call through IOrderFactory.Save()");
-    }
-
-#else
-    // SERVER: Full implementations with [Service] parameters
 
     /// <summary>
     /// Server-side Create with child factory injection.
@@ -206,6 +164,4 @@ internal class Order : IOrder
         db.Orders.Remove(entity);
         await db.SaveChangesAsync();
     }
-#endif
 }
-#endregion
