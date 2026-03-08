@@ -15,7 +15,7 @@ Use `internal` classes with `[Remote] internal` entry points. When configured, R
 
 ## Setup
 
-Two settings, one in each project:
+Four configuration aspects across your projects:
 
 ### Domain model project
 
@@ -41,14 +41,76 @@ Add the feature switch to the client `.csproj`:
 </ItemGroup>
 ```
 
-Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true` is the SDK default). The `RuntimeHostConfigurationOption` is all that's needed on the client side.
+Blazor WASM projects already publish with trimming enabled (`PublishTrimmed=true` is the SDK default). The `RuntimeHostConfigurationOption` is all that's needed for the feature switch.
+
+### Isolate server-only dependencies
+
+In the **domain model** `.csproj`, mark server-only references with `PrivateAssets="all"` to prevent them from flowing transitively to the client:
+
+```xml
+<!-- Server-only packages -->
+<PackageReference Include="Microsoft.EntityFrameworkCore" PrivateAssets="all" />
+
+<!-- Server-only project references -->
+<ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
+```
+
+Without `PrivateAssets="all"`, these packages flow to the client as transitive dependencies. The trimmer then has to deal with assemblies it may not trim cleanly, causing warnings or runtime failures.
+
+### Mark residual assemblies as trimmable
+
+Some assemblies may still reach the client output through indirect dependency paths. Add `<TrimmableAssembly>` entries in the **client** `.csproj` for assemblies that lack `IsTrimmable` but should be trimmed:
+
+```xml
+<ItemGroup>
+  <TrimmableAssembly Include="Person.Ef" />
+  <TrimmableAssembly Include="Neatoo.Generator" />
+</ItemGroup>
+```
+
+### Summary
 
 | Setting | Where | Purpose |
 |---------|-------|---------|
 | `IsTrimmable=true` | Domain `.csproj` | Opts the assembly into trimming |
 | `RuntimeHostConfigurationOption` | Client `.csproj` | Tells the trimmer that `IsServerRuntime` is `false` |
+| `PrivateAssets="all"` | Domain `.csproj` | Prevents server-only dependencies from flowing to client |
+| `TrimmableAssembly` | Client `.csproj` | Marks residual assemblies as safe to trim |
 
 The `Trim="true"` attribute on the `RuntimeHostConfigurationOption` is critical — without it, the switch is a runtime value only and the trimmer cannot eliminate server code.
+
+### Complete example
+
+**Domain Model (`Person.DomainModel.csproj`):**
+```xml
+<PropertyGroup>
+  <IsTrimmable>true</IsTrimmable>
+</PropertyGroup>
+
+<ItemGroup>
+  <PackageReference Include="Microsoft.EntityFrameworkCore" PrivateAssets="all" />
+</ItemGroup>
+
+<ItemGroup>
+  <ProjectReference Include="..\Person.Ef\Person.Ef.csproj" PrivateAssets="all" />
+</ItemGroup>
+```
+
+**Client (`Person.Client.csproj`):**
+```xml
+<ItemGroup>
+  <RuntimeHostConfigurationOption Include="Neatoo.RemoteFactory.IsServerRuntime"
+                                   Value="false"
+                                   Trim="true" />
+  <TrimmableAssembly Include="Person.Ef" />
+  <TrimmableAssembly Include="Neatoo.Generator" />
+</ItemGroup>
+```
+
+**Server (`Person.Server.csproj`):**
+```xml
+<!-- No trimming configuration needed — server runs everything -->
+```
 
 ### Requirements
 

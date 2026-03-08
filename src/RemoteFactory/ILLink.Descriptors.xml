@@ -1,0 +1,9 @@
+<linker>
+  <assembly fullname="Neatoo.RemoteFactory">
+    <type fullname="Neatoo.RemoteFactory.Authorized" preserve="all" />
+    <type fullname="Neatoo.RemoteFactory.Authorized`1" preserve="all" />
+    <type fullname="Neatoo.RemoteFactory.Internal.ObjectJson" preserve="all" />
+    <type fullname="Neatoo.RemoteFactory.RemoteResponseDto" preserve="all" />
+    <type fullname="Neatoo.RemoteFactory.RemoteRequestDto" preserve="all" />
+  </assembly>
+</linker>

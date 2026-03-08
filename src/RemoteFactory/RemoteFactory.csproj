@@ -44,4 +44,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Generator\Generator.csproj" PrivateAssets="all"  />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ILLink.Descriptors.xml">
+      <LogicalName>ILLink.Descriptors.xml</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
 </Project>

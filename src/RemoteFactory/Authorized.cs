@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -69,11 +70,13 @@ public class Authorized
    }
 }
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
 public class Authorized<T> : Authorized
 {
 	[JsonInclude]
 	public T? Result { get; init; }
 
+	[JsonConstructor]
 	public Authorized()
 	{
 	}

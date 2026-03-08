@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Neatoo.RemoteFactory.Internal;
 
@@ -22,6 +23,7 @@ public class ObjectJson
 	/// </summary>
 	public string TypeFullName { get; }
 
+	[JsonConstructor]
 	public ObjectJson(string json, string typeFullName)
 	{
 		this.Json = json;
