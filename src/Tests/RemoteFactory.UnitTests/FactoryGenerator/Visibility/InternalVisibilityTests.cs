@@ -197,11 +197,11 @@ namespace TestNamespace
     }
 
     /// <summary>
-    /// Mixed visibility: public interface, only public methods in interface,
-    /// internal methods excluded from interface but present on concrete class.
+    /// Mixed visibility: public interface includes internal methods with 'internal' modifier.
+    /// Internal methods appear on the public interface prefixed with 'internal'.
     /// </summary>
     [Fact]
-    public void MixedVisibility_GeneratedCode_PublicInterfaceExcludesInternalMethods()
+    public void MixedVisibility_GeneratedCode_PublicInterfaceIncludesInternalMethods()
     {
         var source = @"
 using Neatoo.RemoteFactory;
@@ -229,14 +229,13 @@ namespace TestNamespace
         Assert.NotNull(generatedSource);
         // Interface should be public
         Assert.Contains("public interface IMixedVisFactory", generatedSource);
-        // Interface should contain Create but NOT Fetch
+        // Interface should contain Create (public, no modifier)
         Assert.Contains("MixedVis Create(", generatedSource);
-        // The interface block should not contain Fetch
-        // Extract just the interface portion to verify
+        // Interface should contain Fetch with 'internal' modifier
         var interfaceStart = generatedSource.IndexOf("public interface IMixedVisFactory");
         var interfaceEnd = generatedSource.IndexOf("}", interfaceStart);
         var interfaceBlock = generatedSource.Substring(interfaceStart, interfaceEnd - interfaceStart);
-        Assert.DoesNotContain("Fetch(", interfaceBlock);
+        Assert.Contains("internal MixedVis Fetch(", interfaceBlock);
     }
 
     /// <summary>
@@ -622,11 +621,11 @@ namespace TestNamespace
     /// <summary>
     /// Internal class with mixed visibility and matching interface:
     /// public factory interface uses the interface return type,
-    /// only includes public methods (Create), excludes internal (Fetch).
+    /// includes all methods — internal methods get 'internal' modifier.
     /// LocalCreate has NO guard; LocalFetch HAS guard.
     /// </summary>
     [Fact]
-    public void InternalClassMixed_GeneratedCode_PublicInterfaceExcludesInternalMethods()
+    public void InternalClassMixed_GeneratedCode_PublicInterfaceIncludesInternalMethods()
     {
         var source = @"
 using Neatoo.RemoteFactory;
@@ -661,11 +660,11 @@ namespace TestNamespace
         // Return type should use the interface
         Assert.Contains("IIntClsMix Create(", generatedSource);
 
-        // Interface should contain Create but NOT Fetch
+        // Interface should contain Fetch with 'internal' modifier
         var interfaceStart = generatedSource.IndexOf("public interface IIntClsMixFactory");
         var interfaceEnd = generatedSource.IndexOf("}", interfaceStart);
         var interfaceBlock = generatedSource.Substring(interfaceStart, interfaceEnd - interfaceStart);
-        Assert.DoesNotContain("Fetch(", interfaceBlock);
+        Assert.Contains("internal IIntClsMix Fetch(", interfaceBlock);
     }
 
     /// <summary>
@@ -749,6 +748,161 @@ namespace TestNamespace
 
         Assert.NotNull(generatedSource);
         Assert.Contains("[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IntClsDynDepFactory))]", generatedSource);
+    }
+
+    #endregion
+
+    #region Mixed Visibility - Internal Methods on Public Interface
+
+    /// <summary>
+    /// Mixed visibility: internal Fetch method should appear on the public factory
+    /// interface with the 'internal' access modifier, not be excluded entirely.
+    /// </summary>
+    [Fact]
+    public void MixedVisibility_InternalFetch_IncludedOnInterfaceAsInternal()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public partial class MixedWithInternalFetch
+    {
+        [Create]
+        public void Create() { }
+
+        [Fetch]
+        internal void Fetch(int id) { }
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("MixedWithInternalFetchFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        // Interface should be public
+        Assert.Contains("public interface IMixedWithInternalFetchFactory", generatedSource);
+
+        // Interface should contain Create (public, no modifier needed)
+        var interfaceStart = generatedSource.IndexOf("public interface IMixedWithInternalFetchFactory");
+        var interfaceEnd = generatedSource.IndexOf("}", interfaceStart);
+        var interfaceBlock = generatedSource.Substring(interfaceStart, interfaceEnd - interfaceStart);
+
+        Assert.Contains("MixedWithInternalFetch Create(", interfaceBlock);
+
+        // Interface should contain Fetch with 'internal' modifier
+        Assert.Contains("internal MixedWithInternalFetch Fetch(", interfaceBlock);
+    }
+
+    /// <summary>
+    /// Mixed visibility with Save: public Create + internal Insert/Update/Delete.
+    /// The Save method should appear on the public interface with 'internal' modifier.
+    /// This is the child entity pattern where parent calls factory.Save(child).
+    /// </summary>
+    [Fact]
+    public void MixedVisibility_InternalSave_IncludedOnInterfaceAsInternal()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public partial class MixedWithInternalSave : IFactorySaveMeta
+    {
+        public bool IsDeleted { get; set; }
+        public bool IsNew { get; set; }
+
+        [Create]
+        public void Create() { }
+
+        [Insert]
+        internal void Insert() { }
+
+        [Update]
+        internal void Update() { }
+
+        [Delete]
+        internal void Delete() { }
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("MixedWithInternalSaveFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        // Interface should be public
+        Assert.Contains("public interface IMixedWithInternalSaveFactory", generatedSource);
+
+        // Interface should contain Create (public)
+        var interfaceStart = generatedSource.IndexOf("public interface IMixedWithInternalSaveFactory");
+        var interfaceEnd = generatedSource.IndexOf("}", interfaceStart);
+        var interfaceBlock = generatedSource.Substring(interfaceStart, interfaceEnd - interfaceStart);
+
+        Assert.Contains("MixedWithInternalSave Create(", interfaceBlock);
+
+        // Interface should contain Save with 'internal' modifier
+        // (not Task-wrapped since the write methods are non-remote, non-async)
+        Assert.Contains("internal MixedWithInternalSave? Save(", interfaceBlock);
+    }
+
+    /// <summary>
+    /// Internal class with mixed visibility and matching public interface:
+    /// internal Fetch should appear on the factory interface with 'internal' modifier.
+    /// </summary>
+    [Fact]
+    public void InternalClassMixed_InternalFetch_IncludedOnInterfaceAsInternal()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public interface IIntClsMixInt { }
+
+    [Factory]
+    internal partial class IntClsMixInt : IIntClsMixInt
+    {
+        [Create]
+        public void Create() { }
+
+        [Fetch]
+        internal void Fetch(int id) { }
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("IntClsMixIntFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        // Interface should be public (has public methods)
+        Assert.Contains("public interface IIntClsMixIntFactory", generatedSource);
+
+        // Interface should contain Create (public)
+        var interfaceStart = generatedSource.IndexOf("public interface IIntClsMixIntFactory");
+        var interfaceEnd = generatedSource.IndexOf("}", interfaceStart);
+        var interfaceBlock = generatedSource.Substring(interfaceStart, interfaceEnd - interfaceStart);
+
+        Assert.Contains("IIntClsMixInt Create(", interfaceBlock);
+
+        // Interface should contain Fetch with 'internal' modifier
+        Assert.Contains("internal IIntClsMixInt Fetch(", interfaceBlock);
     }
 
     #endregion
