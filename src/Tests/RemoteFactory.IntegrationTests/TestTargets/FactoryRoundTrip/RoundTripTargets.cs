@@ -96,3 +96,93 @@ public partial class RemoteSaveTarget_Simple : IFactorySaveMeta
         return Task.CompletedTask;
     }
 }
+
+/// <summary>
+/// Test target for [Remote, Fetch] returning Task&lt;bool&gt; false (object not found).
+/// When a Fetch method returns false, the factory should return null to the caller.
+/// </summary>
+[Factory]
+public partial class RemoteFetchTarget_BoolFalse
+{
+    public bool FetchCalled { get; set; }
+    public int ReceivedId { get; set; }
+
+    [Fetch]
+    [Remote]
+    internal Task<bool> Fetch(int id)
+    {
+        FetchCalled = true;
+        ReceivedId = id;
+        // Return false = "object not found"
+        return Task.FromResult(false);
+    }
+}
+
+/// <summary>
+/// Test target for [Remote, Fetch] returning Task&lt;bool&gt; true (object found).
+/// Verifies the happy path: Fetch returns true and the object is returned to the caller.
+/// </summary>
+[Factory]
+public partial class RemoteFetchTarget_BoolTrue
+{
+    public bool FetchCalled { get; set; }
+    public int ReceivedId { get; set; }
+
+    [Fetch]
+    [Remote]
+    internal Task<bool> Fetch(int id)
+    {
+        FetchCalled = true;
+        ReceivedId = id;
+        // Return true = "object found"
+        return Task.FromResult(true);
+    }
+}
+
+/// <summary>
+/// Test target for [Remote, Fetch] returning Task&lt;bool&gt; false with [Service] injection.
+/// The [Service] parameter proves execution happens on the server (IServerOnlyService
+/// is not registered in the client container). If the factory tried to execute locally
+/// on the client, the service would be null or throw.
+/// </summary>
+[Factory]
+public partial class RemoteFetchTarget_RemoteBoolFalse
+{
+    public bool FetchCalled { get; set; }
+    public int ReceivedId { get; set; }
+    public bool ServiceWasInjected { get; set; }
+
+    [Remote]
+    [Fetch]
+    internal Task<bool> Fetch(int id, [Service] IServerOnlyService service)
+    {
+        FetchCalled = true;
+        ReceivedId = id;
+        ServiceWasInjected = service != null;
+        // Return false = "object not found"
+        return Task.FromResult(false);
+    }
+}
+
+/// <summary>
+/// Test target for [Remote, Fetch] returning Task&lt;bool&gt; true with [Service] injection.
+/// The [Service] parameter proves execution happens on the server.
+/// </summary>
+[Factory]
+public partial class RemoteFetchTarget_RemoteBoolTrue
+{
+    public bool FetchCalled { get; set; }
+    public int ReceivedId { get; set; }
+    public bool ServiceWasInjected { get; set; }
+
+    [Remote]
+    [Fetch]
+    internal Task<bool> Fetch(int id, [Service] IServerOnlyService service)
+    {
+        FetchCalled = true;
+        ReceivedId = id;
+        ServiceWasInjected = service != null;
+        // Return true = "object found"
+        return Task.FromResult(true);
+    }
+}
