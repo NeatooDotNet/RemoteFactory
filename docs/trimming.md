@@ -199,6 +199,14 @@ If server-only type names still appear in the output, check that:
 2. The `RuntimeHostConfigurationOption` has `Trim="true"`
 3. You're inspecting the `publish/` output, not the `build/` output
 
+## Factory Type Preservation
+
+All factory types — class, static, and interface — are automatically preserved from trimming. The source generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory, creating a static reference that the IL trimmer follows. The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers]` annotations that instruct the trimmer to preserve all methods on the referenced type, including the internal `FactoryServiceRegistrar` method used for DI registration.
+
+At startup, `AddNeatooRemoteFactory()` and `AddNeatooAspNetCore()` discover factory types by enumerating these assembly attributes rather than scanning all types via reflection. This means factory registration is fully trimming-safe — no factory types are lost during IL trimming, regardless of whether they are class factories, static factories, or interface factories.
+
+You do not need to take any action to preserve your factory types. This is handled automatically by the generator.
+
 ## Authorization Types and Trimming
 
 RemoteFactory's generator automatically emits explicit DI registrations for `[AuthorizeFactory<T>]` types in the generated `FactoryServiceRegistrar`. This creates static references that the IL trimmer preserves — your auth classes survive trimming without any additional configuration.

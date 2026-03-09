@@ -124,12 +124,13 @@ public static partial class RemoteFactoryServices
 	{
 		foreach (var assembly in assemblies)
 		{
-			var methods = assembly.GetTypes().Select(t => t.GetMethod("FactoryServiceRegistrar", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
-				.Where(m => m != null).ToList();
+			var attributes = assembly.GetCustomAttributes<NeatooFactoryRegistrarAttribute>();
 
-			foreach (var m in methods)
+			foreach (var attr in attributes)
 			{
-				m?.Invoke(null, [services, remoteLocal]);
+				var method = attr.Type.GetMethod("FactoryServiceRegistrar",
+					BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+				method?.Invoke(null, [services, remoteLocal]);
 			}
 		}
 	}

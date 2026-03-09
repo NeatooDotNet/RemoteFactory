@@ -330,14 +330,15 @@ namespace TestNamespace
 
     #endregion
 
-    #region DynamicDependency Preservation
+    #region DynamicDependency Removed (replaced by assembly-level NeatooFactoryRegistrar)
 
     /// <summary>
-    /// Internal interface still emits [DynamicDependency] attribute on
-    /// the first interface method for IL trimming support.
+    /// [DynamicDependency] is no longer emitted on interface methods.
+    /// The assembly-level [NeatooFactoryRegistrar] attribute replaces it
+    /// for trimming-safe factory discovery.
     /// </summary>
     [Fact]
-    public void AllInternal_DynamicDependencyStillEmitted()
+    public void AllInternal_DynamicDependencyNotEmitted()
     {
         var source = @"
 using Neatoo.RemoteFactory;
@@ -360,7 +361,7 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IntDynDepFactory))]", generatedSource);
+        Assert.DoesNotContain("[DynamicDependency", generatedSource);
     }
 
     #endregion
@@ -715,14 +716,15 @@ namespace TestNamespace
 
     #endregion
 
-    #region Internal Class with Matched Interface - DynamicDependency Preservation
+    #region Internal Class with Matched Interface - DynamicDependency Removed
 
     /// <summary>
-    /// Internal class with matching interface: [DynamicDependency] attribute
-    /// is still emitted on the first interface method for IL trimming support.
+    /// Internal class with matching interface: [DynamicDependency] is no longer
+    /// emitted on interface methods. The assembly-level [NeatooFactoryRegistrar]
+    /// attribute replaces it for trimming-safe factory discovery.
     /// </summary>
     [Fact]
-    public void InternalClassWithInterface_DynamicDependencyStillEmitted()
+    public void InternalClassWithInterface_DynamicDependencyNotEmitted()
     {
         var source = @"
 using Neatoo.RemoteFactory;
@@ -747,7 +749,7 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(IntClsDynDepFactory))]", generatedSource);
+        Assert.DoesNotContain("[DynamicDependency", generatedSource);
     }
 
     #endregion

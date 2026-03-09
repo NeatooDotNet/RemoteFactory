@@ -142,3 +142,27 @@ public sealed class FactoryHintNameLengthAttribute : Attribute
 	public int MaxHintNameLength => this.maxHintNameLength;
 }
 
+#if !NETSTANDARD
+/// <summary>
+/// Assembly-level attribute emitted by the source generator for each factory type.
+/// <see cref="RegisterFactories"/> enumerates these to discover FactoryServiceRegistrar methods
+/// in a trimming-safe way (replaces the trim-unsafe assembly.GetTypes() scan).
+/// </summary>
+[System.AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = true)]
+public sealed class NeatooFactoryRegistrarAttribute : Attribute
+{
+	public NeatooFactoryRegistrarAttribute(
+		[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
+			System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods |
+			System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods)] Type type)
+	{
+		Type = type;
+	}
+
+	[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
+		System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods |
+		System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods)]
+	public Type Type { get; }
+}
+#endif
+
