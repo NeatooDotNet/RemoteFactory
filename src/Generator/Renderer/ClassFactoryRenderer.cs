@@ -111,7 +111,6 @@ internal static class ClassFactoryRenderer
         sb.AppendLine($"    {interfaceVisibility} interface I{model.ImplementationTypeName}Factory");
         sb.AppendLine("    {");
 
-        bool firstMethod = true;
         foreach (var method in model.Methods)
         {
             // Internal methods on a public interface need the 'internal' modifier.
@@ -124,14 +123,11 @@ internal static class ClassFactoryRenderer
             var interfaceMethod = RenderInterfaceMethodSignature(method, needsInternalPrefix);
             if (!string.IsNullOrEmpty(interfaceMethod))
             {
-                // [DynamicDependency] on the first interface method preserves the factory class
-                // during IL trimming. The interface is kept (client code injects it), so this
-                // ensures the concrete factory — discovered via reflection — survives trimming.
-                if (firstMethod)
-                {
-                    sb.AppendLine($"        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof({model.ImplementationTypeName}Factory))]");
-                    firstMethod = false;
-                }
+                // [DynamicDependency] on every interface method preserves the factory class
+                // during IL trimming. Any surviving caller keeps the factory alive — putting it
+                // on only the first method caused factories to be trimmed when that overload had
+                // no callers in the published app.
+                sb.AppendLine($"        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof({model.ImplementationTypeName}Factory))]");
                 sb.AppendLine($"        {interfaceMethod}");
             }
         }
