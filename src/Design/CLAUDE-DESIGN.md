@@ -507,6 +507,20 @@ The generator emits explicit `services.TryAddTransient<IFooAuth, FooAuth>()` reg
 
 The concrete type is resolved at compile time using the naming convention (`IPersonModelAuth` → `PersonModelAuth`). If the auth type argument is already a concrete class (not an interface), the generator registers it directly. If no matching concrete type is found in the compilation, no registration is emitted and the user must register it explicitly.
 
+#### Trimming-Safe Factory Registration
+
+The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory type (class, static, and interface). The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)]` on its `Type` property, which creates a dataflow contract the IL trimmer follows — ensuring each factory type's `FactoryServiceRegistrar` method (and all other methods) survive trimming.
+
+At startup, `RegisterFactories()` enumerates these assembly attributes via `assembly.GetCustomAttributes<NeatooFactoryRegistrarAttribute>()` instead of scanning all types with `assembly.GetTypes()`. This makes factory discovery trimming-safe: the trimmer sees the static `typeof()` references in the assembly attributes and preserves the referenced types.
+
+| Factory Pattern | Assembly Attribute Target |
+|----------------|--------------------------|
+| Class Factory | `typeof({Namespace}.{ClassName}Factory)` — the generated factory implementation class |
+| Static Factory | `typeof({Namespace}.{StaticClassName})` — the static class itself |
+| Interface Factory | `typeof({Namespace}.{ImplName}Factory)` — the generated factory implementation class |
+
+This mechanism is internal to the generator and library. Users do not need to emit or configure these attributes — they are generated automatically for every `[Factory]`-annotated type.
+
 #### CS0051 Constraint
 
 When a generated factory interface becomes `internal` (all methods are internal), it cannot be used as a `[Service]` parameter type in a `public` method on another class. C# enforces that parameter types must be at least as accessible as the method. This means `internal` is not applicable to entities whose factory interfaces are referenced in more-accessible methods' `[Service]` parameters. Use `internal` for leaf entities and standalone factories where the factory interface is not passed as a service parameter to public methods.
