@@ -22,6 +22,33 @@ Is this method called directly from client code (UI, Blazor component)?
 
 ---
 
+## Which Factory Pattern?
+
+RemoteFactory has three factory patterns. The choice depends on what you're building.
+
+| Pattern | `[Factory]` On | Use When | Example |
+|---------|---------------|----------|---------|
+| **Class Factory** | `internal partial class` | Aggregate roots and entities with lifecycle (Create, Fetch, Save) | `Order`, `Employee`, `Invoice` |
+| **Interface Factory** | `public interface` | Remote services without entity identity | `IOrderQueryService`, `IReportGenerator` |
+| **Static Factory** | `public static partial class` | Stateless commands and fire-and-forget events | `EmailCommands`, `AuditEvents` |
+
+```
+Does this type manage entity state (properties, IsNew, IsDeleted)?
+├── YES → Class Factory
+│         (Create/Fetch/Save lifecycle, serialization across boundary)
+└── NO
+    ├── Service with multiple methods the client calls → Interface Factory
+    │   (server implementation, client proxy, no operation attributes)
+    └── One-shot operation or fire-and-forget event → Static Factory
+        ([Execute] for commands, [Event] for side effects)
+```
+
+**Key difference — Interface Factory has no operation attributes.** Class and Static factories use `[Create]`, `[Fetch]`, `[Remote]`, `[Execute]`, etc. to tell the generator what each method does. Interface Factory methods need none of these — the `[Factory]` on the interface is sufficient. Every method is automatically a remote entry point.
+
+See [Interface Factory](interface-factory.md) for the full pattern, [Factory Operations](factory-operations.md) for Class Factory operations, and [Events](events.md) for Static Factory events.
+
+---
+
 ## Constructor vs Method Injection?
 
 Constructor injection puts services on both client and server. Method injection puts them only where the method executes — typically the server. This is how you control which services are available on each side.
@@ -123,6 +150,7 @@ See [Authorization](authorization.md) for details.
 
 ## Next Steps
 
+- [Interface Factory](interface-factory.md) — Remote service proxy pattern
 - [Attributes Reference](attributes-reference.md) — Complete attribute documentation
 - [Client-Server Architecture](client-server-architecture.md) — Understanding `[Remote]`
 - [Service Injection](service-injection.md) — DI patterns

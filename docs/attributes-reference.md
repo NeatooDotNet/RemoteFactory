@@ -45,6 +45,20 @@ public partial class MinimalEmployee
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L10-L17' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+On an interface, `[Factory]` generates a remote proxy. All interface methods become remote entry points — no operation attributes needed. The server provides the implementation class (without `[Factory]`). See [Interface Factory](interface-factory.md) for the full pattern.
+
+```csharp
+[Factory]  // Generates proxy — all methods are remote
+public interface IOrderQueryService
+{
+    Task<IReadOnlyList<OrderSummary>> GetAllAsync();
+    Task<OrderSummary?> GetByIdAsync(int id);
+}
+
+// Server implementation — no [Factory] here
+public class OrderQueryService : IOrderQueryService { ... }
+```
+
 ### [SuppressFactory]
 
 Prevents factory generation for a class or interface. Use when a base class has `[Factory]` but a derived class shouldn't have its own factory.
