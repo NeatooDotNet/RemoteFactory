@@ -117,6 +117,12 @@ The first occurrence gets a `$id`, and subsequent references use `$ref` pointers
 
 This handles circular references and ensures the deserialized graph has the same object identity as the original.
 
+### Scope: Neatoo Types Only
+
+Reference preservation (`$id`/`$ref` metadata) applies only to Neatoo types -- classes and records decorated with `[Factory]` that implement `IOrdinalSerializable`, and interface/abstract types registered in the factory assembly. Plain records and DTOs returned from Interface Factory methods are serialized without reference handling, using standard System.Text.Json behavior. This means plain records/DTOs do not support circular references, but they do support parameterized constructors (primary constructors) without issue.
+
+Do not mix Neatoo domain types with plain records in the same return type. A record containing an `IValidateBase` property creates a serialization mismatch -- the record is serialized without reference handling, but the embedded Neatoo type expects it. Use either pure Neatoo types or pure records/DTOs.
+
 ## Debugging
 
 Enable verbose logging to trace serialization issues:

@@ -109,6 +109,26 @@ builder.Services.RegisterMatchingName<IEmployeeRepository>();  // Auto-finds Emp
 
 ---
 
+## Record Return Types
+
+Interface Factory methods can return plain records with primary constructors. Records do not need `[Factory]` -- they are serialized as standard JSON without reference handling metadata.
+
+```csharp
+// Plain record -- no [Factory] attribute needed
+public record EmployeeRecord(int Id, string Name, string Department);
+
+[Factory]
+public interface IEmployeeQueryService
+{
+    Task<EmployeeRecord?> GetByIdAsync(int id);
+    Task<IReadOnlyList<EmployeeRecord>> SearchAsync(string query);
+}
+```
+
+**Do not mix Neatoo domain types with records in return types.** A record returned from an Interface Factory must be a pure DTO -- it should not contain properties of type `IValidateBase` or other Neatoo interfaces. Use pure records/DTOs or pure Neatoo types, not both.
+
+---
+
 ## When to Use Interface Factory
 
 - **Remote services without entity identity** - Query services, report generators

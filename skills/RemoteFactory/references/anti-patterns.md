@@ -346,6 +346,34 @@ internal partial class PersonPhoneList
 
 ---
 
+## 14. Mixing Neatoo Types with Records in Interface Factory Return Types
+
+**Problem**: Serialization mismatch -- Neatoo types use custom converters with reference handling, while plain records use standard STJ. Mixing them in a single return type causes deserialization failures.
+
+```csharp
+// WRONG - record containing a Neatoo domain type
+public record OrderSummary(int Id, IOrder Order);  // IOrder is a Neatoo type!
+
+[Factory]
+public interface IOrderQueryService
+{
+    Task<OrderSummary> GetSummaryAsync(int id);  // Will fail at deserialization
+}
+
+// RIGHT - pure record/DTO return types
+public record OrderSummary(int Id, string CustomerName, decimal Total);
+
+[Factory]
+public interface IOrderQueryService
+{
+    Task<OrderSummary> GetSummaryAsync(int id);  // Works correctly
+}
+```
+
+**Why**: Plain records are serialized without `$id`/`$ref` reference handling metadata. Neatoo domain types require reference handling for their object graphs. Combining both in a single return type creates a serialization mismatch. Use pure records/DTOs or pure Neatoo types, not both.
+
+---
+
 ## Summary Table
 
 | Anti-Pattern | Problem | Solution |
@@ -363,3 +391,4 @@ internal partial class PersonPhoneList
 | [Remote] on public methods | NF0105 diagnostic | Change method to `internal` |
 | Optional parameters | Defaults silently dropped | Don't use defaults; pass all args explicitly |
 | CS0051 fear on internal classes | Avoids `internal` unnecessarily | Internal classes can take internal services even in public methods |
+| Mixing Neatoo types with records | Serialization mismatch | Use pure records/DTOs or pure Neatoo types, not both |
