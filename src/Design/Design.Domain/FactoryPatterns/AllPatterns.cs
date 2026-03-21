@@ -217,6 +217,16 @@ public interface IExampleRepository
     /// Fetches a single item by ID.
     /// </summary>
     Task<ExampleDto?> GetByIdAsync(int id);
+
+    /// <summary>
+    /// Fetches a single item by ID, returning a record with a primary constructor.
+    /// </summary>
+    /// <remarks>
+    /// Demonstrates that Interface Factory methods can return plain records
+    /// (no [Factory] attribute). The record is serialized without $id/$ref
+    /// metadata, avoiding the System.Text.Json parameterized constructor limitation.
+    /// </remarks>
+    Task<ExampleRecordResult?> GetRecordByIdAsync(int id);
 }
 
 // DID NOT DO THIS: Require [Remote] on interface methods
@@ -261,6 +271,11 @@ public class ExampleRepository : IExampleRepository
     public Task<ExampleDto?> GetByIdAsync(int id)
     {
         return Task.FromResult<ExampleDto?>(new ExampleDto { Id = id, Name = $"Item {id}" });
+    }
+
+    public Task<ExampleRecordResult?> GetRecordByIdAsync(int id)
+    {
+        return Task.FromResult<ExampleRecordResult?>(new ExampleRecordResult(id, $"Record {id}"));
     }
 }
 
@@ -473,10 +488,23 @@ public class NotificationService : INotificationService
 }
 
 /// <summary>
-/// Simple DTO for data transfer.
+/// Simple DTO for data transfer (class with public setters).
 /// </summary>
 public class ExampleDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Record DTO for data transfer (primary constructor, no [Factory] attribute).
+/// </summary>
+/// <remarks>
+/// Plain records work as Interface Factory return types. They are serialized
+/// without $id/$ref metadata, so parameterized constructors are not blocked
+/// by System.Text.Json's reference handling limitation.
+///
+/// Do NOT add [Factory] here -- that would route serialization through the
+/// ordinal converter. Plain records fall through to standard STJ handling.
+/// </remarks>
+public record ExampleRecordResult(int Id, string Name);

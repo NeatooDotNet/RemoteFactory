@@ -85,6 +85,38 @@ public class InterfaceFactoryTests
     }
 
     /// <summary>
+    /// Verifies interface factory can return a record with a primary constructor.
+    /// </summary>
+    /// <remarks>
+    /// Records with primary constructors are serialized without $id/$ref metadata,
+    /// avoiding the System.Text.Json parameterized constructor limitation.
+    /// This test validates the full client-server round-trip for plain records.
+    /// </remarks>
+    [Fact]
+    public async Task InterfaceFactory_GetRecordByIdAsync_ReturnsRecordFromServer()
+    {
+        // Arrange
+        var (client, server, _) = DesignClientServerContainers.Scopes(
+            configureServer: services =>
+            {
+                services.AddScoped<IExampleRepository, ExampleRepository>();
+            });
+
+        var repository = client.GetRequiredService<IExampleRepository>();
+
+        // Act - record round-trips through serialization
+        var result = await repository.GetRecordByIdAsync(42);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(42, result.Id);
+        Assert.Equal("Record 42", result.Name);
+
+        client.Dispose();
+        server.Dispose();
+    }
+
+    /// <summary>
     /// Verifies interface factory returns null correctly.
     /// </summary>
     /// <remarks>
@@ -158,5 +190,10 @@ internal class NullReturningRepository : IExampleRepository
     public Task<ExampleDto?> GetByIdAsync(int id)
     {
         return Task.FromResult<ExampleDto?>(null);
+    }
+
+    public Task<ExampleRecordResult?> GetRecordByIdAsync(int id)
+    {
+        return Task.FromResult<ExampleRecordResult?>(null);
     }
 }

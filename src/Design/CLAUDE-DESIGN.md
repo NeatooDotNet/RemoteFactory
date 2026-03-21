@@ -150,6 +150,7 @@ public static partial class MyCommands
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | `AuthorizedOrder.cs`, `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
+| Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records are serialized without `$id`/`$ref`; do not mix Neatoo types into record properties |
 
 ---
 
@@ -371,6 +372,51 @@ internal partial class Order : IOrder
 ```
 
 **Why it matters:** `[Remote]` requires `internal` to enable IL trimming of method bodies on client assemblies. The generator promotes `[Remote] internal` methods to `public` on the factory interface, so clients still call them through the factory. `[Remote] public` emits diagnostic error NF0105.
+
+---
+
+### Anti-Pattern 9: Mixing Neatoo Types with Records in Interface Factory Return Types
+
+**WRONG:**
+```csharp
+// A record that contains a Neatoo domain type as a property
+public record OrderSummary(
+    string CustomerName,
+    IOrder ActiveOrder);  // WRONG: Neatoo domain type inside a plain record
+
+[Factory]
+public interface IOrderService
+{
+    Task<OrderSummary> GetSummaryAsync(int customerId);
+}
+```
+
+**RIGHT (Option A - Use Neatoo types for the entire graph):**
+```csharp
+// If you need Neatoo domain types, return them directly
+[Factory]
+public interface IOrderService
+{
+    Task<IOrder> GetOrderAsync(int orderId);
+}
+```
+
+**RIGHT (Option B - Use plain DTOs/records throughout):**
+```csharp
+// If you need a record return type, use only plain data -- no Neatoo types
+public record OrderSummary(
+    string CustomerName,
+    string Status,
+    decimal Total);  // All plain data, no Neatoo types
+
+[Factory]
+public interface IOrderService
+{
+    Task<OrderSummary> GetSummaryAsync(int customerId);
+}
+```
+
+**Why it matters:** Interface Factory return types that are plain records/DTOs are serialized without reference handling (`$id`/`$ref` metadata). Neatoo types require reference handling for their custom converters to work. Mixing the two in a single return type creates a serialization mismatch: the record is serialized without reference handling, but the embedded Neatoo type expects it. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
 
 ---
 
@@ -675,6 +721,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [x] CorrelationContext usage (`CorrelationExample.cs`)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
+- [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
 
 ---
 
@@ -703,6 +750,7 @@ These are known limitations or open questions. They are documented here to preve
 7. **Missing partial keyword** - Generator needs to extend your class
 8. **Missing CancellationToken on events** - Required for graceful shutdown
 9. **[Remote] on public methods** - `[Remote]` requires `internal` for IL trimming. `[Remote] public` emits NF0105. Change to `internal`.
+10. **Mixing Neatoo types with records in Interface Factory return types** - Records containing Neatoo domain types (e.g., `IValidateBase`) as properties cause serialization mismatches. Use pure records/DTOs or pure Neatoo types, not both.
 
 ---
 
