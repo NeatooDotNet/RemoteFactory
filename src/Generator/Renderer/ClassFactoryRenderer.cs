@@ -454,10 +454,27 @@ internal static class ClassFactoryRenderer
             sb.AppendLine("                {");
             sb.AppendLine("                    _sw.Stop();");
             EmitLogOperationCompleted(sb, "                    ", method.Operation, model.ServiceTypeName);
+            // When HasAuth is true, the local method returns Authorized<T> (or Task<Authorized<T>>).
+            // Returning default! would be null for this reference type, causing NRE when the public
+            // wrapper dereferences .Result. Instead return a non-null Authorized<T> with null Result.
+            // Uses parameterless constructor (HasAccess=false, Result=default) matching the save routing
+            // default pattern at RenderSaveLocalMethod.
+            if (method.HasAuth)
+            {
+                var authDefault = $"new Authorized<{model.ServiceTypeName}>()";
+                if (!needsAsync && method.IsTask)
+                {
+                    sb.AppendLine($"                    return Task.FromResult({authDefault});");
+                }
+                else
+                {
+                    sb.AppendLine($"                    return {authDefault};");
+                }
+            }
             // For non-async methods returning Task, wrap default in Task.FromResult to avoid null Task.
-            // Use null-forgiving operator (!) when returning default for non-nullable return types
-            // (e.g., Authorized<T>), matching original DoFactoryMethodCallBool behavior.
-            if (!needsAsync && method.IsTask)
+            // Use null-forgiving operator (!) when returning default for non-nullable return types,
+            // matching original DoFactoryMethodCallBool behavior.
+            else if (!needsAsync && method.IsTask)
             {
                 var nullableServiceType = method.IsNullable ? $"{model.ServiceTypeName}?" : model.ServiceTypeName;
                 sb.AppendLine($"                    return Task.FromResult<{nullableServiceType}>(default)!;");
@@ -879,10 +896,27 @@ internal static class ClassFactoryRenderer
             sb.AppendLine("                {");
             sb.AppendLine("                    _sw.Stop();");
             EmitLogOperationCompleted(sb, "                    ", method.Operation, model.ServiceTypeName);
+            // When HasAuth is true, the local method returns Authorized<T> (or Task<Authorized<T>>).
+            // Returning default! would be null for this reference type, causing NRE when the public
+            // wrapper dereferences .HasAccess or .Result. Instead return a non-null Authorized<T> with null Result.
+            // Uses parameterless constructor (HasAccess=false, Result=default) matching the save routing
+            // default pattern at RenderSaveLocalMethod.
+            if (method.HasAuth)
+            {
+                var authDefault = $"new Authorized<{model.ServiceTypeName}>()";
+                if (!needsAsync && method.IsTask)
+                {
+                    sb.AppendLine($"                    return Task.FromResult({authDefault});");
+                }
+                else
+                {
+                    sb.AppendLine($"                    return {authDefault};");
+                }
+            }
             // For non-async methods returning Task, wrap default in Task.FromResult to avoid null Task.
-            // Use null-forgiving operator (!) when returning default for non-nullable return types
-            // (e.g., Authorized<T>), matching original DoFactoryMethodCallBool behavior.
-            if (!needsAsync && method.IsTask)
+            // Use null-forgiving operator (!) when returning default for non-nullable return types,
+            // matching original DoFactoryMethodCallBool behavior.
+            else if (!needsAsync && method.IsTask)
             {
                 var nullableServiceType = method.IsNullable ? $"{model.ServiceTypeName}?" : model.ServiceTypeName;
                 sb.AppendLine($"                    return Task.FromResult<{nullableServiceType}>(default)!;");
