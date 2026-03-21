@@ -52,7 +52,9 @@ RemoteFactory's deserialization resolves instances from the DI container (`Servi
 
 ### 3. Shared Object Identity Is Lost
 
-When two properties reference the same object instance (common in aggregate root / child entity relationships), STJ duplicates it — creating two independent copies. RemoteFactory preserves identity using `$id` / `$ref` pointers, maintaining the object graph structure across the wire.
+When two properties reference the same object instance (common in aggregate root / child entity relationships), STJ duplicates it -- creating two independent copies. RemoteFactory preserves identity using `$id` / `$ref` pointers, maintaining the object graph structure across the wire.
+
+This applies to Neatoo types (via custom converters) and mutable reference types like `Dictionary`, `List`, and plain classes with default constructors (via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`). Types with parameterized constructors (records, immutable types) are intentionally excluded from reference tracking -- they are DDD value objects where duplication on round-trip is semantically correct. See [Appendix: Record Reference Handling](record-reference-handling.md) for the rationale.
 
 ## Type Resolution Pipeline
 

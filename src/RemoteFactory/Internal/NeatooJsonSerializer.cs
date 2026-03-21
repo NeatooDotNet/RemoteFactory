@@ -68,6 +68,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		this.Options = new JsonSerializerOptions
 		{
 			TypeInfoResolver = neatooDefaultJsonTypeInfoResolver,
+			ReferenceHandler = new NeatooPreserveReferenceHandler(),
 			WriteIndented = serializationOptions.Format == SerializationFormat.Named, // Only indent for named format (debugging)
 			IncludeFields = true
 		};
@@ -78,10 +79,18 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			this.Options.Converters.Add(new NeatooOrdinalConverterFactory(serializationOptions));
 		}
 
+		// Neatoo converters get first priority -- they claim interfaces, abstract types,
+		// and IOrdinalSerializable types that have purpose-built converters.
 		foreach (var neatooJsonConverterFactory in converterFactoryList)
 		{
 			this.Options.Converters.Add(neatooJsonConverterFactory);
 		}
+
+		// RecordBypassConverterFactory goes AFTER Neatoo converters. It claims types
+		// with parameterized constructors (records) and delegates to inner options
+		// without ReferenceHandler, preventing STJ's NotSupportedException for
+		// reference metadata on parameterized-constructor types.
+		this.Options.Converters.Add(new RecordBypassConverterFactory());
 	}
 
 

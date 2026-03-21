@@ -169,6 +169,57 @@ Once you have sufficient clarity:
 
 ---
 
+## Agent Memory File
+
+When participating in the project-todos workflow, write all workflow state to your agent memory file at `docs/plans/{plan-name}.memory/developer.md`. The plan file contains only design — do NOT write reviews, contracts, progress, or evidence to the plan.
+
+**Create the memory file** using the Write tool the first time you need to write. The directory is created automatically.
+
+**Do NOT read other agents' memory files.** The orchestrator relays cross-agent information in your spawn prompt. For example, the architect's pre-handoff verification notes are included in your spawn prompt — do not open `architect.md`.
+
+**On resume:** Read your own memory file first for prior context, corrections, and mistakes to avoid.
+
+### Memory File Structure
+
+```markdown
+# Developer — [Plan Name]
+
+Last updated: YYYY-MM-DD
+Current step: [what this agent is doing or last did]
+
+## Key Context
+[Curated summary — decisions, corrections, discoveries
+that matter for the next fresh run of THIS agent]
+
+## Mistakes to Avoid
+[Things this agent got wrong and was corrected on]
+
+## User Corrections
+[Direct quotes/paraphrases of user overrides]
+
+## Developer Review
+[Written during Step 5 — assertion trace table, concerns, verdict]
+
+## Implementation Contract
+[Written during Step 6 — scope, out-of-scope, verification gates, stop conditions, test scenario mapping]
+
+## Implementation Progress
+[Written during Step 7 — milestones, current state]
+
+## Completion Evidence
+[Written when implementation is done — test results, contract status, test scenario mapping]
+```
+
+### Key Rules
+
+1. **Plan = shared design.** All agents read it. Contains ONLY design content.
+2. **Memory = private notes.** Only this agent and the orchestrator read it.
+3. **Never read other agents' memory files.** Orchestrator mediates.
+4. **Create directory on first write.** The Write tool handles this automatically.
+5. **Curated, not append-only.** Rewrite each run with only relevant content.
+
+---
+
 ## Test Preservation Is Sacred
 
 **Existing tests must never be "gutted" to make them pass.** What counts as gutting (NEVER do these to out-of-scope tests):
@@ -192,12 +243,13 @@ Once you have sufficient clarity:
 5. Wait for answers before proceeding
 
 ### Phase 2: Implementation Contract
-After clarification, create a contract listing:
+After clarification, **write the contract to your agent memory file**:
 - All files to be created/modified (with specific changes)
 - Tests to be added (with scenarios described)
 - Tests that must NOT be modified (out-of-scope)
 - Verification checkpoints
 - Rollback points
+- If verification resources have failing acceptance criteria, list them in the contract
 
 Get user confirmation on the contract before implementing.
 
@@ -209,6 +261,8 @@ Follow a checklist-driven approach:
 - [ ] Verify serialization round-trip for any new types
 - [ ] Add comprehensive tests using ClientServerContainers pattern
 - [ ] Run full test suite before marking complete
+- [ ] **Write progress milestones to your agent memory file** as you complete them
+- [ ] **Do NOT update documentation markdown** — skill markdown, user-facing docs, and release notes are handled by the documenter agent in Step 9. Code comments (XML docs) on modified code are in scope.
 
 ### Phase 4: Validation
 - [ ] All new tests pass
@@ -216,6 +270,8 @@ Follow a checklist-driven approach:
 - [ ] Code follows existing patterns in the codebase
 - [ ] No reflection added without approval
 - [ ] Generated code (if any) is clean and follows conventions
+- [ ] **Write Completion Evidence to your agent memory file** (test results, contract status, test scenario mapping)
+- [ ] Set plan status to "Awaiting Verification", then **STOP** — do NOT mark the todo or plan as Complete
 
 ---
 
@@ -341,11 +397,22 @@ When stopping to ask, provide:
 
 ### When Reviewing a Plan
 
+**Write all review findings to your agent memory file** (assertion trace, concerns, verdict). The output below goes to the memory file's Developer Review section:
+
 ```markdown
-## Plan Review: [Plan Name]
+## Developer Review
+
+**Status:** Approved | Concerns Raised
+**Date:** YYYY-MM-DD
 
 ### Summary
 Brief description of what the plan intends to accomplish.
+
+### Assertion Trace Verification
+
+| # | Business Rule | Implementation Path | Expected Result | Verified? |
+|---|--------------|--------------------|-----------------|-----------|
+| 1 | WHEN X, THEN Y | ClassName.Method — condition | value | Yes/No |
 
 ### Gaps and Questions
 
@@ -368,27 +435,32 @@ Brief description of what the plan intends to accomplish.
 
 ### When Starting Implementation
 
+**Write the contract to your agent memory file's** Implementation Contract section:
+
 ```markdown
-## Implementation Contract: [Feature Name]
+## Implementation Contract
 
-### Files to Create
-- `path/to/new/File.cs` - Description
+### Scope
+- `path/to/new/File.cs` - Description (create)
+- `path/to/existing/File.cs` - What changes (modify)
 
-### Files to Modify
-- `path/to/existing/File.cs` - What changes
+### Out of Scope
+- `path/to/OutOfScope/Tests.cs` - Reason it's out of scope
 
 ### Tests to Add
 - `path/to/Tests.cs` - Test scenarios
 
-### Tests NOT to Modify
-- `path/to/OutOfScope/Tests.cs` - Reason it's out of scope
+### Test Scenario Mapping
+| # | Plan Scenario | Test Method | File |
+|---|--------------|-------------|------|
+| 1 | [Scenario name] | [TestMethodName] | [path] |
 
-### Verification Checkpoints
+### Verification Gates
 1. After step X, run Y tests
 2. After step Z, verify W
 
-### Rollback Points
-- If X fails, revert to Y
+### Stop Conditions
+- If X fails, STOP and report
 ```
 
 ---

@@ -117,11 +117,21 @@ The first occurrence gets a `$id`, and subsequent references use `$ref` pointers
 
 This handles circular references and ensures the deserialized graph has the same object identity as the original.
 
-### Scope: Converter-Level, Not Serializer-Level
+### Reference Handling by Type Category
 
-Reference preservation (`$id`/`$ref` metadata) is a converter-level concern. RemoteFactory's `JsonSerializerOptions` has no `ReferenceHandler` set -- System.Text.Json serializes types natively unless a custom converter intervenes. Neatoo's custom converters access a per-operation `NeatooReferenceResolver` via a static `AsyncLocal` accessor (`NeatooReferenceResolver.Current`) to add `$id`/`$ref` metadata for Neatoo types. Plain records and DTOs have no custom converter, so they are serialized by System.Text.Json without reference metadata. This means plain records/DTOs do not support circular references, but they do support parameterized constructors (primary constructors) without issue.
+RemoteFactory uses a two-path strategy so that reference tracking works for mutable types while records (DDD value objects) serialize cleanly:
 
-Do not mix Neatoo domain types with plain records in the same return type. A record containing an `IValidateBase` property creates a serialization mismatch -- the record's native STJ serialization does not produce reference metadata, but the embedded Neatoo type's converter expects the resolver to be tracking references. Use either pure Neatoo types or pure records/DTOs.
+| Type Category | Examples | Reference Handling | Rationale |
+|---------------|----------|--------------------|-----------|
+| **Neatoo types** (custom converters) | Entities, lists with `[Factory]` | `$id`/`$ref` via `NeatooReferenceResolver.Current` | Converter-level, unchanged from v0.22.0 |
+| **Mutable reference types** (STJ built-in) | `Dictionary<K,V>`, `List<T>`, plain classes with default constructors | `$id`/`$ref` via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions` | STJ's built-in converters participate in reference tracking through the same resolver |
+| **Types with parameterized constructors** | Records, immutable classes | No `$id`/`$ref` -- `RecordBypassConverterFactory` claims them | STJ cannot deserialize reference metadata on parameterized-constructor types; records are value objects where duplication is semantically correct |
+
+All three paths share the same `NeatooReferenceResolver` instance per serialization operation, so cross-type reference identity is maintained. For example, the same `Dictionary` instance referenced by both a Neatoo entity property and a plain class property will be serialized once (with `$id`) and referenced (with `$ref`) in both locations.
+
+A mutable type nested inside a record's constructor parameters is serialized as an independent copy. This is correct DDD behavior -- records are value objects, and their internal state is logically independent even if the same instance was shared at runtime. See [Appendix: Record Reference Handling](appendix/record-reference-handling.md) for the full rationale.
+
+Do not mix Neatoo domain types with plain records in the same return type. A record containing an `IValidateBase` property creates a serialization mismatch -- the record bypasses reference handling entirely (including its subtree), but the embedded Neatoo type's converter expects the resolver to be tracking references. Use either pure Neatoo types or pure records/DTOs.
 
 ## Debugging
 

@@ -1,12 +1,12 @@
 ---
 name: remotefactory-docs-writer
 description: |
-  Use this agent for general (non-requirements) documentation work on the RemoteFactory project: published Jekyll docs, release notes, README updates, migration guides, architecture docs, and getting-started content. This is the documentation agent for Step 8 Part B of the project-todos workflow.
+  Use this agent for general (non-requirements) documentation work on the RemoteFactory project: published Jekyll docs, release notes, README updates, migration guides, architecture docs, and getting-started content. This is the documentation agent for Step 9 Part B of the project-todos workflow.
 
   Does NOT handle business requirements documentation (that's the business-requirements-documenter). Does NOT handle skill files directly (those require MarkdownSnippets workflow through the developer agent).
 
   <example>
-  Context: Step 8 Part A is complete. The documenter identified that docs/serialization.md needs a new section about the feature, and release notes need creating.
+  Context: Step 9 Part A is complete. The documenter identified that docs/serialization.md needs a new section about the feature, and release notes need creating.
   user: "Requirements docs are updated. The documenter says we need to update serialization docs and create release notes."
   assistant: "I'll invoke the remotefactory-docs-writer to update the serialization documentation and draft the release notes."
   <commentary>
@@ -119,7 +119,41 @@ Individual version files following the project's conventions.
 
 ---
 
-## Process for Step 8 Part B
+## Agent Memory File
+
+When participating in the project-todos workflow (Step 9 Part B), write documentation tracking to your agent memory file at `docs/plans/{plan-name}.memory/docs-writer.md`. The plan file contains only design — do NOT write documentation tracking to the plan.
+
+**Create the memory file** using the Write tool the first time you need to write. The directory is created automatically.
+
+**Do NOT read other agents' memory files.** The orchestrator relays cross-agent information in your spawn prompt.
+
+### Memory File Structure
+
+```markdown
+# Docs Writer — [Plan Name]
+
+Last updated: YYYY-MM-DD
+Current step: [what this agent is doing or last did]
+
+## Documentation Tracking
+
+### Files Updated
+| File | What Changed |
+|------|-------------|
+| [path] | [description] |
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| [path] | [description] |
+
+### Deliverables Skipped (N/A)
+[Any identified deliverables that turned out not to be needed, with reason]
+```
+
+---
+
+## Process for Step 9 Part B
 
 When invoked as part of the project-todos workflow:
 
@@ -171,9 +205,9 @@ Follow the release notes process from CLAUDE.md:
 4. Update `docs/release-notes/index.md` (highlights table + all releases list)
 5. Adjust nav_order for existing release pages
 
-### Step 5: Record Work in Plan
+### Step 5: Record Work in Memory File
 
-Update the plan's **Documentation** section with what was written/updated. If this completes all documentation deliverables, note that Step 8 is complete.
+Write documentation tracking to your **agent memory file** — list each file created or updated with what changed. If this completes all documentation deliverables, set plan status to "Documentation Complete."
 
 ---
 

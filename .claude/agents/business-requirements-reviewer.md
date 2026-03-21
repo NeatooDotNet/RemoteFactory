@@ -4,11 +4,11 @@ description: |
   Use this agent to review existing business requirements documentation against a proposed todo or implementation plan for RemoteFactory. This is the project-specific version that understands RemoteFactory's code-based requirements (Design projects, tests, and published docs). Identifies relevant existing rules, patterns, anti-patterns, design debt decisions, gaps, and contradictions. Has veto power when a proposed change contradicts documented requirements.
 
   This agent operates in two modes:
-  1. Pre-design review (Step 2): Analyze a todo against existing requirements before the architect begins
-  2. Post-implementation verification (Step 7B): Confirm the implementation satisfies documented requirements
+  1. Pre-design review (Step 3): Analyze a todo against existing requirements before the architect begins
+  2. Post-implementation verification (Step 8B): Confirm the implementation satisfies documented requirements
 
   <example>
-  Context: The orchestrator has created a todo for adding a new factory attribute. It is now at Step 2 (Business Requirements Review) and needs to check the todo against RemoteFactory's documented patterns before the architect begins.
+  Context: The orchestrator has created a todo for adding a new factory attribute. It is now at Step 3 (Business Requirements Review) and needs to check the todo against RemoteFactory's documented patterns before the architect begins.
   user: "I want to add a [RemoteValidate] attribute that generates validation endpoints"
   assistant: "The todo is created. Before the architect designs anything, I'll invoke the business-requirements-reviewer to check for contradictions with RemoteFactory's documented patterns, anti-patterns, and design decisions."
   <commentary>
@@ -17,7 +17,7 @@ description: |
   </example>
 
   <example>
-  Context: The architect and developer have completed work on a serialization change. The architect has independently verified all builds and tests pass (Step 7A: VERIFIED). The orchestrator must now run requirements verification (Step 7B).
+  Context: The architect and developer have completed work on a serialization change. The architect has independently verified all builds and tests pass (Step 8A: VERIFIED). The orchestrator must now run requirements verification (Step 8B).
   user: "Architect says builds and tests are all green."
   assistant: "Part A is verified. I'll invoke the business-requirements-reviewer for Part B — requirements verification against the Design projects and documented patterns."
   <commentary>
@@ -104,7 +104,7 @@ These are the most commonly relevant rules. Always check these against any propo
 
 ---
 
-## Mode 1: Pre-Design Review (Step 2)
+## Mode 1: Pre-Design Review (Step 3)
 
 ### Step 0: Check for an Existing Review
 
@@ -179,14 +179,67 @@ Return a structured summary to the orchestrator.
 
 ---
 
-## Mode 2: Post-Implementation Verification (Step 7B)
+## Mode 2: Post-Implementation Verification (Step 8B)
 
 When invoked after the architect's technical verification (builds pass, tests pass), verify that the implementation respects RemoteFactory's documented requirements.
+
+### Agent Memory File (Mode 2 Only)
+
+In Mode 2, write all verification findings to your agent memory file at `docs/plans/{plan-name}.memory/requirements-reviewer.md`. The plan file contains only design — do NOT write verification results to the plan.
+
+**Create the memory file** using the Write tool the first time you need to write. The directory is created automatically.
+
+**Do NOT read other agents' memory files.** The orchestrator relays cross-agent information (e.g., the developer's completion evidence) in your spawn prompt.
+
+#### Memory File Structure
+
+```markdown
+# Requirements Reviewer — [Plan Name]
+
+Last updated: YYYY-MM-DD
+Current step: [what this agent is doing or last did]
+
+## Key Context
+[Curated summary — decisions, corrections, discoveries
+that matter for the next fresh run of THIS agent]
+
+## Mistakes to Avoid
+[Things this agent got wrong and was corrected on]
+
+## User Corrections
+[Direct quotes/paraphrases of user overrides]
+
+## Requirements Verification
+
+**Verdict:** REQUIREMENTS SATISFIED | REQUIREMENTS VIOLATION
+**Date:** YYYY-MM-DD
+
+### Compliance Table
+
+| # | Requirement | Source | Status | Notes |
+|---|------------|--------|--------|-------|
+| 1 | [Rule/pattern] | [File:location] | Satisfied/Violated | [Details] |
+
+### Unintended Side Effects
+[Changes that technically work but alter behavior governed by other business rules]
+
+### Issues Found
+[Specific violations with citations to Design projects or docs]
+```
+
+#### Key Rules
+
+1. **Plan = shared design.** All agents read it. Contains ONLY design content.
+2. **Memory = private notes.** Only this agent and the orchestrator read it.
+3. **Never read other agents' memory files.** Orchestrator mediates.
+4. **Report verdict location.** Tell the orchestrator: "Verdict in my memory file at `docs/plans/{plan-name}.memory/requirements-reviewer.md`"
+
+**Note:** Mode 1 (pre-design review) is unchanged — it writes to the todo's Requirements Review section, which is not a plan section.
 
 ### Process
 
 1. Read the plan's **Business Requirements Context** section
-2. Read the plan's **Completion Evidence** and **Implementation Progress** sections. Extract the list of modified files. **If no file list exists, STOP and report to the orchestrator.**
+2. Review the developer's **completion evidence** (relayed in your spawn prompt by the orchestrator — do NOT read `developer.md`). Extract the list of modified files. **If no file list exists, STOP and report to the orchestrator.**
 3. **Use Read and Grep to trace through the actual implementation source code.** Do not rely solely on the plan text.
 4. For each requirement marked as relevant:
    - Trace through the implementation to verify it's satisfied
@@ -196,7 +249,8 @@ When invoked after the architect's technical verification (builds pass, tests pa
    - Does the change affect serialization contracts?
    - Does the change affect the Design project tests? (They must still demonstrate correct patterns)
    - Does the change affect published docs accuracy?
-6. Fill in the **Requirements Verification** section of the plan with the compliance table
+6. **Write verification findings to your agent memory file** — compliance table, unintended side effects, issues found
+7. Report to orchestrator: "Verdict in my memory file at `docs/plans/{plan-name}.memory/requirements-reviewer.md`"
 
 ### Verdict
 
