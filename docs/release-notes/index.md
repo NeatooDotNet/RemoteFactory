@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.22.0](v0.22.0.md) | 2026-03-20 | Serializer responsibility redesign: converter-level reference handling |
 | [v0.21.3](v0.21.3.md) | 2026-03-20 | Fix record deserialization with `$id`/`$ref` metadata |
 | [v0.21.2](v0.21.2.md) | 2026-03-08 | Trimming-safe factory registration for all factory types |
 | [v0.21.1](v0.21.1.md) | 2026-03-08 | Fix factories trimmed when first overload has no callers |
@@ -46,6 +47,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.22.0](v0.22.0.md) - 2026-03-20 - Serializer responsibility redesign
 - [v0.21.3](v0.21.3.md) - 2026-03-20 - Fix record deserialization with reference metadata
 - [v0.21.2](v0.21.2.md) - 2026-03-08 - Trimming-safe factory registration for all factory types
 - [v0.21.1](v0.21.1.md) - 2026-03-08 - Fix [DynamicDependency] trimming on multi-overload factories

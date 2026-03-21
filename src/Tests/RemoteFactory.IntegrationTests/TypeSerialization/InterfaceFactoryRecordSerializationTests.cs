@@ -130,7 +130,7 @@ public class InterfaceFactoryRecordSerializationTests
 				new(2, "Item2")
 			});
 
-		// Act - serialize via the serializer that now selects PlainOptions for non-Neatoo types
+		// Act - serialize via the serializer (no ReferenceHandler in options, so records get no $id/$ref)
 		var json = serializer.Serialize(record);
 
 		// Assert - JSON must not contain $id or $ref metadata

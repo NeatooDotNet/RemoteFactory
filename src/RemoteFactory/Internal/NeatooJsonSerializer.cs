@@ -35,14 +35,6 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 	JsonSerializerOptions Options { get; }
 
 	/// <summary>
-	/// Options without ReferenceHandler for non-Neatoo types (records, DTOs, primitives).
-	/// Prevents $id/$ref metadata that breaks parameterized constructor deserialization.
-	/// </summary>
-	JsonSerializerOptions PlainOptions { get; }
-
-	private NeatooReferenceHandler ReferenceHandler { get; } = new NeatooReferenceHandler();
-
-	/// <summary>
 	/// Gets the current serialization format.
 	/// </summary>
 	public SerializationFormat Format => serializationOptions.Format;
@@ -75,7 +67,6 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 
 		this.Options = new JsonSerializerOptions
 		{
-			ReferenceHandler = this.ReferenceHandler,
 			TypeInfoResolver = neatooDefaultJsonTypeInfoResolver,
 			WriteIndented = serializationOptions.Format == SerializationFormat.Named, // Only indent for named format (debugging)
 			IncludeFields = true
@@ -91,49 +82,8 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		{
 			this.Options.Converters.Add(neatooJsonConverterFactory);
 		}
-
-		// Plain options: same converters and resolver, but no ReferenceHandler.
-		// Non-Neatoo types (records, DTOs) use these to avoid $id/$ref metadata
-		// that breaks parameterized constructor deserialization.
-		this.PlainOptions = new JsonSerializerOptions
-		{
-			TypeInfoResolver = neatooDefaultJsonTypeInfoResolver,
-			WriteIndented = serializationOptions.Format == SerializationFormat.Named,
-			IncludeFields = true
-		};
-
-		if (serializationOptions.Format == SerializationFormat.Ordinal)
-		{
-			this.PlainOptions.Converters.Add(new NeatooOrdinalConverterFactory(serializationOptions));
-		}
-
-		foreach (var neatooJsonConverterFactory in converterFactoryList)
-		{
-			this.PlainOptions.Converters.Add(neatooJsonConverterFactory);
-		}
 	}
 
-
-	/// <summary>
-	/// Determines whether a type is a Neatoo type that requires ReferenceHandler.Preserve.
-	/// Neatoo types handle $id/$ref manually via custom converters.
-	/// Non-Neatoo types (records, DTOs, primitives) must not have $id/$ref metadata
-	/// because System.Text.Json cannot deserialize parameterized constructors with $ref.
-	/// </summary>
-	private bool IsNeatooType(Type type)
-	{
-		var underlying = Nullable.GetUnderlyingType(type) ?? type;
-
-		// IOrdinalSerializable = [Factory]-decorated type with generated ordinal support
-		if (typeof(IOrdinalSerializable).IsAssignableFrom(underlying))
-			return true;
-
-		// Interface/abstract types registered in IServiceAssemblies = Neatoo interface factory types
-		if ((underlying.IsInterface || underlying.IsAbstract) && serviceAssemblies.HasType(underlying))
-			return true;
-
-		return false;
-	}
 
 	public string? Serialize(object? target)
 	{
@@ -147,17 +97,11 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		logger.SerializingObject(typeName, this.Format);
 
 		var sw = Stopwatch.StartNew();
+		using var rr = new NeatooReferenceResolver();
+		NeatooReferenceResolver.Current = rr;
 		try
 		{
-			var options = IsNeatooType(targetType) ? this.Options : this.PlainOptions;
-
-			if (options == this.Options)
-			{
-				using var rr = new NeatooReferenceResolver();
-				this.ReferenceHandler.ReferenceResolver.Value = rr;
-			}
-
-			var result = JsonSerializer.Serialize(target, options);
+			var result = JsonSerializer.Serialize(target, this.Options);
 
 			sw.Stop();
 			logger.SerializedObject(typeName, sw.ElapsedMilliseconds);
@@ -169,6 +113,10 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			sw.Stop();
 			logger.SerializationFailed(typeName, ex.Message, ex);
 			throw;
+		}
+		finally
+		{
+			NeatooReferenceResolver.Current = null;
 		}
 	}
 
@@ -185,17 +133,11 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		logger.SerializingObject(typeName, this.Format);
 
 		var sw = Stopwatch.StartNew();
+		using var rr = new NeatooReferenceResolver();
+		NeatooReferenceResolver.Current = rr;
 		try
 		{
-			var options = IsNeatooType(targetType) ? this.Options : this.PlainOptions;
-
-			if (options == this.Options)
-			{
-				using var rr = new NeatooReferenceResolver();
-				this.ReferenceHandler.ReferenceResolver.Value = rr;
-			}
-
-			var result = JsonSerializer.Serialize(target, targetType, options);
+			var result = JsonSerializer.Serialize(target, targetType, this.Options);
 
 			sw.Stop();
 			logger.SerializedObject(typeName, sw.ElapsedMilliseconds);
@@ -207,6 +149,10 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			sw.Stop();
 			logger.SerializationFailed(typeName, ex.Message, ex);
 			throw;
+		}
+		finally
+		{
+			NeatooReferenceResolver.Current = null;
 		}
 	}
 
@@ -220,17 +166,11 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		var typeName = typeof(T).Name;
 		var sw = Stopwatch.StartNew();
 
+		using var rr = new NeatooReferenceResolver();
+		NeatooReferenceResolver.Current = rr;
 		try
 		{
-			var options = IsNeatooType(typeof(T)) ? this.Options : this.PlainOptions;
-
-			if (options == this.Options)
-			{
-				using var rr = new NeatooReferenceResolver();
-				this.ReferenceHandler.ReferenceResolver.Value = rr;
-			}
-
-			var result = JsonSerializer.Deserialize<T>(json, options);
+			var result = JsonSerializer.Deserialize<T>(json, this.Options);
 
 			sw.Stop();
 			logger.DeserializedObject(typeName, sw.ElapsedMilliseconds);
@@ -242,6 +182,10 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			sw.Stop();
 			logger.DeserializationFailed(typeName, ex.Message, ex);
 			throw;
+		}
+		finally
+		{
+			NeatooReferenceResolver.Current = null;
 		}
 	}
 
@@ -257,17 +201,11 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		var typeName = type.Name;
 		var sw = Stopwatch.StartNew();
 
+		using var rr = new NeatooReferenceResolver();
+		NeatooReferenceResolver.Current = rr;
 		try
 		{
-			var options = IsNeatooType(type) ? this.Options : this.PlainOptions;
-
-			if (options == this.Options)
-			{
-				using var rr = new NeatooReferenceResolver();
-				this.ReferenceHandler.ReferenceResolver.Value = rr;
-			}
-
-			var result = JsonSerializer.Deserialize(json, type, options);
+			var result = JsonSerializer.Deserialize(json, type, this.Options);
 
 			sw.Stop();
 			logger.DeserializedObject(typeName, sw.ElapsedMilliseconds);
@@ -279,6 +217,10 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			sw.Stop();
 			logger.DeserializationFailed(typeName, ex.Message, ex);
 			throw;
+		}
+		finally
+		{
+			NeatooReferenceResolver.Current = null;
 		}
 	}
 
