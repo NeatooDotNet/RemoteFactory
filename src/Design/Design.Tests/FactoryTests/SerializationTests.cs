@@ -35,11 +35,14 @@
 //   - Delegate/Func/Action fields
 //   - Lazy<T> or other deferred types
 //   - Interface-typed collections (IEnumerable<T>, IList<T>)
-//   - Circular references without proper handling
 //
 // PARTIAL - Special handling required:
 //   - Collections with injected factories (work in local mode only)
 //   - Child entity collections (see OrderLineList pattern)
+//   - Circular references: Handled for mutable types (classes with default
+//     constructors) via NeatooPreserveReferenceHandler. NOT handled for types
+//     with parameterized constructors (records) -- those bypass reference
+//     tracking entirely because value objects have no identity to track.
 //
 // -----------------------------------------------------------------------------
 // WHY IORDINALSERIALIZABLE MATTERS

@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.23.0](v0.23.0.md) | 2026-03-21 | Shared reference handling for mutable types, record bypass converter |
 | [v0.22.0](v0.22.0.md) | 2026-03-20 | Serializer responsibility redesign: converter-level reference handling |
 | [v0.21.3](v0.21.3.md) | 2026-03-20 | Fix record deserialization with `$id`/`$ref` metadata |
 | [v0.21.2](v0.21.2.md) | 2026-03-08 | Trimming-safe factory registration for all factory types |

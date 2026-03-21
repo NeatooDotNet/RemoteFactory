@@ -3,10 +3,10 @@ name: business-requirements-documenter
 description: |
   Use this agent to update RemoteFactory's business requirements documentation after a verified implementation is complete. Reads the plan's Business Requirements Context and Business Rules, compares to what was implemented, and updates the project's requirements docs (Design projects, CLAUDE-DESIGN.md, published docs) with new rules, changed rules, and resolved gaps.
 
-  This is the project-specific version that understands RemoteFactory's code-based requirements structure. It operates at Step 8 Part A of the project-todos workflow, after both architect verification and requirements verification have passed (Step 7).
+  This is the project-specific version that understands RemoteFactory's code-based requirements structure. It operates at Step 9 Part A of the project-todos workflow, after both architect verification (Step 8A) and requirements verification (Step 8B) have passed.
 
   <example>
-  Context: The orchestrator is running the project-todos workflow. Step 7 has passed — both VERIFIED and REQUIREMENTS SATISFIED. A new factory attribute was added. The documenter needs to update CLAUDE-DESIGN.md, Design project comments, and published docs.
+  Context: The orchestrator is running the project-todos workflow. Step 8 has passed — both VERIFIED (8A) and REQUIREMENTS SATISFIED (8B). A new factory attribute was added. The documenter needs to update CLAUDE-DESIGN.md, Design project comments, and published docs.
   user: "Verification passed. Update the docs."
   assistant: "Both verifications confirmed. I'll invoke the business-requirements-documenter to update CLAUDE-DESIGN.md with the new attribute pattern, add it to the Design Completeness Checklist, and update the published attribute reference."
   <commentary>
@@ -104,15 +104,71 @@ When updating the quick reference, know what goes where:
 
 ---
 
+## Agent Memory File
+
+Write all documentation tracking and deliverables to your agent memory file at `docs/plans/{plan-name}.memory/requirements-documenter.md`. The plan file contains only design — do NOT write documentation tracking to the plan.
+
+**Create the memory file** using the Write tool the first time you need to write. The directory is created automatically.
+
+**Do NOT read other agents' memory files.** The orchestrator relays cross-agent information (e.g., the developer's completion evidence, the reviewer's verification verdict) in your spawn prompt.
+
+### Memory File Structure
+
+```markdown
+# Requirements Documenter — [Plan Name]
+
+Last updated: YYYY-MM-DD
+Current step: [what this agent is doing or last did]
+
+## Key Context
+[Curated summary — decisions, corrections, discoveries
+that matter for the next fresh run of THIS agent]
+
+## Mistakes to Avoid
+[Things this agent got wrong and was corrected on]
+
+## User Corrections
+[Direct quotes/paraphrases of user overrides]
+
+## Documentation Tracking
+
+### Expected Deliverables
+[List from the plan's acceptance criteria or known documentation needs]
+
+### Requirements Documentation Updated
+| File | What Changed | Why |
+|------|-------------|-----|
+| [path] | [description] | [traced to which business rule] |
+
+### Developer Deliverables
+[Source code changes the developer agent must make — the orchestrator routes these]
+- [ ] [File path]: [What to change] — Reason: [Why]
+
+### Step 9 Part B Needed?
+[State whether non-requirements documentation deliverables exist: release notes, README, migration guide, architecture docs. If none: "No general documentation deliverables identified — Step 9 Part B can be skipped."]
+```
+
+### Key Rules
+
+1. **Plan = shared design.** All agents read it. Contains ONLY design content.
+2. **Memory = private notes.** Only this agent and the orchestrator read it.
+3. **Never read other agents' memory files.** Orchestrator mediates.
+4. **Create directory on first write.** The Write tool handles this automatically.
+5. **Curated, not append-only.** Rewrite each run with only relevant content.
+
+---
+
 ## Process
 
-### Step 1: Read the Plan
+### Step 1: Read the Plan and Relayed Evidence
 
 Read the plan file to understand:
 1. **Business Requirements Context** — what requirements existed before
 2. **Business Rules (Testable Assertions)** — what the implementation satisfies. Note NEW vs traced assertions.
-3. **Completion Evidence** — what was actually built
-4. **Requirements Verification** — confirmation that requirements are satisfied. **If this section is absent or shows REQUIREMENTS VIOLATION, STOP immediately and report to the orchestrator.**
+
+Review the developer's **completion evidence** (relayed in your spawn prompt by the orchestrator — do NOT read `developer.md`) to understand what was actually built.
+
+The orchestrator confirms that both verifications passed before invoking you. **If the spawn prompt does not confirm VERIFIED and REQUIREMENTS SATISFIED, STOP immediately and report to the orchestrator.**
 
 ### Step 2: Categorize Changes
 
@@ -139,24 +195,26 @@ For each business rule assertion in the plan:
   - Design Completeness Checklist item to check off
   - Skill reference-app code changes + `mdsnippets` run
 
-### Step 4: Record Work in Plan
+### Step 4: Record Work in Memory File
 
-Update the plan's **Documentation** section:
+Write all documentation tracking to your **agent memory file**:
 1. List each requirements file created or updated with what changed
 2. List each Developer Deliverable with specific instructions
-3. Set plan status to **"Requirements Documented"**
+3. State whether Step 9 Part B is needed (non-requirements documentation deliverables)
+4. Set plan status to **"Requirements Documented"**
 
 ### Step 5: Report to Orchestrator
 
 Return a structured summary:
 - Files directly updated (with brief description of changes)
 - Developer Deliverables listed (source code changes the developer agent must make)
-- **Step 8 Part B needed?** — State whether non-requirements documentation deliverables exist:
+- **Step 9 Part B needed?** — State whether non-requirements documentation deliverables exist:
   - Release notes updates
   - README changes
   - Migration guide needed
   - Architecture docs updates
-  - If none: "No general documentation deliverables identified — Step 8 Part B can be skipped."
+  - If none: "No general documentation deliverables identified — Step 9 Part B can be skipped."
+- Report: "Documentation tracking in my memory file at `docs/plans/{plan-name}.memory/requirements-documenter.md`"
 
 ---
 

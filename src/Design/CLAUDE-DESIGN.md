@@ -150,7 +150,7 @@ public static partial class MyCommands
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | `AuthorizedOrder.cs`, `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
-| Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records are serialized without `$id`/`$ref`; do not mix Neatoo types into record properties |
+| Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
 
 ---
 
@@ -416,7 +416,7 @@ public interface IOrderService
 }
 ```
 
-**Why it matters:** Reference handling (`$id`/`$ref` metadata) is a converter-level concern, not a serializer-level concern. RemoteFactory's `JsonSerializerOptions` has no `ReferenceHandler` set -- STJ serializes plain records/DTOs natively without injecting `$id`/`$ref`. Neatoo's custom converters access a per-operation `NeatooReferenceResolver` via a static `AsyncLocal` accessor (`NeatooReferenceResolver.Current`) to add reference metadata for their own types. Mixing Neatoo types into a plain record creates a serialization mismatch: the record is serialized natively by STJ (no reference metadata), but the embedded Neatoo type's converter expects the resolver to be tracking references across the graph. Additionally, STJ's native record deserialization cannot process `$ref` in parameterized constructors. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
+**Why it matters:** RemoteFactory uses a two-path serialization strategy for reference handling. Mutable reference types (Dictionary, List, plain classes with default constructors) participate in `$id`/`$ref` reference tracking via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`. Types with parameterized constructors (records, immutable types) are claimed by `RecordBypassConverterFactory`, which serializes them without any reference metadata -- this is correct DDD behavior because records are value objects whose identity is defined by their values, not by reference. STJ cannot deserialize `$id`/`$ref` metadata on types with parameterized constructors (`ObjectWithParameterizedCtorRefMetadataNotSupported`), so bypassing is also a technical necessity. Mixing Neatoo types into a plain record creates a serialization mismatch: the record bypasses reference handling entirely (including its subtree), but the embedded Neatoo type's converter expects the resolver to be tracking references across the graph. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
 
 ---
 
@@ -750,7 +750,7 @@ These are known limitations or open questions. They are documented here to preve
 7. **Missing partial keyword** - Generator needs to extend your class
 8. **Missing CancellationToken on events** - Required for graceful shutdown
 9. **[Remote] on public methods** - `[Remote]` requires `internal` for IL trimming. `[Remote] public` emits NF0105. Change to `internal`.
-10. **Mixing Neatoo types with records in Interface Factory return types** - Records containing Neatoo domain types (e.g., `IValidateBase`) as properties cause serialization mismatches. Use pure records/DTOs or pure Neatoo types, not both.
+10. **Mixing Neatoo types with records in Interface Factory return types** - Records bypass reference handling entirely (`RecordBypassConverterFactory`), so embedded Neatoo types lose reference tracking. Use pure records/DTOs or pure Neatoo types, not both.
 
 ---
 
