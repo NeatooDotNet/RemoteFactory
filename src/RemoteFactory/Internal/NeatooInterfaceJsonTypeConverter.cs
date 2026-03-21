@@ -29,7 +29,6 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 		}
 
 		T? result = default;
-		var id = string.Empty;
 		Type? concreteType = default;
 
 		while (reader.Read())
@@ -39,12 +38,6 @@ public class NeatooInterfaceJsonTypeConverter<T> : JsonConverter<T>
 				if (result == null)
 				{
 					throw new JsonException($"Unexpected end object");
-				}
-
-				if (!string.IsNullOrEmpty(id))
-				{
-					options.ReferenceHandler!.CreateResolver()
-									 .AddReference(id, result);
 				}
 
 				if (result is IJsonOnDeserialized jsonOnDeserialized)

@@ -2,11 +2,26 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Threading;
 
 namespace Neatoo.RemoteFactory.Internal;
 
 public sealed class NeatooReferenceResolver : ReferenceResolver, IDisposable
 {
+	private static readonly AsyncLocal<NeatooReferenceResolver?> _current = new();
+
+	/// <summary>
+	/// Per-async-flow accessor for the active resolver.
+	/// Set by NeatooJsonSerializer before each serialize/deserialize call; cleared in finally.
+	/// Downstream converters (including Neatoo) read this to access reference tracking.
+	/// Returns null when no serialization operation is in progress.
+	/// </summary>
+	public static NeatooReferenceResolver? Current
+	{
+		get => _current.Value;
+		internal set => _current.Value = value;
+	}
+
 	private uint _referenceCount;
 	private Dictionary<string, object> _referenceIdToObjectMap = new Dictionary<string, object>();
 	private Dictionary<object, string> _objectToReferenceIdMap = new Dictionary<object, string>(ReferenceEqualityComparer.Instance);

@@ -1,8 +1,8 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.1
-last_updated: 2026-03-08
+design_version: 1.2
+last_updated: 2026-03-20
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -416,7 +416,7 @@ public interface IOrderService
 }
 ```
 
-**Why it matters:** Interface Factory return types that are plain records/DTOs are serialized without reference handling (`$id`/`$ref` metadata). Neatoo types require reference handling for their custom converters to work. Mixing the two in a single return type creates a serialization mismatch: the record is serialized without reference handling, but the embedded Neatoo type expects it. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
+**Why it matters:** Reference handling (`$id`/`$ref` metadata) is a converter-level concern, not a serializer-level concern. RemoteFactory's `JsonSerializerOptions` has no `ReferenceHandler` set -- STJ serializes plain records/DTOs natively without injecting `$id`/`$ref`. Neatoo's custom converters access a per-operation `NeatooReferenceResolver` via a static `AsyncLocal` accessor (`NeatooReferenceResolver.Current`) to add reference metadata for their own types. Mixing Neatoo types into a plain record creates a serialization mismatch: the record is serialized natively by STJ (no reference metadata), but the embedded Neatoo type's converter expects the resolver to be tracking references across the graph. Additionally, STJ's native record deserialization cannot process `$ref` in parameterized constructors. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
 
 ---
 

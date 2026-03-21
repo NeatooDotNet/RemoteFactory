@@ -117,11 +117,11 @@ The first occurrence gets a `$id`, and subsequent references use `$ref` pointers
 
 This handles circular references and ensures the deserialized graph has the same object identity as the original.
 
-### Scope: Neatoo Types Only
+### Scope: Converter-Level, Not Serializer-Level
 
-Reference preservation (`$id`/`$ref` metadata) applies only to Neatoo types -- classes and records decorated with `[Factory]` that implement `IOrdinalSerializable`, and interface/abstract types registered in the factory assembly. Plain records and DTOs returned from Interface Factory methods are serialized without reference handling, using standard System.Text.Json behavior. This means plain records/DTOs do not support circular references, but they do support parameterized constructors (primary constructors) without issue.
+Reference preservation (`$id`/`$ref` metadata) is a converter-level concern. RemoteFactory's `JsonSerializerOptions` has no `ReferenceHandler` set -- System.Text.Json serializes types natively unless a custom converter intervenes. Neatoo's custom converters access a per-operation `NeatooReferenceResolver` via a static `AsyncLocal` accessor (`NeatooReferenceResolver.Current`) to add `$id`/`$ref` metadata for Neatoo types. Plain records and DTOs have no custom converter, so they are serialized by System.Text.Json without reference metadata. This means plain records/DTOs do not support circular references, but they do support parameterized constructors (primary constructors) without issue.
 
-Do not mix Neatoo domain types with plain records in the same return type. A record containing an `IValidateBase` property creates a serialization mismatch -- the record is serialized without reference handling, but the embedded Neatoo type expects it. Use either pure Neatoo types or pure records/DTOs.
+Do not mix Neatoo domain types with plain records in the same return type. A record containing an `IValidateBase` property creates a serialization mismatch -- the record's native STJ serialization does not produce reference metadata, but the embedded Neatoo type's converter expects the resolver to be tracking references. Use either pure Neatoo types or pure records/DTOs.
 
 ## Debugging
 
