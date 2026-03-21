@@ -186,3 +186,82 @@ public partial class RemoteFetchTarget_RemoteBoolTrue
         return Task.FromResult(true);
     }
 }
+
+/// <summary>
+/// Authorization class that always allows Fetch operations.
+/// Used to test the bool-false + authorization intersection (not-found path, not auth-denial).
+/// </summary>
+public class FetchAuthAllow
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+    public bool CanFetch() => true;
+}
+
+/// <summary>
+/// Test target for [Remote, Fetch] returning Task&lt;bool&gt; false with [AuthorizeFactory].
+/// Verifies that the generated factory returns null (not NRE) when a Fetch method returns
+/// false and the factory has authorization. This is the exact scenario that triggered
+/// the NRE bug: the bool-false path emitted default! for Authorized&lt;T&gt;, which is null,
+/// and the public wrapper then called .Result on null.
+/// </summary>
+[Factory]
+[AuthorizeFactory<FetchAuthAllow>]
+public partial class RemoteFetchTarget_AuthBoolFalse
+{
+    public bool FetchCalled { get; set; }
+    public int ReceivedId { get; set; }
+
+    [Fetch]
+    [Remote]
+    internal Task<bool> Fetch(int id)
+    {
+        FetchCalled = true;
+        ReceivedId = id;
+        return Task.FromResult(false);
+    }
+}
+
+/// <summary>
+/// Test target for [Remote, Fetch] returning Task&lt;bool&gt; true with [AuthorizeFactory].
+/// Regression guard: verifies the happy path still works when authorization is present.
+/// </summary>
+[Factory]
+[AuthorizeFactory<FetchAuthAllow>]
+public partial class RemoteFetchTarget_AuthBoolTrue
+{
+    public bool FetchCalled { get; set; }
+    public int ReceivedId { get; set; }
+
+    [Fetch]
+    [Remote]
+    internal Task<bool> Fetch(int id)
+    {
+        FetchCalled = true;
+        ReceivedId = id;
+        return Task.FromResult(true);
+    }
+}
+
+/// <summary>
+/// Test target for [Remote, Fetch] returning Task&lt;bool&gt; false with [AuthorizeFactory]
+/// and [Service] injection. The [Service] parameter proves execution happens on the server
+/// (IServerOnlyService is not registered in the client container).
+/// </summary>
+[Factory]
+[AuthorizeFactory<FetchAuthAllow>]
+public partial class RemoteFetchTarget_RemoteAuthBoolFalse
+{
+    public bool FetchCalled { get; set; }
+    public int ReceivedId { get; set; }
+    public bool ServiceWasInjected { get; set; }
+
+    [Remote]
+    [Fetch]
+    internal Task<bool> Fetch(int id, [Service] IServerOnlyService service)
+    {
+        FetchCalled = true;
+        ReceivedId = id;
+        ServiceWasInjected = service != null;
+        return Task.FromResult(false);
+    }
+}
