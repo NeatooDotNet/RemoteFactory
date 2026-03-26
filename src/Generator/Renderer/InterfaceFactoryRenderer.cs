@@ -45,7 +45,7 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine();
 
         // Assembly-level attribute for trimming-safe factory discovery
-        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof({unit.Namespace}.{model.ImplementationTypeName}Factory))]");
+        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{unit.Namespace}.{model.ImplementationTypeName}Factory))]");
         sb.AppendLine();
 
         sb.AppendLine("/*");
