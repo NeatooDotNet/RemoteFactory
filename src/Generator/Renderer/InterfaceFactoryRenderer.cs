@@ -476,6 +476,17 @@ internal static class InterfaceFactoryRenderer
             }
         }
 
+        // DTO constructor registrations (IL trimming support)
+        if (model.DtoReturnTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // DTO constructor registrations (IL trimming support)");
+            foreach (var dtoType in model.DtoReturnTypes)
+            {
+                sb.AppendLine($"            DtoConstructorRegistry.Register<{dtoType}>(() => new {dtoType}());");
+            }
+        }
+
         sb.AppendLine("        }");
     }
 

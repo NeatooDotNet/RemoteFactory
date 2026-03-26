@@ -94,7 +94,8 @@ internal static class FactoryModelBuilder
             signatureText: typeInfo.SignatureText,
             isPartial: typeInfo.IsPartial,
             delegates: delegates,
-            events: events);
+            events: events,
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -145,7 +146,8 @@ internal static class FactoryModelBuilder
         var interfaceFactory = new InterfaceFactoryModel(
             serviceTypeName: typeInfo.ServiceTypeName,
             implementationTypeName: typeInfo.ImplementationTypeName,
-            methods: methods);
+            methods: methods,
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -272,7 +274,8 @@ internal static class FactoryModelBuilder
             ordinalSerialization: ordinalSerialization,
             hasDefaultSave: hasDefaultSave,
             requiresEntityRegistration: requiresEntityRegistration,
-            registerOrdinalConverter: registerOrdinalConverter);
+            registerOrdinalConverter: registerOrdinalConverter,
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,

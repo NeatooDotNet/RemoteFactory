@@ -1523,6 +1523,17 @@ internal static class ClassFactoryRenderer
             }
         }
 
+        // DTO constructor registrations (IL trimming support)
+        if (model.DtoReturnTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // DTO constructor registrations (IL trimming support)");
+            foreach (var dtoType in model.DtoReturnTypes)
+            {
+                sb.AppendLine($"            DtoConstructorRegistry.Register<{dtoType}>(() => new {dtoType}());");
+            }
+        }
+
         // Ordinal converter registration
         if (model.RegisterOrdinalConverter)
         {
