@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.24.0](v0.24.0.md) | 2026-03-25 | Trimming-safe DTO serialization via generator-emitted constructor registration |
 | [v0.23.2](v0.23.2.md) | 2026-03-25 | Fix DTO deserialization under IL trimming |
 | [v0.23.0](v0.23.0.md) | 2026-03-21 | Shared reference handling for mutable types, record bypass converter |
 | [v0.22.0](v0.22.0.md) | 2026-03-20 | Serializer responsibility redesign: converter-level reference handling |
@@ -49,6 +50,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.24.0](v0.24.0.md) - 2026-03-25 - Trimming-safe DTO serialization
 - [v0.23.2](v0.23.2.md) - 2026-03-25 - Fix DTO deserialization under IL trimming
 - [v0.22.0](v0.22.0.md) - 2026-03-20 - Serializer responsibility redesign
 - [v0.21.3](v0.21.3.md) - 2026-03-20 - Fix record deserialization with reference metadata
