@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using static Neatoo.Factory;
 using Neatoo.RemoteFactory.FactoryGenerator;
@@ -209,6 +210,17 @@ public partial class Factory
 
 			this.FactoryMethods = new EquatableArray<TypeFactoryMethodInfo>([.. factoryMethodsList]);
 
+			// Aggregate DTO return types from all factory methods (deduplicated)
+			var allDtoTypes = new HashSet<string>();
+			foreach (var method in factoryMethodsList)
+			{
+				foreach (var dtoType in method.DtoReturnTypes)
+				{
+					allDtoTypes.Add(dtoType);
+				}
+			}
+			this.DtoReturnTypes = new EquatableArray<string>([.. allDtoTypes]);
+
 			// Collect properties for ordinal serialization (only for non-interface, non-static types)
 			if (!this.IsInterface && !this.IsStatic)
 			{
@@ -275,6 +287,12 @@ public partial class Factory
 		public EquatableArray<string> UsingStatements { get; } = [];
 		public EquatableArray<TypeFactoryMethodInfo> FactoryMethods { get; set; } = [];
 		public EquatableArray<TypeAuthMethodInfo> AuthMethods { get; set; } = [];
+
+		/// <summary>
+		/// Deduplicated fully-qualified names of plain DTO types discovered across all factory methods.
+		/// Used by renderers to emit DtoConstructorRegistry.Register calls for IL trimming support.
+		/// </summary>
+		public EquatableArray<string> DtoReturnTypes { get; } = [];
 
 		/// <summary>
 		/// Indicates if this type is nested inside another type.
@@ -695,6 +713,9 @@ public partial class Factory
 			{
 				this.Parameters = [];
 			}
+
+			// Discover plain DTO return types for constructor registration (IL trimming support)
+			this.DtoReturnTypes = DiscoverDtoReturnTypes(methodSymbol.ReturnType);
 		}
 
 		/// <summary>
@@ -722,6 +743,9 @@ public partial class Factory
 			{
 				this.Parameters = [];
 			}
+
+			// Record primary constructors return [Factory]-annotated types (excluded by DiscoverDtoReturnTypes)
+			this.DtoReturnTypes = DiscoverDtoReturnTypes(constructorSymbol.ContainingType);
 		}
 
 		public string Name { get; set; }
@@ -735,6 +759,147 @@ public partial class Factory
 		public string? ReturnType { get; protected set; }
 		public EquatableArray<MethodParameterInfo> Parameters { get; private set; }
 		public EquatableArray<AspAuthorizeInfo> AspAuthorizeCalls { get; set; } = [];
+
+		/// <summary>
+		/// Fully-qualified names of plain DTO types discovered in the method's return type.
+		/// Used to emit DtoConstructorRegistry.Register calls for IL trimming support.
+		/// </summary>
+		public EquatableArray<string> DtoReturnTypes { get; private set; } = [];
+
+		/// <summary>
+		/// Discovers plain DTO types in a method's return type that need constructor registration
+		/// for IL trimming support. Unwraps Task, nullable, and generic collections. Excludes
+		/// primitives, [Factory] types, abstract/interface types, and types without parameterless ctors.
+		/// </summary>
+		private static EquatableArray<string> DiscoverDtoReturnTypes(ITypeSymbol returnType)
+		{
+			var dtoTypes = new List<string>();
+			var candidateTypes = new List<ITypeSymbol>();
+
+			var currentType = returnType;
+
+			// Unwrap Task<T>
+			if (currentType is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.IsGenericType)
+			{
+				currentType = namedType.TypeArguments[0];
+			}
+
+			// Strip nullable annotation (e.g. T? -> T)
+			if (currentType is INamedTypeSymbol nullableNamed && nullableNamed.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+			{
+				currentType = nullableNamed.TypeArguments[0];
+			}
+			else if (currentType.NullableAnnotation == NullableAnnotation.Annotated && currentType is INamedTypeSymbol annotatedType)
+			{
+				currentType = annotatedType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+			}
+
+			// Check if it's a generic collection (implements IEnumerable<T>) and unwrap
+			bool isCollection = false;
+			if (currentType is INamedTypeSymbol collectionType && collectionType.IsGenericType)
+			{
+				// Check interfaces for IEnumerable<T>
+				foreach (var iface in collectionType.AllInterfaces)
+				{
+					if (iface.Name == "IEnumerable" && iface.IsGenericType && iface.TypeArguments.Length == 1)
+					{
+						candidateTypes.Add(iface.TypeArguments[0]);
+						isCollection = true;
+						break;
+					}
+				}
+
+				// Also check if the type itself is IEnumerable<T>
+				if (!isCollection && collectionType.Name == "IEnumerable" && collectionType.TypeArguments.Length == 1)
+				{
+					candidateTypes.Add(collectionType.TypeArguments[0]);
+					isCollection = true;
+				}
+			}
+
+			// Check if it's an array
+			if (!isCollection && currentType is IArrayTypeSymbol arrayType)
+			{
+				candidateTypes.Add(arrayType.ElementType);
+				isCollection = true;
+			}
+
+			if (!isCollection)
+			{
+				candidateTypes.Add(currentType);
+			}
+
+			foreach (var candidate in candidateTypes)
+			{
+				// Strip nullable from candidate too
+				var resolvedCandidate = candidate;
+				if (resolvedCandidate.NullableAnnotation == NullableAnnotation.Annotated && resolvedCandidate is INamedTypeSymbol annotatedCandidate)
+				{
+					resolvedCandidate = annotatedCandidate.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+				}
+
+				if (!(resolvedCandidate is INamedTypeSymbol namedCandidate))
+				{
+					continue;
+				}
+
+				// Skip primitives and well-known framework types
+				if (namedCandidate.SpecialType != SpecialType.None)
+				{
+					continue;
+				}
+
+				// Skip types in System namespace (framework types)
+				var ns = namedCandidate.ContainingNamespace?.ToDisplayString() ?? "";
+				if (ns.StartsWith("System"))
+				{
+					continue;
+				}
+
+				// Skip abstract types and interfaces
+				if (namedCandidate.IsAbstract || namedCandidate.TypeKind == TypeKind.Interface)
+				{
+					continue;
+				}
+
+				// Skip [Factory]-annotated types (they're DI-registered)
+				var hasFactoryAttribute = namedCandidate.GetAttributes().Any(a =>
+					a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory");
+				if (hasFactoryAttribute)
+				{
+					continue;
+				}
+
+				// Also check interfaces of the candidate for [Factory] -- if the candidate
+				// implements an interface with [Factory], it's a Neatoo type
+				var implementsFactoryInterface = namedCandidate.AllInterfaces.Any(i =>
+					i.GetAttributes().Any(a =>
+						a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory"));
+				if (implementsFactoryInterface)
+				{
+					continue;
+				}
+
+				// Check for public parameterless constructor
+				var hasPublicParameterlessCtor = namedCandidate.Constructors.Any(c =>
+					c.DeclaredAccessibility == Accessibility.Public &&
+					c.Parameters.Length == 0 &&
+					!c.IsImplicitlyDeclared == false || // Include implicit default ctors
+					(c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length == 0));
+				// Simplify: just check for any public parameterless ctor (implicit or explicit)
+				hasPublicParameterlessCtor = namedCandidate.Constructors.Any(c =>
+					c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length == 0);
+
+				if (!hasPublicParameterlessCtor)
+				{
+					continue;
+				}
+
+				dtoTypes.Add(namedCandidate.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", ""));
+			}
+
+			return new EquatableArray<string>([.. dtoTypes]);
+		}
 	}
 
 	/// <summary>

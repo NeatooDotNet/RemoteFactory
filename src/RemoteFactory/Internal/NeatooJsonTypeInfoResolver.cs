@@ -1,12 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using System.Threading.Tasks;
 
 namespace Neatoo.RemoteFactory.Internal;
 
@@ -35,16 +30,12 @@ public class NeatooJsonTypeInfoResolver : DefaultJsonTypeInfoResolver
 					return this.ServiceProvider.GetRequiredService(type);
 				};
 			}
-			else if (type.GetConstructor(BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null) is not null)
+			else if (DtoConstructorRegistry.TryCreate(type, out var factory))
 			{
-				// Plain DTOs: the IL trimmer strips constructor metadata that STJ's
-				// DefaultJsonTypeInfoResolver needs. Activator.CreateInstance uses a
-				// different code path. The DTO type's metadata survives because it's
-				// referenced as a property type on preserved (DI-registered) types.
-				// Guard: only for types with a public parameterless constructor.
-				// Records/classes with only parameterized constructors are handled by
-				// RecordBypassConverterFactory and must not have CreateObject set here.
-				jsonTypeInfo.CreateObject = () => Activator.CreateInstance(type)!;
+				// Plain DTOs: use generator-emitted constructor lambdas that survive
+				// IL trimming. The generator discovers DTO return types at compile time
+				// and emits DtoConstructorRegistry.Register<Dto>(() => new Dto()) calls.
+				jsonTypeInfo.CreateObject = factory;
 			}
 		}
 		return jsonTypeInfo;

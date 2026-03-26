@@ -222,6 +222,39 @@ For example, if your factory uses `[AuthorizeFactory<IPersonModelAuth>]`, the ge
 1. **Explicit registration** — Register the service directly in your DI setup instead of relying on convention discovery.
 2. **`[DynamicDependency]`** — Apply this attribute to preserve specific types from trimming. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
 
+## DTO Return Type Preservation
+
+Plain DTO classes returned by factory methods are automatically preserved from trimming. When your domain assembly has `IsTrimmable=true`, the IL trimmer strips constructor and property metadata from types that aren't directly referenced in compiled code. This breaks `System.Text.Json` deserialization — `DefaultJsonTypeInfoResolver` uses reflection to discover constructors and properties, and that reflection fails when the metadata has been trimmed away.
+
+Normal Blazor WASM apps don't hit this because their assemblies aren't trimmed — `TrimMode=partial` only trims assemblies explicitly marked `IsTrimmable=true`. RemoteFactory intentionally marks domain assemblies as trimmable to remove server-only business logic from the client. DTOs returned through factory methods cross the client-server boundary via JSON serialization, so they must survive trimming intact.
+
+### How RemoteFactory Handles It
+
+The source generator discovers plain DTO return types from factory method signatures at compile time and emits `DtoConstructorRegistry.Register<T>(() => new T())` calls. The `[DynamicallyAccessedMembers(All)]` annotation on the generic parameter tells the trimmer to preserve the entire type — constructors, properties, and all metadata that `System.Text.Json` needs for deserialization.
+
+This covers all factory patterns:
+
+- **Interface Factory methods** — e.g., `Task<EmployeeDto>` or `Task<IReadOnlyList<EmployeeDto>>` return types
+- **Class Factory `[Execute]` methods** — DTO return types are discovered and preserved
+- **Static Factory `[Execute]` methods** — same treatment
+
+The generator unwraps `Task<T>`, nullable `T?`, and collection types (like `IReadOnlyList<T>`) to find the DTO type inside.
+
+### What Qualifies as a DTO
+
+Not every return type needs this treatment. The generator preserves a return type when it:
+
+- Has a public parameterless constructor
+- Is **not** a `[Factory]`-annotated type (those are already preserved via DI registration)
+- Is **not** a record with only parameterized constructors (handled separately by `RecordBypassConverterFactory`)
+- Is **not** a primitive, string, or framework type
+
+### What You Need to Know
+
+If you return a plain DTO class through any factory method, it is automatically trimming-safe. You do not need to take any action.
+
+If you have a DTO that is **not** returned by a factory method but you need to deserialize it on the client, you need to preserve it yourself — for example, via `[DynamicDependency]` or a `TrimmerRootDescriptor`. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
+
 ## Limitations
 
 - **Development builds are not trimmed.** `dotnet run` and `dotnet build` include all code. Trimming only applies to `dotnet publish` with `PublishTrimmed=true`. This is by design — you get full IntelliSense and debugging during development.
