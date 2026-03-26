@@ -978,7 +978,7 @@ internal static class FactoryModelBuilder
 
         return new OrdinalSerializationModel(
             typeName: typeInfo.ImplementationTypeName,
-            fullTypeName: $"{typeInfo.Namespace}.{typeInfo.ImplementationTypeName}",
+            fullTypeName: $"global::{typeInfo.Namespace}.{typeInfo.ImplementationTypeName}",
             @namespace: typeInfo.Namespace,
             isRecord: typeInfo.IsRecord,
             hasPrimaryConstructor: typeInfo.HasPrimaryConstructor,

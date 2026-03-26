@@ -17,6 +17,17 @@ namespace Neatoo;
 public partial class Factory
 {
 	/// <summary>
+	/// FullyQualifiedFormat with nullable reference type annotations preserved.
+	/// FullyQualifiedFormat alone strips inner nullable annotations (e.g., List&lt;string?&gt; becomes List&lt;string&gt;).
+	/// This format adds IncludeNullableReferenceTypeModifier so inner nullable annotations are retained.
+	/// Used for property type extraction where nullable generic type arguments must survive round-trip.
+	/// </summary>
+	private static readonly SymbolDisplayFormat FullyQualifiedFormatWithNullable =
+		SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+			SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions
+			| SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
+	/// <summary>
 	/// List of factory operations that are considered "save" operations (Insert, Update, Delete).
 	/// Used to determine if a factory method should be treated as a write operation.
 	/// </summary>
@@ -383,7 +394,7 @@ public partial class Factory
 					// The IsNullable flag preserves the nullability information for use during rendering.
 					var typeString = propertySymbol.Type
 						.WithNullableAnnotation(NullableAnnotation.NotAnnotated)
-						.ToDisplayString()
+						.ToDisplayString(FullyQualifiedFormatWithNullable)
 						.TrimEnd()
 						.TrimEnd('?')
 						.TrimEnd();
@@ -731,7 +742,7 @@ public partial class Factory
 			this.IsRemote = otherAttributes.Any(a => a == "Remote");
 			this.IsInternal = constructorSymbol.DeclaredAccessibility != Accessibility.Public;
 
-			this.ReturnType = constructorSymbol.ContainingType.ToDisplayString();
+			this.ReturnType = constructorSymbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 			this.IsNullable = false; // Constructor return is not nullable
 
 			// For records, the primary constructor parameters are in the RecordDeclarationSyntax.ParameterList
@@ -895,7 +906,7 @@ public partial class Factory
 					continue;
 				}
 
-				dtoTypes.Add(namedCandidate.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", ""));
+				dtoTypes.Add(namedCandidate.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
 			}
 
 			return new EquatableArray<string>([.. dtoTypes]);
