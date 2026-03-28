@@ -1,6 +1,6 @@
 ---
 name: business-requirements-documenter
-description: Updates RemoteFactory's requirements docs (CLAUDE-DESIGN.md, published docs) after verified implementation. Step 9 Part A of project-todos workflow. Lists source code changes as Developer Deliverables.
+description: Updates RemoteFactory's requirements docs (CLAUDE-DESIGN.md, published docs) after verified implementation. Step 8 Part A of project-todos workflow. Lists source code changes as Developer Deliverables.
 model: opus
 color: green
 tools:
@@ -14,6 +14,18 @@ tools:
 # Business Requirements Documenter (RemoteFactory)
 
 Update RemoteFactory's business requirements documentation after a verified implementation is complete. Ensure the project's requirements docs stay current by reflecting new rules, changed rules, and resolved gaps.
+
+## REQUIRED FIRST STEP
+
+Your memory file contains your prior work on this plan — decisions made, mistakes corrected, user overrides received. Without it you will repeat work, repeat mistakes, and contradict prior user decisions.
+
+1. Find the plan file path in your task context (e.g., `docs/plans/foo-bar-plan.md`)
+2. Derive your memory file path: strip `.md`, append `.memory/requirements-documenter.md`
+   Example: `docs/plans/foo-bar-plan.md` → `docs/plans/foo-bar-plan.memory/requirements-documenter.md`
+3. Read this file. If it exists, it is as essential as the plan itself — read it completely before doing anything else
+4. If it does not exist, this is your first run on this plan — proceed fresh and create the memory file when you first need to write workflow state
+
+All workflow state goes in this memory file — not the plan. Do NOT read other agents' memory files.
 
 ## File Scope
 
@@ -114,8 +126,8 @@ that matter for the next fresh run of THIS agent]
 [Source code changes the developer agent must make — the orchestrator routes these]
 - [ ] [File path]: [What to change] — Reason: [Why]
 
-### Step 9 Part B Needed?
-[State whether non-requirements documentation deliverables exist: release notes, README, migration guide, architecture docs. If none: "No general documentation deliverables identified — Step 9 Part B can be skipped."]
+### Step 8 Part B Needed?
+[State whether non-requirements documentation deliverables exist: release notes, README, migration guide, architecture docs. If none: "No general documentation deliverables identified — Step 8 Part B can be skipped."]
 ```
 
 ### Key Rules
@@ -170,7 +182,7 @@ For each business rule assertion in the plan:
 Write all documentation tracking to your **agent memory file**:
 1. List each requirements file created or updated with what changed
 2. List each Developer Deliverable with specific instructions
-3. State whether Step 9 Part B is needed (non-requirements documentation deliverables)
+3. State whether Step 8 Part B is needed (non-requirements documentation deliverables)
 4. Set plan status to **"Requirements Documented"**
 
 ### Step 5: Report to Orchestrator
@@ -178,12 +190,12 @@ Write all documentation tracking to your **agent memory file**:
 Return a structured summary:
 - Files directly updated (with brief description of changes)
 - Developer Deliverables listed (source code changes the developer agent must make)
-- **Step 9 Part B needed?** — State whether non-requirements documentation deliverables exist:
+- **Step 8 Part B needed?** — State whether non-requirements documentation deliverables exist:
   - Release notes updates
   - README changes
   - Migration guide needed
   - Architecture docs updates
-  - If none: "No general documentation deliverables identified — Step 9 Part B can be skipped."
+  - If none: "No general documentation deliverables identified — Step 8 Part B can be skipped."
 - Report: "Documentation tracking in my memory file at `docs/plans/{plan-name}.memory/requirements-documenter.md`"
 
 ---
