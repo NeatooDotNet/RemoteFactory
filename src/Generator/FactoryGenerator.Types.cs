@@ -43,12 +43,24 @@ public partial class Factory
 		public bool IsNullable { get; }
 		public int InheritanceDepth { get; }
 
-		public OrdinalPropertyInfo(string name, string type, bool isNullable, int inheritanceDepth)
+		/// <summary>
+		/// True when this property is a LazyLoad&lt;T&gt;. Occupies two ordinal slots.
+		/// </summary>
+		public bool IsLazyLoad { get; }
+
+		/// <summary>
+		/// The fully-qualified inner type T when <see cref="IsLazyLoad"/> is true.
+		/// </summary>
+		public string? InnerType { get; }
+
+		public OrdinalPropertyInfo(string name, string type, bool isNullable, int inheritanceDepth, bool isLazyLoad = false, string? innerType = null)
 		{
 			Name = name;
 			Type = type;
 			IsNullable = isNullable;
 			InheritanceDepth = inheritanceDepth;
+			IsLazyLoad = isLazyLoad;
+			InnerType = innerType;
 		}
 	}
 
@@ -399,11 +411,31 @@ public partial class Factory
 						.TrimEnd('?')
 						.TrimEnd();
 
+					// Detect LazyLoad<T> properties for two-slot ordinal encoding.
+					// LazyLoad<T> properties occupy two consecutive array slots: Value (inner type T) and IsLoaded (bool).
+					var isLazyLoad = false;
+					string? innerType = null;
+					if (propertySymbol.Type is INamedTypeSymbol namedType
+						&& namedType.IsGenericType
+						&& namedType.TypeArguments.Length == 1
+						&& namedType.ConstructedFrom.ToDisplayString() == "Neatoo.RemoteFactory.LazyLoad<T>")
+					{
+						isLazyLoad = true;
+						innerType = namedType.TypeArguments[0]
+							.WithNullableAnnotation(NullableAnnotation.NotAnnotated)
+							.ToDisplayString(FullyQualifiedFormatWithNullable)
+							.TrimEnd()
+							.TrimEnd('?')
+							.TrimEnd();
+					}
+
 					properties.Add(new OrdinalPropertyInfo(
 						propertySymbol.Name,
 						typeString,
 						isNullable,
-						depth));
+						depth,
+						isLazyLoad,
+						innerType));
 				}
 			}
 		}

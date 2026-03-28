@@ -86,6 +86,13 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			this.Options.Converters.Add(neatooJsonConverterFactory);
 		}
 
+		// LazyLoadJsonConverterFactory claims LazyLoad<T> types and serializes them
+		// in named format as {"value": ..., "isLoaded": bool}. Placed after Neatoo
+		// converters (which claim interfaces/abstract types) and before
+		// RecordBypassConverterFactory (which would not claim LazyLoad<T> anyway
+		// since it has a parameterless constructor).
+		this.Options.Converters.Add(new LazyLoadJsonConverterFactory());
+
 		// RecordBypassConverterFactory goes AFTER Neatoo converters. It claims types
 		// with parameterized constructors (records) and delegates to inner options
 		// without ReferenceHandler, preventing STJ's NotSupportedException for

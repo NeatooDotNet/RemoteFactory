@@ -558,6 +558,45 @@ public interface IOrdinalSerializationMetadata
 
 **FromOrdinalArray:** Creates an instance from an array of property values in ordinal order.
 
+## Deferred Loading
+
+### ILazyLoadFactory
+
+Creates `LazyLoad<T>` instances for deferred async loading. Registered as a singleton by `AddNeatooRemoteFactory()`.
+
+```csharp
+public interface ILazyLoadFactory
+{
+    LazyLoad<TChild> Create<TChild>(Func<Task<TChild?>> loader) where TChild : class?;
+    LazyLoad<TChild> Create<TChild>(TChild? value) where TChild : class?;
+}
+```
+
+**When to use:** Set up `LazyLoad<T>` properties in factory methods with a loader delegate for on-demand loading, or with a pre-loaded value for eager scenarios.
+
+**Two creation patterns:**
+- `Create<T>(loader)` — Deferred: `IsLoaded = false`, call `LoadAsync()` to trigger the loader
+- `Create<T>(value)` — Pre-loaded: `IsLoaded = true`, `Value` is set immediately
+
+```csharp
+[Remote, Fetch]
+internal void Fetch(int id,
+    [Service] ILazyLoadFactory lazyLoadFactory,
+    [Service] IReviewService reviewService)
+{
+    Id = id;
+    // Deferred: loader set up but not invoked
+    Reviews = lazyLoadFactory.Create<string>(async () =>
+    {
+        return await reviewService.GetReviewsAsync(Id);
+    });
+}
+```
+
+`LazyLoad<T>` properties serialize their `Value` and `IsLoaded` state across the wire. The loader delegate is not serialized — it is reconstructed via the constructor-initialization pattern on deserialization. See [Serialization — LazyLoad Properties](serialization.md#lazyloadt-properties) for format details.
+
+See `Design.Domain/FactoryPatterns/LazyLoadExample.cs` for the full pattern.
+
 ## Event Tracking
 
 ### IEventTracker
@@ -636,6 +675,7 @@ public interface IFactoryCore<T>
 | `IOrdinalSerializable` | Ordinal serialization marker | Domain models, value objects |
 | `IOrdinalConverterProvider<TSelf>` | Ordinal converter provider | Source generator (automatic) |
 | `IOrdinalSerializationMetadata` | Ordinal deserialization metadata | Source generator (automatic) |
+| `ILazyLoadFactory` | Deferred loading factory | Framework (inject via `[Service]`) |
 | `IEventTracker` | Fire-and-forget event tracking | Framework (rarely customized) |
 | `IFactoryCore<T>` | Factory execution pipeline | Framework (rarely customized) |
 

@@ -187,9 +187,11 @@ public static class DesignClientServerContainers
         serverCollection.AddScoped<IExampleService, ExampleService>();
         serverCollection.AddScoped<INotificationService, NotificationService>();
         serverCollection.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        serverCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         localCollection.AddScoped<IExampleService, ExampleService>();
         localCollection.AddScoped<INotificationService, NotificationService>();
         localCollection.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        localCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
 
         // Client needs server provider reference for remote calls
         clientCollection.AddScoped<ServerServiceProvider>();

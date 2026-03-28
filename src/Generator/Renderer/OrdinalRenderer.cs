@@ -18,6 +18,34 @@ namespace Neatoo.RemoteFactory.Generator.Renderer;
 internal static class OrdinalRenderer
 {
     /// <summary>
+    /// Computes the total number of ordinal array slots for the given properties.
+    /// LazyLoad&lt;T&gt; properties occupy two slots (Value + IsLoaded); all others occupy one.
+    /// </summary>
+    private static int GetTotalSlotCount(IReadOnlyList<OrdinalPropertyModel> properties)
+    {
+        int count = 0;
+        for (int i = 0; i < properties.Count; i++)
+        {
+            count += properties[i].IsLazyLoad ? 2 : 1;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Computes the slot index for a given property index.
+    /// Each LazyLoad&lt;T&gt; property before this index adds an extra slot.
+    /// </summary>
+    private static int GetSlotIndex(IReadOnlyList<OrdinalPropertyModel> properties, int propertyIndex)
+    {
+        int slot = 0;
+        for (int i = 0; i < propertyIndex; i++)
+        {
+            slot += properties[i].IsLazyLoad ? 2 : 1;
+        }
+        return slot;
+    }
+
+    /// <summary>
     /// Renders the ordinal serialization code for a type.
     /// </summary>
     public static string Render(OrdinalSerializationModel model)
@@ -97,30 +125,62 @@ internal static class OrdinalRenderer
         // Non-nullable types get null-forgiving operator; nullable types allow null.
         // For nullable properties, check for null token first to avoid deserialization errors
         // when the JsonTypeInfo is for the non-nullable base type (e.g., int vs int?).
+        // LazyLoad<T> properties occupy two consecutive slots: Value (inner type T) and IsLoaded (bool).
+        var totalSlotCount = GetTotalSlotCount(model.Properties);
+        int slotIndex = 0;
         for (int i = 0; i < model.Properties.Count; i++)
         {
             var prop = model.Properties[i];
-            var baseType = prop.Type.TrimEnd();
-            var castType = prop.IsNullable ? $"{baseType}?" : baseType;
-            var nullForgiving = prop.IsNullable ? "" : "!";
-            sb.AppendLine($"            // {prop.Name} ({castType}) - position {i}");
-            if (prop.IsNullable)
+
+            if (prop.IsLazyLoad)
             {
-                sb.AppendLine($"            {castType} prop{i} = reader.TokenType == global::System.Text.Json.JsonTokenType.Null");
-                sb.AppendLine($"                ? default({castType})");
-                sb.AppendLine($"                : ({baseType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({baseType})))!;");
+                // Two-slot LazyLoad<T> deserialization: read Value at slot N, IsLoaded at slot N+1
+                var innerType = prop.InnerType!.TrimEnd();
+                sb.AppendLine($"            // {prop.Name} (LazyLoad<{innerType}>) - slots {slotIndex} and {slotIndex + 1}");
+
+                // Slot N: the inner value (always nullable since unloaded LazyLoad has null value)
+                sb.AppendLine($"            {innerType}? prop{slotIndex} = reader.TokenType == global::System.Text.Json.JsonTokenType.Null");
+                sb.AppendLine($"                ? default({innerType})");
+                sb.AppendLine($"                : ({innerType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({innerType})))!;");
+                sb.AppendLine("            reader.Read();");
+
+                // Slot N+1: isLoaded bool
+                sb.AppendLine($"            var prop{slotIndex + 1} = (bool)global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof(bool)))!;");
+                sb.AppendLine("            reader.Read();");
+
+                // Construct the LazyLoad<T> from the two slots
+                sb.AppendLine($"            var prop{i}_lazy = prop{slotIndex + 1}");
+                sb.AppendLine($"                ? new global::Neatoo.RemoteFactory.LazyLoad<{innerType}>(prop{slotIndex})");
+                sb.AppendLine($"                : new global::Neatoo.RemoteFactory.LazyLoad<{innerType}>();");
+
+                slotIndex += 2;
             }
             else
             {
-                sb.AppendLine($"            var prop{i} = ({castType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({baseType}))){nullForgiving};");
+                var baseType = prop.Type.TrimEnd();
+                var castType = prop.IsNullable ? $"{baseType}?" : baseType;
+                var nullForgiving = prop.IsNullable ? "" : "!";
+                sb.AppendLine($"            // {prop.Name} ({castType}) - position {slotIndex}");
+                if (prop.IsNullable)
+                {
+                    sb.AppendLine($"            {castType} prop{slotIndex} = reader.TokenType == global::System.Text.Json.JsonTokenType.Null");
+                    sb.AppendLine($"                ? default({castType})");
+                    sb.AppendLine($"                : ({baseType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({baseType})))!;");
+                }
+                else
+                {
+                    sb.AppendLine($"            var prop{slotIndex} = ({castType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({baseType}))){nullForgiving};");
+                }
+                sb.AppendLine("            reader.Read();");
+
+                slotIndex++;
             }
-            sb.AppendLine("            reader.Read();");
         }
 
         sb.AppendLine();
         sb.AppendLine("            if (reader.TokenType != global::System.Text.Json.JsonTokenType.EndArray)");
         sb.AppendLine($"                throw new global::System.Text.Json.JsonException(");
-        sb.AppendLine($"                    $\"Too many values in ordinal array for {model.TypeName}. Expected {model.Properties.Count}.\");");
+        sb.AppendLine($"                    $\"Too many values in ordinal array for {model.TypeName}. Expected {totalSlotCount}.\");");
         sb.AppendLine();
 
         // Construct the object
@@ -150,20 +210,37 @@ internal static class OrdinalRenderer
         // Write each property using trim-safe Serialize overload with GetTypeInfo.
         // For nullable properties, emit a null check and write null directly to avoid
         // unboxing failures when passing null to Serialize with a non-nullable JsonTypeInfo.
+        // LazyLoad<T> properties write two consecutive slots: Value (inner type T) and IsLoaded (bool).
         for (int i = 0; i < model.Properties.Count; i++)
         {
             var prop = model.Properties[i];
-            var baseType = prop.Type.TrimEnd();
-            if (prop.IsNullable)
+
+            if (prop.IsLazyLoad)
             {
-                sb.AppendLine($"            if (value.{prop.Name} is not null)");
-                sb.AppendLine($"                global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options.GetTypeInfo(typeof({baseType})));");
+                // Two-slot LazyLoad<T> serialization: write Value at slot N, IsLoaded at slot N+1
+                var innerType = prop.InnerType!.TrimEnd();
+                // Value is always nullable (unloaded LazyLoad has null value)
+                sb.AppendLine($"            if (value.{prop.Name} is not null && value.{prop.Name}.Value is not null)");
+                sb.AppendLine($"                global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}.Value, options.GetTypeInfo(typeof({innerType})));");
                 sb.AppendLine($"            else");
                 sb.AppendLine($"                writer.WriteNullValue();");
+                // IsLoaded
+                sb.AppendLine($"            global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}?.IsLoaded ?? false, options.GetTypeInfo(typeof(bool)));");
             }
             else
             {
-                sb.AppendLine($"            global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options.GetTypeInfo(typeof({baseType})));");
+                var baseType = prop.Type.TrimEnd();
+                if (prop.IsNullable)
+                {
+                    sb.AppendLine($"            if (value.{prop.Name} is not null)");
+                    sb.AppendLine($"                global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options.GetTypeInfo(typeof({baseType})));");
+                    sb.AppendLine($"            else");
+                    sb.AppendLine($"                writer.WriteNullValue();");
+                }
+                else
+                {
+                    sb.AppendLine($"            global::System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Name}, options.GetTypeInfo(typeof({baseType})));");
+                }
             }
         }
 
@@ -179,7 +256,21 @@ internal static class OrdinalRenderer
         sb.AppendLine("    {");
 
         // PropertyNames static property
-        var propertyNamesArray = string.Join(", ", model.Properties.Select(p => $"\"{p.Name}\""));
+        // LazyLoad<T> properties emit two entries: "Name" and "Name__IsLoaded"
+        var propertyNameEntries = new List<string>();
+        foreach (var p in model.Properties)
+        {
+            if (p.IsLazyLoad)
+            {
+                propertyNameEntries.Add($"\"{p.Name}\"");
+                propertyNameEntries.Add($"\"{p.Name}__IsLoaded\"");
+            }
+            else
+            {
+                propertyNameEntries.Add($"\"{p.Name}\"");
+            }
+        }
+        var propertyNamesArray = string.Join(", ", propertyNameEntries);
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Property names in ordinal order (alphabetical, base properties first).");
         sb.AppendLine("        /// </summary>");
@@ -189,7 +280,21 @@ internal static class OrdinalRenderer
         // PropertyTypes static property
         // Note: Nullable annotations are already stripped at the source (FactoryGenerator.Types.cs)
         // using WithNullableAnnotation(NullableAnnotation.NotAnnotated) to avoid CS8639 errors.
-        var propertyTypesArray = string.Join(", ", model.Properties.Select(p => $"typeof({p.Type})"));
+        // LazyLoad<T> properties emit two entries: typeof(InnerType) and typeof(bool)
+        var propertyTypeEntries = new List<string>();
+        foreach (var p in model.Properties)
+        {
+            if (p.IsLazyLoad)
+            {
+                propertyTypeEntries.Add($"typeof({p.InnerType})");
+                propertyTypeEntries.Add("typeof(bool)");
+            }
+            else
+            {
+                propertyTypeEntries.Add($"typeof({p.Type})");
+            }
+        }
+        var propertyTypesArray = string.Join(", ", propertyTypeEntries);
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Property types in ordinal order.");
         sb.AppendLine("        /// </summary>");
@@ -197,7 +302,21 @@ internal static class OrdinalRenderer
         sb.AppendLine();
 
         // ToOrdinalArray method
-        var toArrayValues = string.Join(", ", model.Properties.Select(p => $"this.{p.Name}"));
+        // LazyLoad<T> properties emit two values: .Value and .IsLoaded
+        var toArrayEntries = new List<string>();
+        foreach (var p in model.Properties)
+        {
+            if (p.IsLazyLoad)
+            {
+                toArrayEntries.Add($"this.{p.Name}?.Value");
+                toArrayEntries.Add($"this.{p.Name}?.IsLoaded ?? false");
+            }
+            else
+            {
+                toArrayEntries.Add($"this.{p.Name}");
+            }
+        }
+        var toArrayValues = string.Join(", ", toArrayEntries);
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Converts this instance to an ordinal array for compact JSON serialization.");
         sb.AppendLine("        /// </summary>");
@@ -237,17 +356,31 @@ internal static class OrdinalRenderer
         }
         else
         {
-            // For classes and records without primary constructors, use object initializer
+            // For classes and records without primary constructors, use object initializer.
+            // LazyLoad<T> properties use the pre-constructed lazy variable (prop{i}_lazy)
+            // instead of the raw slot variable, because their value was assembled from two slots.
             sb.AppendLine($"            return new {model.FullTypeName}");
             sb.AppendLine("            {");
 
+            int slotIndex = 0;
             for (int i = 0; i < model.Properties.Count; i++)
             {
                 var prop = model.Properties[i];
-                var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
-                var nullForgiving = isEffectivelyNullable ? "" : "!";
                 var comma = i < model.Properties.Count - 1 ? "," : "";
-                sb.AppendLine($"                {prop.Name} = {propPrefix}{i}{nullForgiving}{comma}");
+
+                if (prop.IsLazyLoad)
+                {
+                    // Use the pre-constructed LazyLoad variable from RenderReadMethod
+                    sb.AppendLine($"                {prop.Name} = {propPrefix}{i}_lazy{comma}");
+                    slotIndex += 2;
+                }
+                else
+                {
+                    var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
+                    var nullForgiving = isEffectivelyNullable ? "" : "!";
+                    sb.AppendLine($"                {prop.Name} = {propPrefix}{slotIndex}{nullForgiving}{comma}");
+                    slotIndex++;
+                }
             }
 
             sb.AppendLine("            };");
@@ -264,24 +397,38 @@ internal static class OrdinalRenderer
         }
         else
         {
-            // For classes and records without primary constructors, use object initializer
+            // For classes and records without primary constructors, use object initializer.
+            // LazyLoad<T> properties occupy two consecutive array slots: Value and IsLoaded.
             sb.AppendLine($"            return new {model.TypeName}");
             sb.AppendLine("            {");
 
+            int slotIndex = 0;
             for (int i = 0; i < model.Properties.Count; i++)
             {
                 var prop = model.Properties[i];
-                // For nullable types, add ? to the cast type to avoid CS8600
-                // when casting from object? to a non-nullable type.
-                // TrimEnd ensures no trailing whitespace in the type string.
-                // Defensive: only add ? if type doesn't already end with ? (shouldn't happen after source fix).
-                var baseType = prop.Type.TrimEnd();
-                var needsNullableSuffix = prop.IsNullable && !baseType.EndsWith("?");
-                var castType = needsNullableSuffix ? $"{baseType}?" : baseType;
-                var cast = $"({castType})";
-                var nullForgiving = prop.IsNullable ? "" : "!";
                 var comma = i < model.Properties.Count - 1 ? "," : "";
-                sb.AppendLine($"                {prop.Name} = {cast}values[{i}]{nullForgiving}{comma}");
+
+                if (prop.IsLazyLoad)
+                {
+                    // Reconstruct LazyLoad<T> from two array slots: [value, isLoaded]
+                    var innerType = prop.InnerType!.TrimEnd();
+                    sb.AppendLine($"                {prop.Name} = (bool)values[{slotIndex + 1}]!"); // isLoaded check
+                    sb.AppendLine($"                    ? new global::Neatoo.RemoteFactory.LazyLoad<{innerType}>(({innerType}?)values[{slotIndex}])");
+                    sb.AppendLine($"                    : new global::Neatoo.RemoteFactory.LazyLoad<{innerType}>(){comma}");
+                    slotIndex += 2;
+                }
+                else
+                {
+                    // For nullable types, add ? to the cast type to avoid CS8600
+                    // when casting from object? to a non-nullable type.
+                    var baseType = prop.Type.TrimEnd();
+                    var needsNullableSuffix = prop.IsNullable && !baseType.EndsWith("?");
+                    var castType = needsNullableSuffix ? $"{baseType}?" : baseType;
+                    var cast = $"({castType})";
+                    var nullForgiving = prop.IsNullable ? "" : "!";
+                    sb.AppendLine($"                {prop.Name} = {cast}values[{slotIndex}]{nullForgiving}{comma}");
+                    slotIndex++;
+                }
             }
 
             sb.AppendLine("            };");
