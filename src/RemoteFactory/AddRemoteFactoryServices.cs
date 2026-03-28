@@ -65,14 +65,11 @@ public static partial class RemoteFactoryServices
 		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
 		// Register EventTracker for fire-and-forget event handling.
-		// Remote-mode clients get NullEventTracker (no constructor dependencies)
-		// to avoid DI validation failures when logging is not configured.
-		// Server/Logical modes get the full EventTracker with ILogger support.
-		if (remoteLocal == NeatooFactory.Remote)
-		{
-			services.TryAddSingleton<IEventTracker, NullEventTracker>();
-		}
-		else
+		// Remote-mode clients do not register IEventTracker at all because
+		// events serialize to the server -- there are no local background tasks
+		// to track, and omitting the registration avoids DI validation failures
+		// when logging is not configured (EventTracker requires ILogger).
+		if (remoteLocal != NeatooFactory.Remote)
 		{
 			services.TryAddSingleton<IEventTracker, EventTracker>();
 		}

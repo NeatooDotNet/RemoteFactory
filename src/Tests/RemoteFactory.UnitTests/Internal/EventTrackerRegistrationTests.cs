@@ -8,7 +8,7 @@ namespace RemoteFactory.UnitTests.Internal;
 /// <summary>
 /// DI container validation tests verifying correct IEventTracker
 /// registration for each NeatooFactory mode. Remote-mode clients
-/// get NullEventTracker (no deps); Server/Logical get EventTracker.
+/// do not register IEventTracker at all; Server/Logical get EventTracker.
 /// </summary>
 public class EventTrackerRegistrationTests
 {
@@ -20,7 +20,7 @@ public class EventTrackerRegistrationTests
     private static readonly System.Reflection.Assembly CoreAssembly = typeof(IEventTracker).Assembly;
 
     [Fact]
-    public void RemoteMode_Resolves_NullEventTracker()
+    public void RemoteMode_DoesNotRegister_IEventTracker()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -28,10 +28,10 @@ public class EventTrackerRegistrationTests
         using var sp = services.BuildServiceProvider();
 
         // Act
-        var tracker = sp.GetRequiredService<IEventTracker>();
+        var tracker = sp.GetService<IEventTracker>();
 
-        // Assert
-        Assert.IsType<NullEventTracker>(tracker);
+        // Assert -- IEventTracker is not registered for Remote mode
+        Assert.Null(tracker);
     }
 
     [Fact]
@@ -74,18 +74,17 @@ public class EventTrackerRegistrationTests
         services.AddNeatooRemoteFactory(NeatooFactory.Remote, CoreAssembly);
 
         // Act -- ValidateOnBuild walks constructor dependency graphs.
-        // Before the fix, EventTracker required ILogger<EventTracker> and this
-        // would throw AggregateException. NullEventTracker has zero constructor
-        // dependencies, so the container builds successfully.
+        // IEventTracker is not registered for Remote mode, so there is no
+        // EventTracker constructor to validate and no ILogger dependency.
         var sp = services.BuildServiceProvider(new ServiceProviderOptions
         {
             ValidateOnBuild = true,
             ValidateScopes = true
         });
 
-        // Assert -- container built successfully
-        var tracker = sp.GetRequiredService<IEventTracker>();
-        Assert.IsType<NullEventTracker>(tracker);
+        // Assert -- container built successfully; IEventTracker is not registered
+        var tracker = sp.GetService<IEventTracker>();
+        Assert.Null(tracker);
         sp.Dispose();
     }
 }
