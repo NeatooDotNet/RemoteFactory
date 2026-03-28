@@ -1,21 +1,52 @@
 ---
 name: RemoteFactory
 description: |
-  This skill should be used when the user mentions "RemoteFactory", "Neatoo.RemoteFactory", "[Factory] attribute", "[Remote] attribute", "[Execute] attribute", "[Event] attribute", "IFactorySaveMeta", "[AspAuthorize]", "[AuthorizeFactory]", "Save routing", "fire-and-forget events", "client-server factory", "IL trimming", "bundle size", "PublishTrimmed", "NeatooRuntime", or asks about factory patterns for 3-tier .NET applications. Provides guidance for building enterprise line-of-business applications using RemoteFactory's source-generated factory patterns.
+  This skill should be used when the user mentions "RemoteFactory", "Neatoo.RemoteFactory", "[Factory] attribute", "[Remote] attribute", "[Execute] attribute", "[Event] attribute", "IFactorySaveMeta", "[AspAuthorize]", "[AuthorizeFactory]", "Save routing", "fire-and-forget events", "client-server factory", "IL trimming", "bundle size", "PublishTrimmed", "NeatooRuntime", "ViewModel factory", or asks about factory patterns for 3-tier .NET applications. RemoteFactory works with any .NET class — Neatoo entities, ViewModels, POCOs, or static commands. It does NOT require Neatoo base classes. Provides guidance for building enterprise line-of-business applications using RemoteFactory's source-generated factory patterns.
 version: 1.0.0
 ---
 
 # RemoteFactory Development Guide
 
-RemoteFactory is a Roslyn Source Generator-powered Data Mapper Factory for 3-tier .NET applications. It eliminates the need for DTOs, manual factories, and API controllers by generating everything at compile time.
+RemoteFactory is a Roslyn Source Generator-powered factory for 3-tier .NET applications. It generates factories, handles serialization, and creates ASP.NET Core endpoints at compile time — eliminating DTOs, manual factories, and API controllers.
 
-RemoteFactory + Neatoo together provide the complete DDD framework. For domain model, validation, properties, and collections, see the Neatoo skill. This skill covers factory generation, serialization, authorization, and client-server patterns.
+**RemoteFactory works with any .NET class.** It does not require Neatoo base classes. Use it with Neatoo entities for full DDD persistence, or with plain ViewModels, POCOs, and static classes for client-server communication without a domain model.
+
+## Works With Any Class
+
+RemoteFactory generates factories for whatever class has `[Factory]`:
+
+```csharp
+// ViewModel — no Neatoo base class, just a plain class
+[Factory]
+public partial class DashboardViewModel
+{
+    public partial List<OrderSummary> RecentOrders { get; set; }
+    public partial CustomerStats Stats { get; set; }
+
+    [Fetch][Remote]
+    internal void Fetch([Service] IOrderRepo orders, [Service] IStatsService stats)
+    {
+        RecentOrders = orders.GetRecent();
+        Stats = stats.GetForDashboard();
+    }
+}
+
+// Neatoo entity — same factory attributes, adds change tracking + validation
+[Factory]
+public partial class Order : EntityBase<Order>
+{
+    public Order(IEntityBaseServices<Order> services) : base(services) { }
+    [Create] public void Create() { }
+}
+```
+
+Both generate an `IXxxFactory` with the appropriate methods. The factory pattern is the same whether the target class inherits from `EntityBase<T>`, `ValidateBase<T>`, or nothing at all.
 
 ## What RemoteFactory Does
 
 - **Generates factory interfaces and implementations** from attributed classes
-- **Handles serialization automatically** - objects cross client/server boundary without DTOs
-- **Generates ASP.NET Core endpoints** - no manual controller code
+- **Handles serialization automatically** — objects cross client/server boundary without DTOs
+- **Generates ASP.NET Core endpoints** — no manual controller code
 - **Supports three factory patterns** for different use cases
 
 ## The Three Factory Patterns
