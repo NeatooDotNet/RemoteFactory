@@ -34,7 +34,7 @@ An unloaded property serializes as `[null, false]` in the two slots.
 
 The `PropertyNames` and `PropertyTypes` arrays reflect the two-slot encoding: a property named `Reviews` produces entries `"Reviews"` and `"Reviews__IsLoaded"` in `PropertyNames`, and `typeof(string)` and `typeof(bool)` in `PropertyTypes`.
 
-BCL `Lazy<T>` is not supported — use `LazyLoad<T>` instead. See `LazyLoadExample.cs` in the Design project for the constructor-initialization pattern.
+BCL `Lazy<T>` is not supported — use `LazyLoad<T>` instead. See [LazyLoad](lazyload.md) for the full usage guide.
 
 ## Serialization Formats
 
