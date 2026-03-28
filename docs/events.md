@@ -226,7 +226,15 @@ public partial class ShutdownAwareEvents
 
 ## EventTracker
 
-The `IEventTracker` service monitors pending events.
+The `IEventTracker` service monitors pending events. The implementation varies by mode:
+
+| Mode | Implementation | Behavior |
+|------|---------------|----------|
+| **Server** | `EventTracker` | Tracks pending event tasks, provides `PendingCount` and `WaitAllAsync` |
+| **Logical** | `EventTracker` | Same as Server |
+| **Remote** | Not registered | Events serialize to the server; no local background tasks to track |
+
+Remote-mode clients do not register `IEventTracker` at all because events are serialized to the server — there are no local background tasks to track. Code that needs `IEventTracker` should only run on the server (Server or Logical mode).
 
 ### Accessing EventTracker
 
@@ -498,15 +506,18 @@ Events execute in a separate scope with no user context. If you need authorizati
 
 **Server mode:**
 - Events execute in background on server
+- `IEventTracker` resolves to `EventTracker` (tracks pending tasks)
 
 **Remote mode:**
 - Event call serialized, sent to server
 - Executes in background on server
 - Client returns immediately
+- `IEventTracker` is not registered (no local tasks to track)
 
 **Logical mode:**
 - Events execute in background locally
-- Still uses EventTracker and scope isolation
+- `IEventTracker` resolves to `EventTracker` (tracks pending tasks)
+- Still uses scope isolation
 
 ## Testing Events
 

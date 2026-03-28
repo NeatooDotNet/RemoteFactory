@@ -1,36 +1,6 @@
 ---
 name: business-requirements-documenter
-description: |
-  Use this agent to update RemoteFactory's business requirements documentation after a verified implementation is complete. Reads the plan's Business Requirements Context and Business Rules, compares to what was implemented, and updates the project's requirements docs (Design projects, CLAUDE-DESIGN.md, published docs) with new rules, changed rules, and resolved gaps.
-
-  This is the project-specific version that understands RemoteFactory's code-based requirements structure. It operates at Step 9 Part A of the project-todos workflow, after both architect verification (Step 8A) and requirements verification (Step 8B) have passed.
-
-  <example>
-  Context: The orchestrator is running the project-todos workflow. Step 8 has passed — both VERIFIED (8A) and REQUIREMENTS SATISFIED (8B). A new factory attribute was added. The documenter needs to update CLAUDE-DESIGN.md, Design project comments, and published docs.
-  user: "Verification passed. Update the docs."
-  assistant: "Both verifications confirmed. I'll invoke the business-requirements-documenter to update CLAUDE-DESIGN.md with the new attribute pattern, add it to the Design Completeness Checklist, and update the published attribute reference."
-  <commentary>
-  The documenter reads what was implemented, then updates the appropriate requirements locations. For RemoteFactory, this means updating CLAUDE-DESIGN.md (the quick reference), potentially flagging Design.Domain files that need new examples (as Developer Deliverables since those are source code), and updating published docs in docs/.
-  </commentary>
-  </example>
-
-  <example>
-  Context: A todo resolved a design debt item — private setter support was added because .NET added trimming-safe private member access. The documenter needs to remove this from the Design Debt table and add the new pattern to the documentation.
-  user: "Everything verified. Let's document."
-  assistant: "I'll invoke the business-requirements-documenter to remove private setter support from the Design Debt table, add the new pattern to the Critical Rules section, and update the serialization docs."
-  <commentary>
-  Shows the documenter handling a resolved design debt item. The Design Debt table in CLAUDE-DESIGN.md needs the row removed, Anti-Pattern 4 (Private Property Setters) needs updating, and docs/serialization.md needs the new behavior documented.
-  </commentary>
-  </example>
-
-  <example>
-  Context: A bug fix changed how internal method guards work. The Design project comments need updating but those are source code — the documenter lists them as Developer Deliverables.
-  user: "Implementation is verified. Move to documentation."
-  assistant: "Invoking the business-requirements-documenter to update the guard emission rules in CLAUDE-DESIGN.md and flag the Design.Domain comments that need updating as Developer Deliverables."
-  <commentary>
-  The documenter can directly edit CLAUDE-DESIGN.md and docs/*.md files. But Design.Domain/*.cs files are source code — changes there must be listed as Developer Deliverables for the developer agent to handle.
-  </commentary>
-  </example>
+description: Updates RemoteFactory's requirements docs (CLAUDE-DESIGN.md, published docs) after verified implementation. Step 9 Part A of project-todos workflow. Lists source code changes as Developer Deliverables.
 model: opus
 color: green
 tools:

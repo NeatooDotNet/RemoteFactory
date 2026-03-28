@@ -1,57 +1,6 @@
 ---
 name: remotefactory-architect
-description: |
-  Use this agent when designing architecture for new RemoteFactory features, analyzing and diagnosing bugs, brainstorming development ideas, planning major source generator changes, designing factory generation patterns, or needing high-level technical analysis. Best for architectural decisions, root cause analysis, API design exploration, and strategic planning. Does NOT implement code - use remotefactory-developer for implementation.
-
-  <example>
-  Context: User wants to add support for a new factory operation type
-  user: "I want RemoteFactory to support batch operations where multiple objects can be created/updated in a single round-trip"
-  assistant: "This is a significant architectural decision affecting factory generation, serialization, and API endpoint patterns. I'll analyze the design implications."
-  <commentary>
-  The user is proposing a major feature that affects factory generation, serialization patterns, and ASP.NET Core integration. This requires analyzing how batch operations fit with existing RemoteFactory patterns, serialization constraints, and client/server container architecture. The architect agent is ideal for this high-level design work.
-  </commentary>
-  assistant: "I'll use the remotefactory-architect agent to analyze this architecture."
-  </example>
-
-  <example>
-  Context: User is experiencing a bug and needs root cause analysis
-  user: "RemoteFetch operations are throwing InvalidCastException when the return type has generic parameters. Can you help diagnose this?"
-  assistant: "This sounds like a code generation or type resolution issue. I'll analyze the generator pipeline and serialization flow to identify the root cause."
-  <commentary>
-  Bug diagnosis in RemoteFactory often requires understanding the full pipeline - from attribute detection through code generation to runtime serialization. The architect agent can trace through these layers systematically to identify where the bug originates.
-  </commentary>
-  assistant: "I'll use the remotefactory-architect agent to diagnose this bug."
-  </example>
-
-  <example>
-  Context: User wants to brainstorm ideas for improving RemoteFactory
-  user: "What are some ways we could improve the developer experience when using RemoteFactory? I'm open to ideas."
-  assistant: "This is a great brainstorming question. I'll explore several angles including API ergonomics, tooling, diagnostics, and documentation."
-  <commentary>
-  Open-ended brainstorming benefits from the architect's broad knowledge of RemoteFactory's architecture, Roslyn capabilities, and .NET ecosystem patterns. The agent can generate diverse ideas while evaluating their feasibility.
-  </commentary>
-  assistant: "I'll use the remotefactory-architect agent to explore improvement ideas."
-  </example>
-
-  <example>
-  Context: User wants guidance on extending the generator for a new attribute
-  user: "How should I design a new [RemoteValidate] attribute that generates server-side validation endpoints?"
-  assistant: "This requires designing the attribute API, generation patterns, and integration with existing factory infrastructure."
-  <commentary>
-  Adding a new attribute affects the Roslyn source generator's detection logic, the generated code patterns, and how it integrates with existing RemoteFactory attributes. The architect agent can design a coherent API and generation strategy.
-  </commentary>
-  assistant: "I'll use the remotefactory-architect agent to design this feature architecture."
-  </example>
-
-  <example>
-  Context: User asks about generator performance optimization
-  user: "The incremental generator seems to be regenerating too often. How should we structure the pipeline stages?"
-  assistant: "Incremental generator performance requires careful analysis of equatability and caching boundaries."
-  <commentary>
-  Generator performance optimization requires deep understanding of Roslyn's incremental generation model, equatability requirements, and how RemoteFactory's pipeline is structured. This is architectural-level work that affects the entire generator.
-  </commentary>
-  assistant: "I'll use the remotefactory-architect agent to analyze the generator architecture."
-  </example>
+description: Designs RemoteFactory feature architectures, diagnoses bugs, and plans generator changes. For design and analysis only — does NOT implement code.
 model: opus
 color: blue
 tools:

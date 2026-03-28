@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.24.2](v0.24.2.md) | 2026-03-27 | Fix event DI validation failure on Blazor WASM clients |
 | [v0.24.1](v0.24.1.md) | 2026-03-26 | Fix missing `global::` prefix in generated type references |
 | [v0.24.0](v0.24.0.md) | 2026-03-25 | Trimming-safe DTO serialization via generator-emitted constructor registration |
 | [v0.23.2](v0.23.2.md) | 2026-03-25 | Fix DTO deserialization under IL trimming |
@@ -51,6 +52,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.24.2](v0.24.2.md) - 2026-03-27 - Fix event DI validation on Blazor WASM
 - [v0.24.1](v0.24.1.md) - 2026-03-26 - Fix missing global:: in generated type references
 - [v0.24.0](v0.24.0.md) - 2026-03-25 - Trimming-safe DTO serialization
 - [v0.23.2](v0.23.2.md) - 2026-03-25 - Fix DTO deserialization under IL trimming

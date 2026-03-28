@@ -2,7 +2,7 @@
 
 ---
 design_version: 1.2
-last_updated: 2026-03-20
+last_updated: 2026-03-27
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -477,6 +477,10 @@ internal partial class OrderLine : IOrderLine
     internal void Fetch(int id, string name, decimal price, int qty) { }
 }
 ```
+
+#### Event Registration Guards
+
+Both class factory and static factory `[Event]` local event registrations are wrapped in `if (NeatooRuntime.IsServerRuntime)`. The local event infrastructure (scope isolation, `Task.Run`, `IHostApplicationLifetime`, `IEventTracker`) is server-only. On client assemblies with `IsServerRuntime=false`, the trimmer eliminates these registrations. Remote-mode clients use remote event stubs instead.
 
 #### Can* Method Guard Derivation (Auth-Method-Driven)
 
