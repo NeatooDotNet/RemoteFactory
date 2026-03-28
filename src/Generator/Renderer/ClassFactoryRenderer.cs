@@ -1588,47 +1588,51 @@ internal static class ClassFactoryRenderer
 
         var allParamIdentifiers = BuildEventMethodInvocationParams(evt);
 
-        var serviceAssignments = string.Join("\n                            ",
+        var serviceAssignments = string.Join("\n                                ",
             evt.ServiceParameters.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
 
         var methodInvocation = evt.IsAsync
             ? $"await handler.{evt.Name}({allParamIdentifiers});"
             : $"handler.{evt.Name}({allParamIdentifiers});";
 
-        sb.AppendLine($"                services.AddScoped<{model.ImplementationTypeName}.{evt.DelegateName}>(sp =>");
+        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire registration
+        sb.AppendLine("                if (NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("                {");
-        sb.AppendLine("                    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
-        sb.AppendLine("                    var tracker = sp.GetRequiredService<IEventTracker>();");
-        sb.AppendLine("                    var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
-        // Capture correlation context from parent scope
-        sb.AppendLine("                    var parentCorrelation = sp.GetService<ICorrelationContext>();");
-        sb.AppendLine($"                    return ({paramDecl}) =>");
+        sb.AppendLine($"                    services.AddScoped<{model.ImplementationTypeName}.{evt.DelegateName}>(sp =>");
         sb.AppendLine("                    {");
-        // Capture correlation ID before Task.Run (outside the lambda closure)
-        sb.AppendLine("                        var capturedCorrelationId = parentCorrelation?.CorrelationId;");
-        sb.AppendLine("                        var task = Task.Run(async () =>");
+        sb.AppendLine("                        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
+        sb.AppendLine("                        var tracker = sp.GetRequiredService<IEventTracker>();");
+        sb.AppendLine("                        var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
+        // Capture correlation context from parent scope
+        sb.AppendLine("                        var parentCorrelation = sp.GetService<ICorrelationContext>();");
+        sb.AppendLine($"                        return ({paramDecl}) =>");
         sb.AppendLine("                        {");
-        sb.AppendLine("                            using var scope = scopeFactory.CreateScope();");
-        // Set correlation ID in the new scope BEFORE resolving any services
-        sb.AppendLine("                            var eventCorrelation = scope.ServiceProvider.GetService<ICorrelationContext>();");
-        sb.AppendLine("                            if (eventCorrelation != null && capturedCorrelationId != null)");
+        // Capture correlation ID before Task.Run (outside the lambda closure)
+        sb.AppendLine("                            var capturedCorrelationId = parentCorrelation?.CorrelationId;");
+        sb.AppendLine("                            var task = Task.Run(async () =>");
         sb.AppendLine("                            {");
-        sb.AppendLine("                                eventCorrelation.CorrelationId = capturedCorrelationId;");
-        sb.AppendLine("                            }");
-        sb.AppendLine("                            var ct = lifetime.ApplicationStopping;");
-        sb.AppendLine($"                            var handler = scope.ServiceProvider.GetRequiredService<{model.ImplementationTypeName}>();");
+        sb.AppendLine("                                using var scope = scopeFactory.CreateScope();");
+        // Set correlation ID in the new scope BEFORE resolving any services
+        sb.AppendLine("                                var eventCorrelation = scope.ServiceProvider.GetService<ICorrelationContext>();");
+        sb.AppendLine("                                if (eventCorrelation != null && capturedCorrelationId != null)");
+        sb.AppendLine("                                {");
+        sb.AppendLine("                                    eventCorrelation.CorrelationId = capturedCorrelationId;");
+        sb.AppendLine("                                }");
+        sb.AppendLine("                                var ct = lifetime.ApplicationStopping;");
+        sb.AppendLine($"                                var handler = scope.ServiceProvider.GetRequiredService<{model.ImplementationTypeName}>();");
 
         if (!string.IsNullOrEmpty(serviceAssignments))
         {
-            sb.AppendLine($"                            {serviceAssignments}");
+            sb.AppendLine($"                                {serviceAssignments}");
         }
 
-        sb.AppendLine($"                            {methodInvocation}");
-        sb.AppendLine("                        });");
-        sb.AppendLine("                        tracker.Track(task);");
-        sb.AppendLine("                        return task;");
-        sb.AppendLine("                    };");
-        sb.AppendLine("                });");
+        sb.AppendLine($"                                {methodInvocation}");
+        sb.AppendLine("                            });");
+        sb.AppendLine("                            tracker.Track(task);");
+        sb.AppendLine("                            return task;");
+        sb.AppendLine("                        };");
+        sb.AppendLine("                    });");
+        sb.AppendLine("                }");
     }
 
     private static void RenderRemoteEventRegistration(StringBuilder sb, EventMethodModel evt, ClassFactoryModel model)

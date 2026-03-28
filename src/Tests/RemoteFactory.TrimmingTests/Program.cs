@@ -22,13 +22,62 @@ if (NeatooRuntime.IsServerRuntime)
     services.AddScoped<IServerOnlyRepository, ServerOnlyRepository>();
 }
 
-var sp = services.BuildServiceProvider();
+ServiceProvider sp;
+try
+{
+    sp = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+    Console.WriteLine("ServiceProvider built successfully with ValidateOnBuild=true.");
+}
+catch (AggregateException ex)
+{
+    Console.WriteLine($"ServiceProvider construction FAILED (AggregateException):");
+    foreach (var inner in ex.InnerExceptions)
+    {
+        Console.WriteLine($"  - {inner.GetType().Name}: {inner.Message}");
+    }
+    Console.WriteLine("Exiting due to service validation failure.");
+    return;
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"ServiceProvider construction FAILED: {ex.GetType().Name}: {ex.Message}");
+    Console.WriteLine("Exiting due to service validation failure.");
+    return;
+}
 
 // Verify class factory survived trimming (regression test).
-var factory = sp.GetService<ITrimTestEntityFactory>();
+ITrimTestEntityFactory? factory = null;
+try
+{
+    factory = sp.GetService<ITrimTestEntityFactory>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Class factory resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
 
 // Verify static factory delegate survived trimming (the original bug scenario).
-var doWorkDelegate = sp.GetService<TrimTestCommands.DoWork>();
+TrimTestCommands.DoWork? doWorkDelegate = null;
+try
+{
+    doWorkDelegate = sp.GetService<TrimTestCommands.DoWork>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"DoWork delegate resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
+
+// Verify event delegate resolution.
+TrimTestCommands.OnWorkCompletedEvent? eventDelegate = null;
+try
+{
+    using var scope = sp.CreateScope();
+    eventDelegate = scope.ServiceProvider.GetService<TrimTestCommands.OnWorkCompletedEvent>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Event delegate resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
 
 // Direct feature switch test: verifies that the trimmer constant-folds
 // NeatooRuntime.IsServerRuntime and removes dead code.
@@ -37,4 +86,5 @@ DirectFeatureSwitchTest.Run();
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");
+Console.WriteLine($"Event delegate resolved: {eventDelegate != null}");
 Console.WriteLine("Trimming verification app completed.");

@@ -16,4 +16,13 @@ public static partial class TrimTestCommands
     {
         return Task.FromResult(repo.DoServerWork(input));
     }
+
+    [Remote, Event]
+    private static async Task _OnWorkCompleted(
+        string workId,
+        [Service] IServerOnlyRepository repo,
+        CancellationToken cancellationToken)
+    {
+        await Task.Run(() => repo.DoServerWork(workId), cancellationToken);
+    }
 }
