@@ -1,36 +1,6 @@
 ---
 name: remotefactory-docs-writer
-description: |
-  Use this agent for general (non-requirements) documentation work on the RemoteFactory project: published Jekyll docs, release notes, README updates, migration guides, architecture docs, and getting-started content. This is the documentation agent for Step 9 Part B of the project-todos workflow.
-
-  Does NOT handle business requirements documentation (that's the business-requirements-documenter). Does NOT handle skill files directly (those require MarkdownSnippets workflow through the developer agent).
-
-  <example>
-  Context: Step 9 Part A is complete. The documenter identified that docs/serialization.md needs a new section about the feature, and release notes need creating.
-  user: "Requirements docs are updated. The documenter says we need to update serialization docs and create release notes."
-  assistant: "I'll invoke the remotefactory-docs-writer to update the serialization documentation and draft the release notes."
-  <commentary>
-  The docs-writer handles general documentation that isn't part of the requirements system. It reads the plan to understand what was implemented, then updates the published docs and creates release notes following the project's conventions.
-  </commentary>
-  </example>
-
-  <example>
-  Context: A new feature was added and the getting-started guide needs to mention it.
-  user: "Update the getting-started guide to include the new event pattern"
-  assistant: "I'll use the remotefactory-docs-writer to update the getting-started guide with the new event pattern documentation."
-  <commentary>
-  Direct documentation request outside the full workflow. The docs-writer reads the existing getting-started guide, understands the new feature from the codebase, and adds appropriate documentation matching the existing style.
-  </commentary>
-  </example>
-
-  <example>
-  Context: A breaking change was released and a migration guide is needed.
-  user: "We need a migration guide for the v0.19.0 breaking changes"
-  assistant: "I'll invoke the remotefactory-docs-writer to create the migration guide and release notes for v0.19.0."
-  <commentary>
-  The docs-writer creates release notes following the project's conventions (template in docs/release-notes/index.md, conventional commits analysis, version bump rules from CLAUDE.md).
-  </commentary>
-  </example>
+description: Writes general RemoteFactory docs — Jekyll pages, release notes, README, migration guides. Step 9 Part B of project-todos. Does NOT handle requirements docs or skill files.
 model: opus
 color: magenta
 tools:

@@ -1,38 +1,6 @@
 ---
 name: business-requirements-reviewer
-description: |
-  Use this agent to review existing business requirements documentation against a proposed todo or implementation plan for RemoteFactory. This is the project-specific version that understands RemoteFactory's code-based requirements (Design projects, tests, and published docs). Identifies relevant existing rules, patterns, anti-patterns, design debt decisions, gaps, and contradictions. Has veto power when a proposed change contradicts documented requirements.
-
-  This agent operates in two modes:
-  1. Pre-design review (Step 3): Analyze a todo against existing requirements before the architect begins
-  2. Post-implementation verification (Step 8B): Confirm the implementation satisfies documented requirements
-
-  <example>
-  Context: The orchestrator has created a todo for adding a new factory attribute. It is now at Step 3 (Business Requirements Review) and needs to check the todo against RemoteFactory's documented patterns before the architect begins.
-  user: "I want to add a [RemoteValidate] attribute that generates validation endpoints"
-  assistant: "The todo is created. Before the architect designs anything, I'll invoke the business-requirements-reviewer to check for contradictions with RemoteFactory's documented patterns, anti-patterns, and design decisions."
-  <commentary>
-  The reviewer reads the todo, then searches the Design projects (src/Design/), CLAUDE-DESIGN.md, and published docs for patterns and rules that govern how attributes work, how the generator processes them, and whether a validation attribute conflicts with existing conventions (e.g., the rule that [Remote] is only for aggregate root entry points, or design debt decisions about what features are deliberately not implemented).
-  </commentary>
-  </example>
-
-  <example>
-  Context: The architect and developer have completed work on a serialization change. The architect has independently verified all builds and tests pass (Step 8A: VERIFIED). The orchestrator must now run requirements verification (Step 8B).
-  user: "Architect says builds and tests are all green."
-  assistant: "Part A is verified. I'll invoke the business-requirements-reviewer for Part B — requirements verification against the Design projects and documented patterns."
-  <commentary>
-  The reviewer reads the plan's Business Requirements Context, then traces through the actual implementation source code to verify it respects the Design project patterns, CLAUDE-DESIGN.md rules, and anti-patterns. If the implementation technically works but silently changes a behavioral contract documented in Design.Tests, this is a REQUIREMENTS VIOLATION even if all tests pass.
-  </commentary>
-  </example>
-
-  <example>
-  Context: A VETO was issued because the proposed approach adds [Remote] to child entity methods, contradicting a documented anti-pattern. The user chose to modify the approach.
-  user: "OK, update the todo — we'll remove [Remote] from the child entity methods and call them from the aggregate root's server-side operation instead."
-  assistant: "Todo updated. Re-invoking the business-requirements-reviewer with the revised approach to confirm the contradiction is resolved."
-  <commentary>
-  The reviewer re-reads the updated todo, re-checks the anti-pattern documented in CLAUDE-DESIGN.md (Anti-Pattern 1: [Remote] on Child Entities) and Design.Domain/Entities/OrderLine.cs, and should render APPROVED since the revised approach follows the documented pattern.
-  </commentary>
-  </example>
+description: Reviews todos/plans against RemoteFactory's documented requirements (Design projects, CLAUDE-DESIGN.md, published docs). Has veto power on contradictions. Used at Step 3 (pre-design) and Step 8B (post-implementation).
 model: opus
 color: blue
 tools:

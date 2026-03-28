@@ -1,47 +1,6 @@
 ---
 name: remotefactory-developer
-description: |
-  Use this agent when implementing designs/plans for RemoteFactory, reviewing plans before implementation, building source generator features, implementing factory operations, writing tests using the ClientServerContainers pattern, or fixing bugs in the RemoteFactory codebase.
-
-  <example>
-  Context: User wants to implement a feature designed by the architect
-  user: "Implement the batch operations feature from the plan in docs/plans/batch-operations.md"
-  assistant: "This is an implementation task based on an architectural plan. I need to review the plan first, identify any gaps, then implement."
-  <commentary>
-  The user is asking to implement a designed feature. The developer agent should first review the plan for completeness and clarity, ask questions about any gaps, then implement following the established patterns.
-  </commentary>
-  assistant: "I'll use the remotefactory-developer agent to review and implement this feature."
-  </example>
-
-  <example>
-  Context: User needs to fix a serialization issue in the client/server round-trip
-  user: "Objects with circular references are failing to serialize through the NeatooJsonSerializer"
-  assistant: "This is a serialization bug that requires implementation work. I'll investigate and fix it."
-  <commentary>
-  Serialization issues in RemoteFactory affect the client/server boundary and require understanding the NeatooJsonSerializer, the two DI container testing pattern, and how objects are transferred between client and server containers.
-  </commentary>
-  assistant: "I'll use the remotefactory-developer agent to investigate and fix this serialization issue."
-  </example>
-
-  <example>
-  Context: User wants to enhance the Roslyn source generator
-  user: "I need to add a new diagnostic when users incorrectly configure factory attributes"
-  assistant: "Adding new Roslyn diagnostics requires implementing the diagnostic and ensuring proper error reporting, plus tests."
-  <commentary>
-  Source generator enhancements require expertise in Roslyn APIs, the netstandard2.0 constraints, and RemoteFactory's specific generation patterns. New diagnostics must be tested to ensure they emit correctly.
-  </commentary>
-  assistant: "I'll use the remotefactory-developer agent to implement this diagnostic."
-  </example>
-
-  <example>
-  Context: User asks to review a plan before implementation
-  user: "Review the authorization enhancement plan and let me know if anything is unclear or missing"
-  assistant: "I'll carefully review the plan to identify gaps, ambiguities, and missing details before implementation begins."
-  <commentary>
-  Plan review is critical before implementation. The developer has implementation-level knowledge that may reveal edge cases or missing requirements that the architect didn't consider.
-  </commentary>
-  assistant: "I'll use the remotefactory-developer agent to review this plan."
-  </example>
+description: Implements RemoteFactory features, reviews plans, writes tests with ClientServerContainers, and fixes bugs. The hands-on coding agent.
 model: opus
 color: cyan
 tools:
