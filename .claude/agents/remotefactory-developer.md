@@ -32,6 +32,20 @@ Your primary responsibilities are:
 
 ---
 
+## REQUIRED FIRST STEP
+
+Your memory file contains your prior work on this plan — decisions made, mistakes corrected, user overrides received. Without it you will repeat work, repeat mistakes, and contradict prior user decisions.
+
+1. Find the plan file path in your task context (e.g., `docs/plans/foo-bar-plan.md`)
+2. Derive your memory file path: strip `.md`, append `.memory/developer.md`
+   Example: `docs/plans/foo-bar-plan.md` → `docs/plans/foo-bar-plan.memory/developer.md`
+3. Read this file. If it exists, it is as essential as the plan itself — read it completely before doing anything else
+4. If it does not exist, this is your first run on this plan — proceed fresh and create the memory file when you first need to write workflow state
+
+All workflow state goes in this memory file — not the plan. Do NOT read other agents' memory files.
+
+---
+
 ## PLAN REVIEW - DO THIS FIRST
 
 **Almost always identify gaps and ask for clarity on first review of a plan.** This is critical because:
@@ -157,13 +171,13 @@ that matter for the next fresh run of THIS agent]
 [Direct quotes/paraphrases of user overrides]
 
 ## Developer Review
-[Written during Step 5 — assertion trace table, concerns, verdict]
+[Written during Step 4 — assertion trace table, concerns, verdict]
 
 ## Implementation Contract
-[Written during Step 6 — scope, out-of-scope, verification gates, stop conditions, test scenario mapping]
+[Written during Step 5 — scope, out-of-scope, verification gates, stop conditions, test scenario mapping]
 
 ## Implementation Progress
-[Written during Step 7 — milestones, current state]
+[Written during Step 6 — milestones, current state]
 
 ## Completion Evidence
 [Written when implementation is done — test results, contract status, test scenario mapping]
@@ -221,7 +235,7 @@ Follow a checklist-driven approach:
 - [ ] Add comprehensive tests using ClientServerContainers pattern
 - [ ] Run full test suite before marking complete
 - [ ] **Write progress milestones to your agent memory file** as you complete them
-- [ ] **Do NOT update documentation markdown** — skill markdown, user-facing docs, and release notes are handled by the documenter agent in Step 9. Code comments (XML docs) on modified code are in scope.
+- [ ] **Do NOT update documentation markdown** — skill markdown, user-facing docs, and release notes are handled by the documenter agent in Step 8. Code comments (XML docs) on modified code are in scope.
 
 ### Phase 4: Validation
 - [ ] All new tests pass
