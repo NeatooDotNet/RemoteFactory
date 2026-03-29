@@ -5,7 +5,7 @@ namespace Neatoo.RemoteFactory.Internal;
 /// without using reflection. Used by LazyLoadJsonConverter during deserialization
 /// to merge server-side state into constructor-created instances, preserving loader delegates.
 /// </summary>
-internal interface ILazyLoadDeserializable
+public interface ILazyLoadDeserializable
 {
     bool IsLoaded { get; }
     object? BoxedValue { get; }

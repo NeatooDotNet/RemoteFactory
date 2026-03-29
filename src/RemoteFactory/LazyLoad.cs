@@ -40,11 +40,26 @@ public class LazyLoad<T> : INotifyPropertyChanged, ILazyLoadDeserializable where
     private string? _loadError;
 
     /// <summary>
+    /// Gets the in-flight load task, or <c>null</c> if no load is in progress.
+    /// Subclasses can use this to check for or await pending loads (e.g., WaitForTasks).
+    /// </summary>
+    protected Task<T?>? LoadTask => _loadTask;
+
+    /// <summary>
+    /// Clears the load error. Subclasses can call this to reset error state
+    /// (e.g., ClearAllMessages, ClearSelfMessages).
+    /// </summary>
+    protected void ClearLoadError()
+    {
+        _loadError = null;
+    }
+
+    /// <summary>
     /// Occurs when a property value changes.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private void OnPropertyChanged(string propertyName)
+    protected virtual void OnPropertyChanged(string propertyName)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
@@ -106,6 +121,7 @@ public class LazyLoad<T> : INotifyPropertyChanged, ILazyLoadDeserializable where
     bool ILazyLoadDeserializable.IsLoaded => _isLoaded;
 
     /// <inheritdoc />
+#pragma warning disable CA1033 // Explicit interface implementation is intentional — these members are for deserialization infrastructure, not subclass use
     object? ILazyLoadDeserializable.BoxedValue => _value;
 
     /// <summary>
@@ -125,6 +141,7 @@ public class LazyLoad<T> : INotifyPropertyChanged, ILazyLoadDeserializable where
         // If not loaded, leave the instance untouched -- the constructor's
         // loader delegate is intact for on-demand loading.
     }
+#pragma warning restore CA1033
 
     /// <summary>
     /// Directly sets the inner value, bypassing the loader delegate.
