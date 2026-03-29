@@ -971,7 +971,9 @@ internal static class FactoryModelBuilder
             .Select(p => new OrdinalPropertyModel(
                 name: p.Name,
                 type: p.Type,
-                isNullable: p.IsNullable))
+                isNullable: p.IsNullable,
+                isLazyLoad: p.IsLazyLoad,
+                innerType: p.InnerType))
             .ToList();
 
         var constructorParameterNames = typeInfo.PrimaryConstructorParameterNames.ToList();

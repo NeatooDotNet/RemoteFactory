@@ -388,6 +388,7 @@ For a complete implementation, see `src/Design/Design.Tests/TestInfrastructure/D
 ## Next Steps
 
 - [Factory Operations](factory-operations.md) — All operation types and parameter ordering
+- [LazyLoad](lazyload.md) — Deferred async loading with `ILazyLoadFactory`
 - [Authorization](authorization.md) — Inject auth services
 - [ASP.NET Core Integration](aspnetcore-integration.md) — Server DI configuration
 - [Client-Server Architecture](client-server-architecture.md) — The complete mental model

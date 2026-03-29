@@ -28,12 +28,16 @@
 //   - Classes with [Factory] attribute (generate IOrdinalSerializable)
 //   - Concrete collections: List<T>, Dictionary<TKey,TValue>, arrays
 //   - Nested objects (if their types are also serializable)
+//   - LazyLoad<T> properties on [Factory] classes (two-slot ordinal encoding:
+//     Value + IsLoaded; see LazyLoadExample.cs and LazyLoadTests.cs)
 //
 // NO - These will NOT serialize correctly:
 //   - Properties with private setters (serialize but won't deserialize)
 //   - Service references (IRepository, ILogger, etc.)
 //   - Delegate/Func/Action fields
-//   - Lazy<T> or other deferred types
+//   - Lazy<T> (BCL) -- use LazyLoad<T> instead for deferred loading with
+//     serialization support. LazyLoad<T> preserves Value and IsLoaded across
+//     the wire; the loader delegate is reconstructed via constructor-initialization.
 //   - Interface-typed collections (IEnumerable<T>, IList<T>)
 //
 // PARTIAL - Special handling required:

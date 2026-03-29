@@ -64,6 +64,7 @@ public static partial class RemoteFactoryServices
 		services.AddTransient<NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient(typeof(NeatooInterfaceJsonTypeConverter<>));
+		services.AddSingleton<ILazyLoadFactory, LazyLoadFactory>();
 		// Register EventTracker for fire-and-forget event handling.
 		// Remote-mode clients do not register IEventTracker at all because
 		// events serialize to the server -- there are no local background tasks
