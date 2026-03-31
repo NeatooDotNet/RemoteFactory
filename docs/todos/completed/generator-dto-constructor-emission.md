@@ -1,9 +1,9 @@
 # Generator-Emitted DTO Constructor Lambdas for IL Trimming
 
-**Status:** In Progress
+**Status:** Complete
 **Priority:** High
 **Created:** 2026-03-25
-**Last Updated:** 2026-03-25 (Step 4)
+**Last Updated:** 2026-03-30
 
 ---
 
@@ -128,13 +128,27 @@ None found. The proposed approach is fully aligned with existing patterns:
 - [x] Architect comprehension check (Step 2)
 - [x] Business requirements review (Step 3) — APPROVED
 - [x] Architect plan and design (Step 4)
-- [ ] Developer review (Step 5)
-- [ ] Implementation (Step 7)
-- [ ] Verification (Step 8)
+- [x] Developer review (Step 5) — Approved
+- [x] Implementation (Step 7) — Complete
+- [x] Verification (Step 8) — Architect VERIFIED, Requirements SATISFIED
+- [x] Documentation (Step 9) — CLAUDE-DESIGN.md updated, docs/trimming.md updated
 
 ---
 
 ## Progress Log
+
+### 2026-03-30
+- Completed verification: Architect VERIFIED (2142 tests passed, 7/7 scenarios verified, 9/9 acceptance criteria met)
+- Requirements verification: REQUIREMENTS SATISFIED (all 13 requirements traced, no violations)
+- Documentation: Updated `CLAUDE-DESIGN.md` (new DTO Constructor Registry section, quick decisions, design debt). Updated `docs/trimming.md` (nested DTO limitation note).
+- Todo marked Complete. Nested DTO gap tracked separately.
+
+### 2026-03-31
+- **Nested DTO gap found in zTreatment production deployment.** The generator emits `DtoConstructorRegistry.Register<AdminUserListItem>()` but NOT `DtoConstructorRegistry.Register<AdminClinicAssignment>()`. `AdminClinicAssignment` is a property (`List<AdminClinicAssignment> Clinics`) on `AdminUserListItem` — a nested DTO that the generator doesn't discover.
+- The generator must walk DTO property types recursively to find nested DTOs that also need constructor registration. Current scope only covers direct return types from `[Factory]` methods.
+- Error in production: `DeserializeNoConstructor, JsonConstructorAttribute, zTreatment.DomainModels.Admin.AdminClinicAssignment`
+- Generated code at `AdminCommandsFactory.g.cs` lines 162-167 registers 5 top-level DTOs but misses `AdminClinicAssignment`
+- **This is a scope gap in the existing plan's DTO discovery logic (Gap #1 and Recommendation #4).** The unwrapping of generic collection types is implemented, but the recursive walk into DTO properties is not.
 
 ### 2026-03-25
 - Created todo after confirming v0.23.2 Activator.CreateInstance fix did not resolve the issue under trimming
@@ -155,14 +169,17 @@ None found. The proposed approach is fully aligned with existing patterns:
 
 Before marking this todo as Complete, verify:
 
-- [ ] All builds pass
-- [ ] All tests pass
+- [x] All builds pass
+- [x] All tests pass
 
 **Verification results:**
-- Build: [Pending]
-- Tests: [Pending]
+- Build: 0 errors, all projects build (net9.0 + net10.0)
+- Tests: 2142 passed, 0 failed, 6 skipped (pre-existing)
 
 ---
 
 ## Results / Conclusions
 
+Implementation complete. The source generator now discovers plain DTO return types at compile time and emits `DtoConstructorRegistry.Register<T>(() => new T())` lambdas in `FactoryServiceRegistrar`. `NeatooJsonTypeInfoResolver` uses the registry instead of `Activator.CreateInstance` (which was removed). Records are correctly excluded. All three factory patterns (class, interface, static) are scanned. Generic collections and nullable types are unwrapped to discover inner DTOs.
+
+**Known limitation (tracked separately):** Nested DTOs — DTO properties that are themselves DTOs (e.g., `List<AdminClinicAssignment>` on `AdminUserListItem`) — are not discovered recursively. Only direct return types and their generic type arguments from factory method signatures are registered. This was discovered in zTreatment production (2026-03-31) and documented in CLAUDE-DESIGN.md Design Debt table.

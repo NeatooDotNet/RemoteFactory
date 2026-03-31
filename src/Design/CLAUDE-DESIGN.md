@@ -1,8 +1,8 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.2
-last_updated: 2026-03-27
+design_version: 1.3
+last_updated: 2026-03-30
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -153,6 +153,8 @@ public static partial class MyCommands
 | Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
+| Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
+| What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
 
 ---
 
@@ -572,6 +574,28 @@ At startup, `RegisterFactories()` enumerates these assembly attributes via `asse
 | Interface Factory | `typeof({Namespace}.{ImplName}Factory)` — the generated factory implementation class |
 
 This mechanism is internal to the generator and library. Users do not need to emit or configure these attributes — they are generated automatically for every `[Factory]`-annotated type.
+
+#### DTO Constructor Registry for Trimming
+
+The generator emits `DtoConstructorRegistry.Register<Dto>(() => new Dto())` calls in `FactoryServiceRegistrar` for plain DTO return types discovered in factory method signatures. This creates static constructor references that survive IL trimming — without them, `System.Text.Json` deserialization fails because `DefaultJsonTypeInfoResolver` uses reflection to discover constructors, and the trimmer strips that metadata from types in assemblies marked `IsTrimmable=true`.
+
+At runtime, `NeatooJsonTypeInfoResolver` uses the registered lambda instead of `Activator.CreateInstance` (which also fails under trimming). If a type is not in DI and not in the DTO registry, `CreateObject` is not set — STJ uses its default behavior, which produces a clear error if the constructor was trimmed.
+
+**DTO discovery criteria** — the generator registers a return type when it:
+
+| Criterion | Why |
+|-----------|-----|
+| Has a public parameterless constructor | Required for `() => new Dto()` lambda |
+| Is NOT a `[Factory]`-annotated type | Already DI-registered; uses `GetRequiredService` path |
+| Is NOT a record (no parameterless ctor + has parameterized ctors) | Handled by `RecordBypassConverterFactory` |
+| Is NOT a primitive, string, or framework type | STJ handles these natively |
+| Is NOT abstract or an interface | Cannot be instantiated |
+
+The generator unwraps `Task<T>`, nullable `T?`, and generic collection types (`IReadOnlyList<T>`, `List<T>`, etc.) to discover the inner DTO type. The `Register<T>` method carries `[DynamicallyAccessedMembers(All)]` on the type parameter, which instructs the trimmer to preserve the entire type — constructors, properties, and all metadata.
+
+Duplicate registrations from multiple factories returning the same DTO type are idempotent (`ConcurrentDictionary.TryAdd`).
+
+**Nested DTO discovery:** The generator recursively walks public instance properties (including inherited properties via base type chain) of each discovered DTO to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner DTO type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references (e.g., `DtoA` -> `DtoB` -> `DtoA`).
 
 #### CS0051 Constraint
 

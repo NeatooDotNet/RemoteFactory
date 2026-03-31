@@ -2,8 +2,8 @@
 
 **Date:** 2026-03-25
 **Related Todo:** [Generator-Emitted DTO Constructor Lambdas](../todos/generator-dto-constructor-emission.md)
-**Status:** Awaiting Verification
-**Last Updated:** 2026-03-25
+**Status:** Complete
+**Last Updated:** 2026-03-30
 
 ---
 
