@@ -154,7 +154,7 @@ public static partial class MyCommands
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
 | Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
-| What if my nested DTO fails to deserialize under trimming? | Return it from a factory method so the generator discovers it, or register it manually | `docs/trimming.md` | DTO discovery only covers direct return types and generic type arguments, not nested properties |
+| What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
 
 ---
 
@@ -595,7 +595,7 @@ The generator unwraps `Task<T>`, nullable `T?`, and generic collection types (`I
 
 Duplicate registrations from multiple factories returning the same DTO type are idempotent (`ConcurrentDictionary.TryAdd`).
 
-**Known limitation:** DTO discovery only covers direct return types and their generic type arguments. Nested DTOs — types that appear as properties of a discovered DTO but are not themselves returned by any factory method — are not automatically registered. If a factory returns `ParentDto` which has a `List<ChildDto>` property, `ParentDto` is registered but `ChildDto` is not, unless another factory method also returns `ChildDto` or a collection of it.
+**Nested DTO discovery:** The generator recursively walks public instance properties (including inherited properties via base type chain) of each discovered DTO to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner DTO type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references (e.g., `DtoA` -> `DtoB` -> `DtoA`).
 
 #### CS0051 Constraint
 
@@ -767,7 +767,6 @@ These are known limitations or open questions. They are documented here to preve
 | Automatic [Remote] detection | Must be explicit | Security risk of accidental exposure | Never - explicit is a core principle |
 | Collection factory injection | Requires local mode for AddLine | Serialize factories would add complexity | If common complaint from users |
 | IEnumerable<T> serialization | Only concrete collections | Type preservation complexity | User demand for interface collections |
-| Nested DTO discovery for trimming | Only direct return types registered | Recursive property walking adds generator complexity; workaround: return nested DTOs from a factory method | If users frequently hit `DeserializeNoConstructor` for nested DTO properties |
 
 ---
 

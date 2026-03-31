@@ -257,12 +257,11 @@ Not every return type needs this treatment. The generator preserves a return typ
 
 If you return a plain DTO class through any factory method, it is automatically trimming-safe. You do not need to take any action.
 
-**Nested DTOs are not automatically discovered.** The generator only inspects direct return types and their generic type arguments from factory method signatures. If your DTO has a property whose type is another DTO (e.g., `List<ChildDto> Children` on a `ParentDto`), the nested `ChildDto` is not automatically registered. You need to either:
+**Nested DTOs are automatically discovered.** The generator recursively walks public instance properties (including inherited properties) of each discovered DTO type to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references.
 
-1. Return the nested DTO type from a factory method somewhere in your codebase (which triggers automatic discovery), or
-2. Preserve it yourself via `[DynamicDependency]` or a `TrimmerRootDescriptor`.
+For example, if a factory method returns `ParentDto` which has a `List<ChildDto> Children` property, both `ParentDto` and `ChildDto` are automatically registered — no additional action is needed.
 
-If you have a DTO that is **not** returned by a factory method and not a property of a discovered DTO, you need to preserve it yourself. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
+If you have a DTO that is **not** returned by any factory method and **not** reachable as a property of a discovered DTO, you need to preserve it yourself. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
 
 ## Limitations
 

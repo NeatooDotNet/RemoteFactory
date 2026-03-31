@@ -813,18 +813,86 @@ public partial class Factory
 		/// Discovers plain DTO types in a method's return type that need constructor registration
 		/// for IL trimming support. Unwraps Task, nullable, and generic collections. Excludes
 		/// primitives, [Factory] types, abstract/interface types, and types without parameterless ctors.
+		/// Recursively walks public properties of discovered DTOs to find nested types.
 		/// </summary>
 		private static EquatableArray<string> DiscoverDtoReturnTypes(ITypeSymbol returnType)
 		{
+			var visited = new HashSet<string>();
 			var dtoTypes = new List<string>();
-			var candidateTypes = new List<ITypeSymbol>();
 
-			var currentType = returnType;
+			// Unwrap the return type (Task, nullable, collection) and get candidates
+			var candidates = UnwrapType(returnType, unwrapTask: true);
+
+			foreach (var candidate in candidates)
+			{
+				DiscoverDtoTypesRecursive(candidate, dtoTypes, visited);
+			}
+
+			return new EquatableArray<string>([.. dtoTypes]);
+		}
+
+		/// <summary>
+		/// Recursively discovers DTO types starting from a candidate type symbol.
+		/// Walks public instance properties (including inherited) to find nested DTOs.
+		/// </summary>
+		private static void DiscoverDtoTypesRecursive(ITypeSymbol typeSymbol, List<string> dtoTypes, HashSet<string> visited)
+		{
+			if (!(typeSymbol is INamedTypeSymbol namedType))
+			{
+				return;
+			}
+
+			if (!IsDtoCandidate(namedType))
+			{
+				return;
+			}
+
+			var fullyQualifiedName = namedType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+			if (!visited.Add(fullyQualifiedName))
+			{
+				return; // Already visited — cycle detection
+			}
+
+			dtoTypes.Add(fullyQualifiedName);
+
+			// Walk public instance properties (including inherited) to find nested DTOs
+			var currentTypeForProperties = namedType;
+			while (currentTypeForProperties != null && currentTypeForProperties.SpecialType != SpecialType.System_Object)
+			{
+				foreach (var member in currentTypeForProperties.GetMembers())
+				{
+					if (member is IPropertySymbol property &&
+						property.DeclaredAccessibility == Accessibility.Public &&
+						!property.IsStatic &&
+						!property.IsIndexer &&
+						property.GetMethod != null)
+					{
+						// Unwrap property type (nullable, collection — no Task unwrapping for properties)
+						var propertyCandidates = UnwrapType(property.Type, unwrapTask: false);
+						foreach (var propertyCandidate in propertyCandidates)
+						{
+							DiscoverDtoTypesRecursive(propertyCandidate, dtoTypes, visited);
+						}
+					}
+				}
+
+				currentTypeForProperties = currentTypeForProperties.BaseType;
+			}
+		}
+
+		/// <summary>
+		/// Unwraps a type symbol by stripping Task, nullable, and collection wrappers.
+		/// Returns the inner candidate type(s) for DTO eligibility checking.
+		/// </summary>
+		private static List<ITypeSymbol> UnwrapType(ITypeSymbol type, bool unwrapTask)
+		{
+			var currentType = type;
 
 			// Unwrap Task<T>
-			if (currentType is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.IsGenericType)
+			if (unwrapTask && currentType is INamedTypeSymbol taskType && taskType.Name == "Task" && taskType.IsGenericType)
 			{
-				currentType = namedType.TypeArguments[0];
+				currentType = taskType.TypeArguments[0];
 			}
 
 			// Strip nullable annotation (e.g. T? -> T)
@@ -839,6 +907,8 @@ public partial class Factory
 
 			// Check if it's a generic collection (implements IEnumerable<T>) and unwrap
 			bool isCollection = false;
+			var candidates = new List<ITypeSymbol>();
+
 			if (currentType is INamedTypeSymbol collectionType && collectionType.IsGenericType)
 			{
 				// Check interfaces for IEnumerable<T>
@@ -846,7 +916,7 @@ public partial class Factory
 				{
 					if (iface.Name == "IEnumerable" && iface.IsGenericType && iface.TypeArguments.Length == 1)
 					{
-						candidateTypes.Add(iface.TypeArguments[0]);
+						candidates.Add(iface.TypeArguments[0]);
 						isCollection = true;
 						break;
 					}
@@ -855,7 +925,7 @@ public partial class Factory
 				// Also check if the type itself is IEnumerable<T>
 				if (!isCollection && collectionType.Name == "IEnumerable" && collectionType.TypeArguments.Length == 1)
 				{
-					candidateTypes.Add(collectionType.TypeArguments[0]);
+					candidates.Add(collectionType.TypeArguments[0]);
 					isCollection = true;
 				}
 			}
@@ -863,85 +933,80 @@ public partial class Factory
 			// Check if it's an array
 			if (!isCollection && currentType is IArrayTypeSymbol arrayType)
 			{
-				candidateTypes.Add(arrayType.ElementType);
+				candidates.Add(arrayType.ElementType);
 				isCollection = true;
 			}
 
 			if (!isCollection)
 			{
-				candidateTypes.Add(currentType);
+				candidates.Add(currentType);
 			}
 
-			foreach (var candidate in candidateTypes)
+			// Strip nullable from candidates
+			for (int i = 0; i < candidates.Count; i++)
 			{
-				// Strip nullable from candidate too
-				var resolvedCandidate = candidate;
-				if (resolvedCandidate.NullableAnnotation == NullableAnnotation.Annotated && resolvedCandidate is INamedTypeSymbol annotatedCandidate)
+				if (candidates[i].NullableAnnotation == NullableAnnotation.Annotated && candidates[i] is INamedTypeSymbol annotatedCandidate)
 				{
-					resolvedCandidate = annotatedCandidate.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+					candidates[i] = annotatedCandidate.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
 				}
-
-				if (!(resolvedCandidate is INamedTypeSymbol namedCandidate))
-				{
-					continue;
-				}
-
-				// Skip primitives and well-known framework types
-				if (namedCandidate.SpecialType != SpecialType.None)
-				{
-					continue;
-				}
-
-				// Skip types in System namespace (framework types)
-				var ns = namedCandidate.ContainingNamespace?.ToDisplayString() ?? "";
-				if (ns.StartsWith("System"))
-				{
-					continue;
-				}
-
-				// Skip abstract types and interfaces
-				if (namedCandidate.IsAbstract || namedCandidate.TypeKind == TypeKind.Interface)
-				{
-					continue;
-				}
-
-				// Skip [Factory]-annotated types (they're DI-registered)
-				var hasFactoryAttribute = namedCandidate.GetAttributes().Any(a =>
-					a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory");
-				if (hasFactoryAttribute)
-				{
-					continue;
-				}
-
-				// Also check interfaces of the candidate for [Factory] -- if the candidate
-				// implements an interface with [Factory], it's a Neatoo type
-				var implementsFactoryInterface = namedCandidate.AllInterfaces.Any(i =>
-					i.GetAttributes().Any(a =>
-						a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory"));
-				if (implementsFactoryInterface)
-				{
-					continue;
-				}
-
-				// Check for public parameterless constructor
-				var hasPublicParameterlessCtor = namedCandidate.Constructors.Any(c =>
-					c.DeclaredAccessibility == Accessibility.Public &&
-					c.Parameters.Length == 0 &&
-					!c.IsImplicitlyDeclared == false || // Include implicit default ctors
-					(c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length == 0));
-				// Simplify: just check for any public parameterless ctor (implicit or explicit)
-				hasPublicParameterlessCtor = namedCandidate.Constructors.Any(c =>
-					c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length == 0);
-
-				if (!hasPublicParameterlessCtor)
-				{
-					continue;
-				}
-
-				dtoTypes.Add(namedCandidate.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
 			}
 
-			return new EquatableArray<string>([.. dtoTypes]);
+			return candidates;
+		}
+
+		/// <summary>
+		/// Checks whether a named type symbol is a plain DTO candidate eligible for
+		/// constructor registration. Excludes primitives, System types, abstract/interface
+		/// types, [Factory]-annotated types, and types without public parameterless constructors.
+		/// </summary>
+		private static bool IsDtoCandidate(INamedTypeSymbol namedType)
+		{
+			// Skip primitives and well-known framework types
+			if (namedType.SpecialType != SpecialType.None)
+			{
+				return false;
+			}
+
+			// Skip types in System namespace (framework types)
+			var ns = namedType.ContainingNamespace?.ToDisplayString() ?? "";
+			if (ns.StartsWith("System"))
+			{
+				return false;
+			}
+
+			// Skip abstract types and interfaces
+			if (namedType.IsAbstract || namedType.TypeKind == TypeKind.Interface)
+			{
+				return false;
+			}
+
+			// Skip [Factory]-annotated types (they're DI-registered)
+			var hasFactoryAttribute = namedType.GetAttributes().Any(a =>
+				a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory");
+			if (hasFactoryAttribute)
+			{
+				return false;
+			}
+
+			// Also check interfaces of the candidate for [Factory] -- if the candidate
+			// implements an interface with [Factory], it's a Neatoo type
+			var implementsFactoryInterface = namedType.AllInterfaces.Any(i =>
+				i.GetAttributes().Any(a =>
+					a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory"));
+			if (implementsFactoryInterface)
+			{
+				return false;
+			}
+
+			// Check for public parameterless constructor (implicit or explicit)
+			var hasPublicParameterlessCtor = namedType.Constructors.Any(c =>
+				c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length == 0);
+			if (!hasPublicParameterlessCtor)
+			{
+				return false;
+			}
+
+			return true;
 		}
 	}
 
