@@ -257,7 +257,12 @@ Not every return type needs this treatment. The generator preserves a return typ
 
 If you return a plain DTO class through any factory method, it is automatically trimming-safe. You do not need to take any action.
 
-If you have a DTO that is **not** returned by a factory method but you need to deserialize it on the client, you need to preserve it yourself — for example, via `[DynamicDependency]` or a `TrimmerRootDescriptor`. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
+**Nested DTOs are not automatically discovered.** The generator only inspects direct return types and their generic type arguments from factory method signatures. If your DTO has a property whose type is another DTO (e.g., `List<ChildDto> Children` on a `ParentDto`), the nested `ChildDto` is not automatically registered. You need to either:
+
+1. Return the nested DTO type from a factory method somewhere in your codebase (which triggers automatic discovery), or
+2. Preserve it yourself via `[DynamicDependency]` or a `TrimmerRootDescriptor`.
+
+If you have a DTO that is **not** returned by a factory method and not a property of a discovered DTO, you need to preserve it yourself. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
 
 ## Limitations
 

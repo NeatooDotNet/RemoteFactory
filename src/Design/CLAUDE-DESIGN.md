@@ -1,8 +1,8 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.2
-last_updated: 2026-03-27
+design_version: 1.3
+last_updated: 2026-03-30
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -153,6 +153,8 @@ public static partial class MyCommands
 | Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
+| Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
+| What if my nested DTO fails to deserialize under trimming? | Return it from a factory method so the generator discovers it, or register it manually | `docs/trimming.md` | DTO discovery only covers direct return types and generic type arguments, not nested properties |
 
 ---
 
@@ -573,6 +575,28 @@ At startup, `RegisterFactories()` enumerates these assembly attributes via `asse
 
 This mechanism is internal to the generator and library. Users do not need to emit or configure these attributes — they are generated automatically for every `[Factory]`-annotated type.
 
+#### DTO Constructor Registry for Trimming
+
+The generator emits `DtoConstructorRegistry.Register<Dto>(() => new Dto())` calls in `FactoryServiceRegistrar` for plain DTO return types discovered in factory method signatures. This creates static constructor references that survive IL trimming — without them, `System.Text.Json` deserialization fails because `DefaultJsonTypeInfoResolver` uses reflection to discover constructors, and the trimmer strips that metadata from types in assemblies marked `IsTrimmable=true`.
+
+At runtime, `NeatooJsonTypeInfoResolver` uses the registered lambda instead of `Activator.CreateInstance` (which also fails under trimming). If a type is not in DI and not in the DTO registry, `CreateObject` is not set — STJ uses its default behavior, which produces a clear error if the constructor was trimmed.
+
+**DTO discovery criteria** — the generator registers a return type when it:
+
+| Criterion | Why |
+|-----------|-----|
+| Has a public parameterless constructor | Required for `() => new Dto()` lambda |
+| Is NOT a `[Factory]`-annotated type | Already DI-registered; uses `GetRequiredService` path |
+| Is NOT a record (no parameterless ctor + has parameterized ctors) | Handled by `RecordBypassConverterFactory` |
+| Is NOT a primitive, string, or framework type | STJ handles these natively |
+| Is NOT abstract or an interface | Cannot be instantiated |
+
+The generator unwraps `Task<T>`, nullable `T?`, and generic collection types (`IReadOnlyList<T>`, `List<T>`, etc.) to discover the inner DTO type. The `Register<T>` method carries `[DynamicallyAccessedMembers(All)]` on the type parameter, which instructs the trimmer to preserve the entire type — constructors, properties, and all metadata.
+
+Duplicate registrations from multiple factories returning the same DTO type are idempotent (`ConcurrentDictionary.TryAdd`).
+
+**Known limitation:** DTO discovery only covers direct return types and their generic type arguments. Nested DTOs — types that appear as properties of a discovered DTO but are not themselves returned by any factory method — are not automatically registered. If a factory returns `ParentDto` which has a `List<ChildDto>` property, `ParentDto` is registered but `ChildDto` is not, unless another factory method also returns `ChildDto` or a collection of it.
+
 #### CS0051 Constraint
 
 When a generated factory interface becomes `internal` (all methods are internal), it cannot be used as a `[Service]` parameter type in a `public` method on another class. C# enforces that parameter types must be at least as accessible as the method. This means `internal` is not applicable to entities whose factory interfaces are referenced in more-accessible methods' `[Service]` parameters. Use `internal` for leaf entities and standalone factories where the factory interface is not passed as a service parameter to public methods.
@@ -743,6 +767,7 @@ These are known limitations or open questions. They are documented here to preve
 | Automatic [Remote] detection | Must be explicit | Security risk of accidental exposure | Never - explicit is a core principle |
 | Collection factory injection | Requires local mode for AddLine | Serialize factories would add complexity | If common complaint from users |
 | IEnumerable<T> serialization | Only concrete collections | Type preservation complexity | User demand for interface collections |
+| Nested DTO discovery for trimming | Only direct return types registered | Recursive property walking adds generator complexity; workaround: return nested DTOs from a factory method | If users frequently hit `DeserializeNoConstructor` for nested DTO properties |
 
 ---
 
