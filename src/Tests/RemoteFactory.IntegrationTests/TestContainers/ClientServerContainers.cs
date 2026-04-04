@@ -125,7 +125,8 @@ public static class ClientServerContainers
     /// </summary>
     public static (IServiceScope client, IServiceScope server, IServiceScope local) Scopes(
         Action<IServiceCollection>? configureClient = null,
-        Action<IServiceCollection>? configureServer = null)
+        Action<IServiceCollection>? configureServer = null,
+        Action<IServiceCollection>? configureLocal = null)
     {
         var serializationOptions = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
 
@@ -145,6 +146,7 @@ public static class ClientServerContainers
         // Apply custom configuration
         configureServer?.Invoke(serverCollection);
         configureClient?.Invoke(clientCollection);
+        configureLocal?.Invoke(localCollection);
 
         var serverProvider = serverCollection.BuildServiceProvider();
         var clientProvider = clientCollection.BuildServiceProvider();

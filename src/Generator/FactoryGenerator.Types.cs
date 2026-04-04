@@ -757,8 +757,8 @@ public partial class Factory
 				this.Parameters = [];
 			}
 
-			// Discover plain DTO return types for constructor registration (IL trimming support)
-			this.DtoReturnTypes = DiscoverDtoReturnTypes(methodSymbol.ReturnType);
+			// Discover plain DTO types for constructor registration (IL trimming support)
+			this.DtoReturnTypes = DiscoverDtoTypes(methodSymbol);
 		}
 
 		/// <summary>
@@ -787,8 +787,8 @@ public partial class Factory
 				this.Parameters = [];
 			}
 
-			// Record primary constructors return [Factory]-annotated types (excluded by DiscoverDtoReturnTypes)
-			this.DtoReturnTypes = DiscoverDtoReturnTypes(constructorSymbol.ContainingType);
+			// Record primary constructors return [Factory]-annotated types (excluded by DiscoverDtoTypes)
+			this.DtoReturnTypes = DiscoverDtoTypes(constructorSymbol);
 		}
 
 		public string Name { get; set; }
@@ -804,28 +804,46 @@ public partial class Factory
 		public EquatableArray<AspAuthorizeInfo> AspAuthorizeCalls { get; set; } = [];
 
 		/// <summary>
-		/// Fully-qualified names of plain DTO types discovered in the method's return type.
+		/// Fully-qualified names of plain DTO types discovered in the method's return type and parameters.
 		/// Used to emit DtoConstructorRegistry.Register calls for IL trimming support.
 		/// </summary>
 		public EquatableArray<string> DtoReturnTypes { get; private set; } = [];
 
 		/// <summary>
-		/// Discovers plain DTO types in a method's return type that need constructor registration
-		/// for IL trimming support. Unwraps Task, nullable, and generic collections. Excludes
-		/// primitives, [Factory] types, abstract/interface types, and types without parameterless ctors.
-		/// Recursively walks public properties of discovered DTOs to find nested types.
+		/// Discovers plain DTO types in a method's return type and non-service parameters that need
+		/// constructor registration for IL trimming support. Unwraps Task, nullable, and generic
+		/// collections. Excludes primitives, [Factory] types, abstract/interface types, and types
+		/// without parameterless ctors. Recursively walks public properties of discovered DTOs to
+		/// find nested types.
 		/// </summary>
-		private static EquatableArray<string> DiscoverDtoReturnTypes(ITypeSymbol returnType)
+		private static EquatableArray<string> DiscoverDtoTypes(IMethodSymbol methodSymbol)
 		{
 			var visited = new HashSet<string>();
 			var dtoTypes = new List<string>();
 
-			// Unwrap the return type (Task, nullable, collection) and get candidates
-			var candidates = UnwrapType(returnType, unwrapTask: true);
-
-			foreach (var candidate in candidates)
+			// Discover from return type
+			var returnCandidates = UnwrapType(methodSymbol.ReturnType, unwrapTask: true);
+			foreach (var candidate in returnCandidates)
 			{
 				DiscoverDtoTypesRecursive(candidate, dtoTypes, visited);
+			}
+
+			// Discover from non-service, non-CancellationToken parameters
+			foreach (var parameter in methodSymbol.Parameters)
+			{
+				var isService = parameter.GetAttributes().Any(a =>
+					a.AttributeClass?.Name == "ServiceAttribute" || a.AttributeClass?.Name == "Service");
+				if (isService)
+					continue;
+
+				if (parameter.Type.Name == "CancellationToken")
+					continue;
+
+				var paramCandidates = UnwrapType(parameter.Type, unwrapTask: false);
+				foreach (var candidate in paramCandidates)
+				{
+					DiscoverDtoTypesRecursive(candidate, dtoTypes, visited);
+				}
 			}
 
 			return new EquatableArray<string>([.. dtoTypes]);
