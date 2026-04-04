@@ -73,6 +73,9 @@ public static partial class RemoteFactoryServices
 		if (remoteLocal != NeatooFactory.Remote)
 		{
 			services.TryAddSingleton<IEventTracker, EventTracker>();
+
+			// Built-in event scope initializer: propagates correlation ID to event scopes
+			services.AddTransient<IEventScopeInitializer, CorrelationContextScopeInitializer>();
 		}
 
 		// Register NeatooJsonSerializer with serialization options and logging
@@ -83,7 +86,8 @@ public static partial class RemoteFactoryServices
 			var typeInfoResolver = sp.GetRequiredService<NeatooJsonTypeInfoResolver>();
 			var options = sp.GetRequiredService<NeatooSerializationOptions>();
 			var logger = sp.GetService<ILogger<NeatooJsonSerializer>>();
-			return new NeatooJsonSerializer(converterFactories, serviceAssemblies, typeInfoResolver, options, logger);
+			var loggerFactory = sp.GetService<ILoggerFactory>();
+			return new NeatooJsonSerializer(converterFactories, serviceAssemblies, typeInfoResolver, options, logger, loggerFactory);
 		});
 		services.AddScoped(sp => (NeatooJsonSerializer)sp.GetRequiredService<INeatooJsonSerializer>());
 
@@ -191,6 +195,36 @@ public static partial class RemoteFactoryServices
 	{
 		services.AddScoped<TService, TImpl>();
 		services.AddScoped(provider => (TImpl)provider.GetRequiredService<TService>());
+		return services;
+	}
+
+	/// <summary>
+	/// Registers a callback that propagates ambient context from the request scope to event handler scopes.
+	/// Multiple initializers can be registered; they run in registration order.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// Initializers run inside <c>Task.Run</c> after <c>CreateScope()</c> but before handler services
+	/// are resolved. For fire-and-forget events, the parent scope may be disposed after the initializer
+	/// runs — <b>copy values, do not hold references to parent-scope services</b>.
+	/// </para>
+	/// <para>
+	/// A built-in initializer for <see cref="ICorrelationContext"/> is registered automatically
+	/// by <see cref="AddNeatooRemoteFactory"/>. Call this method to add additional initializers
+	/// (e.g., for tenant context).
+	/// </para>
+	/// </remarks>
+	/// <param name="services">The service collection.</param>
+	/// <param name="initializer">
+	/// A callback that receives the parent (request) scope and the child (event) scope.
+	/// Read from the parent, write to the child.
+	/// </param>
+	public static IServiceCollection AddRemoteFactoryEventScopeInitializer(
+		this IServiceCollection services,
+		Action<IServiceProvider, IServiceProvider> initializer)
+	{
+		ArgumentNullException.ThrowIfNull(initializer, nameof(initializer));
+		services.AddTransient<IEventScopeInitializer>(_ => new DelegateEventScopeInitializer(initializer));
 		return services;
 	}
 

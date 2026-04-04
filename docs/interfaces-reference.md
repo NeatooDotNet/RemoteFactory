@@ -638,6 +638,44 @@ public static partial class EventTrackerDemo
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L263-L277' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-eventtracker' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+### IEventScopeInitializer
+
+Propagates ambient context from the request scope to event handler scopes. Event handlers run in isolated DI scopes — this interface bridges scoped state (tenant context, user identity, etc.) from the parent scope into the event scope.
+
+```csharp
+public interface IEventScopeInitializer
+{
+    void Initialize(IServiceProvider parentScope, IServiceProvider childScope);
+}
+```
+
+**When to use:** Multi-tenant applications or any scenario where middleware-populated scoped state needs to be available in event handlers.
+
+**A built-in initializer propagates `ICorrelationContext.CorrelationId` automatically.** You only need to register custom initializers for application-specific context.
+
+Register custom initializers via the `AddRemoteFactoryEventScopeInitializer` extension method:
+
+```csharp
+services.AddRemoteFactoryEventScopeInitializer((parentScope, childScope) =>
+{
+    var parentTenant = parentScope.GetService<ITenantContext>();
+    var childTenant = childScope.GetRequiredService<TenantContext>();
+    if (parentTenant != null)
+    {
+        childTenant.TenantId = parentTenant.TenantId;
+        childTenant.ConnectionString = parentTenant.ConnectionString;
+    }
+});
+```
+
+**Important:** Initializers run inside `Task.Run` after `CreateScope()` but before handler services are resolved. For fire-and-forget events, the parent scope may be disposed after the initializer runs — **copy values, do not hold references to parent-scope services**.
+
+Multiple initializers run in registration order. Each initializer is wrapped in its own try/catch — if one throws, the exception is logged but the event handler still executes.
+
+Only registered in Server and Logical modes. Remote-mode clients do not create local event scopes.
+
+See [Events — Event Scope Initializers](events.md#event-scope-initializers) for the full usage guide.
+
 ## Factory Core
 
 ### IFactoryCore&lt;T&gt;
@@ -677,6 +715,7 @@ public interface IFactoryCore<T>
 | `IOrdinalSerializationMetadata` | Ordinal deserialization metadata | Source generator (automatic) |
 | `ILazyLoadFactory` | Deferred loading factory | Framework (inject via `[Service]`) |
 | `IEventTracker` | Fire-and-forget event tracking | Framework (rarely customized) |
+| `IEventScopeInitializer` | Event scope context propagation | Application (custom initializers) |
 | `IFactoryCore<T>` | Factory execution pipeline | Framework (rarely customized) |
 
 ## Next Steps
@@ -684,4 +723,5 @@ public interface IFactoryCore<T>
 - [Attributes Reference](attributes-reference.md) - All available attributes
 - [Factory Operations](factory-operations.md) - CRUD operation details
 - [Service Injection](service-injection.md) - DI integration
+- [Events](events.md) - Event scope initializers and fire-and-forget patterns
 - [Authorization](authorization.md) - Authorization patterns

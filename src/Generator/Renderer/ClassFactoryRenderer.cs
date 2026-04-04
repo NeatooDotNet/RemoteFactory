@@ -1603,20 +1603,25 @@ internal static class ClassFactoryRenderer
         sb.AppendLine("                        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
         sb.AppendLine("                        var tracker = sp.GetRequiredService<IEventTracker>();");
         sb.AppendLine("                        var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
-        // Capture correlation context from parent scope
-        sb.AppendLine("                        var parentCorrelation = sp.GetService<ICorrelationContext>();");
+        // Resolve all event scope initializers (correlation context, tenant context, etc.)
+        sb.AppendLine("                        var eventScopeInitializers = sp.GetServices<IEventScopeInitializer>();");
         sb.AppendLine($"                        return ({paramDecl}) =>");
         sb.AppendLine("                        {");
-        // Capture correlation ID before Task.Run (outside the lambda closure)
-        sb.AppendLine("                            var capturedCorrelationId = parentCorrelation?.CorrelationId;");
         sb.AppendLine("                            var task = Task.Run(async () =>");
         sb.AppendLine("                            {");
         sb.AppendLine("                                using var scope = scopeFactory.CreateScope();");
-        // Set correlation ID in the new scope BEFORE resolving any services
-        sb.AppendLine("                                var eventCorrelation = scope.ServiceProvider.GetService<ICorrelationContext>();");
-        sb.AppendLine("                                if (eventCorrelation != null && capturedCorrelationId != null)");
+        // Run all event scope initializers — propagate ambient context from parent to child scope
+        sb.AppendLine("                                foreach (var initializer in eventScopeInitializers)");
         sb.AppendLine("                                {");
-        sb.AppendLine("                                    eventCorrelation.CorrelationId = capturedCorrelationId;");
+        sb.AppendLine("                                    try");
+        sb.AppendLine("                                    {");
+        sb.AppendLine("                                        initializer.Initialize(sp, scope.ServiceProvider);");
+        sb.AppendLine("                                    }");
+        sb.AppendLine("                                    catch (Exception ex)");
+        sb.AppendLine("                                    {");
+        sb.AppendLine("                                        var initLogger = scope.ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger(\"Neatoo.RemoteFactory.EventScopeInitializer\");");
+        sb.AppendLine("                                        initLogger?.LogError(ex, \"Event scope initializer {InitializerType} failed\", initializer.GetType().Name);");
+        sb.AppendLine("                                    }");
         sb.AppendLine("                                }");
         sb.AppendLine("                                var ct = lifetime.ApplicationStopping;");
         sb.AppendLine($"                                var handler = scope.ServiceProvider.GetRequiredService<{model.ImplementationTypeName}>();");

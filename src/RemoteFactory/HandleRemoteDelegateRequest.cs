@@ -57,6 +57,9 @@ public static class LocalServer
 	{
 		var log = logger ?? NullLoggerFactory.Instance.CreateLogger(NeatooLoggerCategories.Server);
 
+		var trace = serviceProvider.GetService<ILoggerFactory>()?.CreateLogger("RemoteFactory.Trace")
+			?? NullLoggerFactory.Instance.CreateLogger("RemoteFactory.Trace");
+
 		return async (portalRequest, cancellationToken) =>
 		{
 			// Resolve correlation context from request scope (set by middleware)
@@ -75,18 +78,25 @@ public static class LocalServer
 				// Check for cancellation before processing
 				cancellationToken.ThrowIfCancellationRequested();
 
+				trace.TraceDeserializingRequest(correlationId, delegateTypeName);
+				var deserializeSw = Stopwatch.StartNew();
 				var remoteRequest = serializer.DeserializeRemoteDelegateRequest(portalRequest);
+				deserializeSw.Stop();
 				var parameterCount = remoteRequest.Parameters?.Count ?? 0;
+				trace.TraceRequestDeserialized(correlationId, deserializeSw.ElapsedMilliseconds, parameterCount, remoteRequest.Target != null);
 				log.RemoteRequestDeserialized(correlationId, parameterCount);
 
 				ArgumentNullException.ThrowIfNull(remoteRequest.DelegateType, nameof(remoteRequest.DelegateType));
 
+				trace.TraceResolvingDelegate(correlationId, remoteRequest.DelegateType.Name);
 				var method = (Delegate)serviceProvider.GetRequiredService(remoteRequest.DelegateType);
 
 				// Prepare parameters, injecting CancellationToken if the method expects it
 				var methodParams = method.Method.GetParameters();
 				var invokeParams = PrepareInvokeParameters(remoteRequest.Parameters, methodParams, cancellationToken);
 
+				trace.TraceInvokingDelegate(correlationId);
+				var invokeSw = Stopwatch.StartNew();
 				object? result;
 				try
 				{
@@ -101,7 +111,10 @@ public static class LocalServer
 
 				if (result is Task task)
 				{
+					trace.TraceAwaitingResult(correlationId);
 					await task;
+					invokeSw.Stop();
+					trace.TraceDelegateCompleted(correlationId, invokeSw.ElapsedMilliseconds, true);
 					// Only get result for Task<T>, not for non-generic Task (events, void methods)
 					var resultProperty = task.GetType().GetProperty(Result);
 					if (resultProperty != null && resultProperty.PropertyType != typeof(void) &&
@@ -113,6 +126,11 @@ public static class LocalServer
 					{
 						result = null;
 					}
+				}
+				else
+				{
+					invokeSw.Stop();
+					trace.TraceDelegateCompleted(correlationId, invokeSw.ElapsedMilliseconds, false);
 				}
 
 				// Check for cancellation before serializing response
@@ -138,7 +156,11 @@ public static class LocalServer
 					returnType = typeof(object);
 				}
 
+				trace.TraceSerializingResponse(correlationId, returnType.Name);
+				var serializeSw = Stopwatch.StartNew();
 				var portalResponse = new RemoteResponseDto(serializer.Serialize(result, returnType));
+				serializeSw.Stop();
+				trace.TraceResponseSerialized(correlationId, serializeSw.ElapsedMilliseconds);
 
 				sw.Stop();
 				log.RemoteRequestCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);

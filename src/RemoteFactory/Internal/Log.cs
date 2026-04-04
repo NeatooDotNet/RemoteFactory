@@ -305,6 +305,136 @@ internal static partial class Log
         string correlationId,
         string delegateType);
 
+    // ===== Pipeline Trace (8xxx) =====
+
+    [LoggerMessage(
+        EventId = 8001,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Deserializing request for {DelegateType}")]
+    public static partial void TraceDeserializingRequest(
+        this ILogger logger,
+        string correlationId,
+        string delegateType);
+
+    [LoggerMessage(
+        EventId = 8002,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Request deserialized in {ElapsedMs}ms — {ParamCount} params, hasTarget={HasTarget}")]
+    public static partial void TraceRequestDeserialized(
+        this ILogger logger,
+        string correlationId,
+        long elapsedMs,
+        int paramCount,
+        bool hasTarget);
+
+    [LoggerMessage(
+        EventId = 8003,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Resolving delegate from DI: {DelegateType}")]
+    public static partial void TraceResolvingDelegate(
+        this ILogger logger,
+        string correlationId,
+        string delegateType);
+
+    [LoggerMessage(
+        EventId = 8004,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Invoking delegate (DynamicInvoke)")]
+    public static partial void TraceInvokingDelegate(
+        this ILogger logger,
+        string correlationId);
+
+    [LoggerMessage(
+        EventId = 8005,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Awaiting async result")]
+    public static partial void TraceAwaitingResult(
+        this ILogger logger,
+        string correlationId);
+
+    [LoggerMessage(
+        EventId = 8006,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Delegate completed in {ElapsedMs}ms (async={IsAsync})")]
+    public static partial void TraceDelegateCompleted(
+        this ILogger logger,
+        string correlationId,
+        long elapsedMs,
+        bool isAsync);
+
+    [LoggerMessage(
+        EventId = 8007,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Serializing response as {ReturnType}")]
+    public static partial void TraceSerializingResponse(
+        this ILogger logger,
+        string correlationId,
+        string returnType);
+
+    [LoggerMessage(
+        EventId = 8008,
+        Level = LogLevel.Trace,
+        Message = "[{CorrelationId}] Response serialized in {ElapsedMs}ms")]
+    public static partial void TraceResponseSerialized(
+        this ILogger logger,
+        string correlationId,
+        long elapsedMs);
+
+    [LoggerMessage(
+        EventId = 8010,
+        Level = LogLevel.Trace,
+        Message = "Deserializing Target: type={TargetType}, jsonLength={JsonLength}")]
+    public static partial void TraceDeserializingTarget(
+        this ILogger logger,
+        string targetType,
+        int jsonLength);
+
+    [LoggerMessage(
+        EventId = 8011,
+        Level = LogLevel.Trace,
+        Message = "Target deserialized in {ElapsedMs}ms")]
+    public static partial void TraceTargetDeserialized(
+        this ILogger logger,
+        long elapsedMs);
+
+    [LoggerMessage(
+        EventId = 8012,
+        Level = LogLevel.Trace,
+        Message = "Deserializing param[{Index}]: type={ParamType}, jsonLength={JsonLength}")]
+    public static partial void TraceDeserializingParam(
+        this ILogger logger,
+        int index,
+        string paramType,
+        int jsonLength);
+
+    [LoggerMessage(
+        EventId = 8013,
+        Level = LogLevel.Trace,
+        Message = "param[{Index}] deserialized in {ElapsedMs}ms")]
+    public static partial void TraceParamDeserialized(
+        this ILogger logger,
+        int index,
+        long elapsedMs);
+
+    [LoggerMessage(
+        EventId = 8020,
+        Level = LogLevel.Trace,
+        Message = "Serialize started: declaredType={DeclaredType}, runtimeType={RuntimeType}")]
+    public static partial void TraceSerializeStarted(
+        this ILogger logger,
+        string declaredType,
+        string runtimeType);
+
+    [LoggerMessage(
+        EventId = 8021,
+        Level = LogLevel.Trace,
+        Message = "Serialize completed: type={TypeName}, {ElapsedMs}ms, {JsonLength} chars")]
+    public static partial void TraceSerializeCompleted(
+        this ILogger logger,
+        string typeName,
+        long elapsedMs,
+        int jsonLength);
+
     // ===== Event Tracking (9xxx) =====
 
     [LoggerMessage(

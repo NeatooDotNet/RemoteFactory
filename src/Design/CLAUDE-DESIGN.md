@@ -1,8 +1,8 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.3
-last_updated: 2026-03-30
+design_version: 1.4
+last_updated: 2026-04-03
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -155,6 +155,8 @@ public static partial class MyCommands
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
 | Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
 | What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
+| How do I propagate tenant context to event scopes? | Register an `IEventScopeInitializer` via `AddRemoteFactoryEventScopeInitializer` | `docs/events.md`, `AddRemoteFactoryServices.cs` | Events run in isolated DI scopes; initializers copy ambient state from parent to child scope |
+| Is correlation ID propagated to events automatically? | Yes — built-in `CorrelationContextScopeInitializer` handles this | `CorrelationExample.cs` | Registered automatically in Server/Logical modes by `AddNeatooRemoteFactory` |
 
 ---
 
@@ -486,6 +488,35 @@ internal partial class OrderLine : IOrderLine
 
 Both class factory and static factory `[Event]` local event registrations are wrapped in `if (NeatooRuntime.IsServerRuntime)`. The local event infrastructure (scope isolation, `Task.Run`, `IHostApplicationLifetime`, `IEventTracker`) is server-only. On client assemblies with `IsServerRuntime=false`, the trimmer eliminates these registrations. Remote-mode clients use remote event stubs instead.
 
+#### Event Scope Initialization (IEventScopeInitializer)
+
+Events run in isolated DI scopes, but applications often need ambient context (tenant ID, correlation ID, user identity) propagated from the request scope to the event scope. The `IEventScopeInitializer` interface provides an extensible mechanism for this.
+
+**Built-in initializer:** `CorrelationContextScopeInitializer` propagates `ICorrelationContext.CorrelationId` automatically. Registered by `AddNeatooRemoteFactory` in Server/Logical modes (not Remote — no local events on client).
+
+**Custom initializers:** Register via `AddRemoteFactoryEventScopeInitializer`:
+
+```csharp
+// After AddNeatooRemoteFactory
+services.AddRemoteFactoryEventScopeInitializer((parentScope, childScope) =>
+{
+    var parentTenant = parentScope.GetService<ITenantContext>();
+    var childTenant = childScope.GetRequiredService<TenantContext>();
+    if (parentTenant != null)
+    {
+        childTenant.TenantId = parentTenant.TenantId;
+    }
+});
+```
+
+**Generated code pattern:** The generator resolves `IEventScopeInitializer` instances from the parent scope (`sp.GetServices<IEventScopeInitializer>()`), then inside `Task.Run` after `CreateScope()` loops over all initializers calling `Initialize(parentScope, childScope)`. Each initializer is wrapped in an individual try/catch — a failing initializer is logged but does not prevent the event handler from executing.
+
+**Key constraints:**
+- Initializers run **inside** `Task.Run` after `CreateScope()` but before handler services are resolved
+- Copy values, do not hold references to parent-scope services (parent scope may be disposed in fire-and-forget scenarios)
+- Multiple initializers run in registration order (built-in first, then custom)
+- Initializer exceptions are caught per-initializer, logged, and do not prevent event execution
+
 #### Can* Method Guard Derivation (Auth-Method-Driven)
 
 Can* methods (e.g., `CanCreate()`, `CanFetch()`, `CanSave()`) derive their guard behavior from the **auth class methods**, not from the parent factory method. This is because Can* methods call the auth methods, not the factory method. The auth method's accessibility determines whether the Can* check can run on the client.
@@ -749,6 +780,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] Value objects that serialize correctly (`Money` in `ValueObjects/`)
 - [ ] Event handlers with CancellationToken (`ExampleEvents._OnOrderPlaced`)
 - [x] CorrelationContext usage (`CorrelationExample.cs`)
+- [x] Event scope initialization via IEventScopeInitializer (`CorrelationExample.cs` `[GENERATOR BEHAVIOR]` comment documents the mechanism)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
@@ -797,7 +829,7 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
 | `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
-| `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage for distributed tracing |
+| `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage, IEventScopeInitializer mechanism for event scope context propagation |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |

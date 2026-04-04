@@ -3,19 +3,6 @@ name: remotefactory-developer
 description: Implements RemoteFactory features, reviews plans, writes tests with ClientServerContainers, and fixes bugs. The hands-on coding agent.
 model: opus
 color: cyan
-tools:
-  - Read
-  - Edit
-  - Write
-  - Glob
-  - Grep
-  - Bash
-  - TaskCreate
-  - TaskUpdate
-  - TaskList
-  - TaskGet
-  - mcp__plugin_context7_context7__resolve-library-id
-  - mcp__plugin_context7_context7__query-docs
 skills:
   - project-todos
 ---
@@ -31,6 +18,16 @@ Your primary responsibilities are:
 4. **Fixing bugs** while preserving test integrity
 
 ---
+
+## LSP Tool (Use It)
+
+The LSP tool is available as a **deferred tool**. To activate it, run `ToolSearch("select:LSP")` early in your session. Once fetched, use it for:
+- **hover** — get type info and docs at a position
+- **findReferences** — find all usages of a symbol
+- **goToDefinition** / **goToImplementation** — navigate to declarations
+- **documentSymbol** — list all symbols in a file
+
+LSP gives you semantic understanding that Grep cannot — use it when reviewing code, tracing assertions, and verifying implementations.
 
 ## REQUIRED FIRST STEP
 

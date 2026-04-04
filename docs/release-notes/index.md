@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.28.0](v0.28.0.md) | 2026-04-03 | `IEventScopeInitializer` for multi-tenant events, pipeline trace logging, fix parameter DTO trimming |
 | [v0.27.0](v0.27.0.md) | 2026-03-31 | Recursive nested DTO discovery for IL trimming |
 | [v0.26.0](v0.26.0.md) | 2026-03-29 | `LazyLoad<T>` inheritable for subclassing |
 | [v0.25.0](v0.25.0.md) | 2026-03-28 | `LazyLoad<T>` for deferred async loading with full serialization support |
@@ -55,6 +56,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v0.28.0](v0.28.0.md) - 2026-04-03 - IEventScopeInitializer, pipeline trace logging, fix parameter DTO trimming
 - [v0.27.0](v0.27.0.md) - 2026-03-31 - Recursive nested DTO discovery for IL trimming
 - [v0.26.0](v0.26.0.md) - 2026-03-29 - LazyLoad&lt;T&gt; inheritable for subclassing
 - [v0.25.0](v0.25.0.md) - 2026-03-28 - LazyLoad&lt;T&gt; for deferred async loading
