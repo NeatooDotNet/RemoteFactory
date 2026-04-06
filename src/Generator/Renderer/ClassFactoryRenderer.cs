@@ -1409,19 +1409,36 @@ internal static class ClassFactoryRenderer
     {
         // Build parameter mapping from factory method params to auth method params
         var authParams = new List<string>();
-        var factoryParams = factoryMethod.Parameters.Where(p => !p.IsTarget).ToList();
+        var factoryNonTargetParams = factoryMethod.Parameters.Where(p => !p.IsTarget).ToList();
+        var factoryTargetParam = factoryMethod.Parameters.FirstOrDefault(p => p.IsTarget);
 
         foreach (var authParam in authMethod.Parameters)
         {
-            var matchingFactoryParam = factoryParams.FirstOrDefault(p => p.Type == authParam.Type);
-            if (matchingFactoryParam != null)
+            if (authParam.IsTarget)
             {
-                authParams.Add(matchingFactoryParam.Name);
-                factoryParams.Remove(matchingFactoryParam);
+                // Auth param is a target parameter - map to the factory method's target param
+                // (available on write methods: Insert, Update, Delete, Save)
+                if (factoryTargetParam != null)
+                {
+                    authParams.Add(factoryTargetParam.Name);
+                }
+                else
+                {
+                    authParams.Add($"/* Missing {authParam.Type} {authParam.Name} */");
+                }
             }
             else
             {
-                authParams.Add($"/* Missing {authParam.Type} {authParam.Name} */");
+                var matchingFactoryParam = factoryNonTargetParams.FirstOrDefault(p => p.Type == authParam.Type);
+                if (matchingFactoryParam != null)
+                {
+                    authParams.Add(matchingFactoryParam.Name);
+                    factoryNonTargetParams.Remove(matchingFactoryParam);
+                }
+                else
+                {
+                    authParams.Add($"/* Missing {authParam.Type} {authParam.Name} */");
+                }
             }
         }
 
