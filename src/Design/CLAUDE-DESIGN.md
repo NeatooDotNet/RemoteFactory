@@ -157,6 +157,9 @@ public static partial class MyCommands
 | What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
 | How do I propagate tenant context to event scopes? | Register an `IEventScopeInitializer` via `AddRemoteFactoryEventScopeInitializer` | `docs/events.md`, `AddRemoteFactoryServices.cs` | Events run in isolated DI scopes; initializers copy ambient state from parent to child scope |
 | Is correlation ID propagated to events automatically? | Yes — built-in `CorrelationContextScopeInitializer` handles this | `CorrelationExample.cs` | Registered automatically in Server/Logical modes by `AddNeatooRemoteFactory` |
+| Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
+| Can auth methods receive the target entity? | Yes -- on write operations (Insert/Update/Delete) | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanWrite(IEntity target)` inspects entity state; suppresses CanSave/CanInsert/CanUpdate/CanDelete generation |
+| Why is CanSave missing from my factory interface? | Write auth has a target parameter | `ParamAuthOrderAuth.cs` | CanSave needs the entity but runs before Save; auth is checked inside Save() instead |
 
 ---
 
@@ -783,6 +786,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [x] Event scope initialization via IEventScopeInitializer (`CorrelationExample.cs` `[GENERATOR BEHAVIOR]` comment documents the mechanism)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
+- [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
 - [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
 - [x] LazyLoad<T> property with constructor-initialization pattern (`LazyLoadExample.cs`)
 
@@ -825,12 +829,15 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle hooks and IFactorySaveMeta |
 | `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] custom domain authorization with Can* methods |
 | `Design.Domain/Aggregates/AuthorizedOrderAuth.cs` | Auth interface and implementation for AuthorizedOrder |
+| `Design.Domain/Aggregates/ParamAuthOrder.cs` | Parameterized [AuthorizeFactory<T>] with type-matched and target entity params |
+| `Design.Domain/Aggregates/ParamAuthOrderAuth.cs` | Auth interface and implementation with parameterized methods |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
 | `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
 | `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage, IEventScopeInitializer mechanism for event scope context propagation |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
+| `Design.Tests/FactoryTests/ParamAuthorizationTests.cs` | Parameterized auth: type-matched params, target params, CanXxx suppression |
 | `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |

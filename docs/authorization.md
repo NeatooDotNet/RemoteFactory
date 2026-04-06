@@ -227,6 +227,78 @@ internal Task Terminate(CancellationToken ct = default)
 
 Execution order: AuthorizeFactory checks first, then AspAuthorize. If either fails, the operation is denied.
 
+## Parameterized Authorization Methods
+
+Authorization methods can receive parameters matched by type from the factory method. This enables per-entity access control — denying access to specific records, not just operations:
+
+```csharp
+public interface IOrderAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+    bool CanFetchOrder(Guid orderId);
+}
+```
+
+When `Fetch(Guid orderId)` is called, the generator passes `orderId` to `CanFetchOrder(Guid orderId)` by matching the `Guid` type. The auth method name doesn't matter — only the parameter type must match.
+
+The generator produces a parameterized `CanFetch(Guid)` on the factory interface, so the client can check access for a specific entity before calling Fetch:
+
+```csharp
+if (factory.CanFetch(orderId).HasAccess)
+{
+    var order = await factory.Fetch(orderId);
+}
+```
+
+### Scope Matters for Parameterized Methods
+
+Use specific operation scopes (e.g., `Fetch`) rather than broad scopes (e.g., `Read`) when the auth method has parameters. If a `Read`-scoped method has a `Guid` parameter, it would try to match against Create as well — but Create may not have a `Guid` parameter.
+
+```csharp
+// GOOD: Fetch scope applies only to Fetch, which has a Guid parameter
+[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+bool CanFetchOrder(Guid orderId);
+
+// Parameterless Read scope covers Create (no type matching needed)
+[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
+bool CanRead();
+```
+
+When both a broad-scope parameterless method and a fine-grained parameterized method apply to the same operation, both are checked and both must pass.
+
+## Target Parameter Authorization
+
+Authorization methods can receive the **target entity** on write operations. This enables state-based authorization — denying writes based on entity state (e.g., locked records):
+
+```csharp
+public interface IOrderAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+    bool CanWrite(IOrder target);
+}
+```
+
+The parameter type must match the entity's class or interface type. On Insert, Update, and Delete operations, the generator passes the entity to the auth method so it can inspect state:
+
+```csharp
+public class OrderAuthorization : IOrderAuthorization
+{
+    public bool CanWrite(IOrder target)
+    {
+        // Deny writes to locked orders
+        return target.Status != "Locked";
+    }
+}
+```
+
+### CanXxx Suppression
+
+When a Write auth method has a target parameter, the generator does **not** generate `CanInsert`, `CanUpdate`, `CanDelete`, or `CanSave` on the factory interface. These methods would need the entity instance, which isn't available at the call site — `CanSave` is called before Save, so the entity hasn't been passed yet.
+
+The auth check happens inside `Save()` where the entity is available. If authorization fails, `Save()` throws `NotAuthorizedException` (or `TrySave()` returns `HasAccess=false`).
+
+Read auth methods (Create, Fetch) are unaffected — `CanCreate` and `CanFetch` are still generated when their auth methods are parameterless or use type-matched parameters (not target parameters).
+
 ## Can* Method Behavior
 
 `Can*` methods derive their guard and remote behavior from the **auth class methods**, not from the parent factory method. This follows the same accessibility paradigm as all other methods in RemoteFactory: the method being called determines the behavior.
