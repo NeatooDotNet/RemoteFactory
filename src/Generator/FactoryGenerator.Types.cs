@@ -167,7 +167,7 @@ public partial class Factory
 
 			var methodSymbols = GetMethodsRecursive(symbol);
 
-			this.AuthMethods = TypeAuthMethods(semanticModel, symbol, debugMessages, diagnostics);
+			this.AuthMethods = TypeAuthMethods(semanticModel, symbol, serviceSymbol, debugMessages, diagnostics);
 
 			List<FactoryOperation> defaultFactoryOperations = [];
 

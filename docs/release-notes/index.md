@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v0.29.0](v0.29.0.md) | 2026-04-06 | Authorization target parameter support, type-based param matching tests |
 | [v0.28.0](v0.28.0.md) | 2026-04-03 | `IEventScopeInitializer` for multi-tenant events, pipeline trace logging, fix parameter DTO trimming |
 | [v0.27.0](v0.27.0.md) | 2026-03-31 | Recursive nested DTO discovery for IL trimming |
 | [v0.26.0](v0.26.0.md) | 2026-03-29 | `LazyLoad<T>` inheritable for subclassing |
