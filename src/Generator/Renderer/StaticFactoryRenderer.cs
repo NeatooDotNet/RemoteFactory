@@ -35,8 +35,8 @@ internal static class StaticFactoryRenderer
             sb.AppendLine(u);
         }
 
-        // Add hosting using if there are event methods or factory event handlers
-        if (model.Events.Count > 0 || model.FactoryEventHandlers.Count > 0)
+        // Add hosting using if there are event methods
+        if (model.Events.Count > 0)
         {
             sb.AppendLine("using Microsoft.Extensions.Hosting;");
         }
@@ -140,11 +140,6 @@ internal static class StaticFactoryRenderer
         foreach (var evt in model.Events)
         {
             RenderLocalEventRegistration(sb, evt, model.TypeName);
-        }
-
-        foreach (var handler in model.FactoryEventHandlers)
-        {
-            RenderFactoryEventHandlerRegistration(sb, handler, model.TypeName);
         }
 
         sb.AppendLine("            }");
@@ -328,51 +323,4 @@ internal static class StaticFactoryRenderer
         sb.AppendLine("                }");
     }
 
-    internal static void RenderFactoryEventHandlerRegistration(StringBuilder sb, EventMethodModel handler, string typeName)
-    {
-        var eventTypeName = handler.EventTypeName!;
-
-        var allParamIdentifiers = BuildEventMethodInvocationParams(handler);
-
-        var serviceAssignments = string.Join("\n                            ",
-            handler.ServiceParameters.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
-
-        var methodInvocation = handler.IsAsync
-            ? $"await {typeName}.{handler.Name}({allParamIdentifiers});"
-            : $"{typeName}.{handler.Name}({allParamIdentifiers});";
-
-        // Register handler into FactoryEventHandlerRegistry
-        sb.AppendLine("                if (NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                {");
-        sb.AppendLine($"                    FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>((sp, eventObj, options) =>");
-        sb.AppendLine("                    {");
-        sb.AppendLine("                        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
-        sb.AppendLine("                        var tracker = sp.GetRequiredService<IEventTracker>();");
-        sb.AppendLine("                        var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
-        sb.AppendLine("                        var parentCorrelation = sp.GetService<ICorrelationContext>();");
-        sb.AppendLine("                        var capturedCorrelationId = parentCorrelation?.CorrelationId;");
-        sb.AppendLine($"                        var {handler.Parameters.First(p => !p.IsCancellationToken).Name} = ({eventTypeName})eventObj;");
-        sb.AppendLine("                        var task = Task.Run(async () =>");
-        sb.AppendLine("                        {");
-        sb.AppendLine("                            using var scope = scopeFactory.CreateScope();");
-        sb.AppendLine("                            var eventCorrelation = scope.ServiceProvider.GetService<ICorrelationContext>();");
-        sb.AppendLine("                            if (eventCorrelation != null && capturedCorrelationId != null)");
-        sb.AppendLine("                            {");
-        sb.AppendLine("                                eventCorrelation.CorrelationId = capturedCorrelationId;");
-        sb.AppendLine("                            }");
-        if (handler.Parameters.Any(p => p.IsCancellationToken))
-        {
-            sb.AppendLine("                            var ct = lifetime.ApplicationStopping;");
-        }
-        if (!string.IsNullOrEmpty(serviceAssignments))
-        {
-            sb.AppendLine($"                            {serviceAssignments}");
-        }
-        sb.AppendLine($"                            {methodInvocation}");
-        sb.AppendLine("                        });");
-        sb.AppendLine("                        tracker.Track(task);");
-        sb.AppendLine("                        return task;");
-        sb.AppendLine("                    });");
-        sb.AppendLine("                }");
-    }
 }

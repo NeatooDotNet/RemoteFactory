@@ -103,6 +103,9 @@ public static partial class RemoteFactoryServices
 
 		if (remoteLocal == NeatooFactory.Remote)
 		{
+			// Singleton relay for client-side event dispatch (holds handler registrations)
+			services.AddSingleton<IFactoryEventRelay, FactoryEventRelayDispatcher>();
+
 			// This being registered changes the behavior of every Factory
 			services.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();
 
@@ -115,6 +118,9 @@ public static partial class RemoteFactoryServices
 		}
 		else if (remoteLocal == NeatooFactory.Server)
 		{
+			// Request-scoped collector captures events for relay back to client
+			services.AddScoped<IFactoryEventCollector, FactoryEventCollector>();
+
 			services.AddTransient<HandleRemoteDelegateRequest>(s =>
 			{
 				var logger = s.GetService<ILoggerFactory>()?.CreateLogger(NeatooLoggerCategories.Server);

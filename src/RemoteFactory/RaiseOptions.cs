@@ -23,5 +23,11 @@ public enum RaiseOptions
     /// All exceptions are collected into an <see cref="AggregateException"/>.
     /// Without this flag, the first handler failure propagates immediately.
     /// </summary>
-    ContinueOnFail = 2
+    ContinueOnFail = 2,
+
+    /// <summary>
+    /// Dispatch to server-side handlers only. The event is NOT captured for relay
+    /// back to the client in the <see cref="RemoteResponseDto"/>.
+    /// </summary>
+    ServerOnly = 4
 }

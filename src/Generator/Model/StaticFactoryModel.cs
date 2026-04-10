@@ -12,15 +12,13 @@ internal sealed record StaticFactoryModel
         string signatureText,
         bool isPartial = false,
         IReadOnlyList<ExecuteDelegateModel>? delegates = null,
-        IReadOnlyList<EventMethodModel>? events = null,
-        IReadOnlyList<EventMethodModel>? factoryEventHandlers = null)
+        IReadOnlyList<EventMethodModel>? events = null)
     {
         TypeName = typeName;
         SignatureText = signatureText;
         IsPartial = isPartial;
         Delegates = delegates ?? System.Array.Empty<ExecuteDelegateModel>();
         Events = events ?? System.Array.Empty<EventMethodModel>();
-        FactoryEventHandlers = factoryEventHandlers ?? System.Array.Empty<EventMethodModel>();
     }
 
     public string TypeName { get; }
@@ -28,10 +26,4 @@ internal sealed record StaticFactoryModel
     public bool IsPartial { get; }
     public IReadOnlyList<ExecuteDelegateModel> Delegates { get; }
     public IReadOnlyList<EventMethodModel> Events { get; }
-
-    /// <summary>
-    /// [FactoryEventHandler] methods — registered into FactoryEventHandlerRegistry
-    /// instead of generating individual delegates.
-    /// </summary>
-    public IReadOnlyList<EventMethodModel> FactoryEventHandlers { get; }
 }

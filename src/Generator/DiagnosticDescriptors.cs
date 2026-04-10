@@ -242,4 +242,30 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "[FactoryEventHandler] methods must be static. The containing class can be static or non-static, but the handler method itself must be static.");
+
+    // Relay Handler Diagnostics (NF0500 range)
+
+    /// <summary>
+    /// NF0501: No matching handler method found for [FactoryEventHandler&lt;T&gt;].
+    /// </summary>
+    public static readonly DiagnosticDescriptor RelayHandlerMethodNotFound = new(
+        id: "NF0501",
+        title: "No matching handler method for [FactoryEventHandler<T>]",
+        messageFormat: "Class '{0}' has [FactoryEventHandler<{1}>] but no matching handler method",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A class decorated with [FactoryEventHandler<T>] must have exactly one non-private method that takes T as its first non-[Service]/non-CancellationToken parameter and returns Task.");
+
+    /// <summary>
+    /// NF0502: Multiple matching handler methods found for [FactoryEventHandler&lt;T&gt;].
+    /// </summary>
+    public static readonly DiagnosticDescriptor RelayHandlerMethodAmbiguous = new(
+        id: "NF0502",
+        title: "Ambiguous handler methods for [FactoryEventHandler<T>]",
+        messageFormat: "Class '{0}' has multiple methods matching [FactoryEventHandler<{1}>]",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A class decorated with [FactoryEventHandler<T>] must have exactly one non-private method that takes T as its first non-[Service]/non-CancellationToken parameter and returns Task.");
 }

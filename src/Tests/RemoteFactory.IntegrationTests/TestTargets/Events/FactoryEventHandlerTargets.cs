@@ -42,17 +42,15 @@ public record TestComplexEvent(Guid Id, string Name, TestAddress Address, List<s
 public record TestInventoryEvent(Guid ProductId, int Quantity) : FactoryEventBase;
 
 // =============================================================================
-// HANDLERS
+// HANDLERS — [FactoryEventHandler<T>] class attribute with matching static methods
 // =============================================================================
 
 /// <summary>
 /// First handler for TestOrderEvent. Records "HandlerA".
-/// Non-static class with internal static handler method.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestOrderEvent>]
 public partial class TestOrderHandlerA
 {
-    [FactoryEventHandler]
     internal static Task HandleOrder(
         TestOrderEvent orderEvent,
         [Service] IEventTestService eventService,
@@ -67,10 +65,9 @@ public partial class TestOrderHandlerA
 /// Second handler for TestOrderEvent. Records "HandlerB".
 /// Static class with private static handler — tests both class types work.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestOrderEvent>]
 public static partial class TestOrderHandlerB
 {
-    [FactoryEventHandler]
     private static Task HandleOrder(
         TestOrderEvent orderEvent,
         [Service] IEventTestService eventService,
@@ -83,12 +80,11 @@ public static partial class TestOrderHandlerB
 
 /// <summary>
 /// Handler for TestAuditEvent only. Must NOT fire for TestOrderEvent.
-/// Non-static class — tests strict type matching (no polymorphic dispatch).
+/// Tests strict type matching (no polymorphic dispatch).
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestAuditEvent>]
 public partial class TestAuditHandler
 {
-    [FactoryEventHandler]
     internal static Task HandleAudit(
         TestAuditEvent auditEvent,
         [Service] IEventTestService eventService,
@@ -102,10 +98,9 @@ public partial class TestAuditHandler
 /// <summary>
 /// Handler that throws when the event says to. For error handling tests.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestFailingEvent>]
 public static partial class TestFailingHandler
 {
-    [FactoryEventHandler]
     static Task HandleFailing(
         TestFailingEvent failEvent,
         [Service] IEventTestService eventService,
@@ -121,12 +116,11 @@ public static partial class TestFailingHandler
 
 /// <summary>
 /// Second handler for TestFailingEvent. Always succeeds.
-/// Non-static class — verifies ContinueOnFail with mixed class types.
+/// Verifies ContinueOnFail with mixed class types.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestFailingEvent>]
 public partial class TestFailingSurvivor
 {
-    [FactoryEventHandler]
     internal static Task HandleFailing(
         TestFailingEvent failEvent,
         [Service] IEventTestService eventService,
@@ -140,10 +134,9 @@ public partial class TestFailingSurvivor
 /// <summary>
 /// Handler for TestComplexEvent — records all properties to verify serialization.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestComplexEvent>]
 public partial class TestComplexHandler
 {
-    [FactoryEventHandler]
     internal static Task HandleComplex(
         TestComplexEvent complexEvent,
         [Service] IEventTestService eventService,
@@ -159,10 +152,9 @@ public partial class TestComplexHandler
 /// <summary>
 /// Handler for TestInventoryEvent — non-static class with public static handler.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestInventoryEvent>]
 public partial class TestInventoryHandler
 {
-    [FactoryEventHandler]
     public static Task HandleInventory(
         TestInventoryEvent inventoryEvent,
         [Service] IEventTestService eventService,
@@ -176,10 +168,9 @@ public partial class TestInventoryHandler
 /// <summary>
 /// Slow handler for TestOrderEvent — used to test IEventTracker and await vs fire-and-forget.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestOrderEvent>]
 public static partial class TestSlowHandler
 {
-    [FactoryEventHandler]
     internal static async Task HandleSlow(
         TestOrderEvent orderEvent,
         [Service] IEventTestService eventService,
@@ -193,10 +184,9 @@ public static partial class TestSlowHandler
 /// <summary>
 /// Handler that captures correlation ID for TestOrderEvent.
 /// </summary>
-[Factory]
+[FactoryEventHandler<TestOrderEvent>]
 public static partial class TestCorrelationHandler
 {
-    [FactoryEventHandler]
     internal static Task HandleWithCorrelation(
         TestOrderEvent orderEvent,
         [Service] ICorrelationContext correlationContext,

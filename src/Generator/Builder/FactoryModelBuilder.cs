@@ -43,7 +43,6 @@ internal static class FactoryModelBuilder
     {
         var delegates = new List<ExecuteDelegateModel>();
         var events = new List<EventMethodModel>();
-        var factoryEventHandlers = new List<EventMethodModel>();
         var diagnostics = new List<DiagnosticInfo>(typeInfo.Diagnostics.ToList());
 
         // NF0101: Class must be partial for factory generation
@@ -66,44 +65,6 @@ internal static class FactoryModelBuilder
             if (method.FactoryOperation == FactoryOperation.Event)
             {
                 events.Add(BuildEventMethod(method, typeInfo.ImplementationTypeName, isStaticClass: true));
-            }
-            else if (method.FactoryOperation == FactoryOperation.FactoryEventHandler)
-            {
-                // NF0404: FactoryEventHandler must have CancellationToken as final parameter
-                if (!method.Parameters.Any(p => p.IsCancellationToken))
-                {
-                    diagnostics.Add(new DiagnosticInfo(
-                        "NF0404",
-                        method.MethodFilePath,
-                        method.MethodStartLine,
-                        method.MethodStartColumn,
-                        method.MethodEndLine,
-                        method.MethodEndColumn,
-                        method.MethodTextSpanStart,
-                        method.MethodTextSpanLength,
-                        method.Name));
-                    continue;
-                }
-
-                // NF0401: FactoryEventHandler must return void or Task (not Task<T>)
-                // When IsTask is true and ReturnType doesn't contain "Task", it means Task<T> where ReturnType is T
-                if (method.IsTask && method.ReturnType != null && !method.ReturnType.Contains("Task"))
-                {
-                    diagnostics.Add(new DiagnosticInfo(
-                        "NF0401",
-                        method.MethodFilePath,
-                        method.MethodStartLine,
-                        method.MethodStartColumn,
-                        method.MethodEndLine,
-                        method.MethodEndColumn,
-                        method.MethodTextSpanStart,
-                        method.MethodTextSpanLength,
-                        method.Name,
-                        method.ReturnType));
-                    continue;
-                }
-
-                factoryEventHandlers.Add(BuildFactoryEventHandlerMethod(method, typeInfo.ImplementationTypeName));
             }
             else if (method.FactoryOperation == FactoryOperation.Execute)
             {
@@ -133,8 +94,7 @@ internal static class FactoryModelBuilder
             signatureText: typeInfo.SignatureText,
             isPartial: typeInfo.IsPartial,
             delegates: delegates,
-            events: events,
-            factoryEventHandlers: factoryEventHandlers);
+            events: events);
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -202,71 +162,15 @@ internal static class FactoryModelBuilder
     {
         var factoryMethods = new List<FactoryMethodModel>();
         var events = new List<EventMethodModel>();
-        var factoryEventHandlers = new List<EventMethodModel>();
 
         var diagnostics = new List<DiagnosticInfo>(typeInfo.Diagnostics.ToList());
 
-        // First pass: separate events, factory event handlers, and build initial method list
+        // First pass: separate events and build initial method list
         foreach (var method in typeInfo.FactoryMethods)
         {
             if (method.FactoryOperation == FactoryOperation.Event)
             {
                 events.Add(BuildEventMethod(method, typeInfo.ImplementationTypeName, isStaticClass: false));
-                continue;
-            }
-
-            if (method.FactoryOperation == FactoryOperation.FactoryEventHandler)
-            {
-                // FactoryEventHandler must be static (class doesn't need to be static)
-                if (!method.IsStaticFactory)
-                {
-                    diagnostics.Add(new DiagnosticInfo(
-                        "NF0405",
-                        method.MethodFilePath,
-                        method.MethodStartLine,
-                        method.MethodStartColumn,
-                        method.MethodEndLine,
-                        method.MethodEndColumn,
-                        method.MethodTextSpanStart,
-                        method.MethodTextSpanLength,
-                        method.Name));
-                    continue;
-                }
-
-                // NF0404: Must have CancellationToken
-                if (!method.Parameters.Any(p => p.IsCancellationToken))
-                {
-                    diagnostics.Add(new DiagnosticInfo(
-                        "NF0404",
-                        method.MethodFilePath,
-                        method.MethodStartLine,
-                        method.MethodStartColumn,
-                        method.MethodEndLine,
-                        method.MethodEndColumn,
-                        method.MethodTextSpanStart,
-                        method.MethodTextSpanLength,
-                        method.Name));
-                    continue;
-                }
-
-                // NF0401: Must return void or Task (not Task<T>)
-                if (method.IsTask && method.ReturnType != null && !method.ReturnType.Contains("Task"))
-                {
-                    diagnostics.Add(new DiagnosticInfo(
-                        "NF0401",
-                        method.MethodFilePath,
-                        method.MethodStartLine,
-                        method.MethodStartColumn,
-                        method.MethodEndLine,
-                        method.MethodEndColumn,
-                        method.MethodTextSpanStart,
-                        method.MethodTextSpanLength,
-                        method.Name,
-                        method.ReturnType));
-                    continue;
-                }
-
-                factoryEventHandlers.Add(BuildFactoryEventHandlerMethod(method, typeInfo.ImplementationTypeName));
                 continue;
             }
 
@@ -365,7 +269,6 @@ internal static class FactoryModelBuilder
             isPartial: typeInfo.IsPartial,
             methods: factoryMethods,
             events: events,
-            factoryEventHandlers: factoryEventHandlers,
             ordinalSerialization: ordinalSerialization,
             hasDefaultSave: hasDefaultSave,
             requiresEntityRegistration: requiresEntityRegistration,
@@ -573,37 +476,6 @@ internal static class FactoryModelBuilder
             serviceParameters: serviceParameters,
             containingTypeName: containingTypeName,
             isStaticClass: isStaticClass);
-    }
-
-    /// <summary>
-    /// Builds an EventMethodModel for a [FactoryEventHandler] method.
-    /// The event type is the first non-service, non-CancellationToken parameter.
-    /// </summary>
-    private static EventMethodModel BuildFactoryEventHandlerMethod(TypeFactoryMethodInfo method, string containingTypeName)
-    {
-        var parameters = method.Parameters
-            .Where(p => !p.IsService)
-            .Select(p => new ParameterModel(p.Name, p.Type, p.IsService, p.IsTarget, p.IsCancellationToken, p.IsParams))
-            .ToList();
-
-        var serviceParameters = method.Parameters
-            .Where(p => p.IsService)
-            .Select(p => new ParameterModel(p.Name, p.Type, p.IsService, p.IsTarget, p.IsCancellationToken, p.IsParams))
-            .ToList();
-
-        // The event type is the first non-service, non-CancellationToken parameter
-        var eventParam = parameters.FirstOrDefault(p => !p.IsCancellationToken);
-        var eventTypeName = eventParam?.Type ?? "object";
-
-        return new EventMethodModel(
-            name: method.Name,
-            delegateName: method.Name, // Not used for delegate generation
-            isAsync: method.IsTask,
-            parameters: parameters,
-            serviceParameters: serviceParameters,
-            containingTypeName: containingTypeName,
-            isStaticClass: true,
-            eventTypeName: eventTypeName);
     }
 
     private static ExecuteDelegateModel BuildExecuteDelegate(TypeFactoryMethodInfo method)

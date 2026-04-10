@@ -111,24 +111,23 @@ public sealed class EventAttribute : FactoryOperationAttribute
 }
 
 /// <summary>
-/// Marks a static method as a mediator-style event handler discoverable by <see cref="IFactoryEvents"/>.
-/// The first non-[Service] parameter must be a type inheriting from <see cref="FactoryEventBase"/>.
+/// Marks a class as a handler for factory events of type <typeparamref name="T"/>.
+/// The class must have exactly one non-private method whose first non-[Service]/non-CancellationToken
+/// parameter is of type <typeparamref name="T"/> and returns <see cref="Task"/>.
+/// <para>
+/// <b>Static methods</b> → server-side handler: registered in <see cref="FactoryEventHandlerRegistry"/>,
+/// dispatched via <see cref="IFactoryEvents.Raise{T}"/> in an isolated scope with fire-and-forget semantics.
+/// </para>
+/// <para>
+/// <b>Instance methods</b> → client-side relay handler: registered in <see cref="FactoryEventRelayRegistry"/>,
+/// dispatched when events are relayed from server to client in <see cref="RemoteResponseDto"/>.
+/// </para>
 /// </summary>
-/// <remarks>
-/// <para>
-/// Unlike <see cref="EventAttribute"/> (which generates per-handler delegates), this attribute
-/// participates in the mediator pattern: multiple handlers for the same event type are discovered
-/// at compile time and dispatched via <see cref="IFactoryEvents.Raise{T}"/>.
-/// </para>
-/// <para>
-/// Must be placed on a <c>static</c> method in a <c>[Factory]</c> class (static or non-static).
-/// The method must have <see cref="CancellationToken"/> as its final parameter.
-/// </para>
-/// </remarks>
-public sealed class FactoryEventHandlerAttribute : FactoryOperationAttribute
-{
-	public FactoryEventHandlerAttribute() : base(FactoryOperation.FactoryEventHandler) { }
-}
+/// <typeparam name="T">The event type (must inherit from <see cref="FactoryEventBase"/>).</typeparam>
+[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+#pragma warning disable CA1813 // Sealed generic attribute must be unsealed for generator discovery
+public sealed class FactoryEventHandlerAttribute<T> : Attribute { }
+#pragma warning restore CA1813
 
 [System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class AuthorizeFactoryAttribute<T> : Attribute

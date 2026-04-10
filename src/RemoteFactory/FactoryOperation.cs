@@ -14,7 +14,6 @@ public enum FactoryOperation
 	Insert = AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Write,
 	Update = AuthorizeFactoryOperation.Update | AuthorizeFactoryOperation.Write,
 	Delete = AuthorizeFactoryOperation.Delete | AuthorizeFactoryOperation.Write,
-	Event = AuthorizeFactoryOperation.Event,
-	FactoryEventHandler = AuthorizeFactoryOperation.FactoryEventHandler
+	Event = AuthorizeFactoryOperation.Event
 }
 

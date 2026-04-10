@@ -138,7 +138,27 @@ public static class LocalServer
 					returnType = typeof(object);
 				}
 
-				var portalResponse = new RemoteResponseDto(serializer.Serialize(result, returnType));
+				// Collect relayed events (if any were captured during this operation)
+				List<RelayedFactoryEvent>? relayedEvents = null;
+				var collector = serviceProvider.GetService<IFactoryEventCollector>();
+				if (collector != null)
+				{
+					var collected = collector.GetCollectedEvents();
+					if (collected.Count > 0)
+					{
+						relayedEvents = new List<RelayedFactoryEvent>(collected.Count);
+						foreach (var evt in collected)
+						{
+							relayedEvents.Add(new RelayedFactoryEvent
+							{
+								TypeFullName = evt.GetType().FullName!,
+								Json = serializer.Serialize(evt, evt.GetType()) ?? "{}"
+							});
+						}
+					}
+				}
+
+				var portalResponse = new RemoteResponseDto(serializer.Serialize(result, returnType), relayedEvents);
 
 				sw.Stop();
 				log.RemoteRequestCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);

@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory.Internal;
+
 namespace Neatoo.RemoteFactory;
 
 /// <summary>
@@ -8,10 +11,12 @@ namespace Neatoo.RemoteFactory;
 internal sealed class FactoryEventsDispatcher : IFactoryEvents
 {
     private readonly IServiceProvider _sp;
+    private readonly IFactoryEventCollector? _collector;
 
     public FactoryEventsDispatcher(IServiceProvider sp)
     {
         _sp = sp;
+        _collector = sp.GetService<IFactoryEventCollector>();
     }
 
     public Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None) where T : FactoryEventBase
@@ -26,6 +31,12 @@ internal sealed class FactoryEventsDispatcher : IFactoryEvents
 
     private Task DispatchToHandlers(Type eventType, object factoryEvent, RaiseOptions options)
     {
+        // Capture for client relay unless ServerOnly is set
+        if (_collector != null && !options.HasFlag(RaiseOptions.ServerOnly))
+        {
+            _collector.Collect((FactoryEventBase)factoryEvent);
+        }
+
         var handlers = FactoryEventHandlerRegistry.GetHandlers(eventType);
         if (handlers == null || handlers.Count == 0)
             return Task.CompletedTask;

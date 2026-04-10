@@ -36,8 +36,8 @@ internal static class ClassFactoryRenderer
             sb.AppendLine(u);
         }
 
-        // Add hosting using if there are events or factory event handlers
-        if ((model.Events.Count > 0 || model.FactoryEventHandlers.Count > 0) && model.IsPartial)
+        // Add hosting using if there are events
+        if (model.Events.Count > 0 && model.IsPartial)
         {
             sb.AppendLine("using Microsoft.Extensions.Hosting;");
         }
@@ -1565,11 +1565,6 @@ internal static class ClassFactoryRenderer
             RenderLocalEventRegistration(sb, evt, model);
         }
 
-        foreach (var handler in model.FactoryEventHandlers)
-        {
-            RenderFactoryEventHandlerRegistration(sb, handler, model.ImplementationTypeName);
-        }
-
         sb.AppendLine("            }");
         sb.AppendLine("        }");
     }
@@ -1639,12 +1634,6 @@ internal static class ClassFactoryRenderer
         sb.AppendLine("                {");
         sb.AppendLine($"                    return ({paramDecl}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateEvent(typeof({model.ImplementationTypeName}.{evt.DelegateName}), [{serializedParams}]);");
         sb.AppendLine("                });");
-    }
-
-    private static void RenderFactoryEventHandlerRegistration(StringBuilder sb, EventMethodModel handler, string typeName)
-    {
-        // Reuse the same rendering as StaticFactoryRenderer — handler methods are static
-        StaticFactoryRenderer.RenderFactoryEventHandlerRegistration(sb, handler, typeName);
     }
 
     #endregion
