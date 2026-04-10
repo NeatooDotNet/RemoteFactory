@@ -263,7 +263,7 @@ public partial class Factory
 	/// <summary>
 	/// Extracts authorization method information from a type that has [AuthorizeFactory] attribute.
 	/// </summary>
-	private static EquatableArray<TypeAuthMethodInfo> TypeAuthMethods(SemanticModel semanticModel, INamedTypeSymbol typeSymbol, List<string> messages, List<DiagnosticInfo> diagnostics)
+	private static EquatableArray<TypeAuthMethodInfo> TypeAuthMethods(SemanticModel semanticModel, INamedTypeSymbol typeSymbol, INamedTypeSymbol serviceSymbol, List<string> messages, List<DiagnosticInfo> diagnostics)
 	{
 
 		var authorizeAttribute = ClassOrBaseClassHasAttribute(typeSymbol, "AuthorizeFactoryAttribute");
@@ -364,7 +364,21 @@ public partial class Factory
 								continue;
 							}
 
-							callAuthMethods.Add(new TypeAuthMethodInfo(authorizeFactoryOperation, methodSymbol, methodSyntax, concreteClassName));
+							var authMethodInfo = new TypeAuthMethodInfo(authorizeFactoryOperation, methodSymbol, methodSyntax, concreteClassName);
+
+							// Mark auth method parameters whose type matches the entity type as IsTarget.
+							// This enables: (1) passing the target entity to auth methods on write operations,
+							// (2) suppressing CanXxx generation when auth needs the target.
+							// Compare by display string since auth type symbols come from a different semantic model.
+							var serviceTypeName = serviceSymbol.ToDisplayString();
+							var typeSymbolName = typeSymbol.ToDisplayString();
+							foreach (var targetParam in methodSymbol.Parameters.Where(p =>
+								p.Type.ToDisplayString() == serviceTypeName || p.Type.ToDisplayString() == typeSymbolName))
+							{
+								authMethodInfo.Parameters.Where(p => p.Name == targetParam.Name).ToList().ForEach(p => p.IsTarget = true);
+							}
+
+							callAuthMethods.Add(authMethodInfo);
 						}
 						else
 						{

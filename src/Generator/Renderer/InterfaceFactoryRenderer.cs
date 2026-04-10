@@ -45,7 +45,7 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine();
 
         // Assembly-level attribute for trimming-safe factory discovery
-        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof({unit.Namespace}.{model.ImplementationTypeName}Factory))]");
+        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{unit.Namespace}.{model.ImplementationTypeName}Factory))]");
         sb.AppendLine();
 
         sb.AppendLine("/*");
@@ -473,6 +473,17 @@ internal static class InterfaceFactoryRenderer
                     // Concrete class used directly
                     sb.AppendLine($"            services.TryAddTransient<{authType.ClassName}>();");
                 }
+            }
+        }
+
+        // DTO constructor registrations (IL trimming support)
+        if (model.DtoReturnTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // DTO constructor registrations (IL trimming support)");
+            foreach (var dtoType in model.DtoReturnTypes)
+            {
+                sb.AppendLine($"            DtoConstructorRegistry.Register<{dtoType}>(() => new {dtoType}());");
             }
         }
 

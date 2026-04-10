@@ -1,8 +1,8 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.3
-last_updated: 2026-04-09
+design_version: 1.5
+last_updated: 2026-04-10
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -234,6 +234,15 @@ public sealed partial class OrderViewModel : IDisposable
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No, it's a separate generator pipeline | `FactoryEventRelayPattern.cs` | Keeps handler classes clean — not factories |
 | How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
+| How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
+| Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
+| Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
+| What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
+| How do I propagate tenant context to event scopes? | Register an `IEventScopeInitializer` via `AddRemoteFactoryEventScopeInitializer` | `docs/events.md`, `AddRemoteFactoryServices.cs` | Events run in isolated DI scopes; initializers copy ambient state from parent to child scope |
+| Is correlation ID propagated to events automatically? | Yes — built-in `CorrelationContextScopeInitializer` handles this | `CorrelationExample.cs` | Registered automatically in Server/Logical modes by `AddNeatooRemoteFactory` |
+| Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
+| Can auth methods receive the target entity? | Yes -- on write operations (Insert/Update/Delete) | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanWrite(IEntity target)` inspects entity state; suppresses CanSave/CanInsert/CanUpdate/CanDelete generation |
+| Why is CanSave missing from my factory interface? | Write auth has a target parameter | `ParamAuthOrderAuth.cs` | CanSave needs the entity but runs before Save; auth is checked inside Save() instead |
 
 ---
 
@@ -613,6 +622,39 @@ internal partial class OrderLine : IOrderLine
 }
 ```
 
+#### Event Registration Guards
+
+Both class factory and static factory `[Event]` local event registrations are wrapped in `if (NeatooRuntime.IsServerRuntime)`. The local event infrastructure (scope isolation, `Task.Run`, `IHostApplicationLifetime`, `IEventTracker`) is server-only. On client assemblies with `IsServerRuntime=false`, the trimmer eliminates these registrations. Remote-mode clients use remote event stubs instead.
+
+#### Event Scope Initialization (IEventScopeInitializer)
+
+Events run in isolated DI scopes, but applications often need ambient context (tenant ID, correlation ID, user identity) propagated from the request scope to the event scope. The `IEventScopeInitializer` interface provides an extensible mechanism for this.
+
+**Built-in initializer:** `CorrelationContextScopeInitializer` propagates `ICorrelationContext.CorrelationId` automatically. Registered by `AddNeatooRemoteFactory` in Server/Logical modes (not Remote — no local events on client).
+
+**Custom initializers:** Register via `AddRemoteFactoryEventScopeInitializer`:
+
+```csharp
+// After AddNeatooRemoteFactory
+services.AddRemoteFactoryEventScopeInitializer((parentScope, childScope) =>
+{
+    var parentTenant = parentScope.GetService<ITenantContext>();
+    var childTenant = childScope.GetRequiredService<TenantContext>();
+    if (parentTenant != null)
+    {
+        childTenant.TenantId = parentTenant.TenantId;
+    }
+});
+```
+
+**Generated code pattern:** The generator resolves `IEventScopeInitializer` instances from the parent scope (`sp.GetServices<IEventScopeInitializer>()`), then inside `Task.Run` after `CreateScope()` loops over all initializers calling `Initialize(parentScope, childScope)`. Each initializer is wrapped in an individual try/catch — a failing initializer is logged but does not prevent the event handler from executing.
+
+**Key constraints:**
+- Initializers run **inside** `Task.Run` after `CreateScope()` but before handler services are resolved
+- Copy values, do not hold references to parent-scope services (parent scope may be disposed in fire-and-forget scenarios)
+- Multiple initializers run in registration order (built-in first, then custom)
+- Initializer exceptions are caught per-initializer, logged, and do not prevent event execution
+
 #### Can* Method Guard Derivation (Auth-Method-Driven)
 
 Can* methods (e.g., `CanCreate()`, `CanFetch()`, `CanSave()`) derive their guard behavior from the **auth class methods**, not from the parent factory method. This is because Can* methods call the auth methods, not the factory method. The auth method's accessibility determines whether the Can* check can run on the client.
@@ -701,6 +743,28 @@ At startup, `RegisterFactories()` enumerates these assembly attributes via `asse
 | Interface Factory | `typeof({Namespace}.{ImplName}Factory)` — the generated factory implementation class |
 
 This mechanism is internal to the generator and library. Users do not need to emit or configure these attributes — they are generated automatically for every `[Factory]`-annotated type.
+
+#### DTO Constructor Registry for Trimming
+
+The generator emits `DtoConstructorRegistry.Register<Dto>(() => new Dto())` calls in `FactoryServiceRegistrar` for plain DTO return types discovered in factory method signatures. This creates static constructor references that survive IL trimming — without them, `System.Text.Json` deserialization fails because `DefaultJsonTypeInfoResolver` uses reflection to discover constructors, and the trimmer strips that metadata from types in assemblies marked `IsTrimmable=true`.
+
+At runtime, `NeatooJsonTypeInfoResolver` uses the registered lambda instead of `Activator.CreateInstance` (which also fails under trimming). If a type is not in DI and not in the DTO registry, `CreateObject` is not set — STJ uses its default behavior, which produces a clear error if the constructor was trimmed.
+
+**DTO discovery criteria** — the generator registers a return type when it:
+
+| Criterion | Why |
+|-----------|-----|
+| Has a public parameterless constructor | Required for `() => new Dto()` lambda |
+| Is NOT a `[Factory]`-annotated type | Already DI-registered; uses `GetRequiredService` path |
+| Is NOT a record (no parameterless ctor + has parameterized ctors) | Handled by `RecordBypassConverterFactory` |
+| Is NOT a primitive, string, or framework type | STJ handles these natively |
+| Is NOT abstract or an interface | Cannot be instantiated |
+
+The generator unwraps `Task<T>`, nullable `T?`, and generic collection types (`IReadOnlyList<T>`, `List<T>`, etc.) to discover the inner DTO type. The `Register<T>` method carries `[DynamicallyAccessedMembers(All)]` on the type parameter, which instructs the trimmer to preserve the entire type — constructors, properties, and all metadata.
+
+Duplicate registrations from multiple factories returning the same DTO type are idempotent (`ConcurrentDictionary.TryAdd`).
+
+**Nested DTO discovery:** The generator recursively walks public instance properties (including inherited properties via base type chain) of each discovered DTO to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner DTO type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references (e.g., `DtoA` -> `DtoB` -> `DtoA`).
 
 #### CS0051 Constraint
 
@@ -854,11 +918,14 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] Value objects that serialize correctly (`Money` in `ValueObjects/`)
 - [ ] Event handlers with CancellationToken (`ExampleEvents._OnOrderPlaced`)
 - [x] CorrelationContext usage (`CorrelationExample.cs`)
+- [x] Event scope initialization via IEventScopeInitializer (`CorrelationExample.cs` `[GENERATOR BEHAVIOR]` comment documents the mechanism)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
+- [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
 - [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
 - [x] Factory event handler (mediator) — server-side static handler (`FactoryEventHandlerPattern.cs`)
 - [x] Factory event relay — client-side instance handler with `IFactoryEventRelay.Register`/`Unregister` (`FactoryEventRelayPattern.cs`)
+- [x] LazyLoad<T> property with constructor-initialization pattern (`LazyLoadExample.cs`)
 
 ---
 
@@ -901,14 +968,19 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle hooks and IFactorySaveMeta |
 | `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] custom domain authorization with Can* methods |
 | `Design.Domain/Aggregates/AuthorizedOrderAuth.cs` | Auth interface and implementation for AuthorizedOrder |
+| `Design.Domain/Aggregates/ParamAuthOrder.cs` | Parameterized [AuthorizeFactory<T>] with type-matched and target entity params |
+| `Design.Domain/Aggregates/ParamAuthOrderAuth.cs` | Auth interface and implementation with parameterized methods |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
-| `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage for distributed tracing |
 | `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler in isolated scope |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | `[FactoryEventHandler<T>]` class attribute with instance method — client-side relay via `IFactoryEventRelay` |
+| `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
+| `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage, IEventScopeInitializer mechanism for event scope context propagation |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | Relay dispatch, `RaiseOptions.ServerOnly` exclusion, `Unregister` stops delivery |
+| `Design.Tests/FactoryTests/ParamAuthorizationTests.cs` | Parameterized auth: type-matched params, target params, CanXxx suppression |
+| `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |
 | `Design.Server/Program.cs` | Server configuration |

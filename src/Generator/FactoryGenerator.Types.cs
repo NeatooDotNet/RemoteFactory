@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 using static Neatoo.Factory;
 using Neatoo.RemoteFactory.FactoryGenerator;
 
@@ -15,6 +15,17 @@ namespace Neatoo;
 
 public partial class Factory
 {
+	/// <summary>
+	/// FullyQualifiedFormat with nullable reference type annotations preserved.
+	/// FullyQualifiedFormat alone strips inner nullable annotations (e.g., List&lt;string?&gt; becomes List&lt;string&gt;).
+	/// This format adds IncludeNullableReferenceTypeModifier so inner nullable annotations are retained.
+	/// Used for property type extraction where nullable generic type arguments must survive round-trip.
+	/// </summary>
+	private static readonly SymbolDisplayFormat FullyQualifiedFormatWithNullable =
+		SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+			SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions
+			| SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
 	/// <summary>
 	/// List of factory operations that are considered "save" operations (Insert, Update, Delete).
 	/// Used to determine if a factory method should be treated as a write operation.
@@ -31,12 +42,24 @@ public partial class Factory
 		public bool IsNullable { get; }
 		public int InheritanceDepth { get; }
 
-		public OrdinalPropertyInfo(string name, string type, bool isNullable, int inheritanceDepth)
+		/// <summary>
+		/// True when this property is a LazyLoad&lt;T&gt;. Occupies two ordinal slots.
+		/// </summary>
+		public bool IsLazyLoad { get; }
+
+		/// <summary>
+		/// The fully-qualified inner type T when <see cref="IsLazyLoad"/> is true.
+		/// </summary>
+		public string? InnerType { get; }
+
+		public OrdinalPropertyInfo(string name, string type, bool isNullable, int inheritanceDepth, bool isLazyLoad = false, string? innerType = null)
 		{
 			Name = name;
 			Type = type;
 			IsNullable = isNullable;
 			InheritanceDepth = inheritanceDepth;
+			IsLazyLoad = isLazyLoad;
+			InnerType = innerType;
 		}
 	}
 
@@ -143,7 +166,7 @@ public partial class Factory
 
 			var methodSymbols = GetMethodsRecursive(symbol);
 
-			this.AuthMethods = TypeAuthMethods(semanticModel, symbol, debugMessages, diagnostics);
+			this.AuthMethods = TypeAuthMethods(semanticModel, symbol, serviceSymbol, debugMessages, diagnostics);
 
 			List<FactoryOperation> defaultFactoryOperations = [];
 
@@ -208,6 +231,17 @@ public partial class Factory
 			factoryMethodsList.AddRange(TypeFactoryMethods(serviceSymbol, methodSymbols, defaultFactoryOperations, this.AuthMethods.ToList(), debugMessages, diagnostics));
 
 			this.FactoryMethods = new EquatableArray<TypeFactoryMethodInfo>([.. factoryMethodsList]);
+
+			// Aggregate DTO return types from all factory methods (deduplicated)
+			var allDtoTypes = new HashSet<string>();
+			foreach (var method in factoryMethodsList)
+			{
+				foreach (var dtoType in method.DtoReturnTypes)
+				{
+					allDtoTypes.Add(dtoType);
+				}
+			}
+			this.DtoReturnTypes = new EquatableArray<string>([.. allDtoTypes]);
 
 			// Collect properties for ordinal serialization (only for non-interface, non-static types)
 			if (!this.IsInterface && !this.IsStatic)
@@ -275,6 +309,12 @@ public partial class Factory
 		public EquatableArray<string> UsingStatements { get; } = [];
 		public EquatableArray<TypeFactoryMethodInfo> FactoryMethods { get; set; } = [];
 		public EquatableArray<TypeAuthMethodInfo> AuthMethods { get; set; } = [];
+
+		/// <summary>
+		/// Deduplicated fully-qualified names of plain DTO types discovered across all factory methods.
+		/// Used by renderers to emit DtoConstructorRegistry.Register calls for IL trimming support.
+		/// </summary>
+		public EquatableArray<string> DtoReturnTypes { get; } = [];
 
 		/// <summary>
 		/// Indicates if this type is nested inside another type.
@@ -365,16 +405,36 @@ public partial class Factory
 					// The IsNullable flag preserves the nullability information for use during rendering.
 					var typeString = propertySymbol.Type
 						.WithNullableAnnotation(NullableAnnotation.NotAnnotated)
-						.ToDisplayString()
+						.ToDisplayString(FullyQualifiedFormatWithNullable)
 						.TrimEnd()
 						.TrimEnd('?')
 						.TrimEnd();
+
+					// Detect LazyLoad<T> properties for two-slot ordinal encoding.
+					// LazyLoad<T> properties occupy two consecutive array slots: Value (inner type T) and IsLoaded (bool).
+					var isLazyLoad = false;
+					string? innerType = null;
+					if (propertySymbol.Type is INamedTypeSymbol namedType
+						&& namedType.IsGenericType
+						&& namedType.TypeArguments.Length == 1
+						&& namedType.ConstructedFrom.ToDisplayString() == "Neatoo.RemoteFactory.LazyLoad<T>")
+					{
+						isLazyLoad = true;
+						innerType = namedType.TypeArguments[0]
+							.WithNullableAnnotation(NullableAnnotation.NotAnnotated)
+							.ToDisplayString(FullyQualifiedFormatWithNullable)
+							.TrimEnd()
+							.TrimEnd('?')
+							.TrimEnd();
+					}
 
 					properties.Add(new OrdinalPropertyInfo(
 						propertySymbol.Name,
 						typeString,
 						isNullable,
-						depth));
+						depth,
+						isLazyLoad,
+						innerType));
 				}
 			}
 		}
@@ -577,85 +637,6 @@ public partial class Factory
 		/// Null when ClassName is already a concrete class or no implementation was found.
 		/// </summary>
 		public string? ConcreteClassName { get; private set; }
-
-		public void MakeAuthCall(FactoryMethod inMethod, StringBuilder methodBuilder)
-		{
-			var parameterText = "";
-
-			if (this.Parameters.Count > 0)
-			{
-				var declaredParameters = inMethod.Parameters.ToList();
-
-				declaredParameters.RemoveAll(p => p.IsTarget);
-
-				var callParameter = this.Parameters.ToList().GetEnumerator();
-				var declaredParameter = declaredParameters.GetEnumerator();
-				var parameters = new List<string>();
-
-				declaredParameter.MoveNext();
-
-				while (callParameter.MoveNext() && declaredParameter.Current != null)
-				{
-					while (declaredParameter.Current.Type != callParameter.Current.Type)
-					{
-						if (!declaredParameter.MoveNext())
-						{
-							break;
-						}
-					}
-
-					if (declaredParameter.Current == null)
-					{
-						break;
-					}
-
-					parameters.Add(declaredParameter.Current.Name);
-
-					declaredParameter.MoveNext();
-				}
-
-				while (callParameter.Current != null)
-				{
-					parameters.Add($"/* Missing {callParameter.Current.Type} {callParameter.Current.Name} */");
-					callParameter.MoveNext();
-				}
-
-				parameterText = string.Join(", ", parameters);
-			}
-
-			var callText = $"{this.ClassName.ToLower()}.{this.Name}({parameterText})";
-
-			if (this.IsTask)
-			{
-				callText = $"await {callText}";
-			}
-
-			methodBuilder.AppendLine($"authorized = {callText};");
-			methodBuilder.AppendLine($"if (!authorized.HasAccess)");
-			methodBuilder.AppendLine("{");
-
-			if (!inMethod.AspForbid)
-			{
-				var returnText = $"authorized";
-				if (inMethod is not CanFactoryMethod)
-				{
-					returnText = $"new {inMethod.ReturnType(includeTask: false)}(authorized)";
-				}
-
-				if (!this.IsTask && inMethod.IsTask && !inMethod.IsAsync)
-				{
-					returnText = $"Task.FromResult({returnText})";
-				}
-
-				methodBuilder.AppendLine($"return {returnText};");
-			}
-			else
-			{
-				methodBuilder.AppendLine($"throw new NotAuthorizedException(authorized);");
-			}
-
-			methodBuilder.AppendLine("}");
-		}
 	}
 
 	/// <summary>
@@ -695,6 +676,9 @@ public partial class Factory
 			{
 				this.Parameters = [];
 			}
+
+			// Discover plain DTO types for constructor registration (IL trimming support)
+			this.DtoReturnTypes = DiscoverDtoTypes(methodSymbol);
 		}
 
 		/// <summary>
@@ -710,7 +694,7 @@ public partial class Factory
 			this.IsRemote = otherAttributes.Any(a => a == "Remote");
 			this.IsInternal = constructorSymbol.DeclaredAccessibility != Accessibility.Public;
 
-			this.ReturnType = constructorSymbol.ContainingType.ToDisplayString();
+			this.ReturnType = constructorSymbol.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 			this.IsNullable = false; // Constructor return is not nullable
 
 			// For records, the primary constructor parameters are in the RecordDeclarationSyntax.ParameterList
@@ -722,6 +706,9 @@ public partial class Factory
 			{
 				this.Parameters = [];
 			}
+
+			// Record primary constructors return [Factory]-annotated types (excluded by DiscoverDtoTypes)
+			this.DtoReturnTypes = DiscoverDtoTypes(constructorSymbol);
 		}
 
 		public string Name { get; set; }
@@ -735,6 +722,230 @@ public partial class Factory
 		public string? ReturnType { get; protected set; }
 		public EquatableArray<MethodParameterInfo> Parameters { get; private set; }
 		public EquatableArray<AspAuthorizeInfo> AspAuthorizeCalls { get; set; } = [];
+
+		/// <summary>
+		/// Fully-qualified names of plain DTO types discovered in the method's return type and parameters.
+		/// Used to emit DtoConstructorRegistry.Register calls for IL trimming support.
+		/// </summary>
+		public EquatableArray<string> DtoReturnTypes { get; private set; } = [];
+
+		/// <summary>
+		/// Discovers plain DTO types in a method's return type and non-service parameters that need
+		/// constructor registration for IL trimming support. Unwraps Task, nullable, and generic
+		/// collections. Excludes primitives, [Factory] types, abstract/interface types, and types
+		/// without parameterless ctors. Recursively walks public properties of discovered DTOs to
+		/// find nested types.
+		/// </summary>
+		private static EquatableArray<string> DiscoverDtoTypes(IMethodSymbol methodSymbol)
+		{
+			var visited = new HashSet<string>();
+			var dtoTypes = new List<string>();
+
+			// Discover from return type
+			var returnCandidates = UnwrapType(methodSymbol.ReturnType, unwrapTask: true);
+			foreach (var candidate in returnCandidates)
+			{
+				DiscoverDtoTypesRecursive(candidate, dtoTypes, visited);
+			}
+
+			// Discover from non-service, non-CancellationToken parameters
+			foreach (var parameter in methodSymbol.Parameters)
+			{
+				var isService = parameter.GetAttributes().Any(a =>
+					a.AttributeClass?.Name == "ServiceAttribute" || a.AttributeClass?.Name == "Service");
+				if (isService)
+					continue;
+
+				if (parameter.Type.Name == "CancellationToken")
+					continue;
+
+				var paramCandidates = UnwrapType(parameter.Type, unwrapTask: false);
+				foreach (var candidate in paramCandidates)
+				{
+					DiscoverDtoTypesRecursive(candidate, dtoTypes, visited);
+				}
+			}
+
+			return new EquatableArray<string>([.. dtoTypes]);
+		}
+
+		/// <summary>
+		/// Recursively discovers DTO types starting from a candidate type symbol.
+		/// Walks public instance properties (including inherited) to find nested DTOs.
+		/// </summary>
+		private static void DiscoverDtoTypesRecursive(ITypeSymbol typeSymbol, List<string> dtoTypes, HashSet<string> visited)
+		{
+			if (!(typeSymbol is INamedTypeSymbol namedType))
+			{
+				return;
+			}
+
+			if (!IsDtoCandidate(namedType))
+			{
+				return;
+			}
+
+			var fullyQualifiedName = namedType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+			if (!visited.Add(fullyQualifiedName))
+			{
+				return; // Already visited — cycle detection
+			}
+
+			dtoTypes.Add(fullyQualifiedName);
+
+			// Walk public instance properties (including inherited) to find nested DTOs
+			var currentTypeForProperties = namedType;
+			while (currentTypeForProperties != null && currentTypeForProperties.SpecialType != SpecialType.System_Object)
+			{
+				foreach (var member in currentTypeForProperties.GetMembers())
+				{
+					if (member is IPropertySymbol property &&
+						property.DeclaredAccessibility == Accessibility.Public &&
+						!property.IsStatic &&
+						!property.IsIndexer &&
+						property.GetMethod != null)
+					{
+						// Unwrap property type (nullable, collection — no Task unwrapping for properties)
+						var propertyCandidates = UnwrapType(property.Type, unwrapTask: false);
+						foreach (var propertyCandidate in propertyCandidates)
+						{
+							DiscoverDtoTypesRecursive(propertyCandidate, dtoTypes, visited);
+						}
+					}
+				}
+
+				currentTypeForProperties = currentTypeForProperties.BaseType;
+			}
+		}
+
+		/// <summary>
+		/// Unwraps a type symbol by stripping Task, nullable, and collection wrappers.
+		/// Returns the inner candidate type(s) for DTO eligibility checking.
+		/// </summary>
+		private static List<ITypeSymbol> UnwrapType(ITypeSymbol type, bool unwrapTask)
+		{
+			var currentType = type;
+
+			// Unwrap Task<T>
+			if (unwrapTask && currentType is INamedTypeSymbol taskType && taskType.Name == "Task" && taskType.IsGenericType)
+			{
+				currentType = taskType.TypeArguments[0];
+			}
+
+			// Strip nullable annotation (e.g. T? -> T)
+			if (currentType is INamedTypeSymbol nullableNamed && nullableNamed.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+			{
+				currentType = nullableNamed.TypeArguments[0];
+			}
+			else if (currentType.NullableAnnotation == NullableAnnotation.Annotated && currentType is INamedTypeSymbol annotatedType)
+			{
+				currentType = annotatedType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+			}
+
+			// Check if it's a generic collection (implements IEnumerable<T>) and unwrap
+			bool isCollection = false;
+			var candidates = new List<ITypeSymbol>();
+
+			if (currentType is INamedTypeSymbol collectionType && collectionType.IsGenericType)
+			{
+				// Check interfaces for IEnumerable<T>
+				foreach (var iface in collectionType.AllInterfaces)
+				{
+					if (iface.Name == "IEnumerable" && iface.IsGenericType && iface.TypeArguments.Length == 1)
+					{
+						candidates.Add(iface.TypeArguments[0]);
+						isCollection = true;
+						break;
+					}
+				}
+
+				// Also check if the type itself is IEnumerable<T>
+				if (!isCollection && collectionType.Name == "IEnumerable" && collectionType.TypeArguments.Length == 1)
+				{
+					candidates.Add(collectionType.TypeArguments[0]);
+					isCollection = true;
+				}
+			}
+
+			// Check if it's an array
+			if (!isCollection && currentType is IArrayTypeSymbol arrayType)
+			{
+				candidates.Add(arrayType.ElementType);
+				isCollection = true;
+			}
+
+			if (!isCollection)
+			{
+				candidates.Add(currentType);
+			}
+
+			// Strip nullable from candidates
+			for (int i = 0; i < candidates.Count; i++)
+			{
+				if (candidates[i].NullableAnnotation == NullableAnnotation.Annotated && candidates[i] is INamedTypeSymbol annotatedCandidate)
+				{
+					candidates[i] = annotatedCandidate.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+				}
+			}
+
+			return candidates;
+		}
+
+		/// <summary>
+		/// Checks whether a named type symbol is a plain DTO candidate eligible for
+		/// constructor registration. Excludes primitives, System types, abstract/interface
+		/// types, [Factory]-annotated types, and types without public parameterless constructors.
+		/// </summary>
+		private static bool IsDtoCandidate(INamedTypeSymbol namedType)
+		{
+			// Skip primitives and well-known framework types
+			if (namedType.SpecialType != SpecialType.None)
+			{
+				return false;
+			}
+
+			// Skip types in System namespace (framework types)
+			var ns = namedType.ContainingNamespace?.ToDisplayString() ?? "";
+			if (ns.StartsWith("System"))
+			{
+				return false;
+			}
+
+			// Skip abstract types and interfaces
+			if (namedType.IsAbstract || namedType.TypeKind == TypeKind.Interface)
+			{
+				return false;
+			}
+
+			// Skip [Factory]-annotated types (they're DI-registered)
+			var hasFactoryAttribute = namedType.GetAttributes().Any(a =>
+				a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory");
+			if (hasFactoryAttribute)
+			{
+				return false;
+			}
+
+			// Also check interfaces of the candidate for [Factory] -- if the candidate
+			// implements an interface with [Factory], it's a Neatoo type
+			var implementsFactoryInterface = namedType.AllInterfaces.Any(i =>
+				i.GetAttributes().Any(a =>
+					a.AttributeClass?.Name == "FactoryAttribute" || a.AttributeClass?.Name == "Factory"));
+			if (implementsFactoryInterface)
+			{
+				return false;
+			}
+
+			// Check for public parameterless constructor (implicit or explicit)
+			var hasPublicParameterlessCtor = namedType.Constructors.Any(c =>
+				c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length == 0);
+			if (!hasPublicParameterlessCtor)
+			{
+				return false;
+			}
+
+			return true;
+		}
 	}
 
 	/// <summary>
@@ -828,970 +1039,5 @@ public partial class Factory
 			}
 			return text;
 		}
-	}
-
-	/// <summary>
-	/// Abstract base class for all factory method code generators.
-	/// Provides common functionality for generating method signatures, delegates, and service registrations.
-	/// </summary>
-	internal abstract class FactoryMethod(string serviceType, string implementationType)
-	{
-		public string ServiceType { get; protected set; } = serviceType;
-		public string ImplementationType { get; set; } = implementationType;
-		public string Name { get; protected set; } = null!;
-		public string UniqueName { get; set; } = null!;
-		public string? NamePostfix { get; protected set; }
-		public string DelegateName => $"{this.UniqueName}Delegate";
-
-		public List<TypeAuthMethodInfo> AuthMethodInfos { get; set; } = [];
-		public List<AspAuthorizeInfo> AspAuthorizeInfo { get; set; } = [];
-		public virtual bool HasAuth => this.AuthMethodInfos.Count > 0 || this.AspAuthorizeInfo.Count > 0;
-		public bool AspForbid { get; set; } = false; // If true, the method will return a 403 Forbidden response if authorization fails
-		public FactoryOperation FactoryOperation { get; set; }
-		public List<MethodParameterInfo> Parameters { get; set; } = null!;
-
-		public virtual bool IsSave => false;
-		public virtual bool IsBool => false;
-		public virtual bool IsNullable => false;// (this.IsBool || this.IsSave) && (!this.IsSave || !this.HasAuth);
-		public virtual bool IsTask => this.IsRemote || this.AuthMethodInfos.Any(m => m.IsTask) || this.AspAuthorizeInfo.Count > 0;
-		public virtual bool IsRemote => this.AuthMethodInfos.Any(m => m.IsRemote) || this.AspAuthorizeInfo.Count > 0;
-		public virtual bool IsAsync => this.AuthMethodInfos.Any(m => m.IsTask) || this.AspAuthorizeInfo.Count > 0;
-
-		public virtual string AsyncKeyword => this.IsAsync ? "async" : "";
-		public virtual string AwaitKeyword => this.IsAsync ? "await" : "";
-		public string ServiceAssignmentsText => WithStringBuilder(this.Parameters.Where(p => p.IsService).Select(p => $"var {p.Name} = ServiceProvider.GetRequiredService<{p.Type}>();"));
-		public virtual string ReturnType(bool includeTask = true, bool includeAuth = true, bool includeBool = true)
-		{
-			var returnType = this.ServiceType;
-
-			if (this.HasAuth && includeAuth)
-			{
-				returnType = $"Authorized<{returnType}>";
-			}
-			else if (this.IsNullable || (this.IsBool && includeBool))
-			{
-				returnType = $"{returnType}?";
-			}
-
-			if (includeTask && this.IsTask)
-			{
-				returnType = $"Task<{returnType}>";
-			}
-
-			return returnType;
-		}
-		public string ParameterDeclarationsText(bool includeServices = false, bool includeTarget = true, bool includeCancellationToken = true)
-		{
-			return string.Join(", ", this.Parameters.Where(p => (includeServices || !p.IsService) && (includeTarget || !p.IsTarget) && (includeCancellationToken || !p.IsCancellationToken)).Select(p => $"{p.Type} {p.Name}"));
-		}
-
-		public string ParameterIdentifiersText(bool includeServices = false, bool includeTarget = true, bool includeCancellationToken = true)
-		{
-			var result = string.Join(", ", this.Parameters.Where(p => (includeServices || !p.IsService) && (includeTarget || !p.IsTarget) && (includeCancellationToken || !p.IsCancellationToken)).Select(p => p.Name));
-
-			return result.TrimStart(',').TrimEnd(',');
-		}
-
-		/// <summary>
-		/// Gets the name of the CancellationToken parameter if one exists, otherwise returns "default".
-		/// </summary>
-		public string CancellationTokenParameterName
-		{
-			get
-			{
-				var ctParam = this.Parameters.FirstOrDefault(p => p.IsCancellationToken);
-				return ctParam?.Name ?? "default";
-			}
-		}
-
-		/// <summary>
-		/// Returns true if any parameter is a CancellationToken.
-		/// </summary>
-		public bool HasCancellationToken => this.Parameters.Any(p => p.IsCancellationToken);
-
-		/// <summary>
-		/// Builds parameter declarations with CancellationToken always included as optional (= default).
-		/// Excludes any existing CancellationToken from the domain method parameters and appends
-		/// a standard optional CancellationToken at the end.
-		/// </summary>
-		/// <remarks>
-		/// This supports the pattern where factory methods always accept an optional CancellationToken,
-		/// regardless of whether the domain method requires one. The token flows through HTTP and
-		/// factory infrastructure even when the domain method doesn't accept it.
-		/// </remarks>
-		public string ParameterDeclarationsTextWithOptionalCancellationToken(bool includeServices = false, bool includeTarget = true)
-		{
-			// Get parameters excluding any existing CancellationToken
-			var paramsWithoutCt = this.Parameters.Where(p =>
-				(includeServices || !p.IsService) &&
-				(includeTarget || !p.IsTarget) &&
-				!p.IsCancellationToken).ToList();
-
-			// Check if any parameter has the params modifier
-			var hasParamsParameter = paramsWithoutCt.Any(p => p.IsParams);
-
-			if (hasParamsParameter)
-			{
-				// When params is present, CancellationToken must come BEFORE params (params must be last in C#)
-				// Build: [regular params], CancellationToken, params T[] paramsParam
-				var regularParams = paramsWithoutCt.Where(p => !p.IsParams).Select(p => $"{p.Type} {p.Name}").ToList();
-				var paramsParam = paramsWithoutCt.First(p => p.IsParams);
-
-				regularParams.Add("CancellationToken cancellationToken = default");
-				regularParams.Add($"params {paramsParam.Type} {paramsParam.Name}");
-
-				return string.Join(", ", regularParams);
-			}
-			else
-			{
-				// Standard case: append optional CancellationToken at the end
-				var paramsList = paramsWithoutCt.Select(p => $"{p.Type} {p.Name}").ToList();
-				paramsList.Add("CancellationToken cancellationToken = default");
-				return string.Join(", ", paramsList);
-			}
-		}
-
-		/// <summary>
-		/// Builds parameter identifiers with cancellationToken always included.
-		/// Excludes any existing CancellationToken from the domain method parameters and appends
-		/// the standard cancellationToken identifier at the end (or before params if present).
-		/// </summary>
-		public string ParameterIdentifiersTextWithCancellationToken(bool includeServices = false, bool includeTarget = true)
-		{
-			// Get parameters excluding any existing CancellationToken
-			var paramsWithoutCt = this.Parameters.Where(p =>
-				(includeServices || !p.IsService) &&
-				(includeTarget || !p.IsTarget) &&
-				!p.IsCancellationToken).ToList();
-
-			// Check if any parameter has the params modifier
-			var hasParamsParameter = paramsWithoutCt.Any(p => p.IsParams);
-
-			if (hasParamsParameter)
-			{
-				// When params is present, CancellationToken comes before params
-				var regularParams = paramsWithoutCt.Where(p => !p.IsParams).Select(p => p.Name).ToList();
-				var paramsParam = paramsWithoutCt.First(p => p.IsParams);
-
-				regularParams.Add("cancellationToken");
-				regularParams.Add(paramsParam.Name);
-
-				return string.Join(", ", regularParams);
-			}
-			else
-			{
-				var identifiersList = paramsWithoutCt.Select(p => p.Name).ToList();
-				identifiersList.Add("cancellationToken");
-				return string.Join(", ", identifiersList);
-			}
-		}
-
-		/// <summary>
-		/// Builds parameter identifiers for invoking the domain method.
-		/// Excludes target. If the domain method has a CancellationToken parameter,
-		/// passes the factory's standardized 'cancellationToken' parameter in the correct position.
-		/// </summary>
-		/// <remarks>
-		/// This method is specifically for the domain method invocation inside the factory's Local* methods.
-		/// It passes the factory's 'cancellationToken' parameter to the domain method if the domain method
-		/// accepts one, ensuring the token flows through even when parameter names differ.
-		/// The CancellationToken parameter position is preserved - it doesn't have to be at the end.
-		/// </remarks>
-		/// <param name="includeServices">Whether to include service parameters (default: true for domain methods)</param>
-		public string ParameterIdentifiersTextForDomainInvocation(bool includeServices = true)
-		{
-			// Build identifiers preserving original parameter order
-			// For CancellationToken parameters, use the factory's standard 'cancellationToken' name
-			var identifiersList = this.Parameters
-				.Where(p => (includeServices || !p.IsService) && !p.IsTarget)
-				.Select(p => p.IsCancellationToken ? "cancellationToken" : p.Name)
-				.ToList();
-
-			return string.Join(", ", identifiersList);
-		}
-
-		public virtual void AddFactoryText(FactoryText classText)
-		{
-			classText.InterfaceMethods.Append(this.InterfaceMethods());
-
-			if (this.IsRemote)
-			{
-				// Delegates (used by typeof() to identify the delegate for remote calls)
-				classText.Delegates.Append(this.Delegates());
-				classText.PropertyDeclarations.Append(this.PropertyDeclarations());
-
-				classText.ConstructorPropertyAssignmentsLocal.Append(this.ConstructorPropertyAssignmentsLocal());
-
-				classText.ConstructorPropertyAssignmentsRemote.Append(this.ConstructorPropertyAssignmentsRemote());
-
-				classText.ServiceRegistrations.Append(this.ServiceRegistrations());
-			}
-
-			var methodBuilder = new StringBuilder();
-			methodBuilder.Append(this.PublicMethod());
-			methodBuilder.Append(this.RemoteMethod());
-
-			methodBuilder.Append(this.LocalMethod());
-
-			methodBuilder.Append(this.ExplicitInterfaceMethod());
-
-			classText.MethodsBuilder.Append(methodBuilder);
-		}
-
-		public virtual StringBuilder InterfaceMethods()
-		{
-			return new StringBuilder().AppendLine($"{this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsTextWithOptionalCancellationToken(includeServices: false)});");
-		}
-
-		public virtual StringBuilder Delegates()
-		{
-			return new StringBuilder().AppendLine($"public delegate {this.ReturnType()} {this.DelegateName}({this.ParameterDeclarationsTextWithOptionalCancellationToken()});");
-		}
-
-		public virtual StringBuilder PropertyDeclarations()
-		{
-			var propertyBuilder = new StringBuilder();
-			propertyBuilder.AppendLine($"public {this.DelegateName} {this.UniqueName}Property {{ get; }}");
-			return propertyBuilder;
-		}
-
-		public virtual StringBuilder ConstructorPropertyAssignmentsLocal()
-		{
-			var methodBuilder = new StringBuilder();
-			methodBuilder.AppendLine($"{this.UniqueName}Property = Local{this.UniqueName};");
-			return methodBuilder;
-		}
-
-		public virtual StringBuilder ConstructorPropertyAssignmentsRemote()
-		{
-			var methodBuilder = new StringBuilder();
-			if (this.IsRemote)
-			{
-				methodBuilder.AppendLine($"{this.UniqueName}Property = Remote{this.UniqueName};");
-			}
-			return methodBuilder;
-		}
-
-		public virtual StringBuilder ServiceRegistrations()
-		{
-			return new StringBuilder().AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
-                                                    var factory = cc.GetRequiredService<{this.ImplementationType}Factory>();
-                                                    return ({this.ParameterDeclarationsTextWithOptionalCancellationToken()}) => factory.Local{this.UniqueName}({this.ParameterIdentifiersTextWithCancellationToken()});
-                                                }});");
-		}
-
-		public virtual StringBuilder PublicMethod(bool? overrideHasAuth = null)
-		{
-			var hasAuth = overrideHasAuth ?? this.HasAuth;
-
-			var asyncKeyword = this.IsTask && hasAuth ? "async" : "";
-			var awaitKeyword = this.IsTask && hasAuth ? "await" : "";
-
-			var methodBuilder = new StringBuilder();
-
-			methodBuilder.AppendLine($"public virtual {asyncKeyword} {this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsTextWithOptionalCancellationToken(includeServices: false)})");
-			methodBuilder.AppendLine("{");
-
-			if (!hasAuth)
-			{
-				methodBuilder.AppendLine($"return Local{this.UniqueName}({this.ParameterIdentifiersTextWithCancellationToken()});");
-			}
-			else
-			{
-				methodBuilder.AppendLine($"return ({awaitKeyword} Local{this.UniqueName}({this.ParameterIdentifiersTextWithCancellationToken(includeServices: false)})).Result;");
-			}
-
-			methodBuilder.AppendLine("}");
-
-			if (this.IsRemote)
-			{
-				methodBuilder.Replace($"Local{this.UniqueName}", $"{this.UniqueName}Property");
-			}
-
-			return methodBuilder;
-		}
-
-		public virtual StringBuilder RemoteMethod()
-		{
-			var methodBuilder = new StringBuilder();
-			if (this.IsRemote)
-			{
-				var nullableText = this.ReturnType(includeTask: false).EndsWith("?") ? "Nullable" : "";
-
-				// Exclude CancellationToken from serialized parameters - it flows through HTTP layer instead
-				var serializedParamsText = this.ParameterIdentifiersText(includeCancellationToken: false);
-
-				methodBuilder.AppendLine($"public virtual async {this.ReturnType()} Remote{this.UniqueName}({this.ParameterDeclarationsTextWithOptionalCancellationToken()})");
-				methodBuilder.AppendLine("{");
-				// Always pass cancellationToken to HTTP layer - it's always available in the factory method signature
-				methodBuilder.AppendLine($" return (await MakeRemoteDelegateRequest!.ForDelegate{nullableText}<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{serializedParamsText}], cancellationToken))!;");
-				methodBuilder.AppendLine("}");
-				methodBuilder.AppendLine("");
-
-			}
-			return methodBuilder;
-		}
-
-		protected virtual StringBuilder LocalMethodStart()
-		{
-			var methodBuilder = new StringBuilder();
-
-			methodBuilder.AppendLine($"public {this.AsyncKeyword} {this.ReturnType()} Local{this.UniqueName}({this.ParameterDeclarationsTextWithOptionalCancellationToken()})");
-			methodBuilder.AppendLine("{");
-
-			if (this.AuthMethodInfos.Count > 0 || this.AspAuthorizeInfo.Count > 0)
-			{
-				methodBuilder.AppendLine("Authorized authorized;");
-				foreach (var authClass in this.AuthMethodInfos.GroupBy(m => m.ClassName))
-				{
-					methodBuilder.AppendLine($"{authClass.Key} {authClass.Key.ToLower()} = ServiceProvider.GetRequiredService<{authClass.Key}>();");
-					foreach (var authMethod in authClass)
-					{
-						authMethod.MakeAuthCall(this, methodBuilder);
-					}
-				}
-
-				if (this.AspAuthorizeInfo.Count > 0)
-				{
-					methodBuilder.AppendLine($"var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();");
-
-					var aspAuthorizeDataText = string.Join(", ", this.AspAuthorizeInfo.Select(a => a.ToAspAuthorizedDataText()));
-					methodBuilder.AppendLine($"authorized = await aspAuthorized.Authorize([ {aspAuthorizeDataText} ], {this.AspForbid.ToString().ToLower()});");
-
-					if (!this.AspForbid)
-					{
-						methodBuilder.AppendLine($"if (!authorized.HasAccess)");
-						methodBuilder.AppendLine("{");
-						methodBuilder.AppendLine($"return new {this.ReturnType(includeTask: false)}(authorized);");
-						methodBuilder.AppendLine("}");
-					}
-				}
-			}
-
-			return methodBuilder;
-		}
-
-		public abstract StringBuilder LocalMethod();
-
-		/// <summary>
-		/// Generates the explicit interface implementation (e.g., IFactorySave&lt;T&gt;.Save).
-		/// </summary>
-		/// <remarks>
-		/// This is separate from <see cref="LocalMethod"/> because:
-		/// - LocalMethod contains server-side logic that calls entity methods with injected services
-		/// - ExplicitInterfaceMethod just delegates to the public method (e.g., Save calls public Save)
-		/// </remarks>
-		public virtual StringBuilder ExplicitInterfaceMethod()
-		{
-			return new StringBuilder();
-		}
-	}
-
-	/// <summary>
-	/// Factory method for read operations (Create, Fetch).
-	/// Creates new instances or retrieves existing ones.
-	/// </summary>
-	internal class ReadFactoryMethod : FactoryMethod
-	{
-		public ReadFactoryMethod(string serviceType, string implementationType, TypeFactoryMethodInfo callMethod) : base(serviceType, implementationType)
-		{
-			this.ImplementationType = implementationType;
-			this.CallMethod = callMethod;
-			this.Name = callMethod.Name;
-			this.UniqueName = callMethod.Name;
-			this.NamePostfix = callMethod.NamePostfix;
-			this.FactoryOperation = callMethod.FactoryOperation;
-			this.Parameters = callMethod.Parameters.ToList();
-			this.AuthMethodInfos.AddRange(callMethod.AuthMethodInfos);
-			this.AspAuthorizeInfo = callMethod.AspAuthorizeCalls.ToList();
-		}
-		public override bool IsSave => this.CallMethod.IsSave;
-		public override bool IsBool => this.CallMethod.IsBool;
-		public override bool IsTask => this.IsRemote || this.CallMethod.IsTask || this.AuthMethodInfos.Any(m => m.IsTask) || this.AspAuthorizeInfo.Count > 0;
-		public override bool IsRemote => this.CallMethod.IsRemote || this.AuthMethodInfos.Any(m => m.IsRemote) || this.AspAuthorizeInfo.Count > 0;
-		public override bool IsAsync => (this.HasAuth && this.CallMethod.IsTask) || this.AuthMethodInfos.Any(m => m.IsTask) || this.AspAuthorizeInfo.Count > 0;
-		public override bool IsNullable => this.CallMethod.IsNullable || this.HasAuth || this.IsBool;
-
-		public TypeFactoryMethodInfo CallMethod { get; set; }
-
-		public virtual string DoFactoryMethodCall()
-		{
-			var methodCall = "DoFactoryMethodCall";
-
-			if (this.CallMethod.IsBool)
-			{
-				methodCall += "Bool";
-			}
-
-			if (this.CallMethod.IsTask)
-			{
-				methodCall += "Async";
-				if (this.CallMethod.IsNullable)
-				{
-					methodCall += "Nullable";
-				}
-			}
-
-			// Use ParameterIdentifiersTextForDomainInvocation to:
-			// - Include services (injected dependencies)
-			// - Exclude target (handled separately)
-			// - Pass 'cancellationToken' only if domain method accepts it
-			if (this.CallMethod.IsConstructor)
-			{
-				methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => new {this.ImplementationType}({this.ParameterIdentifiersTextForDomainInvocation()}))";
-			}
-			else if (this.CallMethod.IsStaticFactory)
-			{
-				methodCall = $"{methodCall}(FactoryOperation.{this.FactoryOperation}, () => {this.ImplementationType}.{this.Name}({this.ParameterIdentifiersTextForDomainInvocation()}))";
-			}
-			else
-			{
-				methodCall = $"{methodCall}(target, FactoryOperation.{this.FactoryOperation}, () => target.{this.Name} ({this.ParameterIdentifiersTextForDomainInvocation()}))";
-			}
-
-			if (this.IsAsync && this.CallMethod.IsTask)
-			{
-				methodCall = $"await {methodCall}";
-			}
-
-			if (this.HasAuth)
-			{
-				methodCall = $"new Authorized<{this.ServiceType}>({methodCall})";
-			}
-
-			if (!this.CallMethod.IsTask && this.IsTask && !this.IsAsync)
-			{
-				methodCall = $"Task.FromResult({methodCall})";
-			}
-
-			return methodCall;
-		}
-
-		public override StringBuilder LocalMethod()
-		{
-			var methodBuilder = base.LocalMethodStart();
-
-			if (!this.CallMethod.IsConstructor && !this.CallMethod.IsStaticFactory)
-			{
-				methodBuilder.AppendLine($"var target = ServiceProvider.GetRequiredService<{this.ImplementationType}>();");
-			}
-
-			methodBuilder.AppendLine($"{this.ServiceAssignmentsText}");
-			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall()};");
-			methodBuilder.AppendLine("}");
-			methodBuilder.AppendLine("");
-
-			return methodBuilder;
-		}
-	}
-
-	/// <summary>
-	/// Factory method for write operations (Insert, Update, Delete).
-	/// Operates on an existing target instance.
-	/// </summary>
-	internal class WriteFactoryMethod : ReadFactoryMethod
-	{
-		public WriteFactoryMethod(string targetType, string concreteType, TypeFactoryMethodInfo callFactoryMethod) : base(targetType, concreteType, callFactoryMethod)
-		{
-			this.Parameters.Insert(0, new MethodParameterInfo() { Name = "target", Type = $"{targetType}", IsService = false, IsTarget = true });
-		}
-
-		public override void AddFactoryText(FactoryText classText)
-		{
-			classText.MethodsBuilder.Append(this.LocalMethod());
-		}
-
-		public override StringBuilder LocalMethod()
-		{
-			var methodBuilder = base.LocalMethodStart();
-
-			methodBuilder.AppendLine($"var cTarget = ({this.ImplementationType}) target ?? throw new Exception(\"{this.ServiceType} must implement {this.ImplementationType}\");");
-			methodBuilder.AppendLine($"{this.ServiceAssignmentsText}");
-			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall().Replace("target", "cTarget")};");
-			methodBuilder.AppendLine("}");
-			methodBuilder.AppendLine("");
-
-			return methodBuilder;
-		}
-	}
-
-	/// <summary>
-	/// Factory method for combined Save operations (Insert + Update + Delete).
-	/// Determines which operation to call based on the target's state (IsNew, IsDeleted).
-	/// </summary>
-	internal class SaveFactoryMethod : FactoryMethod
-	{
-		public SaveFactoryMethod(string? nameOverride, string serviceType, string implementationType, List<WriteFactoryMethod> writeFactoryMethods) : base(serviceType, implementationType)
-		{
-			var writeFactoryMethod = writeFactoryMethods.OrderByDescending(w => w.FactoryOperation!).First();
-			this.Name = $"Save{writeFactoryMethod.NamePostfix}";
-			this.UniqueName = this.Name;
-			this.WriteFactoryMethods = writeFactoryMethods;
-			this.Parameters = writeFactoryMethods.First().Parameters;
-			this.AuthMethodInfos.AddRange(writeFactoryMethods.SelectMany(m => m.AuthMethodInfos).Distinct());
-			this.AspAuthorizeInfo.AddRange(writeFactoryMethods.SelectMany(m => m.AspAuthorizeInfo).Distinct());
-		}
-
-		public bool IsDefault { get; set; } = false;
-		/// <summary>
-		/// Set externally after the method list is built. When non-null, the
-		/// ExplicitInterfaceMethod generates an IFactorySave&lt;T&gt;.CanSave bridge
-		/// that delegates to this concrete method.
-		/// </summary>
-		public string? CanSaveMethodUniqueName { get; set; }
-		/// <summary>
-		/// When CanSaveMethodUniqueName is set, indicates whether the concrete method is async (returns Task).
-		/// </summary>
-		public bool CanSaveMethodIsTask { get; set; }
-		public override bool IsSave => true;
-		public override bool IsRemote => this.WriteFactoryMethods.Any(m => m.IsRemote);
-		public override bool IsTask => this.IsRemote || this.WriteFactoryMethods.Any(m => m.IsTask);
-		public override bool IsAsync => this.WriteFactoryMethods.Any(m => m.IsTask);
-		public override bool HasAuth => this.WriteFactoryMethods.Any(m => m.HasAuth);
-		public override bool IsNullable => this.WriteFactoryMethods.Any(m => m.FactoryOperation == FactoryOperation.Delete || m.IsNullable);
-
-		public List<WriteFactoryMethod> WriteFactoryMethods { get; }
-
-		public override StringBuilder PublicMethod(bool? overrideHasAuth = null)
-		{
-			if (!(overrideHasAuth ?? this.HasAuth))
-			{
-				return base.PublicMethod(overrideHasAuth);
-			}
-
-			var methodBuilder = new StringBuilder();
-
-			var asyncKeyword = this.IsTask && this.HasAuth ? "async" : "";
-			var awaitKeyword = this.IsTask && this.HasAuth ? "await" : "";
-
-			methodBuilder.AppendLine($"public virtual {asyncKeyword} {this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsTextWithOptionalCancellationToken()})");
-			methodBuilder.AppendLine("{");
-
-			methodBuilder.AppendLine($"var authorized = ({awaitKeyword} Local{this.UniqueName}({this.ParameterIdentifiersTextWithCancellationToken()}));");
-
-			methodBuilder.AppendLine("if (!authorized.HasAccess)");
-			methodBuilder.AppendLine("{");
-			methodBuilder.AppendLine("throw new NotAuthorizedException(authorized);");
-			methodBuilder.AppendLine("}");
-			methodBuilder.AppendLine("return authorized.Result;");
-			methodBuilder.AppendLine("}");
-
-			methodBuilder.AppendLine($"public virtual {this.AsyncKeyword} {this.ReturnType()} Try{this.Name}({this.ParameterDeclarationsTextWithOptionalCancellationToken()})");
-			methodBuilder.AppendLine("{");
-			methodBuilder.AppendLine($"return {this.AwaitKeyword} Local{this.UniqueName}({this.ParameterIdentifiersTextWithCancellationToken()});");
-			methodBuilder.AppendLine("}");
-
-			if (this.IsRemote)
-			{
-				methodBuilder.Replace($"Local{this.UniqueName}", $"{this.UniqueName}Property");
-			}
-
-			return methodBuilder;
-		}
-
-		public override StringBuilder InterfaceMethods()
-		{
-			var stringBuilder = base.InterfaceMethods();
-
-			if (this.HasAuth)
-			{
-				stringBuilder.AppendLine($"{this.ReturnType()} Try{this.Name}({this.ParameterDeclarationsTextWithOptionalCancellationToken()});");
-			}
-			return stringBuilder;
-		}
-
-		/// <summary>
-		/// Generates the explicit IFactorySave&lt;T&gt;.Save and IFactorySave&lt;T&gt;.CanSave implementations.
-		/// Generates the explicit IFactorySave&lt;T&gt;.Save and IFactorySave&lt;T&gt;.CanSave interface implementations.
-		/// </summary>
-		public override StringBuilder ExplicitInterfaceMethod()
-		{
-			var methodBuilder = new StringBuilder();
-
-			if (this.IsDefault)
-			{
-				// IFactorySave<T>.Save explicit implementation
-				methodBuilder.AppendLine($"async Task<IFactorySaveMeta?> IFactorySave<{this.ImplementationType}>.Save({this.ImplementationType} target, CancellationToken cancellationToken)");
-				methodBuilder.AppendLine("{");
-
-				if (this.IsTask)
-				{
-					methodBuilder.AppendLine($"return (IFactorySaveMeta?) await {this.Name}(target, cancellationToken);");
-				}
-				else
-				{
-					methodBuilder.AppendLine($"return await Task.FromResult((IFactorySaveMeta?) {this.Name}(target, cancellationToken));");
-				}
-				methodBuilder.AppendLine("}");
-
-				// IFactorySave<T>.CanSave explicit implementation
-				if (this.CanSaveMethodUniqueName != null)
-				{
-					// Auth configured -- delegate to concrete CanSave method
-					if (this.CanSaveMethodIsTask)
-					{
-						methodBuilder.AppendLine($"async Task<Authorized> IFactorySave<{this.ImplementationType}>.CanSave(CancellationToken cancellationToken)");
-						methodBuilder.AppendLine("{");
-						methodBuilder.AppendLine($"return await {this.CanSaveMethodUniqueName}(cancellationToken);");
-						methodBuilder.AppendLine("}");
-					}
-					else
-					{
-						methodBuilder.AppendLine($"Task<Authorized> IFactorySave<{this.ImplementationType}>.CanSave(CancellationToken cancellationToken)");
-						methodBuilder.AppendLine("{");
-						methodBuilder.AppendLine($"return Task.FromResult({this.CanSaveMethodUniqueName}(cancellationToken));");
-						methodBuilder.AppendLine("}");
-					}
-				}
-				else
-				{
-					// No auth configured -- default returns Authorized(true)
-					methodBuilder.AppendLine($"Task<Authorized> IFactorySave<{this.ImplementationType}>.CanSave(CancellationToken cancellationToken)");
-					methodBuilder.AppendLine("{");
-					methodBuilder.AppendLine("return Task.FromResult(new Authorized(true));");
-					methodBuilder.AppendLine("}");
-				}
-			}
-
-			return methodBuilder;
-		}
-
-		public override StringBuilder LocalMethod()
-		{
-			var methodBuilder = new StringBuilder();
-
-			methodBuilder.AppendLine($@"public virtual {this.AsyncKeyword} {this.ReturnType()} Local{this.UniqueName}({this.ParameterDeclarationsTextWithOptionalCancellationToken()})
-                                            {{");
-
-			var defaultReturn = $"default({this.ServiceType})";
-			if (this.HasAuth)
-			{
-				defaultReturn = $"new Authorized<{this.ServiceType}>()";
-			}
-
-			if (this.IsTask && !this.IsAsync)
-			{
-				defaultReturn = $"Task.FromResult({defaultReturn})";
-			}
-
-			string DoInsertUpdateDeleteMethodCall(FactoryMethod? method)
-			{
-
-				if (method == null)
-				{
-					return $"throw new NotImplementedException()";
-				}
-
-				var methodCall = $"Local{method.UniqueName}({this.ParameterIdentifiersTextWithCancellationToken()})";
-
-				if (method.IsTask && this.IsAsync)
-				{
-					methodCall = $"await {methodCall}";
-				}
-
-				if (this.HasAuth && !method.HasAuth)
-				{
-					methodCall = $"new Authorized<{this.ServiceType}>({methodCall})";
-				}
-
-				if (!method.IsTask && this.IsTask && !this.IsAsync)
-				{
-					methodCall = $"Task.FromResult({methodCall})";
-				}
-
-				if (method.FactoryOperation == FactoryOperation.Delete)
-				{
-					methodCall = $@"if (target.IsNew) {{ return {defaultReturn}; }}
-										return {methodCall}";
-					return methodCall;
-				}
-				else
-				{
-					return $"return {methodCall}";
-				}
-			}
-
-
-
-			methodBuilder.AppendLine($@"
-                                            if (target.IsDeleted)
-                                    {{
-
-                                        {DoInsertUpdateDeleteMethodCall(this.WriteFactoryMethods.Where(s => s.FactoryOperation == FactoryOperation.Delete).FirstOrDefault())};
-                                    }}
-                                    else if (target.IsNew)
-                                    {{
-                                        {DoInsertUpdateDeleteMethodCall(this.WriteFactoryMethods.Where(s => s.FactoryOperation == FactoryOperation.Insert).FirstOrDefault())};
-                                    }}
-                                    else
-                                    {{
-                                         {DoInsertUpdateDeleteMethodCall(this.WriteFactoryMethods.Where(s => s.FactoryOperation == FactoryOperation.Update).FirstOrDefault())};
-                                    }}
-                            ");
-
-			methodBuilder.AppendLine("}");
-
-			return methodBuilder;
-		}
-	}
-
-	/// <summary>
-	/// Factory method for interface-based remote operations.
-	/// Used when [Factory] is applied to an interface.
-	/// </summary>
-	internal class InterfaceFactoryMethod : ReadFactoryMethod
-	{
-		public InterfaceFactoryMethod(string serviceType, string implementationType, TypeFactoryMethodInfo callMethod) : base(serviceType, implementationType, callMethod)
-		{
-			this.AspForbid = true;
-		}
-
-		/// <summary>
-		/// For interface factories, the delegate signature must match the interface method.
-		/// CancellationToken is only included if the interface method has one.
-		/// </summary>
-		public override StringBuilder ServiceRegistrations()
-		{
-			return new StringBuilder().AppendLine($@"services.AddScoped<{this.DelegateName}>(cc => {{
-                                                    var factory = cc.GetRequiredService<{this.ImplementationType}Factory>();
-                                                    return ({this.ParameterDeclarationsText()}) => factory.{this.Name}({this.ParameterIdentifiersText()});
-                                                }});");
-		}
-
-		/// <summary>
-		/// For interface factories, the public method must match the interface signature exactly.
-		/// We cannot add optional CancellationToken to user-defined interfaces.
-		/// </summary>
-		public override StringBuilder PublicMethod(bool? overrideHasAuth = null)
-		{
-			// Interface factories use original parameter signature (no optional CancellationToken)
-			// but still delegate to LocalMethod which enforces authorization
-			var methodBuilder = new StringBuilder();
-
-			methodBuilder.AppendLine($"public virtual {this.ReturnType(includeAuth: false)} {this.Name}({this.ParameterDeclarationsText(includeServices: false)})");
-			methodBuilder.AppendLine("{");
-			methodBuilder.AppendLine($"return Local{this.UniqueName}({this.ParameterIdentifiersText()});");
-			methodBuilder.AppendLine("}");
-
-			if (this.IsRemote)
-			{
-				methodBuilder.Replace($"Local{this.UniqueName}", $"{this.UniqueName}Property");
-			}
-
-			return methodBuilder;
-		}
-
-		/// <summary>
-		/// Override LocalMethodStart to use original parameter signature (matching interface)
-		/// while still including authorization checks.
-		/// </summary>
-		protected override StringBuilder LocalMethodStart()
-		{
-			var methodBuilder = new StringBuilder();
-
-			// Use original parameter signature - interface methods can't have optional CancellationToken added
-			methodBuilder.AppendLine($"public {this.AsyncKeyword} {this.ReturnType()} Local{this.UniqueName}({this.ParameterDeclarationsText()})");
-			methodBuilder.AppendLine("{");
-
-			// Authorization checks - same as base class but with interface-compatible signature
-			// AspForbid=true means auth failures throw NotAuthorizedException instead of returning Authorized<T>
-			if (this.AuthMethodInfos.Count > 0 || this.AspAuthorizeInfo.Count > 0)
-			{
-				methodBuilder.AppendLine("Authorized authorized;");
-				foreach (var authClass in this.AuthMethodInfos.GroupBy(m => m.ClassName))
-				{
-					methodBuilder.AppendLine($"{authClass.Key} {authClass.Key.ToLower()} = ServiceProvider.GetRequiredService<{authClass.Key}>();");
-					foreach (var authMethod in authClass)
-					{
-						authMethod.MakeAuthCall(this, methodBuilder);
-					}
-				}
-
-				if (this.AspAuthorizeInfo.Count > 0)
-				{
-					methodBuilder.AppendLine($"var aspAuthorized = ServiceProvider.GetRequiredService<IAspAuthorize>();");
-
-					var aspAuthorizeDataText = string.Join(", ", this.AspAuthorizeInfo.Select(a => a.ToAspAuthorizedDataText()));
-					methodBuilder.AppendLine($"authorized = await aspAuthorized.Authorize([ {aspAuthorizeDataText} ], {this.AspForbid.ToString().ToLower()});");
-
-					if (!this.AspForbid)
-					{
-						methodBuilder.AppendLine($"if (!authorized.HasAccess)");
-						methodBuilder.AppendLine("{");
-						methodBuilder.AppendLine($"return new {this.ReturnType(includeTask: false)}(authorized);");
-						methodBuilder.AppendLine("}");
-					}
-				}
-			}
-
-			return methodBuilder;
-		}
-
-		/// <summary>
-		/// For interface factories, LocalMethod uses our overridden LocalMethodStart
-		/// which matches the interface signature and includes authorization enforcement.
-		/// </summary>
-		public override StringBuilder LocalMethod()
-		{
-			var methodBuilder = LocalMethodStart();
-
-			if (!this.CallMethod.IsConstructor && !this.CallMethod.IsStaticFactory)
-			{
-				methodBuilder.AppendLine($"var target = ServiceProvider.GetRequiredService<{this.ImplementationType}>();");
-			}
-
-			methodBuilder.AppendLine($"{this.ServiceAssignmentsText}");
-			methodBuilder.AppendLine($"return {this.DoFactoryMethodCall()};");
-			methodBuilder.AppendLine("}");
-			methodBuilder.AppendLine("");
-
-			return methodBuilder;
-		}
-
-		public override StringBuilder InterfaceMethods() => new StringBuilder();
-
-		/// <summary>
-		/// For interface factories, delegate must match the interface method signature.
-		/// </summary>
-		public override StringBuilder Delegates()
-		{
-			return new StringBuilder().AppendLine($"public delegate {this.ReturnType()} {this.DelegateName}({this.ParameterDeclarationsText()});");
-		}
-
-		/// <summary>
-		/// For interface factories, RemoteMethod must match the interface signature.
-		/// </summary>
-		public override StringBuilder RemoteMethod()
-		{
-			var methodBuilder = new StringBuilder();
-			if (this.IsRemote)
-			{
-				var nullableText = this.ReturnType(includeTask: false).EndsWith("?") ? "Nullable" : "";
-
-				// Exclude CancellationToken from serialized parameters - it flows through HTTP layer instead
-				var serializedParamsText = this.ParameterIdentifiersText(includeCancellationToken: false);
-				var cancellationTokenParam = this.CancellationTokenParameterName;
-
-				methodBuilder.AppendLine($"public virtual async {this.ReturnType()} Remote{this.UniqueName}({this.ParameterDeclarationsText()})");
-				methodBuilder.AppendLine("{");
-				methodBuilder.AppendLine($" return (await MakeRemoteDelegateRequest!.ForDelegate{nullableText}<{this.ReturnType(includeTask: false)}>(typeof({this.DelegateName}), [{serializedParamsText}], {cancellationTokenParam}))!;");
-				methodBuilder.AppendLine("}");
-				methodBuilder.AppendLine("");
-			}
-			return methodBuilder;
-		}
-
-		public override bool IsBool => false;
-		public override bool IsNullable => this.CallMethod.IsNullable;
-
-		public override string ReturnType(bool includeTask = true, bool includeAuth = true, bool includeBool = true) => base.ReturnType(includeTask, false, includeBool);
-
-		public override string DoFactoryMethodCall()
-		{
-			// For interface methods, pass parameters as they are on the interface (including CancellationToken if present)
-			var methodCall = $"target.{this.Name} ({this.ParameterIdentifiersText(includeServices: false, includeTarget: false)})";
-
-			if (this.IsAsync && this.CallMethod.IsTask)
-			{
-				methodCall = $"await {methodCall}";
-			}
-
-			if (!this.CallMethod.IsTask && this.IsTask && !this.IsAsync)
-			{
-				methodCall = $"Task.FromResult({methodCall})";
-			}
-
-			return methodCall;
-		}
-	}
-
-	/// <summary>
-	/// Factory method for authorization checks.
-	/// Generates CanXxx methods that check authorization without performing the operation.
-	/// </summary>
-	internal class CanFactoryMethod : FactoryMethod
-	{
-		public CanFactoryMethod(string targetType, string concreteType, string methodName) : base(targetType, concreteType)
-		{
-			this.Name = $"Can{methodName}";
-			this.UniqueName = $"Can{methodName}";
-		}
-		public CanFactoryMethod(string targetType, string concreteType, string methodName, ICollection<TypeAuthMethodInfo> authMethods, ICollection<AspAuthorizeInfo> aspAuthorizeCalls) : this(targetType, concreteType, methodName)
-		{
-			this.Parameters = authMethods.SelectMany(m => m.Parameters).Distinct().ToList();
-			this.AuthMethodInfos.AddRange(authMethods);
-			this.AspAuthorizeInfo.AddRange(aspAuthorizeCalls);
-		}
-
-		public override bool IsBool => true;
-
-		public override string ReturnType(bool includeTask = true, bool includeAuth = true, bool includeBool = true)
-		{
-			var returnType = "Authorized";
-
-			if (includeTask && this.IsTask)
-			{
-				returnType = $"Task<{returnType}>";
-			}
-
-			return returnType;
-		}
-
-		public override StringBuilder PublicMethod(bool? overrideHasAuth = null)
-		{
-			var methodBuilder = new StringBuilder();
-
-			methodBuilder.AppendLine($"public virtual {this.ReturnType()} {this.UniqueName}({this.ParameterDeclarationsTextWithOptionalCancellationToken(includeServices: false)})");
-			methodBuilder.AppendLine("{");
-
-			methodBuilder.AppendLine($"return Local{this.UniqueName}({this.ParameterIdentifiersTextWithCancellationToken(includeServices: false)});");
-
-			methodBuilder.AppendLine("}");
-
-			if (this.IsRemote)
-			{
-				methodBuilder.Replace($"Local{this.UniqueName}", $"{this.UniqueName}Property");
-			}
-
-			return methodBuilder;
-		}
-
-		public override StringBuilder LocalMethod()
-		{
-			var methodBuilder = base.LocalMethodStart();
-
-			var returnText = $"new Authorized(true)";
-
-			if (this.IsTask && !this.IsAsync)
-			{
-				returnText = $"Task.FromResult({returnText})";
-			}
-
-			methodBuilder.AppendLine($"return {returnText};");
-
-			methodBuilder.AppendLine("}");
-			methodBuilder.AppendLine("");
-			return methodBuilder;
-		}
-	}
-
-	/// <summary>
-	/// Container for collecting generated source code fragments.
-	/// Used during the generation phase to accumulate various parts of the factory class.
-	/// </summary>
-	internal class FactoryText
-	{
-		public FactoryText()
-		{
-		}
-
-		public StringBuilder Delegates { get; set; } = new();
-		public StringBuilder ConstructorPropertyAssignmentsLocal { get; set; } = new();
-		public StringBuilder ConstructorPropertyAssignmentsRemote { get; set; } = new();
-		public StringBuilder PropertyDeclarations { get; set; } = new();
-		public StringBuilder MethodsBuilder { get; set; } = new();
-		public StringBuilder SaveMethods { get; set; } = new();
-		public StringBuilder InterfaceMethods { get; set; } = new();
-		public StringBuilder ServiceRegistrations { get; set; } = new();
 	}
 }

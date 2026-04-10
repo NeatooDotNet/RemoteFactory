@@ -18,7 +18,8 @@ internal sealed record ClassFactoryModel
         OrdinalSerializationModel? ordinalSerialization = null,
         bool hasDefaultSave = false,
         bool requiresEntityRegistration = false,
-        bool registerOrdinalConverter = false)
+        bool registerOrdinalConverter = false,
+        IReadOnlyList<string>? dtoReturnTypes = null)
     {
         TypeName = typeName;
         ServiceTypeName = serviceTypeName;
@@ -30,6 +31,7 @@ internal sealed record ClassFactoryModel
         HasDefaultSave = hasDefaultSave;
         RequiresEntityRegistration = requiresEntityRegistration;
         RegisterOrdinalConverter = registerOrdinalConverter;
+        DtoReturnTypes = dtoReturnTypes ?? System.Array.Empty<string>();
     }
 
     public string TypeName { get; }
@@ -42,6 +44,12 @@ internal sealed record ClassFactoryModel
     public bool HasDefaultSave { get; }
     public bool RequiresEntityRegistration { get; }
     public bool RegisterOrdinalConverter { get; }
+
+    /// <summary>
+    /// Plain DTO types that need constructor registration for IL trimming support.
+    /// </summary>
+    public IReadOnlyList<string> DtoReturnTypes { get; }
+
     /// <summary>
     /// True if ALL factory methods are internal (excluding [Remote] methods, which are promoted to public).
     /// When true, the generated factory interface is internal.

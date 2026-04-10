@@ -35,6 +35,10 @@ Not all factory methods get guards. The generator uses the developer's `public` 
 - **Static factories** — Delegate and event registrations are guarded. The trimmer removes the registration lambdas and their captured dependencies.
 - **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`, making the server-only code path unreachable to the trimmer.
 
+### Event Registrations
+
+Both class factory and static factory `[Event]` registrations are wrapped in `if (NeatooRuntime.IsServerRuntime)` guards. The local event infrastructure (scope isolation, `Task.Run`, `IHostApplicationLifetime`, `IEventTracker`) only runs on the server. On client assemblies with `IsServerRuntime=false`, the trimmer eliminates these registrations entirely. Remote-mode clients use remote event stubs that serialize to the server instead.
+
 The key insight: the guards are in RemoteFactory's **generated** code, not in your application code. You don't need to modify your domain model at all.
 
 ### The Feature Switch
@@ -221,6 +225,43 @@ For example, if your factory uses `[AuthorizeFactory<IPersonModelAuth>]`, the ge
 
 1. **Explicit registration** — Register the service directly in your DI setup instead of relying on convention discovery.
 2. **`[DynamicDependency]`** — Apply this attribute to preserve specific types from trimming. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
+
+## DTO Return Type Preservation
+
+Plain DTO classes returned by factory methods are automatically preserved from trimming. When your domain assembly has `IsTrimmable=true`, the IL trimmer strips constructor and property metadata from types that aren't directly referenced in compiled code. This breaks `System.Text.Json` deserialization — `DefaultJsonTypeInfoResolver` uses reflection to discover constructors and properties, and that reflection fails when the metadata has been trimmed away.
+
+Normal Blazor WASM apps don't hit this because their assemblies aren't trimmed — `TrimMode=partial` only trims assemblies explicitly marked `IsTrimmable=true`. RemoteFactory intentionally marks domain assemblies as trimmable to remove server-only business logic from the client. DTOs returned through factory methods cross the client-server boundary via JSON serialization, so they must survive trimming intact.
+
+### How RemoteFactory Handles It
+
+The source generator discovers plain DTO return types from factory method signatures at compile time and emits `DtoConstructorRegistry.Register<T>(() => new T())` calls. The `[DynamicallyAccessedMembers(All)]` annotation on the generic parameter tells the trimmer to preserve the entire type — constructors, properties, and all metadata that `System.Text.Json` needs for deserialization.
+
+This covers all factory patterns:
+
+- **Interface Factory methods** — e.g., `Task<EmployeeDto>` or `Task<IReadOnlyList<EmployeeDto>>` return types
+- **Class Factory `[Execute]` methods** — DTO return types are discovered and preserved
+- **Static Factory `[Execute]` methods** — same treatment
+
+The generator unwraps `Task<T>`, nullable `T?`, and collection types (like `IReadOnlyList<T>`) to find the DTO type inside.
+
+### What Qualifies as a DTO
+
+Not every return type needs this treatment. The generator preserves a return type when it:
+
+- Has a public parameterless constructor
+- Is **not** a `[Factory]`-annotated type (those are already preserved via DI registration)
+- Is **not** a record with only parameterized constructors (handled separately by `RecordBypassConverterFactory`)
+- Is **not** a primitive, string, or framework type
+
+### What You Need to Know
+
+If you return a plain DTO class through any factory method, it is automatically trimming-safe. You do not need to take any action.
+
+**Nested DTOs are automatically discovered.** The generator recursively walks public instance properties (including inherited properties) of each discovered DTO type to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references.
+
+For example, if a factory method returns `ParentDto` which has a `List<ChildDto> Children` property, both `ParentDto` and `ChildDto` are automatically registered — no additional action is needed.
+
+If you have a DTO that is **not** returned by any factory method and **not** reachable as a property of a discovered DTO, you need to preserve it yourself. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
 
 ## Limitations
 

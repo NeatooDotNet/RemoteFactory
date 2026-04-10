@@ -13,6 +13,17 @@ tools:
 
 # Serialization Round-Trip Tester
 
+## LSP Tool (Use It)
+
+The LSP tool is available as a **deferred tool**. To activate it, run `ToolSearch("select:LSP")` early in your session. Once fetched, use it for:
+- **hover** — get type info and docs at a position
+- **findReferences** — find all usages of a symbol
+- **goToDefinition** / **goToImplementation** — navigate to declarations
+
+LSP gives you semantic understanding that Grep cannot — use it when tracing serialization paths and validating type coverage.
+
+## Objective
+
 Validates that domain model types correctly serialize and deserialize when crossing the client/server boundary using the RemoteFactory two DI container pattern.
 
 ## Objective

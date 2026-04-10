@@ -57,7 +57,7 @@ internal static class ClassFactoryRenderer
         sb.AppendLine();
 
         // Assembly-level attribute for trimming-safe factory discovery
-        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof({unit.Namespace}.{model.ImplementationTypeName}Factory))]");
+        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{unit.Namespace}.{model.ImplementationTypeName}Factory))]");
         sb.AppendLine();
 
         sb.AppendLine("/*");
@@ -1409,19 +1409,36 @@ internal static class ClassFactoryRenderer
     {
         // Build parameter mapping from factory method params to auth method params
         var authParams = new List<string>();
-        var factoryParams = factoryMethod.Parameters.Where(p => !p.IsTarget).ToList();
+        var factoryNonTargetParams = factoryMethod.Parameters.Where(p => !p.IsTarget).ToList();
+        var factoryTargetParam = factoryMethod.Parameters.FirstOrDefault(p => p.IsTarget);
 
         foreach (var authParam in authMethod.Parameters)
         {
-            var matchingFactoryParam = factoryParams.FirstOrDefault(p => p.Type == authParam.Type);
-            if (matchingFactoryParam != null)
+            if (authParam.IsTarget)
             {
-                authParams.Add(matchingFactoryParam.Name);
-                factoryParams.Remove(matchingFactoryParam);
+                // Auth param is a target parameter - map to the factory method's target param
+                // (available on write methods: Insert, Update, Delete, Save)
+                if (factoryTargetParam != null)
+                {
+                    authParams.Add(factoryTargetParam.Name);
+                }
+                else
+                {
+                    authParams.Add($"/* Missing {authParam.Type} {authParam.Name} */");
+                }
             }
             else
             {
-                authParams.Add($"/* Missing {authParam.Type} {authParam.Name} */");
+                var matchingFactoryParam = factoryNonTargetParams.FirstOrDefault(p => p.Type == authParam.Type);
+                if (matchingFactoryParam != null)
+                {
+                    authParams.Add(matchingFactoryParam.Name);
+                    factoryNonTargetParams.Remove(matchingFactoryParam);
+                }
+                else
+                {
+                    authParams.Add($"/* Missing {authParam.Type} {authParam.Name} */");
+                }
             }
         }
 
@@ -1523,6 +1540,17 @@ internal static class ClassFactoryRenderer
             }
         }
 
+        // DTO constructor registrations (IL trimming support)
+        if (model.DtoReturnTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // DTO constructor registrations (IL trimming support)");
+            foreach (var dtoType in model.DtoReturnTypes)
+            {
+                sb.AppendLine($"            DtoConstructorRegistry.Register<{dtoType}>(() => new {dtoType}());");
+            }
+        }
+
         // Ordinal converter registration
         if (model.RegisterOrdinalConverter)
         {
@@ -1577,47 +1605,56 @@ internal static class ClassFactoryRenderer
 
         var allParamIdentifiers = BuildEventMethodInvocationParams(evt);
 
-        var serviceAssignments = string.Join("\n                            ",
+        var serviceAssignments = string.Join("\n                                ",
             evt.ServiceParameters.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
 
         var methodInvocation = evt.IsAsync
             ? $"await handler.{evt.Name}({allParamIdentifiers});"
             : $"handler.{evt.Name}({allParamIdentifiers});";
 
-        sb.AppendLine($"                services.AddScoped<{model.ImplementationTypeName}.{evt.DelegateName}>(sp =>");
+        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire registration
+        sb.AppendLine("                if (NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("                {");
-        sb.AppendLine("                    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
-        sb.AppendLine("                    var tracker = sp.GetRequiredService<IEventTracker>();");
-        sb.AppendLine("                    var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
-        // Capture correlation context from parent scope
-        sb.AppendLine("                    var parentCorrelation = sp.GetService<ICorrelationContext>();");
-        sb.AppendLine($"                    return ({paramDecl}) =>");
+        sb.AppendLine($"                    services.AddScoped<{model.ImplementationTypeName}.{evt.DelegateName}>(sp =>");
         sb.AppendLine("                    {");
-        // Capture correlation ID before Task.Run (outside the lambda closure)
-        sb.AppendLine("                        var capturedCorrelationId = parentCorrelation?.CorrelationId;");
-        sb.AppendLine("                        var task = Task.Run(async () =>");
+        sb.AppendLine("                        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
+        sb.AppendLine("                        var tracker = sp.GetRequiredService<IEventTracker>();");
+        sb.AppendLine("                        var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
+        // Resolve all event scope initializers (correlation context, tenant context, etc.)
+        sb.AppendLine("                        var eventScopeInitializers = sp.GetServices<IEventScopeInitializer>();");
+        sb.AppendLine($"                        return ({paramDecl}) =>");
         sb.AppendLine("                        {");
-        sb.AppendLine("                            using var scope = scopeFactory.CreateScope();");
-        // Set correlation ID in the new scope BEFORE resolving any services
-        sb.AppendLine("                            var eventCorrelation = scope.ServiceProvider.GetService<ICorrelationContext>();");
-        sb.AppendLine("                            if (eventCorrelation != null && capturedCorrelationId != null)");
+        sb.AppendLine("                            var task = Task.Run(async () =>");
         sb.AppendLine("                            {");
-        sb.AppendLine("                                eventCorrelation.CorrelationId = capturedCorrelationId;");
-        sb.AppendLine("                            }");
-        sb.AppendLine("                            var ct = lifetime.ApplicationStopping;");
-        sb.AppendLine($"                            var handler = scope.ServiceProvider.GetRequiredService<{model.ImplementationTypeName}>();");
+        sb.AppendLine("                                using var scope = scopeFactory.CreateScope();");
+        // Run all event scope initializers — propagate ambient context from parent to child scope
+        sb.AppendLine("                                foreach (var initializer in eventScopeInitializers)");
+        sb.AppendLine("                                {");
+        sb.AppendLine("                                    try");
+        sb.AppendLine("                                    {");
+        sb.AppendLine("                                        initializer.Initialize(sp, scope.ServiceProvider);");
+        sb.AppendLine("                                    }");
+        sb.AppendLine("                                    catch (Exception ex)");
+        sb.AppendLine("                                    {");
+        sb.AppendLine("                                        var initLogger = scope.ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger(\"Neatoo.RemoteFactory.EventScopeInitializer\");");
+        sb.AppendLine("                                        initLogger?.LogError(ex, \"Event scope initializer {InitializerType} failed\", initializer.GetType().Name);");
+        sb.AppendLine("                                    }");
+        sb.AppendLine("                                }");
+        sb.AppendLine("                                var ct = lifetime.ApplicationStopping;");
+        sb.AppendLine($"                                var handler = scope.ServiceProvider.GetRequiredService<{model.ImplementationTypeName}>();");
 
         if (!string.IsNullOrEmpty(serviceAssignments))
         {
-            sb.AppendLine($"                            {serviceAssignments}");
+            sb.AppendLine($"                                {serviceAssignments}");
         }
 
-        sb.AppendLine($"                            {methodInvocation}");
-        sb.AppendLine("                        });");
-        sb.AppendLine("                        tracker.Track(task);");
-        sb.AppendLine("                        return task;");
-        sb.AppendLine("                    };");
-        sb.AppendLine("                });");
+        sb.AppendLine($"                                {methodInvocation}");
+        sb.AppendLine("                            });");
+        sb.AppendLine("                            tracker.Track(task);");
+        sb.AppendLine("                            return task;");
+        sb.AppendLine("                        };");
+        sb.AppendLine("                    });");
+        sb.AppendLine("                }");
     }
 
     private static void RenderRemoteEventRegistration(StringBuilder sb, EventMethodModel evt, ClassFactoryModel model)

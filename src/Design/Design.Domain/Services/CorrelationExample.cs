@@ -30,9 +30,10 @@ namespace Design.Domain.Services;
 /// - Debugging issues that span multiple services
 /// - Audit logging with operation context
 ///
-/// For events: The generator captures the correlation ID before Task.Run
-/// and restores it in the event's new DI scope, so events inherit the
-/// correlation ID from the triggering operation.
+/// For events: The built-in CorrelationContextScopeInitializer propagates
+/// the correlation ID from the request scope to the event's new DI scope.
+/// Applications can register additional IEventScopeInitializer instances
+/// (e.g., for tenant context) via AddRemoteFactoryEventScopeInitializer.
 /// </remarks>
 [Factory]
 public partial class AuditedOrder
@@ -120,10 +121,12 @@ public static partial class CorrelatedOperations
     /// Event operation with correlation logging.
     /// </summary>
     /// <remarks>
-    /// GENERATOR BEHAVIOR: Events run in an isolated DI scope, but the
-    /// generator captures the correlation ID before Task.Run and sets it
-    /// on the event scope's ICorrelationContext. This lets you trace events
-    /// back to the operation that triggered them.
+    /// GENERATOR BEHAVIOR: Events run in an isolated DI scope. The generator
+    /// resolves all registered IEventScopeInitializer instances from the parent
+    /// scope and invokes them inside Task.Run after CreateScope(). The built-in
+    /// CorrelationContextScopeInitializer propagates the correlation ID.
+    /// Applications can register additional initializers (e.g., for tenant context)
+    /// via AddRemoteFactoryEventScopeInitializer.
     /// </remarks>
     [Remote, Event]
     private static Task _OnOrderProcessed(

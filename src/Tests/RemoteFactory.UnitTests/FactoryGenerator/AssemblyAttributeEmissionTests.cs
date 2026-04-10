@@ -39,7 +39,7 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(TestNamespace.MyEntityFactory))]", generatedSource);
+        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.MyEntityFactory))]", generatedSource);
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(TestNamespace.MyCommands))]", generatedSource);
+        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.MyCommands))]", generatedSource);
     }
 
     #endregion
@@ -173,7 +173,7 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(TestNamespace.MyServiceFactory))]", generatedSource);
+        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.MyServiceFactory))]", generatedSource);
     }
 
     #endregion

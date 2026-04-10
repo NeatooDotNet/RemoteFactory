@@ -31,6 +31,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 	private readonly IServiceAssemblies serviceAssemblies;
 	private readonly NeatooSerializationOptions serializationOptions;
 	private readonly ILogger<NeatooJsonSerializer> logger;
+	private readonly ILogger trace;
 
 	JsonSerializerOptions Options { get; }
 
@@ -54,7 +55,8 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		IServiceAssemblies serviceAssemblies,
 		NeatooJsonTypeInfoResolver neatooDefaultJsonTypeInfoResolver,
 		NeatooSerializationOptions serializationOptions,
-		ILogger<NeatooJsonSerializer>? logger)
+		ILogger<NeatooJsonSerializer>? logger,
+		ILoggerFactory? loggerFactory = null)
 	{
 		ArgumentNullException.ThrowIfNull(neatooJsonConverterFactories, nameof(neatooJsonConverterFactories));
 		ArgumentNullException.ThrowIfNull(serializationOptions, nameof(serializationOptions));
@@ -62,6 +64,8 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		this.serializationOptions = serializationOptions;
 		this.serviceAssemblies = serviceAssemblies;
 		this.logger = logger ?? NullLogger<NeatooJsonSerializer>.Instance;
+		this.trace = loggerFactory?.CreateLogger("RemoteFactory.Trace")
+			?? NullLoggerFactory.Instance.CreateLogger("RemoteFactory.Trace");
 
 		var converterFactoryList = neatooJsonConverterFactories.ToList();
 
@@ -85,6 +89,13 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		{
 			this.Options.Converters.Add(neatooJsonConverterFactory);
 		}
+
+		// LazyLoadJsonConverterFactory claims LazyLoad<T> types and serializes them
+		// in named format as {"value": ..., "isLoaded": bool}. Placed after Neatoo
+		// converters (which claim interfaces/abstract types) and before
+		// RecordBypassConverterFactory (which would not claim LazyLoad<T> anyway
+		// since it has a parameterless constructor).
+		this.Options.Converters.Add(new LazyLoadJsonConverterFactory());
 
 		// RecordBypassConverterFactory goes AFTER Neatoo converters. It claims types
 		// with parameterized constructors (records) and delegates to inner options
@@ -139,7 +150,9 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 		}
 
 		var typeName = targetType.Name;
+		var runtimeTypeName = target.GetType().Name;
 		logger.SerializingObject(typeName, this.Format);
+		trace.TraceSerializeStarted(typeName, runtimeTypeName);
 
 		var sw = Stopwatch.StartNew();
 		using var rr = new NeatooReferenceResolver();
@@ -149,6 +162,7 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 			var result = JsonSerializer.Serialize(target, targetType, this.Options);
 
 			sw.Stop();
+			trace.TraceSerializeCompleted(typeName, sw.ElapsedMilliseconds, result?.Length ?? 0);
 			logger.SerializedObject(typeName, sw.ElapsedMilliseconds);
 
 			return result;
@@ -305,11 +319,28 @@ public class NeatooJsonSerializer : INeatooJsonSerializer
 
 			if (remoteDelegateRequest.Target != null && !string.IsNullOrEmpty(remoteDelegateRequest.Target.Json))
 			{
+				trace.TraceDeserializingTarget(remoteDelegateRequest.Target.TypeFullName, remoteDelegateRequest.Target.Json.Length);
+				var targetSw = Stopwatch.StartNew();
 				target = this.FromObjectJson(remoteDelegateRequest.Target);
+				targetSw.Stop();
+				trace.TraceTargetDeserialized(targetSw.ElapsedMilliseconds);
 			}
 			if (remoteDelegateRequest.Parameters != null)
 			{
-				parameters = remoteDelegateRequest.Parameters.Select(c => this.FromObjectJson(c)).ToImmutableList();
+				var paramIndex = 0;
+				var paramList = new List<object?>();
+				foreach (var p in remoteDelegateRequest.Parameters)
+				{
+					var paramTypeName = p?.TypeFullName ?? "null";
+					var paramJsonLength = p?.Json?.Length ?? 0;
+					trace.TraceDeserializingParam(paramIndex, paramTypeName, paramJsonLength);
+					var paramSw = Stopwatch.StartNew();
+					paramList.Add(this.FromObjectJson(p));
+					paramSw.Stop();
+					trace.TraceParamDeserialized(paramIndex, paramSw.ElapsedMilliseconds);
+					paramIndex++;
+				}
+				parameters = paramList.ToImmutableList();
 			}
 
 			var delegateType = this.serviceAssemblies.FindType(remoteDelegateRequest.DelegateFullName!);

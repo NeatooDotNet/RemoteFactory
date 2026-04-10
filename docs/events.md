@@ -70,6 +70,9 @@ Event runs in a new DI scope:
 Task.Run(async () =>
 {
     using var scope = serviceProvider.CreateScope();
+    // Event scope initializers propagate context (correlation ID, tenant, etc.)
+    foreach (var init in eventScopeInitializers)
+        init.Initialize(parentScope, scope.ServiceProvider);
     var entity = scope.ServiceProvider.GetRequiredService<Employee>();
     var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
     var ct = hostApplicationLifetime.ApplicationStopping;
@@ -228,7 +231,15 @@ public partial class ShutdownAwareEvents
 
 ## EventTracker
 
-The `IEventTracker` service monitors pending events.
+The `IEventTracker` service monitors pending events. The implementation varies by mode:
+
+| Mode | Implementation | Behavior |
+|------|---------------|----------|
+| **Server** | `EventTracker` | Tracks pending event tasks, provides `PendingCount` and `WaitAllAsync` |
+| **Logical** | `EventTracker` | Same as Server |
+| **Remote** | Not registered | Events serialize to the server; no local background tasks to track |
+
+Remote-mode clients do not register `IEventTracker` at all because events are serialized to the server — there are no local background tasks to track. Code that needs `IEventTracker` should only run on the server (Server or Logical mode).
 
 ### Accessing EventTracker
 
@@ -319,6 +330,12 @@ public Task SendWelcomeEmailDelegate(Guid employeeId, string email)
         try
         {
             using var scope = _serviceProvider.CreateScope();
+            // Scope initializers run first (correlation, tenant, etc.)
+            foreach (var init in _initializers)
+            {
+                try { init.Initialize(_parentScope, scope.ServiceProvider); }
+                catch (Exception ex) { _logger.LogError(ex, "Initializer failed"); }
+            }
             var entity = scope.ServiceProvider.GetRequiredService<Employee>();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
             await entity.SendWelcomeEmail(employeeId, email, emailService, _ct);
@@ -500,15 +517,18 @@ Events execute in a separate scope with no user context. If you need authorizati
 
 **Server mode:**
 - Events execute in background on server
+- `IEventTracker` resolves to `EventTracker` (tracks pending tasks)
 
 **Remote mode:**
 - Event call serialized, sent to server
 - Executes in background on server
 - Client returns immediately
+- `IEventTracker` is not registered (no local tasks to track)
 
 **Logical mode:**
 - Events execute in background locally
-- Still uses EventTracker and scope isolation
+- `IEventTracker` resolves to `EventTracker` (tracks pending tasks)
+- Still uses scope isolation
 
 ## Testing Events
 
@@ -555,9 +575,59 @@ public static class MultipleEventTestSample
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/Events/EventTestingSamples.cs#L23-L37' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-testing-latch' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+## Event Scope Initializers
+
+Events run in isolated DI scopes, but sometimes you need ambient context from the request scope -- tenant identity, user context, or correlation IDs. `IEventScopeInitializer` lets you propagate scoped state from the request scope to event scopes.
+
+### Built-in: Correlation Context
+
+RemoteFactory automatically propagates `ICorrelationContext.CorrelationId` to event scopes via a built-in `CorrelationContextScopeInitializer`. No configuration needed -- correlation IDs flow to event handlers out of the box.
+
+### Custom Initializers
+
+Register additional initializers for application-specific context (e.g., multi-tenant applications):
+
+```csharp
+// In Startup / Program.cs -- AFTER AddNeatooRemoteFactory
+services.AddRemoteFactoryEventScopeInitializer((parentScope, childScope) =>
+{
+    var parentTenant = parentScope.GetService<ITenantContext>();
+    var childTenant = childScope.GetRequiredService<TenantContext>();
+    if (parentTenant != null)
+    {
+        childTenant.TenantId = parentTenant.TenantId;
+        childTenant.ConnectionString = parentTenant.ConnectionString;
+    }
+});
+```
+
+Multiple initializers can be registered. They run in registration order (built-in correlation initializer first, then custom initializers in the order registered).
+
+### How Initializers Run
+
+Initializers execute inside `Task.Run` after `CreateScope()` but before handler services are resolved. The generated code resolves all `IEventScopeInitializer` instances from the parent scope and invokes each one with the parent and child service providers.
+
+Each initializer is wrapped in its own try/catch -- if an initializer throws, the exception is logged but the event handler still executes. This preserves fire-and-forget semantics: initializer failures do not prevent event execution.
+
+### Important: Copy Values, Not References
+
+For fire-and-forget events, the parent (request) scope may be disposed after the initializer runs. **Copy values from the parent scope into the child scope.** Do not hold references to parent-scope services.
+
+```csharp
+// CORRECT: Copy the value
+childTenant.TenantId = parentTenant.TenantId;
+
+// WRONG: Don't store a reference to the parent-scope service
+childScope.GetRequiredService<TenantHolder>().Tenant = parentTenant; // May be disposed!
+```
+
+### Server-Only
+
+Event scope initializers only run in Server and Logical modes. In Remote mode, events serialize to the server -- no local scope is created, and initializers are not registered on the client.
+
 ## Correlation ID Tracking
 
-Events inherit the correlation ID from the triggering operation:
+Events receive the correlation ID from the triggering operation via the built-in `CorrelationContextScopeInitializer` (see [Event Scope Initializers](#event-scope-initializers) above):
 
 <!-- snippet: events-correlation -->
 <a id='snippet-events-correlation'></a>
@@ -608,4 +678,5 @@ For thousands of concurrent events, consider:
 - [Factory Events](factory-events.md) - `[FactoryEventHandler<T>]` mediator + client relay (different feature)
 - [Factory Operations](factory-operations.md) - All operation types
 - [Service Injection](service-injection.md) - Inject services into events
+- [Interfaces Reference](interfaces-reference.md) - IEventScopeInitializer, IEventTracker, and other interfaces
 - [ASP.NET Core Integration](aspnetcore-integration.md) - EventTrackerHostedService

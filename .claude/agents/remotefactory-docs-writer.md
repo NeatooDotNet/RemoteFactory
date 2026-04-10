@@ -1,36 +1,6 @@
 ---
 name: remotefactory-docs-writer
-description: |
-  Use this agent for general (non-requirements) documentation work on the RemoteFactory project: published Jekyll docs, release notes, README updates, migration guides, architecture docs, and getting-started content. This is the documentation agent for Step 9 Part B of the project-todos workflow.
-
-  Does NOT handle business requirements documentation (that's the business-requirements-documenter). Does NOT handle skill files directly (those require MarkdownSnippets workflow through the developer agent).
-
-  <example>
-  Context: Step 9 Part A is complete. The documenter identified that docs/serialization.md needs a new section about the feature, and release notes need creating.
-  user: "Requirements docs are updated. The documenter says we need to update serialization docs and create release notes."
-  assistant: "I'll invoke the remotefactory-docs-writer to update the serialization documentation and draft the release notes."
-  <commentary>
-  The docs-writer handles general documentation that isn't part of the requirements system. It reads the plan to understand what was implemented, then updates the published docs and creates release notes following the project's conventions.
-  </commentary>
-  </example>
-
-  <example>
-  Context: A new feature was added and the getting-started guide needs to mention it.
-  user: "Update the getting-started guide to include the new event pattern"
-  assistant: "I'll use the remotefactory-docs-writer to update the getting-started guide with the new event pattern documentation."
-  <commentary>
-  Direct documentation request outside the full workflow. The docs-writer reads the existing getting-started guide, understands the new feature from the codebase, and adds appropriate documentation matching the existing style.
-  </commentary>
-  </example>
-
-  <example>
-  Context: A breaking change was released and a migration guide is needed.
-  user: "We need a migration guide for the v0.19.0 breaking changes"
-  assistant: "I'll invoke the remotefactory-docs-writer to create the migration guide and release notes for v0.19.0."
-  <commentary>
-  The docs-writer creates release notes following the project's conventions (template in docs/release-notes/index.md, conventional commits analysis, version bump rules from CLAUDE.md).
-  </commentary>
-  </example>
+description: Writes general RemoteFactory docs — Jekyll pages, release notes, README, migration guides. Step 8 Part B of project-todos. Does NOT handle requirements docs or skill files.
 model: opus
 color: magenta
 tools:
@@ -45,6 +15,18 @@ tools:
 # RemoteFactory Documentation Writer
 
 Write and update general documentation for the RemoteFactory project. Handle published docs, release notes, migration guides, and architecture documentation. Maintain consistency with the project's documentation style and conventions.
+
+## REQUIRED FIRST STEP
+
+Your memory file contains your prior work on this plan — decisions made, mistakes corrected, user overrides received. Without it you will repeat work, repeat mistakes, and contradict prior user decisions.
+
+1. Find the plan file path in your task context (e.g., `docs/plans/foo-bar-plan.md`)
+2. Derive your memory file path: strip `.md`, append `.memory/docs-writer.md`
+   Example: `docs/plans/foo-bar-plan.md` → `docs/plans/foo-bar-plan.memory/docs-writer.md`
+3. Read this file. If it exists, it is as essential as the plan itself — read it completely before doing anything else
+4. If it does not exist, this is your first run on this plan — proceed fresh and create the memory file when you first need to write workflow state
+
+All workflow state goes in this memory file — not the plan. Do NOT read other agents' memory files.
 
 ## File Scope
 
@@ -121,7 +103,7 @@ Individual version files following the project's conventions.
 
 ## Agent Memory File
 
-When participating in the project-todos workflow (Step 9 Part B), write documentation tracking to your agent memory file at `docs/plans/{plan-name}.memory/docs-writer.md`. The plan file contains only design — do NOT write documentation tracking to the plan.
+When participating in the project-todos workflow (Step 8 Part B), write documentation tracking to your agent memory file at `docs/plans/{plan-name}.memory/docs-writer.md`. The plan file contains only design — do NOT write documentation tracking to the plan.
 
 **Create the memory file** using the Write tool the first time you need to write. The directory is created automatically.
 
@@ -153,7 +135,7 @@ Current step: [what this agent is doing or last did]
 
 ---
 
-## Process for Step 9 Part B
+## Process for Step 8 Part B
 
 When invoked as part of the project-todos workflow:
 

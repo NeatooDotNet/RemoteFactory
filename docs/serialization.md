@@ -11,6 +11,31 @@ Beyond DI resolution, RemoteFactory's custom serialization handles two things Sy
 
 For everything else — primitives, collections, enums, records — RemoteFactory falls back to standard System.Text.Json.
 
+## LazyLoad\<T\> Properties
+
+`LazyLoad<T>` properties on `[Factory]` classes serialize with full support in both formats. The serialized state includes `Value` and `IsLoaded` — the loader delegate is not serialized (delegates reference server-side services and are reconstructed via the constructor-initialization pattern on deserialization).
+
+**Named format:**
+```json
+{"value": "loaded data", "isLoaded": true}
+```
+or for an unloaded property:
+```json
+{"value": null, "isLoaded": false}
+```
+
+**Ordinal format:** Each `LazyLoad<T>` property occupies two consecutive array slots — one for the Value and one for `IsLoaded`. For example, a class with `string Name` and `LazyLoad<string> Reviews`:
+```
+["ProductName", "review text", true]
+                 ^-- Value       ^-- IsLoaded
+```
+
+An unloaded property serializes as `[null, false]` in the two slots.
+
+The `PropertyNames` and `PropertyTypes` arrays reflect the two-slot encoding: a property named `Reviews` produces entries `"Reviews"` and `"Reviews__IsLoaded"` in `PropertyNames`, and `typeof(string)` and `typeof(bool)` in `PropertyTypes`.
+
+BCL `Lazy<T>` is not supported — use `LazyLoad<T>` instead. See [LazyLoad](lazyload.md) for the full usage guide.
+
 ## Serialization Formats
 
 RemoteFactory supports two JSON formats. The choice is straightforward:

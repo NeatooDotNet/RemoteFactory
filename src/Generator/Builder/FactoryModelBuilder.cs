@@ -94,7 +94,8 @@ internal static class FactoryModelBuilder
             signatureText: typeInfo.SignatureText,
             isPartial: typeInfo.IsPartial,
             delegates: delegates,
-            events: events);
+            events: events,
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -145,7 +146,8 @@ internal static class FactoryModelBuilder
         var interfaceFactory = new InterfaceFactoryModel(
             serviceTypeName: typeInfo.ServiceTypeName,
             implementationTypeName: typeInfo.ImplementationTypeName,
-            methods: methods);
+            methods: methods,
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -272,7 +274,8 @@ internal static class FactoryModelBuilder
             ordinalSerialization: ordinalSerialization,
             hasDefaultSave: hasDefaultSave,
             requiresEntityRegistration: requiresEntityRegistration,
-            registerOrdinalConverter: registerOrdinalConverter);
+            registerOrdinalConverter: registerOrdinalConverter,
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -968,14 +971,16 @@ internal static class FactoryModelBuilder
             .Select(p => new OrdinalPropertyModel(
                 name: p.Name,
                 type: p.Type,
-                isNullable: p.IsNullable))
+                isNullable: p.IsNullable,
+                isLazyLoad: p.IsLazyLoad,
+                innerType: p.InnerType))
             .ToList();
 
         var constructorParameterNames = typeInfo.PrimaryConstructorParameterNames.ToList();
 
         return new OrdinalSerializationModel(
             typeName: typeInfo.ImplementationTypeName,
-            fullTypeName: $"{typeInfo.Namespace}.{typeInfo.ImplementationTypeName}",
+            fullTypeName: $"global::{typeInfo.Namespace}.{typeInfo.ImplementationTypeName}",
             @namespace: typeInfo.Namespace,
             isRecord: typeInfo.IsRecord,
             hasPrimaryConstructor: typeInfo.HasPrimaryConstructor,

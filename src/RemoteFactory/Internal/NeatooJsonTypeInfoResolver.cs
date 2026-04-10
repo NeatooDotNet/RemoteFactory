@@ -1,11 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using System.Threading.Tasks;
 
 namespace Neatoo.RemoteFactory.Internal;
 
@@ -25,7 +21,7 @@ public class NeatooJsonTypeInfoResolver : DefaultJsonTypeInfoResolver
 	{
 		var jsonTypeInfo = base.GetTypeInfo(type, options);
 
-		if (jsonTypeInfo.Kind == JsonTypeInfoKind.Object && jsonTypeInfo.CreateObject is null)
+		if (jsonTypeInfo.Kind == JsonTypeInfoKind.Object && jsonTypeInfo.CreateObject is null && type is not null)
 		{
 			if (this.ServiceProviderIsService.IsService(type))
 			{
@@ -33,6 +29,13 @@ public class NeatooJsonTypeInfoResolver : DefaultJsonTypeInfoResolver
 				{
 					return this.ServiceProvider.GetRequiredService(type);
 				};
+			}
+			else if (DtoConstructorRegistry.TryCreate(type, out var factory))
+			{
+				// Plain DTOs: use generator-emitted constructor lambdas that survive
+				// IL trimming. The generator discovers DTO return types at compile time
+				// and emits DtoConstructorRegistry.Register<Dto>(() => new Dto()) calls.
+				jsonTypeInfo.CreateObject = factory;
 			}
 		}
 		return jsonTypeInfo;

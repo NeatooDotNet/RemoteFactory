@@ -54,6 +54,49 @@ public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
 - You want testable auth without HTTP infrastructure
 - Different operations have different authorization requirements
 
+### Parameterized Authorization Methods
+
+Auth methods can receive parameters matched by type from factory method parameters:
+
+```csharp
+public interface IOrderAuthorization
+{
+    // Guid param matched to Fetch(Guid orderId) by type
+    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+    bool CanFetchOrder(Guid orderId);
+
+    // Parameterless Read for Create
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
+    bool CanRead();
+}
+```
+
+The generator produces `CanFetch(Guid)` on the factory interface. Parameters are matched **by type**, not name.
+
+Use specific scopes (e.g., `Fetch`) for parameterized methods — a `Read`-scoped method with a `Guid` param would try to match Create too, which may not have a `Guid` parameter.
+
+### Target Parameter Authorization
+
+Auth methods can receive the **target entity** on write operations for state-based authorization:
+
+```csharp
+public interface IOrderAuthorization
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+    bool CanWrite(IOrder target);
+}
+
+public class OrderAuthorization : IOrderAuthorization
+{
+    public bool CanWrite(IOrder target)
+    {
+        return target.Status != "Locked"; // Deny writes to locked records
+    }
+}
+```
+
+**CanXxx suppression:** When Write auth has a target parameter, `CanInsert`/`CanUpdate`/`CanDelete`/`CanSave` are **not generated** — the entity isn't available before Save(). Auth is checked inside Save() instead. `CanCreate`/`CanFetch` are still generated when Read auth is parameterless.
+
 ---
 
 ## Authorization with [AspAuthorize]

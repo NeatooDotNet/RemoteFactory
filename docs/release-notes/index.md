@@ -17,6 +17,15 @@ Releases with new features, breaking changes, or bug fixes.
 | Version | Date | Highlights |
 |---------|------|------------|
 | [v1.0.0](v1.0.0.md) | 2026-04-10 | **Production release** — factory events (`[FactoryEventHandler<T>]` mediator + server-to-client relay, `RaiseOptions.ServerOnly`), API stability commitment |
+| [v0.29.0](v0.29.0.md) | 2026-04-06 | Authorization target parameter support, type-based param matching tests |
+| [v0.28.0](v0.28.0.md) | 2026-04-03 | `IEventScopeInitializer` for multi-tenant events, pipeline trace logging, fix parameter DTO trimming |
+| [v0.27.0](v0.27.0.md) | 2026-03-31 | Recursive nested DTO discovery for IL trimming |
+| [v0.26.0](v0.26.0.md) | 2026-03-29 | `LazyLoad<T>` inheritable for subclassing |
+| [v0.25.0](v0.25.0.md) | 2026-03-28 | `LazyLoad<T>` for deferred async loading with full serialization support |
+| [v0.24.2](v0.24.2.md) | 2026-03-27 | Fix event DI validation failure on Blazor WASM clients |
+| [v0.24.1](v0.24.1.md) | 2026-03-26 | Fix missing `global::` prefix in generated type references |
+| [v0.24.0](v0.24.0.md) | 2026-03-25 | Trimming-safe DTO serialization via generator-emitted constructor registration |
+| [v0.23.2](v0.23.2.md) | 2026-03-25 | Fix DTO deserialization under IL trimming |
 | [v0.23.0](v0.23.0.md) | 2026-03-21 | Shared reference handling for mutable types, record bypass converter |
 | [v0.22.0](v0.22.0.md) | 2026-03-20 | Serializer responsibility redesign: converter-level reference handling |
 | [v0.21.3](v0.21.3.md) | 2026-03-20 | Fix record deserialization with `$id`/`$ref` metadata |
@@ -50,6 +59,15 @@ Releases with new features, breaking changes, or bug fixes.
 ## All Releases
 
 - [v1.0.0](v1.0.0.md) - 2026-04-10 - **Production release** — factory events mediator + client relay, API stability commitment
+- [v0.29.0](v0.29.0.md) - 2026-04-06 - Authorization target parameter support
+- [v0.28.0](v0.28.0.md) - 2026-04-03 - IEventScopeInitializer, pipeline trace logging, fix parameter DTO trimming
+- [v0.27.0](v0.27.0.md) - 2026-03-31 - Recursive nested DTO discovery for IL trimming
+- [v0.26.0](v0.26.0.md) - 2026-03-29 - LazyLoad&lt;T&gt; inheritable for subclassing
+- [v0.25.0](v0.25.0.md) - 2026-03-28 - LazyLoad&lt;T&gt; for deferred async loading
+- [v0.24.2](v0.24.2.md) - 2026-03-27 - Fix event DI validation on Blazor WASM
+- [v0.24.1](v0.24.1.md) - 2026-03-26 - Fix missing global:: in generated type references
+- [v0.24.0](v0.24.0.md) - 2026-03-25 - Trimming-safe DTO serialization
+- [v0.23.2](v0.23.2.md) - 2026-03-25 - Fix DTO deserialization under IL trimming
 - [v0.23.0](v0.23.0.md) - 2026-03-21 - Shared reference handling for mutable types
 - [v0.22.0](v0.22.0.md) - 2026-03-20 - Serializer responsibility redesign
 - [v0.21.3](v0.21.3.md) - 2026-03-20 - Fix record deserialization with reference metadata
