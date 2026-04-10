@@ -227,7 +227,16 @@ public class FactoryEventHandlerSerializationTests
         // Wait for all to finish
         await tracker.WaitAllAsync();
 
-        // After WaitAll, pending count should be 0
+        // After WaitAll, pending count should drop to 0.
+        // Note: EventTracker removes entries via Task.ContinueWith on TaskScheduler.Default,
+        // which schedules the cleanup asynchronously. WaitAllAsync awaits the handler tasks
+        // themselves, but the cleanup continuations may run shortly after. Poll briefly
+        // with a short timeout to let the continuations drain.
+        var deadline = DateTime.UtcNow.AddSeconds(1);
+        while (tracker.PendingCount > 0 && DateTime.UtcNow < deadline)
+        {
+            await Task.Yield();
+        }
         var pendingAfterWait = tracker.PendingCount;
 
         Assert.True(pendingDuringExecution > 0, $"Expected pending tasks during execution, got {pendingDuringExecution}");
