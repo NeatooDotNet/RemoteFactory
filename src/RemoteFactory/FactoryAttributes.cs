@@ -110,6 +110,25 @@ public sealed class EventAttribute : FactoryOperationAttribute
 	public EventAttribute() : base(FactoryOperation.Event) { }
 }
 
+/// <summary>
+/// Marks a class as a handler for factory events of type <typeparamref name="T"/>.
+/// The class must have exactly one non-private method whose first non-[Service]/non-CancellationToken
+/// parameter is of type <typeparamref name="T"/> and returns <see cref="Task"/>.
+/// <para>
+/// <b>Static methods</b> → server-side handler: registered in <see cref="FactoryEventHandlerRegistry"/>,
+/// dispatched via <see cref="IFactoryEvents.Raise{T}"/> in an isolated scope with fire-and-forget semantics.
+/// </para>
+/// <para>
+/// <b>Instance methods</b> → client-side relay handler: registered in <see cref="FactoryEventRelayRegistry"/>,
+/// dispatched when events are relayed from server to client in <see cref="RemoteResponseDto"/>.
+/// </para>
+/// </summary>
+/// <typeparam name="T">The event type (must inherit from <see cref="FactoryEventBase"/>).</typeparam>
+[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+#pragma warning disable CA1813 // Sealed generic attribute must be unsealed for generator discovery
+public sealed class FactoryEventHandlerAttribute<T> : Attribute { }
+#pragma warning restore CA1813
+
 [System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class AuthorizeFactoryAttribute<T> : Attribute
 {

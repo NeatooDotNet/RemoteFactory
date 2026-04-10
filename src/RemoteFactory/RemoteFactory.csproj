@@ -4,6 +4,7 @@
 		<InternalsVisibleTo Include="Neatoo.RemoteFactory.AspNetCore" />
 		<InternalsVisibleTo Include="RemoteFactory.UnitTests" />
 		<InternalsVisibleTo Include="RemoteFactory.IntegrationTests" />
+		<InternalsVisibleTo Include="Design.Tests" />
 	</ItemGroup>
 	<PropertyGroup>
 		<RootNamespace>Neatoo.RemoteFactory</RootNamespace>

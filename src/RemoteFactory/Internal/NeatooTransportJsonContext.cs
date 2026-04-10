@@ -13,6 +13,8 @@ namespace Neatoo.RemoteFactory.Internal;
 [JsonSerializable(typeof(RemoteRequestDto))]
 [JsonSerializable(typeof(RemoteResponseDto))]
 [JsonSerializable(typeof(ObjectJson))]
+[JsonSerializable(typeof(RelayedFactoryEvent))]
+[JsonSerializable(typeof(List<RelayedFactoryEvent>))]
 internal partial class NeatooTransportJsonContext : JsonSerializerContext
 {
 }

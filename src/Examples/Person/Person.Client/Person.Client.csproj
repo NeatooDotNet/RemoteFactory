@@ -20,6 +20,8 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Person.DomainModel\Person.DomainModel.csproj" />
+	  <ProjectReference Include="..\..\..\Generator\Generator.csproj" OutputItemType="Analyzer" />
+	  <ProjectReference Include="..\..\..\RemoteFactory\RemoteFactory.csproj" />
 	</ItemGroup>
 
 </Project>

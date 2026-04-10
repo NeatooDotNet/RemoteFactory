@@ -76,6 +76,35 @@ public partial class Factory : IIncrementalGenerator
 			var source = FactoryRenderer.Render(unit);
 			spc.AddSource($"{unit.HintName}Factory.g.cs", source);
 		});
+
+		// Pipeline for [FactoryEventHandler<T>] classes — generates relay dispatch registrations
+		var relayHandlersToGenerate = context.SyntaxProvider.ForAttributeWithMetadataName(
+			"Neatoo.RemoteFactory.FactoryEventHandlerAttribute`1",
+			predicate: static (s, _) => s is ClassDeclarationSyntax,
+			transform: static (ctx, _) =>
+			{
+				var classDecl = (ClassDeclarationSyntax)ctx.TargetNode;
+				var semanticModel = ctx.SemanticModel;
+				return TransformRelayHandler(classDecl, semanticModel);
+			});
+
+		context.RegisterSourceOutput(relayHandlersToGenerate, static (spc, model) =>
+		{
+			if (model == null)
+				return;
+
+			foreach (var diag in model.Diagnostics)
+			{
+				ReportDiagnostic(spc, diag);
+			}
+
+			if (model.Entries.Count == 0)
+				return;
+
+			var source = RelayHandlerRenderer.Render(model);
+			spc.AddSource($"{model.HintName}.RelayHandler.g.cs", source);
+		});
+
 	}
 
 	private static DiagnosticDescriptor GetDescriptor(string diagnosticId)
@@ -99,6 +128,9 @@ public partial class Factory : IIncrementalGenerator
 			"NF0402" => DiagnosticDescriptors.EventRequiresFactoryClass,
 			"NF0403" => DiagnosticDescriptors.EventNoNonServiceParameters,
 			"NF0404" => DiagnosticDescriptors.EventMustHaveCancellationToken,
+			"NF0405" => DiagnosticDescriptors.FactoryEventHandlerMustBeStatic,
+			"NF0501" => DiagnosticDescriptors.RelayHandlerMethodNotFound,
+			"NF0502" => DiagnosticDescriptors.RelayHandlerMethodAmbiguous,
 			_ => throw new ArgumentException($"Unknown diagnostic ID: {diagnosticId}")
 		};
 	}

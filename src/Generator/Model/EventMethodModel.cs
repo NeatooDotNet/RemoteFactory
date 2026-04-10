@@ -14,7 +14,8 @@ internal sealed record EventMethodModel
         IReadOnlyList<ParameterModel>? parameters = null,
         IReadOnlyList<ParameterModel>? serviceParameters = null,
         string? containingTypeName = null,
-        bool isStaticClass = false)
+        bool isStaticClass = false,
+        string? eventTypeName = null)
     {
         Name = name;
         DelegateName = delegateName;
@@ -23,6 +24,7 @@ internal sealed record EventMethodModel
         ServiceParameters = serviceParameters ?? System.Array.Empty<ParameterModel>();
         ContainingTypeName = containingTypeName;
         IsStaticClass = isStaticClass;
+        EventTypeName = eventTypeName;
     }
 
     public string Name { get; }
@@ -32,4 +34,10 @@ internal sealed record EventMethodModel
     public IReadOnlyList<ParameterModel> ServiceParameters { get; }
     public string? ContainingTypeName { get; }
     public bool IsStaticClass { get; }
+
+    /// <summary>
+    /// For [FactoryEventHandler] methods: the fully qualified event type name.
+    /// Null for [Event] methods (they don't have event types).
+    /// </summary>
+    public string? EventTypeName { get; }
 }

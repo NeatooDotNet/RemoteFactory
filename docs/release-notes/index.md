@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v1.0.0](v1.0.0.md) | 2026-04-10 | **Production release** — factory events (`[FactoryEventHandler<T>]` mediator + server-to-client relay, `RaiseOptions.ServerOnly`), API stability commitment |
 | [v0.29.0](v0.29.0.md) | 2026-04-06 | Authorization target parameter support, type-based param matching tests |
 | [v0.28.0](v0.28.0.md) | 2026-04-03 | `IEventScopeInitializer` for multi-tenant events, pipeline trace logging, fix parameter DTO trimming |
 | [v0.27.0](v0.27.0.md) | 2026-03-31 | Recursive nested DTO discovery for IL trimming |
@@ -57,6 +58,8 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v1.0.0](v1.0.0.md) - 2026-04-10 - **Production release** — factory events mediator + client relay, API stability commitment
+- [v0.29.0](v0.29.0.md) - 2026-04-06 - Authorization target parameter support
 - [v0.28.0](v0.28.0.md) - 2026-04-03 - IEventScopeInitializer, pipeline trace logging, fix parameter DTO trimming
 - [v0.27.0](v0.27.0.md) - 2026-03-31 - Recursive nested DTO discovery for IL trimming
 - [v0.26.0](v0.26.0.md) - 2026-03-29 - LazyLoad&lt;T&gt; inheritable for subclassing
@@ -65,6 +68,7 @@ Releases with new features, breaking changes, or bug fixes.
 - [v0.24.1](v0.24.1.md) - 2026-03-26 - Fix missing global:: in generated type references
 - [v0.24.0](v0.24.0.md) - 2026-03-25 - Trimming-safe DTO serialization
 - [v0.23.2](v0.23.2.md) - 2026-03-25 - Fix DTO deserialization under IL trimming
+- [v0.23.0](v0.23.0.md) - 2026-03-21 - Shared reference handling for mutable types
 - [v0.22.0](v0.22.0.md) - 2026-03-20 - Serializer responsibility redesign
 - [v0.21.3](v0.21.3.md) - 2026-03-20 - Fix record deserialization with reference metadata
 - [v0.21.2](v0.21.2.md) - 2026-03-08 - Trimming-safe factory registration for all factory types

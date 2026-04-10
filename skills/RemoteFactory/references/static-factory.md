@@ -70,6 +70,8 @@ var summary = await SkillEmployeeCommands.GetEmployeeSummary(employeeId);
 
 Use `[Event]` for operations that run asynchronously. The caller doesn't wait for completion.
 
+> **Looking for the mediator pattern or server-to-client event relay?** See `references/factory-events.md`. That file covers `IFactoryEvents.Raise`, the `[FactoryEventHandler<T>]` class attribute, `RaiseOptions.ServerOnly`, and `IFactoryEventRelay`. The `[Event]` method attribute below is a different feature: it generates a named delegate for direct fire-and-forget invocation.
+
 <!-- snippet: skill-static-event-handlers -->
 <a id='snippet-skill-static-event-handlers'></a>
 ```cs

@@ -74,9 +74,10 @@ internal class PersonModel : IPersonModel
 	[Remote]
 	[Update]
 	[Insert]
-	internal async Task Upsert([Service] IPersonContext personContext)
+	internal async Task Upsert([Service] IPersonContext personContext, [Service] IFactoryEvents factoryEvents)
 	{
 		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
+		bool isInsert = personEntity == null;
 		if(personEntity == null)
 		{
 			personEntity = new PersonEntity();
@@ -90,18 +91,25 @@ internal class PersonModel : IPersonModel
 		personEntity.Created = this.Created;
 		personEntity.Modified = this.Modified;
 		await personContext.SaveChangesAsync();
+
+		if (isInsert)
+			await factoryEvents.Raise(new PersonCreatedEvent(personEntity.Id));
+		else
+			await factoryEvents.Raise(new PersonUpdatedEvent(personEntity.Id));
 	}
 
 	[Remote]
 	[Delete]
-	internal async Task Delete([Service] IPersonContext personContext)
+	internal async Task Delete([Service] IPersonContext personContext, [Service] IFactoryEvents factoryEvents)
 	{
 		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
 
 		if (personEntity != null)
 		{
+			var id = personEntity.Id;
 			personContext.Persons.Remove(personEntity);
 			await personContext.SaveChangesAsync();
+			await factoryEvents.Raise(new PersonDeletedEvent(id));
 		}
 	}
 }

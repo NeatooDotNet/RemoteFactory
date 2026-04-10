@@ -66,9 +66,21 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
         // Deserialize the response
         json = JsonSerializer.Serialize(remoteResponseOnServer);
-        var result = JsonSerializer.Deserialize<RemoteResponseDto>(json);
+        var result = JsonSerializer.Deserialize<RemoteResponseDto>(json)!;
 
-        return _neatooJsonSerializer.DeserializeRemoteResponse<T>(result!);
+        var deserialized = _neatooJsonSerializer.DeserializeRemoteResponse<T>(result);
+
+        // Dispatch relayed events synchronously for test determinism
+        if (result.RelayedEvents != null)
+        {
+            var relay = _serviceProvider.GetService<IFactoryEventRelay>() as FactoryEventRelayDispatcher;
+            if (relay != null)
+            {
+                await relay.DispatchRelayedEvents(result.RelayedEvents, _neatooJsonSerializer);
+            }
+        }
+
+        return deserialized;
     }
 
     public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)

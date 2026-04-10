@@ -32,13 +32,14 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 	private readonly INeatooJsonSerializer NeatooJsonSerializer;
 	private readonly MakeRemoteDelegateRequestHttpCall MakeRemoteDelegateRequestCall;
 	private readonly ICorrelationContext _correlationContext;
+	private readonly FactoryEventRelayDispatcher? _relay;
 	private readonly ILogger<MakeRemoteDelegateRequest> logger;
 
 	public MakeRemoteDelegateRequest(
 		INeatooJsonSerializer neatooJsonSerializer,
 		MakeRemoteDelegateRequestHttpCall sendRemoteDelegateRequestToServer,
 		ICorrelationContext correlationContext)
-		: this(neatooJsonSerializer, sendRemoteDelegateRequestToServer, correlationContext, null)
+		: this(neatooJsonSerializer, sendRemoteDelegateRequestToServer, correlationContext, null, null)
 	{
 	}
 
@@ -46,11 +47,22 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		INeatooJsonSerializer neatooJsonSerializer,
 		MakeRemoteDelegateRequestHttpCall sendRemoteDelegateRequestToServer,
 		ICorrelationContext correlationContext,
+		IFactoryEventRelay? relay)
+		: this(neatooJsonSerializer, sendRemoteDelegateRequestToServer, correlationContext, relay, null)
+	{
+	}
+
+	public MakeRemoteDelegateRequest(
+		INeatooJsonSerializer neatooJsonSerializer,
+		MakeRemoteDelegateRequestHttpCall sendRemoteDelegateRequestToServer,
+		ICorrelationContext correlationContext,
+		IFactoryEventRelay? relay,
 		ILogger<MakeRemoteDelegateRequest>? logger)
 	{
 		this.NeatooJsonSerializer = neatooJsonSerializer;
 		this.MakeRemoteDelegateRequestCall = sendRemoteDelegateRequestToServer;
 		_correlationContext = correlationContext;
+		_relay = relay as FactoryEventRelayDispatcher;
 		this.logger = logger ?? NullLogger<MakeRemoteDelegateRequest>.Instance;
 	}
 
@@ -90,7 +102,15 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 				return default;
 			}
 
-			return this.NeatooJsonSerializer.DeserializeRemoteResponse<T>(result);
+			var deserialized = this.NeatooJsonSerializer.DeserializeRemoteResponse<T>(result);
+
+			// Fire-and-forget: dispatch relayed events after returning result
+			if (_relay != null && result.RelayedEvents != null)
+			{
+				_ = _relay.DispatchRelayedEvents(result.RelayedEvents, this.NeatooJsonSerializer);
+			}
+
+			return deserialized;
 		}
 		catch (OperationCanceledException)
 		{

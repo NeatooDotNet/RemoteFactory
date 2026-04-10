@@ -343,4 +343,5 @@ internal static class StaticFactoryRenderer
         sb.AppendLine("                    });");
         sb.AppendLine("                }");
     }
+
 }

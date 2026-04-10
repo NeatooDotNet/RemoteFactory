@@ -15,6 +15,7 @@ Complete reference of all RemoteFactory attributes.
 | `[Delete]` | Method | Remove entity |
 | `[Execute]` | Method | Business operations |
 | `[Event]` | Method | Fire-and-forget events |
+| `[FactoryEventHandler<T>]` | Class | Mediator + client relay handler for `FactoryEventBase` events |
 | `[Remote]` | Method | Client-to-server entry point |
 | `[Service]` | Parameter | Inject from DI |
 | `[AuthorizeFactory<T>]` | Class, Interface | Custom authorization |
@@ -204,6 +205,58 @@ public partial class EmployeeEventsMinimal
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L98-L106' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-event' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+### [FactoryEventHandler\<T\>]
+
+Class-level attribute that marks a class as a handler for factory events of type `T` (where `T : FactoryEventBase`). The source generator finds one matching method by signature and registers either a server-side handler (static method) or a client-side relay handler (instance method). See [Factory Events](factory-events.md) for the full pattern.
+
+**Inherited:** No | **Multiple:** Yes (stack one per event type)
+
+**Method matching rules:**
+- Return type must be `Task`
+- First non-`[Service]`/non-`CancellationToken` parameter must be of type `T`
+- Any accessibility allowed
+- Exactly one match required — `NF0501` if none, `NF0502` if multiple
+
+**Static method = server-side handler:**
+
+```csharp
+[FactoryEventHandler<OrderCheckoutCompleted>]
+public static partial class OrderAuditHandler
+{
+    internal static Task Log(
+        OrderCheckoutCompleted evt,
+        [Service] IAuditLogService audit,
+        CancellationToken ct) =>
+        audit.LogAsync("Checkout", evt.OrderId, "Order", $"Total: {evt.Total:C}", ct);
+}
+```
+
+Runs in an isolated DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method.
+
+**Instance method = client-side relay handler:**
+
+```csharp
+[FactoryEventHandler<OrderCheckoutCompleted>]
+public sealed partial class CheckoutViewModel : IDisposable
+{
+    private readonly IFactoryEventRelay _relay;
+
+    public CheckoutViewModel(IFactoryEventRelay relay)
+    {
+        _relay = relay;
+        _relay.Register(this);
+    }
+
+    public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
+
+    public void Dispose() => _relay.Unregister(this);
+}
+```
+
+Called on the registered instance after the factory operation result returns to the client. Exceptions are swallowed. Handler classes do NOT need (and should not have) `[Factory]` — this is a separate generator pipeline.
+
+A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle several event types — the generator matches one method per attribute.
+
 ## Execution Control
 
 ### [Remote]
@@ -368,6 +421,7 @@ Limits generated file hint name length. Use when hitting Windows path length lim
 | `[SuppressFactory]` | Yes | Blocks factory on derived classes too |
 | `[Remote]` | Yes | Derived methods inherit remote execution |
 | `[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`, `[Event]` | No | Must redeclare on each class |
+| `[FactoryEventHandler<T>]` | No | Stack multiple for multiple event types |
 | `[Service]` | No | Must apply to each parameter |
 | `[AuthorizeFactory<T>]`, `[AuthorizeFactory]`, `[AspAuthorize]` | No | Must redeclare on each class/method |
 
@@ -399,4 +453,5 @@ public partial class DerivedEntity : BaseWithFactory
 
 - [Interfaces Reference](interfaces-reference.md) — All RemoteFactory interfaces
 - [Factory Operations](factory-operations.md) — Operation details and patterns
+- [Factory Events](factory-events.md) — `[FactoryEventHandler<T>]` mediator + client relay
 - [Authorization](authorization.md) — Authorization attribute usage

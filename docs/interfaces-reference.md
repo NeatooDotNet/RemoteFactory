@@ -638,6 +638,36 @@ public static partial class EventTrackerDemo
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L263-L277' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-eventtracker' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+## Factory Events
+
+### IFactoryEvents
+
+Request-scoped mediator for publishing factory events. Injected as `[Service] IFactoryEvents` into factory methods.
+
+```csharp
+public interface IFactoryEvents
+{
+    Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None)
+        where T : FactoryEventBase;
+}
+```
+
+**When to use:** Publishing domain events from within a factory method. Events are dispatched to matching `[FactoryEventHandler<T>]` static-method handlers and — unless `RaiseOptions.ServerOnly` is set — captured for relay back to the client. See [Factory Events](factory-events.md).
+
+### IFactoryEventRelay
+
+Client-side singleton that dispatches relayed events to registered handler instances. Implement `[FactoryEventHandler<T>]` on a class with an instance method and call `Register(this)` from its constructor.
+
+```csharp
+public interface IFactoryEventRelay
+{
+    void Register(object handler);
+    void Unregister(object handler);
+}
+```
+
+**When to use:** Register viewmodels, components, or services that need to react to events raised during server-side factory operations. Handlers are held by `WeakReference` — a handler garbage-collected without calling `Unregister` is silently removed (no memory leak). Handler exceptions never propagate to the factory caller.
+
 ### IEventScopeInitializer
 
 Propagates ambient context from the request scope to event handler scopes. Event handlers run in isolated DI scopes — this interface bridges scoped state (tenant context, user identity, etc.) from the parent scope into the event scope.
@@ -715,6 +745,8 @@ public interface IFactoryCore<T>
 | `IOrdinalSerializationMetadata` | Ordinal deserialization metadata | Source generator (automatic) |
 | `ILazyLoadFactory` | Deferred loading factory | Framework (inject via `[Service]`) |
 | `IEventTracker` | Fire-and-forget event tracking | Framework (rarely customized) |
+| `IFactoryEvents` | Mediator for publishing factory events | Factory methods (inject) |
+| `IFactoryEventRelay` | Client-side relay dispatch registry | Viewmodels/components (call Register) |
 | `IEventScopeInitializer` | Event scope context propagation | Application (custom initializers) |
 | `IFactoryCore<T>` | Factory execution pipeline | Framework (rarely customized) |
 
