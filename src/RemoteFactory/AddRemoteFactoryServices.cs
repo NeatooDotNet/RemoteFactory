@@ -67,6 +67,28 @@ public static partial class RemoteFactoryServices
 		// Register EventTracker for fire-and-forget event handling
 		services.TryAddSingleton<IEventTracker, EventTracker>();
 
+		// Register IFactoryEvents — dispatches to handlers registered in FactoryEventHandlerRegistry.
+		// In Remote mode, a RemoteFactoryEvents wrapper sends events to the server.
+		// In Logical/Server mode, the dispatcher runs handlers locally.
+		if (remoteLocal == NeatooFactory.Remote)
+		{
+			services.AddScoped<IFactoryEvents, RemoteFactoryEvents>();
+		}
+		else
+		{
+			services.TryAddScoped<IFactoryEvents, FactoryEventsDispatcher>();
+
+			// Register the delegate handler for remote IFactoryEvents.Raise requests.
+			// When a Remote client sends a RaiseFactoryEventRemote request,
+			// the server resolves this delegate and dispatches to local handlers.
+			services.AddScoped<RaiseFactoryEventRemote>(sp =>
+			{
+				var factoryEvents = sp.GetRequiredService<IFactoryEvents>();
+				return (factoryEvent, options) =>
+					factoryEvents.RaiseUntyped(factoryEvent, (RaiseOptions)options);
+			});
+		}
+
 		// Register NeatooJsonSerializer with serialization options and logging
 		services.AddScoped<INeatooJsonSerializer>(sp =>
 		{

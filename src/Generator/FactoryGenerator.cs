@@ -79,6 +79,7 @@ public partial class Factory : IIncrementalGenerator
 			var source = FactoryRenderer.Render(unit);
 			spc.AddSource($"{unit.HintName}Factory.g.cs", source);
 		});
+
 	}
 
 	private static void GenerateExecute(SourceProductionContext context, TypeInfo typeInfo)
@@ -699,6 +700,7 @@ public partial class Factory : IIncrementalGenerator
 			"NF0402" => DiagnosticDescriptors.EventRequiresFactoryClass,
 			"NF0403" => DiagnosticDescriptors.EventNoNonServiceParameters,
 			"NF0404" => DiagnosticDescriptors.EventMustHaveCancellationToken,
+			"NF0405" => DiagnosticDescriptors.FactoryEventHandlerMustBeStatic,
 			_ => throw new ArgumentException($"Unknown diagnostic ID: {diagnosticId}")
 		};
 	}

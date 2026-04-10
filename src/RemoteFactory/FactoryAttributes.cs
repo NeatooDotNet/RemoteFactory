@@ -110,6 +110,26 @@ public sealed class EventAttribute : FactoryOperationAttribute
 	public EventAttribute() : base(FactoryOperation.Event) { }
 }
 
+/// <summary>
+/// Marks a static method as a mediator-style event handler discoverable by <see cref="IFactoryEvents"/>.
+/// The first non-[Service] parameter must be a type inheriting from <see cref="FactoryEventBase"/>.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Unlike <see cref="EventAttribute"/> (which generates per-handler delegates), this attribute
+/// participates in the mediator pattern: multiple handlers for the same event type are discovered
+/// at compile time and dispatched via <see cref="IFactoryEvents.Raise{T}"/>.
+/// </para>
+/// <para>
+/// Must be placed on a <c>static</c> method in a <c>[Factory]</c> class (static or non-static).
+/// The method must have <see cref="CancellationToken"/> as its final parameter.
+/// </para>
+/// </remarks>
+public sealed class FactoryEventHandlerAttribute : FactoryOperationAttribute
+{
+	public FactoryEventHandlerAttribute() : base(FactoryOperation.FactoryEventHandler) { }
+}
+
 [System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class AuthorizeFactoryAttribute<T> : Attribute
 {

@@ -230,4 +230,16 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Event handlers run in isolated scopes and support fire-and-forget semantics. The CancellationToken parameter receives ApplicationStopping for graceful shutdown.");
+
+    /// <summary>
+    /// NF0405: FactoryEventHandler method must be static.
+    /// </summary>
+    public static readonly DiagnosticDescriptor FactoryEventHandlerMustBeStatic = new(
+        id: "NF0405",
+        title: "[FactoryEventHandler] method must be static",
+        messageFormat: "[FactoryEventHandler] method '{0}' must be static. Add the 'static' modifier.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "[FactoryEventHandler] methods must be static. The containing class can be static or non-static, but the handler method itself must be static.");
 }

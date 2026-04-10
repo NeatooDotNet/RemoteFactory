@@ -15,6 +15,7 @@ public enum AuthorizeFactoryOperation
 	Read = 64,
 	Write = 128,
 	Execute = 256,
-	Event = 512
+	Event = 512,
+	FactoryEventHandler = 1024
 }
 
