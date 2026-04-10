@@ -1,8 +1,8 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.2
-last_updated: 2026-03-20
+design_version: 1.3
+last_updated: 2026-04-09
 target_frameworks: [net9.0, net10.0]
 ---
 
@@ -131,6 +131,84 @@ public static partial class MyCommands
 - `MyCommands.DoSomething` delegate (Execute)
 - `MyCommands.OnSomethingHappenedEvent` delegate (Event - note `Event` suffix)
 
+### Pattern 4: Factory Event Handler (Mediator + Client Relay)
+
+`[FactoryEventHandler<T>]` is a class-level attribute. The source generator finds
+classes decorated with it, locates a matching method (the first non-`[Service]`/
+non-`CancellationToken` parameter must be of type T, return type must be `Task`),
+and registers either a server-side handler or a client-side relay handler based
+on whether the method is `static` or instance.
+
+**Event type** (shared between client and server):
+```csharp
+public record OrderPlacedEvent(int OrderId, string Email) : FactoryEventBase;
+```
+
+**Server-side raiser** (in any factory method):
+```csharp
+[Factory]
+internal partial class Order
+{
+    [Remote, Create]
+    internal async Task Create(int id, [Service] IFactoryEvents events)
+    {
+        // ... do work ...
+        await events.Raise(new OrderPlacedEvent(id, "x@y.com"));
+    }
+}
+```
+
+**Server-side handler** (static method → runs in isolated scope, fire-and-forget):
+```csharp
+[FactoryEventHandler<OrderPlacedEvent>]
+public static partial class OrderNotifyHandlers
+{
+    internal static async Task SendEmail(
+        OrderPlacedEvent evt,
+        [Service] INotificationService service,
+        CancellationToken ct)
+    {
+        await service.SendAsync(evt.Email, $"Order {evt.OrderId} placed");
+    }
+}
+```
+
+**Client-side relay handler** (instance method → called after the factory
+operation returns to the client):
+```csharp
+[FactoryEventHandler<OrderPlacedEvent>]
+public sealed partial class OrderViewModel : IDisposable
+{
+    private readonly IFactoryEventRelay _relay;
+
+    public OrderViewModel(IFactoryEventRelay relay)
+    {
+        _relay = relay;
+        _relay.Register(this);
+    }
+
+    public Task HandleOrderPlaced(OrderPlacedEvent evt)
+    {
+        // Update UI state
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _relay.Unregister(this);
+}
+```
+
+**Key points:**
+- `[FactoryEventHandler<T>]` classes do NOT need `[Factory]` — it's a separate pipeline
+- Multiple `[FactoryEventHandler<T>]` attributes on one class = handles multiple event types
+- `RaiseOptions.ServerOnly` excludes the event from the client relay (server-side handlers still run, and the flag composes with other `RaiseOptions` flags such as `ContinueOnFail`)
+- The relay piggybacks on the existing HTTP response (`RemoteResponseDto.RelayedEvents`) — no SignalR needed
+- When zero events are captured, `RemoteResponseDto.RelayedEvents` is `null` (not an empty list) — preserves backward-compatible JSON payloads
+- Client-side dispatch ordering is strict: the factory operation **result is returned to the caller first**, then relayed events are dispatched fire-and-forget
+- Handler exceptions are swallowed (never propagate to the factory caller)
+- `IFactoryEventRelay` holds handler instances via `WeakReference` — a handler that is garbage collected without calling `Unregister` is silently removed (no memory leak)
+- Logical mode registers neither the collector nor the relay (no cross-boundary communication needed)
+- NF0501 if no matching method; NF0502 if multiple methods match
+
 ---
 
 ## Quick Decisions Table
@@ -151,6 +229,11 @@ public static partial class MyCommands
 | Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | `AuthorizedOrder.cs`, `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 | Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
+| How do I handle a factory event on the client? | `[FactoryEventHandler<T>]` class attribute with an instance method | `FactoryEventRelayPattern.cs` | Generator finds handler by attribute, matches method by signature; instance = client relay |
+| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class attribute with a `static` method | `FactoryEventHandlerPattern.cs` | Same attribute, static method = server handler in isolated scope |
+| Does `[FactoryEventHandler<T>]` need `[Factory]`? | No, it's a separate generator pipeline | `FactoryEventRelayPattern.cs` | Keeps handler classes clean — not factories |
+| How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
+| Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
 
 ---
 
@@ -417,6 +500,58 @@ public interface IOrderService
 ```
 
 **Why it matters:** RemoteFactory uses a two-path serialization strategy for reference handling. Mutable reference types (Dictionary, List, plain classes with default constructors) participate in `$id`/`$ref` reference tracking via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`. Types with parameterized constructors (records, immutable types) are claimed by `RecordBypassConverterFactory`, which serializes them without any reference metadata -- this is correct DDD behavior because records are value objects whose identity is defined by their values, not by reference. STJ cannot deserialize `$id`/`$ref` metadata on types with parameterized constructors (`ObjectWithParameterizedCtorRefMetadataNotSupported`), so bypassing is also a technical necessity. Mixing Neatoo types into a plain record creates a serialization mismatch: the record bypasses reference handling entirely (including its subtree), but the embedded Neatoo type's converter expects the resolver to be tracking references across the graph. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
+
+---
+
+### Anti-Pattern 10: Raising Factory Events Outside a Factory Method
+
+**WRONG:**
+```csharp
+// Client code calling a factory, then trying to raise an event
+var order = await factory.Create(...);
+await factoryEvents.Raise(new OrderPlacedEvent(order.Id));  // Wrong side!
+```
+
+**RIGHT:**
+```csharp
+[Factory]
+internal partial class Order
+{
+    [Remote, Create]
+    internal async Task Create(int id, [Service] IFactoryEvents events)
+    {
+        // ... do work ...
+        await events.Raise(new OrderPlacedEvent(id));  // Raised server-side
+    }
+}
+```
+
+**Why it matters:** Events are captured by a request-scoped `IFactoryEventCollector` that only exists on the server during a factory operation. Events raised outside that scope on the client have no collector and cannot be relayed. Always raise events from inside a factory method via an injected `[Service] IFactoryEvents`.
+
+---
+
+### Anti-Pattern 11: Decorating a [FactoryEventHandler<T>] Class with [Factory]
+
+**WRONG:**
+```csharp
+[Factory]
+[FactoryEventHandler<OrderPlacedEvent>]
+public partial class OrderNotifier  // WRONG: Two pipelines on the same class
+{
+    public Task HandleOrderPlaced(OrderPlacedEvent evt) => Task.CompletedTask;
+}
+```
+
+**RIGHT:**
+```csharp
+[FactoryEventHandler<OrderPlacedEvent>]
+public partial class OrderNotifier
+{
+    public Task HandleOrderPlaced(OrderPlacedEvent evt) => Task.CompletedTask;
+}
+```
+
+**Why it matters:** `[FactoryEventHandler<T>]` runs in a completely separate generator pipeline from `[Factory]`. The handler class does not need (and should not have) `[Factory]` — it's not a factory. Adding `[Factory]` forces the class through the factory generation pipeline where it would need factory methods, interfaces, etc. Keep handler classes clean.
 
 ---
 
@@ -722,6 +857,8 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
+- [x] Factory event handler (mediator) — server-side static handler (`FactoryEventHandlerPattern.cs`)
+- [x] Factory event relay — client-side instance handler with `IFactoryEventRelay.Register`/`Unregister` (`FactoryEventRelayPattern.cs`)
 
 ---
 
@@ -751,6 +888,8 @@ These are known limitations or open questions. They are documented here to preve
 8. **Missing CancellationToken on events** - Required for graceful shutdown
 9. **[Remote] on public methods** - `[Remote]` requires `internal` for IL trimming. `[Remote] public` emits NF0105. Change to `internal`.
 10. **Mixing Neatoo types with records in Interface Factory return types** - Records bypass reference handling entirely (`RecordBypassConverterFactory`), so embedded Neatoo types lose reference tracking. Use pure records/DTOs or pure Neatoo types, not both.
+11. **Raising factory events outside a factory method** - The request-scoped `IFactoryEventCollector` only exists server-side during a factory operation. Raise events via `[Service] IFactoryEvents` from inside a factory method.
+12. **Stacking `[Factory]` on a `[FactoryEventHandler<T>]` class** - They run in separate generator pipelines. Handler classes are subscribers, not factories. Do not add `[Factory]`.
 
 ---
 
@@ -766,7 +905,10 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
 | `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage for distributed tracing |
+| `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler in isolated scope |
+| `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | `[FactoryEventHandler<T>]` class attribute with instance method — client-side relay via `IFactoryEventRelay` |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
+| `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | Relay dispatch, `RaiseOptions.ServerOnly` exclusion, `Unregister` stops delivery |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |
 | `Design.Server/Program.cs` | Server configuration |

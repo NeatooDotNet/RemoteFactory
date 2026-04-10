@@ -38,7 +38,7 @@ public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEvent
 /// - CancellationToken bound to IHostApplicationLifetime.ApplicationStopping
 /// </summary>
 [FactoryEventHandler<OrderPlacedEvent>]
-public partial class OrderNotifyHandlers
+public static partial class OrderNotifyHandlers
 {
     internal static async Task SendOrderConfirmation(
         OrderPlacedEvent orderEvent,

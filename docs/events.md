@@ -2,6 +2,8 @@
 
 RemoteFactory supports fire-and-forget domain events with scope isolation via the `[Event]` attribute.
 
+> **Looking for the mediator pattern or server-to-client event relay?** See [Factory Events](factory-events.md). That page covers `IFactoryEvents.Raise`, the `[FactoryEventHandler<T>]` class attribute, `RaiseOptions.ServerOnly`, and `IFactoryEventRelay`. This page covers the separate `[Event]` method attribute, which generates a named delegate for direct fire-and-forget invocation.
+
 ## Event Operation Basics
 
 Events are asynchronous operations that run independently of the caller:
@@ -603,6 +605,7 @@ For thousands of concurrent events, consider:
 
 ## Next Steps
 
+- [Factory Events](factory-events.md) - `[FactoryEventHandler<T>]` mediator + client relay (different feature)
 - [Factory Operations](factory-operations.md) - All operation types
 - [Service Injection](service-injection.md) - Inject services into events
 - [ASP.NET Core Integration](aspnetcore-integration.md) - EventTrackerHostedService

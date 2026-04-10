@@ -184,11 +184,16 @@ public partial class Factory
             usings.Add("using Microsoft.Extensions.Hosting;");
         }
 
-        // Collect usings from the source file
+        // Collect usings from the source file.
+        // Use ToString() (not ToFullString()) to avoid capturing trivia like leading comments.
+        // Normalize by trimming trailing semicolons/whitespace before comparing.
         var root = classDecl.SyntaxTree.GetRoot();
         foreach (var u in root.DescendantNodes().OfType<UsingDirectiveSyntax>())
         {
-            usings.Add(u.ToFullString().Trim());
+            var usingText = u.ToString().Trim();
+            if (!usingText.EndsWith(";"))
+                usingText += ";";
+            usings.Add(usingText);
         }
 
         var hintName = $"{ns}.{symbol.Name}";
