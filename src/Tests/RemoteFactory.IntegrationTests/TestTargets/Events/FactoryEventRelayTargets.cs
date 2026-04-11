@@ -90,7 +90,7 @@ public static partial class RelayTestCommands
         [Service] IFactoryEvents factoryEvents)
     {
         var result = new RelayTestResult { Id = Guid.NewGuid(), Name = name };
-        await factoryEvents.Raise(new TestServerOnlyRelayEvent(result.Id), RaiseOptions.ServerOnly | RaiseOptions.ContinueOnFail);
+        await factoryEvents.Raise(new TestServerOnlyRelayEvent(result.Id), RaiseOptions.ServerOnly);
         return result;
     }
 }

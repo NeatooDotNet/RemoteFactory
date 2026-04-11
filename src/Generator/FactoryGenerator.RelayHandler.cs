@@ -132,9 +132,12 @@ public partial class Factory
 
             var method = matchingMethods[0];
 
-            // Build parameter lists
+            // Build parameter lists. AllParameters preserves declaration order so the
+            // renderer can emit invocation arguments in the order the user wrote them
+            // (e.g. (evt, ct, [Service] svc) must bind correctly, not be reshuffled).
             var parameters = new List<ParameterModel>();
             var serviceParameters = new List<ParameterModel>();
+            var allParameters = new List<ParameterModel>();
             foreach (var p in method.Parameters)
             {
                 var isService = p.GetAttributes().Any(a => a.AttributeClass?.Name == "ServiceAttribute");
@@ -144,6 +147,7 @@ public partial class Factory
                     pType = pType.Substring("global::".Length);
 
                 var pm = new ParameterModel(p.Name, pType, isService, false, isCT, false);
+                allParameters.Add(pm);
                 if (isService)
                     serviceParameters.Add(pm);
                 else
@@ -159,7 +163,8 @@ public partial class Factory
                 isStatic: method.IsStatic,
                 isAsync: method.IsAsync,
                 parameters: parameters,
-                serviceParameters: serviceParameters));
+                serviceParameters: serviceParameters,
+                allParameters: allParameters));
         }
 
         if (entries.Count == 0 && diagnostics.Count == 0)
@@ -177,12 +182,6 @@ public partial class Factory
             "using Neatoo.RemoteFactory.Internal;",
             "using Microsoft.Extensions.DependencyInjection;"
         };
-
-        // Check if any entry needs IHostApplicationLifetime (server-side handlers)
-        if (entries.Any(e => e.IsStatic))
-        {
-            usings.Add("using Microsoft.Extensions.Hosting;");
-        }
 
         // Collect usings from the source file.
         // Use ToString() (not ToFullString()) to avoid capturing trivia like leading comments.

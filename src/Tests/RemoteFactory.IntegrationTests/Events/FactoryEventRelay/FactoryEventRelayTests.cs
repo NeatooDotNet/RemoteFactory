@@ -186,7 +186,7 @@ public class FactoryEventRelayTests
     }
 
     [Fact]
-    public async Task ServerOnlyCombinedWithContinueOnFail_NotRelayed()
+    public async Task ServerOnly_NotRelayed()
     {
         var (server, client, local) = ClientServerContainers.Scopes();
         var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();

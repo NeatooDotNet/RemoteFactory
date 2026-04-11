@@ -83,7 +83,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
         return deserialized;
     }
 
-    public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+    public async Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
     {
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
         var json = JsonSerializer.Serialize(remoteRequest);
@@ -92,7 +92,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
         await _serviceProvider
             .GetRequiredService<ServerServiceProvider>()
             .serverProvider
-            .GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, default);
+            .GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, cancellationToken);
     }
 }
 
@@ -221,6 +221,12 @@ public static class ClientServerContainers
         serverCollection.AddSingleton<IEventTestService, EventTestService>();
         localCollection.AddSingleton<IEventTestService, EventTestService>();
 
+        // Scoped probe for [FactoryEventHandler] shared-scope tests — a fresh
+        // instance per DI scope so tests can assert the handler resolves the same
+        // IScopeProbe the caller did.
+        serverCollection.AddScoped<IScopeProbe, ScopeProbe>();
+        localCollection.AddScoped<IScopeProbe, ScopeProbe>();
+
         // Configure RemoteFactory for each mode
         serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, Assembly.GetExecutingAssembly());
         serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
@@ -264,6 +270,7 @@ public static class ClientServerContainers
             services.AddScoped<IService3, Service3>();
             services.AddSingleton<IServerOnlyService, ServerOnly>();
             services.AddSingleton<IEventTestService, EventTestService>();
+            services.AddScoped<IScopeProbe, ScopeProbe>();
         }
 
         services.AddNeatooRemoteFactory(mode, serializationOptions, Assembly.GetExecutingAssembly());
@@ -308,6 +315,12 @@ public static class ClientServerContainers
         // Register event test services as singleton for event tracking across scopes
         serverCollection.AddSingleton<IEventTestService, EventTestService>();
         localCollection.AddSingleton<IEventTestService, EventTestService>();
+
+        // Scoped probe for [FactoryEventHandler] shared-scope tests — a fresh
+        // instance per DI scope so tests can assert the handler resolves the same
+        // IScopeProbe the caller did.
+        serverCollection.AddScoped<IScopeProbe, ScopeProbe>();
+        localCollection.AddScoped<IScopeProbe, ScopeProbe>();
 
         // Configure RemoteFactory for each mode
         serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, Assembly.GetExecutingAssembly());

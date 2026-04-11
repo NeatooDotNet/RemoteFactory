@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v1.1.0](v1.1.0.md) | 2026-04-10 | **Breaking**: `[FactoryEventHandler<T>]` runs in the caller's scope, sequentially, awaited — so handlers participate in the factory's DB transaction. `RaiseOptions.AwaitRemote` and `RaiseOptions.ContinueOnFail` removed. `IFactoryEvents.Raise` gains a `CancellationToken`. |
 | [v1.0.0](v1.0.0.md) | 2026-04-10 | **Production release** — factory events (`[FactoryEventHandler<T>]` mediator + server-to-client relay, `RaiseOptions.ServerOnly`), API stability commitment |
 | [v0.29.0](v0.29.0.md) | 2026-04-06 | Authorization target parameter support, type-based param matching tests |
 | [v0.28.0](v0.28.0.md) | 2026-04-03 | `IEventScopeInitializer` for multi-tenant events, pipeline trace logging, fix parameter DTO trimming |
@@ -58,6 +59,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v1.1.0](v1.1.0.md) - 2026-04-10 - **Breaking**: `[FactoryEventHandler<T>]` shares the caller's DI scope — handlers participate in the factory's DB transaction. `AwaitRemote`/`ContinueOnFail` removed; `Raise` gains `CancellationToken`.
 - [v1.0.0](v1.0.0.md) - 2026-04-10 - **Production release** — factory events mediator + client relay, API stability commitment
 - [v0.29.0](v0.29.0.md) - 2026-04-06 - Authorization target parameter support
 - [v0.28.0](v0.28.0.md) - 2026-04-03 - IEventScopeInitializer, pipeline trace logging, fix parameter DTO trimming

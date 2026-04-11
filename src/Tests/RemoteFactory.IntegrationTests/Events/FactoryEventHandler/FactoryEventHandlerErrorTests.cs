@@ -6,7 +6,9 @@ using RemoteFactory.IntegrationTests.TestTargets.Events;
 namespace RemoteFactory.IntegrationTests.Events.FactoryEventHandler;
 
 /// <summary>
-/// Tests for [FactoryEventHandler] error handling and ContinueOnFail behavior.
+/// Tests for [FactoryEventHandler] error handling.
+/// Handlers run sequentially in the caller's scope; the first exception aborts the chain
+/// and propagates to the caller so the caller's transaction can roll back.
 /// </summary>
 public class FactoryEventHandlerErrorTests
 {
@@ -18,20 +20,20 @@ public class FactoryEventHandlerErrorTests
     }
 
     [Fact]
-    public async Task Raise_HandlerThrows_Default_ExceptionPropagates()
+    public async Task Raise_HandlerThrows_ExceptionPropagates()
     {
         var (client, server, local) = CreateScopes();
         var events = server.GetRequiredService<IFactoryEvents>();
 
         var id = Guid.NewGuid();
 
-        // Default options — exception should propagate
+        // A throwing handler aborts the chain and the exception reaches the caller.
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => events.Raise(new TestFailingEvent(id, ShouldThrow: true)));
     }
 
     [Fact]
-    public async Task Raise_HandlerThrows_ContinueOnFail_OtherHandlersStillRun()
+    public async Task Raise_NoHandlerThrows_CompletesNormally()
     {
         var (client, server, local) = CreateScopes();
         var events = server.GetRequiredService<IFactoryEvents>();
@@ -39,55 +41,11 @@ public class FactoryEventHandlerErrorTests
 
         var id = Guid.NewGuid();
 
-        // ContinueOnFail — the survivor handler should still execute
-        try
-        {
-            await events.Raise(new TestFailingEvent(id, ShouldThrow: true), RaiseOptions.ContinueOnFail);
-        }
-        catch
-        {
-            // Expected — one handler threw
-        }
-
-        await Task.Delay(200);
-
-        var recorded = testService.GetRecordedEvents();
-        // SurvivorHandler should have run despite TestFailingHandler throwing
-        Assert.Contains(recorded, e => e.EventName == "SurvivorHandler" && e.EntityId == id);
-    }
-
-    [Fact]
-    public async Task Raise_NoHandlerThrows_ContinueOnFail_CompletesNormally()
-    {
-        var (client, server, local) = CreateScopes();
-        var events = server.GetRequiredService<IFactoryEvents>();
-        var testService = server.GetRequiredService<IEventTestService>();
-
-        var id = Guid.NewGuid();
-
-        // ShouldThrow: false — both handlers succeed
-        await events.Raise(new TestFailingEvent(id, ShouldThrow: false), RaiseOptions.ContinueOnFail);
-
-        await Task.Delay(200);
+        // ShouldThrow: false — every handler succeeds and both record their event.
+        await events.Raise(new TestFailingEvent(id, ShouldThrow: false));
 
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "FailHandler" && e.EntityId == id);
         Assert.Contains(recorded, e => e.EventName == "SurvivorHandler" && e.EntityId == id);
-    }
-
-    [Fact]
-    public async Task Raise_HandlerThrows_ContinueOnFail_ExceptionStillThrown()
-    {
-        var (client, server, local) = CreateScopes();
-        var events = server.GetRequiredService<IFactoryEvents>();
-
-        var id = Guid.NewGuid();
-
-        // Even with ContinueOnFail, exceptions are thrown after all handlers complete.
-        // With multiple handler registrations, they're aggregated.
-        var ex = await Assert.ThrowsAnyAsync<Exception>(
-            () => events.Raise(new TestFailingEvent(id, ShouldThrow: true), RaiseOptions.ContinueOnFail));
-
-        Assert.Contains(id.ToString(), ex.Message);
     }
 }

@@ -601,7 +601,7 @@ See [LazyLoad](lazyload.md) for the full usage guide.
 
 ### IEventTracker
 
-Tracks pending asynchronous event tasks for fire-and-forget operations. Enables graceful shutdown by waiting for all pending events to complete.
+Tracks pending asynchronous event tasks for fire-and-forget `[Event]` delegate methods. Enables graceful shutdown by waiting for all pending events to complete.
 
 ```csharp
 public interface IEventTracker
@@ -615,6 +615,8 @@ public interface IEventTracker
 **When to use:** Application shutdown logic that needs to wait for all pending fire-and-forget events to complete before terminating.
 
 **You rarely interact with this interface directly.** RemoteFactory uses it internally for `[Event]` delegate tracking. The default implementation is registered by `AddNeatooRemoteFactory()`.
+
+> **Not involved in `[FactoryEventHandler<T>]` dispatch.** `IFactoryEvents.Raise<T>()` runs every handler sequentially in the caller's scope and awaits completion before returning (see [Factory Events](factory-events.md)) — there are no background tasks to track for the factory-event path. `IEventTracker` is an `[Event]`-delegate-only concern.
 
 Using IEventTracker for graceful shutdown:
 
@@ -647,12 +649,15 @@ Request-scoped mediator for publishing factory events. Injected as `[Service] IF
 ```csharp
 public interface IFactoryEvents
 {
-    Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None)
+    Task Raise<T>(
+        T factoryEvent,
+        RaiseOptions options = RaiseOptions.None,
+        CancellationToken cancellationToken = default)
         where T : FactoryEventBase;
 }
 ```
 
-**When to use:** Publishing domain events from within a factory method. Events are dispatched to matching `[FactoryEventHandler<T>]` static-method handlers and — unless `RaiseOptions.ServerOnly` is set — captured for relay back to the client. See [Factory Events](factory-events.md).
+**When to use:** Publishing domain events from within a factory method. `Raise<T>` dispatches to every matching `[FactoryEventHandler<T>]` static-method handler **in the caller's DI scope, sequentially, awaited** — handlers share the caller's `DbContext` and transaction, and an exception in any handler aborts the chain and propagates to the caller. Unless `RaiseOptions.ServerOnly` is set, the event is also captured for relay back to the client. For fire-and-forget work, use `[Event]` delegates instead. See [Factory Events](factory-events.md).
 
 ### IFactoryEventRelay
 
@@ -670,7 +675,9 @@ public interface IFactoryEventRelay
 
 ### IEventScopeInitializer
 
-Propagates ambient context from the request scope to event handler scopes. Event handlers run in isolated DI scopes — this interface bridges scoped state (tenant context, user identity, etc.) from the parent scope into the event scope.
+Propagates ambient context from the request scope to `[Event]` delegate scopes. **`[Event]` delegate methods** (see [Events](events.md)) run in isolated DI scopes created via `Task.Run` — this interface bridges scoped state (tenant context, user identity, etc.) from the parent scope into the event scope.
+
+> **Not used by `[FactoryEventHandler<T>]`.** Factory event handlers already run in the caller's scope (see [Factory Events](factory-events.md)), so tenant/correlation/user context is shared automatically with no initializer needed. `IEventScopeInitializer` is an `[Event]`-only concern.
 
 ```csharp
 public interface IEventScopeInitializer

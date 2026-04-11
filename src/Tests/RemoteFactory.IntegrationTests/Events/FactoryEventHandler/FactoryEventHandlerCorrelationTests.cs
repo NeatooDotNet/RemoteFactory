@@ -32,8 +32,6 @@ public class FactoryEventHandlerCorrelationTests
         var orderId = Guid.NewGuid();
         await events.Raise(new TestOrderEvent(orderId, "corr@test.com"));
 
-        await Task.Delay(200);
-
         var recorded = testService.GetRecordedEventsWithCorrelation();
         var correlationEvent = recorded.FirstOrDefault(e => e.EventName == "CorrelationHandler" && e.EntityId == orderId);
 
@@ -54,8 +52,6 @@ public class FactoryEventHandlerCorrelationTests
 
         var orderId = Guid.NewGuid();
         await events.Raise(new TestOrderEvent(orderId, "multi-corr@test.com"));
-
-        await Task.Delay(200);
 
         // The CorrelationHandler records correlationId — verify it matches
         var recorded = testService.GetRecordedEventsWithCorrelation();

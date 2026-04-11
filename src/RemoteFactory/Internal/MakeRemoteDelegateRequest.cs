@@ -14,17 +14,19 @@ public interface IMakeRemoteDelegateRequest
 	Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 
 	/// <summary>
-	/// Sends an event to the server. Client awaits HTTP acknowledgment (delivery confirmation).
-	/// Server handles the event in a new scope with fire-and-forget semantics.
-	/// Handler failures are invisible to the client.
+	/// Sends an event to the server and awaits until every server-side
+	/// <c>[FactoryEventHandler&lt;T&gt;]</c> handler has completed. The HTTP connection stays
+	/// open for the full handler chain so a server handler exception surfaces to the client.
 	/// </summary>
-	Task ForDelegateEvent(Type delegateType, object?[]? parameters);
+	Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 
 	// Backward-compatible overloads without CancellationToken
 	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
 		=> ForDelegate<T>(delegateType, parameters, default);
 	Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters)
 		=> ForDelegateNullable<T>(delegateType, parameters, default);
+	Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+		=> ForDelegateEvent(delegateType, parameters, default);
 }
 
 public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
@@ -127,7 +129,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 	}
 
 	/// <inheritdoc />
-	public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+	public async Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
 	{
 		ArgumentNullException.ThrowIfNull(delegateType);
 
@@ -141,12 +143,19 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		{
 			var remoteDelegateRequest = this.NeatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
 
-			// For events, we only await HTTP acknowledgment - we don't care about the response content
-			// The server will handle the event in a new scope (fire-and-forget at handler level)
-			await this.MakeRemoteDelegateRequestCall(remoteDelegateRequest, default);
+			// Await the full HTTP round-trip: the server awaits every [FactoryEventHandler<T>]
+			// in the caller's scope, so this call returns only after all handlers complete.
+			// A server handler exception propagates back as an HTTP error and rethrows here.
+			await this.MakeRemoteDelegateRequestCall(remoteDelegateRequest, cancellationToken);
 
 			sw.Stop();
 			logger.RemoteCallCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);
+		}
+		catch (OperationCanceledException)
+		{
+			sw.Stop();
+			logger.RemoteCallCancelled(correlationId, delegateTypeName);
+			throw;
 		}
 		catch (Exception ex)
 		{

@@ -46,7 +46,8 @@ internal sealed record EventHandlerEntry
         bool isStatic,
         bool isAsync,
         IReadOnlyList<ParameterModel> parameters,
-        IReadOnlyList<ParameterModel> serviceParameters)
+        IReadOnlyList<ParameterModel> serviceParameters,
+        IReadOnlyList<ParameterModel> allParameters)
     {
         EventTypeName = eventTypeName;
         MethodName = methodName;
@@ -54,6 +55,7 @@ internal sealed record EventHandlerEntry
         IsAsync = isAsync;
         Parameters = parameters;
         ServiceParameters = serviceParameters;
+        AllParameters = allParameters;
     }
 
     public string EventTypeName { get; }
@@ -65,6 +67,17 @@ internal sealed record EventHandlerEntry
     /// </summary>
     public bool IsStatic { get; }
     public bool IsAsync { get; }
+
+    /// <summary>Non-service parameters (event type + CancellationToken), in declaration order.</summary>
     public IReadOnlyList<ParameterModel> Parameters { get; }
+
+    /// <summary>Parameters marked with <c>[Service]</c>, in declaration order.</summary>
     public IReadOnlyList<ParameterModel> ServiceParameters { get; }
+
+    /// <summary>
+    /// Every parameter in the order it appears in the method signature. Used by the
+    /// renderer to emit invocation arguments in declaration order so a user-written
+    /// method like <c>(evt, ct, [Service] svc)</c> binds correctly.
+    /// </summary>
+    public IReadOnlyList<ParameterModel> AllParameters { get; }
 }

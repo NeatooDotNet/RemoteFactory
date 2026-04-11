@@ -90,13 +90,14 @@ public static partial class RemoteFactoryServices
 			services.TryAddScoped<IFactoryEvents, FactoryEventsDispatcher>();
 
 			// Register the delegate handler for remote IFactoryEvents.Raise requests.
-			// When a Remote client sends a RaiseFactoryEventRemote request,
-			// the server resolves this delegate and dispatches to local handlers.
+			// When a Remote client sends a RaiseFactoryEventRemote request, the server
+			// resolves this delegate, dispatches to local handlers in the request scope,
+			// and keeps the HTTP response open until every handler has completed.
 			services.AddScoped<RaiseFactoryEventRemote>(sp =>
 			{
 				var factoryEvents = sp.GetRequiredService<IFactoryEvents>();
-				return (factoryEvent, options) =>
-					factoryEvents.RaiseUntyped(factoryEvent, (RaiseOptions)options);
+				return (factoryEvent, options, cancellationToken) =>
+					factoryEvents.RaiseUntyped(factoryEvent, (RaiseOptions)options, cancellationToken);
 			});
 		}
 

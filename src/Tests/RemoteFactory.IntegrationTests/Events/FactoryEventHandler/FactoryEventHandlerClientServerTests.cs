@@ -28,7 +28,6 @@ public class FactoryEventHandlerClientServerTests
         var orderId = Guid.NewGuid();
         await events.Raise(new TestOrderEvent(orderId, "remote@example.com"));
 
-        await Task.Delay(200);
 
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "HandlerA" && e.EntityId == orderId);
@@ -45,7 +44,6 @@ public class FactoryEventHandlerClientServerTests
         var email = "serialization-test@example.com";
         await events.Raise(new TestOrderEvent(orderId, email));
 
-        await Task.Delay(200);
 
         // The handler records OrderId — if serialization broke, wrong value would appear
         var recorded = testService.GetRecordedEvents();
@@ -62,29 +60,10 @@ public class FactoryEventHandlerClientServerTests
         var orderId = Guid.NewGuid();
         await events.Raise(new TestOrderEvent(orderId, "multi@example.com"));
 
-        await Task.Delay(200);
 
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "HandlerA" && e.EntityId == orderId);
         Assert.Contains(recorded, e => e.EventName == "HandlerB" && e.EntityId == orderId);
-    }
-
-    [Fact]
-    public async Task ClientRaise_FireAndForget_ServerStillExecutes()
-    {
-        var (client, server, local) = CreateScopes();
-        var events = client.GetRequiredService<IFactoryEvents>();
-        var testService = server.GetRequiredService<IEventTestService>();
-
-        var orderId = Guid.NewGuid();
-        // Fire-and-forget: discard the task
-        _ = events.Raise(new TestOrderEvent(orderId, "fireforget@example.com"));
-
-        // Allow time for background execution
-        await Task.Delay(500);
-
-        var recorded = testService.GetRecordedEvents();
-        Assert.Contains(recorded, e => e.EventName == "HandlerA" && e.EntityId == orderId);
     }
 
     [Fact]
@@ -98,7 +77,6 @@ public class FactoryEventHandlerClientServerTests
         var orderId = Guid.NewGuid();
         await events.Raise(new TestOrderEvent(orderId, "server-local@example.com"));
 
-        await Task.Delay(200);
 
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "HandlerA" && e.EntityId == orderId);

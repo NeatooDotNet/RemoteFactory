@@ -6,8 +6,14 @@ namespace Neatoo.RemoteFactory;
 /// <summary>
 /// Runtime implementation of <see cref="IFactoryEvents"/> that dispatches to handlers
 /// registered in <see cref="FactoryEventHandlerRegistry"/>.
-/// Each handler was registered by a generated FactoryServiceRegistrar during DI setup.
+/// Each handler was registered by a generated <c>FactoryServiceRegistrar</c> during DI setup.
 /// </summary>
+/// <remarks>
+/// Handlers run <b>sequentially</b> in the caller's <see cref="IServiceProvider"/> so that
+/// a <c>DbContext</c> (or any other scoped service) is shared between the factory method
+/// and its handlers. A handler exception aborts the remaining handlers and propagates to
+/// the caller, so the caller can let the transaction roll back.
+/// </remarks>
 internal sealed class FactoryEventsDispatcher : IFactoryEvents
 {
     private readonly IServiceProvider _sp;
@@ -19,17 +25,17 @@ internal sealed class FactoryEventsDispatcher : IFactoryEvents
         _collector = sp.GetService<IFactoryEventCollector>();
     }
 
-    public Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None) where T : FactoryEventBase
+    public Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default) where T : FactoryEventBase
     {
-        return DispatchToHandlers(typeof(T), factoryEvent!, options);
+        return DispatchToHandlers(typeof(T), factoryEvent!, options, cancellationToken);
     }
 
-    public Task RaiseUntyped(FactoryEventBase factoryEvent, RaiseOptions options = RaiseOptions.None)
+    public Task RaiseUntyped(FactoryEventBase factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default)
     {
-        return DispatchToHandlers(factoryEvent.GetType(), factoryEvent, options);
+        return DispatchToHandlers(factoryEvent.GetType(), factoryEvent, options, cancellationToken);
     }
 
-    private Task DispatchToHandlers(Type eventType, object factoryEvent, RaiseOptions options)
+    private async Task DispatchToHandlers(Type eventType, object factoryEvent, RaiseOptions options, CancellationToken cancellationToken)
     {
         // Capture for client relay unless ServerOnly is set
         if (_collector != null && !options.HasFlag(RaiseOptions.ServerOnly))
@@ -39,39 +45,14 @@ internal sealed class FactoryEventsDispatcher : IFactoryEvents
 
         var handlers = FactoryEventHandlerRegistry.GetHandlers(eventType);
         if (handlers == null || handlers.Count == 0)
-            return Task.CompletedTask;
+            return;
 
-        var tasks = new List<Task>(handlers.Count);
+        // Sequential dispatch in the caller's scope. Handler order is unspecified —
+        // callers must not depend on it. Exceptions propagate immediately and abort
+        // the remaining handlers so the caller's transaction can roll back.
         foreach (var handler in handlers)
         {
-            tasks.Add(handler(_sp, factoryEvent, options));
+            await handler(_sp, factoryEvent, options, cancellationToken).ConfigureAwait(false);
         }
-
-        if (options.HasFlag(RaiseOptions.ContinueOnFail))
-            return WhenAllContinueOnFail(tasks);
-
-        return Task.WhenAll(tasks);
     }
-
-#pragma warning disable CA1031 // Intentional: aggregating all handler exceptions for ContinueOnFail semantics
-    private static async Task WhenAllContinueOnFail(List<Task> tasks)
-    {
-        var exceptions = new List<Exception>();
-        foreach (var task in tasks)
-        {
-            try
-            {
-                await task.ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                exceptions.Add(ex);
-            }
-        }
-        if (exceptions.Count == 1)
-            throw exceptions[0];
-        if (exceptions.Count > 0)
-            throw new AggregateException(exceptions);
-    }
-#pragma warning restore CA1031
 }

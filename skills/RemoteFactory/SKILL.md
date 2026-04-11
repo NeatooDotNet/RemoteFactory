@@ -71,9 +71,11 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Can [Execute] return void? | No, must return Task<T> |
 | Can [Execute] go on a class factory? | Yes, if `public static` and returns containing type |
 | Do [Event] methods need CancellationToken? | Yes, as final parameter |
-| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method |
+| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope (shared DbContext/transaction), sequentially, awaited |
 | How do I handle a factory event on the client? | `[FactoryEventHandler<T>]` class with an **instance** matching method, register via `IFactoryEventRelay` |
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No — separate generator pipeline |
+| I want a handler that participates in the factory's DB transaction | Use `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` — shared scope, sequential, exceptions propagate and roll back |
+| I want a handler that fires-and-forgets (email, webhook, queue) | Use `[Event]` delegate method — isolated scope, tracked by `IEventTracker` |
 | How do I stop an event from relaying to the client? | Pass `RaiseOptions.ServerOnly` to `IFactoryEvents.Raise` |
 | Where must factory events be raised? | Inside a factory method via `[Service] IFactoryEvents` |
 | Where does business logic go? | In the entity, not the factory |

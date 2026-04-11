@@ -3,28 +3,48 @@ using Neatoo.RemoteFactory;
 namespace Design.Domain.FactoryPatterns;
 
 // =============================================================================
-// FACTORY EVENT HANDLER PATTERN (Mediator-style Events)
+// FACTORY EVENT HANDLER PATTERN (Transactional Mediator Events)
 // =============================================================================
 //
-// The [FactoryEventHandler<T>] class attribute provides MediatR-style pub/sub events
-// using source generation instead of reflection.
+// [FactoryEventHandler<T>] + IFactoryEvents.Raise<T>() is Neatoo's path for
+// domain events that must participate in the caller's transaction.
 //
-// Key points:
-// - Publisher injects IFactoryEvents, not a specific delegate
-// - Multiple handlers can subscribe to the same event type
-// - Events are first-class objects (inherit from FactoryEventBase)
-// - Caller chooses semantics: fire-and-forget vs await
+// EXECUTION MODEL (the three invariants that define FactoryEvent):
 //
-// Static handler methods → server-side dispatch (isolated scope, fire-and-forget)
-// Instance handler methods → client-side relay dispatch
+//   1. SHARED SCOPE. Handlers resolve their [Service] dependencies from the
+//      caller's IServiceProvider. A DbContext injected into the factory method
+//      and a DbContext injected into the handler are the same instance, so
+//      both participate in the same transaction.
+//
+//   2. SEQUENTIAL. Handlers run one after another in unspecified order. A
+//      DbContext is not thread-safe, so handlers cannot run in parallel.
+//      Callers must not depend on a specific ordering.
+//
+//   3. AWAITED. Raise<T>() does not return until every handler has completed.
+//      A handler exception aborts the remaining handlers and propagates to the
+//      caller, so the caller can let the transaction roll back. Across the
+//      client/server boundary the HTTP call stays open until all server-side
+//      handlers have finished, and a server exception surfaces on the client.
+//
+// When to use [FactoryEventHandler<T>] with IFactoryEvents.Raise<T>:
+//   - Domain events that must participate in the aggregate's transaction
+//   - Events where a handler failure should abort the aggregate operation
+//   - Events where you need the caller to observe the post-handler state
+//
+// When to use [Event] delegates instead:
+//   - Fire-and-forget notifications (email, webhooks, queue publishes)
+//   - Audit sinks to external systems
+//   - Anything that should survive (or shouldn't block) the caller's work
+//
+// Static handler methods → server-side dispatch (runs in caller's scope).
+// Instance handler methods → client-side relay dispatch (see FactoryEventRelayPattern.cs).
 //
 // No [Factory] attribute needed — [FactoryEventHandler<T>] is a standalone pipeline.
 //
 // =============================================================================
 
 /// <summary>
-/// Event object for when an order is placed.
-/// Must inherit from FactoryEventBase.
+/// Event object raised when an order is placed. Inherits from FactoryEventBase.
 /// </summary>
 public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEventBase;
 
@@ -32,11 +52,37 @@ public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEvent
 /// Demonstrates: [FactoryEventHandler&lt;T&gt;] with a static server-side handler.
 ///
 /// Key points:
-/// - Handler method is static → registers into FactoryEventHandlerRegistry (server-side)
-/// - First non-[Service]/non-CT parameter is the event type (routing key)
-/// - [Service] parameters are injected from an isolated DI scope
-/// - CancellationToken bound to IHostApplicationLifetime.ApplicationStopping
+/// - Handler method is static → registers into FactoryEventHandlerRegistry.
+/// - First non-[Service]/non-CT parameter is the event type (routing key).
+/// - [Service] parameters resolve from the CALLER'S scope. A DbContext injected
+///   here is the same DbContext the factory method is using — the handler's
+///   work participates in the caller's transaction automatically.
+/// - CancellationToken is the token the caller passed to
+///   <see cref="IFactoryEvents.Raise{T}"/>.
 /// </summary>
+/// <remarks>
+/// DESIGN DECISION: Share the caller's DI scope with handlers.
+///
+/// Reasons:
+/// 1. Domain events often need to read or write through the same DbContext
+///    (and therefore the same transaction) as the aggregate that raised them.
+///    A new scope would give the handler a new DbContext and a separate
+///    transaction, which defeats the point.
+/// 2. Scoped services other than DbContext (tenant context, correlation
+///    context, unit-of-work markers) are also shared automatically — no
+///    explicit propagation needed.
+/// 3. A handler that throws can roll the caller's transaction back, which
+///    makes handler code a natural place to enforce cross-aggregate invariants.
+///
+/// DID NOT DO THIS: Detached scope + fire-and-forget dispatch (the "older"
+/// mediator default).
+///
+/// Reasons:
+/// 1. That path exists already as <c>[Event]</c> delegates — use those when
+///    detached semantics are what you want.
+/// 2. Two different execution models sharing one API would be confusing.
+///    Naming them separately (FactoryEvent vs Event) makes the choice loud.
+/// </remarks>
 [FactoryEventHandler<OrderPlacedEvent>]
 public static partial class OrderNotifyHandlers
 {
@@ -52,8 +98,9 @@ public static partial class OrderNotifyHandlers
 }
 
 /// <summary>
-/// Demonstrates: Multiple handlers for the same event type in a static class.
-/// Both handlers run in parallel when the event is raised.
+/// Demonstrates: multiple handlers for the same event type.
+/// Both handlers run in the caller's scope, sequentially, in unspecified order.
+/// A failure in either one aborts the remaining handler and propagates to the caller.
 /// </summary>
 [FactoryEventHandler<OrderPlacedEvent>]
 public static partial class OrderAuditHdlrs

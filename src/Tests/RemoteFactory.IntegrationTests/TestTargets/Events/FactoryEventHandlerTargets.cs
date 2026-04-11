@@ -3,6 +3,27 @@ using Neatoo.RemoteFactory;
 namespace RemoteFactory.IntegrationTests.TestTargets.Events;
 
 // =============================================================================
+// SCOPE PROBE — scoped service used to prove handlers share the caller's scope
+// =============================================================================
+
+/// <summary>
+/// Scoped probe whose <see cref="InstanceId"/> differs per DI scope.
+/// If two places resolve <c>IScopeProbe</c> and see the same <see cref="InstanceId"/>,
+/// they are running in the same scope.
+/// </summary>
+public interface IScopeProbe
+{
+    Guid InstanceId { get; }
+    List<string> Touches { get; }
+}
+
+public sealed class ScopeProbe : IScopeProbe
+{
+    public Guid InstanceId { get; } = Guid.NewGuid();
+    public List<string> Touches { get; } = new();
+}
+
+// =============================================================================
 // EVENT TYPES
 // =============================================================================
 
@@ -115,8 +136,8 @@ public static partial class TestFailingHandler
 }
 
 /// <summary>
-/// Second handler for TestFailingEvent. Always succeeds.
-/// Verifies ContinueOnFail with mixed class types.
+/// Second handler for TestFailingEvent. Always succeeds — used to verify that
+/// both handlers observe the event when no handler throws.
 /// </summary>
 [FactoryEventHandler<TestFailingEvent>]
 public partial class TestFailingSurvivor
@@ -182,6 +203,31 @@ public static partial class TestSlowHandler
 }
 
 /// <summary>
+/// Event used to exercise non-canonical handler parameter declaration order.
+/// </summary>
+public record TestParamOrderEvent(Guid Id) : FactoryEventBase;
+
+/// <summary>
+/// Handler whose parameters are declared in the order (event, CancellationToken,
+/// [Service]) — i.e. NOT the canonical (event, [Service], CancellationToken) order.
+/// The generator must emit invocation arguments in declaration order so this binds
+/// correctly. Before the fix, arguments were reshuffled to (event, service, ct)
+/// and the call would either fail to compile or silently bind the wrong values.
+/// </summary>
+[FactoryEventHandler<TestParamOrderEvent>]
+public partial class TestParamOrderHandler
+{
+    internal static Task Handle(
+        TestParamOrderEvent paramEvent,
+        CancellationToken ct,
+        [Service] IEventTestService eventService)
+    {
+        eventService.RecordEventFired($"ParamOrderHandler:ctCancellable={ct.CanBeCanceled}", paramEvent.Id);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
 /// Handler that captures correlation ID for TestOrderEvent.
 /// </summary>
 [FactoryEventHandler<TestOrderEvent>]
@@ -198,5 +244,90 @@ public static partial class TestCorrelationHandler
             orderEvent.OrderId,
             correlationContext.CorrelationId);
         return Task.CompletedTask;
+    }
+}
+
+// =============================================================================
+// SHARED-SCOPE TEST TARGETS
+// =============================================================================
+
+/// <summary>
+/// Event for shared-scope tests. Carries the scope InstanceId the caller observed,
+/// so handlers can compare and assert they resolved the same scoped instance.
+/// </summary>
+public record TestScopeProbeEvent(Guid CallerScopeInstanceId, string Tag) : FactoryEventBase;
+
+/// <summary>
+/// First handler for TestScopeProbeEvent. Resolves IScopeProbe from its injected
+/// scope and appends its name to the probe's Touches list. A shared-scope dispatch
+/// means the probe instance is the same as the caller's.
+/// </summary>
+[FactoryEventHandler<TestScopeProbeEvent>]
+public partial class TestScopeProbeHandlerAlpha
+{
+    internal static Task HandleProbe(
+        TestScopeProbeEvent probeEvent,
+        [Service] IScopeProbe probe,
+        [Service] IEventTestService eventService,
+        CancellationToken ct)
+    {
+        probe.Touches.Add("Alpha");
+        eventService.RecordEventFired(
+            $"ProbeHandlerAlpha:{probe.InstanceId}:match={(probe.InstanceId == probeEvent.CallerScopeInstanceId)}",
+            probeEvent.CallerScopeInstanceId);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Second handler for TestScopeProbeEvent. Used together with Alpha to verify
+/// sequential dispatch: after Raise returns, the probe's Touches list contains
+/// both names.
+/// </summary>
+[FactoryEventHandler<TestScopeProbeEvent>]
+public partial class TestScopeProbeHandlerBeta
+{
+    internal static Task HandleProbe(
+        TestScopeProbeEvent probeEvent,
+        [Service] IScopeProbe probe,
+        [Service] IEventTestService eventService,
+        CancellationToken ct)
+    {
+        probe.Touches.Add("Beta");
+        eventService.RecordEventFired(
+            $"ProbeHandlerBeta:{probe.InstanceId}:touchCount={probe.Touches.Count}",
+            probeEvent.CallerScopeInstanceId);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Event whose handler blocks on its CancellationToken so tests can assert
+/// the caller's CT flows through to handlers.
+/// </summary>
+public record TestCancellableEvent(Guid Id) : FactoryEventBase;
+
+/// <summary>
+/// Handler that awaits a long Task.Delay bound to the caller's CT. Cancelling
+/// the CT must make this handler observe an OperationCanceledException.
+/// </summary>
+[FactoryEventHandler<TestCancellableEvent>]
+public partial class TestCancellableHandler
+{
+    internal static async Task HandleCancellable(
+        TestCancellableEvent cancellableEvent,
+        [Service] IEventTestService eventService,
+        CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), ct);
+            eventService.RecordEventFired("CancellableHandler:completed", cancellableEvent.Id);
+        }
+        catch (OperationCanceledException)
+        {
+            eventService.RecordEventFired("CancellableHandler:cancelled", cancellableEvent.Id);
+            throw;
+        }
     }
 }

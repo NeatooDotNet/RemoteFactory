@@ -6,8 +6,7 @@ using RemoteFactory.IntegrationTests.TestTargets.Events;
 namespace RemoteFactory.IntegrationTests.Events.FactoryEventHandler;
 
 /// <summary>
-/// Tests for complex serialization, multi-event sequences, await/fire-and-forget contrast,
-/// and IEventTracker integration.
+/// Tests for complex serialization, multi-event sequences, and end-to-end await semantics.
 /// </summary>
 public class FactoryEventHandlerSerializationTests
 {
@@ -38,8 +37,6 @@ public class FactoryEventHandlerSerializationTests
 
         await events.Raise(complexEvent);
 
-        await Task.Delay(300);
-
         var recorded = testService.GetRecordedEvents();
         var match = recorded.FirstOrDefault(e => e.EntityId == id);
         Assert.NotNull(match.EventName);
@@ -60,8 +57,6 @@ public class FactoryEventHandlerSerializationTests
             id, "ServerTest",
             new TestAddress("456 Oak Ave", "Portland", "97201"),
             ["local"]));
-
-        await Task.Delay(300);
 
         var recorded = testService.GetRecordedEvents();
         var match = recorded.FirstOrDefault(e => e.EntityId == id);
@@ -89,8 +84,6 @@ public class FactoryEventHandlerSerializationTests
         await events.Raise(new TestAuditEvent(auditId));
         await events.Raise(new TestInventoryEvent(productId, 42));
 
-        await Task.Delay(300);
-
         var recorded = testService.GetRecordedEvents();
 
         // Each event type dispatched to its own handlers
@@ -116,49 +109,17 @@ public class FactoryEventHandlerSerializationTests
         await events.Raise(new TestOrderEvent(orderId, "serverseq@test.com"));
         await events.Raise(new TestInventoryEvent(productId, 100));
 
-        await Task.Delay(300);
-
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "HandlerA" && e.EntityId == orderId);
         Assert.Contains(recorded, e => e.EventName.StartsWith("InventoryHandler:100") && e.EntityId == productId);
     }
 
     // =========================================================================
-    // Client-side ContinueOnFail across the wire
+    // End-to-end await — by the time Raise returns, every handler has run
     // =========================================================================
 
     [Fact]
-    public async Task ClientRaise_ContinueOnFail_ServerHandlerThrows_OtherHandlersStillRun()
-    {
-        var (client, server, local) = CreateScopes();
-        var events = client.GetRequiredService<IFactoryEvents>();
-        var testService = server.GetRequiredService<IEventTestService>();
-
-        var id = Guid.NewGuid();
-
-        // Client raises with ContinueOnFail, one server handler throws
-        try
-        {
-            await events.Raise(new TestFailingEvent(id, ShouldThrow: true), RaiseOptions.ContinueOnFail);
-        }
-        catch
-        {
-            // Expected — error from server
-        }
-
-        await Task.Delay(300);
-
-        var recorded = testService.GetRecordedEvents();
-        // SurvivorHandler should still have run on the server
-        Assert.Contains(recorded, e => e.EventName == "SurvivorHandler" && e.EntityId == id);
-    }
-
-    // =========================================================================
-    // Await vs fire-and-forget contrast
-    // =========================================================================
-
-    [Fact]
-    public async Task ServerRaise_Awaited_SlowHandlerCompletes_BeforeNextLine()
+    public async Task ServerRaise_SlowHandler_CompletedBeforeRaiseReturns()
     {
         var (client, server, local) = CreateScopes();
         var events = server.GetRequiredService<IFactoryEvents>();
@@ -166,80 +127,49 @@ public class FactoryEventHandlerSerializationTests
 
         var orderId = Guid.NewGuid();
 
-        // Await the raise — slow handler (300ms delay) should complete before we check
+        // TestSlowHandler delays 300ms. Sequential awaited dispatch means the slow
+        // handler must have recorded by the time Raise returns — no timing assertion
+        // padding required.
         await events.Raise(new TestOrderEvent(orderId, "await@test.com"));
-
-        // Small buffer for Task.Run scheduling, but the slow handler has 300ms delay
-        await Task.Delay(500);
 
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "SlowHandler" && e.EntityId == orderId);
     }
 
     [Fact]
-    public async Task ServerRaise_FireAndForget_ReturnsImmediately_HandlerCompletesLater()
+    public async Task ClientRaise_SlowHandler_CompletedBeforeRaiseReturns()
     {
         var (client, server, local) = CreateScopes();
-        var events = server.GetRequiredService<IFactoryEvents>();
+        var events = client.GetRequiredService<IFactoryEvents>();
         var testService = server.GetRequiredService<IEventTestService>();
 
         var orderId = Guid.NewGuid();
 
-        // Fire-and-forget — discard the task
-        _ = events.Raise(new TestOrderEvent(orderId, "fireforget@test.com"));
+        // Across the wire: the client awaits the HTTP response, and the server
+        // awaits every handler before responding, so a slow server handler must
+        // have recorded before the client's await returns.
+        await events.Raise(new TestOrderEvent(orderId, "client-await@test.com"));
 
-        // Check immediately — fast handlers may have fired but slow handler (300ms) hasn't
-        var recordedImmediate = testService.GetRecordedEvents();
-        var slowFiredImmediately = recordedImmediate.Any(e => e.EventName == "SlowHandler" && e.EntityId == orderId);
-
-        // Wait for slow handler to complete
-        await Task.Delay(600);
-
-        var recordedLater = testService.GetRecordedEvents();
-        var slowFiredLater = recordedLater.Any(e => e.EventName == "SlowHandler" && e.EntityId == orderId);
-
-        // The slow handler should NOT have fired immediately but SHOULD fire later
-        Assert.False(slowFiredImmediately, "SlowHandler should not have completed immediately after fire-and-forget");
-        Assert.True(slowFiredLater, "SlowHandler should have completed after waiting");
+        var recorded = testService.GetRecordedEvents();
+        Assert.Contains(recorded, e => e.EventName == "SlowHandler" && e.EntityId == orderId);
     }
 
-    // =========================================================================
-    // IEventTracker integration
-    // =========================================================================
-
     [Fact]
-    public async Task ServerRaise_FireAndForget_TaskTrackedByEventTracker()
+    public async Task ClientRaise_ServerHandlerThrows_ExceptionSurfacesToClient()
     {
         var (client, server, local) = CreateScopes();
-        var events = server.GetRequiredService<IFactoryEvents>();
-        var tracker = server.ServiceProvider.GetRequiredService<IEventTracker>();
+        var events = client.GetRequiredService<IFactoryEvents>();
 
-        var orderId = Guid.NewGuid();
+        var id = Guid.NewGuid();
 
-        // Fire-and-forget
-        _ = events.Raise(new TestOrderEvent(orderId, "tracker@test.com"));
-
-        // The tracker should have pending tasks (slow handler takes 300ms)
-        // Check within a small window — handlers are on Task.Run so there's a brief startup
-        await Task.Delay(50);
-        var pendingDuringExecution = tracker.PendingCount;
-
-        // Wait for all to finish
-        await tracker.WaitAllAsync();
-
-        // After WaitAll, pending count should drop to 0.
-        // Note: EventTracker removes entries via Task.ContinueWith on TaskScheduler.Default,
-        // which schedules the cleanup asynchronously. WaitAllAsync awaits the handler tasks
-        // themselves, but the cleanup continuations may run shortly after. Poll briefly
-        // with a short timeout to let the continuations drain.
-        var deadline = DateTime.UtcNow.AddSeconds(1);
-        while (tracker.PendingCount > 0 && DateTime.UtcNow < deadline)
-        {
-            await Task.Yield();
-        }
-        var pendingAfterWait = tracker.PendingCount;
-
-        Assert.True(pendingDuringExecution > 0, $"Expected pending tasks during execution, got {pendingDuringExecution}");
-        Assert.Equal(0, pendingAfterWait);
+        // The server dispatches handlers sequentially inside the request, so a
+        // throwing handler aborts the chain and the HTTP response carries the
+        // failure. The in-memory stand-in preserves the original exception type
+        // and message; over real HTTP the client would see an HttpRequestException
+        // wrapping the server's 500 response (not covered by this suite — see
+        // WebApplicationExtensions for the endpoint plumbing).
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => events.Raise(new TestFailingEvent(id, ShouldThrow: true)));
+        Assert.Contains(id.ToString(), ex.Message);
     }
 }
