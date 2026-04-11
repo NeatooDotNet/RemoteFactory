@@ -158,7 +158,8 @@ internal partial class Order
 }
 ```
 
-**Server-side handler** (static method → runs in isolated scope, fire-and-forget):
+**Server-side handler** (static method → runs in the **caller's DI scope**,
+sequentially, awaited):
 ```csharp
 [FactoryEventHandler<OrderPlacedEvent>]
 public static partial class OrderNotifyHandlers
@@ -166,12 +167,35 @@ public static partial class OrderNotifyHandlers
     internal static async Task SendEmail(
         OrderPlacedEvent evt,
         [Service] INotificationService service,
-        CancellationToken ct)
+        [Service] AppDbContext db,     // same DbContext the factory is using
+        CancellationToken ct)           // same CT the caller passed to Raise
     {
         await service.SendAsync(evt.Email, $"Order {evt.OrderId} placed");
+        // db changes here participate in the caller's transaction — throwing
+        // from this handler aborts the factory operation
     }
 }
 ```
+
+**Execution model for `[FactoryEventHandler<T>]`** — the three invariants:
+
+1. **Shared scope.** Handlers resolve `[Service]` dependencies from the caller's
+   `IServiceProvider`. A `DbContext` in the factory method and a `DbContext` in
+   the handler are the same instance and the same transaction.
+2. **Sequential.** Handlers run one after another in unspecified order. Callers
+   must not rely on a specific ordering.
+3. **Awaited.** `Raise<T>()` returns only after every handler has completed. A
+   handler exception aborts the remaining handlers and propagates to the caller
+   so the transaction can roll back. Across the client/server boundary the HTTP
+   call stays open until all server-side handlers finish.
+
+**When to use `[FactoryEventHandler<T>]`**: domain events that must participate
+in the caller's transaction — i.e. the handler touches the same `DbContext` as
+the aggregate.
+
+**When to use `[Event]` delegates instead**: fire-and-forget work — email,
+webhooks, audit sinks to external systems, queue publishes. `[Event]` runs in an
+isolated scope with `IEventTracker` for graceful shutdown.
 
 **Client-side relay handler** (instance method → called after the factory
 operation returns to the client):
@@ -200,7 +224,7 @@ public sealed partial class OrderViewModel : IDisposable
 **Key points:**
 - `[FactoryEventHandler<T>]` classes do NOT need `[Factory]` — it's a separate pipeline
 - Multiple `[FactoryEventHandler<T>]` attributes on one class = handles multiple event types
-- `RaiseOptions.ServerOnly` excludes the event from the client relay (server-side handlers still run, and the flag composes with other `RaiseOptions` flags such as `ContinueOnFail`)
+- `RaiseOptions.ServerOnly` excludes the event from the client relay (server-side handlers still run)
 - The relay piggybacks on the existing HTTP response (`RemoteResponseDto.RelayedEvents`) — no SignalR needed
 - When zero events are captured, `RemoteResponseDto.RelayedEvents` is `null` (not an empty list) — preserves backward-compatible JSON payloads
 - Client-side dispatch ordering is strict: the factory operation **result is returned to the caller first**, then relayed events are dispatched fire-and-forget
@@ -230,16 +254,18 @@ public sealed partial class OrderViewModel : IDisposable
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 | Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
 | How do I handle a factory event on the client? | `[FactoryEventHandler<T>]` class attribute with an instance method | `FactoryEventRelayPattern.cs` | Generator finds handler by attribute, matches method by signature; instance = client relay |
-| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class attribute with a `static` method | `FactoryEventHandlerPattern.cs` | Same attribute, static method = server handler in isolated scope |
+| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class attribute with a `static` method | `FactoryEventHandlerPattern.cs` | Static method = server handler running in the caller's scope (shared DbContext), sequential, awaited |
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No, it's a separate generator pipeline | `FactoryEventRelayPattern.cs` | Keeps handler classes clean — not factories |
 | How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
+| I want a handler to participate in the factory's DB transaction. | Use `[FactoryEventHandler<T>]` — it runs in the caller's scope | `FactoryEventHandlerPattern.cs` | Shared scope → shared `DbContext` → same transaction; a throwing handler rolls the whole thing back |
+| I want a handler to fire-and-forget (email, webhook). | Use `[Event]` delegates instead | `AllPatterns.cs` | `[Event]` runs in an isolated scope with `IEventTracker` for graceful shutdown |
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
 | Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
 | What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
-| How do I propagate tenant context to event scopes? | Register an `IEventScopeInitializer` via `AddRemoteFactoryEventScopeInitializer` | `docs/events.md`, `AddRemoteFactoryServices.cs` | Events run in isolated DI scopes; initializers copy ambient state from parent to child scope |
-| Is correlation ID propagated to events automatically? | Yes — built-in `CorrelationContextScopeInitializer` handles this | `CorrelationExample.cs` | Registered automatically in Server/Logical modes by `AddNeatooRemoteFactory` |
+| How do I propagate tenant context to `[Event]` delegate scopes? | Register an `IEventScopeInitializer` via `AddRemoteFactoryEventScopeInitializer` | `docs/events.md`, `AddRemoteFactoryServices.cs` | `[Event]` delegates run in isolated DI scopes; initializers copy ambient state from parent to child scope. Not needed for `[FactoryEventHandler<T>]` — it already shares the caller's scope. |
+| Is correlation ID propagated to `[Event]` delegates automatically? | Yes — built-in `CorrelationContextScopeInitializer` handles this | `CorrelationExample.cs` | Registered automatically in Server/Logical modes by `AddNeatooRemoteFactory` |
 | Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
 | Can auth methods receive the target entity? | Yes -- on write operations (Insert/Update/Delete) | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanWrite(IEntity target)` inspects entity state; suppresses CanSave/CanInsert/CanUpdate/CanDelete generation |
 | Why is CanSave missing from my factory interface? | Write auth has a target parameter | `ParamAuthOrderAuth.cs` | CanSave needs the entity but runs before Save; auth is checked inside Save() instead |
@@ -973,7 +999,7 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
 | `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
-| `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler in isolated scope |
+| `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler running in the caller's DI scope (shared DbContext/transaction), sequential, awaited |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | `[FactoryEventHandler<T>]` class attribute with instance method — client-side relay via `IFactoryEventRelay` |
 | `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
 | `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage, IEventScopeInitializer mechanism for event scope context propagation |

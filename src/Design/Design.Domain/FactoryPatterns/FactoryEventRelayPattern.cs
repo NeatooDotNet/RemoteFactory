@@ -109,8 +109,12 @@ internal partial class CheckoutOrder : ICheckoutOrder
         this.Total = total;
 
         // Raise the event. With default RaiseOptions.None, the event is:
-        //   1. Dispatched to server-side [FactoryEventHandler<T>] static-method handlers
-        //   2. Captured for relay back to the client in RemoteResponseDto
+        //   1. Dispatched to every server-side [FactoryEventHandler<T>] static-method
+        //      handler in THIS method's DI scope, sequentially, awaited. A handler
+        //      that touches a DbContext sees the same DbContext this factory uses;
+        //      a handler exception aborts the chain and propagates to this method
+        //      (letting the caller's transaction roll back).
+        //   2. Captured for relay back to the client in RemoteResponseDto.
         await factoryEvents.Raise(new OrderCheckoutCompleted(id, total));
     }
 
@@ -168,8 +172,9 @@ internal partial class CheckoutOrder : ICheckoutOrder
 /// - Exactly one match required — NF0502 if ambiguous
 ///
 /// STATIC vs INSTANCE:
-/// - Static method → server-side handler (runs in isolated scope via
-///   FactoryEventHandlerRegistry with [Service] injection and CancellationToken)
+/// - Static method → server-side handler (runs in the CALLER'S DI scope —
+///   shared DbContext/transaction — sequential, awaited; an exception aborts
+///   the chain and propagates to the caller). See FactoryEventHandlerPattern.cs.
 /// - Instance method → client-side relay handler (called on the registered
 ///   handler instance via FactoryEventRelayRegistry, no DI scope)
 ///

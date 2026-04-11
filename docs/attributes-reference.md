@@ -231,7 +231,7 @@ public static partial class OrderAuditHandler
 }
 ```
 
-Runs in an isolated DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method.
+Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. All handlers for the event type run sequentially, awaited, sharing the caller's `DbContext` and transaction. A throwing handler aborts the chain and propagates to the caller. For fire-and-forget semantics with isolated scopes, use `[Event]` instead.
 
 **Instance method = client-side relay handler:**
 

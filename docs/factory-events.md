@@ -1,22 +1,31 @@
 # Factory Events
 
-RemoteFactory has two distinct event features. Both use the same `[FactoryEventHandler<T>]` class-level attribute — the difference is whether the matching method is `static` (server handler) or an instance method (client relay handler).
+RemoteFactory has two distinct event features, named separately because they have different execution models.
 
 | Feature | `[Event]` (attribute on method) | `[FactoryEventHandler<T>]` (attribute on class) |
 |---------|--------------------------------|-------------------------------------------------|
 | Page | [Events](events.md) | This page |
 | Trigger | Direct delegate invocation from anywhere | `IFactoryEvents.Raise(...)` inside a factory method |
-| Purpose | Fire-and-forget domain events in isolated scopes | Mediator + server-to-client relay during factory operations |
-| Dispatch | Generated `{MethodName}Event` delegate | Source-generated type-keyed dispatch table |
+| DI scope | Isolated (new scope per handler) | **Shared with the caller** (same `DbContext`, same transaction) |
+| Dispatch | Fire-and-forget via `Task.Run`, tracked by `IEventTracker` | **Sequential, awaited** — `Raise` returns only after all handlers complete |
+| Exceptions | Swallowed / logged | **Propagate to the caller** — a throwing handler aborts the chain |
+| Cancellation | `IHostApplicationLifetime.ApplicationStopping` | Caller's `CancellationToken` (threaded through `Raise`) |
 | Client relay | No | Yes (instance methods receive events after factory result returns) |
+| Use for | Notifications, emails, webhooks, audit sinks | **Transactional domain events** — handlers that must participate in the caller's DB transaction |
 
-This page covers the mediator + relay pattern. For the isolated-scope fire-and-forget pattern, see [Events](events.md).
+This page covers the `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` pattern. For fire-and-forget work, see [Events](events.md).
 
 ---
 
-## The Mediator Pattern
+## The Execution Model
 
-`IFactoryEvents` is a request-scoped mediator that dispatches events to any handler decorated with `[FactoryEventHandler<T>]`. Handlers do not know about each other, and the raising code does not know which handlers exist.
+`IFactoryEvents.Raise<T>()` is a mediator that dispatches events to every handler decorated with `[FactoryEventHandler<T>]`. The three invariants that define this dispatch model are:
+
+1. **Shared scope.** Handlers resolve `[Service]` dependencies from the caller's `IServiceProvider`. A `DbContext` injected into the factory method and a `DbContext` injected into the handler are the same instance and the same transaction.
+2. **Sequential.** Handlers run one after another in unspecified order. Callers must not rely on a specific ordering. A `DbContext` is not thread-safe, so handlers cannot run in parallel.
+3. **Awaited.** `Raise<T>()` returns only after every handler has completed. A handler exception aborts the remaining handlers and propagates to the caller so the transaction can roll back. Across the client/server boundary, the HTTP call stays open until all server-side handlers finish.
+
+Handlers do not know about each other, and the raising code does not know which handlers exist.
 
 ### Raising an Event
 
@@ -35,35 +44,49 @@ internal partial class Order
     internal async Task Create(
         int id,
         decimal total,
-        [Service] IFactoryEvents factoryEvents)
+        [Service] IFactoryEvents factoryEvents,
+        CancellationToken ct)
     {
         Id = id;
         Total = total;
-        await factoryEvents.Raise(new OrderCheckoutCompleted(id, total));
+        // Pass the factory method's CancellationToken through to Raise so
+        // handlers that declare a CancellationToken parameter observe cancellation.
+        await factoryEvents.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.None, ct);
     }
 }
 ```
 
 Event types must be records inheriting `FactoryEventBase`. Records give structural equality and immutability; `FactoryEventBase` is the marker the generator looks for.
 
+The `Raise<T>` signature is:
+
+```csharp
+Task Raise<T>(
+    T factoryEvent,
+    RaiseOptions options = RaiseOptions.None,
+    CancellationToken cancellationToken = default)
+    where T : FactoryEventBase;
+```
+
+Thread the caller's `CancellationToken` through — handlers that declare a `CancellationToken` parameter receive it.
+
 ### Server-Side Handler (Static Method)
 
-A `[FactoryEventHandler<T>]` class with a `static` matching method is treated as a server-side handler. The generator registers it with `FactoryEventHandlerRegistry`. Each handler invocation runs in a new DI scope with full `[Service]` injection and a `CancellationToken` tied to `IHostApplicationLifetime.ApplicationStopping`.
+A `[FactoryEventHandler<T>]` class with a `static` matching method is treated as a server-side handler. The generator registers it with `FactoryEventHandlerRegistry`. Each handler runs in the caller's DI scope — the same `IServiceProvider` that resolved the factory method. `[Service]` parameters resolve from that scope, and the `CancellationToken` is the token the caller passed to `Raise`.
 
 ```csharp
 [FactoryEventHandler<OrderCheckoutCompleted>]
-public static partial class OrderCheckoutEmailHandler
+public static partial class OrderCheckoutJournal
 {
-    internal static async Task SendConfirmationEmail(
+    internal static async Task RecordCheckoutInLedger(
         OrderCheckoutCompleted evt,
-        [Service] IEmailService email,
-        CancellationToken ct)
+        [Service] AppDbContext db,    // SAME DbContext the factory method is using
+        CancellationToken ct)          // caller's CancellationToken
     {
-        await email.SendAsync(
-            "sales@company.com",
-            $"Order {evt.OrderId} checked out",
-            $"Total: {evt.Total:C}",
-            ct);
+        db.LedgerEntries.Add(new LedgerEntry(evt.OrderId, evt.Total));
+        await db.SaveChangesAsync(ct);
+        // These changes participate in the factory's transaction. Throwing from
+        // this handler aborts the factory operation and rolls everything back.
     }
 }
 ```
@@ -101,12 +124,12 @@ public static partial class OrderAuditHandler
 
 ### Why Not [Event]?
 
-`[Event]` and `[FactoryEventHandler<T>]` serve different needs.
+`[Event]` and `[FactoryEventHandler<T>]` serve different needs and have different execution models.
 
-- `[Event]` is imperative: the caller knows the delegate name and invokes it directly.
-- `[FactoryEventHandler<T>]` is declarative: the raiser publishes a typed event and any number of handlers subscribe without the raiser knowing they exist.
+- **`[Event]`** is imperative, detached, and fire-and-forget. The caller knows the delegate name and invokes it directly; each handler runs in its own isolated scope via `Task.Run`, tracked by `IEventTracker` for graceful shutdown. Handler exceptions never affect the caller. Use it for notifications, emails, webhooks, audit sinks to external systems — anything that should survive (or shouldn't block) the caller's work.
+- **`[FactoryEventHandler<T>]`** is declarative, transactional, and awaited. The raiser publishes a typed event via `IFactoryEvents.Raise`; handlers share the caller's DI scope, run sequentially, and propagate exceptions. Use it for domain events that must participate in the caller's DB transaction — handlers that touch the same `DbContext` as the aggregate that raised the event.
 
-Use `[Event]` when you need a single, specific fire-and-forget operation (send this email). Use `[FactoryEventHandler<T>]` when you want decoupled fan-out to multiple subscribers during a factory operation, and especially when you need server-to-client relay.
+If your handler needs the factory's transaction, use `[FactoryEventHandler<T>]`. If your handler talks to an external system that should never block or fail the aggregate save, use `[Event]`.
 
 ---
 
@@ -121,21 +144,23 @@ CLIENT                           SERVER
   |                                 |
   | 1. factory.Create(...)          |
   |-------------------------------->|
-  |                                 | 2. Create runs
-  |                                 | 3. events.Raise(new OrderCheckoutCompleted(...))
-  |                                 |    - dispatches to [FactoryEventHandler<T>] static handlers
-  |                                 |    - captures in IFactoryEventCollector
+  |                                 | 2. Create runs in the request scope
+  |                                 | 3. await events.Raise(new OrderCheckoutCompleted(...))
+  |                                 |    - every server-side [FactoryEventHandler<T>] static
+  |                                 |      handler runs sequentially in the same scope;
+  |                                 |      Raise returns only after all handlers complete
+  |                                 |    - event is also captured in IFactoryEventCollector
   |                                 |
   |        RemoteResponseDto        | 4. HandleRemoteDelegateRequest attaches
   |   { Json, RelayedEvents: [..] } |    collected events to the response
   |<--------------------------------|
   |                                 |
-  | 5. Factory result returned to caller FIRST
+  | 5. Factory result returned to caller
   | 6. IFactoryEventRelay dispatches RelayedEvents to
-  |    registered instance handlers (fire-and-forget)
+  |    registered instance handlers (client-side relay)
 ```
 
-Key ordering guarantee: the factory operation result is returned to the caller **before** relayed events are dispatched. Event handlers run after `await factory.Create(...)` has completed.
+The server awaits every `[FactoryEventHandler<T>]` before serializing the response, so a server handler exception propagates back to the client. On the client, the factory result is returned to the caller **before** relayed events are dispatched to client-side relay handlers.
 
 ### Client-Side Handler (Instance Method)
 
@@ -189,25 +214,16 @@ To raise an event that runs server-side handlers but is **not** relayed to the c
 ```csharp
 await factoryEvents.Raise(
     new OrderCheckoutCompleted(id, total),
-    RaiseOptions.ServerOnly);
+    RaiseOptions.ServerOnly,
+    ct);
 ```
 
 Use this for server-internal concerns (trigger a downstream process, record an audit row) that the UI does not need to know about. `ServerOnly` composes with other flags:
 
 | Flag | Meaning |
 |------|---------|
-| `None` | Default. Server handlers run; event is captured for client relay. |
-| `AwaitRemote` | Wait for server handlers to complete before returning from `Raise`. |
-| `ContinueOnFail` | Continue dispatching remaining handlers if one throws. |
+| `None` | Default. Server handlers run (sequentially, in the caller's scope, awaited); event is captured for client relay. |
 | `ServerOnly` | Server handlers run; event is NOT relayed to the client. |
-
-Flags combine with bitwise OR:
-
-```csharp
-await factoryEvents.Raise(
-    new OrderCheckoutCompleted(id, total),
-    RaiseOptions.ServerOnly | RaiseOptions.ContinueOnFail);
-```
 
 ### Nested Operations
 
@@ -215,7 +231,7 @@ The `IFactoryEventCollector` is request-scoped. Events raised during nested oper
 
 ### Logical Mode
 
-In Logical (local) mode no collector is registered and no relay occurs, because nothing ever crosses the client/server boundary. Handlers still dispatch via the mediator; static handlers run in isolated scopes as usual.
+In Logical (local) mode no collector is registered and no relay occurs, because nothing ever crosses the client/server boundary. Handlers still dispatch via the mediator in the caller's scope, sequentially, awaited — the same execution model as server mode.
 
 ---
 
@@ -275,10 +291,15 @@ await factoryEvents.Raise(new OrderCheckoutCompleted(order.Id, order.Total));  /
 
 ```csharp
 [Remote, Create]
-internal async Task Create(int id, decimal total, [Service] IFactoryEvents events)
+internal async Task Create(
+    int id,
+    decimal total,
+    [Service] IFactoryEvents events,
+    CancellationToken ct)
 {
     Id = id; Total = total;
-    await events.Raise(new OrderCheckoutCompleted(id, total));  // Server-side, inside factory method
+    // Server-side, inside factory method — caller's CT threaded through.
+    await events.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.None, ct);
 }
 ```
 
@@ -373,15 +394,23 @@ internal partial class Order : IOrder
     public Order() { }
 
     [Remote, Create]
-    internal async Task Create(int id, decimal total, [Service] IFactoryEvents events)
+    internal async Task Create(
+        int id,
+        decimal total,
+        [Service] IFactoryEvents events,
+        CancellationToken ct)
     {
         Id = id;
         Total = total;
-        await events.Raise(new OrderCheckoutCompleted(id, total));
+        // Thread the factory method's CancellationToken through so handlers
+        // that declare a CancellationToken parameter observe cancellation.
+        await events.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.None, ct);
     }
 }
 
-// --------------- Server: static handler runs in isolated scope ---------------
+// --------------- Server: static handler runs in the caller's scope ---------------
+// Sharing the factory method's DI scope means audit.LogAsync participates in
+// the same transaction as the Create above. A throw here rolls everything back.
 [FactoryEventHandler<OrderCheckoutCompleted>]
 public static partial class OrderCheckoutAudit
 {

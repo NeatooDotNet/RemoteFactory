@@ -53,9 +53,9 @@ internal class PersonModel : IPersonModel
 
 	[Remote]
 	[Fetch]
-	internal async Task<bool> Fetch([Service] IPersonContext personContext)
+	internal async Task<bool> Fetch([Service] IPersonContext personContext, CancellationToken ct)
 	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
+		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1, ct);
 		if (personEntity == null)
 		{
 			return false;
@@ -74,9 +74,12 @@ internal class PersonModel : IPersonModel
 	[Remote]
 	[Update]
 	[Insert]
-	internal async Task Upsert([Service] IPersonContext personContext, [Service] IFactoryEvents factoryEvents)
+	internal async Task Upsert(
+		[Service] IPersonContext personContext,
+		[Service] IFactoryEvents factoryEvents,
+		CancellationToken ct)
 	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
+		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1, ct);
 		bool isInsert = personEntity == null;
 		if(personEntity == null)
 		{
@@ -90,26 +93,33 @@ internal class PersonModel : IPersonModel
 		personEntity.Notes = this.Notes;
 		personEntity.Created = this.Created;
 		personEntity.Modified = this.Modified;
-		await personContext.SaveChangesAsync();
+		await personContext.SaveChangesAsync(ct);
 
+		// Factory event handlers share this method's DI scope, so any
+		// [FactoryEventHandler<PersonCreatedEvent>] that injects IPersonContext
+		// will see THIS personContext and participate in its transaction.
+		// A throwing handler rolls the whole Upsert back.
 		if (isInsert)
-			await factoryEvents.Raise(new PersonCreatedEvent(personEntity.Id));
+			await factoryEvents.Raise(new PersonCreatedEvent(personEntity.Id), RaiseOptions.None, ct);
 		else
-			await factoryEvents.Raise(new PersonUpdatedEvent(personEntity.Id));
+			await factoryEvents.Raise(new PersonUpdatedEvent(personEntity.Id), RaiseOptions.None, ct);
 	}
 
 	[Remote]
 	[Delete]
-	internal async Task Delete([Service] IPersonContext personContext, [Service] IFactoryEvents factoryEvents)
+	internal async Task Delete(
+		[Service] IPersonContext personContext,
+		[Service] IFactoryEvents factoryEvents,
+		CancellationToken ct)
 	{
-		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1);
+		var personEntity = await personContext.Persons.FirstOrDefaultAsync(x => x.Id == 1, ct);
 
 		if (personEntity != null)
 		{
 			var id = personEntity.Id;
 			personContext.Persons.Remove(personEntity);
-			await personContext.SaveChangesAsync();
-			await factoryEvents.Raise(new PersonDeletedEvent(id));
+			await personContext.SaveChangesAsync(ct);
+			await factoryEvents.Raise(new PersonDeletedEvent(id), RaiseOptions.None, ct);
 		}
 	}
 }

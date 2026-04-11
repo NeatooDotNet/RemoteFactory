@@ -65,55 +65,40 @@ internal static class RelayHandlerRenderer
     }
 
     /// <summary>
-    /// Server-side: register into FactoryEventHandlerRegistry with isolated scope, [Service] injection, CT.
+    /// Server-side: register into FactoryEventHandlerRegistry. Handlers run in the
+    /// caller's DI scope (shared DbContext/transaction), sequentially, awaited.
+    /// [Service] parameters resolve from the caller's sp. CancellationToken flows
+    /// through from IFactoryEvents.Raise. Invocation arguments are emitted in the
+    /// order the user declared them on the handler method.
     /// </summary>
     private static void RenderServerSideHandler(StringBuilder sb, EventHandlerEntry handler, string className)
     {
         var eventTypeName = handler.EventTypeName;
 
+        // Emit arguments in declaration order so a handler like
+        // `(TestEvent evt, CancellationToken ct, [Service] IFoo svc)` binds correctly.
+        // CT params map to the local `ct`; every other param maps to its identifier
+        // (event param + [Service] locals both use their declared name).
         var allParamIdentifiers = string.Join(", ",
-            handler.Parameters.Where(p => !p.IsCancellationToken)
-                .Select(p => p.Name)
-            .Concat(handler.ServiceParameters.Select(p => p.Name))
-            .Concat(handler.Parameters.Where(p => p.IsCancellationToken).Select(_ => "ct")));
+            handler.AllParameters.Select(p => p.IsCancellationToken ? "ct" : p.Name));
 
-        var serviceAssignments = string.Join("\n                            ",
-            handler.ServiceParameters.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
+        var serviceAssignments = string.Join("\n                    ",
+            handler.ServiceParameters.Select(p => $"var {p.Name} = sp.GetRequiredService<{p.Type}>();"));
 
-        var methodInvocation = handler.IsAsync
-            ? $"await {className}.{handler.MethodName}({allParamIdentifiers});"
-            : $"{className}.{handler.MethodName}({allParamIdentifiers});";
+        // Always emit `await` — the method returns Task per NF0501, so await works
+        // for both `async Task` and plain `Task`-returning methods.
+        var methodInvocation = $"await {className}.{handler.MethodName}({allParamIdentifiers}).ConfigureAwait(false);";
 
         sb.AppendLine("            if (NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("            {");
-        sb.AppendLine($"                FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>((sp, eventObj, options) =>");
+        sb.AppendLine($"                FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>(typeof({className}), async (sp, eventObj, options, ct) =>");
         sb.AppendLine("                {");
-        sb.AppendLine("                    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
-        sb.AppendLine("                    var tracker = sp.GetRequiredService<IEventTracker>();");
-        sb.AppendLine("                    var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
-        sb.AppendLine("                    var parentCorrelation = sp.GetService<ICorrelationContext>();");
-        sb.AppendLine("                    var capturedCorrelationId = parentCorrelation?.CorrelationId;");
         sb.AppendLine($"                    var {handler.Parameters.First(p => !p.IsCancellationToken).Name} = ({eventTypeName})eventObj;");
-        sb.AppendLine("                    var task = Task.Run(async () =>");
-        sb.AppendLine("                    {");
-        sb.AppendLine("                        using var scope = scopeFactory.CreateScope();");
-        sb.AppendLine("                        var eventCorrelation = scope.ServiceProvider.GetService<ICorrelationContext>();");
-        sb.AppendLine("                        if (eventCorrelation != null && capturedCorrelationId != null)");
-        sb.AppendLine("                        {");
-        sb.AppendLine("                            eventCorrelation.CorrelationId = capturedCorrelationId;");
-        sb.AppendLine("                        }");
-        if (handler.Parameters.Any(p => p.IsCancellationToken))
-        {
-            sb.AppendLine("                        var ct = lifetime.ApplicationStopping;");
-        }
         if (!string.IsNullOrEmpty(serviceAssignments))
         {
-            sb.AppendLine($"                        {serviceAssignments}");
+            sb.AppendLine($"                    {serviceAssignments}");
         }
-        sb.AppendLine($"                        {methodInvocation}");
-        sb.AppendLine("                    });");
-        sb.AppendLine("                    tracker.Track(task);");
-        sb.AppendLine("                    return task;");
+        sb.AppendLine($"                    {methodInvocation}");
         sb.AppendLine("                });");
         sb.AppendLine("            }");
     }

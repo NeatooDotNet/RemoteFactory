@@ -27,9 +27,7 @@ public class FactoryEventHandlerLocalTests
         var entityId = Guid.NewGuid();
         await events.Raise(new TestAuditEvent(entityId));
 
-        // Allow background tasks to complete
-        await Task.Delay(200);
-
+        // Raise is sequential-awaited — handlers have already run by now.
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "AuditHandler" && e.EntityId == entityId);
     }
@@ -43,8 +41,6 @@ public class FactoryEventHandlerLocalTests
 
         var orderId = Guid.NewGuid();
         await events.Raise(new TestOrderEvent(orderId, "test@example.com"));
-
-        await Task.Delay(200);
 
         var recorded = testService.GetRecordedEvents();
         Assert.Contains(recorded, e => e.EventName == "HandlerA" && e.EntityId == orderId);
@@ -71,8 +67,6 @@ public class FactoryEventHandlerLocalTests
         var auditId = Guid.NewGuid();
         await events.Raise(new TestAuditEvent(auditId));
 
-        await Task.Delay(200);
-
         var recorded = testService.GetRecordedEvents();
         // AuditHandler should fire
         Assert.Contains(recorded, e => e.EventName == "AuditHandler" && e.EntityId == auditId);
@@ -92,8 +86,6 @@ public class FactoryEventHandlerLocalTests
         var email = "verify@example.com";
         await events.Raise(new TestOrderEvent(orderId, email));
 
-        await Task.Delay(200);
-
         var recorded = testService.GetRecordedEvents();
         // HandlerA records the OrderId — verifies the event object arrived with correct data
         Assert.Contains(recorded, e => e.EventName == "HandlerA" && e.EntityId == orderId);
@@ -108,8 +100,6 @@ public class FactoryEventHandlerLocalTests
 
         var orderId = Guid.NewGuid();
         await events.Raise(new TestOrderEvent(orderId, "svc@test.com"));
-
-        await Task.Delay(200);
 
         // If service injection failed, handlers would throw and no events would be recorded
         var recorded = testService.GetRecordedEvents();
