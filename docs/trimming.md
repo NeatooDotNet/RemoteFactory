@@ -59,6 +59,22 @@ Domain assembly                     Domain assembly
 └── EF Core references              └── (removed)
 ```
 
+## Prerequisite: Direct `Neatoo.RemoteFactory` Reference in Every Project with Factory Types
+
+Roslyn source generators only run in a project when the generator package (or analyzer reference) is resolved **directly**, not transitively. If a project declares any of the following — `[Factory]`, `[FactoryEventHandler<T>]`, `[Execute]`, `[Save]`, `[AuthorizeFactory<T>]` — it **must** have its own `PackageReference` to `Neatoo.RemoteFactory`:
+
+```xml
+<PackageReference Include="Neatoo.RemoteFactory" Version="x.y.z" />
+```
+
+Relying on a transitive flow (e.g. a `ProjectReference` to a domain project that references `Neatoo.RemoteFactory`, or a `PackageReference` with `PrivateAssets="all"`) will silently skip code generation for that project. The symptoms are specific and easy to misdiagnose:
+
+- `FactoryServiceRegistrar` is never emitted for types in the project — nothing gets registered into DI, nothing gets registered into `DtoConstructorRegistry`, and nothing gets registered into `FactoryEventRelayRegistry`.
+- Factories appear to work in one project and fail in another that depends on the first.
+- On a Blazor WASM client that defines `[FactoryEventHandler<T>]` instance methods, server-raised events reach the wire but are never dispatched to the handler — there is no relay registration to find them.
+
+This applies to **every** project that declares factory types, including Blazor WASM client projects that host client-side relay handlers. The only projects that may rely on a transitive reference are those that purely *consume* factories (inject the interface, call methods) without declaring any factory types themselves.
+
 ## Configuration
 
 ### Step 1: Mark your domain assembly as trimmable
@@ -262,6 +278,76 @@ If you return a plain DTO class through any factory method, it is automatically 
 For example, if a factory method returns `ParentDto` which has a `List<ChildDto> Children` property, both `ParentDto` and `ChildDto` are automatically registered — no additional action is needed.
 
 If you have a DTO that is **not** returned by any factory method and **not** reachable as a property of a discovered DTO, you need to preserve it yourself. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency).
+
+## Factory Event Type Preservation
+
+Event records raised via `IFactoryEvents.Raise<T>()` and handled by `[FactoryEventHandler<T>]` classes cross the client/server boundary via JSON — both when the server relays captured events back to the client in `RemoteResponseDto.RelayedEvents` and when a client raises an event that a server handler processes. Like DTO return types, event records must survive IL trimming intact.
+
+### How RemoteFactory Handles It
+
+The source generator walks every `[FactoryEventHandler<T>]` attribute declared in a project and emits preservation calls in the handler class's `FactoryServiceRegistrar`:
+
+- The event type itself always uses `DtoConstructorRegistry.PreserveType<T>()` — event records are commonly records with parameterized primary constructors (deserialized through `RecordBypassConverterFactory`), and `PreserveType<T>` applies `[DynamicallyAccessedMembers(All)]` to `T`, telling the trimmer to keep every constructor, property, and field intact. This covers both the parameterless-ctor path (`NeatooJsonTypeInfoResolver.CreateObject`) and the parameterized-ctor path.
+- Nested reference-type properties on the event record are discovered recursively using the same rules as the DTO return-type walker. A nested type with a public parameterless constructor is emitted via `DtoConstructorRegistry.Register<N>(() => new N())` (same as factory-return DTOs); a nested record with only parameterized constructors is emitted via `DtoConstructorRegistry.PreserveType<N>()`.
+- Preservation calls are emitted **unconditionally** — they are not wrapped in `if (NeatooRuntime.IsServerRuntime)`. Both client and server need the metadata: the client deserializes incoming relayed events, the server deserializes incoming client raises.
+
+As with factory-return types, the `[DynamicallyAccessedMembers(All)]` annotation is the trimming hint; `PreserveType<T>()` itself performs no runtime work beyond pinning the type reference. It is idempotent — calling it multiple times does not grow any dictionary or allocate.
+
+### `PreserveType<T>` vs `Register<T>`
+
+| Primitive | When the generator emits it | Effect |
+|-----------|------------------------------|--------|
+| `DtoConstructorRegistry.Register<T>(() => new T())` | Type has a public parameterless constructor and is safe to construct eagerly | Trimmer preserves all members; `NeatooJsonTypeInfoResolver.CreateObject` uses the lambda instead of `Activator.CreateInstance` |
+| `DtoConstructorRegistry.PreserveType<T>()` | Type has no usable parameterless constructor (records with primary ctors, event records) | Trimmer preserves all members; no constructor lambda registered, so `DtoConstructorRegistry.TryCreate(typeof(T), out _)` returns `false` and STJ flows through its parameterized-ctor pipeline (`RecordBypassConverterFactory`) |
+
+Both primitives solve the same problem — keeping type metadata alive under IL trimming. They differ only in whether a constructor factory is also recorded.
+
+### What You Need to Know
+
+If you declare a `[FactoryEventHandler<T>]` in a project that has a direct `Neatoo.RemoteFactory` `PackageReference`, the event type and its nested records are automatically trimming-safe. No manual `DtoConstructorRegistry` calls are needed.
+
+### Known Limitation: `Dictionary<K, V>` Value Types Are Not Walked
+
+The property walker unwraps `Task<T>`, nullable `T?`, arrays, and generic collection types with a single type argument (`IReadOnlyList<T>`, `List<T>`, `IEnumerable<T>`, etc.). It does **not** unwrap generic types with two type arguments, so `Dictionary<TKey, TValue>` properties do not have their value type discovered:
+
+```csharp
+public record CacheWarmed(Dictionary<string, Payload> Items) : FactoryEventBase;
+//                                                ^^^^^^^
+//                                                NOT automatically preserved
+```
+
+**Workaround** — preserve the value type explicitly, either by:
+
+1. Declaring a `[FactoryEventHandler<Payload>]` somewhere in the project (even a stub handler forces preservation via the same generator path), or
+2. Returning `Payload` from any factory method so the factory-return-type walker picks it up, or
+3. Calling `DtoConstructorRegistry.PreserveType<Payload>()` (or `Register<Payload>`) manually in your DI setup before any deserialization occurs.
+
+### User Code That Forwards `Raise<T>` Through a Generic Passthrough
+
+`IFactoryEvents.Raise<T>` and its implementations now carry `[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]` on the `T` parameter. This is the mechanism that preserves `T` from the call site at every concrete `Raise<MyEvent>(...)` invocation.
+
+If your own code re-exposes `Raise` through a generic wrapper method, the compiler will now flag the wrapper with `IL2091` because the wrapper's `T` does not carry the same annotation:
+
+```csharp
+// In your own code — now produces IL2091 under trimming
+public Task RelayAnyEvent<T>(T evt) where T : FactoryEventBase =>
+    _factoryEvents.Raise(evt);
+```
+
+Resolve by matching the annotation on your own parameter, or by passing a concrete event type instead:
+
+```csharp
+// Option 1 — propagate the annotation
+public Task RelayAnyEvent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T evt)
+    where T : FactoryEventBase =>
+    _factoryEvents.Raise(evt);
+
+// Option 2 — close the generic at the boundary (no warning)
+public Task RelayCheckoutCompleted(OrderCheckoutCompleted evt) =>
+    _factoryEvents.Raise(evt);
+```
+
+The warning fires only when user code forwards a generic `T` into `Raise<T>`. Direct calls with a concrete type (`_factoryEvents.Raise(new OrderCheckoutCompleted(...))`) are unaffected.
 
 ## Limitations
 

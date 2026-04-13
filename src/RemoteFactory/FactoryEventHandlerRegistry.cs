@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Neatoo.RemoteFactory;
 
@@ -39,7 +40,7 @@ public static class FactoryEventHandlerRegistry
     /// so multiple DI container builds in a test run do not multiply registrations.
     /// </para>
     /// </remarks>
-    public static void RegisterHandler<TEvent>(
+    public static void RegisterHandler<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEvent>(
         Type handlerClassType,
         Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handlerFactory)
         where TEvent : FactoryEventBase

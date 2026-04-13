@@ -15,7 +15,9 @@ internal sealed record RelayHandlerModel
         IReadOnlyList<string> usings,
         string hintName,
         IReadOnlyList<EventHandlerEntry> entries,
-        IReadOnlyList<DiagnosticInfo> diagnostics)
+        IReadOnlyList<DiagnosticInfo> diagnostics,
+        EquatableArray<string> eventDtoTypes,
+        EquatableArray<string> eventRecordTypes)
     {
         ClassName = className;
         ClassSignatureText = classSignatureText;
@@ -24,6 +26,8 @@ internal sealed record RelayHandlerModel
         HintName = hintName;
         Entries = entries;
         Diagnostics = diagnostics;
+        EventDtoTypes = eventDtoTypes;
+        EventRecordTypes = eventRecordTypes;
     }
 
     public string ClassName { get; }
@@ -33,6 +37,17 @@ internal sealed record RelayHandlerModel
     public string HintName { get; }
     public IReadOnlyList<EventHandlerEntry> Entries { get; }
     public IReadOnlyList<DiagnosticInfo> Diagnostics { get; }
+
+    /// <summary>FQNs of nested types reachable from any event root that have a public parameterless ctor.
+    /// Rendered as <c>DtoConstructorRegistry.Register&lt;N&gt;(() =&gt; new N())</c>.
+    /// Deduplicated across all [FactoryEventHandler&lt;T&gt;] attributes on the class.</summary>
+    public EquatableArray<string> EventDtoTypes { get; }
+
+    /// <summary>FQNs of types reachable from any event root that do NOT have a public parameterless ctor
+    /// (event records themselves, parameterized-ctor record properties).
+    /// Rendered as <c>DtoConstructorRegistry.PreserveType&lt;N&gt;()</c>.
+    /// Deduplicated across all [FactoryEventHandler&lt;T&gt;] attributes on the class.</summary>
+    public EquatableArray<string> EventRecordTypes { get; }
 }
 
 /// <summary>

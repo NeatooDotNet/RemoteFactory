@@ -35,7 +35,12 @@ dotnet add package Neatoo.RemoteFactory
 dotnet add package Neatoo.RemoteFactory.AspNetCore
 ```
 
-The client project doesn't need direct package references — it gets RemoteFactory transitively through the domain project reference.
+**Client project:**
+```bash
+dotnet add package Neatoo.RemoteFactory
+```
+
+The client needs its own direct `Neatoo.RemoteFactory` reference if it declares any factory types — including `[FactoryEventHandler<T>]` classes with client-side relay methods. Roslyn source generators only run in projects with a direct package reference; a transitive reference through the domain project does not flow the generator, so no `FactoryServiceRegistrar` is emitted for client-declared types. A project that purely consumes factories (injects the interface, calls methods) without declaring any factory types of its own can rely on the transitive reference. When in doubt, add the direct reference — it is the safe default. See [IL Trimming](trimming.md#prerequisite-direct-neatooremotefactory-reference-in-every-project-with-factory-types) for the full explanation.
 
 ## Server Configuration
 

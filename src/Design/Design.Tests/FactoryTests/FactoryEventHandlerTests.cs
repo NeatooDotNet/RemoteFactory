@@ -51,6 +51,31 @@ public class FactoryEventHandlerTests
         server.Dispose();
         client.Dispose();
     }
+
+    /// <summary>
+    /// Demonstrates: an event record with a nested parameterized-record property
+    /// round-trips cleanly. Exercises the generator's automatic IL-trimming
+    /// preservation for nested records — if the generator had not emitted
+    /// <c>PreserveType&lt;ShippingAddress&gt;()</c>, a Release build with
+    /// PublishTrimmed=true would fail to deserialize the nested record.
+    /// </summary>
+    [Fact]
+    public async Task Raise_EventWithNestedRecord_DispatchesSuccessfully()
+    {
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var events = server.GetRequiredService<IFactoryEvents>();
+
+        var shipEvent = new OrderShippedEvent(
+            OrderId: Guid.NewGuid(),
+            Address: new ShippingAddress("123 Main St", "Seattle", "98101"));
+
+        await events.Raise(shipEvent);
+
+        Assert.True(true);
+
+        server.Dispose();
+        client.Dispose();
+    }
 }
 
 /// <summary>

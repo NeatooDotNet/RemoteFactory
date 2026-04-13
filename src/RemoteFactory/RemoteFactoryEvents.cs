@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Neatoo.RemoteFactory.Internal;
 
 namespace Neatoo.RemoteFactory;
@@ -17,7 +18,7 @@ internal sealed class RemoteFactoryEvents : IFactoryEvents
         _remoteRequest = remoteRequest;
     }
 
-    public Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default) where T : FactoryEventBase
+    public Task Raise<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default) where T : FactoryEventBase
     {
         return _remoteRequest.ForDelegateEvent(typeof(RaiseFactoryEventRemote), [factoryEvent, (int)options], cancellationToken);
     }

@@ -267,8 +267,8 @@ public sealed partial class OrderViewModel : IDisposable
 | How do I propagate tenant context to `[Event]` delegate scopes? | Register an `IEventScopeInitializer` via `AddRemoteFactoryEventScopeInitializer` | `docs/events.md`, `AddRemoteFactoryServices.cs` | `[Event]` delegates run in isolated DI scopes; initializers copy ambient state from parent to child scope. Not needed for `[FactoryEventHandler<T>]` — it already shares the caller's scope. |
 | Is correlation ID propagated to `[Event]` delegates automatically? | Yes — built-in `CorrelationContextScopeInitializer` handles this | `CorrelationExample.cs` | Registered automatically in Server/Logical modes by `AddNeatooRemoteFactory` |
 | Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
-| Can auth methods receive the target entity? | Yes -- on write operations (Insert/Update/Delete) | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanWrite(IEntity target)` inspects entity state; suppresses CanSave/CanInsert/CanUpdate/CanDelete generation |
-| Why is CanSave missing from my factory interface? | Write auth has a target parameter | `ParamAuthOrderAuth.cs` | CanSave needs the entity but runs before Save; auth is checked inside Save() instead |
+| Can auth methods receive the target entity? | Yes -- on write operations (Insert/Update/Delete) | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanWrite(IEntity target)` inspects entity state; suppresses CanInsert/CanUpdate/CanDelete generation but CanSave gets two overloads |
+| How does CanSave work with target-param auth? | Two overloads: `CanSave()` runs non-target auth only; `CanSave(target)` runs ALL auth | `ParamAuthOrderAuth.cs` | Caller has the entity in hand before Save; CanInsert/CanUpdate/CanDelete remain suppressed |
 
 ---
 
@@ -792,6 +792,10 @@ Duplicate registrations from multiple factories returning the same DTO type are 
 
 **Nested DTO discovery:** The generator recursively walks public instance properties (including inherited properties via base type chain) of each discovered DTO to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner DTO type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references (e.g., `DtoA` -> `DtoB` -> `DtoA`).
 
+**Factory event type preservation.** Every `[FactoryEventHandler<T>]` attribute causes the generator to emit `DtoConstructorRegistry.PreserveType<T>()` in the handler class's `FactoryServiceRegistrar`. `PreserveType<T>()` is a sibling primitive to `Register<T>`: it applies `[DynamicallyAccessedMembers(All)]` to `T` but does not record a constructor factory — appropriate for event records with parameterized primary constructors (deserialized through `RecordBypassConverterFactory`). Nested reference-type properties on the event type are walked using the same recursive discovery as the factory-return-type walker; nested types with a public parameterless ctor emit `Register<N>(() => new N())`, others emit `PreserveType<N>()`. Emission is **unconditional** — outside the `if (NeatooRuntime.IsServerRuntime)` guard — because both the client (deserializing relayed events) and the server (deserializing incoming client raises) need the metadata intact. `IFactoryEvents.Raise<T>` and `FactoryEventHandlerRegistry.RegisterHandler<TEvent>` also carry `[DynamicallyAccessedMembers(All)]` on their generic parameter, providing call-site preservation for producer-only projects that declare no matching handler.
+
+**Known gap: `Dictionary<K, V>` value types are not walked.** The property walker unwraps single-argument generic collections (`IReadOnlyList<T>`, arrays, nullable `T?`) but not two-argument generics. Preserve `Dictionary` value types manually (another `[FactoryEventHandler<V>]`, a factory-return of `V`, or an explicit `DtoConstructorRegistry.PreserveType<V>()` in DI setup).
+
 #### CS0051 Constraint
 
 When a generated factory interface becomes `internal` (all methods are internal), it cannot be used as a `[Service]` parameter type in a `public` method on another class. C# enforces that parameter types must be at least as accessible as the method. This means `internal` is not applicable to entities whose factory interfaces are referenced in more-accessible methods' `[Service]` parameters. Use `internal` for leaf entities and standalone factories where the factory interface is not passed as a service parameter to public methods.
@@ -951,6 +955,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
 - [x] Factory event handler (mediator) — server-side static handler (`FactoryEventHandlerPattern.cs`)
 - [x] Factory event relay — client-side instance handler with `IFactoryEventRelay.Register`/`Unregister` (`FactoryEventRelayPattern.cs`)
+- [x] Event record with a nested record property — exercises automatic IL-trimming preservation for both the event type and the nested record (`FactoryEventHandlerPattern.cs`: `OrderShippedEvent` with `ShippingAddress`, `OrderShippedHandlers`)
 - [x] LazyLoad<T> property with constructor-initialization pattern (`LazyLoadExample.cs`)
 
 ---
