@@ -802,17 +802,59 @@ internal static class FactoryModelBuilder
                 continue;
             }
 
-            // Only add CanXxx if auth methods don't have a target parameter
-            var authMethodsHaveTarget = method.Authorization?.AuthMethods
-                .Any(am => am.Parameters.Any(p => p.IsTarget)) ?? false;
+            var authMethods = method.Authorization?.AuthMethods ?? Array.Empty<AuthMethodCall>();
+            var aspAuthorize = method.Authorization?.AspAuthorize ?? Array.Empty<AspAuthorizeCall>();
+
+            var authMethodsHaveTarget = authMethods
+                .Any(am => am.Parameters.Any(p => p.IsTarget));
 
             if (authMethodsHaveTarget)
             {
+                // For Save methods: generate two CanSave overloads (parameterless + target)
+                // For Insert/Update/Delete: continue to suppress CanXxx generation
+                if (method is SaveMethodModel)
+                {
+                    var canMethodName = $"Can{method.Name}";
+
+                    // Parameterless CanSave: runs only non-target auth methods
+                    var nonTargetAuthMethods = authMethods
+                        .Where(am => !am.Parameters.Any(p => p.IsTarget))
+                        .ToList();
+                    var nonTargetAspAuthorize = aspAuthorize;
+                    var nonTargetAreInternal = nonTargetAuthMethods.Any(am => am.IsInternal) || nonTargetAspAuthorize.Count > 0;
+                    var nonTargetAreRemote = nonTargetAuthMethods.Any(am => am.IsRemote) || nonTargetAspAuthorize.Count > 0;
+
+                    var parameterlessCanSave = BuildCanMethod(
+                        method.Name,
+                        typeInfo,
+                        nonTargetAuthMethods,
+                        nonTargetAspAuthorize,
+                        isInternal: nonTargetAreInternal,
+                        isSourceAuthMethodRemote: nonTargetAreRemote);
+
+                    canMethodsToAdd.Add(parameterlessCanSave);
+
+                    // CanSave(target): runs ALL auth methods (non-target + target)
+                    var allAuthAreInternal = authMethods.Any(am => am.IsInternal) || aspAuthorize.Count > 0;
+                    var allAuthAreRemote = authMethods.Any(am => am.IsRemote) || aspAuthorize.Count > 0;
+
+                    var targetCanSave = BuildCanMethod(
+                        method.Name,
+                        typeInfo,
+                        authMethods,
+                        aspAuthorize,
+                        isInternal: allAuthAreInternal,
+                        isSourceAuthMethodRemote: allAuthAreRemote);
+
+                    canMethodsToAdd.Add(targetCanSave);
+                    existingMethodNames.Add(canMethodName);
+                }
+
                 continue;
             }
 
-            var canMethodName = $"Can{method.Name}";
-            if (existingMethodNames.Contains(canMethodName))
+            var canMethodName2 = $"Can{method.Name}";
+            if (existingMethodNames.Contains(canMethodName2))
             {
                 continue;
             }
@@ -822,8 +864,6 @@ internal static class FactoryModelBuilder
             // - public auth methods => Can* runs on client (no guard)
             // - internal auth methods => Can* is server-only (guarded)
             // - [Remote] auth methods => Can* routes to server via remote delegate
-            var authMethods = method.Authorization?.AuthMethods ?? Array.Empty<AuthMethodCall>();
-            var aspAuthorize = method.Authorization?.AspAuthorize ?? Array.Empty<AspAuthorizeCall>();
             var authMethodsAreInternal = authMethods.Any(am => am.IsInternal);
             var authMethodsAreRemote = authMethods.Any(am => am.IsRemote);
 
@@ -840,7 +880,7 @@ internal static class FactoryModelBuilder
                 isSourceAuthMethodRemote: authMethodsAreRemote);
 
             canMethodsToAdd.Add(canMethod);
-            existingMethodNames.Add(canMethodName);
+            existingMethodNames.Add(canMethodName2);
         }
 
         methods.AddRange(canMethodsToAdd);
@@ -853,6 +893,11 @@ internal static class FactoryModelBuilder
     private static void AssignUniqueNames(List<FactoryMethodModel> methods)
     {
         var methodNames = new List<string>();
+        // CanMethodModel supports C# overloading (same name, different param signatures)
+        // because the factory-specific interface uses method.Name (not UniqueName)
+        // and the concrete class uses method.UniqueName — both must match for C# to compile.
+        // Other method types use delegates (named by UniqueName) which don't support overloading.
+        var canMethodSignatures = new HashSet<string>();
 
         // Sort by parameter count to ensure consistent naming
         var sortedMethods = methods.OrderBy(m => m.Parameters.Count).ToList();
@@ -860,6 +905,19 @@ internal static class FactoryModelBuilder
         for (int i = 0; i < sortedMethods.Count; i++)
         {
             var method = sortedMethods[i];
+
+            // For CanMethodModel, allow overloading by checking signature (name + param types)
+            if (method is CanMethodModel)
+            {
+                var signature = GetCanMethodSignature(method.Name, method.Parameters);
+                if (!canMethodSignatures.Contains(signature))
+                {
+                    canMethodSignatures.Add(signature);
+                    methodNames.Add(method.Name);
+                    continue;
+                }
+            }
+
             var uniqueName = AssignUniqueName(method.Name, methodNames);
 
             if (uniqueName != method.UniqueName)
@@ -870,7 +928,24 @@ internal static class FactoryModelBuilder
             }
 
             methodNames.Add(uniqueName);
+            if (method is CanMethodModel)
+            {
+                canMethodSignatures.Add(GetCanMethodSignature(uniqueName, method.Parameters));
+            }
         }
+    }
+
+    /// <summary>
+    /// Builds a signature key from the method name and user-facing parameters (excluding
+    /// service and CancellationToken parameters). Used for CanMethod overload detection —
+    /// CanMethods with the same name but different signatures are valid C# overloads.
+    /// </summary>
+    private static string GetCanMethodSignature(string name, IReadOnlyList<ParameterModel> parameters)
+    {
+        var paramTypes = string.Join(",", parameters
+            .Where(p => !p.IsService && !p.IsCancellationToken)
+            .Select(p => p.Type));
+        return $"{name}({paramTypes})";
     }
 
     private static string AssignUniqueName(string name, List<string> existingNames)

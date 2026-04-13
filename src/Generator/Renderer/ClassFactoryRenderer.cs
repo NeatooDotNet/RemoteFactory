@@ -1229,35 +1229,63 @@ internal static class ClassFactoryRenderer
             return;
         }
 
-        // Find the CanSave method that corresponds to this save method
-        var canSaveMethod = model.Methods.OfType<CanMethodModel>()
-            .FirstOrDefault(m => m.Name == $"Can{method.Name}");
+        // Find CanSave methods -- there may be two overloads (parameterless and target-parameterized)
+        var canSaveMethods = model.Methods.OfType<CanMethodModel>()
+            .Where(m => m.Name == $"Can{method.Name}")
+            .ToList();
 
-        if (canSaveMethod == null)
+        var parameterlessCanSave = canSaveMethods
+            .FirstOrDefault(m => !m.Parameters.Any(p => p.IsTarget));
+        var targetCanSave = canSaveMethods
+            .FirstOrDefault(m => m.Parameters.Any(p => p.IsTarget));
+
+        // Parameterless overload: IFactorySave<T>.CanSave(CancellationToken)
+        if (parameterlessCanSave == null)
         {
-            // No auth configured -- generate default returning Authorized(true)
+            // No auth or no non-target auth -- return Authorized(true)
             sb.AppendLine($"        Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
             sb.AppendLine("        {");
             sb.AppendLine("            return Task.FromResult(new Authorized(true));");
             sb.AppendLine("        }");
         }
+        else if (parameterlessCanSave.IsTask)
+        {
+            sb.AppendLine($"        async Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            return await {parameterlessCanSave.UniqueName}(cancellationToken);");
+            sb.AppendLine("        }");
+        }
         else
         {
-            // Auth configured -- delegate to concrete CanSave method
-            if (canSaveMethod.IsTask)
-            {
-                sb.AppendLine($"        async Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
-                sb.AppendLine("        {");
-                sb.AppendLine($"            return await {canSaveMethod.UniqueName}(cancellationToken);");
-                sb.AppendLine("        }");
-            }
-            else
-            {
-                sb.AppendLine($"        Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
-                sb.AppendLine("        {");
-                sb.AppendLine($"            return Task.FromResult({canSaveMethod.UniqueName}(cancellationToken));");
-                sb.AppendLine("        }");
-            }
+            sb.AppendLine($"        Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave(CancellationToken cancellationToken)");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            return Task.FromResult({parameterlessCanSave.UniqueName}(cancellationToken));");
+            sb.AppendLine("        }");
+        }
+        sb.AppendLine();
+
+        // Target overload: IFactorySave<T>.CanSave(T target, CancellationToken)
+        if (targetCanSave == null)
+        {
+            // No target-param auth -- return Authorized(true)
+            sb.AppendLine($"        Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave({model.ImplementationTypeName} target, CancellationToken cancellationToken)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            return Task.FromResult(new Authorized(true));");
+            sb.AppendLine("        }");
+        }
+        else if (targetCanSave.IsTask)
+        {
+            sb.AppendLine($"        async Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave({model.ImplementationTypeName} target, CancellationToken cancellationToken)");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            return await {targetCanSave.UniqueName}(target, cancellationToken);");
+            sb.AppendLine("        }");
+        }
+        else
+        {
+            sb.AppendLine($"        Task<Authorized> IFactorySave<{model.ImplementationTypeName}>.CanSave({model.ImplementationTypeName} target, CancellationToken cancellationToken)");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            return Task.FromResult({targetCanSave.UniqueName}(target, cancellationToken));");
+            sb.AppendLine("        }");
         }
         sb.AppendLine();
     }

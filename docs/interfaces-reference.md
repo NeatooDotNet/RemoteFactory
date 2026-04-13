@@ -344,10 +344,16 @@ Generated factories implement this interface when the domain model implements `I
 public interface IFactorySave<T> where T : IFactorySaveMeta
 {
     Task<IFactorySaveMeta?> Save(T entity, CancellationToken cancellationToken = default);
+    Task<Authorized> CanSave(CancellationToken cancellationToken = default);
+    Task<Authorized> CanSave(T target, CancellationToken cancellationToken = default);
 }
 ```
 
 **You do not implement this interface.** The generator creates it automatically.
+
+**CanSave overloads:**
+- `CanSave()` -- runs non-target Write auth methods (role checks, permissions). Returns `Authorized(true)` when no authorization is configured.
+- `CanSave(target)` -- runs ALL Write auth methods, including target-parameterized auth that inspects entity state. Returns `Authorized(true)` when no authorization is configured.
 
 Using the generated Save method:
 

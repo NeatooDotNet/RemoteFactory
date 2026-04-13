@@ -15,20 +15,18 @@
 //
 // GENERATOR BEHAVIOR: Selective CanXxx generation
 //
-// Because the Write auth method has a target parameter:
+// Because the Write auth has both non-target and target-parameterized methods:
 // - CanCreate() IS generated (Read auth is parameterless)
 // - CanFetch(Guid) IS generated (Fetch auth takes Guid, not target entity)
-// - CanInsert/CanUpdate/CanDelete/CanSave are NOT generated
-//
-// This is correct: CanSave would need the entity to call CanWrite(target),
-// but the entity isn't available at the CanSave call site. The auth check
-// happens inside Save() where the entity is available.
+// - CanSave() IS generated (runs only non-target Write auth: CanWriteRole)
+// - CanSave(target) IS generated (runs ALL Write auth: CanWriteRole + CanWrite(target))
+// - CanInsert/CanUpdate/CanDelete are NOT generated (entity not available before operation)
 //
 // CONTRAST WITH: AuthorizedOrder.cs (parameterless auth)
 //
 // AuthorizedOrder has all parameterless auth methods, so the generator
-// produces all Can* methods including CanSave. This entity has a target
-// parameter on Write auth, so CanSave is suppressed.
+// produces all Can* methods including CanSave. This entity has both
+// non-target and target-parameterized Write auth, so it gets two CanSave overloads.
 //
 // =============================================================================
 

@@ -182,11 +182,13 @@ public class ParamAuthorizationTests
     // On write operations, the generator passes the target entity to
     // CanWrite. Auth decisions can be based on entity state (Status field).
     //
-    // GENERATOR BEHAVIOR: CanSave/CanInsert/CanUpdate/CanDelete NOT generated
+    // GENERATOR BEHAVIOR: CanSave generated with two overloads
     //
-    // Because CanWrite has a target parameter, these Can* methods are suppressed
-    // on the factory interface. The auth check happens inside Save() where
-    // the entity is available.
+    // CanSave() parameterless: runs only non-target Write auth (CanWriteRole)
+    // CanSave(target): runs ALL Write auth (CanWriteRole + CanWrite(target))
+    //
+    // CanInsert/CanUpdate/CanDelete remain suppressed — entity not available
+    // before the write operation.
     // -------------------------------------------------------------------------
 
     /// <summary>
@@ -290,6 +292,179 @@ public class ParamAuthorizationTests
     }
 
     // -------------------------------------------------------------------------
+    // CanSave Overloads (parameterless + target)
+    //
+    // GENERATOR BEHAVIOR: Two CanSave overloads when target auth exists
+    //
+    // CanSave() parameterless: runs only non-target Write auth (CanWriteRole).
+    // CanSave(target): runs ALL Write auth (CanWriteRole AND CanWrite(target)).
+    // This follows the same pattern as CanFetch calling multiple auth methods.
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Plan Scenario 1: CanSave(target) returns true when all auth passes.
+    /// Both CanWriteRole() and CanWrite(target) pass.
+    /// </summary>
+    [Fact]
+    public async Task ParamAuth_CanSaveTarget_ReturnsTrue_WhenAllAuthPasses()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags(); // AllowWriteRole = true
+        var (_, _, local) = DesignClientServerContainers.Scopes();
+        var factory = local.GetRequiredService<IParamAuthOrderFactory>();
+
+        var order = await factory.Create("CanSave Target Test");
+        Assert.NotNull(order);
+        order.Status = "Active"; // CanWrite(target) passes
+
+        // Act
+        var result = factory.CanSave(order);
+
+        // Assert
+        Assert.True(result.HasAccess);
+
+        local.Dispose();
+    }
+
+    /// <summary>
+    /// Plan Scenario 2: CanSave(target) returns false when target-param auth fails.
+    /// CanWriteRole() passes but CanWrite(target) fails (Status = "Locked").
+    /// </summary>
+    [Fact]
+    public async Task ParamAuth_CanSaveTarget_ReturnsFalse_WhenTargetAuthFails()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags(); // AllowWriteRole = true
+        var (_, _, local) = DesignClientServerContainers.Scopes();
+        var factory = local.GetRequiredService<IParamAuthOrderFactory>();
+
+        var order = await factory.Create("CanSave Target Locked");
+        Assert.NotNull(order);
+        order.Status = "Locked"; // CanWrite(target) fails
+
+        // Act
+        var result = factory.CanSave(order);
+
+        // Assert
+        Assert.False(result.HasAccess);
+
+        local.Dispose();
+    }
+
+    /// <summary>
+    /// Plan Scenario 3: CanSave(target) returns false when non-target auth fails.
+    /// CanWriteRole() fails, even though CanWrite(target) would pass.
+    /// </summary>
+    [Fact]
+    public async Task ParamAuth_CanSaveTarget_ReturnsFalse_WhenNonTargetAuthFails()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags();
+        ParamAuthOrderAuth.AllowWriteRole = false; // Non-target auth fails
+        var (_, _, local) = DesignClientServerContainers.Scopes();
+        var factory = local.GetRequiredService<IParamAuthOrderFactory>();
+
+        var order = await factory.Create("CanSave NonTarget Fail");
+        Assert.NotNull(order);
+        order.Status = "Active"; // CanWrite(target) would pass
+
+        // Act
+        var result = factory.CanSave(order);
+
+        // Assert
+        Assert.False(result.HasAccess);
+
+        local.Dispose();
+    }
+
+    /// <summary>
+    /// Plan Scenario 4: CanSave() parameterless returns true when non-target auth passes.
+    /// Only CanWriteRole() is called — target auth is NOT invoked.
+    /// </summary>
+    [Fact]
+    public void ParamAuth_CanSaveParameterless_ReturnsTrue_WhenNonTargetPasses()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags(); // AllowWriteRole = true
+        var (_, _, local) = DesignClientServerContainers.Scopes();
+        var factory = local.GetRequiredService<IParamAuthOrderFactory>();
+
+        // Act
+        var result = factory.CanSave();
+
+        // Assert
+        Assert.True(result.HasAccess);
+
+        local.Dispose();
+    }
+
+    /// <summary>
+    /// Plan Scenario 5: CanSave() parameterless returns false when non-target auth fails.
+    /// </summary>
+    [Fact]
+    public void ParamAuth_CanSaveParameterless_ReturnsFalse_WhenNonTargetFails()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags();
+        ParamAuthOrderAuth.AllowWriteRole = false;
+        var (_, _, local) = DesignClientServerContainers.Scopes();
+        var factory = local.GetRequiredService<IParamAuthOrderFactory>();
+
+        // Act
+        var result = factory.CanSave();
+
+        // Assert
+        Assert.False(result.HasAccess);
+
+        local.Dispose();
+    }
+
+    /// <summary>
+    /// Plan Scenario 6: CanSave(target) via factory interface delegates correctly.
+    /// Verifies the target overload is accessible through the factory-specific interface.
+    /// </summary>
+    [Fact]
+    public async Task ParamAuth_CanSaveTarget_ViaFactoryInterface_DelegatesCorrectly()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags();
+        var (_, _, local) = DesignClientServerContainers.Scopes();
+        IParamAuthOrderFactory factory = local.GetRequiredService<IParamAuthOrderFactory>();
+
+        var order = await factory.Create("Factory Interface Target Test");
+        Assert.NotNull(order);
+        order.Status = "Locked"; // CanWrite(target) fails
+
+        // Act — call via IParamAuthOrderFactory which has the CanSave(IParamAuthOrder) overload
+        var result = factory.CanSave(order);
+
+        // Assert
+        Assert.False(result.HasAccess);
+
+        local.Dispose();
+    }
+
+    /// <summary>
+    /// Plan Scenario 7: CanSave() parameterless via factory interface runs non-target auth.
+    /// </summary>
+    [Fact]
+    public void ParamAuth_CanSaveParameterless_ViaFactoryInterface_RunsNonTargetAuth()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags(); // AllowWriteRole = true
+        var (_, _, local) = DesignClientServerContainers.Scopes();
+        IParamAuthOrderFactory factory = local.GetRequiredService<IParamAuthOrderFactory>();
+
+        // Act
+        var result = factory.CanSave();
+
+        // Assert
+        Assert.True(result.HasAccess);
+
+        local.Dispose();
+    }
+
+    // -------------------------------------------------------------------------
     // Client-Server Round-Trip
     //
     // Verify parameterized auth works through the serialization boundary.
@@ -335,6 +510,32 @@ public class ParamAuthorizationTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.Save(order));
+
+        server.Dispose();
+        client.Dispose();
+    }
+
+    /// <summary>
+    /// Plan Scenario 9: CanSave(target) works through client-server serialization.
+    /// Calls CanSave(target) through the client→server boundary.
+    /// </summary>
+    [Fact]
+    public async Task ParamAuth_CanSaveTarget_ThroughClientServer_WhenStatusLocked()
+    {
+        // Arrange
+        ParamAuthOrderAuth.ResetFlags();
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var factory = client.GetRequiredService<IParamAuthOrderFactory>();
+
+        var order = await factory.Create("Client-Server CanSave");
+        Assert.NotNull(order);
+        order.Status = "Locked";
+
+        // Act
+        var result = factory.CanSave(order);
+
+        // Assert
+        Assert.False(result.HasAccess);
 
         server.Dispose();
         client.Dispose();
