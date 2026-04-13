@@ -70,7 +70,8 @@ public static class DiagnosticTestHelper
     /// <returns>Tuple containing all diagnostics, the output compilation, and the generator run result.</returns>
     public static (ImmutableArray<Diagnostic> Diagnostics, Compilation OutputCompilation, GeneratorDriverRunResult RunResult) RunGenerator(string source)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(source);
+        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
 
         // Get the RemoteFactory assembly for references
         var remoteFactoryAssembly = typeof(FactoryAttribute).Assembly;

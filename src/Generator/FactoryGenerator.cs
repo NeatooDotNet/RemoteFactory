@@ -98,7 +98,9 @@ public partial class Factory : IIncrementalGenerator
 				ReportDiagnostic(spc, diag);
 			}
 
-			if (model.Entries.Count == 0)
+			// Emit source if there are handler entries OR preservation types (even with no
+			// matching handlers, preservation must be emitted — Rule 8 / Scenario 17).
+			if (model.Entries.Count == 0 && model.EventDtoTypes.Count == 0 && model.EventRecordTypes.Count == 0)
 				return;
 
 			var source = RelayHandlerRenderer.Render(model);

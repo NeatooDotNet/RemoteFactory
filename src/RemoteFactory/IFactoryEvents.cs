@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Neatoo.RemoteFactory;
 
 /// <summary>
@@ -31,7 +33,7 @@ public interface IFactoryEvents
     /// <param name="cancellationToken">
     /// Cancellation token passed to every handler that declares a <see cref="CancellationToken"/> parameter.
     /// </param>
-    Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default) where T : FactoryEventBase;
+    Task Raise<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default) where T : FactoryEventBase;
 
     /// <summary>
     /// Raises an event using the runtime type for dispatch. Used by the server

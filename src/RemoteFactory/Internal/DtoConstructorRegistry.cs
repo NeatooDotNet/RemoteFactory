@@ -32,4 +32,16 @@ public static class DtoConstructorRegistry
 	{
 		return Constructors.TryGetValue(type, out factory);
 	}
+
+	/// <summary>
+	/// Declares a type as preserved-from-trimming without registering a constructor factory.
+	/// Use for record-shaped DTOs without a public parameterless constructor — deserialization
+	/// flows through RecordBypassConverterFactory rather than DefaultJsonTypeInfoResolver.CreateObject.
+	/// The [DynamicallyAccessedMembers(All)] attribute on T instructs the trimmer to preserve
+	/// every constructor, property, and field on T.
+	/// </summary>
+	public static void PreserveType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
+	{
+		_ = typeof(T);
+	}
 }

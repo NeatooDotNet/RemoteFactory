@@ -226,6 +226,14 @@ Register from a constructor and unregister from `Dispose`. In Blazor, components
 
 ---
 
+## IL Trimming
+
+The event record and any nested record or plain DTO reachable through its public properties are automatically preserved from IL trimming. Every `[FactoryEventHandler<T>]` declared in a project causes the generator to emit a `DtoConstructorRegistry.PreserveType<T>()` call (plus recursive registrations for nested reference-type properties) in the handler's `FactoryServiceRegistrar`. `IFactoryEvents.Raise<T>` and `FactoryEventHandlerRegistry.RegisterHandler<TEvent>` also carry `[DynamicallyAccessedMembers(All)]` on their generic parameter, so concrete call-sites preserve `T` as well.
+
+See `references/trimming.md` for the `PreserveType<T>` vs `Register<T>` distinction, the `Dictionary<K, V>` value-type gap and its workaround, and the `IL2091` consideration for user code that forwards `Raise<T>` through its own generic wrapper.
+
+---
+
 ## `RaiseOptions`
 
 | Flag | Meaning |

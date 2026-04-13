@@ -115,3 +115,62 @@ public static partial class OrderAuditHdlrs
             $"Audit: Order {orderEvent.OrderId} placed by {orderEvent.CustomerEmail}");
     }
 }
+
+// =============================================================================
+// NESTED-RECORD EVENT: automatic IL-trimming preservation
+// =============================================================================
+//
+// When an event record carries a nested record property (like ShippingAddress
+// below), the generator emits preservation calls for BOTH the event and the
+// nested record in the handler's FactoryServiceRegistrar:
+//
+//   DtoConstructorRegistry.PreserveType<OrderShippedEvent>();
+//   DtoConstructorRegistry.PreserveType<ShippingAddress>();
+//
+// The PreserveType<T> primitive applies [DynamicallyAccessedMembers(All)] to T,
+// instructing the IL trimmer to keep the record's primary constructor and
+// public properties intact. Without this, a Blazor WASM Release build with
+// PublishTrimmed=true would strip the metadata that NeatooJsonTypeInfoResolver
+// and RecordBypassConverterFactory need to round-trip the event at runtime.
+//
+// Nested records with parameterless ctors (plain DTOs) instead get
+// DtoConstructorRegistry.Register<N>(() => new N()) — same trimming effect.
+//
+// Known gap: Dictionary<K,V> value types are not walked. If your event exposes
+// Dictionary<string, Payload>, declare another [FactoryEventHandler<Payload>]
+// or an additional preservation hint to keep Payload intact after trimming.
+// =============================================================================
+
+/// <summary>
+/// Nested value object shipped with <see cref="OrderShippedEvent"/>.
+/// A record with a parameterized primary ctor — deserialized via
+/// RecordBypassConverterFactory on the receiving side.
+/// </summary>
+public record ShippingAddress(string Street, string City, string PostalCode);
+
+/// <summary>
+/// Event object raised when an order ships. Demonstrates an event record with
+/// a nested record property — the generator automatically emits preservation
+/// for both <c>OrderShippedEvent</c> and <c>ShippingAddress</c> so the event
+/// round-trips correctly in IL-trimmed builds.
+/// </summary>
+public record OrderShippedEvent(Guid OrderId, ShippingAddress Address) : FactoryEventBase;
+
+/// <summary>
+/// Demonstrates: handler for an event with a nested parameterized-record property.
+/// Verifies that the nested record is preserved from IL trimming without any
+/// manual hints on the user side — the generator handles it automatically.
+/// </summary>
+[FactoryEventHandler<OrderShippedEvent>]
+public static partial class OrderShippedHandlers
+{
+    internal static Task NotifyShipped(
+        OrderShippedEvent shipEvent,
+        [Service] INotificationService notificationService,
+        CancellationToken cancellationToken)
+    {
+        return notificationService.SendAsync(
+            "ops@example.com",
+            $"Order {shipEvent.OrderId} shipped to {shipEvent.Address.City}");
+    }
+}

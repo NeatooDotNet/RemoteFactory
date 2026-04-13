@@ -45,6 +45,19 @@ internal static class RelayHandlerRenderer
         sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
         sb.AppendLine("        {");
 
+        // Event-type trimming preservation — unconditional (no IsServerRuntime guard).
+        // Both client (deserialize incoming server events, serialize outgoing ServerOnly raises)
+        // and server (serialize outgoing raises to relay clients, deserialize incoming client
+        // raises) paths need the event type metadata preserved.
+        foreach (var dtoType in model.EventDtoTypes)
+        {
+            sb.AppendLine($"            DtoConstructorRegistry.Register<{dtoType}>(() => new {dtoType}());");
+        }
+        foreach (var recordType in model.EventRecordTypes)
+        {
+            sb.AppendLine($"            DtoConstructorRegistry.PreserveType<{recordType}>();");
+        }
+
         foreach (var entry in model.Entries)
         {
             if (entry.IsStatic)

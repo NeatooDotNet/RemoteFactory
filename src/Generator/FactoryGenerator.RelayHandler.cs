@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Neatoo.RemoteFactory.FactoryGenerator;
+using Neatoo.RemoteFactory.Generator;
 using Neatoo.RemoteFactory.Generator.Model;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +25,12 @@ public partial class Factory
 
         var diagnostics = new List<DiagnosticInfo>();
         var entries = new List<EventHandlerEntry>();
+
+        // Class-level dedupe for event-type trimming preservation. Shared visited set so a
+        // nested type reachable from multiple event roots is emitted exactly once.
+        var preservationVisited = new HashSet<string>();
+        var eventDtoTypesList = new List<string>();
+        var eventRecordTypesList = new List<string>();
 
         var classLocation = classDecl.Identifier.GetLocation();
         var classLineSpan = classLocation.GetLineSpan();
@@ -60,6 +67,12 @@ public partial class Factory
             var eventTypeName = eventType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             if (eventTypeName.StartsWith("global::"))
                 eventTypeName = eventTypeName.Substring("global::".Length);
+
+            // Gather trimming-preservation types BEFORE method-match — preservation must still
+            // be emitted when the handler is diagnostic-broken (NF0501/NF0502) because the event
+            // type crosses the serialization boundary regardless of whether this class has a
+            // valid handler method.
+            DtoTypeWalker.WalkEventRoot(eventType, eventDtoTypesList, eventRecordTypesList, preservationVisited);
 
             // Find matching methods: non-private, returns Task,
             // first non-[Service]/non-CT parameter is of event type T
@@ -167,7 +180,7 @@ public partial class Factory
                 allParameters: allParameters));
         }
 
-        if (entries.Count == 0 && diagnostics.Count == 0)
+        if (entries.Count == 0 && diagnostics.Count == 0 && eventDtoTypesList.Count == 0 && eventRecordTypesList.Count == 0)
             return null;
 
         var ns = FindNamespace(classDecl) ?? "MissingNamespace";
@@ -201,6 +214,12 @@ public partial class Factory
             hintName = hintName.Substring(0, MaxHintNameLength.Value);
         }
 
+        // Preservation FQNs include the "global::" prefix (as produced by SymbolDisplayFormat.FullyQualifiedFormat)
+        // to match the rendering used by ClassFactoryRenderer/StaticFactoryRenderer/InterfaceFactoryRenderer
+        // for their own DtoConstructorRegistry.Register<> emissions.
+        var eventDtoTypes = new EquatableArray<string>([.. eventDtoTypesList]);
+        var eventRecordTypes = new EquatableArray<string>([.. eventRecordTypesList]);
+
         return new RelayHandlerModel(
             className: symbol.Name,
             classSignatureText: signatureText,
@@ -208,6 +227,8 @@ public partial class Factory
             usings: usings.Distinct().ToList(),
             hintName: hintName,
             entries: entries,
-            diagnostics: diagnostics);
+            diagnostics: diagnostics,
+            eventDtoTypes: eventDtoTypes,
+            eventRecordTypes: eventRecordTypes);
     }
 }

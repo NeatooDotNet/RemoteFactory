@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory.Internal;
 
@@ -25,7 +26,7 @@ internal sealed class FactoryEventsDispatcher : IFactoryEvents
         _collector = sp.GetService<IFactoryEventCollector>();
     }
 
-    public Task Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default) where T : FactoryEventBase
+    public Task Raise<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default) where T : FactoryEventBase
     {
         return DispatchToHandlers(typeof(T), factoryEvent!, options, cancellationToken);
     }

@@ -257,6 +257,12 @@ When zero events are captured, `RelayedEvents` is `null` (not an empty list). Th
 
 Event types are resolved on the client by `TypeFullName` (string key), not by `Type.GetType()` — the source generator produces a typed deserializer per handled event type. This is trimming-safe: `RelayedFactoryEvent` and `List<RelayedFactoryEvent>` are registered with `NeatooTransportJsonContext` so they survive IL trimming.
 
+### IL Trimming and Event Records
+
+The event record itself — and any nested record or plain DTO reachable through its public properties — is automatically preserved from IL trimming. Every `[FactoryEventHandler<T>]` declared in a project causes the generator to emit `DtoConstructorRegistry.PreserveType<T>()` (plus recursive registrations for nested types) in the handler's `FactoryServiceRegistrar`. `IFactoryEvents.Raise<T>` and `FactoryEventHandlerRegistry.RegisterHandler<TEvent>` both carry `[DynamicallyAccessedMembers(All)]` on their generic parameter, so concrete call-sites preserve `T` as well.
+
+See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mechanism, the `PreserveType<T>` vs `Register<T>` distinction, the `Dictionary<K, V>` value-type gap and its workaround, and the `IL2091` consideration for user code that forwards `Raise<T>` through its own generic wrapper.
+
 ---
 
 ## Decision Guide
