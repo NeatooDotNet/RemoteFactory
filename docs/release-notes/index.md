@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v1.3.0](v1.3.0.md) | 2026-04-13 | **Feat**: `CanSave(T target)` overload on `IFactorySave<T>` runs both non-target and target-parameterized auth methods. **Fix**: auth method triplication in generated `LocalCanSave` / `LocalSave` — value equality on `AuthMethodCall` / `AspAuthorizeCall`. |
 | [v1.2.0](v1.2.0.md) | 2026-04-13 | **Fix**: `[FactoryEventHandler<T>]` event records now round-trip correctly in Blazor WASM Release builds. Generator emits `DtoConstructorRegistry.PreserveType<T>()` for every event type plus nested records. New `PreserveType<T>()` primitive; `[DynamicallyAccessedMembers(All)]` added to `Raise<T>` and `RegisterHandler<TEvent>`. |
 | [v1.1.0](v1.1.0.md) | 2026-04-10 | **Breaking**: `[FactoryEventHandler<T>]` runs in the caller's scope, sequentially, awaited — so handlers participate in the factory's DB transaction. `RaiseOptions.AwaitRemote` and `RaiseOptions.ContinueOnFail` removed. `IFactoryEvents.Raise` gains a `CancellationToken`. |
 | [v1.0.0](v1.0.0.md) | 2026-04-10 | **Production release** — factory events (`[FactoryEventHandler<T>]` mediator + server-to-client relay, `RaiseOptions.ServerOnly`), API stability commitment |
@@ -60,6 +61,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v1.3.0](v1.3.0.md) - 2026-04-13 - **Feat**: `IFactorySave<T>.CanSave(T target)` overload runs target-aware authorization. **Fix**: auth method triplication in generated `LocalCanSave` / `LocalSave` (value equality on `AuthMethodCall` / `AspAuthorizeCall`).
 - [v1.2.0](v1.2.0.md) - 2026-04-13 - **Fix**: Event records preserved from IL trimming in Blazor WASM Release builds; new `DtoConstructorRegistry.PreserveType<T>()` primitive; call-site `[DynamicallyAccessedMembers]` on `Raise<T>` and `RegisterHandler<TEvent>`.
 - [v1.1.0](v1.1.0.md) - 2026-04-10 - **Breaking**: `[FactoryEventHandler<T>]` shares the caller's DI scope — handlers participate in the factory's DB transaction. `AwaitRemote`/`ContinueOnFail` removed; `Raise` gains `CancellationToken`.
 - [v1.0.0](v1.0.0.md) - 2026-04-10 - **Production release** — factory events mediator + client relay, API stability commitment

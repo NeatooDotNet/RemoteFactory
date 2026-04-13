@@ -291,13 +291,30 @@ public class OrderAuthorization : IOrderAuthorization
 }
 ```
 
-### CanXxx Suppression
+### CanXxx Generation with Target Parameters
 
-When a Write auth method has a target parameter, the generator does **not** generate `CanInsert`, `CanUpdate`, `CanDelete`, or `CanSave` on the factory interface. These methods would need the entity instance, which isn't available at the call site — `CanSave` is called before Save, so the entity hasn't been passed yet.
+When a Write auth method has a target parameter, the generator suppresses `CanInsert`, `CanUpdate`, and `CanDelete` on the factory interface -- these methods are called before the operation, when the entity isn't available at the call site.
 
-The auth check happens inside `Save()` where the entity is available. If authorization fails, `Save()` throws `NotAuthorizedException` (or `TrySave()` returns `HasAccess=false`).
+**CanSave is the exception.** The caller has the entity in hand when calling Save, so the generator produces two CanSave overloads:
 
-Read auth methods (Create, Fetch) are unaffected — `CanCreate` and `CanFetch` are still generated when their auth methods are parameterless or use type-matched parameters (not target parameters).
+- **`CanSave()`** (parameterless) -- runs only non-target Write auth methods (role checks, permissions). Returns `Authorized(true)` if no non-target auth methods exist.
+- **`CanSave(target)`** -- runs ALL Write auth methods: non-target auth first, then target-parameterized auth that inspects entity state.
+
+```csharp
+// Check broad write permission (no entity needed)
+if (factory.CanSave().HasAccess)
+{
+    // Check entity-specific permission
+    if (factory.CanSave(order).HasAccess)
+    {
+        await factory.Save(order);
+    }
+}
+```
+
+For `CanInsert`, `CanUpdate`, and `CanDelete`, the auth check happens inside `Save()` where the entity is available. If authorization fails, `Save()` throws `NotAuthorizedException` (or `TrySave()` returns `HasAccess=false`).
+
+Read auth methods (Create, Fetch) are unaffected -- `CanCreate` and `CanFetch` are still generated when their auth methods are parameterless or use type-matched parameters (not target parameters).
 
 ## Can* Method Behavior
 

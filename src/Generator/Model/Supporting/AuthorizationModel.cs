@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Neatoo.RemoteFactory.Generator.Model;
 
@@ -63,6 +65,33 @@ internal sealed record AuthMethodCall
     /// Null when ClassName is already a concrete class or no implementation was found.
     /// </summary>
     public string? ConcreteClassName { get; }
+
+    public bool Equals(AuthMethodCall? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return ClassName == other.ClassName
+            && MethodName == other.MethodName
+            && IsTask == other.IsTask
+            && IsRemote == other.IsRemote
+            && IsInternal == other.IsInternal
+            && ConcreteClassName == other.ConcreteClassName
+            && Parameters.SequenceEqual(other.Parameters);
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = default;
+        hash.Add(ClassName);
+        hash.Add(MethodName);
+        hash.Add(IsTask);
+        hash.Add(IsRemote);
+        hash.Add(IsInternal);
+        hash.Add(ConcreteClassName);
+        foreach (var p in Parameters)
+            hash.Add(p);
+        return hash.ToHashCode();
+    }
 }
 
 /// <summary>
@@ -80,4 +109,22 @@ internal sealed record AspAuthorizeCall
 
     public IReadOnlyList<string> ConstructorArgs { get; }
     public IReadOnlyList<string> NamedArgs { get; }
+
+    public bool Equals(AspAuthorizeCall? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return ConstructorArgs.SequenceEqual(other.ConstructorArgs)
+            && NamedArgs.SequenceEqual(other.NamedArgs);
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = default;
+        foreach (var arg in ConstructorArgs)
+            hash.Add(arg);
+        foreach (var arg in NamedArgs)
+            hash.Add(arg);
+        return hash.ToHashCode();
+    }
 }

@@ -153,9 +153,12 @@ public interface IAuthTargetParamObj : IFactorySaveMeta
 
 /// <summary>
 /// Factory class where write authorization receives the target entity.
-/// CanInsert/CanUpdate/CanDelete/CanSave should NOT be generated
-/// because the auth method has a target parameter.
+/// CanInsert/CanUpdate/CanDelete should NOT be generated
+/// because the auth method has a target parameter and these operations
+/// run before the entity is available.
 /// CanCreate/CanFetch SHOULD be generated (Read auth is parameterless).
+/// CanSave() and CanSave(target) SHOULD be generated — the caller has
+/// the entity when deciding whether to save.
 /// </summary>
 [Factory]
 [AuthorizeFactory<AuthWithTargetParam>]

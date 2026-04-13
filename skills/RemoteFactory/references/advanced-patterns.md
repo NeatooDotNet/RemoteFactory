@@ -95,7 +95,7 @@ public class OrderAuthorization : IOrderAuthorization
 }
 ```
 
-**CanXxx suppression:** When Write auth has a target parameter, `CanInsert`/`CanUpdate`/`CanDelete`/`CanSave` are **not generated** — the entity isn't available before Save(). Auth is checked inside Save() instead. `CanCreate`/`CanFetch` are still generated when Read auth is parameterless.
+**CanXxx generation with target parameters:** When Write auth has a target parameter, `CanInsert`/`CanUpdate`/`CanDelete` are **not generated** — the entity isn't available before the write operation. `CanSave` is the exception: two overloads are generated because the caller has the entity in hand when deciding whether to save. `CanSave()` (parameterless) runs only non-target Write auth methods (role checks). `CanSave(target)` runs ALL Write auth methods — both non-target and target-parameterized. `CanCreate`/`CanFetch` are still generated when Read auth is parameterless.
 
 ---
 

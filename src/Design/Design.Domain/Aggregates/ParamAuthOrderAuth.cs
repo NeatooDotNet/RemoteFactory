@@ -25,13 +25,18 @@
 // can differ from the factory method parameter name -- only the type matters.
 // When multiple parameters share the same type, they're matched in order.
 //
-// DESIGN DECISION: Target parameters suppress CanXxx generation
+// DESIGN DECISION: Target parameters suppress CanInsert/CanUpdate/CanDelete but NOT CanSave
 //
 // When an auth method has a target parameter (matching the entity type),
-// CanInsert/CanUpdate/CanDelete/CanSave are NOT generated on the factory
-// interface. This is because these Can* methods don't have access to the
-// entity instance -- they run before the write operation. The actual auth
-// check happens inside Save() when the entity is available.
+// CanInsert/CanUpdate/CanDelete are NOT generated on the factory interface.
+// These Can* methods run before the write operation when the entity isn't available.
+//
+// CanSave IS generated with TWO overloads:
+// - CanSave() parameterless: runs only non-target Write auth methods (role checks)
+// - CanSave(target): runs ALL Write auth methods (both non-target and target-parameterized)
+// The caller has the entity in hand when deciding whether to save, so the target
+// parameter can be passed through. This follows the same pattern as CanFetch(Guid)
+// calling both CanRead() and CanFetchOrder(Guid).
 //
 // CanCreate/CanFetch ARE still generated because Read auth doesn't use
 // the target parameter.
@@ -41,7 +46,8 @@
 // AuthorizedOrderAuth demonstrates parameterless auth methods that don't
 // receive any arguments. That auth class generates all Can* methods
 // (CanCreate, CanFetch, CanSave, CanDelete). This auth class generates
-// only CanCreate and CanFetch because Write auth has a target parameter.
+// CanCreate, CanFetch, and CanSave (with both overloads) because Write
+// auth has both non-target and target-parameterized methods.
 //
 // =============================================================================
 
@@ -84,6 +90,23 @@ public interface IParamAuthOrderAuth
     bool CanFetchOrder(Guid orderId);
 
     /// <summary>
+    /// Non-target Write auth -- parameterless role/permission check.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: CanSave generation with two overloads
+    ///
+    /// Because both a non-target Write method (this) and a target Write method
+    /// (CanWrite below) exist, the generator produces TWO CanSave overloads:
+    /// - CanSave() parameterless: runs only this method (non-target auth)
+    /// - CanSave(target): runs BOTH this method AND CanWrite(target)
+    ///
+    /// CanInsert/CanUpdate/CanDelete remain suppressed because they run
+    /// before the write operation when the entity isn't available.
+    /// </remarks>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+    bool CanWriteRole();
+
+    /// <summary>
     /// Target parameter Write auth -- receives the entity being saved.
     /// </summary>
     /// <remarks>
@@ -93,13 +116,15 @@ public interface IParamAuthOrderAuth
     /// On write operations (Insert, Update, Delete), the generator passes
     /// the target entity so auth can inspect entity state (e.g., Status).
     ///
-    /// GENERATOR BEHAVIOR: CanXxx suppression
+    /// GENERATOR BEHAVIOR: CanSave with target parameter
     ///
-    /// Because this method has a target parameter, the generator does NOT
-    /// generate CanInsert, CanUpdate, CanDelete, or CanSave on the factory
-    /// interface. These methods would need the entity instance, which isn't
-    /// available before the write operation. Auth is checked inside Save()
-    /// when the entity is available.
+    /// CanSave(target) IS generated on the factory interface. The caller has
+    /// the entity in hand when deciding whether to save, so the target parameter
+    /// can be passed through. CanSave(target) calls ALL Write-scoped auth methods:
+    /// both CanWriteRole() (non-target) and CanWrite(target) (target-parameterized).
+    ///
+    /// CanInsert/CanUpdate/CanDelete are NOT generated because these Can* methods
+    /// run before the write operation when the entity isn't available.
     /// </remarks>
     [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
     bool CanWrite(IParamAuthOrder target);
@@ -124,6 +149,9 @@ public class ParamAuthOrderAuth : IParamAuthOrderAuth
     /// <summary>Controls the parameterless CanRead() check. Default: true.</summary>
     public static bool AllowRead { get; set; } = true;
 
+    /// <summary>Controls the parameterless CanWriteRole() check. Default: true.</summary>
+    public static bool AllowWriteRole { get; set; } = true;
+
     /// <summary>
     /// Resets all flags to their defaults (all allowed).
     /// Call at the start of each test to avoid flag pollution.
@@ -131,10 +159,17 @@ public class ParamAuthOrderAuth : IParamAuthOrderAuth
     public static void ResetFlags()
     {
         AllowRead = true;
+        AllowWriteRole = true;
         DenyFetchGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
     }
 
     public bool CanRead() => AllowRead;
+
+    /// <summary>
+    /// Non-target Write auth -- simulates a role/permission check.
+    /// In production, this would check user roles or permissions.
+    /// </summary>
+    public bool CanWriteRole() => AllowWriteRole;
 
     /// <summary>
     /// Denies fetch when orderId matches DenyFetchGuid.

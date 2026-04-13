@@ -12,6 +12,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="RemoteFactory.UnitTests" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <Compile Include="..\RemoteFactory\AuthorizeFactoryOperation.cs" Link="AuthorizeFactoryOperation.cs" />
 	  <Compile Include="..\RemoteFactory\FactoryAttributes.cs" Link="FactoryAttributes.cs" />
 	  <Compile Include="..\RemoteFactory\FactoryOperation.cs" Link="FactoryOperation.cs" />

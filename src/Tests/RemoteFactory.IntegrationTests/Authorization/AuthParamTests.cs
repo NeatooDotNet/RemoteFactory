@@ -338,19 +338,67 @@ public class AuthTargetParamTests
 
     #endregion
 
-    #region CanInsert/CanUpdate/CanDelete/CanSave NOT generated (suppressed by target auth)
+    #region CanInsert/CanUpdate/CanDelete NOT generated (suppressed by target auth)
 
     [Fact]
-    public void CanInsert_NotGenerated_OnInterface()
+    public void CanInsert_CanUpdate_CanDelete_NotGenerated_OnInterface()
     {
-        // CanInsert/CanUpdate/CanDelete/CanSave should NOT appear on the factory interface
-        // because the Write auth method has a target parameter.
-        // Verify by checking the interface does NOT have these methods.
+        // CanInsert/CanUpdate/CanDelete should NOT appear on the factory interface
+        // because the Write auth method has a target parameter and these operations
+        // run before the entity is available.
         var interfaceType = typeof(IAuthTargetParamObjFactory);
         Assert.Null(interfaceType.GetMethod("CanInsert"));
         Assert.Null(interfaceType.GetMethod("CanUpdate"));
         Assert.Null(interfaceType.GetMethod("CanDelete"));
-        Assert.Null(interfaceType.GetMethod("CanSave"));
+    }
+
+    #endregion
+
+    #region CanSave IS generated with two overloads (parameterless + target)
+
+    [Fact]
+    public void CanSave_Generated_OnInterface()
+    {
+        // CanSave IS generated because the caller has the entity when deciding whether to save.
+        // Two overloads: CanSave() parameterless and CanSave(target).
+        var interfaceType = typeof(IAuthTargetParamObjFactory);
+        var canSaveMethods = interfaceType.GetMethods().Where(m => m.Name == "CanSave").ToArray();
+        Assert.Equal(2, canSaveMethods.Length);
+
+        // Parameterless overload (+ CancellationToken)
+        var parameterless = canSaveMethods.FirstOrDefault(m => m.GetParameters().Length == 1);
+        Assert.NotNull(parameterless);
+
+        // Target overload (target + CancellationToken)
+        var withTarget = canSaveMethods.FirstOrDefault(m => m.GetParameters().Length == 2);
+        Assert.NotNull(withTarget);
+    }
+
+    [Fact]
+    public void CanSave_Parameterless_ReturnsTrue()
+    {
+        // Parameterless CanSave with only target-param auth → returns Authorized(true)
+        // because there are no non-target Write auth methods.
+        var result = _factory.CanSave();
+        Assert.True(result.HasAccess);
+    }
+
+    [Fact]
+    public void CanSave_WithTarget_ReturnsTrue_WhenStatusActive()
+    {
+        var target = _factory.Create()!;
+        target.Status = "Active";
+        var result = _factory.CanSave(target);
+        Assert.True(result.HasAccess);
+    }
+
+    [Fact]
+    public void CanSave_WithTarget_ReturnsFalse_WhenStatusLocked()
+    {
+        var target = _factory.Create()!;
+        target.Status = "Locked";
+        var result = _factory.CanSave(target);
+        Assert.False(result.HasAccess);
     }
 
     #endregion
