@@ -268,4 +268,19 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "A class decorated with [FactoryEventHandler<T>] must have exactly one non-private method that takes T as its first non-[Service]/non-CancellationToken parameter and returns Task.");
+
+    /// <summary>
+    /// NF0503: Instance-method handler on [FactoryEventHandler&lt;T&gt;] is silently unused.
+    /// The former client-side relay pattern used instance methods; that pipeline was removed
+    /// in favor of consumer-implemented IFactoryEventRelay. Instance methods now compile
+    /// without error but produce no generated code.
+    /// </summary>
+    public static readonly DiagnosticDescriptor RelayHandlerInstanceMethodIgnored = new(
+        id: "NF0503",
+        title: "Instance [FactoryEventHandler<T>] handler is ignored",
+        messageFormat: "Class '{0}' has an instance-method handler '{1}' for [FactoryEventHandler<{2}>] but only static handlers are dispatched. The instance method will be silently ignored at runtime. Make the method static, or implement IFactoryEventRelay on the class to receive client-side events.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Client-side instance-method [FactoryEventHandler<T>] handlers were the former relay pattern and are no longer wired up. Convert the method to static for server-side dispatch, or implement IFactoryEventRelay on the class for client-side event reception.");
 }

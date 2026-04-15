@@ -10,21 +10,39 @@
 // Three roles:
 //
 // 1. The EVENT TYPE inherits from FactoryEventBase (shared between client/server).
+//    FactoryEventBase carries [FactoryEvent] and [DynamicallyAccessedMembers] with
+//    Inherited = true — descendants are automatically discoverable by the runtime
+//    FactoryEventTypeRegistry and preserved through IL trimming, with no generator
+//    emission or client codegen.
 // 2. The SERVER-SIDE RAISER is a factory method that injects IFactoryEvents
 //    and calls Raise(new MyEvent(...)) during its execution.
-// 3. The CLIENT-SIDE HANDLER is a class decorated with [FactoryEventHandler<T>]
-//    that has a matching instance method. It registers itself with
-//    IFactoryEventRelay at runtime (typically from a layout component or
-//    viewmodel constructor) and receives events after factory operations
-//    complete on the client.
+// 3. The CLIENT-SIDE RELAY is the consumer's implementation of IFactoryEventRelay.
+//    RemoteFactory invokes relay.Relay(events) fire-and-forget, strictly after the
+//    factory method returns to its caller. The consumer's implementation bridges
+//    the batch to their event aggregator (MediatR, plain aggregator, UI message
+//    bus, etc.) and owns any threading / SyncContext marshaling.
 //
-// The source generator discovers [FactoryEventHandler<T>] classes via attribute
-// scanning (cheap Roslyn operation) and generates a FactoryServiceRegistrar that
-// registers the dispatch delegate with FactoryEventRelayRegistry. No reflection
-// is used at runtime — dispatch is a direct cast + method call.
+// DESIGN DECISION: Single-method IFactoryEventRelay, consumer-owned bridge
+//
+// Reasons:
+// 1. Every consumer already has an event aggregator — the old Register/Unregister
+//    surface duplicated what the aggregator does (weak refs, type dispatch,
+//    lifecycle) inside RemoteFactory.
+// 2. A single Relay(IReadOnlyList<FactoryEventBase>) method lets the consumer
+//    apply their own fan-out rules — per-session, per-viewmodel, etc.
+// 3. The one-call-per-factory-call contract (even for zero events) gives
+//    consumers a clean "a remote call just returned" hook for batch-end
+//    bookkeeping.
+//
+// DID NOT DO THIS: Ship a MediatR bridge
+//
+// Reasons:
+// 1. Not every consumer uses MediatR.
+// 2. RemoteFactory has no dependency on any aggregator — the consumer picks.
 //
 // =============================================================================
 
+using System.Collections.Concurrent;
 using Neatoo.RemoteFactory;
 
 namespace Design.Domain.FactoryPatterns;
@@ -40,18 +58,13 @@ namespace Design.Domain.FactoryPatterns;
 /// DESIGN DECISION: Events are records inheriting FactoryEventBase
 ///
 /// Reasons:
-/// 1. Records have structural equality (useful for deduplication)
-/// 2. Records are immutable by default — events should not mutate
-/// 3. FactoryEventBase is the marker type the generator looks for
+/// 1. Records have structural equality (useful for deduplication).
+/// 2. Records are immutable by default — events should not mutate.
+/// 3. FactoryEventBase carries [FactoryEvent] and [DynamicallyAccessedMembers]
+///    with Inherited = true, so every descendant is automatically discoverable
+///    and trim-safe without any per-event annotation.
 ///
-/// DID NOT DO THIS: Use classes or interfaces for events
-///
-/// Reasons:
-/// 1. Classes would need manual equality members
-/// 2. Interfaces can't be used as the generic argument of [FactoryEventHandler<T>]
-///    because the generator needs a concrete type for deserialization
-///
-/// The rule: Events are records that inherit FactoryEventBase.
+/// The rule: Events are records that inherit FactoryEventBase. Nothing else required.
 /// </remarks>
 public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
 
@@ -67,12 +80,9 @@ public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventB
 ///
 /// Reasons:
 /// 1. IFactoryEvents is scoped to the request — captured events travel with
-///    the response
-/// 2. Injection is method-level ([Service] parameter), so the relay is
-///    server-only by default (client has no IFactoryEvents implementation
-///    that captures)
-/// 3. The same IFactoryEvents handles both server-side [FactoryEventHandler]
-///    dispatch and client-relay capture — one API, two effects
+///    the response.
+/// 2. The same IFactoryEvents handles both server-side [FactoryEventHandler]
+///    dispatch and client-relay capture — one API, two effects.
 ///
 /// COMMON MISTAKE: Trying to raise events after the factory method returns
 ///
@@ -80,13 +90,7 @@ public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventB
 ///     var result = await factory.Create(...);
 ///     factoryEvents.Raise(new MyEvent(...));  // Too late — no scope
 ///
-/// RIGHT: Raise inside the factory method itself, while still on the server:
-///     [Remote, Create]
-///     internal async Task Create(..., [Service] IFactoryEvents events)
-///     {
-///         // ... do work ...
-///         await events.Raise(new MyEvent(...));
-///     }
+/// RIGHT: Raise inside the factory method itself, while still on the server.
 /// </remarks>
 public interface ICheckoutOrder
 {
@@ -114,7 +118,10 @@ internal partial class CheckoutOrder : ICheckoutOrder
         //      that touches a DbContext sees the same DbContext this factory uses;
         //      a handler exception aborts the chain and propagates to this method
         //      (letting the caller's transaction roll back).
-        //   2. Captured for relay back to the client in RemoteResponseDto.
+        //   2. Captured for relay back to the client in RemoteResponseDto. On the
+        //      client, IFactoryEventRelay.Relay(...) is invoked fire-and-forget
+        //      strictly AFTER this factory method's return value has been handed
+        //      back to the caller and their continuation has resumed.
         await factoryEvents.Raise(new OrderCheckoutCompleted(id, total));
     }
 
@@ -138,87 +145,60 @@ internal partial class CheckoutOrder : ICheckoutOrder
 }
 
 // -----------------------------------------------------------------------------
-// CLIENT-SIDE RELAY HANDLER
+// CLIENT-SIDE RELAY — consumer implements IFactoryEventRelay
 // -----------------------------------------------------------------------------
 
 /// <summary>
-/// Demonstrates: [FactoryEventHandler&lt;T&gt;] with an instance method → client-side relay handler.
+/// Demonstrates: an IFactoryEventRelay implementation that bridges relayed events
+/// to an in-memory aggregator. Production consumers typically forward to MediatR,
+/// a reactive subject, or a UI message bus.
 /// </summary>
 /// <remarks>
-/// DESIGN DECISION: [FactoryEventHandler&lt;T&gt;] is a class-level attribute, not a method attribute
+/// DESIGN DECISION: Consumer implements IFactoryEventRelay; RemoteFactory ships a NoOp default
 ///
 /// Reasons:
-/// 1. Attribute-on-class is efficient to find in Roslyn (attribute metadata lookup)
-///    vs. scanning every method in every class
-/// 2. The class attribute carries the event type explicitly — no inference needed
-/// 3. The generator validates exactly one matching method exists (NF0501 / NF0502
-///    compile-time errors if missing or ambiguous)
-/// 4. Clean separation from [Factory] — handler classes are NOT factories
+/// 1. In Remote mode, if the consumer registers nothing, RemoteFactory registers
+///    NoOpFactoryEventRelay via TryAdd — zero surprise, no relayed events fire.
+/// 2. To receive events, the consumer registers their own IFactoryEventRelay
+///    implementation BEFORE calling AddNeatooRemoteFactory (TryAdd keeps it) OR
+///    AFTER (standard DI override replaces the NoOp).
+/// 3. Relay.Relay is called fire-and-forget on a separate continuation, so the
+///    caller's `_entity = await factory.Create(...)` assignment has already
+///    completed when Relay fires — handlers that read caller state see the new
+///    value.
+/// 4. Exceptions thrown by Relay are caught and logged; they never propagate to
+///    the factory caller. The consumer owns SyncContext marshaling for UI work.
 ///
-/// DID NOT DO THIS: Use IFactoryEventHandler&lt;T&gt; interface
+/// DID NOT DO THIS: Provide a bridge (MediatR, ReactiveUI, etc.)
 ///
 /// Reasons:
-/// 1. Interface scanning in Roslyn is expensive (every class must be checked)
-/// 2. Interfaces force a specific method name (HandleFactoryEvent) — less natural
-/// 3. The handler class would need to cast in the dispatch delegate anyway
+/// 1. The aggregator choice is the consumer's — RemoteFactory takes no
+///    opinion.
+/// 2. Shipping a MediatR bridge would pull MediatR into RemoteFactory's
+///    transitive dependencies. Staying aggregator-agnostic keeps the
+///    surface minimal.
 ///
-/// The rule: Use [FactoryEventHandler&lt;T&gt;] class attribute. Let the generator
-/// find the matching method by signature.
-///
-/// Method matching rules:
-/// - Return type: Task (not void, not Task&lt;T&gt;)
-/// - First non-[Service]/non-CancellationToken parameter: type T
-/// - Accessibility: any (public, internal, private)
-/// - Exactly one match required — NF0502 if ambiguous
-///
-/// STATIC vs INSTANCE:
-/// - Static method → server-side handler (runs in the CALLER'S DI scope —
-///   shared DbContext/transaction — sequential, awaited; an exception aborts
-///   the chain and propagates to the caller). See FactoryEventHandlerPattern.cs.
-/// - Instance method → client-side relay handler (called on the registered
-///   handler instance via FactoryEventRelayRegistry, no DI scope)
-///
-/// A single class can declare multiple [FactoryEventHandler&lt;T&gt;] attributes
-/// to handle multiple event types.
+/// The rule: Implement IFactoryEventRelay, register it, bridge to your aggregator.
 /// </remarks>
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public sealed partial class OrderCheckoutViewModel : IDisposable
+public sealed class InMemoryAggregatorRelay : IFactoryEventRelay
 {
-    private readonly IFactoryEventRelay _relay;
-    private readonly List<OrderCheckoutCompleted> _receivedEvents = new();
+    private readonly ConcurrentQueue<FactoryEventBase> _received = new();
 
-    public IReadOnlyList<OrderCheckoutCompleted> ReceivedEvents => _receivedEvents;
+    public IReadOnlyCollection<FactoryEventBase> Received => _received.ToArray();
 
-    public OrderCheckoutViewModel(IFactoryEventRelay relay)
+    public IEnumerable<T> ReceivedOfType<T>() where T : FactoryEventBase =>
+        _received.OfType<T>();
+
+    public Task Relay(IReadOnlyList<FactoryEventBase> events)
     {
-        ArgumentNullException.ThrowIfNull(relay);
-        _relay = relay;
-        _relay.Register(this);
-    }
-
-    /// <summary>
-    /// The handler method the generator discovers. Must return Task and take T
-    /// as its first non-[Service]/non-CancellationToken parameter.
-    /// </summary>
-    /// <remarks>
-    /// COMMON MISTAKE: Making the handler async void or returning Task&lt;T&gt;
-    ///
-    /// WRONG:
-    ///     public async void HandleCheckout(OrderCheckoutCompleted evt) { ... }  // void — NF0501
-    ///     public Task&lt;string&gt; HandleCheckout(OrderCheckoutCompleted evt) { ... }  // Task&lt;T&gt; — NF0501
-    ///
-    /// RIGHT:
-    ///     public Task HandleCheckout(OrderCheckoutCompleted evt) { ... }
-    /// </remarks>
-    public Task HandleCheckout(OrderCheckoutCompleted factoryEvent)
-    {
-        ArgumentNullException.ThrowIfNull(factoryEvent);
-        _receivedEvents.Add(factoryEvent);
+        ArgumentNullException.ThrowIfNull(events);
+        // Per the contract: one [Remote] call = one Relay call, even when the batch is empty.
+        // Consumers can use the empty-batch invocation as a "a factory call just returned"
+        // signal (e.g. for end-of-batch UI refresh).
+        foreach (var evt in events)
+        {
+            _received.Enqueue(evt);
+        }
         return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        _relay.Unregister(this);
     }
 }

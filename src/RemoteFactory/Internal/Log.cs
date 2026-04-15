@@ -143,6 +143,42 @@ internal static partial class Log
         string correlationId,
         string delegateType);
 
+    [LoggerMessage(
+        EventId = 3008,
+        Level = LogLevel.Error,
+        Message = "[{CorrelationId}] Factory event relay failed")]
+    public static partial void FactoryEventRelayFailed(
+        this ILogger logger,
+        string correlationId,
+        Exception? exception);
+
+    [LoggerMessage(
+        EventId = 3009,
+        Level = LogLevel.Error,
+        Message = "[{CorrelationId}] Factory event deserialization failed; relay batch aborted")]
+    public static partial void FactoryEventDeserializationFailed(
+        this ILogger logger,
+        string correlationId,
+        Exception? exception);
+
+    [LoggerMessage(
+        EventId = 3011,
+        Level = LogLevel.Warning,
+        Message = "NoOpFactoryEventRelay received its first non-empty batch ({EventCount} event(s)). Events are being dropped. Register your own IFactoryEventRelay implementation to receive them (this warning fires once).")]
+    public static partial void NoOpFactoryEventRelayFirstEvent(
+        this ILogger logger,
+        int eventCount);
+
+    [LoggerMessage(
+        EventId = 3012,
+        Level = LogLevel.Warning,
+        Message = "FactoryEventTypeRegistry: FullName collision on '{TypeFullName}'. Kept: {KeptAssembly}. Dropped: {DroppedAssembly}. Wire messages with this FullName will resolve to the kept type.")]
+    public static partial void FactoryEventTypeRegistryCollision(
+        this ILogger logger,
+        string typeFullName,
+        string keptAssembly,
+        string droppedAssembly);
+
     // ===== Converter Factory (4xxx) =====
 
     [LoggerMessage(

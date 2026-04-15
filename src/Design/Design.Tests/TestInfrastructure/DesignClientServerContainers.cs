@@ -104,14 +104,39 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
         var deserialized = _neatooJsonSerializer.DeserializeRemoteResponse<T>(result);
 
-        // Dispatch relayed events synchronously for test determinism
-        if (result.RelayedEvents != null)
+        // Fire-and-forget relay using the same Task.Run + Task.Yield pattern as production
+        // MakeRemoteDelegateRequest so timing tests observe production-equivalent ordering.
+        var relay = _serviceProvider.GetService<IFactoryEventRelay>();
+        if (relay != null)
         {
-            var relay = _serviceProvider.GetService<IFactoryEventRelay>() as FactoryEventRelayDispatcher;
-            if (relay != null)
+            var rawEvents = result.RelayedEvents;
+            var serializer = _neatooJsonSerializer;
+#pragma warning disable CA1031 // Relay exceptions must never propagate to the factory caller.
+            _ = Task.Run(async () =>
             {
-                await relay.DispatchRelayedEvents(result.RelayedEvents, _neatooJsonSerializer);
-            }
+                await Task.Yield();
+                IReadOnlyList<FactoryEventBase> events;
+                try
+                {
+                    events = rawEvents is { Count: > 0 }
+                        ? FactoryEventDeserializer.Deserialize(rawEvents, serializer)
+                        : Array.Empty<FactoryEventBase>();
+                }
+                catch (Exception)
+                {
+                    return;
+                }
+
+                try
+                {
+                    await relay.Relay(events).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // Relay exceptions must not propagate to the factory caller.
+                }
+            }, CancellationToken.None);
+#pragma warning restore CA1031
         }
 
         return deserialized;

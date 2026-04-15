@@ -16,6 +16,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [v1.4.0](v1.4.0.md) | 2026-04-14 | **Breaking**: `IFactoryEventRelay` redesigned — single `Relay(IReadOnlyList<FactoryEventBase>)` hook replaces `Register/Unregister`; instance-method `[FactoryEventHandler<T>]` client path removed (NF0503 Warning). **Feat**: `NoOpFactoryEventRelay` default in Remote mode; `[FactoryEvent]` + `[DynamicallyAccessedMembers]` on `FactoryEventBase` with `Inherited = true` replace per-handler trimming codegen; `UnknownFactoryEventTypeException`. **Fix**: post-return ordering — `Relay` runs strictly after caller's continuation resumes (timing bug). |
 | [v1.3.0](v1.3.0.md) | 2026-04-13 | **Feat**: `CanSave(T target)` overload on `IFactorySave<T>` runs both non-target and target-parameterized auth methods. **Fix**: auth method triplication in generated `LocalCanSave` / `LocalSave` — value equality on `AuthMethodCall` / `AspAuthorizeCall`. |
 | [v1.2.0](v1.2.0.md) | 2026-04-13 | **Fix**: `[FactoryEventHandler<T>]` event records now round-trip correctly in Blazor WASM Release builds. Generator emits `DtoConstructorRegistry.PreserveType<T>()` for every event type plus nested records. New `PreserveType<T>()` primitive; `[DynamicallyAccessedMembers(All)]` added to `Raise<T>` and `RegisterHandler<TEvent>`. |
 | [v1.1.0](v1.1.0.md) | 2026-04-10 | **Breaking**: `[FactoryEventHandler<T>]` runs in the caller's scope, sequentially, awaited — so handlers participate in the factory's DB transaction. `RaiseOptions.AwaitRemote` and `RaiseOptions.ContinueOnFail` removed. `IFactoryEvents.Raise` gains a `CancellationToken`. |
@@ -61,6 +62,7 @@ Releases with new features, breaking changes, or bug fixes.
 
 ## All Releases
 
+- [v1.4.0](v1.4.0.md) - 2026-04-14 - **Breaking**: `IFactoryEventRelay` surface redesigned — `Relay(IReadOnlyList<FactoryEventBase>)` replaces `Register/Unregister`; instance-method `[FactoryEventHandler<T>]` no longer generated (NF0503 Warning). `NoOpFactoryEventRelay` default in Remote mode; `[FactoryEvent]` + trimming preservation on `FactoryEventBase` with `Inherited = true`. **Fix**: post-return ordering guarantee for relay dispatch.
 - [v1.3.0](v1.3.0.md) - 2026-04-13 - **Feat**: `IFactorySave<T>.CanSave(T target)` overload runs target-aware authorization. **Fix**: auth method triplication in generated `LocalCanSave` / `LocalSave` (value equality on `AuthMethodCall` / `AspAuthorizeCall`).
 - [v1.2.0](v1.2.0.md) - 2026-04-13 - **Fix**: Event records preserved from IL trimming in Blazor WASM Release builds; new `DtoConstructorRegistry.PreserveType<T>()` primitive; call-site `[DynamicallyAccessedMembers]` on `Raise<T>` and `RegisterHandler<TEvent>`.
 - [v1.1.0](v1.1.0.md) - 2026-04-10 - **Breaking**: `[FactoryEventHandler<T>]` shares the caller's DI scope — handlers participate in the factory's DB transaction. `AwaitRemote`/`ContinueOnFail` removed; `Raise` gains `CancellationToken`.

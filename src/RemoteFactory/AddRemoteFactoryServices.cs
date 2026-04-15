@@ -116,8 +116,16 @@ public static partial class RemoteFactoryServices
 
 		if (remoteLocal == NeatooFactory.Remote)
 		{
-			// Singleton relay for client-side event dispatch (holds handler registrations)
-			services.AddSingleton<IFactoryEventRelay, FactoryEventRelayDispatcher>();
+			// Default no-op relay. Consumers override by registering their own
+			// IFactoryEventRelay before or after AddNeatooRemoteFactory — TryAdd
+			// keeps consumer registrations winning when they come first, and a
+			// later AddSingleton<IFactoryEventRelay, MyRelay> replaces this one
+			// via standard DI last-writer-wins.
+			//
+			// NoOpFactoryEventRelay itself logs a one-time warning on its first
+			// non-empty batch. That fires when events actually start flowing, which
+			// is where the silent-drop footgun bites.
+			services.TryAddSingleton<IFactoryEventRelay, NoOpFactoryEventRelay>();
 
 			// This being registered changes the behavior of every Factory
 			services.AddScoped<IMakeRemoteDelegateRequest, MakeRemoteDelegateRequest>();

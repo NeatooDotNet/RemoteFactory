@@ -26,12 +26,6 @@ public partial class Factory
         var diagnostics = new List<DiagnosticInfo>();
         var entries = new List<EventHandlerEntry>();
 
-        // Class-level dedupe for event-type trimming preservation. Shared visited set so a
-        // nested type reachable from multiple event roots is emitted exactly once.
-        var preservationVisited = new HashSet<string>();
-        var eventDtoTypesList = new List<string>();
-        var eventRecordTypesList = new List<string>();
-
         var classLocation = classDecl.Identifier.GetLocation();
         var classLineSpan = classLocation.GetLineSpan();
 
@@ -68,20 +62,19 @@ public partial class Factory
             if (eventTypeName.StartsWith("global::"))
                 eventTypeName = eventTypeName.Substring("global::".Length);
 
-            // Gather trimming-preservation types BEFORE method-match — preservation must still
-            // be emitted when the handler is diagnostic-broken (NF0501/NF0502) because the event
-            // type crosses the serialization boundary regardless of whether this class has a
-            // valid handler method.
-            DtoTypeWalker.WalkEventRoot(eventType, eventDtoTypesList, eventRecordTypesList, preservationVisited);
-
-            // Find matching methods: non-private, returns Task,
-            // first non-[Service]/non-CT parameter is of event type T
+            // Find matching STATIC methods. Instance-method handlers are the former
+            // client-side relay pattern (now replaced by IFactoryEventRelay) — they are
+            // silently skipped at codegen time but emit NF0503 (Warning) so consumers
+            // who didn't migrate get a loud signal at compile time.
+            //
+            // Method match: static, returns Task, first non-[Service]/non-CT parameter is of event type T.
             var matchingMethods = new List<IMethodSymbol>();
+            // Track instance methods that match the OLD client-relay shape so we can warn (NF0503).
+            var ignoredInstanceMethods = new List<IMethodSymbol>();
             foreach (var member in symbol.GetMembers().OfType<IMethodSymbol>())
             {
                 if (member.MethodKind != MethodKind.Ordinary)
                     continue;
-                // Allow all accessibility levels — the generator controls invocation
 
                 // Must return Task
                 var returnType = member.ReturnType.ToDisplayString();
@@ -107,23 +100,60 @@ public partial class Factory
                 if (paramTypeName.StartsWith("global::"))
                     paramTypeName = paramTypeName.Substring("global::".Length);
 
-                if (paramTypeName == eventTypeName)
+                if (paramTypeName != eventTypeName)
+                    continue;
+
+                if (member.IsStatic)
+                {
                     matchingMethods.Add(member);
+                }
+                else
+                {
+                    ignoredInstanceMethods.Add(member);
+                }
+            }
+
+            // NF0503: warn for each instance method that matches the old client-relay shape.
+            foreach (var ignored in ignoredInstanceMethods)
+            {
+                var methodLocation = ignored.Locations.FirstOrDefault() ?? classLocation;
+                var methodLineSpan = methodLocation.GetLineSpan();
+                diagnostics.Add(new DiagnosticInfo(
+                    "NF0503",
+                    methodLineSpan.Path ?? "",
+                    methodLineSpan.StartLinePosition.Line,
+                    methodLineSpan.StartLinePosition.Character,
+                    methodLineSpan.EndLinePosition.Line,
+                    methodLineSpan.EndLinePosition.Character,
+                    methodLocation.SourceSpan.Start,
+                    methodLocation.SourceSpan.Length,
+                    symbol.Name,
+                    ignored.Name,
+                    eventTypeName));
             }
 
             if (matchingMethods.Count == 0)
             {
-                diagnostics.Add(new DiagnosticInfo(
-                    "NF0501",
-                    classLineSpan.Path ?? "",
-                    classLineSpan.StartLinePosition.Line,
-                    classLineSpan.StartLinePosition.Character,
-                    classLineSpan.EndLinePosition.Line,
-                    classLineSpan.EndLinePosition.Character,
-                    classLocation.SourceSpan.Start,
-                    classLocation.SourceSpan.Length,
-                    symbol.Name,
-                    eventTypeName));
+                // Only diagnose when the class declares any static-looking handler method
+                // but none matched the required shape. If no static candidates exist at all
+                // (e.g. instance-only handler class), stay silent per Rule 16.
+                var hasStaticCandidate = symbol.GetMembers().OfType<IMethodSymbol>().Any(m =>
+                    m.MethodKind == MethodKind.Ordinary
+                    && m.IsStatic);
+                if (hasStaticCandidate)
+                {
+                    diagnostics.Add(new DiagnosticInfo(
+                        "NF0501",
+                        classLineSpan.Path ?? "",
+                        classLineSpan.StartLinePosition.Line,
+                        classLineSpan.StartLinePosition.Character,
+                        classLineSpan.EndLinePosition.Line,
+                        classLineSpan.EndLinePosition.Character,
+                        classLocation.SourceSpan.Start,
+                        classLocation.SourceSpan.Length,
+                        symbol.Name,
+                        eventTypeName));
+                }
                 continue;
             }
 
@@ -180,7 +210,7 @@ public partial class Factory
                 allParameters: allParameters));
         }
 
-        if (entries.Count == 0 && diagnostics.Count == 0 && eventDtoTypesList.Count == 0 && eventRecordTypesList.Count == 0)
+        if (entries.Count == 0 && diagnostics.Count == 0)
             return null;
 
         var ns = FindNamespace(classDecl) ?? "MissingNamespace";
@@ -214,12 +244,6 @@ public partial class Factory
             hintName = hintName.Substring(0, MaxHintNameLength.Value);
         }
 
-        // Preservation FQNs include the "global::" prefix (as produced by SymbolDisplayFormat.FullyQualifiedFormat)
-        // to match the rendering used by ClassFactoryRenderer/StaticFactoryRenderer/InterfaceFactoryRenderer
-        // for their own DtoConstructorRegistry.Register<> emissions.
-        var eventDtoTypes = new EquatableArray<string>([.. eventDtoTypesList]);
-        var eventRecordTypes = new EquatableArray<string>([.. eventRecordTypesList]);
-
         return new RelayHandlerModel(
             className: symbol.Name,
             classSignatureText: signatureText,
@@ -227,8 +251,6 @@ public partial class Factory
             usings: usings.Distinct().ToList(),
             hintName: hintName,
             entries: entries,
-            diagnostics: diagnostics,
-            eventDtoTypes: eventDtoTypes,
-            eventRecordTypes: eventRecordTypes);
+            diagnostics: diagnostics);
     }
 }

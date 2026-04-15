@@ -98,13 +98,11 @@ public partial class Factory : IIncrementalGenerator
 				ReportDiagnostic(spc, diag);
 			}
 
-			// Emit source if there are handler entries OR preservation types (even with no
-			// matching handlers, preservation must be emitted — Rule 8 / Scenario 17).
-			if (model.Entries.Count == 0 && model.EventDtoTypes.Count == 0 && model.EventRecordTypes.Count == 0)
+			if (model.Entries.Count == 0)
 				return;
 
 			var source = RelayHandlerRenderer.Render(model);
-			spc.AddSource($"{model.HintName}.RelayHandler.g.cs", source);
+			spc.AddSource($"{model.HintName}.FactoryEventHandler.g.cs", source);
 		});
 
 	}
@@ -133,6 +131,7 @@ public partial class Factory : IIncrementalGenerator
 			"NF0405" => DiagnosticDescriptors.FactoryEventHandlerMustBeStatic,
 			"NF0501" => DiagnosticDescriptors.RelayHandlerMethodNotFound,
 			"NF0502" => DiagnosticDescriptors.RelayHandlerMethodAmbiguous,
+			"NF0503" => DiagnosticDescriptors.RelayHandlerInstanceMethodIgnored,
 			_ => throw new ArgumentException($"Unknown diagnostic ID: {diagnosticId}")
 		};
 	}

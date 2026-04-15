@@ -34,7 +34,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 	private readonly INeatooJsonSerializer NeatooJsonSerializer;
 	private readonly MakeRemoteDelegateRequestHttpCall MakeRemoteDelegateRequestCall;
 	private readonly ICorrelationContext _correlationContext;
-	private readonly FactoryEventRelayDispatcher? _relay;
+	private readonly IFactoryEventRelay? _relay;
 	private readonly ILogger<MakeRemoteDelegateRequest> logger;
 
 	public MakeRemoteDelegateRequest(
@@ -64,7 +64,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		this.NeatooJsonSerializer = neatooJsonSerializer;
 		this.MakeRemoteDelegateRequestCall = sendRemoteDelegateRequestToServer;
 		_correlationContext = correlationContext;
-		_relay = relay as FactoryEventRelayDispatcher;
+		_relay = relay;
 		this.logger = logger ?? NullLogger<MakeRemoteDelegateRequest>.Instance;
 	}
 
@@ -106,10 +106,45 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 
 			var deserialized = this.NeatooJsonSerializer.DeserializeRemoteResponse<T>(result);
 
-			// Fire-and-forget: dispatch relayed events after returning result
-			if (_relay != null && result.RelayedEvents != null)
+			// Fire-and-forget relay. One [Remote] call = one Relay call (may be empty batch)
+			// unless deserialization fails, in which case the batch is aborted and logged.
+			// Task.Run + Task.Yield pushes execution to a separate continuation so the
+			// caller's `await` resumes first and assignments like `_x = await factory(...)`
+			// are observable to the relay's handler.
+			if (_relay != null)
 			{
-				_ = _relay.DispatchRelayedEvents(result.RelayedEvents, this.NeatooJsonSerializer);
+				var rawEvents = result.RelayedEvents;
+				var relay = _relay;
+				var serializer = this.NeatooJsonSerializer;
+				var relayLogger = this.logger;
+				var relayCorrelationId = correlationId;
+#pragma warning disable CA1031 // Relay / deserialization exceptions must never propagate to the factory caller.
+				_ = Task.Run(async () =>
+				{
+					await Task.Yield();
+					IReadOnlyList<FactoryEventBase> events;
+					try
+					{
+						events = rawEvents is { Count: > 0 }
+							? FactoryEventDeserializer.Deserialize(rawEvents, serializer)
+							: Array.Empty<FactoryEventBase>();
+					}
+					catch (Exception ex)
+					{
+						relayLogger.FactoryEventDeserializationFailed(relayCorrelationId, ex);
+						return;
+					}
+
+					try
+					{
+						await relay.Relay(events).ConfigureAwait(false);
+					}
+					catch (Exception ex)
+					{
+						relayLogger.FactoryEventRelayFailed(relayCorrelationId, ex);
+					}
+				}, CancellationToken.None);
+#pragma warning restore CA1031
 			}
 
 			return deserialized;

@@ -5,6 +5,7 @@
 		<InternalsVisibleTo Include="RemoteFactory.UnitTests" />
 		<InternalsVisibleTo Include="RemoteFactory.IntegrationTests" />
 		<InternalsVisibleTo Include="Design.Tests" />
+		<InternalsVisibleTo Include="RemoteFactory.TrimmingTests" />
 	</ItemGroup>
 	<PropertyGroup>
 		<RootNamespace>Neatoo.RemoteFactory</RootNamespace>

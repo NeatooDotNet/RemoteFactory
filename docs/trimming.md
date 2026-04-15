@@ -69,9 +69,11 @@ Roslyn source generators only run in a project when the generator package (or an
 
 Relying on a transitive flow (e.g. a `ProjectReference` to a domain project that references `Neatoo.RemoteFactory`, or a `PackageReference` with `PrivateAssets="all"`) will silently skip code generation for that project. The symptoms are specific and easy to misdiagnose:
 
-- `FactoryServiceRegistrar` is never emitted for types in the project — nothing gets registered into DI, nothing gets registered into `DtoConstructorRegistry`, and nothing gets registered into `FactoryEventRelayRegistry`.
+- `FactoryServiceRegistrar` is never emitted for types in the project — nothing gets registered into DI, nothing gets registered into `DtoConstructorRegistry`, and server-side `[FactoryEventHandler<T>]` handlers declared in that project are never registered with `FactoryEventHandlerRegistry`.
 - Factories appear to work in one project and fail in another that depends on the first.
-- On a Blazor WASM client that defines `[FactoryEventHandler<T>]` instance methods, server-raised events reach the wire but are never dispatched to the handler — there is no relay registration to find them.
+- Server-raised events still reach the wire, but server-side handlers declared in the affected project never fire.
+
+Client-side event reception is unaffected by this issue — the consumer-implemented `IFactoryEventRelay` is discovered by plain DI, not by the generator.
 
 This applies to **every** project that declares factory types, including Blazor WASM client projects that host client-side relay handlers. The only projects that may rely on a transitive reference are those that purely *consume* factories (inject the interface, call methods) without declaring any factory types themselves.
 
@@ -281,46 +283,45 @@ If you have a DTO that is **not** returned by any factory method and **not** rea
 
 ## Factory Event Type Preservation
 
-Event records raised via `IFactoryEvents.Raise<T>()` and handled by `[FactoryEventHandler<T>]` classes cross the client/server boundary via JSON — both when the server relays captured events back to the client in `RemoteResponseDto.RelayedEvents` and when a client raises an event that a server handler processes. Like DTO return types, event records must survive IL trimming intact.
+Event records raised via `IFactoryEvents.Raise<T>()` and handled by `[FactoryEventHandler<T>]` classes (server) or `IFactoryEventRelay` (client) cross the client/server boundary via JSON — both when the server relays captured events back to the client in `RemoteResponseDto.RelayedEvents` and when a client raises an event that a server handler processes. Like DTO return types, event records must survive IL trimming intact.
 
 ### How RemoteFactory Handles It
 
-The source generator walks every `[FactoryEventHandler<T>]` attribute declared in a project and emits preservation calls in the handler class's `FactoryServiceRegistrar`:
+Preservation comes from a single annotation on `FactoryEventBase` itself — no generator emission, no per-handler walk:
 
-- The event type itself always uses `DtoConstructorRegistry.PreserveType<T>()` — event records are commonly records with parameterized primary constructors (deserialized through `RecordBypassConverterFactory`), and `PreserveType<T>` applies `[DynamicallyAccessedMembers(All)]` to `T`, telling the trimmer to keep every constructor, property, and field intact. This covers both the parameterless-ctor path (`NeatooJsonTypeInfoResolver.CreateObject`) and the parameterized-ctor path.
-- Nested reference-type properties on the event record are discovered recursively using the same rules as the DTO return-type walker. A nested type with a public parameterless constructor is emitted via `DtoConstructorRegistry.Register<N>(() => new N())` (same as factory-return DTOs); a nested record with only parameterized constructors is emitted via `DtoConstructorRegistry.PreserveType<N>()`.
-- Preservation calls are emitted **unconditionally** — they are not wrapped in `if (NeatooRuntime.IsServerRuntime)`. Both client and server need the metadata: the client deserializes incoming relayed events, the server deserializes incoming client raises.
+```csharp
+[FactoryEvent]
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
+                            DynamicallyAccessedMemberTypes.PublicProperties)]
+public abstract record FactoryEventBase;
+```
 
-As with factory-return types, the `[DynamicallyAccessedMembers(All)]` annotation is the trimming hint; `PreserveType<T>()` itself performs no runtime work beyond pinning the type reference. It is idempotent — calling it multiple times does not grow any dictionary or allocate.
+Both attributes are applied with `Inherited = true`, so every descendant of `FactoryEventBase` automatically:
 
-### `PreserveType<T>` vs `Register<T>`
+- Has its constructors and public properties preserved by the trimmer.
+- Is discoverable by the runtime `FactoryEventTypeRegistry` (an `AppDomain.CurrentDomain.GetAssemblies()` scan for types where `GetCustomAttribute<FactoryEventAttribute>(inherit: true) != null`).
 
-| Primitive | When the generator emits it | Effect |
-|-----------|------------------------------|--------|
-| `DtoConstructorRegistry.Register<T>(() => new T())` | Type has a public parameterless constructor and is safe to construct eagerly | Trimmer preserves all members; `NeatooJsonTypeInfoResolver.CreateObject` uses the lambda instead of `Activator.CreateInstance` |
-| `DtoConstructorRegistry.PreserveType<T>()` | Type has no usable parameterless constructor (records with primary ctors, event records) | Trimmer preserves all members; no constructor lambda registered, so `DtoConstructorRegistry.TryCreate(typeof(T), out _)` returns `false` and STJ flows through its parameterized-ctor pipeline (`RecordBypassConverterFactory`) |
+This supersedes the prior per-`[FactoryEventHandler<T>]` generator-emitted `DtoConstructorRegistry.PreserveType<T>()` and recursive nested-property walk — that pipeline has been removed with the rest of the client-relay codegen path. Net: stronger guarantee (covers every descendant of `FactoryEventBase`, even those with no server handler registered), less generated code.
 
-Both primitives solve the same problem — keeping type metadata alive under IL trimming. They differ only in whether a constructor factory is also recorded.
+`IFactoryEvents.Raise<T>` retains `[DynamicallyAccessedMembers(All)]` on its generic parameter for producer-side call-site preservation.
 
 ### What You Need to Know
 
-If you declare a `[FactoryEventHandler<T>]` in a project that has a direct `Neatoo.RemoteFactory` `PackageReference`, the event type and its nested records are automatically trimming-safe. No manual `DtoConstructorRegistry` calls are needed.
+Any record inheriting `FactoryEventBase` is automatically trimming-safe — no manual `DtoConstructorRegistry` calls, no `[FactoryEventHandler<T>]` required, nothing to configure. End-to-end verification lives in `src/Tests/RemoteFactory.TrimmingTests/EventRelaySmokeTest.cs` — a publish-trimmed smoke test that confirms event relay round-trips across a trimmed binary.
 
-### Known Limitation: `Dictionary<K, V>` Value Types Are Not Walked
+### Nested Reference Types in Event Records
 
-The property walker unwraps `Task<T>`, nullable `T?`, arrays, and generic collection types with a single type argument (`IReadOnlyList<T>`, `List<T>`, `IEnumerable<T>`, etc.). It does **not** unwrap generic types with two type arguments, so `Dictionary<TKey, TValue>` properties do not have their value type discovered:
+The `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]` annotation on `FactoryEventBase` preserves constructors and public properties of every descendant. For reference types *referenced by* an event record's properties, preservation depends on the referenced type:
+
+- **Nested records or DTOs that inherit `FactoryEventBase`** — automatically preserved via the same inherited annotation.
+- **Plain DTOs returned by any factory method** — automatically preserved via the factory-return-type walker (see [Automatic DTO Constructor Registration](#automatic-dto-constructor-registration) above).
+- **Reference types that are neither of the above** — preserve explicitly in DI setup:
 
 ```csharp
-public record CacheWarmed(Dictionary<string, Payload> Items) : FactoryEventBase;
-//                                                ^^^^^^^
-//                                                NOT automatically preserved
+DtoConstructorRegistry.PreserveType<MyEmbeddedType>();
+// or, if it has a public parameterless ctor
+DtoConstructorRegistry.Register<MyEmbeddedType>(() => new MyEmbeddedType());
 ```
-
-**Workaround** — preserve the value type explicitly, either by:
-
-1. Declaring a `[FactoryEventHandler<Payload>]` somewhere in the project (even a stub handler forces preservation via the same generator path), or
-2. Returning `Payload` from any factory method so the factory-return-type walker picks it up, or
-3. Calling `DtoConstructorRegistry.PreserveType<Payload>()` (or `Register<Payload>`) manually in your DI setup before any deserialization occurs.
 
 ### User Code That Forwards `Raise<T>` Through a Generic Passthrough
 

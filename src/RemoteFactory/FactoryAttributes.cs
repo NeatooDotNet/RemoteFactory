@@ -112,15 +112,18 @@ public sealed class EventAttribute : FactoryOperationAttribute
 
 /// <summary>
 /// Marks a class as a handler for factory events of type <typeparamref name="T"/>.
-/// The class must have exactly one non-private method whose first non-[Service]/non-CancellationToken
-/// parameter is of type <typeparamref name="T"/> and returns <see cref="Task"/>.
+/// The handler method must be <c>static</c>, return <see cref="Task"/>, and have a first
+/// non-[Service]/non-CancellationToken parameter of type <typeparamref name="T"/>.
 /// <para>
-/// <b>Static methods</b> → server-side handler: registered in <see cref="FactoryEventHandlerRegistry"/>,
-/// dispatched via <see cref="IFactoryEvents.Raise{T}"/> in an isolated scope with fire-and-forget semantics.
+/// Handlers are registered in <see cref="FactoryEventHandlerRegistry"/> and dispatched
+/// via <see cref="IFactoryEvents.Raise{T}"/> on the server, in the caller's DI scope,
+/// sequentially, awaited.
 /// </para>
 /// <para>
-/// <b>Instance methods</b> → client-side relay handler: registered in <see cref="FactoryEventRelayRegistry"/>,
-/// dispatched when events are relayed from server to client in <see cref="RemoteResponseDto"/>.
+/// Instance-method handlers are silently ignored by the generator — they were the
+/// former client-side relay pattern, now replaced by <see cref="IFactoryEventRelay"/>.
+/// Client-side event consumers implement <see cref="IFactoryEventRelay"/> to bridge
+/// relayed events to their own event aggregator.
 /// </para>
 /// </summary>
 /// <typeparam name="T">The event type (must inherit from <see cref="FactoryEventBase"/>).</typeparam>
