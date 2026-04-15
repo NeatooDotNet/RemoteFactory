@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Neatoo.RemoteFactory;
 
 namespace RemoteFactory.IntegrationTests.TestTargets.Events;
@@ -23,7 +24,6 @@ public record TestServerOnlyRelayEvent(Guid Id) : FactoryEventBase;
 
 // =============================================================================
 // FACTORY CLASS THAT RAISES EVENTS (SERVER-SIDE)
-// Uses static factory pattern with [Execute] methods.
 // =============================================================================
 
 /// <summary>
@@ -37,7 +37,7 @@ public class RelayTestResult
 
 /// <summary>
 /// Static factory class that raises events during server-side operations.
-/// Events should be captured for relay back to the client.
+/// Events are captured for relay back to the client's IFactoryEventRelay.
 /// </summary>
 [Factory]
 public static partial class RelayTestCommands
@@ -96,90 +96,39 @@ public static partial class RelayTestCommands
 }
 
 // =============================================================================
-// CLIENT-SIDE RELAY HANDLERS
-// [FactoryEventHandler<T>] with instance methods — generates relay dispatch entries.
+// TEST RELAY — IFactoryEventRelay implementation used by integration tests
 // =============================================================================
 
 /// <summary>
-/// Client-side handler that records relayed events for test assertions.
+/// Integration test relay. Captures every relayed batch for assertion.
+/// Tests can optionally inject a throwing delegate to exercise exception isolation.
 /// </summary>
-[FactoryEventHandler<TestRelayEvent>]
-public partial class TestRelayHandler
+public sealed class RecordingFactoryEventRelay : IFactoryEventRelay
 {
-    private readonly List<TestRelayEvent> _received = new();
-    private readonly object _lock = new();
+    private readonly ConcurrentQueue<FactoryEventBase> _received = new();
+    private int _invocationCount;
 
-    public IReadOnlyList<TestRelayEvent> ReceivedEvents
-    {
-        get { lock (_lock) { return _received.ToList(); } }
-    }
+    /// <summary>Total number of times Relay() has been invoked (one per [Remote] call).</summary>
+    public int InvocationCount => Volatile.Read(ref _invocationCount);
 
-    public Task HandleFactoryEvent(TestRelayEvent factoryEvent)
+    public IReadOnlyList<FactoryEventBase> Received => _received.ToArray();
+
+    public IReadOnlyList<T> ReceivedOfType<T>() where T : FactoryEventBase =>
+        _received.OfType<T>().ToList();
+
+    /// <summary>Optional hook invoked before events are appended. Use to throw from Relay.</summary>
+    public Func<IReadOnlyList<FactoryEventBase>, Task>? OnRelay { get; set; }
+
+    public async Task Relay(IReadOnlyList<FactoryEventBase> events)
     {
-        lock (_lock)
+        Interlocked.Increment(ref _invocationCount);
+        if (OnRelay != null)
         {
-            _received.Add(factoryEvent);
+            await OnRelay(events).ConfigureAwait(false);
         }
-        return Task.CompletedTask;
-    }
-}
-
-/// <summary>
-/// Second handler for TestRelayEvent — tests multiple handlers for same event.
-/// </summary>
-[FactoryEventHandler<TestRelayEvent>]
-public partial class TestRelayHandlerB
-{
-    private readonly List<TestRelayEvent> _received = new();
-    private readonly object _lock = new();
-
-    public IReadOnlyList<TestRelayEvent> ReceivedEvents
-    {
-        get { lock (_lock) { return _received.ToList(); } }
-    }
-
-    public Task HandleFactoryEvent(TestRelayEvent factoryEvent)
-    {
-        lock (_lock)
+        foreach (var evt in events)
         {
-            _received.Add(factoryEvent);
+            _received.Enqueue(evt);
         }
-        return Task.CompletedTask;
-    }
-}
-
-/// <summary>
-/// Handler for TestRelayEventB — tests multi-event-type relay.
-/// </summary>
-[FactoryEventHandler<TestRelayEventB>]
-public partial class TestRelayEventBHandler
-{
-    private readonly List<TestRelayEventB> _received = new();
-    private readonly object _lock = new();
-
-    public IReadOnlyList<TestRelayEventB> ReceivedEvents
-    {
-        get { lock (_lock) { return _received.ToList(); } }
-    }
-
-    public Task HandleFactoryEvent(TestRelayEventB factoryEvent)
-    {
-        lock (_lock)
-        {
-            _received.Add(factoryEvent);
-        }
-        return Task.CompletedTask;
-    }
-}
-
-/// <summary>
-/// Handler that throws — tests exception swallowing.
-/// </summary>
-[FactoryEventHandler<TestRelayEvent>]
-public partial class TestRelayThrowingHandler
-{
-    public Task HandleFactoryEvent(TestRelayEvent factoryEvent)
-    {
-        throw new InvalidOperationException("Handler failure should be swallowed");
     }
 }

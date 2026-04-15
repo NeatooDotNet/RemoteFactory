@@ -3,8 +3,9 @@ using System.Collections.Generic;
 namespace Neatoo.RemoteFactory.Generator.Model;
 
 /// <summary>
-/// Represents a class decorated with [FactoryEventHandler&lt;T&gt;].
-/// Generates both server-side dispatch (static methods) and client-side relay (instance methods).
+/// Represents a class decorated with [FactoryEventHandler&lt;T&gt;] carrying server-side
+/// static-method handlers. Instance-method handlers are the former client-relay pattern
+/// and are silently skipped by the transform; they do not reach the renderer.
 /// </summary>
 internal sealed record RelayHandlerModel
 {
@@ -15,9 +16,7 @@ internal sealed record RelayHandlerModel
         IReadOnlyList<string> usings,
         string hintName,
         IReadOnlyList<EventHandlerEntry> entries,
-        IReadOnlyList<DiagnosticInfo> diagnostics,
-        EquatableArray<string> eventDtoTypes,
-        EquatableArray<string> eventRecordTypes)
+        IReadOnlyList<DiagnosticInfo> diagnostics)
     {
         ClassName = className;
         ClassSignatureText = classSignatureText;
@@ -26,8 +25,6 @@ internal sealed record RelayHandlerModel
         HintName = hintName;
         Entries = entries;
         Diagnostics = diagnostics;
-        EventDtoTypes = eventDtoTypes;
-        EventRecordTypes = eventRecordTypes;
     }
 
     public string ClassName { get; }
@@ -37,21 +34,11 @@ internal sealed record RelayHandlerModel
     public string HintName { get; }
     public IReadOnlyList<EventHandlerEntry> Entries { get; }
     public IReadOnlyList<DiagnosticInfo> Diagnostics { get; }
-
-    /// <summary>FQNs of nested types reachable from any event root that have a public parameterless ctor.
-    /// Rendered as <c>DtoConstructorRegistry.Register&lt;N&gt;(() =&gt; new N())</c>.
-    /// Deduplicated across all [FactoryEventHandler&lt;T&gt;] attributes on the class.</summary>
-    public EquatableArray<string> EventDtoTypes { get; }
-
-    /// <summary>FQNs of types reachable from any event root that do NOT have a public parameterless ctor
-    /// (event records themselves, parameterized-ctor record properties).
-    /// Rendered as <c>DtoConstructorRegistry.PreserveType&lt;N&gt;()</c>.
-    /// Deduplicated across all [FactoryEventHandler&lt;T&gt;] attributes on the class.</summary>
-    public EquatableArray<string> EventRecordTypes { get; }
 }
 
 /// <summary>
-/// A single [FactoryEventHandler&lt;T&gt;] entry with the matched handler method details.
+/// A single [FactoryEventHandler&lt;T&gt;] entry with the matched server-side static
+/// handler method details.
 /// </summary>
 internal sealed record EventHandlerEntry
 {
@@ -77,8 +64,8 @@ internal sealed record EventHandlerEntry
     public string MethodName { get; }
 
     /// <summary>
-    /// Static methods → server-side handler (FactoryEventHandlerRegistry).
-    /// Instance methods → client-side relay handler (FactoryEventRelayRegistry).
+    /// Always <c>true</c> — the generator only emits registrations for static handlers now.
+    /// Instance-method handlers are the removed client-relay pattern and are silently skipped.
     /// </summary>
     public bool IsStatic { get; }
     public bool IsAsync { get; }
@@ -91,8 +78,7 @@ internal sealed record EventHandlerEntry
 
     /// <summary>
     /// Every parameter in the order it appears in the method signature. Used by the
-    /// renderer to emit invocation arguments in declaration order so a user-written
-    /// method like <c>(evt, ct, [Service] svc)</c> binds correctly.
+    /// renderer to emit invocation arguments in declaration order.
     /// </summary>
     public IReadOnlyList<ParameterModel> AllParameters { get; }
 }

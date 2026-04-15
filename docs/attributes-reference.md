@@ -207,17 +207,16 @@ public partial class EmployeeEventsMinimal
 
 ### [FactoryEventHandler\<T\>]
 
-Class-level attribute that marks a class as a handler for factory events of type `T` (where `T : FactoryEventBase`). The source generator finds one matching method by signature and registers either a server-side handler (static method) or a client-side relay handler (instance method). See [Factory Events](factory-events.md) for the full pattern.
+Class-level attribute that marks a class as a **server-side** static handler for factory events of type `T` (where `T : FactoryEventBase`). The source generator finds one matching `static` method by signature and registers it with `FactoryEventHandlerRegistry`. See [Factory Events](factory-events.md) for the full pattern.
 
 **Inherited:** No | **Multiple:** Yes (stack one per event type)
 
-**Method matching rules:**
+**Method matching rules (static handler only):**
+- Must be `static`
 - Return type must be `Task`
 - First non-`[Service]`/non-`CancellationToken` parameter must be of type `T`
 - Any accessibility allowed
 - Exactly one match required — `NF0501` if none, `NF0502` if multiple
-
-**Static method = server-side handler:**
 
 ```csharp
 [FactoryEventHandler<OrderCheckoutCompleted>]
@@ -233,29 +232,28 @@ public static partial class OrderAuditHandler
 
 Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. All handlers for the event type run sequentially, awaited, sharing the caller's `DbContext` and transaction. A throwing handler aborts the chain and propagates to the caller. For fire-and-forget semantics with isolated scopes, use `[Event]` instead.
 
-**Instance method = client-side relay handler:**
+> **Instance-method handlers are not supported.** Declaring a non-`static` matching method inside a `[FactoryEventHandler<T>]` class emits **NF0503 (Warning)** and is silently skipped at runtime. Client-side reception is handled by implementing `IFactoryEventRelay` on your own class and registering it in DI — see [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay) and the [`IFactoryEventRelay`](interfaces-reference.md#ifactoryeventrelay) interface reference.
+
+A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle several event types — the generator matches one `static` method per attribute.
+
+### [FactoryEvent]
+
+Class-level attribute carried by `FactoryEventBase` with `Inherited = true`. Drives runtime discovery of event types by `FactoryEventTypeRegistry` — every descendant of `FactoryEventBase` is automatically discoverable without per-event annotation.
+
+**Inherited:** Yes | **Multiple:** No
 
 ```csharp
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public sealed partial class CheckoutViewModel : IDisposable
-{
-    private readonly IFactoryEventRelay _relay;
+// FactoryEventBase (in Neatoo.RemoteFactory) — applied once, inherited by every descendant.
+[FactoryEvent]
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
+                            DynamicallyAccessedMemberTypes.PublicProperties)]
+public abstract record FactoryEventBase;
 
-    public CheckoutViewModel(IFactoryEventRelay relay)
-    {
-        _relay = relay;
-        _relay.Register(this);
-    }
-
-    public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
-
-    public void Dispose() => _relay.Unregister(this);
-}
+// Consumer code — no attribute required on the descendant.
+public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
 ```
 
-Called on the registered instance after the factory operation result returns to the client. Exceptions are swallowed. Handler classes do NOT need (and should not have) `[Factory]` — this is a separate generator pipeline.
-
-A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle several event types — the generator matches one method per attribute.
+Consumers **do not** apply `[FactoryEvent]` directly — inheriting `FactoryEventBase` is sufficient. The attribute is documented here for completeness; applying it to a type that does not inherit `FactoryEventBase` has no effect.
 
 ## Execution Control
 

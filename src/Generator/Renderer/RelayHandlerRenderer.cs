@@ -7,9 +7,10 @@ using Neatoo.RemoteFactory.Generator.Model;
 namespace Neatoo.RemoteFactory.Generator.Renderer;
 
 /// <summary>
-/// Renders code for [FactoryEventHandler&lt;T&gt;] classes.
-/// Static methods → server-side FactoryEventHandlerRegistry registration.
-/// Instance methods → client-side FactoryEventRelayRegistry registration.
+/// Renders server-side FactoryEventHandlerRegistry registrations for
+/// [FactoryEventHandler&lt;T&gt;] classes with static handler methods. Client-side relay
+/// emission and event-type trimming preservation have been removed — event preservation
+/// is provided by <c>[DynamicallyAccessedMembers]</c> on <c>FactoryEventBase</c>.
 /// </summary>
 internal static class RelayHandlerRenderer
 {
@@ -41,33 +42,13 @@ internal static class RelayHandlerRenderer
         sb.AppendLine($"    {model.ClassSignatureText} {{");
         sb.AppendLine();
 
-        // FactoryServiceRegistrar method
         sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
         sb.AppendLine("        {");
 
-        // Event-type trimming preservation — unconditional (no IsServerRuntime guard).
-        // Both client (deserialize incoming server events, serialize outgoing ServerOnly raises)
-        // and server (serialize outgoing raises to relay clients, deserialize incoming client
-        // raises) paths need the event type metadata preserved.
-        foreach (var dtoType in model.EventDtoTypes)
-        {
-            sb.AppendLine($"            DtoConstructorRegistry.Register<{dtoType}>(() => new {dtoType}());");
-        }
-        foreach (var recordType in model.EventRecordTypes)
-        {
-            sb.AppendLine($"            DtoConstructorRegistry.PreserveType<{recordType}>();");
-        }
-
         foreach (var entry in model.Entries)
         {
-            if (entry.IsStatic)
-            {
-                RenderServerSideHandler(sb, entry, model.ClassName);
-            }
-            else
-            {
-                RenderClientSideRelayHandler(sb, entry, model.ClassName);
-            }
+            // Every entry is a static handler — the transform silently filters instance methods.
+            RenderServerSideHandler(sb, entry, model.ClassName);
         }
 
         sb.AppendLine("        }");
@@ -90,16 +71,12 @@ internal static class RelayHandlerRenderer
 
         // Emit arguments in declaration order so a handler like
         // `(TestEvent evt, CancellationToken ct, [Service] IFoo svc)` binds correctly.
-        // CT params map to the local `ct`; every other param maps to its identifier
-        // (event param + [Service] locals both use their declared name).
         var allParamIdentifiers = string.Join(", ",
             handler.AllParameters.Select(p => p.IsCancellationToken ? "ct" : p.Name));
 
         var serviceAssignments = string.Join("\n                    ",
             handler.ServiceParameters.Select(p => $"var {p.Name} = sp.GetRequiredService<{p.Type}>();"));
 
-        // Always emit `await` — the method returns Task per NF0501, so await works
-        // for both `async Task` and plain `Task`-returning methods.
         var methodInvocation = $"await {className}.{handler.MethodName}({allParamIdentifiers}).ConfigureAwait(false);";
 
         sb.AppendLine("            if (NeatooRuntime.IsServerRuntime)");
@@ -114,19 +91,5 @@ internal static class RelayHandlerRenderer
         sb.AppendLine($"                    {methodInvocation}");
         sb.AppendLine("                });");
         sb.AppendLine("            }");
-    }
-
-    /// <summary>
-    /// Client-side: register handler type with dispatch delegate and deserializer into FactoryEventRelayRegistry.
-    /// </summary>
-    private static void RenderClientSideRelayHandler(StringBuilder sb, EventHandlerEntry handler, string className)
-    {
-        var eventTypeName = handler.EventTypeName;
-
-        sb.AppendLine($"            FactoryEventRelayRegistry.RegisterHandlerType(");
-        sb.AppendLine($"                typeof({className}),");
-        sb.AppendLine($"                typeof({eventTypeName}).FullName!,");
-        sb.AppendLine($"                (h, evt) => (({className})h).{handler.MethodName}(({eventTypeName})evt),");
-        sb.AppendLine($"                (json, serializer) => serializer.Deserialize<{eventTypeName}>(json)!);");
     }
 }

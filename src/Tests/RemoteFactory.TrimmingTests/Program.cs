@@ -83,6 +83,10 @@ catch (Exception ex)
 // NeatooRuntime.IsServerRuntime and removes dead code.
 DirectFeatureSwitchTest.Run();
 
+// Event relay smoke test: verifies a FactoryEventBase descendant survives trimming
+// and round-trips through FactoryEventTypeRegistry → FactoryEventDeserializer → IFactoryEventRelay.
+EventRelaySmokeTest.Run();
+
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");

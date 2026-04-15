@@ -6,179 +6,118 @@ using RemoteFactory.IntegrationTests.TestTargets.Events;
 namespace RemoteFactory.IntegrationTests.Events.FactoryEventRelay;
 
 /// <summary>
-/// Integration tests for the factory event relay pattern:
-/// Server raises events -> captured in response -> relayed to client handlers.
+/// Integration tests for the factory event relay pattern: server raises events → captured
+/// in response → delivered to the consumer's <see cref="IFactoryEventRelay"/> fire-and-forget
+/// after the factory method returns.
 /// </summary>
 public class FactoryEventRelayTests
 {
-    [Fact]
-    public async Task SingleEventRelay_ClientHandlerReceivesEvent()
+    private static (IServiceScope server, IServiceScope client, IServiceScope local, RecordingFactoryEventRelay relay) ScopesWithRelay()
     {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var handler = new TestRelayHandler();
-        relay.Register(handler);
+        var relay = new RecordingFactoryEventRelay();
+        var (client, server, local) = ClientServerContainers.Scopes(
+            configureClient: services => services.AddSingleton<IFactoryEventRelay>(relay));
+        return (server, client, local, relay);
+    }
 
-        try
+    private static async Task WaitForAsync(Func<bool> predicate, TimeSpan? timeout = null)
+    {
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(2));
+        while (DateTime.UtcNow < deadline)
         {
-            var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
-            var result = await createDel("test");
-
-            Assert.Single(handler.ReceivedEvents);
-            Assert.Equal(result.Id, handler.ReceivedEvents[0].Id);
-            Assert.Equal("Created: test", handler.ReceivedEvents[0].Message);
-        }
-        finally
-        {
-            relay.Unregister(handler);
+            if (predicate())
+            {
+                return;
+            }
+            await Task.Delay(5);
         }
     }
 
     [Fact]
-    public async Task MultipleEventsRelay_AllEventsReceivedInOrder()
+    public async Task SingleEventRelay_ConsumerReceivesEvent()
     {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var handlerA = new TestRelayHandler();
-        var handlerB = new TestRelayEventBHandler();
-        relay.Register(handlerA);
-        relay.Register(handlerB);
+        var (server, client, local, relay) = ScopesWithRelay();
 
-        try
-        {
-            var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithMultipleEvents>();
-            await createDel("test");
+        var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
+        var result = await createDel("test");
 
-            Assert.Single(handlerA.ReceivedEvents);
-            Assert.Equal("First", handlerA.ReceivedEvents[0].Message);
+        await WaitForAsync(() => relay.ReceivedOfType<TestRelayEvent>().Count > 0);
 
-            Assert.Single(handlerB.ReceivedEvents);
-            Assert.Equal(2, handlerB.ReceivedEvents[0].Sequence);
-        }
-        finally
-        {
-            relay.Unregister(handlerA);
-            relay.Unregister(handlerB);
-        }
+        var received = Assert.Single(relay.ReceivedOfType<TestRelayEvent>());
+        Assert.Equal(result.Id, received.Id);
+        Assert.Equal("Created: test", received.Message);
     }
 
     [Fact]
-    public async Task ServerOnlyEvent_NotRelayedToClient()
+    public async Task MultipleEventsRelay_ArriveInServerRaiseOrder()
     {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var handler = new TestRelayHandler();
-        relay.Register(handler);
+        var (server, client, local, relay) = ScopesWithRelay();
 
-        try
-        {
-            var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithServerOnlyEvent>();
-            await createDel("test");
+        var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithMultipleEvents>();
+        await createDel("test");
 
-            Assert.Empty(handler.ReceivedEvents);
-        }
-        finally
-        {
-            relay.Unregister(handler);
-        }
+        await WaitForAsync(() => relay.Received.Count >= 2);
+
+        var batch = relay.Received;
+        Assert.Collection(batch,
+            e => Assert.IsType<TestRelayEvent>(e),
+            e => Assert.IsType<TestRelayEventB>(e));
+        Assert.Equal("First", ((TestRelayEvent)batch[0]).Message);
+        Assert.Equal(2, ((TestRelayEventB)batch[1]).Sequence);
     }
 
     [Fact]
-    public async Task NoEvents_NoRelayedEvents()
+    public async Task ServerOnlyEvent_ExcludedFromRelayBatch()
     {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var handler = new TestRelayHandler();
-        relay.Register(handler);
+        var (server, client, local, relay) = ScopesWithRelay();
 
-        try
-        {
-            var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateNoEvents>();
-            await createDel("test");
-            Assert.Empty(handler.ReceivedEvents);
-        }
-        finally
-        {
-            relay.Unregister(handler);
-        }
+        var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithServerOnlyEvent>();
+        await createDel("test");
+
+        // One [Remote] call = one Relay invocation, even when the batch is empty.
+        await WaitForAsync(() => relay.InvocationCount == 1);
+        Assert.Empty(relay.Received);
     }
 
     [Fact]
-    public async Task MultipleHandlersSameEvent_AllHandlersInvoked()
+    public async Task NoEvents_RelayInvokedOnceWithEmptyBatch()
     {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var handlerA = new TestRelayHandler();
-        var handlerB = new TestRelayHandlerB();
-        relay.Register(handlerA);
-        relay.Register(handlerB);
+        var (server, client, local, relay) = ScopesWithRelay();
 
-        try
-        {
-            var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
-            var result = await createDel("test");
+        var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateNoEvents>();
+        await createDel("test");
 
-            Assert.Single(handlerA.ReceivedEvents);
-            Assert.Single(handlerB.ReceivedEvents);
-            Assert.Equal(result.Id, handlerA.ReceivedEvents[0].Id);
-            Assert.Equal(result.Id, handlerB.ReceivedEvents[0].Id);
-        }
-        finally
-        {
-            relay.Unregister(handlerA);
-            relay.Unregister(handlerB);
-        }
+        await WaitForAsync(() => relay.InvocationCount == 1);
+        Assert.Equal(1, relay.InvocationCount);
+        Assert.Empty(relay.Received);
     }
 
     [Fact]
-    public async Task UnregisterStopsDelivery()
+    public async Task RelayException_DoesNotPropagateToFactoryCaller()
     {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var handler = new TestRelayHandler();
-        relay.Register(handler);
+        var (server, client, local, relay) = ScopesWithRelay();
+        relay.OnRelay = _ => throw new InvalidOperationException("Relay failure must be isolated");
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
 
-        await createDel("first");
-        Assert.Single(handler.ReceivedEvents);
+        // Caller observes successful return — exception is swallowed inside the fire-and-forget.
+        var result = await createDel("test");
+        Assert.NotNull(result);
+        Assert.Equal("test", result.Name);
 
-        relay.Unregister(handler);
-
-        await createDel("second");
-        Assert.Single(handler.ReceivedEvents); // Still just one
+        // Give the fire-and-forget a moment; InvocationCount should still increment even though
+        // the handler threw (Relay was called before the exception).
+        await WaitForAsync(() => relay.InvocationCount >= 1);
+        Assert.Equal(1, relay.InvocationCount);
     }
 
     [Fact]
-    public async Task HandlerException_DoesNotPropagateToFactoryCaller()
+    public async Task NoConsumerRegistration_NoOpRelayResolved()
     {
         var (server, client, local) = ClientServerContainers.Scopes();
+
         var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var throwingHandler = new TestRelayThrowingHandler();
-        var goodHandler = new TestRelayHandler();
-        relay.Register(throwingHandler);
-        relay.Register(goodHandler);
-
-        try
-        {
-            var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
-            var result = await createDel("test");
-
-            Assert.NotNull(result);
-            Assert.Equal("test", result.Name);
-            Assert.Single(goodHandler.ReceivedEvents);
-        }
-        finally
-        {
-            relay.Unregister(throwingHandler);
-            relay.Unregister(goodHandler);
-        }
-    }
-
-    [Fact]
-    public async Task NoRegisteredHandlers_EventSilentlyDropped()
-    {
-        var (server, client, local) = ClientServerContainers.Scopes();
+        Assert.Equal("NoOpFactoryEventRelay", relay.GetType().Name);
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
         var result = await createDel("test");
@@ -186,46 +125,14 @@ public class FactoryEventRelayTests
     }
 
     [Fact]
-    public async Task ServerOnly_NotRelayed()
+    public async Task ServerOnlyCombinedFlags_NotRelayed()
     {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-        var handler = new TestRelayHandler();
-        relay.Register(handler);
+        var (server, client, local, relay) = ScopesWithRelay();
 
-        try
-        {
-            var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithServerOnlyCombinedFlags>();
-            await createDel("test");
-            Assert.Empty(handler.ReceivedEvents);
-        }
-        finally
-        {
-            relay.Unregister(handler);
-        }
-    }
+        var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithServerOnlyCombinedFlags>();
+        await createDel("test");
 
-    [Fact]
-    public async Task WeakReferenceCleanup_GarbageCollectedHandlerRemoved()
-    {
-        var (server, client, local) = ClientServerContainers.Scopes();
-        var relay = client.ServiceProvider.GetRequiredService<IFactoryEventRelay>();
-
-        RegisterWeakHandler(relay);
-
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
-        var result = await createDel("test");
-        Assert.NotNull(result);
-    }
-
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-    private static void RegisterWeakHandler(IFactoryEventRelay relay)
-    {
-        var handler = new TestRelayHandler();
-        relay.Register(handler);
+        await WaitForAsync(() => relay.InvocationCount == 1);
+        Assert.Empty(relay.Received);
     }
 }

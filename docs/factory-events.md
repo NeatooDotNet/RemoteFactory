@@ -10,7 +10,7 @@ RemoteFactory has two distinct event features, named separately because they hav
 | Dispatch | Fire-and-forget via `Task.Run`, tracked by `IEventTracker` | **Sequential, awaited** — `Raise` returns only after all handlers complete |
 | Exceptions | Swallowed / logged | **Propagate to the caller** — a throwing handler aborts the chain |
 | Cancellation | `IHostApplicationLifetime.ApplicationStopping` | Caller's `CancellationToken` (threaded through `Raise`) |
-| Client relay | No | Yes (instance methods receive events after factory result returns) |
+| Client relay | No | Via separate `IFactoryEventRelay` surface (consumer implementation; batch delivered after factory result returns) |
 | Use for | Notifications, emails, webhooks, audit sinks | **Transactional domain events** — handlers that must participate in the caller's DB transaction |
 
 This page covers the `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` pattern. For fire-and-forget work, see [Events](events.md).
@@ -155,57 +155,63 @@ CLIENT                           SERVER
   |   { Json, RelayedEvents: [..] } |    collected events to the response
   |<--------------------------------|
   |                                 |
-  | 5. Factory result returned to caller
-  | 6. IFactoryEventRelay dispatches RelayedEvents to
-  |    registered instance handlers (client-side relay)
+  | 5. Factory result returned to caller; caller's continuation resumes
+  | 6. IFactoryEventRelay.Relay(batch) invoked exactly once
+  |    (fire-and-forget, strictly after step 5)
 ```
 
-The server awaits every `[FactoryEventHandler<T>]` before serializing the response, so a server handler exception propagates back to the client. On the client, the factory result is returned to the caller **before** relayed events are dispatched to client-side relay handlers.
+The server awaits every `[FactoryEventHandler<T>]` before serializing the response, so a server handler exception propagates back to the client. On the client, the factory result is returned to the caller **before** `IFactoryEventRelay.Relay` is invoked — this is a hard ordering guarantee backed by a `Task.Run + Task.Yield` dispatch in `MakeRemoteDelegateRequest`.
 
-### Client-Side Handler (Instance Method)
+### Client-Side Relay (Consumer Implements `IFactoryEventRelay`)
 
-A `[FactoryEventHandler<T>]` class with an **instance** matching method is treated as a client-side relay handler. The class registers itself with `IFactoryEventRelay` and receives events on its existing instance (no DI scope created per dispatch).
+RemoteFactory does not generate any client-relay machinery. Consumers implement `IFactoryEventRelay` and register it in DI. RemoteFactory invokes `Relay(batch)` fire-and-forget, exactly once per `[Remote]` call — including the empty-batch case — strictly after the caller's `await` resumes.
 
 ```csharp
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public sealed partial class OrderCheckoutViewModel : IDisposable
+public sealed class AggregatorRelay : IFactoryEventRelay
 {
-    private readonly IFactoryEventRelay _relay;
+    private readonly IEventAggregator _aggregator;
 
-    public OrderCheckoutViewModel(IFactoryEventRelay relay)
-    {
-        _relay = relay;
-        _relay.Register(this);
-    }
+    public AggregatorRelay(IEventAggregator aggregator) => _aggregator = aggregator;
 
-    public Task HandleCheckout(OrderCheckoutCompleted evt)
+    public Task Relay(IReadOnlyList<FactoryEventBase> events)
     {
-        // Update UI state, raise a PropertyChanged, queue a toast, etc.
+        // One [Remote] call = exactly one Relay invocation, even when events.Count == 0.
+        // The empty-batch case is a useful "a factory call just returned" signal.
+        foreach (var evt in events) _aggregator.Publish(evt);
         return Task.CompletedTask;
     }
-
-    public void Dispose() => _relay.Unregister(this);
 }
 ```
+
+> **Instance-method `[FactoryEventHandler<T>]` handlers are no longer supported on the client.** The former client-relay pattern (register-by-attribute + `Register/Unregister` weak refs) has been removed. Declaring an instance method inside a `[FactoryEventHandler<T>]` class now emits **NF0503 (Warning)** and is silently skipped at runtime. Make the method `static` (server handler) **or** implement `IFactoryEventRelay` on your own class (client reception).
 
 ### IFactoryEventRelay
 
 ```csharp
 public interface IFactoryEventRelay
 {
-    void Register(object handler);
-    void Unregister(object handler);
+    Task Relay(IReadOnlyList<FactoryEventBase> events);
 }
 ```
 
-- Singleton, lives for the client application lifetime.
-- Holds handler instances via `WeakReference` — a handler that is garbage collected without calling `Unregister` is silently removed. No memory leak.
-- Thread-safe. Multiple factory operations completing concurrently can dispatch events in parallel.
-- Handler exceptions are caught and logged. They never propagate to the factory caller.
-- If no handler is registered for a relayed event type, the event is silently dropped.
-- If multiple handlers are registered for the same event type, all of them are invoked.
+**Contract guarantees (see also [CLAUDE-DESIGN](../src/Design/CLAUDE-DESIGN.md) Execution Model):**
 
-Register from a constructor and unregister from `Dispose` is the standard pattern. In Blazor, this works naturally in components that implement `IDisposable`.
+- Invoked exactly once per `[Remote]` factory call. The empty-batch case (no events raised) still produces one invocation with `events.Count == 0`. The only exception: if batch deserialization throws `UnknownFactoryEventTypeException`, `Relay` is not invoked for that call and log event **3009** is emitted.
+- Post-return ordering is a hard guarantee — dispatch uses `Task.Run(async () => { await Task.Yield(); ... }, CancellationToken.None)` in `MakeRemoteDelegateRequest`, so `Relay` runs strictly after the caller's continuation. Holds across sync-context (Blazor UI) and no-sync-context (console, server-render) hosts.
+- Relay exceptions are caught and logged (EventId **3008** `FactoryEventRelayFailed`). They never propagate to the factory caller.
+- Consumers own threading / SyncContext marshaling inside `Relay`. For Blazor UI work, dispatch back to the UI thread inside the implementation.
+- Events arrive fully deserialized as `FactoryEventBase` subclass instances, in the server-side order in which `Raise<T>` was called.
+
+### Default No-Op Registration
+
+In Remote mode, if the consumer registers no `IFactoryEventRelay`, RemoteFactory registers `NoOpFactoryEventRelay` via `TryAddSingleton`. The first non-empty batch the no-op drops emits log event **3011** `NoOpFactoryEventRelayFirstEvent` (Warning, once per process) to surface the common "forgot to register" mistake.
+
+TryAdd semantics:
+
+- Registering your relay **before** `AddNeatooRemoteFactory` — your registration wins, no-op is not added.
+- Registering your relay **after** `AddNeatooRemoteFactory` — standard DI override replaces the no-op.
+
+Server and Logical modes do not register `IFactoryEventRelay` at all (no relay surface on the server; no cross-boundary communication in Logical).
 
 ### RaiseOptions.ServerOnly
 
@@ -253,15 +259,17 @@ public class RelayedFactoryEvent
 }
 ```
 
-When zero events are captured, `RelayedEvents` is `null` (not an empty list). This preserves backward-compatible JSON payloads for responses with no events.
+On the wire, `RelayedEvents` is `null` (not an empty list) when zero events are captured — this preserves backward-compatible JSON payloads. The client normalizes `null` to `Array.Empty<FactoryEventBase>()` before invoking `Relay`, so the consumer always observes exactly one `Relay` call per `[Remote]` invocation.
 
-Event types are resolved on the client by `TypeFullName` (string key), not by `Type.GetType()` — the source generator produces a typed deserializer per handled event type. This is trimming-safe: `RelayedFactoryEvent` and `List<RelayedFactoryEvent>` are registered with `NeatooTransportJsonContext` so they survive IL trimming.
+Event types are resolved on the client by `TypeFullName` against the runtime `FactoryEventTypeRegistry` (internal) — an `AppDomain.CurrentDomain.GetAssemblies()` scan for non-abstract `FactoryEventBase` descendants, lazy-initialized on first use and thread-safe. On a miss, the registry rescans once before throwing `UnknownFactoryEventTypeException` (to pick up dynamically-loaded assemblies). When two distinct `Type`s share a `FullName`, log event **3012** `FactoryEventTypeRegistryCollision` is emitted (Warning) and the first-scanned type wins. `RelayedFactoryEvent` and `List<RelayedFactoryEvent>` are registered with `NeatooTransportJsonContext` so they survive IL trimming.
 
 ### IL Trimming and Event Records
 
-The event record itself — and any nested record or plain DTO reachable through its public properties — is automatically preserved from IL trimming. Every `[FactoryEventHandler<T>]` declared in a project causes the generator to emit `DtoConstructorRegistry.PreserveType<T>()` (plus recursive registrations for nested types) in the handler's `FactoryServiceRegistrar`. `IFactoryEvents.Raise<T>` and `FactoryEventHandlerRegistry.RegisterHandler<TEvent>` both carry `[DynamicallyAccessedMembers(All)]` on their generic parameter, so concrete call-sites preserve `T` as well.
+Every descendant of `FactoryEventBase` is automatically preserved from IL trimming. `FactoryEventBase` carries `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]` with `Inherited = true`, so every descendant's constructors and public properties survive trimming without any per-event annotation or generator emission. `IFactoryEvents.Raise<T>` retains `[DynamicallyAccessedMembers(All)]` on its generic parameter for producer-side call-site preservation.
 
-See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mechanism, the `PreserveType<T>` vs `Register<T>` distinction, the `Dictionary<K, V>` value-type gap and its workaround, and the `IL2091` consideration for user code that forwards `Raise<T>` through its own generic wrapper.
+This model also drives discovery: `FactoryEventBase` carries `[FactoryEvent]` with `Inherited = true`, which the runtime `FactoryEventTypeRegistry` keys off during its assembly scan. Inheriting `FactoryEventBase` is sufficient — consumers never apply `[FactoryEvent]` directly.
+
+See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mechanism, the end-to-end publish-trimmed smoke verification (`EventRelaySmokeTest.cs`), and the `IL2091` consideration for user code that forwards `Raise<T>` through its own generic wrapper.
 
 ---
 
@@ -270,7 +278,7 @@ See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mech
 | Question | Answer |
 |----------|--------|
 | How do I handle a factory event on the **server**? | `[FactoryEventHandler<T>]` class with a `static` matching method |
-| How do I handle a factory event on the **client**? | `[FactoryEventHandler<T>]` class with an **instance** matching method, register via `IFactoryEventRelay` |
+| How do I handle a factory event on the **client**? | Implement `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` and register it in DI (see [Client-Side Relay](#client-side-relay-consumer-implements-ifactoryeventrelay)) |
 | Does a `[FactoryEventHandler<T>]` class need `[Factory]`? | No — it is a separate generator pipeline |
 | Can one class handle multiple event types? | Yes — stack multiple `[FactoryEventHandler<T>]` attributes |
 | How do I stop an event from reaching the client? | Pass `RaiseOptions.ServerOnly` to `Raise` |
@@ -365,6 +373,18 @@ public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
 |----|----------|-------------|
 | NF0501 | Error | No matching handler method found for `[FactoryEventHandler<T>]`. The class must declare exactly one method returning `Task` whose first non-`[Service]`/non-`CancellationToken` parameter is of type `T`. |
 | NF0502 | Error | Multiple matching handler methods found for `[FactoryEventHandler<T>]`. Remove the extras or split into separate handler classes. |
+| NF0503 | Warning | A `[FactoryEventHandler<T>]` class declares an **instance**-method handler. This was the former client-relay pattern and is no longer wired up. The method is silently ignored at runtime. Make the method `static` for server-side dispatch, or implement `IFactoryEventRelay` on the class (and register it in DI) for client-side reception. |
+
+### Runtime Log Events
+
+| EventId | Name | Level | Fires When |
+|---------|------|-------|-----------|
+| 3008 | `FactoryEventRelayFailed` | Error | Consumer's `IFactoryEventRelay.Relay` threw; exception is swallowed, never propagates to the factory caller |
+| 3009 | `FactoryEventDeserializationFailed` | Error | Wire-format event deserialization failed (e.g. `UnknownFactoryEventTypeException`); `Relay` is not invoked for that call |
+| 3011 | `NoOpFactoryEventRelayFirstEvent` | Warning | `NoOpFactoryEventRelay` received its first non-empty batch — consumer forgot to register a relay; fires once per process |
+| 3012 | `FactoryEventTypeRegistryCollision` | Warning | `FactoryEventTypeRegistry` found two distinct `Type`s sharing the same `FullName` during its assembly scan |
+
+`UnknownFactoryEventTypeException` is public and carries `UnresolvedTypeFullName` plus `BatchTypeFullNames` for diagnostics — consumers may inspect it via log context.
 
 ---
 
@@ -376,9 +396,14 @@ Registered automatically by `AddRemoteFactoryServices` based on `FactoryMode`:
 |---------|-------------|----------------------|--------------|
 | `IFactoryEvents` | Scoped | Scoped (no relay) | Scoped |
 | `IFactoryEventCollector` | Scoped | — | — |
-| `IFactoryEventRelay` | — | Singleton | — |
+| `IFactoryEventRelay` | — | Singleton (`NoOpFactoryEventRelay` via `TryAdd`) | — |
 
-Static handler classes (`[FactoryEventHandler<T>]` with a static method) register themselves into `FactoryEventHandlerRegistry` at startup via the generated `FactoryServiceRegistrar`. Client-relay handler classes register their dispatch delegate into `FactoryEventRelayRegistry` the same way.
+Consumer registrations for `IFactoryEventRelay` work via standard DI semantics:
+
+- Register **before** `AddNeatooRemoteFactory` — `TryAddSingleton<IFactoryEventRelay, NoOpFactoryEventRelay>` keeps your registration.
+- Register **after** `AddNeatooRemoteFactory` — your registration overrides the no-op.
+
+Static handler classes (`[FactoryEventHandler<T>]` with a static method) register themselves into `FactoryEventHandlerRegistry` at startup via the generated `FactoryServiceRegistrar`. There is no client-side generator pipeline for relay anymore — the consumer's `IFactoryEventRelay` implementation is the sole dispatch target.
 
 ---
 
@@ -427,27 +452,31 @@ public static partial class OrderCheckoutAudit
         audit.LogAsync("Checkout", evt.OrderId, "Order", $"Total: {evt.Total:C}", ct);
 }
 
-// --------------- Client: instance handler updates the UI ---------------
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public sealed partial class CheckoutBannerViewModel : IDisposable
+// --------------- Client: consumer-owned relay bridges to UI bus ---------------
+// Implement IFactoryEventRelay once, dispatch from there to viewmodels / aggregator.
+public sealed class CheckoutUiRelay : IFactoryEventRelay
 {
-    private readonly IFactoryEventRelay _relay;
-    public string? LastMessage { get; private set; }
+    private readonly ICheckoutBanner _banner;
 
-    public CheckoutBannerViewModel(IFactoryEventRelay relay)
-    {
-        _relay = relay;
-        _relay.Register(this);
-    }
+    public CheckoutUiRelay(ICheckoutBanner banner) => _banner = banner;
 
-    public Task ShowCheckoutMessage(OrderCheckoutCompleted evt)
+    public Task Relay(IReadOnlyList<FactoryEventBase> events)
     {
-        LastMessage = $"Order {evt.OrderId} completed: {evt.Total:C}";
+        foreach (var evt in events)
+        {
+            if (evt is OrderCheckoutCompleted oc)
+            {
+                _banner.Show($"Order {oc.OrderId} completed: {oc.Total:C}");
+            }
+        }
         return Task.CompletedTask;
     }
-
-    public void Dispose() => _relay.Unregister(this);
 }
+
+// --------------- Client Program.cs ---------------
+// Either order works (TryAdd-before / override-after).
+services.AddSingleton<IFactoryEventRelay, CheckoutUiRelay>();
+services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 ```
 
 ---

@@ -1,8 +1,4 @@
 @inherits LayoutComponentBase
-@implements IDisposable
-@using Neatoo.RemoteFactory
-@inject ISnackbar Snackbar
-@inject IFactoryEventRelay Relay
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -20,17 +16,3 @@
         </MudContainer>
     </MudMainContent>
 </MudLayout>
-
-@code {
-    private PersonEventHandler? _eventHandler;
-
-    protected override void OnInitialized()
-    {
-        _eventHandler = new PersonEventHandler(Snackbar, Relay);
-    }
-
-    public void Dispose()
-    {
-        _eventHandler?.Dispose();
-    }
-}

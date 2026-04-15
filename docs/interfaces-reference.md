@@ -667,17 +667,25 @@ public interface IFactoryEvents
 
 ### IFactoryEventRelay
 
-Client-side singleton that dispatches relayed events to registered handler instances. Implement `[FactoryEventHandler<T>]` on a class with an instance method and call `Register(this)` from its constructor.
+Single-method integration hook. Consumers implement this interface to receive events relayed from the server after a `[Remote]` factory call returns. RemoteFactory invokes it fire-and-forget, exactly once per `[Remote]` call (including the empty-batch case), strictly after the caller's continuation resumes.
 
 ```csharp
 public interface IFactoryEventRelay
 {
-    void Register(object handler);
-    void Unregister(object handler);
+    Task Relay(IReadOnlyList<FactoryEventBase> events);
 }
 ```
 
-**When to use:** Register viewmodels, components, or services that need to react to events raised during server-side factory operations. Handlers are held by `WeakReference` — a handler garbage-collected without calling `Unregister` is silently removed (no memory leak). Handler exceptions never propagate to the factory caller.
+**When to use:** Implement on a service that bridges relayed events to your own event aggregator (MediatR, a UI message bus, a reactive subject, etc.). Register it in DI either before or after `AddNeatooRemoteFactory` — Remote mode registers `NoOpFactoryEventRelay` via `TryAddSingleton`, so a consumer registration before wins, and a consumer registration after overrides.
+
+**Contract:**
+
+- One `[Remote]` call = one `Relay` invocation. The empty-batch case (`events.Count == 0`) still produces one invocation — useful as a "a factory call just returned" signal. The only exception is `UnknownFactoryEventTypeException` during deserialization, which aborts the batch and is logged (EventId 3009).
+- Post-return ordering is a hard guarantee (`Task.Run + Task.Yield` dispatch).
+- Relay exceptions are caught and logged (EventId 3008). They never propagate to the factory caller.
+- The consumer owns SyncContext marshaling for UI work.
+
+> **Migration note.** The former surface (`Register(object handler)` / `Unregister(object handler)`, instance-method `[FactoryEventHandler<T>]` on client classes, `WeakReference`-based handler tracking) has been removed. Classes that still declare instance-method handlers inside `[FactoryEventHandler<T>]` emit **NF0503 (Warning)** and are silently skipped at runtime. See [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay).
 
 ### IEventScopeInitializer
 
@@ -759,7 +767,7 @@ public interface IFactoryCore<T>
 | `ILazyLoadFactory` | Deferred loading factory | Framework (inject via `[Service]`) |
 | `IEventTracker` | Fire-and-forget event tracking | Framework (rarely customized) |
 | `IFactoryEvents` | Mediator for publishing factory events | Factory methods (inject) |
-| `IFactoryEventRelay` | Client-side relay dispatch registry | Viewmodels/components (call Register) |
+| `IFactoryEventRelay` | Client-side single-method integration hook for relayed events | Application (implement + register in DI) |
 | `IEventScopeInitializer` | Event scope context propagation | Application (custom initializers) |
 | `IFactoryCore<T>` | Factory execution pipeline | Framework (rarely customized) |
 
