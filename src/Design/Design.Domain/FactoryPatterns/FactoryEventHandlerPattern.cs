@@ -31,11 +31,6 @@ namespace Design.Domain.FactoryPatterns;
 //   - Events where a handler failure should abort the aggregate operation
 //   - Events where you need the caller to observe the post-handler state
 //
-// When to use [Event] delegates instead:
-//   - Fire-and-forget notifications (email, webhooks, queue publishes)
-//   - Audit sinks to external systems
-//   - Anything that should survive (or shouldn't block) the caller's work
-//
 // Static handler methods → server-side dispatch (runs in caller's scope).
 // Instance handler methods → client-side relay dispatch (see FactoryEventRelayPattern.cs).
 //
@@ -78,10 +73,11 @@ public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEvent
 /// mediator default).
 ///
 /// Reasons:
-/// 1. That path exists already as <c>[Event]</c> delegates — use those when
-///    detached semantics are what you want.
-/// 2. Two different execution models sharing one API would be confusing.
-///    Naming them separately (FactoryEvent vs Event) makes the choice loud.
+/// 1. Detached semantics for side-effect work (email, webhooks, audit sinks)
+///    belongs outside the factory pipeline — consumers can build it with
+///    <c>Task.Run</c> + <c>IServiceScopeFactory.CreateScope()</c> directly.
+/// 2. Keeping <c>[FactoryEventHandler]</c> focused on transactional,
+///    caller-scope handlers avoids the two-models-one-API confusion.
 /// </remarks>
 [FactoryEventHandler<OrderPlacedEvent>]
 public static partial class OrderNotifyHandlers

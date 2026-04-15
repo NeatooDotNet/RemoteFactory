@@ -294,29 +294,3 @@ public partial class EmployeeSaveStateSample : IFactorySaveMeta
     internal Task Delete(CancellationToken ct) { _ = IsNew; return Task.CompletedTask; }
 }
 
-// Event samples moved to EmployeeEventHandlers.cs and EventsSamples.cs - no duplicate regions
-[Factory]
-public partial class AspNetCoreEventHandlers
-{
-    [Event]
-    public async Task OnEmployeeCreated(Guid employeeId, string employeeName,
-        [Service] ICorrelationContext correlationContext, [Service] IEmailService emailService,
-        [Service] Microsoft.Extensions.Logging.ILogger<AspNetCoreEventHandlers> logger, CancellationToken ct)
-    {
-        logger.LogInformation("Employee created: {EmployeeId}, Correlation: {CorrelationId}", employeeId, correlationContext.CorrelationId);
-        await emailService.SendAsync("hr@company.com", $"New: {employeeName}", $"ID: {employeeId}", ct);
-    }
-}
-
-[Factory]
-public partial class CorrelatedEventHandlers
-{
-    [Event]
-    public async Task LogWithCorrelation(Guid entityId, string action,
-        [Service] ICorrelationContext ctx, [Service] IAuditLogService auditLog,
-        [Service] Microsoft.Extensions.Logging.ILogger<CorrelatedEventHandlers> logger, CancellationToken ct)
-    {
-        logger.LogInformation("Event with correlation {CorrelationId}", ctx.CorrelationId);
-        await auditLog.LogAsync(action, entityId, "Event", $"Correlation: {ctx.CorrelationId}", ct);
-    }
-}

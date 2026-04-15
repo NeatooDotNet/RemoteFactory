@@ -177,7 +177,7 @@ public void ScopedServices_SameWithinScope()
     Assert.Same(repo1, repo2);  // Same instance within scope
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L354-L363' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-lifetimes-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L322-L331' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-lifetimes-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Scoped services are particularly useful on the server side — scoped per factory call, just as they would be scoped per controller action. On the client side, scoped services are less common since there's typically no per-request scope.
@@ -240,7 +240,7 @@ public void RegisterMatchingName_ResolvesCorrectImplementation()
     Assert.IsType<InMemoryEmployeeRepository>(repository);  // IName -> Name convention
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L381-L389' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-matching-name-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L349-L357' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-matching-name-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Registers with **Transient** lifetime. Accepts multiple assemblies.
@@ -328,7 +328,7 @@ public void ServiceParameter_ResolvedFromDI()
     Assert.NotNull(repository);  // Services resolve from test container
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L338-L346' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L306-L314' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing-1' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Client/Server Container Testing

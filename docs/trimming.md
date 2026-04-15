@@ -32,12 +32,8 @@ Not all factory methods get guards. The generator uses the developer's `public` 
 
 ### Static and Interface Factories
 
-- **Static factories** — Delegate and event registrations are guarded. The trimmer removes the registration lambdas and their captured dependencies.
+- **Static factories** — `[Execute]` delegate registrations are guarded. The trimmer removes the registration lambdas and their captured dependencies.
 - **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`, making the server-only code path unreachable to the trimmer.
-
-### Event Registrations
-
-Both class factory and static factory `[Event]` registrations are wrapped in `if (NeatooRuntime.IsServerRuntime)` guards. The local event infrastructure (scope isolation, `Task.Run`, `IHostApplicationLifetime`, `IEventTracker`) only runs on the server. On client assemblies with `IsServerRuntime=false`, the trimmer eliminates these registrations entirely. Remote-mode clients use remote event stubs that serialize to the server instead.
 
 The key insight: the guards are in RemoteFactory's **generated** code, not in your application code. You don't need to modify your domain model at all.
 

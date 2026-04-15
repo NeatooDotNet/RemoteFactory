@@ -1,6 +1,5 @@
 using EmployeeManagement.Domain.Interfaces;
 using Neatoo.RemoteFactory;
-using System.Globalization;
 
 namespace EmployeeManagement.Domain.Samples.Skill;
 
@@ -46,48 +45,3 @@ public class SkillEmployeeSummary
 }
 #endregion
 
-#region skill-static-event-handlers
-[Factory]
-public static partial class SkillEmployeeEvents
-{
-    [Remote, Event]
-    private static async Task _OnEmployeeCreated(
-        Guid employeeId,
-        string employeeName,
-        [Service] IEmailService emailService,
-        CancellationToken cancellationToken)
-    {
-        await emailService.SendAsync(
-            "hr@company.com",
-            "New Employee",
-            $"Welcome {employeeName}!",
-            cancellationToken);
-    }
-
-    [Remote, Event]
-    private static async Task _OnPaymentReceived(
-        Guid employeeId,
-        decimal amount,
-        [Service] IEmailService email,
-        [Service] IAuditLogService audit,
-        CancellationToken cancellationToken)
-    {
-        var message = string.Format(
-            CultureInfo.InvariantCulture,
-            "Payment of {0:C} received for employee {1}",
-            amount,
-            employeeId);
-        await email.SendAsync(
-            "payroll@company.com",
-            "Payment Received",
-            message,
-            cancellationToken);
-        await audit.LogAsync(
-            "PaymentReceived",
-            employeeId,
-            "Employee",
-            string.Format(CultureInfo.InvariantCulture, "Payment received: {0:C}", amount),
-            cancellationToken);
-    }
-}
-#endregion

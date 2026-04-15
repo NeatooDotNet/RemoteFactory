@@ -187,7 +187,7 @@ public partial class TestInventoryHandler
 }
 
 /// <summary>
-/// Slow handler for TestOrderEvent — used to test IEventTracker and await vs fire-and-forget.
+/// Slow handler for TestOrderEvent — used to test await semantics.
 /// </summary>
 [FactoryEventHandler<TestOrderEvent>]
 public static partial class TestSlowHandler

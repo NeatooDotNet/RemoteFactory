@@ -16,7 +16,6 @@ If you're new to RemoteFactory, start with [Getting Started](getting-started.md)
 | `[Update]` | Subsequent persist | `Save()` routes here when `IsNew = false` |
 | `[Delete]` | Removal | `Save()` routes here when `IsDeleted = true` |
 | `[Execute]` | Orchestration | Runs logic that decides *which* persistence path to take |
-| `[Event]` | Side effects | Fire-and-forget in its own DI scope — independent of the main persistence operation |
 
 ## Create Operation
 
@@ -444,69 +443,41 @@ Key differences from static factory Execute:
 
 Use class factory Execute when the orchestration logic is tightly coupled to the aggregate (calls its own factory methods, uses internal helpers). If the operation returns a different type, use a static factory Execute instead.
 
-## Event Operation
+## Events
 
-Events are for side effects that should happen independently of the main persistence operation. When you save an employee, you might want to send a welcome email or notify HR — but the caller shouldn't wait for that email to send, and a failed notification shouldn't roll back the employee insert.
+There is no `[Event]` method attribute. Domain events are published via the mediator surface — `IFactoryEvents.Raise<T>` inside a factory method, dispatched to server-side `[FactoryEventHandler<T>]` static handlers and optionally relayed to the client. Handlers run **in the caller's DI scope, sequentially, awaited** — they participate in the caller's transaction. See [Factory Events](factory-events.md) for the full pattern.
 
-Events provide two guarantees: **fire-and-forget** (the caller continues immediately) and **scope isolation** (the event runs in its own DI scope, so if it fails, the caller's persistence transaction is unaffected).
+For fire-and-forget work that must not participate in the caller's transaction (email, webhooks, audit sinks to external systems), RemoteFactory no longer ships a framework-supplied surface. Compose a manual pattern inside the factory method:
 
-<!-- snippet: operations-event -->
-<a id='snippet-operations-event'></a>
-```cs
-// [Event] for fire-and-forget - CancellationToken required, receives ApplicationStopping
-[Event]
-public async Task NotifyHROfNewEmployee(
-    Guid employeeId, string employeeName,
-    [Service] IEmailService emailService, CancellationToken ct)
-{
-    await emailService.SendAsync("hr@company.com", $"New Employee: {employeeName}", $"ID: {employeeId}", ct);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L310-L319' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Generated delegate (not a factory interface):
 ```csharp
-// Method: SendWelcomeEmail -> Delegate: SendWelcomeEmailEvent (Event suffix added)
-public partial class EmployeeEventHandler
+[Remote, Insert]
+internal async Task Insert(
+    [Service] IEmployeeRepository repo,
+    [Service] IServiceScopeFactory scopeFactory,
+    [Service] ICorrelationContext correlation,
+    [Service] IHostApplicationLifetime lifetime,
+    CancellationToken ct)
 {
-    // CancellationToken is NOT included in delegate signature - framework provides it
-    public delegate Task SendWelcomeEmailEvent(
-        Guid employeeId,
-        string employeeEmail);
+    await repo.AddAsync(/* ... */, ct);
+
+    // Snapshot ambient state BEFORE entering the background task.
+    var correlationId = correlation.CorrelationId;
+    var shutdownToken = lifetime.ApplicationStopping;
+
+    _ = Task.Run(async () =>
+    {
+        using var scope = scopeFactory.CreateScope();
+        // Copy the snapshotted state into the fresh scope.
+        scope.ServiceProvider.GetRequiredService<ICorrelationContext>().CorrelationId = correlationId;
+
+        var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+        try { await email.SendWelcomeAsync(/* ... */, shutdownToken); }
+        catch (Exception ex) { /* log and swallow */ }
+    }, CancellationToken.None);
 }
 ```
 
-The delegate name is the method name with "Event" suffix appended. CancellationToken is required in the method signature but excluded from the generated delegate (the framework provides ApplicationStopping token). Both void and Task methods generate Task-returning delegates.
-
-Key characteristics:
-- **Scope isolation**: New DI scope per event
-- **Fire-and-forget**: Caller doesn't wait for completion
-- **Graceful shutdown**: EventTracker waits for pending events
-- **CancellationToken required**: Must be last parameter, receives ApplicationStopping
-
-### EventTracker
-
-Track event completion for testing or shutdown:
-
-<!-- snippet: operations-event-tracker -->
-<a id='snippet-operations-event-tracker'></a>
-```cs
-// IEventTracker for waiting on pending events (useful in tests and shutdown)
-[Execute]
-private static async Task<int> _WaitForAllEvents([Service] IEventTracker eventTracker, CancellationToken ct)
-{
-    var pendingCount = eventTracker.PendingCount;
-    await eventTracker.WaitAllAsync(ct);
-    return pendingCount;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L328-L337' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-event-tracker' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Return value handling:
-- **void**: Converted to Task automatically
-- **Task**: Tracked by EventTracker
+See the [v1.5.0 release notes](release-notes/v1.5.0.md) for the full migration guide from the retired `[Event]` attribute API, including graceful-shutdown tracking and tenant-context propagation.
 
 ## Collection Factories
 
@@ -611,7 +582,7 @@ internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repositor
     return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L351-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L315-L331' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 When a factory is registered with `NeatooFactory.Remote`:
@@ -715,7 +686,7 @@ internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repositor
     return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L393-L406' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L357-L370' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Generated factory methods automatically include CancellationToken:
@@ -754,7 +725,7 @@ internal async Task<bool> Fetch(
     return Results.Count > 0;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L417-L430' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L381-L394' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Service parameters**: Injected from DI, not serialized
@@ -778,7 +749,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L447-L464' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L411-L428' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Params arrays**: Variable-length arguments
@@ -799,7 +770,7 @@ internal async Task<bool> Fetch(
     return EmployeeNames.Count > 0;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L475-L489' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L439-L453' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **CancellationToken**: Optional, always last parameter
@@ -824,7 +795,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L506-L524' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L470-L488' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Parameter order rules:
@@ -837,4 +808,4 @@ Parameter order rules:
 - [Service Injection](service-injection.md) - Inject dependencies into factory methods
 - [Authorization](authorization.md) - Secure factory operations
 - [Save Operation](save-operation.md) - IFactorySave routing
-- [Events](events.md) - Deep dive into event handling
+- [Factory Events](factory-events.md) - `[FactoryEventHandler<T>]` mediator + client relay

@@ -14,7 +14,6 @@ public enum AuthorizeFactoryOperation
 	Delete = 16,
 	Read = 64,
 	Write = 128,
-	Execute = 256,
-	Event = 512
+	Execute = 256
 }
 

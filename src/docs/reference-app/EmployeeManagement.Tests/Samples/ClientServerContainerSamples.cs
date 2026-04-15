@@ -130,8 +130,10 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
         return _neatooJsonSerializer.DeserializeRemoteResponse<T>(result!);
     }
 
-    public async Task ForDelegateEvent(Type delegateType, object?[]? parameters)
+    public async Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
         var json = JsonSerializer.Serialize(remoteRequest);
         var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!;
@@ -139,7 +141,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
         await _serviceProvider
             .GetRequiredService<ServerServiceProvider>()
             .ServerProvider
-            .GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, default);
+            .GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, cancellationToken);
     }
 }
 

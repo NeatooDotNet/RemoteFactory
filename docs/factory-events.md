@@ -1,19 +1,18 @@
 # Factory Events
 
-RemoteFactory has two distinct event features, named separately because they have different execution models.
+RemoteFactory's factory-event surface is a mediator pattern: factory methods raise strongly-typed events via `IFactoryEvents.Raise<T>`, server-side static handlers decorated with `[FactoryEventHandler<T>]` process them in the caller's DI scope, and captured events flow back to the client through a consumer-implemented `IFactoryEventRelay`.
 
-| Feature | `[Event]` (attribute on method) | `[FactoryEventHandler<T>]` (attribute on class) |
-|---------|--------------------------------|-------------------------------------------------|
-| Page | [Events](events.md) | This page |
-| Trigger | Direct delegate invocation from anywhere | `IFactoryEvents.Raise(...)` inside a factory method |
-| DI scope | Isolated (new scope per handler) | **Shared with the caller** (same `DbContext`, same transaction) |
-| Dispatch | Fire-and-forget via `Task.Run`, tracked by `IEventTracker` | **Sequential, awaited** — `Raise` returns only after all handlers complete |
-| Exceptions | Swallowed / logged | **Propagate to the caller** — a throwing handler aborts the chain |
-| Cancellation | `IHostApplicationLifetime.ApplicationStopping` | Caller's `CancellationToken` (threaded through `Raise`) |
-| Client relay | No | Via separate `IFactoryEventRelay` surface (consumer implementation; batch delivered after factory result returns) |
-| Use for | Notifications, emails, webhooks, audit sinks | **Transactional domain events** — handlers that must participate in the caller's DB transaction |
+| Aspect | Behavior |
+|--------|----------|
+| Trigger | `IFactoryEvents.Raise(...)` inside a factory method |
+| DI scope | **Shared with the caller** (same `DbContext`, same transaction) |
+| Dispatch | **Sequential, awaited** — `Raise` returns only after all handlers complete |
+| Exceptions | **Propagate to the caller** — a throwing handler aborts the chain |
+| Cancellation | Caller's `CancellationToken` (threaded through `Raise`) |
+| Client relay | `IFactoryEventRelay` (consumer implementation; batch delivered after factory result returns) |
+| Use for | **Transactional domain events** — handlers that must participate in the caller's DB transaction |
 
-This page covers the `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` pattern. For fire-and-forget work, see [Events](events.md).
+> **Fire-and-forget work (email, webhooks, audit sinks to external systems)** has no framework-supplied surface after v1.5.0. Compose your own `Task.Run` + `IServiceScopeFactory.CreateScope()` inside the factory method and explicitly snapshot any ambient state (tenant, correlation) into the background scope. See the [v1.5.0 release notes](release-notes/v1.5.0.md) for the migration pattern.
 
 ---
 
@@ -122,14 +121,11 @@ public static partial class OrderAuditHandler
 }
 ```
 
-### Why Not [Event]?
+### Transactional vs Fire-and-Forget
 
-`[Event]` and `[FactoryEventHandler<T>]` serve different needs and have different execution models.
+`[FactoryEventHandler<T>]` is declarative, transactional, and awaited. The raiser publishes a typed event via `IFactoryEvents.Raise`; handlers share the caller's DI scope, run sequentially, and propagate exceptions. Use it for domain events that must participate in the caller's DB transaction — handlers that touch the same `DbContext` as the aggregate that raised the event.
 
-- **`[Event]`** is imperative, detached, and fire-and-forget. The caller knows the delegate name and invokes it directly; each handler runs in its own isolated scope via `Task.Run`, tracked by `IEventTracker` for graceful shutdown. Handler exceptions never affect the caller. Use it for notifications, emails, webhooks, audit sinks to external systems — anything that should survive (or shouldn't block) the caller's work.
-- **`[FactoryEventHandler<T>]`** is declarative, transactional, and awaited. The raiser publishes a typed event via `IFactoryEvents.Raise`; handlers share the caller's DI scope, run sequentially, and propagate exceptions. Use it for domain events that must participate in the caller's DB transaction — handlers that touch the same `DbContext` as the aggregate that raised the event.
-
-If your handler needs the factory's transaction, use `[FactoryEventHandler<T>]`. If your handler talks to an external system that should never block or fail the aggregate save, use `[Event]`.
+If your handler talks to an external system that should never block or fail the aggregate save (email, webhook, queue publish), do not use `[FactoryEventHandler<T>]` — a throw from such a handler will roll back the aggregate. Instead, compose your own fire-and-forget pattern inside the factory method using `Task.Run` + `IServiceScopeFactory.CreateScope()`, and explicitly snapshot any ambient state (tenant, correlation ID) into the background scope before resolving services. See the [v1.5.0 release notes](release-notes/v1.5.0.md) for the recommended pattern and the migration path from the retired `[Event]` attribute API.
 
 ---
 
@@ -483,7 +479,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 
 ## Next Steps
 
-- [Events](events.md) — The `[Event]` fire-and-forget pattern (different feature)
 - [Attributes Reference](attributes-reference.md) — `[FactoryEventHandler<T>]` quick reference
 - [Client-Server Architecture](client-server-architecture.md) — How `[Remote]` and the transport layer fit together
 - [Serialization](serialization.md) — How `FactoryEventBase` and `RelayedFactoryEvent` cross the wire
+- [v1.5.0 Release Notes](release-notes/v1.5.0.md) — Migration guide for former `[Event]` attribute consumers

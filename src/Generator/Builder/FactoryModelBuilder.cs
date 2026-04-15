@@ -37,12 +37,11 @@ internal static class FactoryModelBuilder
     }
 
     /// <summary>
-    /// Builds a FactoryGenerationUnit for a static class with [Execute] or [Event] methods.
+    /// Builds a FactoryGenerationUnit for a static class with [Execute] methods.
     /// </summary>
     private static FactoryGenerationUnit BuildStaticFactory(TypeInfo typeInfo)
     {
         var delegates = new List<ExecuteDelegateModel>();
-        var events = new List<EventMethodModel>();
         var diagnostics = new List<DiagnosticInfo>(typeInfo.Diagnostics.ToList());
 
         // NF0101: Class must be partial for factory generation
@@ -62,11 +61,7 @@ internal static class FactoryModelBuilder
 
         foreach (var method in typeInfo.FactoryMethods)
         {
-            if (method.FactoryOperation == FactoryOperation.Event)
-            {
-                events.Add(BuildEventMethod(method, typeInfo.ImplementationTypeName, isStaticClass: true));
-            }
-            else if (method.FactoryOperation == FactoryOperation.Execute)
+            if (method.FactoryOperation == FactoryOperation.Execute)
             {
                 // NF0102: Execute method must return Task
                 if (!method.IsTask)
@@ -94,7 +89,6 @@ internal static class FactoryModelBuilder
             signatureText: typeInfo.SignatureText,
             isPartial: typeInfo.IsPartial,
             delegates: delegates,
-            events: events,
             dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
 
         return new FactoryGenerationUnit(
@@ -163,19 +157,11 @@ internal static class FactoryModelBuilder
     private static FactoryGenerationUnit BuildClassFactory(TypeInfo typeInfo)
     {
         var factoryMethods = new List<FactoryMethodModel>();
-        var events = new List<EventMethodModel>();
 
         var diagnostics = new List<DiagnosticInfo>(typeInfo.Diagnostics.ToList());
 
-        // First pass: separate events and build initial method list
         foreach (var method in typeInfo.FactoryMethods)
         {
-            if (method.FactoryOperation == FactoryOperation.Event)
-            {
-                events.Add(BuildEventMethod(method, typeInfo.ImplementationTypeName, isStaticClass: false));
-                continue;
-            }
-
             // NF0105: [Remote] requires internal methods (public is an error, static factories exempt)
             if (method.IsRemote && !method.IsInternal && !method.IsStaticFactory)
             {
@@ -270,7 +256,6 @@ internal static class FactoryModelBuilder
             implementationTypeName: typeInfo.ImplementationTypeName,
             isPartial: typeInfo.IsPartial,
             methods: factoryMethods,
-            events: events,
             ordinalSerialization: ordinalSerialization,
             hasDefaultSave: hasDefaultSave,
             requiresEntityRegistration: requiresEntityRegistration,
@@ -447,38 +432,6 @@ internal static class FactoryModelBuilder
             serviceParameters: serviceParameters,
             hasCancellationToken: hasCancellationToken,
             isInternal: method.IsInternal);
-    }
-
-    private static EventMethodModel BuildEventMethod(TypeFactoryMethodInfo method, string containingTypeName, bool isStaticClass)
-    {
-        var parameters = method.Parameters
-            .Where(p => !p.IsService)
-            .Select(p => new ParameterModel(p.Name, p.Type, p.IsService, p.IsTarget, p.IsCancellationToken, p.IsParams))
-            .ToList();
-
-        var serviceParameters = method.Parameters
-            .Where(p => p.IsService)
-            .Select(p => new ParameterModel(p.Name, p.Type, p.IsService, p.IsTarget, p.IsCancellationToken, p.IsParams))
-            .ToList();
-
-        var delegateName = method.Name;
-        if (delegateName.StartsWith("On"))
-        {
-            delegateName = delegateName.Substring(2);
-        }
-        if (delegateName.StartsWith("_"))
-        {
-            delegateName = delegateName.Substring(1);
-        }
-
-        return new EventMethodModel(
-            name: method.Name,
-            delegateName: delegateName + "Event",
-            isAsync: method.IsTask,
-            parameters: parameters,
-            serviceParameters: serviceParameters,
-            containingTypeName: containingTypeName,
-            isStaticClass: isStaticClass);
     }
 
     private static ExecuteDelegateModel BuildExecuteDelegate(TypeFactoryMethodInfo method)

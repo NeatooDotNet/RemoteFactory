@@ -92,25 +92,6 @@ public sealed class ExecuteAttribute : FactoryOperationAttribute
 }
 
 /// <summary>
-/// Marks a method as an event handler that runs in an isolated scope.
-/// Event handlers use fire-and-forget semantics with scope isolation for transactionally-independent operations.
-/// </summary>
-/// <remarks>
-/// <para>
-/// The method must have <see cref="CancellationToken"/> as its final parameter.
-/// The generated delegate will always return <see cref="Task"/>, even for void methods.
-/// </para>
-/// <para>
-/// Service parameters marked with [Service] are resolved from the new scope.
-/// The CancellationToken receives ApplicationStopping for graceful shutdown support.
-/// </para>
-/// </remarks>
-public sealed class EventAttribute : FactoryOperationAttribute
-{
-	public EventAttribute() : base(FactoryOperation.Event) { }
-}
-
-/// <summary>
 /// Marks a class as a handler for factory events of type <typeparamref name="T"/>.
 /// The handler method must be <c>static</c>, return <see cref="Task"/>, and have a first
 /// non-[Service]/non-CancellationToken parameter of type <typeparamref name="T"/>.

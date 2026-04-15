@@ -1,7 +1,7 @@
 # CLAUDE-DESIGN.md
 
 ---
-design_version: 1.6
+design_version: 1.7
 last_updated: 2026-04-14
 target_frameworks: [net9.0, net10.0]
 ---
@@ -37,7 +37,7 @@ Follow this workflow when working with RemoteFactory patterns:
 |---------|----------|---------|---------------------|
 | **Class Factory** | Aggregate roots with lifecycle, entities needing Create/Fetch/Save | `Order`, `Customer`, `Invoice` | Instance state, serializable, IFactorySaveMeta support |
 | **Interface Factory** | Remote services without entity identity | `IOrderRepository`, `IPaymentService` | Server implementation, client proxy, no operation attributes |
-| **Static Factory** | Stateless commands, events, side effects | `EmailCommands.SendNotification`, `OrderEvents.OnOrderPlaced` | No instance state, [Execute] or [Event] operations |
+| **Static Factory** | Stateless commands and side effects | `EmailCommands.SendNotification` | No instance state, [Execute] operation |
 
 ### Detailed Guidance
 
@@ -55,9 +55,8 @@ Follow this workflow when working with RemoteFactory patterns:
 
 **Choose Static Factory when:**
 - The operation is pure request-response (no instance state)
-- You need fire-and-forget event handling
 - Operations are naturally expressed as functions, not methods on objects
-- You want CancellationToken support for graceful shutdown
+- You want CancellationToken support
 
 ---
 
@@ -119,17 +118,10 @@ public static partial class MyCommands
     private static Task<bool> _DoSomething(      // Underscore prefix, private
         string input,
         [Service] IMyService service) => service.ProcessAsync(input);
-
-    [Remote, Event]
-    private static async Task _OnSomethingHappened(  // Events run in isolated scope
-        int entityId,
-        [Service] IMyService service,
-        CancellationToken cancellationToken) => await service.NotifyAsync(entityId);
 }
 ```
 **Generates**:
 - `MyCommands.DoSomething` delegate (Execute)
-- `MyCommands.OnSomethingHappenedEvent` delegate (Event - note `Event` suffix)
 
 ### Pattern 4: Factory Event Handler (Mediator) + Client Relay
 
@@ -194,9 +186,12 @@ public static partial class OrderNotifyHandlers
 in the caller's transaction — i.e. the handler touches the same `DbContext` as
 the aggregate.
 
-**When to use `[Event]` delegates instead**: fire-and-forget work — email,
-webhooks, audit sinks to external systems, queue publishes. `[Event]` runs in an
-isolated scope with `IEventTracker` for graceful shutdown.
+**For fire-and-forget work** (email, webhooks, audit sinks to external systems,
+queue publishes): compose your own fire-and-forget pattern inside a factory
+method — `Task.Run(...)` plus `IServiceScopeFactory.CreateScope()` to obtain a
+fresh DI scope, with any ambient context (tenant, correlation) explicitly
+snapshotted from the caller's scope before entering the background work. See the
+v1.5.0 release notes for the migration pattern.
 
 **Client-side relay** (consumer implements the interface — no generator involvement):
 ```csharp
@@ -253,7 +248,6 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
 | Should child entities have [Remote]? | No | `OrderLine.cs:27-41` | Would cause N+1 remote calls |
 | Can [Execute] return void? | No, must return Task<T> | `AllPatterns.cs:340-347` | Client needs result to confirm |
-| Do [Event] methods need CancellationToken? | Yes, as final parameter | `AllPatterns.cs:417-427` | Graceful shutdown support |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | `AuthorizedOrder.cs`, `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
@@ -264,14 +258,12 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No, it's a separate generator pipeline | `FactoryEventRelayPattern.cs` | Keeps handler classes clean — not factories |
 | How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
 | I want a handler to participate in the factory's DB transaction. | Use `[FactoryEventHandler<T>]` — it runs in the caller's scope | `FactoryEventHandlerPattern.cs` | Shared scope → shared `DbContext` → same transaction; a throwing handler rolls the whole thing back |
-| I want a handler to fire-and-forget (email, webhook). | Use `[Event]` delegates instead | `AllPatterns.cs` | `[Event]` runs in an isolated scope with `IEventTracker` for graceful shutdown |
+| I want a handler to fire-and-forget (email, webhook). | Compose your own `Task.Run` + `IServiceScopeFactory.CreateScope()` inside the factory method; copy any ambient state explicitly before entering the background task. | v1.5.0 release notes | No framework-supplied fire-and-forget surface after v1.5.0 — explicit copy is required |
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
 | Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
 | What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
-| How do I propagate tenant context to `[Event]` delegate scopes? | Register an `IEventScopeInitializer` via `AddRemoteFactoryEventScopeInitializer` | `docs/events.md`, `AddRemoteFactoryServices.cs` | `[Event]` delegates run in isolated DI scopes; initializers copy ambient state from parent to child scope. Not needed for `[FactoryEventHandler<T>]` — it already shares the caller's scope. |
-| Is correlation ID propagated to `[Event]` delegates automatically? | Yes — built-in `CorrelationContextScopeInitializer` handles this | `CorrelationExample.cs` | Registered automatically in Server/Logical modes by `AddNeatooRemoteFactory` |
 | Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
 | Can auth methods receive the target entity? | Yes -- on write operations (Insert/Update/Delete) | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanWrite(IEntity target)` inspects entity state; suppresses CanInsert/CanUpdate/CanDelete generation but CanSave gets two overloads |
 | How does CanSave work with target-param auth? | Two overloads: `CanSave()` runs non-target auth only; `CanSave(target)` runs ALL auth | `ParamAuthOrderAuth.cs` | Caller has the entity in hand before Save; CanInsert/CanUpdate/CanDelete remain suppressed |
@@ -654,39 +646,6 @@ internal partial class OrderLine : IOrderLine
 }
 ```
 
-#### Event Registration Guards
-
-Both class factory and static factory `[Event]` local event registrations are wrapped in `if (NeatooRuntime.IsServerRuntime)`. The local event infrastructure (scope isolation, `Task.Run`, `IHostApplicationLifetime`, `IEventTracker`) is server-only. On client assemblies with `IsServerRuntime=false`, the trimmer eliminates these registrations. Remote-mode clients use remote event stubs instead.
-
-#### Event Scope Initialization (IEventScopeInitializer)
-
-Events run in isolated DI scopes, but applications often need ambient context (tenant ID, correlation ID, user identity) propagated from the request scope to the event scope. The `IEventScopeInitializer` interface provides an extensible mechanism for this.
-
-**Built-in initializer:** `CorrelationContextScopeInitializer` propagates `ICorrelationContext.CorrelationId` automatically. Registered by `AddNeatooRemoteFactory` in Server/Logical modes (not Remote — no local events on client).
-
-**Custom initializers:** Register via `AddRemoteFactoryEventScopeInitializer`:
-
-```csharp
-// After AddNeatooRemoteFactory
-services.AddRemoteFactoryEventScopeInitializer((parentScope, childScope) =>
-{
-    var parentTenant = parentScope.GetService<ITenantContext>();
-    var childTenant = childScope.GetRequiredService<TenantContext>();
-    if (parentTenant != null)
-    {
-        childTenant.TenantId = parentTenant.TenantId;
-    }
-});
-```
-
-**Generated code pattern:** The generator resolves `IEventScopeInitializer` instances from the parent scope (`sp.GetServices<IEventScopeInitializer>()`), then inside `Task.Run` after `CreateScope()` loops over all initializers calling `Initialize(parentScope, childScope)`. Each initializer is wrapped in an individual try/catch — a failing initializer is logged but does not prevent the event handler from executing.
-
-**Key constraints:**
-- Initializers run **inside** `Task.Run` after `CreateScope()` but before handler services are resolved
-- Copy values, do not hold references to parent-scope services (parent scope may be disposed in fire-and-forget scenarios)
-- Multiple initializers run in registration order (built-in first, then custom)
-- Initializer exceptions are caught per-initializer, logged, and do not prevent event execution
-
 #### Can* Method Guard Derivation (Auth-Method-Driven)
 
 Can* methods (e.g., `CanCreate()`, `CanFetch()`, `CanSave()`) derive their guard behavior from the **auth class methods**, not from the parent factory method. This is because Can* methods call the auth methods, not the factory method. The auth method's accessibility determines whether the Can* check can run on the client.
@@ -848,16 +807,6 @@ public int Id { get; private set; }
 public int Id { get; set; }
 ```
 
-### 6. Event Delegate Types Have `Event` Suffix
-```csharp
-// In static class:
-[Remote, Event]
-private static Task _OnOrderPlaced(int orderId, ..., CancellationToken ct) { }
-
-// Generated delegate type:
-MyEvents.OnOrderPlacedEvent  // Note: Event suffix added
-```
-
 ---
 
 ## Service Injection
@@ -952,13 +901,10 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 
 - [ ] At least one Class Factory with lifecycle hooks (`Order.cs`)
 - [ ] At least one Interface Factory (`IExampleRepository` in `AllPatterns.cs`)
-- [ ] At least one Static Factory with [Execute] and [Event] (`ExampleCommands`, `ExampleEvents`)
+- [ ] At least one Static Factory with [Execute] (`ExampleCommands`)
 - [ ] Child entities without [Remote] (`OrderLine.cs`)
 - [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
 - [ ] Value objects that serialize correctly (`Money` in `ValueObjects/`)
-- [ ] Event handlers with CancellationToken (`ExampleEvents._OnOrderPlaced`)
-- [x] CorrelationContext usage (`CorrelationExample.cs`)
-- [x] Event scope initialization via IEventScopeInitializer (`CorrelationExample.cs` `[GENERATOR BEHAVIOR]` comment documents the mechanism)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
@@ -1015,14 +961,12 @@ These are known limitations or open questions. They are documented here to preve
 2. **Public static factory methods** - Must be `private static` with underscore
 3. **Private property setters** - Won't serialize/deserialize
 4. **[Fetch] on interface methods** - Interface factories don't use operation attributes
-5. **Forgetting Event suffix** - `OnOrderPlacedEvent` not `OnOrderPlaced`
-6. **Method-injected services stored in fields** - Lost after serialization; use constructor injection
-7. **Missing partial keyword** - Generator needs to extend your class
-8. **Missing CancellationToken on events** - Required for graceful shutdown
-9. **[Remote] on public methods** - `[Remote]` requires `internal` for IL trimming. `[Remote] public` emits NF0105. Change to `internal`.
-10. **Mixing Neatoo types with records in Interface Factory return types** - Records bypass reference handling entirely (`RecordBypassConverterFactory`), so embedded Neatoo types lose reference tracking. Use pure records/DTOs or pure Neatoo types, not both.
-11. **Raising factory events outside a factory method** - The request-scoped `IFactoryEventCollector` only exists server-side during a factory operation. Raise events via `[Service] IFactoryEvents` from inside a factory method.
-12. **Stacking `[Factory]` on a `[FactoryEventHandler<T>]` class** - They run in separate generator pipelines. Handler classes are subscribers, not factories. Do not add `[Factory]`.
+5. **Method-injected services stored in fields** - Lost after serialization; use constructor injection
+6. **Missing partial keyword** - Generator needs to extend your class
+7. **[Remote] on public methods** - `[Remote]` requires `internal` for IL trimming. `[Remote] public` emits NF0105. Change to `internal`.
+8. **Mixing Neatoo types with records in Interface Factory return types** - Records bypass reference handling entirely (`RecordBypassConverterFactory`), so embedded Neatoo types lose reference tracking. Use pure records/DTOs or pure Neatoo types, not both.
+9. **Raising factory events outside a factory method** - The request-scoped `IFactoryEventCollector` only exists server-side during a factory operation. Raise events via `[Service] IFactoryEvents` from inside a factory method.
+10. **Stacking `[Factory]` on a `[FactoryEventHandler<T>]` class** - They run in separate generator pipelines. Handler classes are subscribers, not factories. Do not add `[Factory]`.
 
 ---
 
@@ -1042,7 +986,6 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler running in the caller's DI scope (shared DbContext/transaction), sequential, awaited |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | Consumer-implemented `IFactoryEventRelay.Relay` — bridges relayed events to an aggregator (demonstrates the `InMemoryAggregatorRelay` reference impl) |
 | `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
-| `Design.Domain/Services/CorrelationExample.cs` | CorrelationContext usage, IEventScopeInitializer mechanism for event scope context propagation |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | `Relay(IReadOnlyList<FactoryEventBase>)` invocation, batch contents, `RaiseOptions.ServerOnly` exclusion, empty-batch still invokes Relay once |
 | `Design.Tests/FactoryTests/ParamAuthorizationTests.cs` | Parameterized auth: type-matched params, target params, CanXxx suppression |

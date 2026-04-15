@@ -325,23 +325,6 @@ public static class LoggingConfigurationSample
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/LoggingConfigurationSamples.cs#L8-L22' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-## Event Tracking
-
-RemoteFactory uses `IEventTracker` for fire-and-forget domain events.
-
-**EventTrackerHostedService** is registered automatically by `AddNeatooAspNetCore()`. It:
-- Tracks pending event handlers across all scopes
-- Waits for completion during graceful shutdown
-- Logs warnings for events that exceed shutdown timeout
-
-**Shutdown behavior:**
-- `IHostApplicationLifetime.ApplicationStopping` triggers shutdown
-- Event handlers receive cancellation signal via `CancellationToken`
-- Server waits up to 30 seconds for event completion
-- Logs incomplete events after timeout
-
-See [Events](events.md) for details on domain events.
-
 ## Authorization
 
 ASP.NET Core integration includes authorization support via `IAspAuthorize`.
@@ -639,5 +622,5 @@ See the `RemoteFactory.IntegrationTests` project for comprehensive examples.
 
 - [Getting Started](getting-started.md) - First working example
 - [Authorization](authorization.md) - Authorization patterns
-- [Events](events.md) - Fire-and-forget domain events
+- [Factory Events](factory-events.md) - `[FactoryEventHandler<T>]` mediator + client relay
 - [Serialization](serialization.md) - Ordinal vs Named formats

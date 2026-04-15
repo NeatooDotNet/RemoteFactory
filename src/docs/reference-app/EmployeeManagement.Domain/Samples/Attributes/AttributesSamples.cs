@@ -229,24 +229,6 @@ public static partial class EmployeePromotion
 }
 
 [Factory]
-public partial class EmployeeEvents
-{
-    [Event]
-    public async Task NotifyManager(
-        Guid employeeId,
-        string message,
-        [Service] IEmailService emailService,
-        CancellationToken ct)
-    {
-        await emailService.SendAsync(
-            "manager@company.com",
-            "Employee Update",
-            $"Employee {employeeId}: {message}",
-            ct);
-    }
-}
-
-[Factory]
 public partial class EmployeeRemoteExecution : IFactorySaveMeta
 {
     public Guid Id { get; private set; }

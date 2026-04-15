@@ -1,19 +1,20 @@
 # Factory Events — `[FactoryEventHandler<T>]` (server) + `IFactoryEventRelay` (client)
 
-This is a **separate feature** from the `[Event]` method attribute described in `references/static-factory.md`. Both publish domain events, but they have **different execution models** and exist for different problems:
+RemoteFactory ships **one event-shaped abstraction**: transactional domain events raised with `IFactoryEvents.Raise(...)` inside a factory method, dispatched to server-side `[FactoryEventHandler<T>]` static handlers in the caller's DI scope and relayed to the client via `IFactoryEventRelay`.
 
-| Feature | `[Event]` method attribute | Factory events |
-|---------|---------------------------|----------------|
-| Reference | `references/static-factory.md` | This file |
-| Trigger | Direct delegate invocation from anywhere | `IFactoryEvents.Raise(...)` inside a factory method |
-| DI scope per handler | **Isolated** — new scope via `IServiceScopeFactory` | **Shared with the caller** — same `DbContext`, same transaction (server) |
-| Dispatch | Fire-and-forget via `Task.Run`, tracked by `IEventTracker` for graceful shutdown | **Sequential, awaited** on the server — `Raise` returns only after every handler completes; **fire-and-forget** on the client via `IFactoryEventRelay` |
-| Handler exceptions | Swallowed / logged, never affect the caller | Server: **propagate to the caller** — abort the chain, roll back the transaction. Client: caught + logged, never propagate |
-| Cancellation token | `IHostApplicationLifetime.ApplicationStopping` | The caller's `CancellationToken`, passed through `Raise` |
-| Client relay | No | Yes — single-method `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` invoked once per `[Remote]` factory call |
-| Use for | Notifications, emails, webhooks, audit sinks to external systems, anything you don't want to block the caller | **Transactional domain events** on the server; **event-aggregator delivery** to client UI / view models |
+| Property | Behavior |
+|----------|----------|
+| Trigger | `IFactoryEvents.Raise(...)` inside a factory method (injected via `[Service] IFactoryEvents`) |
+| Server DI scope per handler | **Shared with the caller** — same `DbContext`, same transaction |
+| Server dispatch | **Sequential, awaited** — `Raise` returns only after every handler completes |
+| Client dispatch | Fire-and-forget via `IFactoryEventRelay.Relay(...)`, invoked once per `[Remote]` factory call |
+| Handler exceptions | Server: **propagate to the caller** — abort the chain, roll back the transaction. Client: caught + logged, never propagate. |
+| Cancellation token | The caller's `CancellationToken`, passed through `Raise` |
+| Use for | **Transactional domain events** on the server; **event-aggregator delivery** to client UI / view models |
 
 **Rule of thumb:** if the handler touches the same `DbContext` as the factory method and its failure should roll the factory operation back, use a `[FactoryEventHandler<T>]` static method on the server. To react on the client, implement `IFactoryEventRelay` and bridge events to your own aggregator.
+
+**Fire-and-forget external IO** — email, webhook, queue publish — is **not** a factory-event use case. Those handlers would block the factory method until they complete, and a failure would roll back the factory operation. For fire-and-forget work, run `Task.Run` directly inside the factory method with a fresh scope from `IServiceScopeFactory.CreateScope()` and copy any ambient context (correlation ID, tenant) explicitly. RemoteFactory does not own this pattern — the consumer does.
 
 ---
 
@@ -404,18 +405,40 @@ public static partial class OrderCheckoutEmail
         await smtp.SendAsync("ops@example.com", "Order placed", $"{evt.OrderId}", ct);
 }
 
-// RIGHT - use an [Event] delegate method for email; it runs fire-and-forget in
-// an isolated scope and its failure cannot roll back the transaction
+// RIGHT - run fire-and-forget work inside the factory method with a fresh scope.
+// Snapshot ambient context before Task.Run; re-assign it in the child scope.
 [Factory]
-internal static partial class EmailEvents
+internal partial class Order
 {
-    [Event]
-    internal static async Task SendOrderConfirmation(int orderId, decimal total, [Service] ISmtpClient smtp, CancellationToken ct) =>
-        await smtp.SendAsync("ops@example.com", "Order placed", $"{orderId}", ct);
+    [Remote, Create]
+    internal async Task Create(
+        int id,
+        decimal total,
+        [Service] AppDbContext db,
+        [Service] IServiceScopeFactory scopeFactory,
+        [Service] ICorrelationContext correlation,
+        [Service] IHostApplicationLifetime lifetime,
+        CancellationToken ct)
+    {
+        db.Orders.Add(new OrderEntity(id, total));
+        await db.SaveChangesAsync(ct);
+
+        var correlationId = correlation.CorrelationId;
+        var stopping = lifetime.ApplicationStopping;
+
+        _ = Task.Run(async () =>
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            scope.ServiceProvider.GetRequiredService<ICorrelationContext>().CorrelationId = correlationId;
+
+            var smtp = scope.ServiceProvider.GetRequiredService<ISmtpClient>();
+            await smtp.SendAsync("ops@example.com", "Order placed", $"{id}", stopping);
+        }, stopping);
+    }
 }
 ```
 
-**Why:** `[FactoryEventHandler<T>]` is for work that must participate in the caller's transaction. Email, webhooks, and other external-IO work should use `[Event]` so they don't block the factory method or fail it.
+**Why:** `[FactoryEventHandler<T>]` is for work that must participate in the caller's transaction. Email, webhooks, and other external-IO work should run as fire-and-forget directly inside the factory method, with a fresh DI scope, so they don't block the factory method or fail it. Track the task yourself if you need graceful shutdown — see the v1.5.0 release notes for the pattern.
 
 ### Decorating a Handler Class with `[Factory]`
 
@@ -554,6 +577,6 @@ Server-side static handler classes register themselves into `FactoryEventHandler
 | Handler failure should roll back the factory operation | `[FactoryEventHandler<T>]` static method |
 | Client UI needs to update in response to a server-side event | `IFactoryEventRelay` implementation that fans events to your UI / aggregator |
 | Server-internal transactional event the UI doesn't care about | `[FactoryEventHandler<T>]` static + `RaiseOptions.ServerOnly` |
-| Fire-and-forget external IO (email, webhook, queue publish) | `[Event]` method attribute — see `references/static-factory.md` |
-| Long-running work that must not block the factory response | `[Event]` method attribute |
+| Fire-and-forget external IO (email, webhook, queue publish) | `Task.Run` inside the factory method with a fresh scope from `IServiceScopeFactory.CreateScope()` — RemoteFactory does not own this abstraction |
+| Long-running work that must not block the factory response | Same as above — manual `Task.Run` + child scope |
 | Both server-side transactional write AND client UI update for the same event | One event type; a `[FactoryEventHandler<T>]` static handler for the write, a single `IFactoryEventRelay` on the client that switches on the event type |

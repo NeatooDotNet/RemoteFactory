@@ -1,5 +1,5 @@
 // src/Generator/Renderer/StaticFactoryRenderer.cs
-// Renders factories for static classes with [Execute] or [Event] methods.
+// Renders factories for static classes with [Execute] methods.
 
 #nullable enable
 
@@ -12,7 +12,7 @@ using Neatoo.RemoteFactory.Generator.Model;
 namespace Neatoo.RemoteFactory.Generator.Renderer;
 
 /// <summary>
-/// Renders factory code for static classes with [Execute] or [Event] methods.
+/// Renders factory code for static classes with [Execute] methods.
 /// </summary>
 internal static class StaticFactoryRenderer
 {
@@ -33,16 +33,6 @@ internal static class StaticFactoryRenderer
         foreach (var u in unit.Usings)
         {
             sb.AppendLine(u);
-        }
-
-        // Add usings required by event methods (hosting for IHostApplicationLifetime, logging for initializer error handling)
-        if (model.Events.Count > 0)
-        {
-            sb.AppendLine("using Microsoft.Extensions.Hosting;");
-            if (!unit.Usings.Any(u => u.Contains("Microsoft.Extensions.Logging")))
-            {
-                sb.AppendLine("using Microsoft.Extensions.Logging;");
-            }
         }
 
         sb.AppendLine();
@@ -67,12 +57,6 @@ internal static class StaticFactoryRenderer
         foreach (var del in model.Delegates)
         {
             RenderDelegate(sb, del);
-        }
-
-        // Event delegate declarations
-        foreach (var evt in model.Events)
-        {
-            RenderEventDelegate(sb, evt);
         }
 
         sb.AppendLine();
@@ -101,15 +85,6 @@ internal static class StaticFactoryRenderer
         sb.AppendLine($"        public delegate Task<{del.ReturnType}> {del.DelegateName}({paramDecl});");
     }
 
-    private static void RenderEventDelegate(StringBuilder sb, EventMethodModel evt)
-    {
-        var paramDecl = string.Join(", ", evt.Parameters
-            .Where(p => !p.IsCancellationToken)
-            .Select(p => $"{p.Type} {p.Name}"));
-
-        sb.AppendLine($"        public delegate Task {evt.DelegateName}({paramDecl});");
-    }
-
     private static void RenderFactoryServiceRegistrar(StringBuilder sb, StaticFactoryModel model)
     {
         sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
@@ -124,11 +99,6 @@ internal static class StaticFactoryRenderer
             RenderRemoteDelegateRegistration(sb, del, model.TypeName);
         }
 
-        foreach (var evt in model.Events)
-        {
-            RenderRemoteEventRegistration(sb, evt, model.TypeName);
-        }
-
         sb.AppendLine("            }");
         sb.AppendLine();
 
@@ -139,11 +109,6 @@ internal static class StaticFactoryRenderer
         foreach (var del in model.Delegates)
         {
             RenderLocalDelegateRegistration(sb, del, model.TypeName);
-        }
-
-        foreach (var evt in model.Events)
-        {
-            RenderLocalEventRegistration(sb, evt, model.TypeName);
         }
 
         sb.AppendLine("            }");
@@ -245,103 +210,4 @@ internal static class StaticFactoryRenderer
 
         return string.Join(", ", allParams);
     }
-
-    private static string BuildEventMethodInvocationParams(EventMethodModel evt)
-    {
-        // Build the full parameter list including services
-        var allParams = new List<string>();
-
-        // Add data parameters (exclude CancellationToken - it's handled separately as 'ct')
-        allParams.AddRange(evt.Parameters
-            .Where(p => !p.IsCancellationToken)
-            .Select(p => p.Name));
-
-        // Add service parameters (resolved from DI)
-        allParams.AddRange(evt.ServiceParameters.Select(p => p.Name));
-
-        // Add ct if domain method has CancellationToken
-        if (evt.Parameters.Any(p => p.IsCancellationToken))
-        {
-            allParams.Add("ct");
-        }
-
-        return string.Join(", ", allParams);
-    }
-
-    private static void RenderRemoteEventRegistration(StringBuilder sb, EventMethodModel evt, string typeName)
-    {
-        var paramDecl = string.Join(", ", evt.Parameters
-            .Where(p => !p.IsCancellationToken)
-            .Select(p => $"{p.Type} {p.Name}"));
-
-        var serializedParams = string.Join(", ", evt.Parameters
-            .Where(p => !p.IsService && !p.IsCancellationToken)
-            .Select(p => p.Name));
-
-        sb.AppendLine($"                services.AddTransient<{typeName}.{evt.DelegateName}>(cc =>");
-        sb.AppendLine("                {");
-        sb.AppendLine($"                    return ({paramDecl}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegateEvent(typeof({typeName}.{evt.DelegateName}), [{serializedParams}]);");
-        sb.AppendLine("                });");
-    }
-
-    private static void RenderLocalEventRegistration(StringBuilder sb, EventMethodModel evt, string typeName)
-    {
-        var paramDecl = string.Join(", ", evt.Parameters
-            .Where(p => !p.IsCancellationToken)
-            .Select(p => $"{p.Type} {p.Name}"));
-
-        var allParamIdentifiers = BuildEventMethodInvocationParams(evt);
-
-        var serviceAssignments = string.Join("\n                                ",
-            evt.ServiceParameters.Select(p => $"var {p.Name} = scope.ServiceProvider.GetRequiredService<{p.Type}>();"));
-
-        // For static classes, call directly on the type name
-        var methodInvocation = evt.IsAsync
-            ? $"await {typeName}.{evt.Name}({allParamIdentifiers});"
-            : $"{typeName}.{evt.Name}({allParamIdentifiers});";
-
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire registration
-        sb.AppendLine("                if (NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                {");
-        sb.AppendLine($"                    services.AddScoped<{typeName}.{evt.DelegateName}>(sp =>");
-        sb.AppendLine("                    {");
-        sb.AppendLine("                        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();");
-        sb.AppendLine("                        var tracker = sp.GetRequiredService<IEventTracker>();");
-        sb.AppendLine("                        var lifetime = sp.GetRequiredService<IHostApplicationLifetime>();");
-        // Resolve all event scope initializers (correlation context, tenant context, etc.)
-        sb.AppendLine("                        var eventScopeInitializers = sp.GetServices<IEventScopeInitializer>();");
-        sb.AppendLine($"                        return ({paramDecl}) =>");
-        sb.AppendLine("                        {");
-        sb.AppendLine("                            var task = Task.Run(async () =>");
-        sb.AppendLine("                            {");
-        sb.AppendLine("                                using var scope = scopeFactory.CreateScope();");
-        // Run all event scope initializers — propagate ambient context from parent to child scope
-        sb.AppendLine("                                foreach (var initializer in eventScopeInitializers)");
-        sb.AppendLine("                                {");
-        sb.AppendLine("                                    try");
-        sb.AppendLine("                                    {");
-        sb.AppendLine("                                        initializer.Initialize(sp, scope.ServiceProvider);");
-        sb.AppendLine("                                    }");
-        sb.AppendLine("                                    catch (Exception ex)");
-        sb.AppendLine("                                    {");
-        sb.AppendLine("                                        var initLogger = scope.ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger(\"Neatoo.RemoteFactory.EventScopeInitializer\");");
-        sb.AppendLine("                                        initLogger?.LogError(ex, \"Event scope initializer {InitializerType} failed\", initializer.GetType().Name);");
-        sb.AppendLine("                                    }");
-        sb.AppendLine("                                }");
-        sb.AppendLine("                                var ct = lifetime.ApplicationStopping;");
-
-        if (!string.IsNullOrEmpty(serviceAssignments))
-        {
-            sb.AppendLine($"                                {serviceAssignments}");
-        }
-
-        sb.AppendLine($"                                {methodInvocation}");
-        sb.AppendLine("                            });");
-        sb.AppendLine("                            tracker.Track(task);");
-        sb.AppendLine("                            return task;");
-        sb.AppendLine("                        };");
-        sb.AppendLine("                    });");
-        sb.AppendLine("                }");
-    }
-
 }
