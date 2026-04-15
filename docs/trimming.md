@@ -346,6 +346,80 @@ public Task RelayCheckoutCompleted(OrderCheckoutCompleted evt) =>
 
 The warning fires only when user code forwards a generic `T` into `Raise<T>`. Direct calls with a concrete type (`_factoryEvents.Raise(new OrderCheckoutCompleted(...))`) are unaffected.
 
+## IFactorySaveMeta Preservation
+
+When an entity implements `IFactorySaveMeta`, its `IsNew` and `IsDeleted` properties must round-trip across the client/server boundary as JSON. Save routing happens server-side — the generated `LocalSave` reads `target.IsNew` and `target.IsDeleted` on the server-side deserialized instance. If either property drops out of the wire payload, the server deserializes them as default values (`IsNew = true` from the property initializer, `IsDeleted = false`), and **every Save routes to Insert regardless of the client's actual state**. Delete silently becomes a no-op.
+
+### The Trimming Interaction
+
+A common domain design uses private setters to prevent external callers from flipping lifecycle state:
+
+```csharp
+public bool IsNew { get; private set; } = true;
+public bool IsDeleted { get; private set; }
+```
+
+`[JsonInclude]` (covered in [Save Operation — Serializing IsNew and IsDeleted](save-operation.md#serializing-isnew-and-isdeleted-across-the-remote-boundary)) handles the serialization side, but under `PublishTrimmed=true` the IL trimmer performs **visibility analysis** independently: when no concrete-type callsite reads the getter (all reads go through the `IFactorySaveMeta` / entity interface dispatch), the trimmer narrows the property itself from `public` to `private` in the emitted assembly. `System.Text.Json`'s default reflection-based resolver then skips the property entirely outbound, and you're back to the Insert-only routing bug — but only in published Release builds.
+
+**`[DynamicallyAccessedMembers]` on the class is not enough** — that annotation preserves reflection metadata but does not prevent visibility narrowing.
+
+### The Fix: `[DynamicDependency]` on the Constructor
+
+Annotate the `[Create]` constructor with `[DynamicDependency]` pointing at the two properties by name. This roots them against trimmer optimization and preserves their public getter visibility:
+
+```csharp
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
+
+[Factory]
+internal class Employee : IEmployee
+{
+    [DynamicDependency(nameof(IsNew))]
+    [DynamicDependency(nameof(IsDeleted))]
+    [Create]
+    public Employee() { /* ... */ }
+
+    [JsonInclude]
+    public bool IsNew { get; private set; } = true;
+
+    [JsonInclude]
+    public bool IsDeleted { get; private set; }
+
+    public void MarkDeleted() => this.IsDeleted = true;
+}
+```
+
+`[DynamicDependency]` requires either:
+
+- A named target (as above), or
+- `DynamicallyAccessedMemberTypes.PublicProperties` applied to `typeof(Employee)` to cover all public properties.
+
+The named form is narrower and the recommended default for this specific pattern.
+
+### Verifying the Preservation
+
+After publishing, decompile the trimmed client-side DLL and confirm the properties remain public:
+
+```bash
+ilspycmd <YourClient>/obj/Release/net10.0/linked/<YourDomain>.dll -t Your.Namespace.Employee | grep -B1 "IsNew\|IsDeleted"
+```
+
+Expected output:
+
+```
+[JsonInclude]
+public bool IsDeleted
+
+[JsonInclude]
+public bool IsNew
+```
+
+If the decompiled output shows `private bool IsDeleted` / `private bool IsNew`, the trimmer has narrowed visibility — `[DynamicDependency]` is missing or the name doesn't resolve.
+
+### If You Use Public Setters
+
+Fully-public `public bool IsNew { get; set; }` and `public bool IsDeleted { get; set; }` avoid both the `[JsonInclude]` and the `[DynamicDependency]` requirement. The tradeoff is giving up the "only the framework and the entity itself can set these" encapsulation. Either design is viable — pick based on how strict you want the domain contract to be.
+
 ## Limitations
 
 - **Development builds are not trimmed.** `dotnet run` and `dotnet build` include all code. Trimming only applies to `dotnet publish` with `PublishTrimmed=true`. This is by design — you get full IntelliSense and debugging during development.

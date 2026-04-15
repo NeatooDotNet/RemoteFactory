@@ -237,3 +237,51 @@ Direct calls with a concrete type (`_factoryEvents.Raise(new OrderCheckoutComple
 ### What you need to know
 
 If you return a plain DTO from a factory method, or declare a `FactoryEventBase` descendant in a project with a direct `Neatoo.RemoteFactory` `PackageReference`, the type and its constructors and properties are automatically trimming-safe. Nested complex property types reachable from events that are NOT used elsewhere in the API may need explicit preservation.
+
+## IFactorySaveMeta Preservation
+
+Entities implementing `IFactorySaveMeta` must round-trip `IsNew` and `IsDeleted` across the client/server boundary. Save routing happens server-side, so if these properties drop out of the outbound JSON payload, every Save routes to Insert (the server sees the property-initializer default `IsNew = true`) and Delete silently no-ops.
+
+**Public setters just work:**
+
+```csharp
+public bool IsNew { get; set; } = true;
+public bool IsDeleted { get; set; }
+```
+
+**Private setters need two annotations under trim:**
+
+```csharp
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
+
+[Factory]
+internal class Employee : IEmployee
+{
+    [DynamicDependency(nameof(IsNew))]
+    [DynamicDependency(nameof(IsDeleted))]
+    [Create]
+    public Employee() { }
+
+    [JsonInclude]
+    public bool IsNew { get; private set; } = true;
+
+    [JsonInclude]
+    public bool IsDeleted { get; private set; }
+
+    public void MarkDeleted() => IsDeleted = true;
+}
+```
+
+Why both annotations:
+
+- `[JsonInclude]` tells `System.Text.Json` to use the non-public setter (needed on the deserializing side).
+- `[DynamicDependency]` on the `[Create]` constructor prevents the IL trimmer's **visibility analysis** from narrowing the property getter from `public` to `private`. Without it, the trimmer sees no concrete-type callsite reading the getter (all reads go through `IFactorySaveMeta` interface dispatch) and silently downgrades visibility. STJ then skips the property outbound. `[DynamicallyAccessedMembers]` on the class preserves reflection metadata but does NOT prevent visibility narrowing.
+
+**Verify with ilspycmd:**
+
+```bash
+ilspycmd <Client>/obj/Release/net10.0/linked/<Domain>.dll -t Full.Name.Employee | grep -B1 "IsNew\|IsDeleted"
+```
+
+Expect `public bool IsDeleted` / `public bool IsNew`. If you see `private`, the trimmer narrowed them — `[DynamicDependency]` is missing or the name didn't resolve.

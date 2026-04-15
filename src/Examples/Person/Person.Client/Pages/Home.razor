@@ -191,7 +191,7 @@ else
     {
         try
         {
-            this.PersonModel!.IsDeleted = true;
+            this.PersonModel!.MarkDeleted();
             await PersonModelFactory.Save(PersonModel!);
             this.PersonModel = null;
             Snackbar.Add("Person deleted successfully!", Severity.Success);

@@ -13,7 +13,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddMudServices();
 
 // Incorporate Neatoo RemoteFactory
-builder.Services.AddSingleton<IFactoryEventRelay, PersonEventHandler>();
+builder.Services.AddScoped<IFactoryEventRelay, PersonEventHandler>();
 builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IPersonModel).Assembly, typeof(PersonEventHandler).Assembly);
 builder.Services.AddKeyedScoped(Neatoo.RemoteFactory.RemoteFactoryServices.HttpClientKey, (sp, key) => {
 		return new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };

@@ -110,6 +110,24 @@ The factory's `Save()` method examines these properties:
 | false | true | Delete |
 | true | true | No operation |
 
+### Serialization Gotcha: Private Setters Need `[JsonInclude]`
+
+Save routing happens server-side, so `IsNew` and `IsDeleted` must round-trip through JSON when the client sends the entity to the server. Public setters work by default. If you prefer private setters to prevent external callers from flipping lifecycle state:
+
+```csharp
+using System.Text.Json.Serialization;
+
+[JsonInclude]
+public bool IsNew { get; private set; } = true;
+
+[JsonInclude]
+public bool IsDeleted { get; private set; }
+
+public void MarkDeleted() => IsDeleted = true;
+```
+
+Without `[JsonInclude]`, `System.Text.Json` skips the private setter on deserialization — the server deserializes `IsNew = true` from its default initializer and **every Save routes to Insert**, and Delete silently no-ops. This is one of those rules that every RemoteFactory user with `IFactorySaveMeta` + private setters will eventually trip over. Under `PublishTrimmed=true` you also need `[DynamicDependency]` on the `[Create]` constructor — see [trimming.md](trimming.md#ifactorysavemeta-preservation).
+
 ---
 
 ## Lifecycle Hooks
