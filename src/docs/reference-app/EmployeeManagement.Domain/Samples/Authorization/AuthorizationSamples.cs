@@ -552,46 +552,6 @@ public class EmployeeAuthorizationHandler
 }
 
 // ============================================================================
-// Events - Bypass Authorization
-// ============================================================================
-
-/// <summary>
-/// Notification service interface for event handlers.
-/// </summary>
-public interface INotificationService
-{
-    Task SendNotificationAsync(string recipient, string message, CancellationToken ct = default);
-}
-
-/// <summary>
-/// Employee lifecycle events that bypass authorization.
-/// Events are for internal operations like notifications and audit logging
-/// that should always execute regardless of user permissions.
-/// </summary>
-[SuppressFactory]
-public partial class EmployeeLifecycleEvents
-{
-    public Guid Id { get; private set; }
-
-    [Create]
-    public EmployeeLifecycleEvents()
-    {
-        Id = Guid.NewGuid();
-    }
-
-    #region authorization-events
-    // [Event] methods bypass authorization - always execute
-    [Event]
-    public async Task NotifyHROnTermination(
-        Guid employeeId, string reason,
-        [Service] INotificationService notificationService, CancellationToken ct)
-    {
-        await notificationService.SendNotificationAsync("hr@company.com", $"Terminated: {employeeId}", ct);
-    }
-    #endregion
-}
-
-// ============================================================================
 // Testing Authorization
 // ============================================================================
 

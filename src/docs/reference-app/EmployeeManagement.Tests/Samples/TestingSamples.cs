@@ -1,11 +1,9 @@
 using EmployeeManagement.Domain.Aggregates;
 using EmployeeManagement.Domain.Interfaces;
 using EmployeeManagement.Domain.Samples.Authorization;
-using EmployeeManagement.Domain.Samples.Events;
 using EmployeeManagement.Domain.Samples.Services;
 using EmployeeManagement.Domain.ValueObjects;
 using EmployeeManagement.Infrastructure.Repositories;
-using EmployeeManagement.Infrastructure.Services;
 using EmployeeManagement.Tests.TestContainers;
 using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory;
@@ -300,36 +298,6 @@ public class ExplicitMethodTests
     }
 }
 
-// Events tests - main tests in EventsTests.cs (below are verification only, no doc snippets)
-public class EventsTests
-{
-    [Fact]
-    public async Task EventDelegate_FiresAsynchronously()
-    {
-        InMemoryEmailService.Clear();
-        var scopes = TestClientServerContainers.CreateScopes();
-        var notifyDelegate = scopes.local.ServiceProvider
-            .GetRequiredService<EmployeeManagement.Domain.Events.EmployeeEventHandlers.NotifyHROfNewEmployeeEvent>();
-        await notifyDelegate(Guid.NewGuid(), "John Doe");
-        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
-        await eventTracker.WaitAllAsync();
-        var emails = InMemoryEmailService.GetSentEmails();
-        Assert.Contains(emails, e => e.Recipient == "hr@company.com" && e.Subject.Contains("John Doe", StringComparison.Ordinal));
-    }
-}
-
-public class EventLatchTests
-{
-    [Fact]
-    public async Task WaitForEventCompletion()
-    {
-        var scopes = TestClientServerContainers.CreateScopes();
-        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
-        await eventTracker.WaitAllAsync();
-        Assert.Equal(0, eventTracker.PendingCount);
-    }
-}
-
 /// <summary>
 /// Testing service injection patterns.
 /// </summary>
@@ -390,42 +358,6 @@ public class MatchingNameTests
 }
 
 // aspnetcore-testing snippet moved to AspNetCore/TwoContainerTestingSamples.cs
-
-// EventTracker tests - no doc snippets (snippets now in EventsSamples.cs)
-public class EventTrackerAccessTests
-{
-    [Fact]
-    public void EventTracker_ResolvedFromDI()
-    {
-        var scopes = TestClientServerContainers.CreateScopes();
-        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
-        Assert.NotNull(eventTracker);
-    }
-}
-
-public class EventTrackerCountTests
-{
-    [Fact]
-    public async Task PendingCount_AfterWaitAll_IsZero()
-    {
-        var scopes = TestClientServerContainers.CreateScopes();
-        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
-        await eventTracker.WaitAllAsync();
-        Assert.Equal(0, eventTracker.PendingCount);
-    }
-}
-
-public class EventTrackerWaitTests
-{
-    [Fact]
-    public async Task WaitAllAsync_CompletesWhenAllEventsFinish()
-    {
-        var scopes = TestClientServerContainers.CreateScopes();
-        var eventTracker = scopes.local.ServiceProvider.GetRequiredService<IEventTracker>();
-        await eventTracker.WaitAllAsync();
-        Assert.Equal(0, eventTracker.PendingCount);
-    }
-}
 
 // Serialization tests - snippets consolidated in Server.WebApi/Samples/Serialization
 public class SerializationConfigSample

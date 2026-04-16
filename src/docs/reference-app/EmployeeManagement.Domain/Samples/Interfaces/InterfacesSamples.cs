@@ -260,22 +260,6 @@ file sealed class MoneyOrdinalConverter : JsonConverter<MoneyWithConverter>
 }
 #endregion
 
-#region interfaces-eventtracker
-// IEventTracker: Wait for pending fire-and-forget events during shutdown
-[Factory]
-public static partial class EventTrackerDemo
-{
-    [Execute]
-    private static async Task<int> _WaitForEvents([Service] IEventTracker eventTracker, CancellationToken ct)
-    {
-        var pending = eventTracker.PendingCount;
-        if (pending > 0)
-            await eventTracker.WaitAllAsync(ct);  // Graceful shutdown
-        return pending;
-    }
-}
-#endregion
-
 #region interfaces-aspauthorize
 // IAspAuthorize: Custom authorization with audit logging
 public class AuditingAspAuthorize : IAspAuthorize

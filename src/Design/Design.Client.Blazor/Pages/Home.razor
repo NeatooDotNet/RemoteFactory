@@ -87,25 +87,19 @@
 @* -------------------------------------------------------------------------
    PATTERN 3: STATIC FACTORY
 
-   Static factories generate delegates for commands and events.
-   [Execute] = request-response, [Event] = fire-and-forget
+   Static factories generate delegates for request-response commands.
+   [Execute] = request-response
    -------------------------------------------------------------------------- *@
 <h2>3. Static Factory Pattern</h2>
-<p>Execute commands and fire events using generated delegates.</p>
+<p>Execute commands using generated delegates.</p>
 
 <div class="mb-3">
     <button class="btn btn-primary" @onclick="ExecuteCommand">Execute: Send Notification</button>
-    <button class="btn btn-secondary" @onclick="FireEvent">Fire Event: Order Placed</button>
 </div>
 
 @if (commandResult.HasValue)
 {
     <p>Command result: @(commandResult.Value ? "Success" : "Failed")</p>
-}
-
-@if (eventFired)
-{
-    <p>Event fired successfully!</p>
 }
 
 <hr />
@@ -121,7 +115,6 @@
     private IReadOnlyList<ExampleDto>? repositoryItems;
     private ExampleDto? singleItem;
     private bool? commandResult;
-    private bool eventFired;
     private string messages = "";
 
     // -------------------------------------------------------------------------
@@ -134,14 +127,10 @@
     //
     // Static factory delegates are also injected:
     // - ExampleCommands.SendNotification
-    // - ExampleEvents.OnOrderPlacedEvent
     // -------------------------------------------------------------------------
 
     [Inject]
     private ExampleCommands.SendNotification SendNotification { get; set; } = default!;
-
-    [Inject]
-    private ExampleEvents.OnOrderPlacedEvent OnOrderPlaced { get; set; } = default!;
 
     // -------------------------------------------------------------------------
     // Pattern 1: Class Factory - Create/Fetch
@@ -208,7 +197,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // Pattern 3: Static Factory - Commands and Events
+    // Pattern 3: Static Factory - Commands
     // -------------------------------------------------------------------------
 
     private async Task ExecuteCommand()
@@ -225,18 +214,4 @@
         }
     }
 
-    private async Task FireEvent()
-    {
-        try
-        {
-            messages += "Firing OnOrderPlaced event...\n";
-            await OnOrderPlaced(999);
-            eventFired = true;
-            messages += "Event fired successfully\n";
-        }
-        catch (Exception ex)
-        {
-            messages += $"Error: {ex.Message}\n";
-        }
-    }
 }

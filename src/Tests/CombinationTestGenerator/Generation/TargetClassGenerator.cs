@@ -42,10 +42,6 @@ public static class TargetClassGenerator
         {
             GenerateExecuteClass(sb, combination, returnTypeInfo, parameters);
         }
-        else if (combination.Operation == "Event")
-        {
-            GenerateEventClass(sb, combination, returnTypeInfo, parameters);
-        }
         else if (IsWriteOperation(combination.Operation))
         {
             GenerateWriteClass(sb, combination, operation, returnTypeInfo, parameters);
@@ -309,84 +305,6 @@ public static class TargetClassGenerator
         }
     }
 
-    private static void GenerateEventClass(
-        StringBuilder sb,
-        CombinationInfo combination,
-        ReturnTypeInfo returnType,
-        List<ParameterDefinition> parameters)
-    {
-        var className = combination.ClassName;
-        var isRemote = combination.ExecutionMode == "Remote";
-
-        sb.AppendLine($"/// <summary>");
-        sb.AppendLine($"/// Test target: Event, {combination.ReturnType}, {combination.Parameters}, {combination.ExecutionMode}");
-        sb.AppendLine($"/// </summary>");
-        sb.AppendLine($"[Factory]");
-        sb.AppendLine($"public class {className}");
-        sb.AppendLine("{");
-
-        // Static event tracking for verification
-        sb.AppendLine("    public static bool EventFired { get; set; }");
-        sb.AppendLine("    public static int ReceivedIntParam { get; set; }");
-        sb.AppendLine("    public static string? ReceivedStringParam { get; set; }");
-        sb.AppendLine("    public static bool ServiceWasInjected { get; set; }");
-        sb.AppendLine("    public static bool CancellationTokenReceived { get; set; }");
-        sb.AppendLine();
-        sb.AppendLine("    public static void Reset()");
-        sb.AppendLine("    {");
-        sb.AppendLine("        EventFired = false;");
-        sb.AppendLine("        ReceivedIntParam = 0;");
-        sb.AppendLine("        ReceivedStringParam = null;");
-        sb.AppendLine("        ServiceWasInjected = false;");
-        sb.AppendLine("        CancellationTokenReceived = false;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-
-        // Ensure parameters include CancellationToken at the end
-        var eventParams = EnsureCancellationToken(parameters);
-        var paramList = BuildParameterList(eventParams);
-        var remoteAttr = isRemote ? "[Remote]" : "";
-        var methodReturnType = returnType.IsAsync ? "Task" : "void";
-
-        var accessModifier = isRemote ? "internal" : "public";
-        sb.AppendLine($"    {remoteAttr}");
-        sb.AppendLine("    [Event]");
-        sb.AppendLine($"    {accessModifier} {methodReturnType} OnEvent({paramList})");
-        sb.AppendLine("    {");
-        sb.AppendLine("        EventFired = true;");
-        GenerateParameterAssignmentsStatic(sb, eventParams);
-
-        if (returnType.IsAsync)
-        {
-            sb.AppendLine("        return Task.CompletedTask;");
-        }
-
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-    }
-
-    private static List<ParameterDefinition> EnsureCancellationToken(List<ParameterDefinition> parameters)
-    {
-        var result = new List<ParameterDefinition>(parameters);
-
-        // Check if already has CancellationToken
-        foreach (var p in result)
-        {
-            if (p.Type == "CancellationToken")
-                return result;
-        }
-
-        // Add CancellationToken at the end
-        result.Add(new ParameterDefinition
-        {
-            Type = "CancellationToken",
-            Name = "ct",
-            IsService = false
-        });
-
-        return result;
-    }
-
     private static string BuildParameterList(List<ParameterDefinition> parameters)
     {
         if (parameters.Count == 0)
@@ -424,28 +342,6 @@ public static class TargetClassGenerator
         }
     }
 
-    private static void GenerateParameterAssignmentsStatic(StringBuilder sb, List<ParameterDefinition> parameters)
-    {
-        foreach (var p in parameters)
-        {
-            if (p.Type == "int")
-            {
-                sb.AppendLine($"        ReceivedIntParam = {p.Name};");
-            }
-            else if (p.Type == "string")
-            {
-                sb.AppendLine($"        ReceivedStringParam = {p.Name};");
-            }
-            else if (p.IsService || p.Type == "IService")
-            {
-                sb.AppendLine($"        ServiceWasInjected = {p.Name} != null;");
-            }
-            else if (p.Type == "CancellationToken")
-            {
-                sb.AppendLine($"        CancellationTokenReceived = true;");
-            }
-        }
-    }
 
     private static string GetMethodReturnType(ReturnTypeInfo returnType, string targetType)
     {

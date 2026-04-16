@@ -246,13 +246,6 @@ Use conventional commits for automatic categorization:
    gh release create vX.Y.Z --title "vX.Y.Z - Title" --notes-file docs/release-notes/vX.Y.Z.md
    ```
 
-#### NuGet Package Links
-
-Use this format in release notes:
-```markdown
-**NuGet:** [Neatoo.RemoteFactory X.Y.Z](https://nuget.org/packages/Neatoo.RemoteFactory/X.Y.Z)
-```
-
 ## CI/CD
 
 GitHub Actions workflow (`.github/workflows/build.yml`):

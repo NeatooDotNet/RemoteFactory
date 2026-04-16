@@ -280,16 +280,15 @@ public class ExampleRepository : IExampleRepository
 }
 
 // =============================================================================
-// PATTERN 3: STATIC FACTORY (Execute/Event Commands)
+// PATTERN 3: STATIC FACTORY (Execute Commands)
 // =============================================================================
 //
 // Use [Factory] on a static class to generate command handlers.
-// Use [Execute] for request-response commands, [Event] for fire-and-forget.
+// Use [Execute] for request-response commands.
 //
 // GENERATOR BEHAVIOR: For a static class with [Factory], the generator creates:
-//   1. Delegate types for each [Execute] or [Event] method
+//   1. Delegate types for each [Execute] method
 //   2. DI registrations to resolve the delegates
-//   3. For [Event]: Isolated scope with fire-and-forget semantics
 //
 // DESIGN DECISION: Static factories enable stateless command patterns.
 // No instance management needed - just call the method with parameters.
@@ -377,68 +376,6 @@ public static partial class ExampleCommands
     // 3. Easier to test - just call the method with mock services
     //
     // The rule: If your operation doesn't need instance state, prefer static.
-    // -------------------------------------------------------------------------
-}
-
-/// <summary>
-/// Demonstrates: STATIC FACTORY pattern with [Event] handlers.
-///
-/// Key points:
-/// - [Event] methods are fire-and-forget (don't await completion)
-/// - Static classes must be partial (generator adds to them)
-/// - Each event runs in an isolated DI scope
-/// - CancellationToken receives ApplicationStopping for graceful shutdown
-/// - Perfect for async side effects that shouldn't block the caller
-/// </summary>
-[Factory]
-public static partial class ExampleEvents
-{
-    /// <summary>
-    /// Handles order placed event. Runs in isolated scope, fire-and-forget.
-    /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: Same as [Execute] - methods are private with underscore.
-    ///
-    /// GENERATOR BEHAVIOR: Events use IHostApplicationLifetime.ApplicationStopping
-    /// for the CancellationToken, enabling graceful shutdown.
-    ///
-    /// The generated public method:
-    ///   ExampleEvents.OnOrderPlaced(int orderId)
-    ///
-    /// Notice: CancellationToken is NOT in the public signature - it's injected
-    /// from IHostApplicationLifetime.ApplicationStopping by the generator.
-    ///
-    /// DESIGN DECISION: Events are isolated to prevent scope pollution.
-    /// Each event gets its own DI scope, so long-running operations don't
-    /// hold references to the original request's scoped services.
-    ///
-    /// COMMON MISTAKE: Expecting to await event completion
-    ///
-    /// Events return Task but calling code should fire-and-forget:
-    ///   _ = ExampleEvents.OnOrderPlaced(orderId);  // Discard the task
-    ///
-    /// Events complete asynchronously after the caller continues.
-    /// </remarks>
-    [Remote, Event]
-    private static async Task _OnOrderPlaced(
-        int orderId,
-        [Service] INotificationService notificationService,
-        CancellationToken cancellationToken)
-    {
-        // This runs in its own scope, after the caller has moved on
-        await notificationService.SendAsync("admin@example.com", $"Order {orderId} placed!");
-    }
-
-    // -------------------------------------------------------------------------
-    // DESIGN DECISION: Events require CancellationToken as final parameter
-    //
-    // Reasons:
-    // 1. Graceful shutdown - events can be cancelled when app stops
-    // 2. Consistency - all async operations should respect cancellation
-    // 3. Resource management - prevents orphaned background tasks
-    //
-    // The generator enforces this: [Event] methods without CancellationToken
-    // produce a compile-time diagnostic.
     // -------------------------------------------------------------------------
 }
 

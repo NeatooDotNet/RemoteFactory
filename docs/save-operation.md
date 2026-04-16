@@ -22,6 +22,37 @@ Why two booleans instead of an enum? These are regular properties that participa
 
 When a class implements `IFactorySaveMeta`, RemoteFactory generates an `IFactorySave<T>` interface on its factory with a `Save()` method.
 
+### Serializing IsNew and IsDeleted Across the Remote Boundary
+
+Save routing happens **server-side** — the generated `LocalSave` reads `target.IsNew` and `target.IsDeleted` on the server-side instance. For that to work in `NeatooFactory.Remote` mode, both properties must round-trip through JSON when the client sends the entity to the server.
+
+`System.Text.Json` serializes public getters by default, so `public bool IsNew { get; set; }` works out of the box. But many domain designs want to prevent external callers from flipping lifecycle state ad-hoc (`entity.IsNew = false` is nonsense from a UI) and use private setters:
+
+```csharp
+public bool IsNew { get; private set; } = true;
+public bool IsDeleted { get; private set; }
+```
+
+A private setter is invisible to STJ's default reflection-based resolver on the **deserializing** side — the server will construct a fresh `IsNew = true` default and every Save will route to Insert. Add `[JsonInclude]` to force STJ to use the non-public setter on both ends:
+
+```csharp
+[JsonInclude]
+public bool IsNew { get; private set; } = true;
+
+[JsonInclude]
+public bool IsDeleted { get; private set; }
+```
+
+Provide a domain-flavored mutation path for `IsDeleted` so callers don't need the setter:
+
+```csharp
+public void MarkDeleted() => this.IsDeleted = true;
+```
+
+`IsNew` is typically flipped by your own `[Fetch]` / `[Insert]` methods (`this.IsNew = false;` works from inside the same class regardless of setter visibility).
+
+> **IL trimming:** private setters interact badly with the trimmer's visibility analysis — see [Trimming: IFactorySaveMeta Preservation](trimming.md#ifactorysavemeta-preservation). If you run `PublishTrimmed=true`, you need an additional `[DynamicDependency]` annotation on the constructor.
+
 ## Routing Logic
 
 Save inspects `IsNew` and `IsDeleted` to decide which operation to call:

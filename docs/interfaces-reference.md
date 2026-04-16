@@ -434,7 +434,7 @@ public class AuditingAspAuthorize : IAspAuthorize
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L279-L304' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-aspauthorize' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L263-L288' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-aspauthorize' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Authorization](authorization.md) for standard authorization patterns.
@@ -603,49 +603,6 @@ internal void Fetch(int id,
 
 See [LazyLoad](lazyload.md) for the full usage guide.
 
-## Event Tracking
-
-### IEventTracker
-
-Tracks pending asynchronous event tasks for fire-and-forget `[Event]` delegate methods. Enables graceful shutdown by waiting for all pending events to complete.
-
-```csharp
-public interface IEventTracker
-{
-    void Track(Task eventTask);
-    Task WaitAllAsync(CancellationToken ct = default);
-    int PendingCount { get; }
-}
-```
-
-**When to use:** Application shutdown logic that needs to wait for all pending fire-and-forget events to complete before terminating.
-
-**You rarely interact with this interface directly.** RemoteFactory uses it internally for `[Event]` delegate tracking. The default implementation is registered by `AddNeatooRemoteFactory()`.
-
-> **Not involved in `[FactoryEventHandler<T>]` dispatch.** `IFactoryEvents.Raise<T>()` runs every handler sequentially in the caller's scope and awaits completion before returning (see [Factory Events](factory-events.md)) — there are no background tasks to track for the factory-event path. `IEventTracker` is an `[Event]`-delegate-only concern.
-
-Using IEventTracker for graceful shutdown:
-
-<!-- snippet: interfaces-eventtracker -->
-<a id='snippet-interfaces-eventtracker'></a>
-```cs
-// IEventTracker: Wait for pending fire-and-forget events during shutdown
-[Factory]
-public static partial class EventTrackerDemo
-{
-    [Execute]
-    private static async Task<int> _WaitForEvents([Service] IEventTracker eventTracker, CancellationToken ct)
-    {
-        var pending = eventTracker.PendingCount;
-        if (pending > 0)
-            await eventTracker.WaitAllAsync(ct);  // Graceful shutdown
-        return pending;
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L263-L277' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-eventtracker' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
 ## Factory Events
 
 ### IFactoryEvents
@@ -663,7 +620,7 @@ public interface IFactoryEvents
 }
 ```
 
-**When to use:** Publishing domain events from within a factory method. `Raise<T>` dispatches to every matching `[FactoryEventHandler<T>]` static-method handler **in the caller's DI scope, sequentially, awaited** — handlers share the caller's `DbContext` and transaction, and an exception in any handler aborts the chain and propagates to the caller. Unless `RaiseOptions.ServerOnly` is set, the event is also captured for relay back to the client. For fire-and-forget work, use `[Event]` delegates instead. See [Factory Events](factory-events.md).
+**When to use:** Publishing domain events from within a factory method. `Raise<T>` dispatches to every matching `[FactoryEventHandler<T>]` static-method handler **in the caller's DI scope, sequentially, awaited** — handlers share the caller's `DbContext` and transaction, and an exception in any handler aborts the chain and propagates to the caller. Unless `RaiseOptions.ServerOnly` is set, the event is also captured for relay back to the client. For fire-and-forget work that should not participate in the caller's transaction, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)). See [Factory Events](factory-events.md).
 
 ### IFactoryEventRelay
 
@@ -686,46 +643,6 @@ public interface IFactoryEventRelay
 - The consumer owns SyncContext marshaling for UI work.
 
 > **Migration note.** The former surface (`Register(object handler)` / `Unregister(object handler)`, instance-method `[FactoryEventHandler<T>]` on client classes, `WeakReference`-based handler tracking) has been removed. Classes that still declare instance-method handlers inside `[FactoryEventHandler<T>]` emit **NF0503 (Warning)** and are silently skipped at runtime. See [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay).
-
-### IEventScopeInitializer
-
-Propagates ambient context from the request scope to `[Event]` delegate scopes. **`[Event]` delegate methods** (see [Events](events.md)) run in isolated DI scopes created via `Task.Run` — this interface bridges scoped state (tenant context, user identity, etc.) from the parent scope into the event scope.
-
-> **Not used by `[FactoryEventHandler<T>]`.** Factory event handlers already run in the caller's scope (see [Factory Events](factory-events.md)), so tenant/correlation/user context is shared automatically with no initializer needed. `IEventScopeInitializer` is an `[Event]`-only concern.
-
-```csharp
-public interface IEventScopeInitializer
-{
-    void Initialize(IServiceProvider parentScope, IServiceProvider childScope);
-}
-```
-
-**When to use:** Multi-tenant applications or any scenario where middleware-populated scoped state needs to be available in event handlers.
-
-**A built-in initializer propagates `ICorrelationContext.CorrelationId` automatically.** You only need to register custom initializers for application-specific context.
-
-Register custom initializers via the `AddRemoteFactoryEventScopeInitializer` extension method:
-
-```csharp
-services.AddRemoteFactoryEventScopeInitializer((parentScope, childScope) =>
-{
-    var parentTenant = parentScope.GetService<ITenantContext>();
-    var childTenant = childScope.GetRequiredService<TenantContext>();
-    if (parentTenant != null)
-    {
-        childTenant.TenantId = parentTenant.TenantId;
-        childTenant.ConnectionString = parentTenant.ConnectionString;
-    }
-});
-```
-
-**Important:** Initializers run inside `Task.Run` after `CreateScope()` but before handler services are resolved. For fire-and-forget events, the parent scope may be disposed after the initializer runs — **copy values, do not hold references to parent-scope services**.
-
-Multiple initializers run in registration order. Each initializer is wrapped in its own try/catch — if one throws, the exception is logged but the event handler still executes.
-
-Only registered in Server and Logical modes. Remote-mode clients do not create local event scopes.
-
-See [Events — Event Scope Initializers](events.md#event-scope-initializers) for the full usage guide.
 
 ## Factory Core
 
@@ -765,10 +682,8 @@ public interface IFactoryCore<T>
 | `IOrdinalConverterProvider<TSelf>` | Ordinal converter provider | Source generator (automatic) |
 | `IOrdinalSerializationMetadata` | Ordinal deserialization metadata | Source generator (automatic) |
 | `ILazyLoadFactory` | Deferred loading factory | Framework (inject via `[Service]`) |
-| `IEventTracker` | Fire-and-forget event tracking | Framework (rarely customized) |
 | `IFactoryEvents` | Mediator for publishing factory events | Factory methods (inject) |
 | `IFactoryEventRelay` | Client-side single-method integration hook for relayed events | Application (implement + register in DI) |
-| `IEventScopeInitializer` | Event scope context propagation | Application (custom initializers) |
 | `IFactoryCore<T>` | Factory execution pipeline | Framework (rarely customized) |
 
 ## Next Steps
@@ -776,5 +691,5 @@ public interface IFactoryCore<T>
 - [Attributes Reference](attributes-reference.md) - All available attributes
 - [Factory Operations](factory-operations.md) - CRUD operation details
 - [Service Injection](service-injection.md) - DI integration
-- [Events](events.md) - Event scope initializers and fire-and-forget patterns
+- [Factory Events](factory-events.md) - `[FactoryEventHandler<T>]` mediator and client relay
 - [Authorization](authorization.md) - Authorization patterns

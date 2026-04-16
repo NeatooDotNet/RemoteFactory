@@ -403,3 +403,6 @@ nul
 
 # Source-generated files
 **/Generated/
+
+# Playwright MCP output (browser snapshots, console logs, network captures)
+.playwright-mcp/

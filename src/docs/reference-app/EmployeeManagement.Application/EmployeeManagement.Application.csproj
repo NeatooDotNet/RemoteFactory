@@ -12,7 +12,7 @@
     <!-- CA1034: Nested types are OK for sample record types -->
     <!-- CA1711: EventHandler suffix is intentional for event handler classes -->
     <!-- CA1819: Properties returning arrays are OK for serialization samples -->
-    <!-- CA1822: Event methods must be instance methods for [Event] attribute -->
+    <!-- CA1822: test/sample methods intentionally do not access instance state -->
     <NoWarn>CA1062;CA1707;CA1034;CA1711;CA1819;CA1822</NoWarn>
   </PropertyGroup>
 

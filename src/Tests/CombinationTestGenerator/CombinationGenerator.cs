@@ -364,10 +364,6 @@ public class CombinationGenerator : IIncrementalGenerator
         {
             GenerateExecuteClassBody(sb, combination, returnTypeInfo, parameters);
         }
-        else if (combination.Operation == "Event")
-        {
-            GenerateEventClassBody(sb, combination, returnTypeInfo, parameters, isRemote);
-        }
         else if (IsWriteOperation(combination.Operation))
         {
             GenerateWriteClassBody(sb, combination, operation, returnTypeInfo, parameters, isRemote);
@@ -610,85 +606,6 @@ public class CombinationGenerator : IIncrementalGenerator
         }
     }
 
-    private void GenerateEventClassBody(
-        StringBuilder sb,
-        CombinationInfo combination,
-        ReturnTypeInfo returnType,
-        List<ParameterDefinition> parameters,
-        bool isRemote)
-    {
-        var className = combination.ClassName;
-
-        sb.AppendLine($"/// <summary>");
-        sb.AppendLine($"/// Test target: Event, {combination.ReturnType}, {combination.Parameters}, {combination.ExecutionMode}");
-        sb.AppendLine($"/// </summary>");
-        sb.AppendLine($"[Factory]");
-        sb.AppendLine($"public class {className}");
-        sb.AppendLine("{");
-
-        // Static tracking
-        sb.AppendLine("    public static bool EventFired { get; set; }");
-        sb.AppendLine("    public static int ReceivedIntParam { get; set; }");
-        sb.AppendLine("    public static string? ReceivedStringParam { get; set; }");
-        sb.AppendLine("    public static bool ServiceWasInjected { get; set; }");
-        sb.AppendLine("    public static bool CancellationTokenReceived { get; set; }");
-        sb.AppendLine();
-        sb.AppendLine("    public static void Reset()");
-        sb.AppendLine("    {");
-        sb.AppendLine("        EventFired = false;");
-        sb.AppendLine("        ReceivedIntParam = 0;");
-        sb.AppendLine("        ReceivedStringParam = null;");
-        sb.AppendLine("        ServiceWasInjected = false;");
-        sb.AppendLine("        CancellationTokenReceived = false;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-
-        // Ensure CancellationToken at end
-        var eventParams = EnsureCancellationToken(parameters);
-        var paramList = BuildParameterList(eventParams);
-        var remoteAttr = isRemote ? "    [Remote]" : "";
-        var methodReturnType = returnType.IsAsync ? "Task" : "void";
-
-        var accessModifier = isRemote ? "internal" : "public";
-        if (!string.IsNullOrEmpty(remoteAttr))
-        {
-            sb.AppendLine(remoteAttr);
-        }
-        sb.AppendLine("    [Event]");
-        sb.AppendLine($"    {accessModifier} {methodReturnType} OnEvent({paramList})");
-        sb.AppendLine("    {");
-        sb.AppendLine("        EventFired = true;");
-        GenerateParameterAssignmentsStatic(sb, eventParams);
-
-        if (returnType.IsAsync)
-        {
-            sb.AppendLine("        return Task.CompletedTask;");
-        }
-
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-    }
-
-    private List<ParameterDefinition> EnsureCancellationToken(List<ParameterDefinition> parameters)
-    {
-        var result = new List<ParameterDefinition>(parameters);
-
-        foreach (var p in result)
-        {
-            if (p.Type == "CancellationToken")
-                return result;
-        }
-
-        result.Add(new ParameterDefinition
-        {
-            Type = "CancellationToken",
-            Name = "ct",
-            IsService = false
-        });
-
-        return result;
-    }
-
     private string BuildParameterList(List<ParameterDefinition> parameters)
     {
         if (parameters.Count == 0)
@@ -722,29 +639,6 @@ public class CombinationGenerator : IIncrementalGenerator
             else if (p.Type == "CancellationToken")
             {
                 sb.AppendLine($"        {prefix}CancellationTokenReceived = true;");
-            }
-        }
-    }
-
-    private void GenerateParameterAssignmentsStatic(StringBuilder sb, List<ParameterDefinition> parameters)
-    {
-        foreach (var p in parameters)
-        {
-            if (p.Type == "int")
-            {
-                sb.AppendLine($"        ReceivedIntParam = {p.Name};");
-            }
-            else if (p.Type == "string")
-            {
-                sb.AppendLine($"        ReceivedStringParam = {p.Name};");
-            }
-            else if (p.IsService || p.Type == "IService")
-            {
-                sb.AppendLine($"        ServiceWasInjected = {p.Name} != null;");
-            }
-            else if (p.Type == "CancellationToken")
-            {
-                sb.AppendLine($"        CancellationTokenReceived = true;");
             }
         }
     }

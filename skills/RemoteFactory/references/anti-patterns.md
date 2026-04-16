@@ -208,31 +208,7 @@ private static async Task<bool> _ProcessEmployee(Guid id, [Service] IEmployeeSer
 
 ---
 
-## 9. [Event] Missing CancellationToken
-
-**Problem**: Events can't be cancelled during shutdown.
-
-```csharp
-// WRONG - can't cancel during shutdown
-[Remote, Event]
-private static Task _OnEmployeeCreated(Guid id, [Service] IEmailService svc)
-{
-    return svc.SendWelcomeEmail(id);
-}
-
-// RIGHT - supports graceful shutdown
-[Remote, Event]
-private static Task _OnEmployeeCreated(Guid id, [Service] IEmailService svc, CancellationToken ct)
-{
-    return svc.SendWelcomeEmail(id, ct);
-}
-```
-
-**Why**: Events run in isolated scopes with fire-and-forget semantics. The CancellationToken comes from `IHostApplicationLifetime.ApplicationStopping` for graceful shutdown.
-
----
-
-## 10. Class Factory [Execute] Returning Wrong Type
+## 9. Class Factory [Execute] Returning Wrong Type
 
 **Problem**: Execute method on a class factory must return the containing type's service type.
 
@@ -260,7 +236,7 @@ public partial class Order
 
 ---
 
-## 11. [Remote] on Public Methods
+## 10. [Remote] on Public Methods
 
 **Problem**: `[Remote]` requires `internal` -- diagnostic error NF0105.
 
@@ -286,7 +262,7 @@ internal partial class Order : IOrder
 
 ---
 
-## 12. Optional Parameters in Factory Methods
+## 11. Optional Parameters in Factory Methods
 
 **Problem**: Default values are silently dropped — generated factory methods require all arguments.
 
@@ -315,7 +291,7 @@ public partial class EmployeeSearch
 
 ---
 
-## 13. Assuming CS0051 Blocks Internal Services on Internal Classes
+## 12. Assuming CS0051 Blocks Internal Services on Internal Classes
 
 **Problem**: Avoiding `internal` factory methods because their `internal` factory interface would be injected as `[Service]` into another class — when that other class is itself `internal`.
 
@@ -358,7 +334,6 @@ internal partial class PersonPhoneList
 | Missing partial | Won't compile | Add `partial` keyword |
 | [Factory] on implementation | Duplicate registration | Only on interface |
 | [Execute] returning Task | No confirmation | Return Task<T> |
-| [Event] missing CancellationToken | Can't cancel | Add as final parameter |
 | Class [Execute] wrong return type | Won't compile | Must return containing type |
 | [Remote] on public methods | NF0105 diagnostic | Change method to `internal` |
 | Optional parameters | Defaults silently dropped | Don't use defaults; pass all args explicitly |

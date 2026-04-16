@@ -38,7 +38,7 @@ internal sealed record FactoryGenerationUnit
     public ClassFactoryModel? ClassFactory { get; }
 
     /// <summary>
-    /// Factory model for static classes with [Execute] or [Event] methods.
+    /// Factory model for static classes with [Execute] methods.
     /// </summary>
     public StaticFactoryModel? StaticFactory { get; }
 

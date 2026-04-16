@@ -43,35 +43,3 @@ public static partial class TerminateEmployeeCommand
     }
 }
 
-[Factory]
-public partial class EmployeeLifecycleEvents
-{
-    [Event]
-    public async Task OnEmployeeHired(
-        Guid employeeId,
-        string email,
-        [Service] IEmailService emailService,
-        CancellationToken ct)
-    {
-        await emailService.SendAsync(
-            email,
-            "Welcome to the Team!",
-            $"Your employee ID is {employeeId}. Welcome aboard!",
-            ct);
-    }
-
-    [Event]
-    public async Task OnEmployeePromoted(
-        Guid employeeId,
-        string newTitle,
-        decimal newSalary,
-        [Service] IEmailService emailService,
-        CancellationToken ct)
-    {
-        await emailService.SendAsync(
-            "hr@company.com",
-            "Employee Promotion",
-            $"Employee {employeeId} promoted to {newTitle} with salary ${newSalary:N2}",
-            ct);
-    }
-}

@@ -30,7 +30,7 @@ RemoteFactory has three factory patterns. The choice depends on what you're buil
 |---------|---------------|----------|---------|
 | **Class Factory** | `internal partial class` | Aggregate roots and entities with lifecycle (Create, Fetch, Save) | `Order`, `Employee`, `Invoice` |
 | **Interface Factory** | `public interface` | Remote services without entity identity | `IOrderQueryService`, `IReportGenerator` |
-| **Static Factory** | `public static partial class` | Stateless commands and fire-and-forget events | `EmailCommands`, `AuditEvents` |
+| **Static Factory** | `public static partial class` | Stateless commands | `EmailCommands`, `PromoteCommand` |
 
 ```
 Does this type manage entity state (properties, IsNew, IsDeleted)?
@@ -39,13 +39,12 @@ Does this type manage entity state (properties, IsNew, IsDeleted)?
 └── NO
     ├── Service with multiple methods the client calls → Interface Factory
     │   (server implementation, client proxy, no operation attributes)
-    └── One-shot operation or fire-and-forget event → Static Factory
-        ([Execute] for commands, [Event] for side effects)
+    └── One-shot command → Static Factory with [Execute]
 ```
 
 **Key difference — Interface Factory has no operation attributes.** Class and Static factories use `[Create]`, `[Fetch]`, `[Remote]`, `[Execute]`, etc. to tell the generator what each method does. Interface Factory methods need none of these — the `[Factory]` on the interface is sufficient. Every method is automatically a remote entry point.
 
-See [Interface Factory](interface-factory.md) for the full pattern, [Factory Operations](factory-operations.md) for Class Factory operations, and [Events](events.md) for Static Factory events.
+See [Interface Factory](interface-factory.md) for the full pattern, [Factory Operations](factory-operations.md) for Class Factory operations, and [Factory Events](factory-events.md) for the mediator + client relay pattern.
 
 ---
 
@@ -116,20 +115,20 @@ See [Factory Operations](factory-operations.md) for details.
 
 ---
 
-## When to Use [Event]?
+## How Do I Handle Domain Events?
 
-Events are fire-and-forget. The caller continues immediately. Use them for side effects that shouldn't block the main operation — notifications, audit logging, external system updates.
+RemoteFactory's event surface is the `[FactoryEventHandler<T>]` mediator: raise a strongly-typed event via `IFactoryEvents.Raise<T>` inside a factory method; server-side `static` handlers process it sequentially in the caller's DI scope (shared `DbContext`, shared transaction); the batch is also relayed to the client via a consumer-implemented `IFactoryEventRelay`.
 
 ```
-Should the caller wait for this operation to complete?
-├── YES → Use regular method (or [Execute])
-└── NO (notifications, logging, side effects)
-    └── Use [Event]
+Does the handler need to participate in the caller's DB transaction?
+├── YES → [FactoryEventHandler<T>] with a static method
+└── NO (external system — email, webhook, queue publish)
+    └── Manual Task.Run + IServiceScopeFactory.CreateScope() inside the factory method;
+        explicitly snapshot ambient state (tenant, correlation) before entering the
+        background task. See v1.5.0 release notes for the full pattern.
 ```
 
-**Requirements**:
-- `CancellationToken` must be the last parameter
-- Returns `void` or `Task`
+See [Factory Events](factory-events.md) for the mediator/relay surface and the [v1.5.0 release notes](release-notes/v1.5.0.md) for the fire-and-forget migration pattern.
 
 ---
 

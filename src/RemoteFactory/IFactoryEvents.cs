@@ -17,8 +17,7 @@ namespace Neatoo.RemoteFactory;
 /// </para>
 /// <para>
 /// This makes <c>FactoryEvent</c> the right tool for domain events that must participate
-/// in the caller's transaction. For fire-and-forget work, use the <c>[Event]</c> delegate
-/// pattern instead.
+/// in the caller's transaction.
 /// </para>
 /// </remarks>
 public interface IFactoryEvents

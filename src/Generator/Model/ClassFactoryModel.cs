@@ -14,7 +14,6 @@ internal sealed record ClassFactoryModel
         string implementationTypeName,
         bool isPartial = false,
         IReadOnlyList<FactoryMethodModel>? methods = null,
-        IReadOnlyList<EventMethodModel>? events = null,
         OrdinalSerializationModel? ordinalSerialization = null,
         bool hasDefaultSave = false,
         bool requiresEntityRegistration = false,
@@ -26,7 +25,6 @@ internal sealed record ClassFactoryModel
         ImplementationTypeName = implementationTypeName;
         IsPartial = isPartial;
         Methods = methods ?? System.Array.Empty<FactoryMethodModel>();
-        Events = events ?? System.Array.Empty<EventMethodModel>();
         OrdinalSerialization = ordinalSerialization;
         HasDefaultSave = hasDefaultSave;
         RequiresEntityRegistration = requiresEntityRegistration;
@@ -39,7 +37,6 @@ internal sealed record ClassFactoryModel
     public string ImplementationTypeName { get; }
     public bool IsPartial { get; }
     public IReadOnlyList<FactoryMethodModel> Methods { get; }
-    public IReadOnlyList<EventMethodModel> Events { get; }
     public OrdinalSerializationModel? OrdinalSerialization { get; }
     public bool HasDefaultSave { get; }
     public bool RequiresEntityRegistration { get; }

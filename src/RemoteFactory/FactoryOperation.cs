@@ -13,7 +13,6 @@ public enum FactoryOperation
 	Fetch = AuthorizeFactoryOperation.Fetch | AuthorizeFactoryOperation.Read,
 	Insert = AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Write,
 	Update = AuthorizeFactoryOperation.Update | AuthorizeFactoryOperation.Write,
-	Delete = AuthorizeFactoryOperation.Delete | AuthorizeFactoryOperation.Write,
-	Event = AuthorizeFactoryOperation.Event
+	Delete = AuthorizeFactoryOperation.Delete | AuthorizeFactoryOperation.Write
 }
 

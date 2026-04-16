@@ -2,7 +2,7 @@
 // DESIGN SOURCE OF TRUTH: Static Factory Tests
 // =============================================================================
 //
-// Tests demonstrating the STATIC FACTORY pattern with [Execute] and [Event].
+// Tests demonstrating the STATIC FACTORY pattern with [Execute].
 //
 // =============================================================================
 
@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Design.Tests.FactoryTests;
 
 /// <summary>
-/// Tests for STATIC FACTORY pattern (ExampleCommands, ExampleEvents).
+/// Tests for STATIC FACTORY pattern (ExampleCommands).
 /// </summary>
 public class StaticFactoryTests
 {
@@ -76,62 +76,4 @@ public class StaticFactoryTests
         local.Dispose();
     }
 
-    /// <summary>
-    /// Verifies [Event] method fires without blocking.
-    /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: Events use the same delegate pattern
-    ///
-    /// The key difference from [Execute]:
-    /// - Events run in an isolated scope
-    /// - CancellationToken from IHostApplicationLifetime is injected
-    /// - Intended for fire-and-forget use (though you CAN await for testing)
-    ///
-    /// GENERATOR BEHAVIOR: For [Remote, Event] on _OnOrderPlaced:
-    /// - Creates delegate type: ExampleEvents.OnOrderPlacedEvent (note Event suffix)
-    /// - Event runs in isolated scope with ApplicationStopping token
-    /// - Returns Task that completes when event handler finishes
-    ///
-    /// In production code, you typically fire-and-forget:
-    ///   var onOrderPlaced = scope.GetRequiredService&lt;ExampleEvents.OnOrderPlaced&gt;();
-    ///   _ = onOrderPlaced(orderId);  // Fire and forget
-    /// </remarks>
-    [Fact]
-    public async Task Event_OnOrderPlaced_FiresWithoutBlocking()
-    {
-        // Arrange
-        var (server, client, _) = DesignClientServerContainers.Scopes();
-
-        // Resolve the event delegate (note: Event suffix in type name)
-        var onOrderPlaced = client.GetRequiredService<ExampleEvents.OnOrderPlacedEvent>();
-
-        // Act - invoke the event (awaiting for test verification)
-        await onOrderPlaced(123);
-
-        // Assert - event completed without error
-        Assert.True(true);
-
-        server.Dispose();
-        client.Dispose();
-    }
-
-    /// <summary>
-    /// Verifies [Event] works in local mode.
-    /// </summary>
-    [Fact]
-    public async Task Event_WorksInLocalMode()
-    {
-        // Arrange
-        var (_, _, local) = DesignClientServerContainers.Scopes();
-
-        var onOrderPlaced = local.GetRequiredService<ExampleEvents.OnOrderPlacedEvent>();
-
-        // Act
-        await onOrderPlaced(456);
-
-        // Assert
-        Assert.True(true);
-
-        local.Dispose();
-    }
 }

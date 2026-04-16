@@ -279,7 +279,7 @@ Server automatically exposes the endpoint at `/api/neatoo`. No controllers neede
 - **Authorization**: Built-in support for custom auth or ASP.NET Core policies
 - **Compact serialization**: Ordinal format reduces payloads by 40-50%
 - **Lifecycle hooks**: `IFactoryOnStart`, `IFactoryOnComplete`, `IFactoryOnCancelled`
-- **Fire-and-forget events**: Domain events with scope isolation via `[Event]` attribute
+- **Domain events**: Transactional events via `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise`, with client-side `IFactoryEventRelay`
 - **Flexible modes**: Server, Remote, or Logical runtime modes
 
 ## Installation

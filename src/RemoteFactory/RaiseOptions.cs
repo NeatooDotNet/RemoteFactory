@@ -11,11 +11,6 @@ namespace Neatoo.RemoteFactory;
 /// aborts the remaining handlers and propagates to the caller. Across the client/server
 /// boundary the HTTP call stays open until every server-side handler completes.
 /// </para>
-/// <para>
-/// For fire-and-forget semantics with an isolated scope, use the <c>[Event]</c> delegate
-/// pattern instead — it is purpose-built for detached work (notifications, audit sinks,
-/// webhooks) and is served by <see cref="IEventTracker"/> for graceful shutdown.
-/// </para>
 /// </remarks>
 [Flags]
 public enum RaiseOptions

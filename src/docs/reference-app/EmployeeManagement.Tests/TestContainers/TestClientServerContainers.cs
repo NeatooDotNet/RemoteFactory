@@ -1,5 +1,4 @@
 using EmployeeManagement.Domain.Aggregates;
-using EmployeeManagement.Domain.Events;
 using EmployeeManagement.Infrastructure;
 using EmployeeManagement.Infrastructure.Repositories;
 using EmployeeManagement.Infrastructure.Services;
@@ -56,12 +55,8 @@ public static class TestClientServerContainers
         // Add infrastructure services
         services.AddInfrastructureServices();
 
-        // Add a mock IHostApplicationLifetime for event handlers
+        // Add a mock IHostApplicationLifetime
         services.AddSingleton<IHostApplicationLifetime, TestHostApplicationLifetime>();
-
-        // Register event handler classes (required for event delegate execution)
-        services.AddScoped<EmployeeEventHandlers>();
-        services.AddScoped<DepartmentEventHandlers>();
 
         return services.BuildServiceProvider();
     }

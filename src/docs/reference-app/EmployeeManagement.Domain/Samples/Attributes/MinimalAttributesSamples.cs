@@ -95,16 +95,6 @@ public static partial class PromoteCommand
 }
 #endregion
 
-#region attributes-event
-[Factory]
-public partial class EmployeeEventsMinimal
-{
-    [Event]  // Fire-and-forget - CancellationToken must be last parameter
-    public Task NotifyManager(Guid employeeId, [Service] IEmailService email, CancellationToken ct)
-        => email.SendAsync("mgr@co.com", "Update", $"Employee {employeeId}", ct);
-}
-#endregion
-
 #region attributes-remote
 [Factory]
 public partial class EmployeeRemote
@@ -289,16 +279,3 @@ public static partial class TransferCommand
 public record TransferCommandResult(bool Success, string Message);
 #endregion
 
-#region attributes-pattern-event
-[Factory]
-public partial class LifecycleEvents
-{
-    [Event]  // Fire-and-forget domain events
-    public Task OnEmployeeHired(Guid id, string email, [Service] IEmailService svc, CancellationToken ct)
-        => svc.SendAsync(email, "Welcome!", $"ID: {id}", ct);
-
-    [Event]
-    public Task OnEmployeePromoted(Guid id, string title, [Service] IEmailService svc, CancellationToken ct)
-        => svc.SendAsync("hr@co.com", "Promotion", $"{id} to {title}", ct);
-}
-#endregion

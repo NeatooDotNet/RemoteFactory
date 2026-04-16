@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace CombinationTestGenerator.Models;
 
 /// <summary>
-/// Represents a factory operation type (Create, Fetch, Insert, Update, Delete, Execute, Event).
+/// Represents a factory operation type (Create, Fetch, Insert, Update, Delete, Execute).
 /// </summary>
 public sealed class OperationInfo : IEquatable<OperationInfo>
 {

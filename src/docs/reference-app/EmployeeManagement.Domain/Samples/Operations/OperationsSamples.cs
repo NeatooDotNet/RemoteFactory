@@ -302,42 +302,6 @@ public static partial class EmployeePromotionOperation
 public record PromotionResult(bool Success, string Message);
 
 /// <summary>
-/// Demonstrates Event operations for fire-and-forget processing.
-/// </summary>
-[Factory]
-public partial class EmployeeNotificationEvents
-{
-    #region operations-event
-    // [Event] for fire-and-forget - CancellationToken required, receives ApplicationStopping
-    [Event]
-    public async Task NotifyHROfNewEmployee(
-        Guid employeeId, string employeeName,
-        [Service] IEmailService emailService, CancellationToken ct)
-    {
-        await emailService.SendAsync("hr@company.com", $"New Employee: {employeeName}", $"ID: {employeeId}", ct);
-    }
-    #endregion
-}
-
-/// <summary>
-/// Demonstrates IEventTracker usage for monitoring events.
-/// </summary>
-[Factory]
-public static partial class EventTrackerSample
-{
-    #region operations-event-tracker
-    // IEventTracker for waiting on pending events (useful in tests and shutdown)
-    [Execute]
-    private static async Task<int> _WaitForAllEvents([Service] IEventTracker eventTracker, CancellationToken ct)
-    {
-        var pendingCount = eventTracker.PendingCount;
-        await eventTracker.WaitAllAsync(ct);
-        return pendingCount;
-    }
-    #endregion
-}
-
-/// <summary>
 /// Demonstrates [Remote] attribute for server execution.
 /// </summary>
 [Factory]

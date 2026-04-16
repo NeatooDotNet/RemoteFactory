@@ -14,7 +14,6 @@ Complete reference of all RemoteFactory attributes.
 | `[Update]` | Method | Persist changes |
 | `[Delete]` | Method | Remove entity |
 | `[Execute]` | Method | Business operations |
-| `[Event]` | Method | Fire-and-forget events |
 | `[FactoryEventHandler<T>]` | Class | Mediator + client relay handler for `FactoryEventBase` events |
 | `[Remote]` | Method | Client-to-server entry point |
 | `[Service]` | Parameter | Inject from DI |
@@ -162,7 +161,7 @@ public partial class UpsertSetting : IFactorySaveMeta
     internal Task Upsert(CancellationToken ct) => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L183-L193' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L173-L183' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Execute]
@@ -183,26 +182,6 @@ public static partial class PromoteCommand
 }
 ```
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L88-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### [Event]
-
-Marks methods for fire-and-forget domain events. Must have `CancellationToken` as last parameter. Returns `void` or `Task`.
-
-**Inherited:** No | **Auth flags:** `Event`
-
-<!-- snippet: attributes-event -->
-<a id='snippet-attributes-event'></a>
-```cs
-[Factory]
-public partial class EmployeeEventsMinimal
-{
-    [Event]  // Fire-and-forget - CancellationToken must be last parameter
-    public Task NotifyManager(Guid employeeId, [Service] IEmailService email, CancellationToken ct)
-        => email.SendAsync("mgr@co.com", "Update", $"Employee {employeeId}", ct);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L98-L106' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-event' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [FactoryEventHandler\<T\>]
@@ -230,7 +209,7 @@ public static partial class OrderAuditHandler
 }
 ```
 
-Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. All handlers for the event type run sequentially, awaited, sharing the caller's `DbContext` and transaction. A throwing handler aborts the chain and propagates to the caller. For fire-and-forget semantics with isolated scopes, use `[Event]` instead.
+Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. All handlers for the event type run sequentially, awaited, sharing the caller's `DbContext` and transaction. A throwing handler aborts the chain and propagates to the caller. For fire-and-forget work that should not participate in the caller's transaction, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)).
 
 > **Instance-method handlers are not supported.** Declaring a non-`static` matching method inside a `[FactoryEventHandler<T>]` class emits **NF0503 (Warning)** and is silently skipped at runtime. Client-side reception is handled by implementing `IFactoryEventRelay` on your own class and registering it in DI — see [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay) and the [`IFactoryEventRelay`](interfaces-reference.md#ifactoryeventrelay) interface reference.
 
@@ -277,7 +256,7 @@ public partial class EmployeeRemote
         => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L108-L119' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L98-L109' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Service]
@@ -299,7 +278,7 @@ public partial class EmployeeWithService
         CancellationToken ct) => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L121-L131' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L111-L121' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization
@@ -317,7 +296,7 @@ Applies a custom authorization interface to the factory. The type parameter must
 [AuthorizeFactory<IEmployeeAuthorization>]  // Class-level authorization
 public partial class AuthEmployee { }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L133-L137' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L123-L127' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [AuthorizeFactory]
@@ -338,7 +317,7 @@ public interface IMinimalDocAuth
     bool CanWrite();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L139-L148' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L129-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Combine flags with bitwise OR:
@@ -355,7 +334,7 @@ public interface IOpAuth
     bool CanDelete();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L210-L219' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L200-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [AspAuthorize]
@@ -386,7 +365,7 @@ public partial class PolicyEmployee : IFactorySaveMeta
         => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L164-L181' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L154-L171' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Assembly-Level Attributes
@@ -418,7 +397,7 @@ Limits generated file hint name length. Use when hitting Windows path length lim
 | `[Factory]` | Yes | Derived classes get their own factory |
 | `[SuppressFactory]` | Yes | Blocks factory on derived classes too |
 | `[Remote]` | Yes | Derived methods inherit remote execution |
-| `[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`, `[Event]` | No | Must redeclare on each class |
+| `[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]` | No | Must redeclare on each class |
 | `[FactoryEventHandler<T>]` | No | Stack multiple for multiple event types |
 | `[Service]` | No | Must apply to each parameter |
 | `[AuthorizeFactory<T>]`, `[AuthorizeFactory]`, `[AspAuthorize]` | No | Must redeclare on each class/method |
@@ -444,7 +423,7 @@ public partial class DerivedEntity : BaseWithFactory
     public DerivedEntity() : base() { }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L221-L239' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L211-L229' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Next Steps
