@@ -190,7 +190,7 @@ public partial class ExampleClassFactory
 /// WRONG:
 /// [Factory]
 /// public interface IMyService {
-///     [Fetch]  // <-- Unnecessary, causes duplicate generation
+///     [Fetch]  // <-- NF0106: factory-operation attribute on interface factory method
 ///     Task<Data> GetData();
 /// }
 ///
@@ -199,6 +199,8 @@ public partial class ExampleClassFactory
 /// public interface IMyService {
 ///     Task<Data> GetData();  // No attribute needed
 /// }
+///
+/// Enforced at compile time by NF0106 — see CLAUDE-DESIGN.md Anti-Pattern 2.
 /// </remarks>
 [Factory]
 public interface IExampleRepository

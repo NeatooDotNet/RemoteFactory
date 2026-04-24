@@ -64,7 +64,8 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Should this method be [Remote]? | Only aggregate root entry points |
 | Must [Remote] methods be `internal`? | Yes - `[Remote] public` is error NF0105; `[Remote] internal` promotes to `public` on factory interface |
 | Can I use private setters? | No - breaks serialization |
-| Should interface methods have attributes? | No - interface IS the boundary |
+| Should interface methods have attributes? | No - interface IS the boundary; op attributes emit NF0106 |
+| Which `[AuthorizeFactory]` scopes apply on an interface factory? | `Execute` / `Read` only. CRUD scopes silently never fire. Use parameter matching on the auth class for per-method auth. See `references/interface-factory.md`. |
 | Do I need `partial` keyword? | Yes, always |
 | Should child entities have [Remote]? | No - causes N+1 remote calls |
 | Should child entity methods be `internal`? | Yes - server-only, trimmable, invisible to client |

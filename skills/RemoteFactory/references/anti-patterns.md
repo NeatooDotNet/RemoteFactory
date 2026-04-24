@@ -28,14 +28,14 @@ internal partial class Assignment : IAssignment
 
 ## 2. Attributes on Interface Methods
 
-**Problem**: Causes duplicate generation and registration conflicts.
+**Problem**: Compile-time error NF0106 (factory-operation attribute on interface factory method).
 
 ```csharp
-// WRONG - interface methods don't need attributes
+// WRONG - NF0106 error
 [Factory]
 public interface IEmployeeRepository
 {
-    [Fetch]  // DON'T DO THIS
+    [Fetch]  // NF0106: factory-operation attribute on interface factory method
     Task<EmployeeEntity> GetByIdAsync(Guid id);
 }
 
@@ -47,7 +47,7 @@ public interface IEmployeeRepository
 }
 ```
 
-**Why**: For interface factories, every method is automatically remote. Adding operation attributes creates duplicate registrations.
+**Why**: For interface factories, every method is automatically remote. Placing `[Create]`/`[Fetch]`/`[Insert]`/`[Update]`/`[Delete]`/`[Execute]` on an interface method would cause duplicate code generation. **NF0106** enforces the rule at compile time, with or without `[AuthorizeFactory<T>]` on the interface. Fine-grained authorization on interface factories uses parameter matching on the auth class, not operation attributes on the contract — see `references/interface-factory.md`.
 
 ---
 
@@ -327,7 +327,7 @@ internal partial class PersonPhoneList
 | Anti-Pattern | Problem | Solution |
 |--------------|---------|----------|
 | [Remote] on children | N+1 calls | Remove [Remote] from child entities |
-| Attributes on interface methods | Duplicate generation | Remove operation attributes |
+| Attributes on interface methods | NF0106 compile error | Remove operation attributes (interface IS the boundary) |
 | Public static methods (static factory) | Name conflict | Use `private static _MethodName` |
 | Private setters | Won't deserialize | Use public setters |
 | Storing method services | Null after round-trip | Use immediately or constructor inject |

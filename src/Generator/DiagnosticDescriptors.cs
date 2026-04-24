@@ -59,6 +59,18 @@ internal static class DiagnosticDescriptors
         description: "[Remote] methods should be internal because clients call through the generated factory interface, not the method directly. Making them public defeats IL trimming because the linker cannot remove the method body from client assemblies.");
 
     /// <summary>
+    /// NF0106: Factory-operation attribute on an interface factory method.
+    /// </summary>
+    public static readonly DiagnosticDescriptor OperationAttributeOnInterfaceMethod = new(
+        id: "NF0106",
+        title: "Factory-operation attribute on interface factory method",
+        messageFormat: "Interface factory method '{0}' has attribute '[{1}]'. Interface factory methods must have no operation attributes — the interface IS the remote boundary. See Anti-Pattern 2 in CLAUDE-DESIGN.md / docs/interface-factory.md.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A [Factory]-attributed interface declares a remote contract; every method is implicitly a remote call. Placing [Create], [Fetch], [Insert], [Update], [Delete], or [Execute] on an interface method causes duplicate generation and compile errors in downstream code. Remove the attribute from the interface method. Scoped authorization on interface factories uses [AuthorizeFactory(Execute)] / [AuthorizeFactory(Read)] on auth-class methods with parameter matching — see AuthorizedRepository.cs.");
+
+    /// <summary>
     /// NF0104: Hint name truncated due to length limit.
     /// </summary>
     public static readonly DiagnosticDescriptor HintNameTruncated = new(
