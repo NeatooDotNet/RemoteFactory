@@ -2,6 +2,8 @@
 
 ## Custom Authorization with [AuthorizeFactory\<T\>]
 
+> **Scope note:** this section covers `[AuthorizeFactory<T>]` on **class factories** — CRUD-scoped auth (`Create`/`Fetch`/`Insert`/`Update`/`Delete`) with generated `CanCreate`/`CanFetch`/`CanSave`/`CanDelete`. For `[AuthorizeFactory<T>]` on **interface factories** — which uses a different scope model (`Execute`/`Read` only) and per-method parameter matching — see `references/interface-factory.md`.
+
 Define domain-specific authorization logic in a dedicated class:
 
 <!-- snippet: authorization-interface -->

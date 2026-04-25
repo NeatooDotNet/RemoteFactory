@@ -101,6 +101,10 @@ public partial class Factory
 			var attributes = methodSymbol.GetAttributes().ToList();
 			var attributeNames = methodSymbol.GetAttributes().Select(a => a.AttributeClass?.Name.Replace("Attribute", "")).ToList();
 
+			// Snapshot real source-placed attribute names (before adding synthetic defaults)
+			// so NF0106 only fires for attributes the user actually wrote.
+			var realAttributeNames = new HashSet<string>(attributeNames.Where(a => a != null)!);
+
 			attributeNames.AddRange(defaultFactoryOperations.Select(o => o.ToString()));
 
 			var aspAuthorizeAttributes = attributes.Where(a => a.AttributeClass?.Name == "AspAuthorizeAttribute").ToList();
@@ -120,6 +124,43 @@ public partial class Factory
 				if (Enum.TryParse<FactoryOperation>(attributeName, out var factoryOperation))
 				{
 					hasFactoryOperationAttribute = true;
+
+					// NF0106: Factory-operation attribute on an interface factory method.
+					// Interface factories have no CRUD/Execute operation semantics — every method is
+					// implicitly remote. Operation attributes on interface methods cause duplicate
+					// codegen (class-factory path alongside interface-factory path). Emit diagnostic
+					// and skip this attribute so the interface-factory path owns the method cleanly.
+					//
+					// Use methodSymbol.ContainingType to detect whether the method is DECLARED on an
+					// interface — serviceSymbol can be reassigned to the paired interface for class
+					// factories (class + matching I-prefixed interface), which would misfire NF0106.
+					//
+					// Only fire for REAL user-source attributes, not the synthetic Execute default
+					// that the generator adds to every interface method.
+					if (methodSymbol.ContainingType?.TypeKind == TypeKind.Interface
+						&& realAttributeNames.Contains(attributeName!))
+					{
+						var methodLocation = methodSyntax switch
+						{
+							MethodDeclarationSyntax mds => mds.Identifier.GetLocation(),
+							ConstructorDeclarationSyntax cds => cds.Identifier.GetLocation(),
+							_ => methodSyntax.GetLocation()
+						};
+						var lineSpan = methodLocation.GetLineSpan();
+						diagnostics.Add(new DiagnosticInfo(
+							"NF0106",
+							lineSpan.Path ?? "",
+							lineSpan.StartLinePosition.Line,
+							lineSpan.StartLinePosition.Character,
+							lineSpan.EndLinePosition.Line,
+							lineSpan.EndLinePosition.Character,
+							methodLocation.SourceSpan.Start,
+							methodLocation.SourceSpan.Length,
+							methodSymbol.Name,
+							attributeName!));
+						messages.Add($"NF0106: factory-operation attribute '[{attributeName}]' on interface method '{methodSymbol.Name}'; attribute ignored.");
+						continue;
+					}
 
 					// Execute check runs BEFORE the return-type check.
 					// This prevents Execute methods that return the target type from being

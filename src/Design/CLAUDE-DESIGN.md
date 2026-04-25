@@ -109,6 +109,34 @@ public interface IMyRepository
 ```
 **Generates**: Proxy implementation that serializes to server.
 
+### Pattern 2a: Interface Factory with [AuthorizeFactory<T>]
+```csharp
+public interface IRepositoryAuth
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool HasAccess();           // every method
+    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool CanAccessItem(Guid id); // methods with matching Guid param
+}
+
+[Factory]
+[AuthorizeFactory<IRepositoryAuth>]
+public interface IAuthorizedRepository
+{
+    Task<Item?> GetItem(Guid id);                 // No attributes — Anti-Pattern 2 / Critical Rule 4
+    Task<Item>  UpdateItem(Guid id, string name);
+}
+
+public class AuthorizedRepository : IAuthorizedRepository { /* plain service class */ }
+```
+**Generates**: `IAuthorizedRepositoryFactory : IAuthorizedRepository` with `Can{Method}(matching-params)` helpers. `Local{Method}` invokes all applicable auth methods and throws `NotAuthorizedException` on denial before calling the impl.
+
+**Key rules:**
+- Scopes `Execute` and `Read` apply uniformly across all interface methods. CRUD scopes (`Create`/`Fetch`/`Insert`/`Update`/`Delete`) silently never fire because interface methods have no CRUD operation.
+- Parameter matching by type enables per-method authorization (e.g., `CanAccessItem(Guid id)` runs only on interface methods that have a `Guid` parameter).
+- The impl class is a plain service — no `[Factory]`, no operation attributes, no `[Remote]`. Register it on the server only (`services.AddScoped<IAuthorizedRepository, AuthorizedRepository>()`).
+- Contrast with `AuthorizedOrder.cs` (class factory, CRUD scopes, `CanCreate`/`CanFetch`/`CanSave`/`CanDelete`).
+
+See `AuthorizedRepository.cs` for the fully-commented pedagogy file.
+
 ### Pattern 3: Static Factory
 ```csharp
 [Factory]
@@ -250,7 +278,8 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Can [Execute] return void? | No, must return Task<T> | `AllPatterns.cs:340-347` | Client needs result to confirm |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
-| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | `AuthorizedOrder.cs`, `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
+| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | Class factory: `AuthorizedOrder.cs`. Interface factory: `AuthorizedRepository.cs`. ASP.NET: `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
+| Which `[AuthorizeFactory]` scope applies on an interface factory? | `Execute` and `Read` only | `AuthorizedRepository.cs` | Interface methods have no CRUD operation; `Create`/`Fetch`/`Insert`/`Update`/`Delete` scopes silently never fire. Use parameter matching for per-method authorization |
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 | Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
 | How do I handle a factory event on the client? | Implement `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` and register it in DI | `FactoryEventRelayPattern.cs` (`InMemoryAggregatorRelay`) | Consumer-owned bridge to any aggregator; RemoteFactory invokes it fire-and-forget exactly once per [Remote] call (even empty batch), strictly after the caller's continuation resumes |
@@ -305,7 +334,7 @@ internal partial class OrderLine : IOrderLine
 [Factory]
 public interface IMyRepository
 {
-    [Fetch]  // WRONG: Causes duplicate generation
+    [Fetch]  // WRONG: emits NF0106 — factory-operation attribute on interface method
     Task<Item> GetByIdAsync(int id);
 }
 ```
@@ -319,7 +348,7 @@ public interface IMyRepository
 }
 ```
 
-**Why it matters:** The generator treats all interface methods as remote. Adding operation attributes creates duplicate registrations.
+**Why it matters:** The generator treats all interface methods as remote. Adding operation attributes would cause duplicate registrations — enforced by **NF0106** (factory-operation attribute on interface factory method). Applies to `[Create]`/`[Fetch]`/`[Insert]`/`[Update]`/`[Delete]`/`[Execute]`, with or without `[AuthorizeFactory<T>]`.
 
 ---
 
@@ -782,11 +811,11 @@ private static Task<bool> _SendNotification(...) { }  // Private, underscore pre
 
 ### 4. Interface Factory Methods Need NO Attributes
 ```csharp
-// WRONG
+// WRONG — emits NF0106
 [Factory]
 public interface IMyRepository
 {
-    [Fetch]  // Don't do this
+    [Fetch]  // NF0106: factory-operation attribute on interface factory method
     Task<Item> GetByIdAsync(int id);
 }
 
@@ -797,6 +826,7 @@ public interface IMyRepository
     Task<Item> GetByIdAsync(int id);  // No attributes - all methods are remote
 }
 ```
+Enforced at compile time by **NF0106**. The rule applies to `[Create]`/`[Fetch]`/`[Insert]`/`[Update]`/`[Delete]`/`[Execute]` on any `[Factory]` interface method.
 
 ### 5. Properties Need Public Setters
 ```csharp
@@ -976,8 +1006,9 @@ These are known limitations or open questions. They are documented here to preve
 |------|----------|
 | `Design.Domain/FactoryPatterns/AllPatterns.cs` | All three patterns side-by-side with extensive comments |
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle hooks and IFactorySaveMeta |
-| `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] custom domain authorization with Can* methods |
+| `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] on a CLASS FACTORY — CRUD scopes, CanCreate/CanFetch/CanSave/CanDelete |
 | `Design.Domain/Aggregates/AuthorizedOrderAuth.cs` | Auth interface and implementation for AuthorizedOrder |
+| `Design.Domain/Aggregates/AuthorizedRepository.cs` | [AuthorizeFactory<T>] on an INTERFACE FACTORY — Execute/Read scopes, parameter matching, Can{Method} per interface method |
 | `Design.Domain/Aggregates/ParamAuthOrder.cs` | Parameterized [AuthorizeFactory<T>] with type-matched and target entity params |
 | `Design.Domain/Aggregates/ParamAuthOrderAuth.cs` | Auth interface and implementation with parameterized methods |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
@@ -989,6 +1020,7 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | `Relay(IReadOnlyList<FactoryEventBase>)` invocation, batch contents, `RaiseOptions.ServerOnly` exclusion, empty-batch still invokes Relay once |
 | `Design.Tests/FactoryTests/ParamAuthorizationTests.cs` | Parameterized auth: type-matched params, target params, CanXxx suppression |
+| `Design.Tests/FactoryTests/InterfaceFactoryAuthorizationTests.cs` | Interface-factory auth: Execute/Read scopes, parameter matching, Can{Method}, NotAuthorizedException across client/server |
 | `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |
