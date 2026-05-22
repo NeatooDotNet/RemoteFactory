@@ -93,6 +93,20 @@ public partial class ExampleClassFactory
     // Method injection ([Service] on method parameters): Server-only. This is
     // the common case. Most services (repositories, external APIs, etc.) should
     // only run on the server.
+    //
+    // SERIALIZATION INTERACTION: see CtorInjectionExample.cs
+    //
+    // Constructor shape changes which deserialization path runs. A class whose
+    // only ctors require non-default arguments cannot be built via object
+    // initializer, so the generator SKIPS IOrdinalSerializable for it. The type
+    // still serializes -- it routes through the named JSON path, which resolves
+    // the instance via IServiceProvider.GetRequiredService and lets DI fill the
+    // ctor parameters on each side of the wire.
+    //
+    // ExampleClassFactory has a parameterless ctor (below) and so uses ordinal.
+    // CtorInjectedEntity in CtorInjectionExample.cs requires DI in its ctor and
+    // so goes through the named/DI path. The choice is shape-based -- the
+    // generator's RequiresServiceInstantiationCheck does not consult [Service].
     // -------------------------------------------------------------------------
 
     public ExampleClassFactory() { }

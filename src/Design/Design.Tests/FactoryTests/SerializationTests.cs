@@ -69,6 +69,28 @@
 //    - Make the class partial
 //    - Use public setters on properties that need to serialize
 //
+// 4. CONSTRUCTOR SHAPE GATES WHICH PATH RUNS:
+//    Ordinal serialization is emitted only when the type can be built without
+//    arguments -- either no explicit ctor, a parameterless ctor, or a ctor
+//    whose parameters all have default values. Any class whose only ctors
+//    require non-default arguments causes the generator to skip
+//    IOrdinalSerializable for that type. (The check is purely shape-based --
+//    the `[Service]` attribute is not consulted; see RequiresServiceInstantiationCheck
+//    in the generator.)
+//
+//    Types that skip ordinal still serialize -- they fall back to the named
+//    JSON path, which resolves the object via IServiceProvider.GetRequiredService.
+//    DI then fills the ctor parameters from the local container on each side
+//    of the wire. That fallback is what makes constructor-injected services
+//    arrive on both client and server. Ordinal FromOrdinalArray would not
+//    resolve them.
+//
+//    Practical rule: if you write `public MyEntity(ISomeService svc)`, you are
+//    opting out of ordinal for that type. The DI path takes over and the
+//    injected service is wired up on each side of the boundary.
+//
+//    See: CtorInjectionExample.cs and the CtorInjectedEntity_* tests below.
+//
 // Example generated code:
 //
 //   partial class Order : IOrdinalSerializable
@@ -151,6 +173,7 @@ using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
 using Design.Tests.TestInfrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Neatoo.RemoteFactory;
 
 namespace Design.Tests.FactoryTests;
 
@@ -430,6 +453,87 @@ public class SerializationTests
 
         // Assert - IsDeleted is set (will serialize when we Save)
         Assert.True(existingOrder.IsDeleted);
+
+        server.Dispose();
+        client.Dispose();
+    }
+
+    // -------------------------------------------------------------------------
+    // Constructor Injection / Ordinal Interaction
+    //
+    // CtorInjectedEntity (CtorInjectionExample.cs) has only a ctor that
+    // requires a DI service. The generator therefore SKIPS IOrdinalSerializable
+    // emission for it. Serialization falls back to the named JSON path, which
+    // calls IServiceProvider.GetRequiredService on each side -- so the ctor
+    // runs on each side with that side's local DI container, and the injected
+    // service is wired up after deserialization.
+    //
+    // These tests pin both halves of that behavior:
+    // 1. Ordinal generation is suppressed for CtorInjectedEntity.
+    // 2. After a server->client round-trip, the client instance's ctor saw
+    //    the CLIENT's ITenantTokenService -- proving DI ran post-deserialization.
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Verifies that the generator skips IOrdinalSerializable when the type
+    /// has no parameterless or all-default ctor.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: The generator's RequiresServiceInstantiationCheck
+    /// looks purely at constructor shape -- parameter count and default
+    /// values. It does not consult `[Service]` attributes. Any class whose
+    /// only ctors require non-default arguments is excluded from ordinal.
+    ///
+    /// The contrast assertion (ExampleClassFactory implements IOrdinalSerializable)
+    /// pins the inverse: types with a parameterless ctor DO get ordinal.
+    /// If this contrast ever breaks, the test will catch the regression in
+    /// either direction.
+    /// </remarks>
+    [Fact]
+    public void CtorInjectedEntity_DoesNotImplementIOrdinalSerializable()
+    {
+        Assert.False(
+            typeof(IOrdinalSerializable).IsAssignableFrom(typeof(CtorInjectedEntity)),
+            "Types whose only ctor requires DI arguments must not implement IOrdinalSerializable.");
+
+        Assert.True(
+            typeof(IOrdinalSerializable).IsAssignableFrom(typeof(ExampleClassFactory)),
+            "Sanity contrast: ExampleClassFactory has a parameterless ctor and must implement IOrdinalSerializable.");
+    }
+
+    /// <summary>
+    /// Verifies the named/DI deserialization path: after a server-to-client
+    /// round-trip, the client-side instance has its ctor-injected service
+    /// resolved from the CLIENT'S DI container.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: The two containers register distinct ITenantTokenService
+    /// instances ("server-token" vs "client-token"). If ordinal serialization
+    /// were in play, _tokens would never be set during deserialization and
+    /// TokenFromContext would NRE. Instead, NeatooJsonTypeInfoResolver
+    /// detects the type is DI-registered and calls GetRequiredService, which
+    /// builds the instance via the client container's ctor invocation -- with
+    /// the client's ITenantTokenService passed in.
+    /// </remarks>
+    [Fact]
+    public async Task CtorInjectedEntity_ServiceArrivesOnEachSideAfterRoundTrip()
+    {
+        var (server, client, _) = DesignClientServerContainers.Scopes(
+            configureServer: s => s.AddScoped<ITenantTokenService>(_ => new TenantTokenService("server-token")),
+            configureClient: c => c.AddScoped<ITenantTokenService>(_ => new TenantTokenService("client-token")));
+
+        var factory = client.GetRequiredService<ICtorInjectedEntityFactory>();
+        var entity = await factory.Fetch(42);
+
+        // State survived the round-trip.
+        Assert.NotNull(entity);
+        Assert.Equal(42, entity!.Id);
+        Assert.Equal("Loaded_42", entity.Name);
+
+        // The instance returned to the client was reconstructed by the
+        // client's DI container during deserialization. Its ctor was invoked
+        // with the CLIENT's ITenantTokenService, not the server's.
+        Assert.Equal("client-token", entity.TokenFromContext);
 
         server.Dispose();
         client.Dispose();
