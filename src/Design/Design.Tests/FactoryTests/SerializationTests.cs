@@ -538,4 +538,84 @@ public class SerializationTests
         server.Dispose();
         client.Dispose();
     }
+
+    /// <summary>
+    /// Regression pin (targeted): the generator must emit
+    /// `AddTransient&lt;ExecCtorEntity&gt;()` from its FactoryServiceRegistrar,
+    /// so the client-side deserializer can resolve the type via
+    /// IServiceProvider.GetRequiredService.
+    /// </summary>
+    /// <remarks>
+    /// BUG HISTORY: FactoryModelBuilder.cs scoped `requiresEntityRegistration`
+    /// to ReadMethodModel only (Create/Fetch). A class with only [Execute]
+    /// was never registered, so deserialization on the client could not
+    /// invoke the ctor through DI -- the injected service stayed null. Fixed
+    /// by also setting the flag when typeInfo.RequiresServiceInstantiation
+    /// is true.
+    ///
+    /// Why a separate test from the round-trip below: DesignClientServerContainers.
+    /// RegisterFactoryTypes performs a reflection-based fallback that registers
+    /// every [Factory] class as scoped. That fallback masks the missing emit in
+    /// the round-trip test. This test builds a minimal container using ONLY
+    /// `services.AddNeatooRemoteFactory(...)` so the generator's output is the
+    /// only source of registrations -- the same as real Blazor WASM startup.
+    /// </remarks>
+    [Fact]
+    public void ExecCtorEntity_IsAutoRegisteredByGenerator_ClientSide()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddNeatooRemoteFactory(
+            NeatooFactory.Remote,
+            new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
+            typeof(ExecCtorEntity).Assembly);
+
+        using var provider = services.BuildServiceProvider();
+
+        var isServiceCheck = provider.GetRequiredService<IServiceProviderIsService>();
+
+        // Concrete type and interface must both be DI-resolvable. Without the
+        // fix, neither is registered -- NeatooJsonTypeInfoResolver then fails
+        // to set CreateObject and the ctor never runs during deserialization.
+        Assert.True(
+            isServiceCheck.IsService(typeof(ExecCtorEntity)),
+            "Generator must register the concrete entity type as a service so the deserializer can resolve it via DI.");
+        Assert.True(
+            isServiceCheck.IsService(typeof(IExecCtorEntity)),
+            "Generator must register the interface -> concrete mapping so factory-method return-types resolve to the entity.");
+    }
+
+    /// <summary>
+    /// End-to-end pin: an [Execute]-only [Factory] class with a DI-requiring
+    /// ctor must round-trip correctly, with the ctor-injected service
+    /// resolved from the client's container after deserialization.
+    /// </summary>
+    /// <remarks>
+    /// This test passes even WITHOUT the FactoryModelBuilder fix because
+    /// DesignClientServerContainers.RegisterFactoryTypes performs a separate
+    /// reflection-based fallback registration. The companion test
+    /// ExecCtorEntity_IsAutoRegisteredByGenerator_ClientSide pins the
+    /// generator-emit behavior directly.
+    /// </remarks>
+    [Fact]
+    public async Task ExecCtorEntity_ServiceArrivesOnClient_AfterExecute()
+    {
+        var (server, client, _) = DesignClientServerContainers.Scopes(
+            configureServer: s => s.AddScoped<ITenantTokenService>(_ => new TenantTokenService("server-token")),
+            configureClient: c => c.AddScoped<ITenantTokenService>(_ => new TenantTokenService("client-token")));
+
+        var factory = client.GetRequiredService<IExecCtorEntityFactory>();
+        var entity = await factory.Open(42);
+
+        Assert.NotNull(entity);
+        Assert.Equal(42, entity!.Id);
+        Assert.Equal("Opened_42", entity.Name);
+
+        // If the entity isn't auto-registered on the client, deserialization
+        // bypasses the ctor and _tokens is null -- this assertion catches it.
+        Assert.Equal("client-token", entity.TokenFromContext);
+
+        server.Dispose();
+        client.Dispose();
+    }
 }
