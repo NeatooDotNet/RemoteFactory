@@ -24,6 +24,23 @@ public EmployeeCompensation([Service] ISalaryCalculator calculator)
 - Service must survive serialization round-trip
 - Examples: ILogger, IValidator (client-side validation)
 
+### How constructor injection actually survives the wire
+
+A class whose only constructors require non-default arguments cannot be built via object-initializer syntax. The generator detects this at compile time and **skips ordinal serialization** for that type — the compact array-based format is replaced by the named JSON path. That fallback is what makes constructor injection work: named-format deserialization resolves the instance via `IServiceProvider.GetRequiredService`, and DI then invokes your constructor with each side's local service registrations. So the injected service is the *server's* instance on the server and the *client's* instance on the client.
+
+**The rule is purely constructor-shape-based:**
+
+| Constructor shape | Ordinal generated? | Deserialization path |
+|---|---|---|
+| No explicit constructor (compiler-generated parameterless) | Yes | Ordinal array |
+| Explicit parameterless constructor | Yes | Ordinal array |
+| All parameters have default values | Yes | Ordinal array |
+| One or more required (non-default) parameters | No | Named JSON + `GetRequiredService` (DI fills ctor params) |
+
+The generator does not look at `[Service]` — only at parameter count and default values. `[Service]` on a ctor parameter is documentation; it does not change which path the generator emits.
+
+**Gotcha:** Mixing required *data* parameters into the constructor (e.g., `MyEntity(int id, IRepo repo)`) also disables ordinal, but DI cannot supply `id` from the container. Either the data needs to be a public property restored from JSON, or you need a parameterless / all-defaults ctor available for DI to choose. Field state never crosses the wire on either path — only public-getter-and-setter properties do.
+
 ---
 
 ## Method Injection (Server Only)

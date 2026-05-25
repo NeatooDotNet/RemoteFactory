@@ -232,9 +232,24 @@ internal static class FactoryModelBuilder
         // Determine if there's a default Save method (no additional parameters beyond target)
         var hasDefaultSave = saveMethods.Any(s => s.IsDefault);
 
-        // Determine if entity registration is needed
-        var requiresEntityRegistration = factoryMethods.OfType<ReadMethodModel>()
-            .Any(f => !f.IsConstructor && !f.IsStaticFactory);
+        // Determine if entity registration is needed.
+        //
+        // The entity type itself must be registered as a transient so that the
+        // client-side JSON deserializer can resolve it via
+        // IServiceProvider.GetRequiredService (NeatooJsonTypeInfoResolver gates
+        // on IServiceProviderIsService.IsService(type)). Two cases require it:
+        //
+        //   1. A non-ctor non-static-factory ReadMethodModel exists (Create/Fetch).
+        //      The factory itself constructs new instances via DI on the server,
+        //      so the type must be in the container.
+        //   2. The type's constructor requires service instantiation. Without
+        //      registration, the deserializer cannot rebuild the instance on
+        //      the client and the ctor never runs -- the ctor-injected service
+        //      stays null. This covers [Execute]-only factories whose ctor
+        //      takes DI services.
+        var requiresEntityRegistration =
+            factoryMethods.OfType<ReadMethodModel>().Any(f => !f.IsConstructor && !f.IsStaticFactory)
+            || typeInfo.RequiresServiceInstantiation;
 
         // Determine if ordinal converter should be registered
         var registerOrdinalConverter = typeInfo.OrdinalProperties.Any() &&
