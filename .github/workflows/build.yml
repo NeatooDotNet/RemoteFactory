@@ -96,6 +96,30 @@ jobs:
           path: ./test-results/*.trx
           retention-days: 7
 
+      - name: Trimming verification (publish-trimmed harness)
+        run: |
+          dotnet publish src/Tests/RemoteFactory.TrimmingTests/RemoteFactory.TrimmingTests.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained true \
+            -p:ContinuousIntegrationBuild=true
+
+          PUBLISH_DIR="src/Tests/RemoteFactory.TrimmingTests/bin/Release/net9.0/linux-x64/publish"
+
+          # Server-only IMPLEMENTATION types must be trimmed out of the published
+          # assembly. The IServerOnlyRepository interface name is expected to remain
+          # (referenced from guarded-dead LocalCreate bodies the trimmer keeps —
+          # tracked as TRIM-005); the implementations must not.
+          if grep -aq "ServerOnlyDirect" "$PUBLISH_DIR/RemoteFactory.TrimmingTests.dll" \
+             || grep -aqP '(?<!I)ServerOnlyRepository' "$PUBLISH_DIR/RemoteFactory.TrimmingTests.dll"; then
+            echo "::error::Server-only implementation types found in trimmed assembly — trimming did not remove server-only code."
+            exit 1
+          fi
+          echo "Server-only implementation types absent from trimmed assembly."
+
+          # Run the trimmed harness; it exits non-zero if any check fails
+          "$PUBLISH_DIR/RemoteFactory.TrimmingTests"
+
       - name: Pack NuGet packages
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |

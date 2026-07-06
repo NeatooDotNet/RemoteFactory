@@ -38,7 +38,7 @@ public sealed class CapturingRelay : IFactoryEventRelay
 
 public static class EventRelaySmokeTest
 {
-    public static void Run()
+    public static bool Run()
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -57,7 +57,7 @@ public static class EventRelaySmokeTest
         if (string.IsNullOrEmpty(json))
         {
             System.Console.WriteLine("Event relay smoke FAILED: serializer produced null/empty JSON.");
-            return;
+            return false;
         }
 
         var wire = new[]
@@ -77,12 +77,12 @@ public static class EventRelaySmokeTest
         catch (UnknownFactoryEventTypeException ex)
         {
             System.Console.WriteLine($"Event relay smoke FAILED: registry could not resolve TrimTestRelayEvent post-trim. {ex.Message}");
-            return;
+            return false;
         }
         catch (System.Exception ex)
         {
             System.Console.WriteLine($"Event relay smoke FAILED: deserialization threw {ex.GetType().Name}: {ex.Message}");
-            return;
+            return false;
         }
 
         capturing.Relay(deserialized).GetAwaiter().GetResult();
@@ -90,21 +90,22 @@ public static class EventRelaySmokeTest
         if (capturing.Captured.Count != 1)
         {
             System.Console.WriteLine($"Event relay smoke FAILED: expected 1 captured event, got {capturing.Captured.Count}.");
-            return;
+            return false;
         }
 
         if (capturing.Captured[0] is not TrimTestRelayEvent rt)
         {
             System.Console.WriteLine($"Event relay smoke FAILED: captured event is {capturing.Captured[0].GetType().FullName}, not TrimTestRelayEvent.");
-            return;
+            return false;
         }
 
         if (rt.Id != 42 || rt.Message != "trim-smoke")
         {
             System.Console.WriteLine($"Event relay smoke FAILED: round-trip values lost. Got Id={rt.Id}, Message=\"{rt.Message}\".");
-            return;
+            return false;
         }
 
         System.Console.WriteLine("Event relay smoke PASSED: FactoryEventBase descendant survived trimming and round-tripped through registry+deserializer+relay.");
+        return true;
     }
 }

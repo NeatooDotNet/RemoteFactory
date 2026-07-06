@@ -3,7 +3,7 @@
 **Plan #:** 004
 **Date:** 2026-07-06
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Plan-review opt-in:** No (test-infrastructure/CI wiring only; no public API, schema, or documented business-rule surface)
 **Code-review opt-in:** No (no library behavior change; harness and workflow only)
@@ -53,10 +53,10 @@ Give the publish-trimmed harness enforceable pass/fail semantics and make CI run
 
 ## Acceptance
 
-- [ ] A deliberately-injected smoke-check failure makes the published trimmed exe exit non-zero; the all-green run exits 0. `[explicit-skip: harness-gate semantics — verified by one-off failure injection at the keyboard; the harness itself is the test]`
-- [ ] CI publishes and runs the trimmed harness on every push/PR build, and the job fails when the harness fails. `[explicit-skip: CI wiring — verified by this plan's own workflow run]`
-- [ ] Server-only marker absence in the published assembly is asserted by CI, not just documented in the README. `[explicit-skip: binary-inspection gate — workflow grep step]`
-- [ ] `dotnet build` and `dotnet test` of `Neatoo.RemoteFactory.sln` remain green (net9.0 + net10.0). `[explicit-skip: build gate]`
+- [x] A deliberately-injected smoke-check failure makes the published trimmed exe exit non-zero; the all-green run exits 0. `[explicit-skip: harness-gate semantics — verified by one-off failure injection at the keyboard; the harness itself is the test]`
+- [ ] CI publishes and runs the trimmed harness on every push/PR build, and the job fails when the harness fails. `[explicit-skip: CI wiring — verified by this plan's own workflow run]` *(pending first workflow run — triggers on PR to main or workflow_dispatch; user controls push)*
+- [x] Server-only marker absence in the published assembly is asserted by CI, not just documented in the README. `[explicit-skip: binary-inspection gate — workflow grep step]` *(grep logic verified locally against the win-x64 publish; CI asserts the linux-x64 artifact)*
+- [x] `dotnet build` and `dotnet test` of `Neatoo.RemoteFactory.sln` remain green (net9.0 + net10.0). `[explicit-skip: build gate]`
 
 ---
 
@@ -77,15 +77,40 @@ Walked 2026-07-06 on the `TRIM` branch (recon commit ba3a744):
 
 Filled after implementation, before the Step 5 gate. All four Acceptance bullets are `explicit-skip` (gate/infrastructure signals — the harness itself is the test), so the expectation is a `test-reviewer` skip recorded in Skipped Steps rather than an evidence map with cited xUnit methods.
 
-| Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
+| Acceptance bullet (short) | Tier declared | Test method / evidence | Tier confirmed |
 |---|---|---|---|
-| — | — | — | — |
+| Injected failure → non-zero exit; all-green → 0 | `[explicit-skip]` | Keyboard verification 2026-07-06: injected `failedChecks.Add(...)` → `dotnet run` exit 1; removed → exit 0; trimmed publish all-green → exit 0 | ✓ |
+| CI publishes and runs the trimmed harness | `[explicit-skip]` | `build.yml` "Trimming verification" step; **pending first workflow run** (PR to main or workflow_dispatch) | ✗ pending |
+| Marker absence asserted by CI | `[explicit-skip]` | `build.yml` grep step; logic verified locally against win-x64 publish (implementations absent, interface retention → TRIM-005) | ✓ |
+| Solution build/test green | `[explicit-skip]` | `reviews/004-build.log` (0 errors), `reviews/004-test.log` (2254 passed, 0 failed, net9.0+net10.0) | ✓ |
 
 ---
 
 ## Plan Amendments
 
-(None yet.)
+### 2026-07-06 — Harness didn't compile at HEAD: dead `[Event]` API usage removed
+
+- **Section affected:** Constraints ("all five existing checks keep passing") / Steps 1
+- **Original said:** the harness compiles and its five checks pass; this plan only re-plumbs reporting.
+- **What changed:** `TrimTestCommands._OnWorkCompleted` used the `[Remote, Event]` method attribute deleted in v1.5.0 (`eec581c`) — the harness has not compiled since, and the on-disk publish artifacts were stale pre-v1.5 builds. Removed the dead method and the obsolete `OnWorkCompletedEvent` delegate check; event coverage at HEAD is `EventRelaySmokeTest` (current relay API). Four checks remain: service-provider build, class-factory resolution, static-delegate resolution, feature-switch fold, event-relay smoke.
+- **Why:** the project being outside the solution meant the v1.5.0 breaking change never touched it — exactly the failure mode this plan exists to close.
+- **Discovery Log link:** 2026-07-06 — TRIM-004 (harness rot).
+
+### 2026-07-06 — Class-factory check had never actually passed; two harness bugs fixed
+
+- **Section affected:** Constraints / Current State
+- **Original said:** existing checks pass; the old `Class factory resolved: False` output was masked only by the exit-0 bug.
+- **What changed:** with exit codes enforced, the class-factory check surfaced two real harness defects: (1) factories are registered scoped and the check resolved from the root provider (`ValidateScopes=true` throws) — now resolves inside a scope; (2) Remote mode requires the consumer-registered keyed `HttpClient` (`RemoteFactoryServices.HttpClientKey`), which the harness never registered — now registered with a `NoOpHttpHandler` (avoids constructing `SocketsHttpHandler`, whose `System.Net.Security` dependency is trimmed out of the full-trim publish). `Class factory resolved: True` now holds on the trimmed run for the first time.
+- **Why:** the check was authored against an older registration shape and silently rotted behind exit-0.
+- **Discovery Log link:** 2026-07-06 — TRIM-004 (harness rot).
+
+### 2026-07-06 — CI marker grep narrowed to implementation types; interface-name retention deferred to TRIM-005
+
+- **Section affected:** Step 3 / Acceptance bullet 3
+- **Original said:** CI asserts the README's `grep "ServerOnly"` returns no matches.
+- **What changed:** at HEAD the `IServerOnlyRepository` TypeDef name and its `DoServerWork` member survive the trimmed publish — generated `LocalCreate` bodies are rooted client-side by delegate registration, and their early-`throw` feature-switch guard plus `try/catch` region defeats ILLink's unreachable-code elimination, so dead body references are retained. Implementations (`ServerOnlyRepository`, `ServerOnlyDirect`, marker string) are correctly trimmed. The CI grep now asserts implementation-type absence (`ServerOnlyDirect`, `(?<!I)ServerOnlyRepository`); the over-retention itself is queued as TRIM-005 rather than absorbed here.
+- **Why:** over-retention is a different defect class (bundle size / docs accuracy) from this plan's gate deliverable; the docs' "should return no matches" claim needs either a generator guard-shape fix or a docs correction — its own plan.
+- **Discovery Log link:** 2026-07-06 — TRIM-004 (over-retention, Defer → TRIM-005).
 
 ---
 
@@ -93,3 +118,4 @@ Filled after implementation, before the Step 5 gate. All four Acceptance bullets
 
 - The harness cannot self-report "type was trimmed away" for the marker check — string absence is only observable from outside the process, hence the CI grep step (Step 3).
 - TRIM-001/002/003 will each add repro cases to this harness; keep the check-aggregation shape easy to extend (one flag, many named checks).
+- **Step 4 decision (2026-07-06):** added to `Neatoo.RemoteFactory.sln` under the `Tests` solution folder. Rationale: the `[Event]` rot proved out-of-sln projects go stale invisibly; sln membership makes plain builds catch compile breaks, while trimming enforcement stays in the dedicated CI publish+run step. `dotnet test` skips it (no test SDK); the single-TFM/`PublishTrimmed` settings only activate at publish, so the multi-target solution build is unaffected (verified by the 004 build log).

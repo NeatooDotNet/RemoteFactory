@@ -44,8 +44,13 @@ A third suspected gap turned out to be already fixed: event records derive `Fact
 | 001 | Draft | [Positional-record preservation in factory signatures](./plans/001-positional-record-signature-preservation.md) | `DtoTypeWalker.WalkFactoryReturn` `HasParameterlessCtor` gate; zTreatment cut-over `StartVisitResultV2` hotfix |
 | 002 | Draft | [`[Factory]` entity property-graph DTO discovery](./plans/002-factory-entity-property-dto-discovery.md) | `WalkFactoryReturn` bails on `[Factory]` roots without descending; zTreatment `TreatmentBanner` / `DashboardContactResult` hotfixes |
 | 003 | Draft | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested |
+| 005 | Draft | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` |
 
-Execution order: 004 → 001 → 002 → 003 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`.
+Execution order: 004 → 001 → 002 → 003 → 005 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`.
+
+## Skipped Steps
+
+- TRIM-004 — `test-reviewer` gate skipped (test-infrastructure-only plan: every Acceptance bullet is `explicit-skip`; the harness itself is the test artifact, evidence recorded in the plan's Test Evidence table).
 
 ## Discovery Log
 
@@ -60,3 +65,14 @@ Execution order: 004 → 001 → 002 → 003 (rows listed in execution order; nu
 - **Decision:** Re-split.
 - **Index changes:** add TRIM-004 (harness pass/fail semantics + CI gate), executed first; 001–003 unchanged.
 - **Follow-up:** TRIM-004.
+
+### 2026-07-06 — TRIM-004 (harness rot)
+- **Finding:** The harness hadn't compiled since v1.5.0 — `TrimTestCommands` still used the `[Event]` method attribute deleted in `eec581c`; on-disk publish artifacts were stale pre-v1.5 builds. With exit codes enforced, the class-factory check then surfaced two harness bugs it had been silently failing on: root-provider resolution of a scoped factory, and the missing consumer-side keyed `HttpClient` registration Remote mode requires. All fixed in-harness; `Class factory resolved: True` now holds on a trimmed run for the first time. Long form: TRIM-004 Plan Amendments 1–2.
+- **Decision:** Amend.
+- **Follow-up:** n/a.
+
+### 2026-07-06 — TRIM-004 (server-only over-retention)
+- **Finding:** A trimmed client retains the `IServerOnlyRepository` TypeDef and `DoServerWork` member ref: generated `LocalCreate` bodies are rooted by delegate registration and their early-`throw` guard + `try/catch` defeats ILLink unreachable-code elimination. Implementations are correctly trimmed. Contradicts `docs/trimming.md` "should return no matches" / "dead code is removed" claims. TRIM-004's CI grep narrowed to implementation types (Plan Amendment 3).
+- **Decision:** Defer.
+- **Index changes:** add TRIM-005 (over-retention: generator guard-shape fix or docs correction), executed last.
+- **Follow-up:** TRIM-005.
