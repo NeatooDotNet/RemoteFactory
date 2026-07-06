@@ -20,12 +20,14 @@ public class EntityPropertyDtoDiscoveryTests
         => string.Join("\n", runResult.GeneratedTrees.Select(t => t.GetText()?.ToString() ?? ""));
 
     /// <summary>
-    /// Text of the generated tree(s) whose file path contains the given factory hint —
-    /// lets assertions distinguish WHICH factory's registrar carries an emission.
+    /// Text of the generated tree(s) for exactly the given factory hint — anchored to
+    /// the ".{hint}.g.cs" file-name shape so a hint can never substring-match another
+    /// factory's tree (e.g. "EntityFactory" vs "ParentEntityFactory"). Lets assertions
+    /// distinguish WHICH factory's registrar carries an emission.
     /// </summary>
     private static string FactoryTree(Microsoft.CodeAnalysis.GeneratorDriverRunResult runResult, string factoryFileHint)
         => string.Join("\n", runResult.GeneratedTrees
-            .Where(t => t.FilePath.Contains(factoryFileHint))
+            .Where(t => t.FilePath.EndsWith($".{factoryFileHint}.g.cs"))
             .Select(t => t.GetText()?.ToString() ?? ""));
 
     [Fact]
@@ -255,6 +257,132 @@ namespace TestNamespace
         var tree = FactoryTree(Run(source), "AggregateFactory");
 
         Assert.Contains("DtoConstructorRegistry.Register<global::Systems.Domain.SystemsDto>", tree);
+    }
+
+    [Fact]
+    public void EntityBaseClassDtoProperty_Discovered()
+    {
+        // Base-aggregate pattern: the DTO-carrying property lives on the entity's
+        // base class; the walk includes the inherited chain.
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public class AuditInfo
+    {
+        public string ChangedBy { get; set; }
+    }
+
+    public abstract class AggregateBase
+    {
+        public AuditInfo Audit { get; set; }
+    }
+
+    [Factory]
+    public class ConcreteAggregate : AggregateBase
+    {
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        var tree = FactoryTree(Run(source), "ConcreteAggregateFactory");
+
+        Assert.Contains("DtoConstructorRegistry.Register<global::TestNamespace.AuditInfo>", tree);
+    }
+
+    [Fact]
+    public void RecordEntitySelfWalk_CarriedDtoDiscovered()
+    {
+        // [Factory] record aggregates pass the same non-interface/non-static gate as
+        // class aggregates — the entity walk must run for them too.
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public class CarriedNote
+    {
+        public string Text { get; set; }
+    }
+
+    [Factory]
+    public record ReportAggregate
+    {
+        public CarriedNote Note { get; set; }
+
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        var tree = FactoryTree(Run(source), "ReportAggregateFactory");
+
+        Assert.Contains("DtoConstructorRegistry.Register<global::TestNamespace.CarriedNote>", tree);
+    }
+
+    [Fact]
+    public void SystemFrameworkTypeProperty_StillExcluded()
+    {
+        // The other half of the segment-match hardening: real System.* framework
+        // types (which have public parameterless ctors and would otherwise register)
+        // stay excluded.
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public class Aggregate
+    {
+        public System.Text.StringBuilder Buffer { get; set; }
+
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        var tree = FactoryTree(Run(source), "AggregateFactory");
+
+        Assert.DoesNotContain("StringBuilder", tree);
+    }
+
+    [Fact]
+    public void DtoInBothSignatureAndEntityProperty_SingleEmission()
+    {
+        // Cross-walk dedupe: the same DTO reachable via a factory method signature
+        // AND via the entity's property graph emits exactly once in the registrar.
+        var source = @"
+using Neatoo.RemoteFactory;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public class SharedDto
+    {
+        public int Id { get; set; }
+    }
+
+    [Factory]
+    public class Aggregate
+    {
+        public SharedDto Info { get; set; }
+
+        [Create]
+        internal void Create() { }
+
+        [Remote]
+        [Execute]
+        internal Task<SharedDto> _Load() => Task.FromResult(Info);
+    }
+}
+";
+        var tree = FactoryTree(Run(source), "AggregateFactory");
+
+        var emissions = System.Text.RegularExpressions.Regex.Matches(
+            tree, @"DtoConstructorRegistry\.Register<global::TestNamespace\.SharedDto>");
+        Assert.Single(emissions);
     }
 
     [Fact]
