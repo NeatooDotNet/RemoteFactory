@@ -233,16 +233,23 @@ public partial class Factory
 
 			this.FactoryMethods = new EquatableArray<TypeFactoryMethodInfo>([.. factoryMethodsList]);
 
-			// Aggregate DTO return types from all factory methods (deduplicated)
+			// Aggregate DTO types from all factory methods (deduplicated, per bucket)
 			var allDtoTypes = new HashSet<string>();
+			var allPreserveTypes = new HashSet<string>();
 			foreach (var method in factoryMethodsList)
 			{
 				foreach (var dtoType in method.DtoReturnTypes)
 				{
 					allDtoTypes.Add(dtoType);
 				}
+
+				foreach (var preserveType in method.DtoPreserveTypes)
+				{
+					allPreserveTypes.Add(preserveType);
+				}
 			}
 			this.DtoReturnTypes = new EquatableArray<string>([.. allDtoTypes]);
+			this.DtoPreserveTypes = new EquatableArray<string>([.. allPreserveTypes]);
 
 			// Collect properties for ordinal serialization (only for non-interface, non-static types)
 			if (!this.IsInterface && !this.IsStatic)
@@ -312,10 +319,18 @@ public partial class Factory
 		public EquatableArray<TypeAuthMethodInfo> AuthMethods { get; set; } = [];
 
 		/// <summary>
-		/// Deduplicated fully-qualified names of plain DTO types discovered across all factory methods.
-		/// Used by renderers to emit DtoConstructorRegistry.Register calls for IL trimming support.
+		/// Deduplicated fully-qualified names of plain DTO types (public parameterless ctor)
+		/// discovered across all factory methods. Used by renderers to emit
+		/// DtoConstructorRegistry.Register calls for IL trimming support.
 		/// </summary>
 		public EquatableArray<string> DtoReturnTypes { get; } = [];
+
+		/// <summary>
+		/// Deduplicated fully-qualified names of DTO types without a public parameterless ctor
+		/// (positional records) discovered across all factory methods. Used by renderers to emit
+		/// DtoConstructorRegistry.PreserveType calls for IL trimming support.
+		/// </summary>
+		public EquatableArray<string> DtoPreserveTypes { get; } = [];
 
 		/// <summary>
 		/// Indicates if this type is nested inside another type.
@@ -679,7 +694,7 @@ public partial class Factory
 			}
 
 			// Discover plain DTO types for constructor registration (IL trimming support)
-			this.DtoReturnTypes = DiscoverDtoTypes(methodSymbol);
+			(this.DtoReturnTypes, this.DtoPreserveTypes) = DiscoverDtoTypes(methodSymbol);
 		}
 
 		/// <summary>
@@ -709,7 +724,7 @@ public partial class Factory
 			}
 
 			// Record primary constructors return [Factory]-annotated types (excluded by DiscoverDtoTypes)
-			this.DtoReturnTypes = DiscoverDtoTypes(constructorSymbol);
+			(this.DtoReturnTypes, this.DtoPreserveTypes) = DiscoverDtoTypes(constructorSymbol);
 		}
 
 		public string Name { get; set; }
@@ -731,23 +746,31 @@ public partial class Factory
 		public EquatableArray<string> DtoReturnTypes { get; private set; } = [];
 
 		/// <summary>
-		/// Discovers plain DTO types in a method's return type and non-service parameters that need
-		/// constructor registration for IL trimming support. Unwraps Task, nullable, and generic
-		/// collections. Excludes primitives, [Factory] types, abstract/interface types, and types
-		/// without parameterless ctors. Recursively walks public properties of discovered DTOs to
-		/// find nested types. Delegates to DtoTypeWalker.WalkFactoryReturn — shared with the
-		/// event-type preservation path.
+		/// Deduplicated FQNs of DTO types without a public parameterless constructor
+		/// (positional records) discovered in this method's signature. Rendered as
+		/// DtoConstructorRegistry.PreserveType&lt;T&gt;() calls for IL trimming support.
 		/// </summary>
-		private static EquatableArray<string> DiscoverDtoTypes(IMethodSymbol methodSymbol)
+		public EquatableArray<string> DtoPreserveTypes { get; private set; } = [];
+
+		/// <summary>
+		/// Discovers plain DTO types in a method's return type and non-service parameters that need
+		/// preservation for IL trimming support. Unwraps Task, nullable, and generic collections.
+		/// Excludes primitives, [Factory] types, and abstract/interface types. Recursively walks
+		/// public properties of discovered DTOs to find nested types. Delegates to
+		/// DtoTypeWalker.WalkDtoGraph, which bucket-sorts by constructor shape: parameterless →
+		/// Register bucket, parameterized-only (positional records) → PreserveType bucket.
+		/// </summary>
+		private static (EquatableArray<string> RegisterTypes, EquatableArray<string> PreserveTypes) DiscoverDtoTypes(IMethodSymbol methodSymbol)
 		{
 			var visited = new HashSet<string>();
-			var dtoTypes = new List<string>();
+			var registerTypes = new List<string>();
+			var preserveTypes = new List<string>();
 
 			// Discover from return type
 			var returnCandidates = DtoTypeWalker.UnwrapType(methodSymbol.ReturnType, unwrapTask: true);
 			foreach (var candidate in returnCandidates)
 			{
-				DtoTypeWalker.WalkFactoryReturn(candidate, dtoTypes, visited);
+				DtoTypeWalker.WalkDtoGraph(candidate, registerTypes, preserveTypes, visited);
 			}
 
 			// Discover from non-service, non-CancellationToken parameters
@@ -764,11 +787,11 @@ public partial class Factory
 				var paramCandidates = DtoTypeWalker.UnwrapType(parameter.Type, unwrapTask: false);
 				foreach (var candidate in paramCandidates)
 				{
-					DtoTypeWalker.WalkFactoryReturn(candidate, dtoTypes, visited);
+					DtoTypeWalker.WalkDtoGraph(candidate, registerTypes, preserveTypes, visited);
 				}
 			}
 
-			return new EquatableArray<string>([.. dtoTypes]);
+			return (new EquatableArray<string>([.. registerTypes]), new EquatableArray<string>([.. preserveTypes]));
 		}
 	}
 

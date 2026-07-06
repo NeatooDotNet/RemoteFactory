@@ -71,6 +71,11 @@ Execution order: 004 → 001 → 002 → 003 → 005 (rows listed in execution o
 - **Decision:** Amend.
 - **Follow-up:** n/a.
 
+### 2026-07-06 — TRIM-001 (unrelated flaky test observed at gate)
+- **Finding:** `RelayTimingTests.Relay_FiresAfterCallerSynchronousWriteOnContinuation` (integration, event relay) failed with `TimeoutException` on net9.0 under full-suite parallel load, passed in isolation and on the next full run. Unrelated to TRIM's generator changes — timing-sensitive test.
+- **Decision:** Defer.
+- **Follow-up:** flagged to user — out-of-goal tech debt; queue as sibling todo or accept as known flake (not queued in TRIM).
+
 ### 2026-07-06 — TRIM-004 (server-only over-retention)
 - **Finding:** A trimmed client retains the `IServerOnlyRepository` TypeDef and `DoServerWork` member ref: generated `LocalCreate` bodies are rooted by delegate registration and their early-`throw` guard + `try/catch` defeats ILLink unreachable-code elimination. Implementations are correctly trimmed. Contradicts `docs/trimming.md` "should return no matches" / "dead code is removed" claims. TRIM-004's CI grep narrowed to implementation types (Plan Amendment 3).
 - **Decision:** Defer.

@@ -248,7 +248,12 @@ Normal Blazor WASM apps don't hit this because their assemblies aren't trimmed �
 
 ### How RemoteFactory Handles It
 
-The source generator discovers plain DTO return types from factory method signatures at compile time and emits `DtoConstructorRegistry.Register<T>(() => new T())` calls. The `[DynamicallyAccessedMembers(All)]` annotation on the generic parameter tells the trimmer to preserve the entire type — constructors, properties, and all metadata that `System.Text.Json` needs for deserialization.
+The source generator discovers DTO types in factory method signatures at compile time — return types **and** non-service parameters — and emits one of two preservation calls per discovered type, chosen by constructor shape:
+
+- **Public parameterless constructor** → `DtoConstructorRegistry.Register<T>(() => new T())`. The registered lambda replaces reflection-based construction at deserialization time.
+- **Only parameterized public constructors** (positional records) → `DtoConstructorRegistry.PreserveType<T>()`. No constructor lambda is registered; deserialization flows through `RecordBypassConverterFactory`, and the call exists purely to root the type for the trimmer.
+
+Both calls carry `[DynamicallyAccessedMembers(All)]` on the generic parameter, which tells the trimmer to preserve the entire type — constructors, properties, and all metadata that `System.Text.Json` needs for deserialization.
 
 This covers all factory patterns:
 
@@ -260,18 +265,18 @@ The generator unwraps `Task<T>`, nullable `T?`, and collection types (like `IRea
 
 ### What Qualifies as a DTO
 
-Not every return type needs this treatment. The generator preserves a return type when it:
+Not every signature type needs this treatment. The generator preserves a discovered type when it:
 
-- Has a public parameterless constructor
+- Has at least one public constructor (parameterless → `Register<T>`; parameterized-only, e.g. positional records → `PreserveType<T>`)
 - Is **not** a `[Factory]`-annotated type (those are already preserved via DI registration)
-- Is **not** a record with only parameterized constructors (handled separately by `RecordBypassConverterFactory`)
 - Is **not** a primitive, string, or framework type
+- Is **not** abstract or an interface
 
 ### What You Need to Know
 
-If you return a plain DTO class through any factory method, it is automatically trimming-safe. You do not need to take any action.
+If you return or accept a plain DTO class **or a positional record** through any factory method, it is automatically trimming-safe. You do not need to take any action.
 
-**Nested DTOs are automatically discovered.** The generator recursively walks public instance properties (including inherited properties) of each discovered DTO type to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references.
+**Nested DTOs are automatically discovered.** The generator recursively walks public instance properties (including inherited properties) of each discovered DTO type — classes and records alike — to find nested DTOs that also need preservation. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner type. The same eligibility criteria and bucket rule apply to nested DTOs as to direct signature types. Cycle detection prevents infinite recursion from circular references.
 
 For example, if a factory method returns `ParentDto` which has a `List<ChildDto> Children` property, both `ParentDto` and `ChildDto` are automatically registered — no additional action is needed.
 

@@ -105,6 +105,13 @@ if (!EventRelaySmokeTest.Run())
     failedChecks.Add("event relay smoke");
 }
 
+// Record DTO smoke test (TRIM-001): positional records in factory signatures are
+// preserved by generator-emitted PreserveType and deserialize on the trimmed client.
+if (!RecordDtoSmokeTest.Run())
+{
+    failedChecks.Add("record DTO preservation");
+}
+
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");

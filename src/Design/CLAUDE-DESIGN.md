@@ -292,7 +292,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
-| Do I need to register DTOs for IL trimming? | No -- the generator auto-registers DTO return types from factory methods | `DtoConstructorRegistry.cs` | Generator emits `() => new Dto()` lambdas; `NeatooJsonTypeInfoResolver` uses them instead of `Activator.CreateInstance` |
+| Do I need to register DTOs for IL trimming? | No -- the generator auto-preserves DTO types from factory signatures, records included | `DtoConstructorRegistry.cs` | Parameterless ctor → `Register<T>(() => new T())` lambda used by `NeatooJsonTypeInfoResolver`; positional records → `PreserveType<T>()` rooting, deserialized via `RecordBypassConverterFactory` |
 | What if my nested DTO fails to deserialize under trimming? | Check that it is reachable as a public property of a discovered DTO; if not, return it from a factory method or register manually | `docs/trimming.md` | The generator recursively walks properties of discovered DTOs; only unreachable types need manual registration |
 | Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
 | Can auth methods receive the target entity? | Yes -- on write operations (Insert/Update/Delete) | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanWrite(IEntity target)` inspects entity state; suppresses CanInsert/CanUpdate/CanDelete generation but CanSave gets two overloads |
@@ -767,25 +767,26 @@ This mechanism is internal to the generator and library. Users do not need to em
 
 #### DTO Constructor Registry for Trimming
 
-The generator emits `DtoConstructorRegistry.Register<Dto>(() => new Dto())` calls in `FactoryServiceRegistrar` for plain DTO return types discovered in factory method signatures. This creates static constructor references that survive IL trimming — without them, `System.Text.Json` deserialization fails because `DefaultJsonTypeInfoResolver` uses reflection to discover constructors, and the trimmer strips that metadata from types in assemblies marked `IsTrimmable=true`.
+The generator emits preservation calls in `FactoryServiceRegistrar` for DTO types discovered in factory method signatures (return types and non-service parameters), bucket-sorted by constructor shape: `DtoConstructorRegistry.Register<Dto>(() => new Dto())` for types with a public parameterless constructor, `DtoConstructorRegistry.PreserveType<Dto>()` for types with only parameterized public constructors (positional records). Both create static references that survive IL trimming — without them, `System.Text.Json` deserialization fails because `DefaultJsonTypeInfoResolver` uses reflection to discover constructors, and the trimmer strips that metadata from types in assemblies marked `IsTrimmable=true`.
 
 At runtime, `NeatooJsonTypeInfoResolver` uses the registered lambda instead of `Activator.CreateInstance` (which also fails under trimming). If a type is not in DI and not in the DTO registry, `CreateObject` is not set — STJ uses its default behavior, which produces a clear error if the constructor was trimmed.
 
-**DTO discovery criteria** — the generator registers a return type when it:
+**DTO discovery criteria** — the generator preserves a discovered signature type when it:
 
 | Criterion | Why |
 |-----------|-----|
-| Has a public parameterless constructor | Required for `() => new Dto()` lambda |
+| Has at least one public constructor | Parameterless → `Register<T>(() => new T())`; parameterized-only (positional records) → `PreserveType<T>()`, deserialized via `RecordBypassConverterFactory` |
 | Is NOT a `[Factory]`-annotated type | Already DI-registered; uses `GetRequiredService` path |
-| Is NOT a record (no parameterless ctor + has parameterized ctors) | Handled by `RecordBypassConverterFactory` |
 | Is NOT a primitive, string, or framework type | STJ handles these natively |
 | Is NOT abstract or an interface | Cannot be instantiated |
 
-The generator unwraps `Task<T>`, nullable `T?`, and generic collection types (`IReadOnlyList<T>`, `List<T>`, etc.) to discover the inner DTO type. The `Register<T>` method carries `[DynamicallyAccessedMembers(All)]` on the type parameter, which instructs the trimmer to preserve the entire type — constructors, properties, and all metadata.
+(`record struct` edge: Roslyn reports the synthesized parameterless ctor, so value-type records land in the `Register` bucket; at runtime `RecordBypassConverterFactory` still claims them because reflection omits the implicit struct ctor. Both mechanisms preserve and round-trip them — the divergence is benign.)
+
+The generator unwraps `Task<T>`, nullable `T?`, and generic collection types (`IReadOnlyList<T>`, `List<T>`, etc.) to discover the inner DTO type. Both `Register<T>` and `PreserveType<T>` carry `[DynamicallyAccessedMembers(All)]` on the type parameter, which instructs the trimmer to preserve the entire type — constructors, properties, and all metadata. `PreserveType<T>` deliberately does not populate the constructor registry — parameterized-ctor types never take the `CreateObject` path.
 
 Duplicate registrations from multiple factories returning the same DTO type are idempotent (`ConcurrentDictionary.TryAdd`).
 
-**Nested DTO discovery:** The generator recursively walks public instance properties (including inherited properties via base type chain) of each discovered DTO to find nested DTOs that also need registration. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner DTO type. The same eligibility criteria apply to nested DTOs as to direct return types. Cycle detection prevents infinite recursion from circular references (e.g., `DtoA` -> `DtoB` -> `DtoA`).
+**Nested DTO discovery:** The generator recursively walks public instance properties (including inherited properties via base type chain) of each discovered DTO — classes and records alike — to find nested DTOs that also need preservation. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner DTO type. The same eligibility criteria and bucket rule apply to nested DTOs as to direct signature types. Cycle detection prevents infinite recursion from circular references (e.g., `DtoA` -> `DtoB` -> `DtoA`).
 
 **Factory event type preservation.** `FactoryEventBase` itself carries `[FactoryEvent]` and `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]`, both with `Inherited = true`. Every descendant is therefore automatically discoverable by the runtime `FactoryEventTypeRegistry` and has its constructors and properties preserved through IL trimming with **no generator emission and no per-event annotation**. Inheriting `FactoryEventBase` is sufficient; consumers never apply `[FactoryEvent]` directly.
 

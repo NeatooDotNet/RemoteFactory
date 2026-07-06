@@ -3,7 +3,7 @@
 **Plan #:** 001
 **Date:** 2026-07-06
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Plan-review opt-in:** Yes (changes the generator's emission contract for every consumer's registrar; touches documented behavior in docs/trimming.md and CLAUDE-DESIGN.md; incremental-pipeline equality semantics involved)
 **Code-review opt-in:** Yes (behavior-changing generator work)
@@ -59,12 +59,12 @@ Make the factory-signature DTO walk preserve positional records (types with only
 
 Tier note: `[trimmed-harness]` is a project-local tier — a named check in `RemoteFactory.TrimmingTests` executed under `PublishTrimmed=true` by the CI trimming gate (TRIM-004).
 
-- [ ] The generator emits `PreserveType<T>()` for a positional record appearing as a factory-method return type, as a non-service parameter, and as a property of a discovered DTO; `Register<T>()` emission for parameterless DTOs is unchanged. `[unit]`
-- [ ] A positional record returned from a `[Remote, Execute]` command round-trips through the Neatoo serializer on a publish-trimmed client (the zTreatment `StartVisitResultV2` shape). `[trimmed-harness]`
-- [ ] Record-as-parameter and record-nested-in-a-discovered-DTO shapes round-trip on the publish-trimmed client. `[trimmed-harness]`
-- [ ] `[Factory]` types, `System.*`/primitive, and abstract/interface types still produce no preservation emission of either kind. `[unit]`
-- [ ] Full solution build/test green on net9.0 + net10.0; CI trimming gate green. `[explicit-skip: build/test/CI gates]`
-- [ ] `docs/trimming.md`, CLAUDE-DESIGN.md, and `AllPatterns.cs` comments describe the two-bucket emission as shipped. `[explicit-skip: doc delta, reviewed at code review]`
+- [x] The generator emits `PreserveType<T>()` for a positional record appearing as a factory-method return type, as a non-service parameter, and as a property of a discovered DTO; `Register<T>()` emission for parameterless DTOs is unchanged. `[unit]`
+- [x] A positional record returned from a `[Remote, Execute]` command round-trips through the Neatoo serializer on a publish-trimmed client (the zTreatment `StartVisitResultV2` shape). `[trimmed-harness]`
+- [x] Record-as-parameter and record-nested-in-a-discovered-DTO shapes round-trip on the publish-trimmed client. `[trimmed-harness]`
+- [x] `[Factory]` types, `System.*`/primitive, and abstract/interface types still produce no preservation emission of either kind. `[unit]`
+- [x] Full solution build/test green on net9.0 + net10.0; CI trimming gate green. `[explicit-skip: build/test/CI gates]` *(local logs green — one unrelated flaky relay-timing test failed under parallel load and passed isolated; CI gate verifies on the PR)*
+- [x] `docs/trimming.md`, CLAUDE-DESIGN.md, and `AllPatterns.cs` comments describe the two-bucket emission as shipped. `[explicit-skip: doc delta, reviewed at code review]`
 
 ---
 
@@ -88,11 +88,16 @@ Walked 2026-07-06 on `TRIM` (post PR #68 merge, a566538):
 
 ## Test Evidence
 
-Filled after implementation, before the Step 5 gate.
+Filled 2026-07-06, before the Step 5 gate. All test classes are in `RemoteFactory.UnitTests/FactoryGenerator/DtoDiscovery/RecordDtoDiscoveryTests` unless noted.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| — | — | — | — |
+| PreserveType emitted for return / parameter / nested; Register unchanged | `[unit]` | `PositionalRecordAsReturnType_PreserveTypeEmitted`, `PositionalRecordAsParameter_PreserveTypeEmitted`, `PositionalRecordNestedInClassDto_BothBucketsEmitted`, `ClassDtoNestedInPositionalRecord_DescentEntersRecordGraph`, `CollectionOfRecords_UnwrappedAndPreserved`, `RecordWithBothCtorShapes_StaysInRegisterBucket`, `PositionalRecordFromInterfaceFactory_PreserveTypeEmitted` (all three renderer paths: static, class, interface) | ✓ |
+| Record-as-return round-trips on publish-trimmed client | `[trimmed-harness]` | `RecordDtoSmokeTest.Run` return shape (`TrimRecordResult`) — trimmed run exit 0; **negative control**: PreserveType emission disabled → harness FAILED "record DTO preservation", exit 1 | ✓ |
+| Record-as-parameter and nested-record shapes round-trip trimmed | `[trimmed-harness]` | `RecordDtoSmokeTest.Run` parameter shape (`TrimRecordCommand`) + nested (`TrimRecordDetail` property) | ✓ |
+| Exclusions intact (no emission of either kind) | `[unit]` | `FactoryAnnotatedType_NoEmissionOfEitherKind`, `PrivateCtorOnlyType_NoEmissionOfEitherKind`; existing `NestedDtoDiscoveryTests` suite stays green | ✓ |
+| Build/test/CI gates | `[explicit-skip]` | `reviews/001-build.log` (0 errors, 2 pre-existing warnings), `reviews/001-test.log` (full suite), `reviews/001-test-relay-rerun.log` (unrelated flaky `RelayTimingTests` re-run green in isolation) | ✓ |
+| Docs describe two-bucket emission | `[explicit-skip]` | `docs/trimming.md`, `CLAUDE-DESIGN.md` (registry section + criteria table + FAQ row), `AllPatterns.cs` `ExampleRecordResult` remarks | ✓ |
 
 ---
 

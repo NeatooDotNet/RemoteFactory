@@ -1,7 +1,9 @@
 // DtoTypeWalker.cs
 // Shared walker for discovering DTO types reachable from a root symbol.
-// Used by both the factory-return path (MethodInfo.DiscoverDtoTypes) and the
-// [FactoryEventHandler<T>] event-type preservation path (FactoryGenerator.RelayHandler).
+// Used by the factory-signature path (MethodInfo.DiscoverDtoTypes) for both
+// return types and non-service parameters. Discovered types bucket-sort by
+// constructor shape: parameterless -> DtoConstructorRegistry.Register<T>(),
+// parameterized-only -> DtoConstructorRegistry.PreserveType<T>().
 
 using System.Collections.Generic;
 using System.Linq;
@@ -130,19 +132,43 @@ internal static class DtoTypeWalker
 	}
 
 	/// <summary>
-	/// Factory-return walker: recursively discovers DTO types reachable from the given root.
-	/// Only accepts types that pass BOTH IsDtoStructureCandidate and HasParameterlessCtor.
-	/// Walks public instance properties (including inherited) to find nested DTOs.
-	/// Uses visited for cycle suppression; appends FQNs to dtoTypes.
+	/// Whether the named type has at least one public constructor with parameters.
 	/// </summary>
-	public static void WalkFactoryReturn(ITypeSymbol typeSymbol, List<string> dtoTypes, HashSet<string> visited)
+	public static bool HasParameterizedPublicCtor(INamedTypeSymbol namedType)
+	{
+		return namedType.Constructors.Any(c =>
+			c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length > 0);
+	}
+
+	/// <summary>
+	/// Factory-signature walker: recursively discovers DTO types reachable from the
+	/// given root and bucket-sorts every discovered type (roots and nested alike) by
+	/// constructor shape:
+	///   - public parameterless ctor → registerTypes (Register&lt;T&gt;(() => new T()))
+	///   - only parameterized public ctors (positional records) → preserveTypes
+	///     (PreserveType&lt;T&gt;(); deserialization flows through RecordBypassConverterFactory)
+	///   - no public ctor at all → skipped (not deserializable)
+	/// Walks public instance properties (including inherited) of both buckets' types
+	/// to find nested DTOs. Both buckets share the visited set for cycle suppression.
+	/// </summary>
+	public static void WalkDtoGraph(
+		ITypeSymbol typeSymbol,
+		List<string> registerTypes,
+		List<string> preserveTypes,
+		HashSet<string> visited)
 	{
 		if (!(typeSymbol is INamedTypeSymbol namedType))
 		{
 			return;
 		}
 
-		if (!IsDtoStructureCandidate(namedType) || !HasParameterlessCtor(namedType))
+		if (!IsDtoStructureCandidate(namedType))
+		{
+			return;
+		}
+
+		var hasParameterless = HasParameterlessCtor(namedType);
+		if (!hasParameterless && !HasParameterizedPublicCtor(namedType))
 		{
 			return;
 		}
@@ -154,80 +180,18 @@ internal static class DtoTypeWalker
 			return;
 		}
 
-		dtoTypes.Add(fullyQualifiedName);
-
-		WalkProperties(namedType, WalkFactoryReturnNested);
-
-		void WalkFactoryReturnNested(ITypeSymbol nested) => WalkFactoryReturn(nested, dtoTypes, visited);
-	}
-
-	/// <summary>
-	/// Event-root walker: the root type itself is ALWAYS added to parameterizedTypes
-	/// (PreserveType&lt;T&gt;() bucket), regardless of whether it has a parameterless ctor —
-	/// event records deserialize through RecordBypassConverterFactory.
-	/// Nested properties bucket-sort by HasParameterlessCtor:
-	///   - parameterless → parameterlessCtorTypes (Register&lt;N&gt;(() => new N()))
-	///   - parameterized → parameterizedTypes (PreserveType&lt;N&gt;())
-	/// Both buckets share the visited set for dedupe.
-	/// </summary>
-	public static void WalkEventRoot(
-		ITypeSymbol eventRoot,
-		List<string> parameterlessCtorTypes,
-		List<string> parameterizedTypes,
-		HashSet<string> visited)
-	{
-		if (!(eventRoot is INamedTypeSymbol namedRoot))
+		if (hasParameterless)
 		{
-			return;
+			registerTypes.Add(fullyQualifiedName);
+		}
+		else
+		{
+			preserveTypes.Add(fullyQualifiedName);
 		}
 
-		if (!IsDtoStructureCandidate(namedRoot))
-		{
-			return;
-		}
+		WalkProperties(namedType, WalkNested);
 
-		var rootFqn = namedRoot.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-		if (!visited.Add(rootFqn))
-		{
-			return;
-		}
-
-		// The root event type always goes to the PreserveType bucket, regardless of ctor shape.
-		parameterizedTypes.Add(rootFqn);
-
-		WalkProperties(namedRoot, WalkNested);
-
-		void WalkNested(ITypeSymbol nested)
-		{
-			if (!(nested is INamedTypeSymbol namedNested))
-			{
-				return;
-			}
-
-			if (!IsDtoStructureCandidate(namedNested))
-			{
-				return;
-			}
-
-			var fqn = namedNested.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-			if (!visited.Add(fqn))
-			{
-				return;
-			}
-
-			if (HasParameterlessCtor(namedNested))
-			{
-				parameterlessCtorTypes.Add(fqn);
-			}
-			else
-			{
-				parameterizedTypes.Add(fqn);
-			}
-
-			WalkProperties(namedNested, WalkNested);
-		}
+		void WalkNested(ITypeSymbol nested) => WalkDtoGraph(nested, registerTypes, preserveTypes, visited);
 	}
 
 	/// <summary>

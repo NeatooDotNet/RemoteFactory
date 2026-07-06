@@ -1538,13 +1538,18 @@ internal static class ClassFactoryRenderer
         }
 
         // DTO constructor registrations (IL trimming support)
-        if (model.DtoReturnTypes.Count > 0)
+        if (model.DtoReturnTypes.Count > 0 || model.DtoPreserveTypes.Count > 0)
         {
             sb.AppendLine();
             sb.AppendLine("            // DTO constructor registrations (IL trimming support)");
             foreach (var dtoType in model.DtoReturnTypes)
             {
                 sb.AppendLine($"            DtoConstructorRegistry.Register<{dtoType}>(() => new {dtoType}());");
+            }
+
+            foreach (var dtoType in model.DtoPreserveTypes)
+            {
+                sb.AppendLine($"            DtoConstructorRegistry.PreserveType<{dtoType}>();");
             }
         }
 
