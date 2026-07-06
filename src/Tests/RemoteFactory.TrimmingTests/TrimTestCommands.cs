@@ -30,13 +30,15 @@ public static partial class TrimTestCommands
 
     // Positional records as [Execute] return type (with a nested record) and as a
     // non-service parameter — the zTreatment StartVisitResultV2 shape (TRIM-001).
+    // DTO discovery is signature-based, so the body deliberately never constructs
+    // the records: a `new TrimRecordResult(...)` here would root the ctor from the
+    // (retained, guarded-dead) method body and make RecordDtoSmokeTest pass even
+    // without the generator's PreserveType emission — a vacuous check.
     [Remote]
     [Execute]
-    private static Task<TrimRecordResult> _ProcessRecord(TrimRecordCommand command, [Service] IServerOnlyRepository repo)
+    private static Task<TrimRecordResult?> _ProcessRecord(TrimRecordCommand command, [Service] IServerOnlyRepository repo)
     {
-        return Task.FromResult(new TrimRecordResult(
-            command.PatientId,
-            repo.DoServerWork(command.Reason),
-            new TrimRecordDetail("processed")));
+        repo.DoServerWork(command.Reason);
+        return Task.FromResult<TrimRecordResult?>(null);
     }
 }

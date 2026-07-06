@@ -45,8 +45,9 @@ A third suspected gap turned out to be already fixed: event records derive `Fact
 | 002 | Draft | [`[Factory]` entity property-graph DTO discovery](./plans/002-factory-entity-property-dto-discovery.md) | `WalkFactoryReturn` bails on `[Factory]` roots without descending; zTreatment `TreatmentBanner` / `DashboardContactResult` hotfixes |
 | 003 | Draft | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested |
 | 005 | Draft | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` |
+| 006 | Draft | [Incremental-generator caching regression test](./plans/006-incremental-cache-regression-test.md) | TRIM-001 gate: no test asserts cached pipeline steps — non-EquatableArray transform fields regress silently (plan review B1) |
 
-Execution order: 004 → 001 → 002 → 003 → 005 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`.
+Execution order: 004 → 001 → 002 → 003 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`.
 
 ## Skipped Steps
 
@@ -75,6 +76,12 @@ Execution order: 004 → 001 → 002 → 003 → 005 (rows listed in execution o
 - **Finding:** `RelayTimingTests.Relay_FiresAfterCallerSynchronousWriteOnContinuation` (integration, event relay) failed with `TimeoutException` on net9.0 under full-suite parallel load, passed in isolation and on the next full run. Unrelated to TRIM's generator changes — timing-sensitive test.
 - **Decision:** Defer.
 - **Follow-up:** flagged to user — out-of-goal tech debt; queue as sibling todo or accept as known flake (not queued in TRIM).
+
+### 2026-07-06 — TRIM-001 (gate closed)
+- **Finding:** Test-review gate returned zero must-cover gaps but caught false trimmed-harness coverage: the constructed-body harness design let the return/nested checks pass with the emission disabled (guarded-dead bodies root ctors — the TRIM-005 behavior). Harness redesigned so no record is ever constructed; negative controls v1+v2 now prove each shape depends on `PreserveType`. Added `record struct` + cross-method dedupe unit tests from the should-cover tier. Long form: TRIM-001 Plan Amendment + `reviews/001-test-review.md`.
+- **Decision:** Amend.
+- **Index changes:** add TRIM-006 (incremental-cache regression test — pre-existing tech debt, plan review B1), executed last.
+- **Follow-up:** TRIM-006.
 
 ### 2026-07-06 — TRIM-004 (server-only over-retention)
 - **Finding:** A trimmed client retains the `IServerOnlyRepository` TypeDef and `DoServerWork` member ref: generated `LocalCreate` bodies are rooted by delegate registration and their early-`throw` guard + `try/catch` defeats ILLink unreachable-code elimination. Implementations are correctly trimmed. Contradicts `docs/trimming.md` "should return no matches" / "dead code is removed" claims. TRIM-004's CI grep narrowed to implementation types (Plan Amendment 3).

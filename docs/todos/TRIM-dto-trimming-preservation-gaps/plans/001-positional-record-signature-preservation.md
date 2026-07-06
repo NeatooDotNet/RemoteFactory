@@ -93,8 +93,8 @@ Filled 2026-07-06, before the Step 5 gate. All test classes are in `RemoteFactor
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
 | PreserveType emitted for return / parameter / nested; Register unchanged | `[unit]` | `PositionalRecordAsReturnType_PreserveTypeEmitted`, `PositionalRecordAsParameter_PreserveTypeEmitted`, `PositionalRecordNestedInClassDto_BothBucketsEmitted`, `ClassDtoNestedInPositionalRecord_DescentEntersRecordGraph`, `CollectionOfRecords_UnwrappedAndPreserved`, `RecordWithBothCtorShapes_StaysInRegisterBucket`, `PositionalRecordFromInterfaceFactory_PreserveTypeEmitted` (all three renderer paths: static, class, interface) | ✓ |
-| Record-as-return round-trips on publish-trimmed client | `[trimmed-harness]` | `RecordDtoSmokeTest.Run` return shape (`TrimRecordResult`) — trimmed run exit 0; **negative control**: PreserveType emission disabled → harness FAILED "record DTO preservation", exit 1 | ✓ |
-| Record-as-parameter and nested-record shapes round-trip trimmed | `[trimmed-harness]` | `RecordDtoSmokeTest.Run` parameter shape (`TrimRecordCommand`) + nested (`TrimRecordDetail` property) | ✓ |
+| Record-as-return round-trips on publish-trimmed client | `[trimmed-harness]` | `RecordDtoSmokeTest.Run` return shape (`TrimRecordResult`) — trimmed run exit 0; **negative control v2** (after the test-review gate redesigned the harness so no record is ever constructed): emission disabled → *return-shape* check itself throws `NotSupportedException` on `TrimRecordResult`, exit 1 — proving the ctor is rooted solely by `PreserveType` | ✓ |
+| Record-as-parameter and nested-record shapes round-trip trimmed | `[trimmed-harness]` | `RecordDtoSmokeTest.Run` parameter shape (`TrimRecordCommand`) + nested (`TrimRecordDetail` property); parameter shape independently proven by negative control v1 (failed on `TrimRecordCommand` while the return shape was still body-rooted) | ✓ |
 | Exclusions intact (no emission of either kind) | `[unit]` | `FactoryAnnotatedType_NoEmissionOfEitherKind`, `PrivateCtorOnlyType_NoEmissionOfEitherKind`; existing `NestedDtoDiscoveryTests` suite stays green | ✓ |
 | Build/test/CI gates | `[explicit-skip]` | `reviews/001-build.log` (0 errors, 2 pre-existing warnings), `reviews/001-test.log` (full suite), `reviews/001-test-relay-rerun.log` (unrelated flaky `RelayTimingTests` re-run green in isolation) | ✓ |
 | Docs describe two-bucket emission | `[explicit-skip]` | `docs/trimming.md`, `CLAUDE-DESIGN.md` (registry section + criteria table + FAQ row), `AllPatterns.cs` `ExampleRecordResult` remarks | ✓ |
@@ -103,7 +103,13 @@ Filled 2026-07-06, before the Step 5 gate. All test classes are in `RemoteFactor
 
 ## Plan Amendments
 
-(None yet.)
+### 2026-07-06 — Harness records must never be constructed; gate findings closed
+
+- **Section affected:** Steps 5 (harness repro design), Test Evidence
+- **Original said:** `_ProcessRecord` constructs and returns the record result (realistic server body).
+- **What changed:** the test-review gate caught that the constructed-body design made the return/nested trimmed checks vacuous — the guarded-dead `_ProcessRecord` body is retained on the client (the TRIM-005 over-retention behavior) and roots the ctors regardless of `PreserveType`. Negative control v1 proved it: with emission disabled, the *parameter* shape failed while the return shape passed. `_ProcessRecord` now returns `Task.FromResult<TrimRecordResult?>(null)` — discovery is signature-based, so preservation is unaffected, and no record is constructed anywhere in the harness. Negative control v2 then failed on the return shape itself. Also added from the gate's should-cover tier: `RecordStruct_LandsInRegisterBucket` and `SameRecordFromTwoMethods_SinglePreserveTypeEmission` unit tests; queued the pre-existing incremental-cache test hole as TRIM-006.
+- **Why:** a check that passes with the feature disabled pins nothing — the gate's independent eye caught false coverage the self-authored evidence map could not.
+- **Discovery Log link:** 2026-07-06 — TRIM-001 (gate closed).
 
 ---
 

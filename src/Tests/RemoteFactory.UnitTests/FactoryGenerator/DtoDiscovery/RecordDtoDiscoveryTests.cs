@@ -257,6 +257,67 @@ namespace TestNamespace
     }
 
     [Fact]
+    public void RecordStruct_LandsInRegisterBucket()
+    {
+        // record struct: Roslyn reports the synthesized public parameterless ctor,
+        // so value-type records take the Register bucket (the runtime bypass
+        // converter still claims them — benign divergence, see plan review B3).
+        var source = @"
+using Neatoo.RemoteFactory;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record struct PointResult(int X, int Y);
+
+    [Factory]
+    public static partial class Commands
+    {
+        [Remote]
+        [Execute]
+        internal static Task<PointResult> _Locate() => Task.FromResult(new PointResult(1, 2));
+    }
+}
+";
+        var generated = RunAndGetGeneratedSource(source);
+
+        Assert.Contains("global::TestNamespace.PointResult", GetRegisteredDtoTypes(generated));
+        Assert.DoesNotContain("global::TestNamespace.PointResult", GetPreservedDtoTypes(generated));
+    }
+
+    [Fact]
+    public void SameRecordFromTwoMethods_SinglePreserveTypeEmission()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record SharedResult(int Id);
+
+    [Factory]
+    public static partial class Commands
+    {
+        [Remote]
+        [Execute]
+        internal static Task<SharedResult> _First() => Task.FromResult(new SharedResult(1));
+
+        [Remote]
+        [Execute]
+        internal static Task<SharedResult> _Second() => Task.FromResult(new SharedResult(2));
+    }
+}
+";
+        var generated = RunAndGetGeneratedSource(source);
+
+        var emissions = System.Text.RegularExpressions.Regex.Matches(
+            generated,
+            @"DtoConstructorRegistry\.PreserveType<global::TestNamespace\.SharedResult>\(\)");
+        Assert.Single(emissions);
+    }
+
+    [Fact]
     public void FactoryAnnotatedType_NoEmissionOfEitherKind()
     {
         var source = @"
