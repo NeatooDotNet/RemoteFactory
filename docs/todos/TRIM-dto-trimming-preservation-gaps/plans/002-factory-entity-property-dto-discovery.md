@@ -3,8 +3,8 @@
 **Plan #:** 002
 **Date:** 2026-07-06
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
-**Last Updated:** 2026-07-06
+**Status:** Done
+**Last Updated:** 2026-07-06 (closed: PR #70 merged, CI green first run; test gate cleared, code review clean)
 **Plan-review opt-in:** Yes (the todo's one design-open walk-boundary decision is resolved in this draft and needs the adversarial check; generator emission contract change; documented-behavior change)
 **Code-review opt-in:** Yes (behavior-changing generator work)
 
