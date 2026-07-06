@@ -101,7 +101,7 @@ public class RelayTimingTests
     /// the relay observes it — something the old code path would violate because the
     /// relay's read would execute before the caller's write.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Flaky under parallel test load: the 2s WaitAsync intermittently times out (observed locally 2026-07-06 and on PR #69 CI; passes in isolation). Skipped per user decision 2026-07-06 — no fix queued.")]
     public async Task Relay_FiresAfterCallerSynchronousWriteOnContinuation()
     {
         string? callerState = null;
