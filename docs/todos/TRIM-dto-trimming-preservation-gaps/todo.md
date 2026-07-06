@@ -41,7 +41,7 @@ A third suspected gap turned out to be already fixed: event records derive `Fact
 | #   | Status | Plan | Source |
 |-----|--------|------|--------|
 | 004 | Done | [Trimming harness pass/fail semantics + CI gate](./plans/004-trimming-harness-ci-gate.md) | 2026-07-06 recon: TrimmingTests outside .sln/CI, exits 0 on failure — 001–003's trimmed acceptance signals need this gate first |
-| 001 | Draft | [Positional-record preservation in factory signatures](./plans/001-positional-record-signature-preservation.md) | `DtoTypeWalker.WalkFactoryReturn` `HasParameterlessCtor` gate; zTreatment cut-over `StartVisitResultV2` hotfix |
+| 001 | Done | [Positional-record preservation in factory signatures](./plans/001-positional-record-signature-preservation.md) | `DtoTypeWalker.WalkFactoryReturn` `HasParameterlessCtor` gate; zTreatment cut-over `StartVisitResultV2` hotfix |
 | 002 | Draft | [`[Factory]` entity property-graph DTO discovery](./plans/002-factory-entity-property-dto-discovery.md) | `WalkFactoryReturn` bails on `[Factory]` roots without descending; zTreatment `TreatmentBanner` / `DashboardContactResult` hotfixes |
 | 003 | Draft | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested |
 | 005 | Draft | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` |
