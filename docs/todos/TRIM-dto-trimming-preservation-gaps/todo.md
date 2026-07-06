@@ -83,6 +83,12 @@ Execution order: 004 → 001 → 002 → 003 → 005 → 006 (rows listed in exe
 - **Index changes:** add TRIM-006 (incremental-cache regression test — pre-existing tech debt, plan review B1), executed last.
 - **Follow-up:** TRIM-006.
 
+### 2026-07-06 — TRIM-001 (code review clean)
+- **Finding:** Opt-in code review returned zero veto findings (B1/B2 compliance, emission placement, semantics, docs all verified — `reviews/001-code-review.md`). One low-confidence pre-existing callout: `IsDtoStructureCandidate`'s `StartsWith("System")` prefix match would exclude a consumer namespace like `Systems.Domain` from preservation.
+- **Decision:** Amend.
+- **Index changes:** none — the hardening is folded into TRIM-002's stub scope (that plan already reworks the candidate checks at the same seam).
+- **Follow-up:** TRIM-002.
+
 ### 2026-07-06 — TRIM-004 (server-only over-retention)
 - **Finding:** A trimmed client retains the `IServerOnlyRepository` TypeDef and `DoServerWork` member ref: generated `LocalCreate` bodies are rooted by delegate registration and their early-`throw` guard + `try/catch` defeats ILLink unreachable-code elimination. Implementations are correctly trimmed. Contradicts `docs/trimming.md` "should return no matches" / "dead code is removed" claims. TRIM-004's CI grep narrowed to implementation types (Plan Amendment 3).
 - **Decision:** Defer.
