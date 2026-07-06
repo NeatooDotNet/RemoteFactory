@@ -84,6 +84,11 @@ Execution order: 004 → 001 → 002 → 003 → 005 → 006 (rows listed in exe
 - **Index changes:** add TRIM-006 (incremental-cache regression test — pre-existing tech debt, plan review B1), executed last.
 - **Follow-up:** TRIM-006.
 
+### 2026-07-06 — TRIM-002 (gate closed)
+- **Finding:** Test gate CLEARED with zero must-cover; two should-covers (base-class property, `[Factory]` record self-walk) and three nice-to-haves closed with tests; harness run log captured. New visibility item: the FactoryEventRelay integration family is parallel-load flaky *beyond* the two skipped members (different members flake per run; all green isolated and with `MaxParallelThreads=1`) — user previously declined queueing, recorded here for the close-out audit. Long form: `reviews/002-test-review.md`.
+- **Decision:** Amend.
+- **Follow-up:** n/a.
+
 ### 2026-07-06 — TRIM-001 (code review clean)
 - **Finding:** Opt-in code review returned zero veto findings (B1/B2 compliance, emission placement, semantics, docs all verified — `reviews/001-code-review.md`). One low-confidence pre-existing callout: `IsDtoStructureCandidate`'s `StartsWith("System")` prefix match would exclude a consumer namespace like `Systems.Domain` from preservation.
 - **Decision:** Amend.
