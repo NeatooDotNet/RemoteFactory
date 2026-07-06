@@ -76,7 +76,7 @@ Execution order: 004 → 001 → 002 → 003 → 005 → 006 (rows listed in exe
 - **Finding:** `RelayTimingTests.Relay_FiresAfterCallerSynchronousWriteOnContinuation` (integration, event relay) failed with `TimeoutException` on net9.0 under full-suite parallel load, passed in isolation and on the next full run. Unrelated to TRIM's generator changes — timing-sensitive test.
 - **Decision:** Defer.
 - **Follow-up:** flagged to user — out-of-goal tech debt; queue as sibling todo or accept as known flake (not queued in TRIM).
-- **Resolution (2026-07-06):** flaked again on PR #69's first CI run (green on re-run). User decision: test marked `[Fact(Skip = ...)]`, no todo.
+- **Resolution (2026-07-06):** flaked again on PR #69's first CI run (green on re-run). User decision: test marked `[Fact(Skip = ...)]`, no todo. Its sibling `Relay_FiresAfterCallerContinuation_InNoSyncContextHost` flaked with the identical signature during the TRIM-002 gate run (green in isolation) — same decision applied, also skipped.
 
 ### 2026-07-06 — TRIM-001 (gate closed)
 - **Finding:** Test-review gate returned zero must-cover gaps but caught false trimmed-harness coverage: the constructed-body harness design let the return/nested checks pass with the emission disabled (guarded-dead bodies root ctors — the TRIM-005 behavior). Harness redesigned so no record is ever constructed; negative controls v1+v2 now prove each shape depends on `PreserveType`. Added `record struct` + cross-method dedupe unit tests from the should-cover tier. Long form: TRIM-001 Plan Amendment + `reviews/001-test-review.md`.

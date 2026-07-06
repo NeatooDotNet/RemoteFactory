@@ -248,6 +248,29 @@ public partial class Factory
 					allPreserveTypes.Add(preserveType);
 				}
 			}
+
+			// Entity property-graph discovery: [Factory] class types walk their own
+			// public property graph so DTOs reachable only as entity properties are
+			// preserved. The entity itself is never bucketed (DI registration preserves
+			// it), and factory-typed properties are skipped — each [Factory] class's
+			// own registrar owns its graph.
+			if (!this.IsInterface && !this.IsStatic)
+			{
+				var entityRegisterTypes = new List<string>();
+				var entityPreserveTypes = new List<string>();
+				DtoTypeWalker.WalkEntityProperties(symbol, entityRegisterTypes, entityPreserveTypes, new HashSet<string>());
+
+				foreach (var dtoType in entityRegisterTypes)
+				{
+					allDtoTypes.Add(dtoType);
+				}
+
+				foreach (var preserveType in entityPreserveTypes)
+				{
+					allPreserveTypes.Add(preserveType);
+				}
+			}
+
 			this.DtoReturnTypes = new EquatableArray<string>([.. allDtoTypes]);
 			this.DtoPreserveTypes = new EquatableArray<string>([.. allPreserveTypes]);
 

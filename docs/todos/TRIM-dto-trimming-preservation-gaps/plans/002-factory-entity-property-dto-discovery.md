@@ -3,7 +3,7 @@
 **Plan #:** 002
 **Date:** 2026-07-06
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Plan-review opt-in:** Yes (the todo's one design-open walk-boundary decision is resolved in this draft and needs the adversarial check; generator emission contract change; documented-behavior change)
 **Code-review opt-in:** Yes (behavior-changing generator work)
@@ -60,13 +60,13 @@ Extend DTO discovery to descend into `[Factory]`-annotated types' public propert
 
 Tier note: `[trimmed-harness]` = named check in `RemoteFactory.TrimmingTests` under `PublishTrimmed=true`, enforced by the TRIM-004 CI gate.
 
-- [ ] An entity's registrar emits `Register<T>`/`PreserveType<T>` for DTO types reachable only through the entity's public property graph — direct property, collection element, record property, and DTO-nested-under-DTO — bucketed by ctor shape. `[unit]`
-- [ ] Child-entity-typed properties produce no bucket entry and no parent-side descent; the child entity's own registrar carries the child's DTO properties. `[unit]`
-- [ ] Interface-factory and static-factory types get no entity property walk. `[unit]`
-- [ ] A DTO in a `Systems.*`-style namespace is discovered (segment-match hardening); `System.*` framework types remain excluded. `[unit]`
-- [ ] A plain DTO and a positional record whose only reachability is via `[Factory]` entity properties survive publish-trimming and deserialize on the client. `[trimmed-harness]`
-- [ ] Full solution build/test green (net9.0 + net10.0); CI trimming gate green. `[explicit-skip: build/test/CI gates]`
-- [ ] Docs updated to the shipped discovery behavior. `[explicit-skip: doc delta, reviewed at code review]`
+- [x] An entity's registrar emits `Register<T>`/`PreserveType<T>` for DTO types reachable only through the entity's public property graph — direct property, collection element, record property, and DTO-nested-under-DTO — bucketed by ctor shape. `[unit]`
+- [x] Child-entity-typed properties produce no bucket entry and no parent-side descent; the child entity's own registrar carries the child's DTO properties. `[unit]`
+- [x] Interface-factory and static-factory types get no entity property walk. `[unit]`
+- [x] A DTO in a `Systems.*`-style namespace is discovered (segment-match hardening); `System.*` framework types remain excluded. `[unit]`
+- [x] A plain DTO and a positional record whose only reachability is via `[Factory]` entity properties survive publish-trimming and deserialize on the client. `[trimmed-harness]`
+- [x] Full solution build/test green (net9.0 + net10.0); CI trimming gate green. `[explicit-skip: build/test/CI gates]` *(build 0 errors; units 581+581 green; integration 561+561 green with `xUnit.MaxParallelThreads=1` — the pre-existing FactoryEventRelay test family is parallel-load flaky, different members flake per run, all pass isolated/sequential; CI verifies on the PR)*
+- [x] Docs updated to the shipped discovery behavior. `[explicit-skip: doc delta, reviewed at code review]`
 
 ---
 
@@ -89,15 +89,29 @@ Walked 2026-07-06 on `TRIM` (post TRIM-001 merge, e0588f7):
 
 Filled after implementation, before the Step 5 gate.
 
+Filled 2026-07-06, before the Step 5 gate. Unit tests in `RemoteFactory.UnitTests/FactoryGenerator/DtoDiscovery/EntityPropertyDtoDiscoveryTests`.
+
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| — | — | — | — |
+| Entity registrar emits both buckets for property-graph DTOs | `[unit]` | `EntityWithDtoProperty_RegisterEmittedInEntityRegistrar`, `EntityWithRecordProperty_PreserveTypeEmitted` (TreatmentBanner shape), `EntityWithDtoCollectionProperty_ElementDiscovered` (DashboardContactResult shape), `DtoNestedUnderEntityProperty_BothLevelsDiscovered`, `LazyLoadDtoProperty_InnerDtoDiscoveredThroughValue`, `DtoCycleUnderEntity_TerminatesAndRegistersOnce` | ✓ |
+| Child-entity properties: no parent-side entry or descent | `[unit]` | `ChildEntityProperty_CoveredByChildRegistrarNotParent` (per-tree assertion: parent tree lacks child DTO, child tree carries it) | ✓ |
+| No walk for interface/static factories | `[unit]` | `InterfaceFactory_NoEntityPropertyWalk` (impl-class property DTO emitted nowhere — the documented B1 boundary); static factories have no instance properties (structurally untestable) | ✓ |
+| `Systems.*` discovered post-hardening | `[unit]` | `SystemsPrefixedConsumerNamespace_NotExcluded`; framework exclusion pinned by the whole existing suite staying green | ✓ |
+| Entity-carried DTO + record survive publish-trimming | `[trimmed-harness]` | `EntityPropertyDtoSmokeTest.Run` (`TrimEntityCarriedInfo` + `TrimEntityCarriedBanner`, never constructed in harness code) — trimmed run exit 0; **negative control**: entity walk disabled in the generator → carried-DTO check throws `NotSupportedException`, harness exits 1 on "entity property DTO preservation" | ✓ |
+| Build/test/CI gates | `[explicit-skip]` | `reviews/002-build.log` (0 errors); `reviews/002-test.log` (units 581+581 green; two pre-existing relay-family parallel flakes in integration); `reviews/002-test-integration-seq.log` (integration 561+561 green, `MaxParallelThreads=1`); `reviews/002-publish.log`; CI on PR | ✓ |
+| Docs updated | `[explicit-skip]` | `docs/trimming.md` (entity-graph entry point + boundary sentence), CLAUDE-DESIGN.md (entity property-graph discovery paragraph + FAQ row) | ✓ |
 
 ---
 
 ## Plan Amendments
 
-(None yet.)
+### 2026-07-06 — Step 4 resolved: LazyLoad spurious emission ACCEPTED
+
+- **Section affected:** Step 4
+- **Original said:** decide fix-vs-accept for the spurious `Register<LazyLoad<T>>` emission at the keyboard.
+- **What changed:** accepted, no code change. Keyboard verification confirmed the plan review's diagnosis and went one step further: `LazyLoadConverter<T>` constructs `new LazyLoad<T>()` in *compiled generic code* (`LazyLoadJsonConverterFactory.cs:104-107`), so the emission is redundant for preservation — but it is idempotent, harmless, and conservatively doubles as rooting. Removing it buys nothing and would need its own trimmed verification. `T`-through-`Value` descent is pinned by `LazyLoadDtoProperty_InnerDtoDiscoveredThroughValue`.
+- **Why:** zero-risk beats cosmetic registrar cleanliness.
+- **Discovery Log link:** covered by the TRIM-002 gate entry (no separate discovery).
 
 ---
 
