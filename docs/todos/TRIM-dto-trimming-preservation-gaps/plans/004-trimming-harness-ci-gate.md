@@ -3,8 +3,8 @@
 **Plan #:** 004
 **Date:** 2026-07-06
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
-**Last Updated:** 2026-07-06
+**Status:** Done
+**Last Updated:** 2026-07-06 (closed: PR #68 merged, CI trimming step green on linux-x64)
 **Plan-review opt-in:** No (test-infrastructure/CI wiring only; no public API, schema, or documented business-rule surface)
 **Code-review opt-in:** No (no library behavior change; harness and workflow only)
 
@@ -54,7 +54,7 @@ Give the publish-trimmed harness enforceable pass/fail semantics and make CI run
 ## Acceptance
 
 - [x] A deliberately-injected smoke-check failure makes the published trimmed exe exit non-zero; the all-green run exits 0. `[explicit-skip: harness-gate semantics — verified by one-off failure injection at the keyboard; the harness itself is the test]`
-- [ ] CI publishes and runs the trimmed harness on every push/PR build, and the job fails when the harness fails. `[explicit-skip: CI wiring — verified by this plan's own workflow run]` *(pending first workflow run — triggers on PR to main or workflow_dispatch; user controls push)*
+- [x] CI publishes and runs the trimmed harness on every push/PR build, and the job fails when the harness fails. `[explicit-skip: CI wiring — verified by this plan's own workflow run]` *(verified: PR #68 run 28817388916 — trimming step published linux-x64, marker grep passed, harness "All checks passed")*
 - [x] Server-only marker absence in the published assembly is asserted by CI, not just documented in the README. `[explicit-skip: binary-inspection gate — workflow grep step]` *(grep logic verified locally against the win-x64 publish; CI asserts the linux-x64 artifact)*
 - [x] `dotnet build` and `dotnet test` of `Neatoo.RemoteFactory.sln` remain green (net9.0 + net10.0). `[explicit-skip: build gate]`
 
@@ -80,7 +80,7 @@ Filled after implementation, before the Step 5 gate. All four Acceptance bullets
 | Acceptance bullet (short) | Tier declared | Test method / evidence | Tier confirmed |
 |---|---|---|---|
 | Injected failure → non-zero exit; all-green → 0 | `[explicit-skip]` | Keyboard verification 2026-07-06: injected `failedChecks.Add(...)` → `dotnet run` exit 1; removed → exit 0; trimmed publish all-green → exit 0 | ✓ |
-| CI publishes and runs the trimmed harness | `[explicit-skip]` | `build.yml` "Trimming verification" step; **pending first workflow run** (PR to main or workflow_dispatch) | ✗ pending |
+| CI publishes and runs the trimmed harness | `[explicit-skip]` | `build.yml` "Trimming verification" step; verified by PR #68 workflow run 28817388916 (linux-x64, all checks passed) | ✓ |
 | Marker absence asserted by CI | `[explicit-skip]` | `build.yml` grep step; logic verified locally against win-x64 publish (implementations absent, interface retention → TRIM-005) | ✓ |
 | Solution build/test green | `[explicit-skip]` | `reviews/004-build.log` (0 errors), `reviews/004-test.log` (2254 passed, 0 failed, net9.0+net10.0) | ✓ |
 

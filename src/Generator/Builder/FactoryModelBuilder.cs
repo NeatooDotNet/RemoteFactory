@@ -89,7 +89,8 @@ internal static class FactoryModelBuilder
             signatureText: typeInfo.SignatureText,
             isPartial: typeInfo.IsPartial,
             delegates: delegates,
-            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList(),
+            dtoPreserveTypes: typeInfo.DtoPreserveTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -141,7 +142,8 @@ internal static class FactoryModelBuilder
             serviceTypeName: typeInfo.ServiceTypeName,
             implementationTypeName: typeInfo.ImplementationTypeName,
             methods: methods,
-            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList(),
+            dtoPreserveTypes: typeInfo.DtoPreserveTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,
@@ -275,7 +277,8 @@ internal static class FactoryModelBuilder
             hasDefaultSave: hasDefaultSave,
             requiresEntityRegistration: requiresEntityRegistration,
             registerOrdinalConverter: registerOrdinalConverter,
-            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList());
+            dtoReturnTypes: typeInfo.DtoReturnTypes.ToList(),
+            dtoPreserveTypes: typeInfo.DtoPreserveTypes.ToList());
 
         return new FactoryGenerationUnit(
             @namespace: typeInfo.Namespace,

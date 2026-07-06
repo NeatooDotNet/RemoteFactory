@@ -457,6 +457,11 @@ public class ExampleDto
 /// without $id/$ref metadata, so parameterized constructors are not blocked
 /// by System.Text.Json's reference handling limitation.
 ///
+/// IL trimming: because this record has no parameterless constructor, the
+/// generator emits DtoConstructorRegistry.PreserveType&lt;ExampleRecordResult&gt;()
+/// in the FactoryServiceRegistrar (plain DTOs with a parameterless ctor get
+/// Register&lt;T&gt;(() => new T()) instead). No consumer action needed.
+///
 /// Do NOT add [Factory] here -- that would route serialization through the
 /// ordinal converter. Plain records fall through to standard STJ handling.
 /// </remarks>

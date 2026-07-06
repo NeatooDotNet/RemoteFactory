@@ -12,12 +12,14 @@ internal sealed record InterfaceFactoryModel
         string serviceTypeName,
         string implementationTypeName,
         IReadOnlyList<InterfaceMethodModel>? methods = null,
-        IReadOnlyList<string>? dtoReturnTypes = null)
+        IReadOnlyList<string>? dtoReturnTypes = null,
+        IReadOnlyList<string>? dtoPreserveTypes = null)
     {
         ServiceTypeName = serviceTypeName;
         ImplementationTypeName = implementationTypeName;
         Methods = methods ?? System.Array.Empty<InterfaceMethodModel>();
         DtoReturnTypes = dtoReturnTypes ?? System.Array.Empty<string>();
+        DtoPreserveTypes = dtoPreserveTypes ?? System.Array.Empty<string>();
     }
 
     public string ServiceTypeName { get; }
@@ -28,4 +30,10 @@ internal sealed record InterfaceFactoryModel
     /// Plain DTO types that need constructor registration for IL trimming support.
     /// </summary>
     public IReadOnlyList<string> DtoReturnTypes { get; }
+
+    /// <summary>
+    /// Positional-record DTO types (no public parameterless ctor) that need
+    /// PreserveType registration for IL trimming support.
+    /// </summary>
+    public IReadOnlyList<string> DtoPreserveTypes { get; }
 }

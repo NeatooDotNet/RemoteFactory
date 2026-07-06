@@ -12,13 +12,15 @@ internal sealed record StaticFactoryModel
         string signatureText,
         bool isPartial = false,
         IReadOnlyList<ExecuteDelegateModel>? delegates = null,
-        IReadOnlyList<string>? dtoReturnTypes = null)
+        IReadOnlyList<string>? dtoReturnTypes = null,
+        IReadOnlyList<string>? dtoPreserveTypes = null)
     {
         TypeName = typeName;
         SignatureText = signatureText;
         IsPartial = isPartial;
         Delegates = delegates ?? System.Array.Empty<ExecuteDelegateModel>();
         DtoReturnTypes = dtoReturnTypes ?? System.Array.Empty<string>();
+        DtoPreserveTypes = dtoPreserveTypes ?? System.Array.Empty<string>();
     }
 
     public string TypeName { get; }
@@ -30,4 +32,10 @@ internal sealed record StaticFactoryModel
     /// Plain DTO types that need constructor registration for IL trimming support.
     /// </summary>
     public IReadOnlyList<string> DtoReturnTypes { get; }
+
+    /// <summary>
+    /// Positional-record DTO types (no public parameterless ctor) that need
+    /// PreserveType registration for IL trimming support.
+    /// </summary>
+    public IReadOnlyList<string> DtoPreserveTypes { get; }
 }
