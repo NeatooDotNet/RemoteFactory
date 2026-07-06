@@ -19,7 +19,7 @@ Extend DTO discovery to descend into `[Factory]`-annotated types' public propert
 ## Intent
 
 - A consumer whose aggregate carries plain DTOs or records as properties (the entity-duality pattern — DTOs riding on `[Execute]`-opened aggregates or query entities) gets a trimming-safe client with no manual preservation work — the second of the two zTreatment failure classes.
-- The walk-boundary question the original stub left open is resolved as **per-entity self-walk**: every `[Factory]` class type walks its *own* property graph during its own generation and emits preservation in its *own* registrar. No global "reachable from signatures" set exists; when any walk (signature or entity) meets a `[Factory]`-typed node it skips both bucketing and descent, because that type's own registrar owns its graph.
+- The walk-boundary question the original stub left open is resolved as **per-entity self-walk**: every class type carrying `[Factory]` *directly* (and thus getting its own registrar) walks its *own* property graph during its own generation and emits preservation in its *own* registrar. No global "reachable from signatures" set exists; when any walk (signature or entity) meets a factory-typed node it skips both bucketing and descent, because that type's own registrar owns its graph (plan review narrowed this claim — see Constraints for the interface-factory-impl exception).
 
 ---
 
@@ -38,6 +38,8 @@ Extend DTO discovery to descend into `[Factory]`-annotated types' public propert
 - The signature walk (TRIM-001) is behaviorally unchanged except the shared `System` segment-match hardening.
 - Child-entity-typed properties (including collections of entities) are neither bucketed nor descended by the parent — the child's own registrar covers its graph; cross-entity cycle safety follows from this.
 - Accepted trade-off: every `[Factory]` class's DTO property types are preserved on the client even if that entity never crosses the wire — consistent with entities' own unconditional registrar registration; duplicate emissions across registrars stay idempotent (`TryAdd` / no-op `PreserveType`).
+- Known boundary, by design (plan review B1): a class implementing a `[Factory]` interface *without* carrying the attribute itself gets no registrar and no entity walk — its property graph is covered by nobody. Acceptable: those are stateless server-only service implementations, never serialized across the wire.
+- Ordinal orthogonality (plan review B3): the entity walk records reachable DTO *types* for trimming; `CollectOrdinalProperties` records the entity's own serialization slots — different outputs, different registries, and the entity walk skips factory-typed (ordinal-serialized) properties entirely. No double-handling.
 - Existing tests untouched; full suite green on net9.0 + net10.0; CI trimming gate green.
 
 ---
@@ -47,10 +49,10 @@ Extend DTO discovery to descend into `[Factory]`-annotated types' public propert
 1. Add the entity property walk: during `TypeInfo` construction for `[Factory]` class types (non-interface, non-static), walk the type's public instance property graph (inherited included) with `WalkDtoGraph` semantics, merging results into the existing two buckets the type's registrar already emits.
 2. Keep `[Factory]`-node skipping symmetric: both the signature walk and the entity walk skip factory-typed nodes entirely (no bucket, no descent).
 3. Tighten the `System` namespace exclusion in `IsDtoStructureCandidate` to a segment match (`ns == "System" || ns.StartsWith("System.")`).
-4. Settle wrapper coverage for entity properties at the keyboard — verify whether `LazyLoad<T>` properties unwrap to `T` for discovery (its `Value` crosses the wire) and whether `LazyLoad<T>` itself is currently mis-bucketed as a DTO; name the finding either way (fix here if small, queue if not).
+4. Settle `LazyLoad<T>` handling at the keyboard, starting from the plan review's corrected diagnosis: `T` *is* already walked (descent goes through the public `Value` getter), and the only artifact is a benign spurious `Register<LazyLoad<T>>` emission (`LazyLoad<T>` passes candidacy and has a `[JsonConstructor]` parameterless ctor, but deserializes via `LazyLoadJsonConverterFactory`, never the registry). Decide fix-vs-accept; if queued instead, add a Plan Index stub first.
 5. Unit tests pinning: DTO-typed and record-typed entity properties (both buckets, incl. collection and nested-through-DTO), child-entity properties skipped by the parent (covered by the child's own registrar), no walk for interface/static factories, `Systems.*` namespace discovered post-hardening, cycle safety.
 6. Trimmed-harness case: a plain DTO and a positional record reachable *only* as `TrimTestEntity` properties — never constructed in harness code — deserialize on the publish-trimmed client; keyboard negative control.
-7. Docs to shipped behavior: `docs/trimming.md` (nested-discovery and "not returned by any factory method" guidance now includes entity properties), CLAUDE-DESIGN.md (discovery criteria / nested-discovery paragraph / FAQ row on nested-DTO trimming failures), Design.Domain comments if a pattern file documents entity-carried DTOs.
+7. Docs to shipped behavior: `docs/trimming.md` — both the nested-discovery prose ("properties of each discovered DTO" framing is now incomplete; entry points include entity graphs) and the trailing manual-preservation boundary sentence; CLAUDE-DESIGN.md — nested-discovery paragraph and the FAQ row on nested-DTO trimming failures; Design.Domain comments if a pattern file documents entity-carried DTOs. (Anchors per plan review: `trimming.md:279,:283`; `CLAUDE-DESIGN.md:296,:789`.)
 
 ---
 
