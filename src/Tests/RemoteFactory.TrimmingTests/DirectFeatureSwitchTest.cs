@@ -9,18 +9,19 @@ namespace RemoteFactory.TrimmingTests;
 /// </summary>
 public static class DirectFeatureSwitchTest
 {
-    public static void Run()
+    public static bool Run()
     {
         if (NeatooRuntime.IsServerRuntime)
         {
             // This code path should be dead when IsServerRuntime is constant-folded to false.
             var helper = new ServerOnlyDirect();
             Console.WriteLine(helper.Marker);
+            Console.WriteLine("Feature switch FAILED: IsServerRuntime is true in the client-configured harness.");
+            return false;
         }
-        else
-        {
-            Console.WriteLine("Client mode - server-only code trimmed.");
-        }
+
+        Console.WriteLine("Client mode - server-only code trimmed.");
+        return true;
     }
 }
 

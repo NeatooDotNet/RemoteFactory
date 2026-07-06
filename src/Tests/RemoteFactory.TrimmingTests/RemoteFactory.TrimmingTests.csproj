@@ -21,8 +21,9 @@
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 		<CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
 
-		<!-- Suppress code analysis noise for prototype -->
-		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA1050, CA1822</NoWarn>
+		<!-- Suppress code analysis noise. CA1031: the harness deliberately catches all
+		     exceptions — any exception means the check failed; report it and keep going. -->
+		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA1050, CA1822, CA1031</NoWarn>
 	</PropertyGroup>
 
 	<!-- Feature switch: set IsServerRuntime to false for client/trimming scenario -->
