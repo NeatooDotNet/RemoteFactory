@@ -112,6 +112,13 @@ if (!RecordDtoSmokeTest.Run())
     failedChecks.Add("record DTO preservation");
 }
 
+// Entity property DTO smoke test (TRIM-002): DTOs reachable only as [Factory]
+// entity properties are preserved by the entity property-graph walk.
+if (!EntityPropertyDtoSmokeTest.Run())
+{
+    failedChecks.Add("entity property DTO preservation");
+}
+
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");

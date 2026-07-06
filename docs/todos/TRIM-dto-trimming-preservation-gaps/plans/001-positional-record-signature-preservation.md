@@ -3,8 +3,8 @@
 **Plan #:** 001
 **Date:** 2026-07-06
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
-**Last Updated:** 2026-07-06
+**Status:** Done
+**Last Updated:** 2026-07-06 (closed: PR #69 merged; test gate cleared, code review clean, CI trimming gate green on linux-x64 after one unrelated flaky-test re-run)
 **Plan-review opt-in:** Yes (changes the generator's emission contract for every consumer's registrar; touches documented behavior in docs/trimming.md and CLAUDE-DESIGN.md; incremental-pipeline equality semantics involved)
 **Code-review opt-in:** Yes (behavior-changing generator work)
 

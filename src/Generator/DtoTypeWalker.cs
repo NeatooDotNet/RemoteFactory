@@ -93,8 +93,10 @@ internal static class DtoTypeWalker
 			return false;
 		}
 
+		// Segment match, not prefix match — consumer namespaces like "Systems.Domain"
+		// must not be excluded (TRIM-001 code-review callout).
 		var ns = namedType.ContainingNamespace?.ToDisplayString() ?? "";
-		if (ns.StartsWith("System"))
+		if (ns == "System" || ns.StartsWith("System."))
 		{
 			return false;
 		}
@@ -192,6 +194,23 @@ internal static class DtoTypeWalker
 		WalkProperties(namedType, WalkNested);
 
 		void WalkNested(ITypeSymbol nested) => WalkDtoGraph(nested, registerTypes, preserveTypes, visited);
+	}
+
+	/// <summary>
+	/// Entity-rooted walker: walks a [Factory] class type's public instance property
+	/// graph (including inherited) and bucket-sorts reachable DTO types via
+	/// WalkDtoGraph. The entity root itself is never bucketed — entities are
+	/// preserved via DI registration. Factory-typed properties are skipped entirely
+	/// (no bucket, no descent): each class type carrying [Factory] directly owns its
+	/// own graph through its own registrar.
+	/// </summary>
+	public static void WalkEntityProperties(
+		INamedTypeSymbol entityType,
+		List<string> registerTypes,
+		List<string> preserveTypes,
+		HashSet<string> visited)
+	{
+		WalkProperties(entityType, nested => WalkDtoGraph(nested, registerTypes, preserveTypes, visited));
 	}
 
 	/// <summary>

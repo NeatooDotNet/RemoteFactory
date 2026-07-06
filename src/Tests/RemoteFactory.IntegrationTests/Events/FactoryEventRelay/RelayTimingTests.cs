@@ -53,11 +53,12 @@ public class RelayTimingTests
         }
     }
 
-    [Fact]
+    [Fact(Skip = "Flaky under parallel test load: the 2s WaitAsync intermittently times out (same signature as its sibling test; observed 2026-07-06 during the TRIM-002 gate run, passes in isolation). Skipped per user decision — no fix queued.")]
     public async Task Relay_FiresAfterCallerContinuation_InNoSyncContextHost()
     {
         // Force ThreadPool context — production Blazor host has a SyncContext; this test
         // covers the plan Risk #3 gap (non-Blazor hosts) that the requirements review flagged.
+        // NOTE: skipped as flaky — see the Skip reason on the [Fact] attribute.
         await Task.Run(async () =>
         {
             Assert.Null(SynchronizationContext.Current);
@@ -101,7 +102,7 @@ public class RelayTimingTests
     /// the relay observes it — something the old code path would violate because the
     /// relay's read would execute before the caller's write.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Flaky under parallel test load: the 2s WaitAsync intermittently times out (observed locally 2026-07-06 and on PR #69 CI; passes in isolation). Skipped per user decision 2026-07-06 — no fix queued.")]
     public async Task Relay_FiresAfterCallerSynchronousWriteOnContinuation()
     {
         string? callerState = null;
