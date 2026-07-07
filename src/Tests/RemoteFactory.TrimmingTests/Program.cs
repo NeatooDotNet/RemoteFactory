@@ -119,6 +119,14 @@ if (!EntityPropertyDtoSmokeTest.Run())
     failedChecks.Add("entity property DTO preservation");
 }
 
+// Subscribe-only event smoke test (TRIM-003): a FactoryEventBase descendant whose
+// only static reference is a generic Subscribe<TEvent> call site survives trimming
+// via the base type's inherited annotations alone.
+if (!EventSubscribeOnlySmokeTest.Run())
+{
+    failedChecks.Add("subscribe-only event preservation");
+}
+
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");

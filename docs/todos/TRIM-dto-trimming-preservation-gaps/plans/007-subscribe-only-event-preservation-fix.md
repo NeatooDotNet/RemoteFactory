@@ -1,0 +1,11 @@
+# TRIM-007 — Subscribe-only event preservation fix
+
+**Plan #:** 007
+**Status:** Draft
+**Plan-review opt-in:** TBD at draft
+**Code-review opt-in:** TBD at draft
+**Related Todo:** [../todo.md](../todo.md)
+
+## Scope
+
+Close the gap TRIM-003's verification proved: a `FactoryEventBase`-derived record whose only client-side reference is a generic `Subscribe<TEvent>` call site loses its constructor under `PublishTrimmed=true` — the inherited `[DynamicallyAccessedMembers]` on the base does NOT flow to derived types under ILLink (DAM's `AttributeUsage` is `Inherited=false`; the "Inherited = true" story in the docs describes runtime attribute reflection, not trimmer semantics). The type itself survives (generic instantiation + `[FactoryEvent]` scan), so the registry resolves it and deserialization then throws the `DeserializeNoConstructor`-shaped failure — zTreatment's production symptom; its event LinkerConfig entries are load-bearing after all. Keyboard-validated fix mechanism (2026-07-07): `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]` on the subscribe method's generic parameter roots members at every call site — the exact producer-side pattern `IFactoryEvents.Raise<T>` already documents. Direction to settle at draft (user decision pending): (a) documented consumer pattern only — consumers annotate their aggregator's generic subscribe method; (b) generator-side `PreserveType<T>` emission for every `FactoryEventBase`-derived type declared in a compilation (new discovery branch; zero consumer action; preserves unused events too); or (c) both. Either way this plan owns the doc corrections TRIM-003 surfaced: `docs/trimming.md` / CLAUDE-DESIGN.md currently overpromise ("any record inheriting FactoryEventBase is automatically trimming-safe" — false on trimmed clients), `FactoryEventBase.cs`'s own comment makes the wrong `Inherited = true` claim, and the stale per-handler-`PreserveType` prose in `FactoryEventHandlerPattern.cs` / `FactoryEventHandlerTests.cs` (migrated here from TRIM-003 Steps 3–4). TRIM-003's failing harness check is this plan's acceptance pin — it must go green in the pure, unannotated consumer shape for option (b)/(c), or in the documented annotated shape for option (a). Branch `TRIM-003-verify-event-preservation` holds the repro; it stays unmerged until this plan makes CI green.

@@ -43,15 +43,17 @@ A third suspected gap turned out to be already fixed: event records derive `Fact
 | 004 | Done | [Trimming harness pass/fail semantics + CI gate](./plans/004-trimming-harness-ci-gate.md) | 2026-07-06 recon: TrimmingTests outside .sln/CI, exits 0 on failure — 001–003's trimmed acceptance signals need this gate first |
 | 001 | Done | [Positional-record preservation in factory signatures](./plans/001-positional-record-signature-preservation.md) | `DtoTypeWalker.WalkFactoryReturn` `HasParameterlessCtor` gate; zTreatment cut-over `StartVisitResultV2` hotfix |
 | 002 | Done | [`[Factory]` entity property-graph DTO discovery](./plans/002-factory-entity-property-dto-discovery.md) | `WalkFactoryReturn` bails on `[Factory]` roots without descending; zTreatment `TreatmentBanner` / `DashboardContactResult` hotfixes |
-| 003 | Draft | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested |
+| 003 | Done | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested — **verification came back RED**, re-split → TRIM-007 |
+| 007 | Draft | [Subscribe-only event preservation fix](./plans/007-subscribe-only-event-preservation-fix.md) | TRIM-003 finding: inherited DAM doesn't flow to derived types under ILLink; ctor stripped in the subscribe-only shape; fix mechanism keyboard-validated |
 | 005 | Draft | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` |
 | 006 | Draft | [Incremental-generator caching regression test](./plans/006-incremental-cache-regression-test.md) | TRIM-001 gate: no test asserts cached pipeline steps — non-EquatableArray transform fields regress silently (plan review B1) |
 
-Execution order: 004 → 001 → 002 → 003 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`.
+Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`. Note: TRIM-003's branch (`TRIM-003-verify-event-preservation`) carries the intentionally red harness check and stays unmerged until TRIM-007 turns it green.
 
 ## Skipped Steps
 
 - TRIM-004 — `test-reviewer` gate skipped (test-infrastructure-only plan: every Acceptance bullet is `explicit-skip`; the harness itself is the test artifact, evidence recorded in the plan's Test Evidence table).
+- TRIM-003 — `test-reviewer` gate skipped (verification-only plan whose deliverable is the finding itself; non-vacuity proven by the red-trimmed / green-untrimmed / green-annotated triplet recorded in the plan's Test Evidence; the repro check lands under TRIM-007's full gate).
 
 ## Discovery Log
 
@@ -83,6 +85,12 @@ Execution order: 004 → 001 → 002 → 003 → 005 → 006 (rows listed in exe
 - **Decision:** Amend.
 - **Index changes:** add TRIM-006 (incremental-cache regression test — pre-existing tech debt, plan review B1), executed last.
 - **Follow-up:** TRIM-006.
+
+### 2026-07-07 — TRIM-003 (verification RED, re-split → TRIM-007)
+- **Finding:** The subscribe-only consumer shape FAILS on a trimmed client: the event type survives (generic instantiation + runtime `[FactoryEvent]` scan) but its ctor is stripped — inherited `[DynamicallyAccessedMembers]` on `FactoryEventBase` does not flow to derived types under ILLink (DAM is `AttributeUsage(Inherited = false)`; the docs' "Inherited = true" story is runtime-reflection semantics). The todo's "third gap already fixed" premise was wrong; zTreatment's event LinkerConfig entries are load-bearing. Triplet evidence: red trimmed / green untrimmed / green trimmed with DAM on `Subscribe<TEvent>` (fix mechanism validated — the `Raise<T>` producer-side pattern). Long form: TRIM-003 Amendment 1.
+- **Decision:** Re-split.
+- **Index changes:** add TRIM-007 (fix + the now-larger doc corrections, migrated from 003's Steps 3–4), executed next; 003 Done as a red verification; its branch stays unmerged until 007 goes green.
+- **Follow-up:** TRIM-007 — fix direction (consumer-annotation docs vs generator `PreserveType`-per-descendant vs both) is a user decision, pending.
 
 ### 2026-07-06 — TRIM-002 (gate closed)
 - **Finding:** Test gate CLEARED with zero must-cover; two should-covers (base-class property, `[Factory]` record self-walk) and three nice-to-haves closed with tests; harness run log captured. New visibility item: the FactoryEventRelay integration family is parallel-load flaky *beyond* the two skipped members (different members flake per run; all green isolated and with `MaxParallelThreads=1`) — user previously declined queueing, recorded here for the close-out audit. Long form: `reviews/002-test-review.md`.

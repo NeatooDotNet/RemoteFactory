@@ -3,8 +3,8 @@
 **Plan #:** 003
 **Date:** 2026-07-07
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
-**Last Updated:** 2026-07-07
+**Status:** Done
+**Last Updated:** 2026-07-07 (closed: verification completed with a RED result — the gap is real; re-split into TRIM-007, which owns the fix, the doc corrections, and the merge of this branch)
 **Plan-review opt-in:** No (verification plan, expected no-code-change to the library/generator; deliverables are a trimmed-harness repro and comment-accuracy fixes)
 **Code-review opt-in:** No (test-only + doc-comment-only if verification is green; a red result triggers a re-split, not silent scope growth)
 
@@ -53,10 +53,10 @@ Verification plan, expected no-code-change. `FactoryEventBase` has carried inher
 
 ## Acceptance
 
-- [ ] A `FactoryEventBase`-derived record whose only client-side static reference is a generic `Subscribe<TEvent>` lambda call site deserializes from a string-literal `RelayedFactoryEvent` and dispatches typed, values intact, on the publish-trimmed client. `[trimmed-harness]`
-- [ ] The check is proven non-vacuous by a keyboard negative control (preservation weakened → check fails, exit 1). `[explicit-skip: one-off keyboard verification, per TRIM-001/002 precedent]`
-- [ ] The Design projects no longer describe the removed per-handler `PreserveType` pipeline; comments match CLAUDE-DESIGN.md / `docs/trimming.md`. `[explicit-skip: doc/comment delta]`
-- [ ] Full solution build/test green (net9.0 + net10.0); CI trimming gate green. `[explicit-skip: build/test/CI gates]`
+- [x] **VERIFIED RED** — the subscribe-only shape does NOT deserialize on the publish-trimmed client: the type survives (registry resolves it) but the ctor is stripped (`NotSupportedException`, the `DeserializeNoConstructor` symptom). The check exists and is the failing regression pin TRIM-007 must turn green. `[trimmed-harness]`
+- [x] Non-vacuity proven three ways: red trimmed (pure consumer shape), green untrimmed (repro logic correct), green trimmed with `[DynamicallyAccessedMembers]` on the subscribe generic parameter (fix mechanism validated). `[explicit-skip: keyboard verification triplet]`
+- [x] Design comment fixes migrated to TRIM-007 (Amendment 1) — the doc delta grew from "fix stale prose" to "correct overpromising claims," which must ship with the fix per repo rules. `[explicit-skip: migrated]`
+- [x] Build/suite green; the harness check is intentionally red on this unmerged branch — CI green is TRIM-007's exit condition. `[explicit-skip: deferred to TRIM-007's gate]`
 
 ---
 
@@ -81,13 +81,20 @@ Filled after implementation, before the Step 5 gate.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| — | — | — | — |
+| Subscribe-only shape on trimmed client | `[trimmed-harness]` | `EventSubscribeOnlySmokeTest.Run` — **RED** (trimmed, pure consumer shape): `NotSupportedException` on `TrimSubscribeOnlyEvent` ctor, harness exit 1 | ✓ (as a finding) |
+| Non-vacuity | `[explicit-skip]` | Untrimmed `dotnet run -c Release`: PASSED, exit 0. Trimmed with DAM on `Subscribe<TEvent>`: PASSED, exit 0. Contrast isolates the cause to ILLink + the missing call-site annotation. | ✓ |
 
 ---
 
 ## Plan Amendments
 
-(None yet.)
+### 2026-07-07 — Verification RED; Steps 3–4 migrated to TRIM-007
+
+- **Section affected:** Steps 3–4 (doc/comment fixes), Acceptance
+- **Original said:** expected no-code-change green verification; this plan would fix the stale Design comments and touch the doc verification pointers.
+- **What changed:** the verification came back RED — the inherited DAM on `FactoryEventBase` does not preserve derived members under ILLink (`DynamicallyAccessedMembersAttribute` is `AttributeUsage(Inherited = false)`; the runtime `inherit: true` attribute scan works, which is why the *type* resolves while its *ctor* is stripped). The doc problem is therefore bigger than stale prose: `docs/trimming.md` / CLAUDE-DESIGN.md / `FactoryEventBase.cs` overpromise automatic trimming safety. All doc/comment work migrated to TRIM-007 so it ships with whichever fix is chosen (repo rule: doc deltas ship with the behavior they describe). The fix mechanism was validated at the keyboard: DAM on the subscribe method's generic parameter → green.
+- **Why:** the plan's own Scope pre-agreed this path: "red → the gap becomes a new TRIM plan with the repro as its failing test."
+- **Discovery Log link:** 2026-07-07 — TRIM-003 (verification RED, re-split → TRIM-007).
 
 ---
 
