@@ -96,7 +96,7 @@ internal static class FactoryEventTypeRegistry
     [UnconditionalSuppressMessage(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
-        Justification = "FactoryEventBase carries [DynamicallyAccessedMembers] with Inherited = true, preserving all descendants through trimming.")]
+        Justification = "Concrete FactoryEventBase descendants are preserved by the generator-emitted per-assembly event-preservation registrar (PreserveType<T> rooting), so the assembly scan finds them intact.")]
     [SuppressMessage(
         "Design",
         "CA1031:Do not catch general exception types",

@@ -176,10 +176,10 @@ The generator walks factory method return types, unwrapping `Task<T>`, nullable 
 
 ### Factory event preservation
 
-Factory event records inherit `FactoryEventBase`, which carries two annotations with `Inherited = true`:
+Factory event records inherit `FactoryEventBase`. Two mechanisms make them work under trimming:
 
-- `[FactoryEvent]` — used by the runtime `FactoryEventTypeRegistry` to discover descendants via attribute scan
-- `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]` — preserves every descendant's public constructors and public properties through trimming
+- `[FactoryEvent]` on the base (inherited at runtime) — used by the runtime `FactoryEventTypeRegistry` to discover descendants via attribute scan
+- The source generator discovers every concrete, accessible `FactoryEventBase` descendant declared in a compilation and emits a per-assembly event-preservation registrar that preserves the event's constructors/properties and its nested property graph. (The `[DynamicallyAccessedMembers]` annotation on the base does NOT do this — DAM does not flow to derived types under ILLink.)
 
 Net effect: if a record inherits `FactoryEventBase`, its constructors and properties survive `PublishTrimmed=true` automatically. No per-event annotation, no `[FactoryEventHandler<T>]` declaration, and no manual `DtoConstructorRegistry` call is required for the event type itself.
 
@@ -236,7 +236,7 @@ Direct calls with a concrete type (`_factoryEvents.Raise(new OrderCheckoutComple
 
 ### What you need to know
 
-If you return a plain DTO from a factory method, or declare a `FactoryEventBase` descendant in a project with a direct `Neatoo.RemoteFactory` `PackageReference`, the type and its constructors and properties are automatically trimming-safe. Nested complex property types reachable from events that are NOT used elsewhere in the API may need explicit preservation.
+If you return a plain DTO from a factory method, carry a DTO as a `[Factory]` entity property, or declare a `FactoryEventBase` descendant in a project with a direct `Neatoo.RemoteFactory` `PackageReference`, the type and its constructors and properties are automatically trimming-safe. Nested property types reachable from events are walked and preserved automatically too. One boundary: private/protected/file-scoped nested event records cannot be preserved (the generated registrar cannot reference them) — declare wire-crossing events as top-level or internal/public nested types.
 
 ## IFactorySaveMeta Preservation
 

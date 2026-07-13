@@ -60,12 +60,14 @@ public sealed class SubscribingRelay : IFactoryEventRelay
 }
 
 /// <summary>
-/// End-to-end trimming verification for the subscribe-only consumer shape (TRIM-003).
-/// The existing EventRelaySmokeTest cannot settle this — it constructs its event and
-/// uses typeof(), statically rooting exactly the metadata under test. Here the wire
-/// entry's TypeFullName is a string literal, so resolution goes through the runtime
-/// FactoryEventTypeRegistry attribute scan, and member preservation depends entirely
-/// on the FactoryEventBase inherited annotations.
+/// End-to-end trimming verification for the subscribe-only consumer shape
+/// (TRIM-003 repro, fixed by TRIM-007). The existing EventRelaySmokeTest cannot
+/// settle this — it constructs its event and uses typeof(), statically rooting
+/// exactly the metadata under test. Here the wire entry's TypeFullName is a string
+/// literal, so resolution goes through the runtime FactoryEventTypeRegistry
+/// attribute scan, and member preservation depends entirely on the
+/// generator-emitted per-assembly event-preservation registrar (TRIM-003 proved
+/// the FactoryEventBase inherited annotations alone do not preserve descendants).
 /// </summary>
 public static class EventSubscribeOnlySmokeTest
 {

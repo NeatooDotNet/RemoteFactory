@@ -119,9 +119,10 @@ if (!EntityPropertyDtoSmokeTest.Run())
     failedChecks.Add("entity property DTO preservation");
 }
 
-// Subscribe-only event smoke test (TRIM-003): a FactoryEventBase descendant whose
-// only static reference is a generic Subscribe<TEvent> call site survives trimming
-// via the base type's inherited annotations alone.
+// Subscribe-only event smoke test (TRIM-003 repro / TRIM-007 fix): a
+// FactoryEventBase descendant whose only static reference is a generic
+// Subscribe<TEvent> call site survives trimming via the generator-emitted
+// per-assembly event-preservation registrar.
 if (!EventSubscribeOnlySmokeTest.Run())
 {
     failedChecks.Add("subscribe-only event preservation");

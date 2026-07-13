@@ -10,10 +10,11 @@
 // Three roles:
 //
 // 1. The EVENT TYPE inherits from FactoryEventBase (shared between client/server).
-//    FactoryEventBase carries [FactoryEvent] and [DynamicallyAccessedMembers] with
-//    Inherited = true — descendants are automatically discoverable by the runtime
-//    FactoryEventTypeRegistry and preserved through IL trimming, with no generator
-//    emission or client codegen.
+//    [FactoryEvent] on the base (inherited at runtime) makes descendants
+//    discoverable by the runtime FactoryEventTypeRegistry. IL-trimming
+//    preservation comes from the generator-emitted per-assembly
+//    NeatooEventPreservationRegistrar, which discovers every concrete accessible
+//    descendant by declaration — no handler, subscription, or annotation needed.
 // 2. The SERVER-SIDE RAISER is a factory method that injects IFactoryEvents
 //    and calls Raise(new MyEvent(...)) during its execution.
 // 3. The CLIENT-SIDE RELAY is the consumer's implementation of IFactoryEventRelay.
@@ -60,9 +61,10 @@ namespace Design.Domain.FactoryPatterns;
 /// Reasons:
 /// 1. Records have structural equality (useful for deduplication).
 /// 2. Records are immutable by default — events should not mutate.
-/// 3. FactoryEventBase carries [FactoryEvent] and [DynamicallyAccessedMembers]
-///    with Inherited = true, so every descendant is automatically discoverable
-///    and trim-safe without any per-event annotation.
+/// 3. [FactoryEvent] on FactoryEventBase (inherited at runtime) makes every
+///    descendant automatically discoverable; the generator-emitted per-assembly
+///    event-preservation registrar makes every concrete accessible descendant
+///    trim-safe — no per-event annotation required.
 ///
 /// The rule: Events are records that inherit FactoryEventBase. Nothing else required.
 /// </remarks>
