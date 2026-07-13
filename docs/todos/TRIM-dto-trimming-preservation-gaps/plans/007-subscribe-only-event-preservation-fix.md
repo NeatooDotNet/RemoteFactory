@@ -3,7 +3,7 @@
 **Plan #:** 007
 **Date:** 2026-07-13
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-07-13
 **Plan-review opt-in:** Yes (new incremental-generator pipeline branch; generator emission contract change; corrects documented behavior that currently overpromises)
 **Code-review opt-in:** Yes (behavior-changing generator work)
@@ -58,11 +58,11 @@ Close the gap TRIM-003 proved: a `FactoryEventBase`-derived record whose only cl
 
 ## Acceptance
 
-- [ ] The generator emits a per-assembly event-preservation registrar whose buckets cover every concrete `FactoryEventBase` descendant and its nested property graph; compilations with no events emit nothing. `[unit]`
-- [ ] TRIM-003's subscribe-only harness check passes on the publish-trimmed client in the pure consumer shape (no consumer annotation), including a nested record property on the event. `[trimmed-harness]`
-- [ ] The check's sensitivity is re-proven by a keyboard negative control (pipeline disabled → red). `[explicit-skip: one-off keyboard verification, per precedent]`
-- [ ] Docs and Design comments describe the generator-emission story accurately; no surviving overpromise about inherited DAM. `[explicit-skip: doc delta, reviewed at code review]`
-- [ ] Full solution build/test green (net9.0 + net10.0); CI trimming gate green. `[explicit-skip: build/test/CI gates]`
+- [x] The generator emits a per-assembly event-preservation registrar whose buckets cover every concrete `FactoryEventBase` descendant and its nested property graph; compilations with no events emit nothing. `[unit]`
+- [x] TRIM-003's subscribe-only harness check passes on the publish-trimmed client in the pure consumer shape (no consumer annotation), including a nested record property on the event. `[trimmed-harness]`
+- [x] The check's sensitivity is re-proven by a keyboard negative control (pipeline disabled → red). `[explicit-skip: one-off keyboard verification, per precedent]` *(disabled via the Where clause → identical NotSupportedException, exit 1; restored → green)*
+- [x] Docs and Design comments describe the generator-emission story accurately; no surviving overpromise about inherited DAM. `[explicit-skip: doc delta, reviewed at code review]`
+- [x] Full solution build/test green (net9.0 + net10.0); CI trimming gate green. `[explicit-skip: build/test/CI gates]` *(build 0 errors — the solution build itself proves the accessibility gate, since RemoteFactory.UnitTests declares private nested event records; 593+593 unit, 561+561 integration, 0 failed; CI on the PR)*
 
 ---
 
@@ -86,9 +86,15 @@ Walked 2026-07-07/13 on branch `TRIM-003-verify-event-preservation` (6c892e9):
 
 Filled after implementation, before the Step 5 gate.
 
+Filled 2026-07-13, before the Step 5 gate. Unit tests in `RemoteFactory.UnitTests/FactoryGenerator/DtoDiscovery/EventPreservationDiscoveryTests`.
+
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| — | — | — | — |
+| Registrar emitted with correct buckets; nothing when no events | `[unit]` | `SubscribeOnlyEvent_PreserveTypeEmittedInEventRegistrar` (incl. `[NeatooFactoryRegistrar]` attribute assertion), `EventNestedTypes_BothBucketsEmitted`, `AbstractIntermediate_SkippedButConcreteDescendantWalked` (inherited props walked, abstract never preserved), `PrivateNestedEventRecord_SkippedByAccessibilityGate`, `GenericEventRecord_Skipped`, `NoEventsDeclared_NoRegistrarEmitted`, `SharedNestedTypeAcrossEvents_SingleEmission`, `EventWithParameterlessCtor_LandsInRegisterBucket` | ✓ |
+| Subscribe-only shape green on trimmed client, nested record included | `[trimmed-harness]` | `EventSubscribeOnlySmokeTest.Run` — pure consumer shape (unannotated `Subscribe<TEvent>`, string-literal `TypeFullName`, no construction anywhere), now asserting the nested `TrimEventDetail` too; run output: `reviews/007-harness-run.log` (all checks passed, exit 0) | ✓ |
+| Negative control | `[explicit-skip]` | Pipeline disabled via `Where` clause → trimmed run fails with the identical TRIM-003 `NotSupportedException` signature, exit 1; restored → exit 0 | ✓ |
+| Docs accurate | `[explicit-skip]` | `docs/trimming.md` event section (incl. supersession-narrative rewrite + nested section now automatic + accessibility boundary), `FactoryEventBase.cs` comment, CLAUDE-DESIGN.md `:793-799` rewrite with history note, `FactoryEventHandlerPattern.cs` + `FactoryEventHandlerTests.cs` comments (Dictionary known-gap retained with corrected remedy) | ✓ |
+| Build/test/CI gates | `[explicit-skip]` | `reviews/007-build.log` (0 errors), `reviews/007-test.log` (593+593 unit, 561+561 integration, 0 failed), `reviews/007-publish.log`, `reviews/007-harness-run.log`; CI on the PR. The solution build doubles as the accessibility-gate proof (UnitTests declares private nested event records) | ✓ |
 
 ---
 

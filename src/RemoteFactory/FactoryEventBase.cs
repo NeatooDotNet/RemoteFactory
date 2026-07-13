@@ -7,10 +7,13 @@ namespace Neatoo.RemoteFactory;
 /// Inherit from this record to define event types that can be published through the mediator.
 /// Records are recommended for events (immutable, structural equality).
 ///
-/// <see cref="FactoryEventAttribute"/> and <see cref="DynamicallyAccessedMembersAttribute"/>
-/// are applied here with <c>Inherited = true</c>, so every descendant is automatically
-/// discoverable by <see cref="FactoryEventTypeRegistry"/> and its constructors and properties
-/// are preserved through IL trimming.
+/// <see cref="FactoryEventAttribute"/> is inherited at runtime, making every descendant
+/// discoverable by <see cref="FactoryEventTypeRegistry"/>. The
+/// <see cref="DynamicallyAccessedMembersAttribute"/> here does NOT preserve descendants'
+/// members under IL trimming (DAM does not flow to derived types in ILLink) — descendant
+/// preservation comes from the generator-emitted per-assembly event-preservation registrar,
+/// which emits DtoConstructorRegistry calls for every concrete, accessible descendant and
+/// its nested property graph.
 /// </summary>
 [FactoryEvent]
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties)]

@@ -5,15 +5,18 @@ using Neatoo.RemoteFactory.Internal;
 namespace RemoteFactory.TrimmingTests;
 
 /// <summary>
-/// The event record under test (TRIM-003). Its ONLY client-side static reference is
-/// the generic <c>Subscribe&lt;TrimSubscribeOnlyEvent&gt;(...)</c> call site below —
-/// never constructed, never referenced via <c>typeof</c>, no
-/// <c>[FactoryEventHandler&lt;T&gt;]</c> anywhere. Trimming survival must come solely
-/// from the inherited <c>[FactoryEvent]</c> +
-/// <c>[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]</c>
-/// annotations on <see cref="FactoryEventBase"/> (shipped v1.4.0).
+/// The event record under test (TRIM-003 repro, fixed by TRIM-007). Its ONLY
+/// client-side static reference is the generic
+/// <c>Subscribe&lt;TrimSubscribeOnlyEvent&gt;(...)</c> call site below — never
+/// constructed, never referenced via <c>typeof</c>, no
+/// <c>[FactoryEventHandler&lt;T&gt;]</c> anywhere. TRIM-003 proved the inherited
+/// annotations on <see cref="FactoryEventBase"/> do NOT preserve derived members
+/// under ILLink; survival now comes from the generator-emitted per-assembly
+/// NeatooEventPreservationRegistrar (TRIM-007), which also walks the nested
+/// <see cref="TrimEventDetail"/> property graph.
 /// </summary>
-public record TrimSubscribeOnlyEvent(int Id, string Note) : FactoryEventBase;
+public record TrimEventDetail(string Source);
+public record TrimSubscribeOnlyEvent(int Id, string Note, TrimEventDetail? Detail) : FactoryEventBase;
 
 /// <summary>
 /// Consumer-style relay aggregator — the zTreatment client shape: typed
@@ -24,11 +27,10 @@ public sealed class SubscribingRelay : IFactoryEventRelay
 {
     private readonly Dictionary<Type, List<Action<FactoryEventBase>>> _subscriptions = new();
 
-    // KNOWN GAP (TRIM-003 finding, fix = TRIM-007): without [DynamicallyAccessedMembers]
-    // on TEvent, the trimmed client strips the event record's ctor — the inherited
-    // annotation on FactoryEventBase does NOT flow to derived types under ILLink.
-    // Adding DAM(PublicConstructors | PublicProperties) here makes the check pass
-    // (verified 2026-07-07); this is the unannotated consumer shape on purpose.
+    // Deliberately unannotated — the pure consumer shape. TRIM-003 proved this
+    // strips the event ctor when preservation relied on FactoryEventBase's inherited
+    // annotations; with TRIM-007's generated per-assembly registrar, no annotation
+    // is needed here and the check passes.
     public void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : FactoryEventBase
     {
         if (!_subscriptions.TryGetValue(typeof(TEvent), out var list))
@@ -89,7 +91,7 @@ public static class EventSubscribeOnlySmokeTest
                 // String literal on purpose — typeof(...).FullName would root the
                 // type outside the consumer shape.
                 TypeFullName = "RemoteFactory.TrimmingTests.TrimSubscribeOnlyEvent",
-                Json = "{\"Id\":42,\"Note\":\"subscribe-only\"}",
+                Json = "{\"Id\":42,\"Note\":\"subscribe-only\",\"Detail\":{\"Source\":\"relay\"}}",
             },
         };
 
@@ -131,7 +133,13 @@ public static class EventSubscribeOnlySmokeTest
             return false;
         }
 
-        Console.WriteLine("Subscribe-only event smoke PASSED: FactoryEventBase inherited annotations preserved a subscribe-only event record through trimming.");
+        if (received.Detail is null || received.Detail.Source != "relay")
+        {
+            Console.WriteLine($"Subscribe-only event smoke FAILED: nested event record lost. Got Source=\"{received.Detail?.Source}\".");
+            return false;
+        }
+
+        Console.WriteLine("Subscribe-only event smoke PASSED: generator-emitted event preservation carried a subscribe-only event record (and its nested record) through trimming.");
         return true;
     }
 }
