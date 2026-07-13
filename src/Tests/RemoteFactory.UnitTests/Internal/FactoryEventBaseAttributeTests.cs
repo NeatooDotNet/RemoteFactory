@@ -5,9 +5,12 @@ using Neatoo.RemoteFactory;
 namespace RemoteFactory.UnitTests.Internal;
 
 /// <summary>
-/// Verifies FactoryEventBase carries [FactoryEvent] and [DynamicallyAccessedMembers]
-/// with Inherited = true, so every descendant is discoverable by
-/// <c>FactoryEventTypeRegistry</c> and preserved through IL trimming.
+/// Verifies FactoryEventBase carries [FactoryEvent] (inherited at runtime, making
+/// every descendant discoverable by <c>FactoryEventTypeRegistry</c>) and
+/// [DynamicallyAccessedMembers]. Note: the DAM annotation does NOT preserve
+/// descendants' members under IL trimming (DAM does not flow to derived types in
+/// ILLink) — trimming preservation comes from the generator-emitted per-assembly
+/// event-preservation registrar; see FactoryEventBase's doc comment.
 /// </summary>
 public class FactoryEventBaseAttributeTests
 {

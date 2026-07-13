@@ -105,6 +105,29 @@ public partial class Factory : IIncrementalGenerator
 			spc.AddSource($"{model.HintName}.FactoryEventHandler.g.cs", source);
 		});
 
+		// Pipeline for FactoryEventBase descendants — emits a per-assembly preservation
+		// registrar so event records survive IL trimming with no consumer action.
+		// Records-only predicate: classes cannot inherit a record base, so every
+		// descendant is a record. Descendants carry no attribute (inherited attributes
+		// are invisible to Roslyn symbols), hence CreateSyntaxProvider.
+		var factoryEventsToPreserve = context.SyntaxProvider.CreateSyntaxProvider(
+			predicate: static (s, _) => s is RecordDeclarationSyntax recordDecl
+				&& recordDecl.BaseList != null
+				&& !(recordDecl.TypeParameterList?.Parameters.Any() ?? false)
+				&& !recordDecl.Modifiers.Any(SyntaxKind.AbstractKeyword),
+			transform: static (ctx, _) => TransformFactoryEvent((RecordDeclarationSyntax)ctx.Node, ctx.SemanticModel))
+			.Where(static info => info is not null)
+			.Collect();
+
+		context.RegisterSourceOutput(factoryEventsToPreserve, static (spc, events) =>
+		{
+			var rendered = EventPreservationRenderer.Render(events);
+			if (rendered != null)
+			{
+				spc.AddSource(rendered.Value.HintName, rendered.Value.Source);
+			}
+		});
+
 	}
 
 	private static DiagnosticDescriptor GetDescriptor(string diagnosticId)

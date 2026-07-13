@@ -116,9 +116,10 @@ public static partial class OrderAuditHdlrs
 // NESTED-RECORD EVENT: automatic IL-trimming preservation
 // =============================================================================
 //
-// When an event record carries a nested record property (like ShippingAddress
-// below), the generator emits preservation calls for BOTH the event and the
-// nested record in the handler's FactoryServiceRegistrar:
+// Declaring any concrete FactoryEventBase descendant is enough: the generator
+// discovers it (no handler or subscription required) and emits preservation for
+// BOTH the event and its nested property graph in the per-assembly
+// NeatooEventPreservationRegistrar:
 //
 //   DtoConstructorRegistry.PreserveType<OrderShippedEvent>();
 //   DtoConstructorRegistry.PreserveType<ShippingAddress>();
@@ -128,13 +129,17 @@ public static partial class OrderAuditHdlrs
 // public properties intact. Without this, a Blazor WASM Release build with
 // PublishTrimmed=true would strip the metadata that NeatooJsonTypeInfoResolver
 // and RecordBypassConverterFactory need to round-trip the event at runtime.
+// (The [DynamicallyAccessedMembers] annotation on FactoryEventBase itself does
+// NOT do this — DAM does not flow to derived types under ILLink.)
 //
 // Nested records with parameterless ctors (plain DTOs) instead get
 // DtoConstructorRegistry.Register<N>(() => new N()) — same trimming effect.
 //
-// Known gap: Dictionary<K,V> value types are not walked. If your event exposes
-// Dictionary<string, Payload>, declare another [FactoryEventHandler<Payload>]
-// or an additional preservation hint to keep Payload intact after trimming.
+// Known gap: Dictionary<K,V> value types are not walked (the walk unwraps the
+// KeyValuePair enumerable, which is a System type). If your event exposes
+// Dictionary<string, Payload>, preserve Payload explicitly in DI setup
+// (DtoConstructorRegistry.PreserveType<Payload>()) or expose it through a
+// walked property.
 // =============================================================================
 
 /// <summary>

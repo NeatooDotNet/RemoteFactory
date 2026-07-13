@@ -290,41 +290,28 @@ Event records raised via `IFactoryEvents.Raise<T>()` and handled by `[FactoryEve
 
 ### How RemoteFactory Handles It
 
-Preservation comes from a single annotation on `FactoryEventBase` itself — no generator emission, no per-handler walk:
+The source generator discovers every concrete `FactoryEventBase` descendant declared in a compilation and emits a per-assembly event-preservation registrar — a generated static class registered via the same assembly-level `[NeatooFactoryRegistrar]` mechanism as factory registrars, invoked automatically by `AddNeatooRemoteFactory`. The registrar emits `DtoConstructorRegistry.PreserveType<T>()` for each event record (and `Register<T>` / `PreserveType<T>` for the DTOs reachable through each event's property graph, bucketed by constructor shape like every other discovered DTO).
+
+Declaring the event is all it takes:
 
 ```csharp
-[FactoryEvent]
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
-                            DynamicallyAccessedMemberTypes.PublicProperties)]
-public abstract record FactoryEventBase;
+public record OrderShippedEvent(int OrderId, ShippingAddress Address) : FactoryEventBase;
+// → generated registrar preserves OrderShippedEvent AND ShippingAddress
 ```
 
-Both attributes are applied with `Inherited = true`, so every descendant of `FactoryEventBase` automatically:
-
-- Has its constructors and public properties preserved by the trimmer.
-- Is discoverable by the runtime `FactoryEventTypeRegistry` (an `AppDomain.CurrentDomain.GetAssemblies()` scan for types where `GetCustomAttribute<FactoryEventAttribute>(inherit: true) != null`).
-
-This supersedes the prior per-`[FactoryEventHandler<T>]` generator-emitted `DtoConstructorRegistry.PreserveType<T>()` and recursive nested-property walk — that pipeline has been removed with the rest of the client-relay codegen path. Net: stronger guarantee (covers every descendant of `FactoryEventBase`, even those with no server handler registered), less generated code.
+The `[FactoryEvent]` annotation on `FactoryEventBase` (inherited at runtime) remains what makes descendants discoverable by the `FactoryEventTypeRegistry` assembly scan. Its `[DynamicallyAccessedMembers]` annotation, however, does **not** preserve descendants' members under trimming — `DynamicallyAccessedMembers` does not flow from a base type to derived types in ILLink, which is exactly why the generator emission exists. (An earlier version of this page claimed the annotation alone made every descendant trimming-safe; a publish-trimmed repro proved that wrong for event records whose only reference is a generic subscription call site.)
 
 `IFactoryEvents.Raise<T>` retains `[DynamicallyAccessedMembers(All)]` on its generic parameter for producer-side call-site preservation.
 
+One boundary: the generated registrar is a separate file, so `private`/`protected`/file-scoped nested event records cannot be preserved this way and are skipped. Declare wire-crossing events as top-level (or `internal`/`public` nested) types.
+
 ### What You Need to Know
 
-Any record inheriting `FactoryEventBase` is automatically trimming-safe — no manual `DtoConstructorRegistry` calls, no `[FactoryEventHandler<T>]` required, nothing to configure. End-to-end verification lives in `src/Tests/RemoteFactory.TrimmingTests/EventRelaySmokeTest.cs` — a publish-trimmed smoke test that confirms event relay round-trips across a trimmed binary.
+Any accessible record inheriting `FactoryEventBase` is automatically trimming-safe — no manual `DtoConstructorRegistry` calls, no `[FactoryEventHandler<T>]` required, no consumer-side annotation, nothing to configure. End-to-end verification lives in `src/Tests/RemoteFactory.TrimmingTests/EventSubscribeOnlySmokeTest.cs` — a publish-trimmed check whose event record's only static reference is a generic `Subscribe<TEvent>` call site (the hardest shape: nothing else roots the type's members), plus the `EventRelaySmokeTest` round-trip.
 
 ### Nested Reference Types in Event Records
 
-The `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]` annotation on `FactoryEventBase` preserves constructors and public properties of every descendant. For reference types *referenced by* an event record's properties, preservation depends on the referenced type:
-
-- **Nested records or DTOs that inherit `FactoryEventBase`** — automatically preserved via the same inherited annotation.
-- **Plain DTOs returned by any factory method** — automatically preserved via the factory-return-type walker (see [Automatic DTO Constructor Registration](#automatic-dto-constructor-registration) above).
-- **Reference types that are neither of the above** — preserve explicitly in DI setup:
-
-```csharp
-DtoConstructorRegistry.PreserveType<MyEmbeddedType>();
-// or, if it has a public parameterless ctor
-DtoConstructorRegistry.Register<MyEmbeddedType>(() => new MyEmbeddedType());
-```
+Automatically preserved. The generator walks each discovered event's public property graph with the same bucketed walk used for factory-signature and entity-property DTOs — nested records land in the `PreserveType` bucket, parameterless DTOs in the `Register` bucket, collections and nullables are unwrapped, and cycles are detected. No manual `DtoConstructorRegistry` calls are needed for types reachable from an event record's properties.
 
 ### User Code That Forwards `Raise<T>` Through a Generic Passthrough
 

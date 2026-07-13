@@ -261,11 +261,11 @@ Event types are resolved on the client by `TypeFullName` against the runtime `Fa
 
 ### IL Trimming and Event Records
 
-Every descendant of `FactoryEventBase` is automatically preserved from IL trimming. `FactoryEventBase` carries `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]` with `Inherited = true`, so every descendant's constructors and public properties survive trimming without any per-event annotation or generator emission. `IFactoryEvents.Raise<T>` retains `[DynamicallyAccessedMembers(All)]` on its generic parameter for producer-side call-site preservation.
+Every accessible descendant of `FactoryEventBase` is automatically preserved from IL trimming: the source generator discovers each concrete descendant declared in a compilation and emits a per-assembly event-preservation registrar that preserves the event's constructors/properties and its nested property graph. (The `[DynamicallyAccessedMembers]` annotation on `FactoryEventBase` does not do this — DAM does not flow to derived types under ILLink, which a publish-trimmed repro proved.) `IFactoryEvents.Raise<T>` retains `[DynamicallyAccessedMembers(All)]` on its generic parameter for producer-side call-site preservation.
 
 This model also drives discovery: `FactoryEventBase` carries `[FactoryEvent]` with `Inherited = true`, which the runtime `FactoryEventTypeRegistry` keys off during its assembly scan. Inheriting `FactoryEventBase` is sufficient — consumers never apply `[FactoryEvent]` directly.
 
-See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mechanism, the end-to-end publish-trimmed smoke verification (`EventRelaySmokeTest.cs`), and the `IL2091` consideration for user code that forwards `Raise<T>` through its own generic wrapper.
+See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mechanism, the end-to-end publish-trimmed verification (`EventSubscribeOnlySmokeTest.cs` — the subscribe-only consumer shape — plus the `EventRelaySmokeTest.cs` round-trip), and the `IL2091` consideration for user code that forwards `Raise<T>` through its own generic wrapper.
 
 ---
 

@@ -54,10 +54,12 @@ public class FactoryEventHandlerTests
 
     /// <summary>
     /// Demonstrates: an event record with a nested parameterized-record property
-    /// round-trips cleanly. Exercises the generator's automatic IL-trimming
-    /// preservation for nested records — if the generator had not emitted
-    /// <c>PreserveType&lt;ShippingAddress&gt;()</c>, a Release build with
-    /// PublishTrimmed=true would fail to deserialize the nested record.
+    /// round-trips cleanly. The trimming preservation for this shape comes from the
+    /// generated per-assembly event-preservation registrar, which walks each
+    /// declared event's property graph and emits
+    /// <c>PreserveType&lt;ShippingAddress&gt;()</c>; without it, a Release build with
+    /// PublishTrimmed=true would fail to deserialize the nested record (this test
+    /// runs untrimmed — the trimmed pin lives in RemoteFactory.TrimmingTests).
     /// </summary>
     [Fact]
     public async Task Raise_EventWithNestedRecord_DispatchesSuccessfully()

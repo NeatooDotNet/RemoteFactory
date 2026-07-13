@@ -324,7 +324,7 @@ public sealed class UiNotificationRelay : IFactoryEventRelay
 
 ## IL Trimming
 
-Event records are automatically preserved from IL trimming. `FactoryEventBase` carries `[DynamicallyAccessedMembers(PublicConstructors | PublicProperties)]` with `Inherited = true`, so every descendant's public constructors and public properties survive `PublishTrimmed=true` without per-handler codegen or per-event annotation.
+Event records are automatically preserved from IL trimming: the source generator discovers every concrete, accessible `FactoryEventBase` descendant declared in a compilation and emits a per-assembly event-preservation registrar, so descendants (and their nested property graphs) survive `PublishTrimmed=true` without per-event annotation. (The `[DynamicallyAccessedMembers]` annotation on `FactoryEventBase` itself does not preserve descendants — DAM does not flow to derived types under ILLink.)
 
 `FactoryEventBase` also carries `[FactoryEvent]` with `Inherited = true` so the runtime `FactoryEventTypeRegistry` discovers descendants via attribute scan during the first relay deserialization.
 
