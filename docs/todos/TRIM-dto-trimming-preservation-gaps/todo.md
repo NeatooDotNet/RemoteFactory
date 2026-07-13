@@ -44,11 +44,11 @@ A third suspected gap turned out to be already fixed: event records derive `Fact
 | 001 | Done | [Positional-record preservation in factory signatures](./plans/001-positional-record-signature-preservation.md) | `DtoTypeWalker.WalkFactoryReturn` `HasParameterlessCtor` gate; zTreatment cut-over `StartVisitResultV2` hotfix |
 | 002 | Done | [`[Factory]` entity property-graph DTO discovery](./plans/002-factory-entity-property-dto-discovery.md) | `WalkFactoryReturn` bails on `[Factory]` roots without descending; zTreatment `TreatmentBanner` / `DashboardContactResult` hotfixes |
 | 003 | Done | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested — **verification came back RED**, re-split → TRIM-007 |
-| 007 | Draft | [Subscribe-only event preservation fix](./plans/007-subscribe-only-event-preservation-fix.md) | TRIM-003 finding: inherited DAM doesn't flow to derived types under ILLink; ctor stripped in the subscribe-only shape; fix mechanism keyboard-validated |
+| 007 | Done | [Subscribe-only event preservation fix](./plans/007-subscribe-only-event-preservation-fix.md) | TRIM-003 finding: inherited DAM doesn't flow to derived types under ILLink; fixed via generator-emitted per-assembly event-preservation registrar |
 | 005 | Draft | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` |
 | 006 | Draft | [Incremental-generator caching regression test](./plans/006-incremental-cache-regression-test.md) | TRIM-001 gate: no test asserts cached pipeline steps — non-EquatableArray transform fields regress silently (plan review B1) |
 
-Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`. Note: TRIM-003's branch (`TRIM-003-verify-event-preservation`) carries the intentionally red harness check and stays unmerged until TRIM-007 turns it green.
+Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`. (TRIM-003's red verification and TRIM-007's fix merged together via PR #71.)
 
 ## Skipped Steps
 
@@ -85,6 +85,11 @@ Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows liste
 - **Decision:** Amend.
 - **Index changes:** add TRIM-006 (incremental-cache regression test — pre-existing tech debt, plan review B1), executed last.
 - **Follow-up:** TRIM-006.
+
+### 2026-07-13 — TRIM-007 (gates cleared, merged)
+- **Finding:** Generator-emission fix landed (PR #71, CI green first run): fourth pipeline branch + per-assembly `NeatooEventPreservationRegistrar`; TRIM-003's red check green in the pure consumer shape incl. nested record. Plan review's veto (accessibility gate — the repo's own private nested test events would have broken every consumer build) folded pre-implementation. Test gate cleared (10 unit tests incl. determinism + FQN-decoy guards). Code review caught 3 veto doc findings — the falsified DAM claim surviving in `FactoryEventRelayPattern.cs`, `docs/factory-events.md`, and the smoke test's own summary — all fixed, plus skill-reference and IL2026-justification callouts. Reviews: `reviews/007-*.md`.
+- **Decision:** Amend.
+- **Follow-up:** n/a — remaining queue: TRIM-005, TRIM-006, then todo-level release step (AC4 release notes deferred there).
 
 ### 2026-07-07 — TRIM-003 (verification RED, re-split → TRIM-007)
 - **Finding:** The subscribe-only consumer shape FAILS on a trimmed client: the event type survives (generic instantiation + runtime `[FactoryEvent]` scan) but its ctor is stripped — inherited `[DynamicallyAccessedMembers]` on `FactoryEventBase` does not flow to derived types under ILLink (DAM is `AttributeUsage(Inherited = false)`; the docs' "Inherited = true" story is runtime-reflection semantics). The todo's "third gap already fixed" premise was wrong; zTreatment's event LinkerConfig entries are load-bearing. Triplet evidence: red trimmed / green untrimmed / green trimmed with DAM on `Subscribe<TEvent>` (fix mechanism validated — the `Raise<T>` producer-side pattern). Long form: TRIM-003 Amendment 1.
