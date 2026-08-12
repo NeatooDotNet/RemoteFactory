@@ -46,7 +46,7 @@ A third suspected gap turned out to be already fixed: event records derive `Fact
 | 003 | Done | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested — **verification came back RED**, re-split → TRIM-007 |
 | 007 | Done | [Subscribe-only event preservation fix](./plans/007-subscribe-only-event-preservation-fix.md) | TRIM-003 finding: inherited DAM doesn't flow to derived types under ILLink; fixed via generator-emitted per-assembly event-preservation registrar |
 | 005 | Abandoned | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` — **diagnosis falsified at plan review**, see 2026-08-11 log entry |
-| 006 | Draft | [Incremental-generator caching regression test](./plans/006-incremental-cache-regression-test.md) | TRIM-001 gate: no test asserts cached pipeline steps — non-EquatableArray transform fields regress silently (plan review B1) |
+| 006 | In Progress | [Incremental-generator caching regression test](./plans/006-incremental-cache-regression-test.md) | TRIM-001 gate: no test asserts cached pipeline steps — non-EquatableArray transform fields regress silently (plan review B1) |
 
 Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`. (TRIM-003's red verification and TRIM-007's fix merged together via PR #71.)
 
