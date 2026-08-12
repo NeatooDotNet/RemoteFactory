@@ -3,7 +3,7 @@
 **Plan #:** 005
 **Date:** 2026-08-11
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
+**Status:** Abandoned
 **Last Updated:** 2026-08-11
 **Plan-review opt-in:** Yes (changes the emitted body shape of every guarded factory method across all three renderers — a generated-code contract change on the seam the published trimming story is sold on)
 **Code-review opt-in:** Yes (behavior-changing generator work)
@@ -106,7 +106,15 @@ Filled after implementation, before the Step 5 gate.
 
 ## Abandonment / Retirement Reason
 
-<!-- Only if Status becomes Abandoned or Retired. -->
+**Abandoned 2026-08-11 at the plan-review gate, before any implementation.**
+
+What we believed at draft: that a publish-trimmed client retains `IServerOnlyRepository` / `DoServerWork` because ILLink declines to eliminate the generated server-only method bodies — the early-`throw` guard plus the body's exception-handling region defeating unreachable-block elimination. Every Step followed from that: reshape the guard across all four renderers, regenerate the emission tests, tighten the CI grep.
+
+What turned out to be true: the guard shape works. A probe of the HEAD trimmed artifact shows every symbol reachable only from inside a class-factory guarded body — `ICorrelationContext`, `IFactoryOnStart`, `IFactoryOnComplete`, `Stopwatch`, `FactoryOperation`, `ILogger` — is **absent**. ILLink eliminates those bodies cleanly, EH region and all. The retention comes from a different seam entirely: `StaticFactoryRenderer.cs:41` and `RelayHandlerRenderer.cs:32` point `[assembly: NeatooFactoryRegistrar(...)]` at *the consumer's own class* (unlike `ClassFactoryRenderer.cs:54` / `InterfaceFactoryRenderer.cs:48`, which target the generated factory type), and the attribute's `DAM(PublicMethods | NonPublicMethods)` (`FactoryAttributes.cs:157-168`) forces ILLink to retain every method on it — bodies included. `TrimTestCommands._DoWork` / `._ProcessRecord` are what hold the server-only references. Full evidence and the eleven supporting findings: [`../reviews/005-plan-review.md`](../reviews/005-plan-review.md).
+
+Why abandoned rather than repointed: the corrected defect is not this todo's Goal. TRIM is chartered on *under*-preservation — closing gaps so a consumer needs no `LinkerConfig.xml` entries. The registrar-DAM defect is *over*-retention with an IP-exposure consequence (`[Remote]` bodies for `[Execute]` static factories and `[FactoryEventHandler<T>]` classes ship to the browser, decompilable, contradicting `docs/trimming.md:7`). Per the user's 2026-08-11 decision it is recorded in the Discovery Log and will be fixed directly in plan mode rather than carried as a TRIM plan or a sibling todo.
+
+What a successor should do differently: verify the diagnosis against a trimmed artifact before drafting Steps around it. This plan inherited its causal story verbatim from a TRIM-004 Plan Amendment — the same "assume rather than verify" failure mode TRIM-003 was created to break, which also came back RED. An amendment-sourced diagnosis carries the same verify-don't-inherit obligation as any other.
 
 ---
 
