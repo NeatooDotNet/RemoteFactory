@@ -28,8 +28,17 @@ internal static class RelayHandlerRenderer
 
         sb.AppendLine();
 
-        // Assembly-level attribute for trimming-safe factory discovery
-        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof({model.Namespace}.{model.ClassName}))]");
+        // Assembly-level attribute for trimming-safe factory discovery.
+        // Targets the generated registrar holder, NEVER the user's own class: the
+        // attribute's [DynamicallyAccessedMembers] preserves every method on whatever
+        // type it names, bodies included, so naming the user's class would ship their
+        // handler bodies — and the server-only services those bodies reach — to a
+        // trimmed client (TRIM-008).
+        //
+        // global:: added here at the same time. Its absence was a latent bug: a
+        // consumer namespace that shadows the first segment of this one would bind
+        // the attribute argument to the wrong type.
+        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{model.Namespace}.{RegistrarHolderPrefix}{model.ClassName}))]");
         sb.AppendLine();
 
         sb.AppendLine("/*");
@@ -53,9 +62,58 @@ internal static class RelayHandlerRenderer
 
         sb.AppendLine("        }");
         sb.AppendLine("    }");
+
+        // Registrar holder — the assembly attribute's DAM target. Exists so the DAM
+        // blast radius is this one forwarding method instead of every method on the
+        // user's handler class. Top-level rather than nested, matching the proven
+        // in-tree shape (EventPreservationRenderer) and StaticFactoryRenderer's holder.
+        sb.AppendLine();
+        RenderRegistrarHolder(sb, model);
         sb.AppendLine("}");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Prefix for the generated relay-handler registrar holder type.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately a PREFIX, for the same reason as
+    /// <see cref="StaticFactoryRenderer.RegistrarHolderPrefix"/>: a suffixed name leaves
+    /// <c>global::Ns.MyHandlers</c> a substring of the holder's own fully-qualified name,
+    /// which turns the "attribute must not name the consumer's type" regression assertion
+    /// into a false red and an unclosed <c>Contains</c> into a false green.
+    /// <para>
+    /// Deliberately DISTINCT from the static-factory prefix. A class carrying both
+    /// <c>[Factory]</c> and <c>[FactoryEventHandler&lt;T&gt;]</c> already emits duplicate
+    /// <c>FactoryServiceRegistrar</c> members (CS0111 — Deferred Work item 15, broken at
+    /// HEAD). A shared holder prefix would stack a CS0101 duplicate-type error on top,
+    /// changing that shape's failure signature for the worse.
+    /// </para>
+    /// </remarks>
+    internal const string RegistrarHolderPrefix = "NeatooEventHandlerRegistrar_";
+
+    /// <summary>
+    /// Emits the holder the assembly attribute points at. It does nothing but forward
+    /// to the real registrar on the user's partial class — the indirection exists purely
+    /// so the attribute's [DynamicallyAccessedMembers] has a single-method type to
+    /// preserve instead of the user's whole handler class.
+    /// </summary>
+    /// <remarks>
+    /// Forwarding rather than hosting: the registrar body invokes the handler methods,
+    /// and <c>FactoryGenerator.RelayHandler.cs</c> applies no accessibility filter, so
+    /// private handler methods compile today. A sibling holder that hosted the registrar
+    /// would be CS0122 for those.
+    /// </remarks>
+    private static void RenderRegistrarHolder(StringBuilder sb, RelayHandlerModel model)
+    {
+        sb.AppendLine($"    internal static class {RegistrarHolderPrefix}{model.ClassName}");
+        sb.AppendLine("    {");
+        sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            global::{model.Namespace}.{model.ClassName}.FactoryServiceRegistrar(services, remoteLocal);");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
     }
 
     /// <summary>

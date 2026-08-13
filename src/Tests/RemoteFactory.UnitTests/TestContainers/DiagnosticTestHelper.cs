@@ -102,15 +102,36 @@ public static class DiagnosticTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
-            MetadataReference.CreateFromFile(remoteFactoryAssembly.Location)
+            MetadataReference.CreateFromFile(remoteFactoryAssembly.Location),
+
+            // Generated factory code declares FactoryServiceRegistrar(IServiceCollection, ...)
+            // and calls AddScoped / TryAddTransient / GetRequiredService; class factories also
+            // reach for ILogger<T>. Without these, EVERY generated tree fails to compile in this
+            // harness for reasons that have nothing to do with the code under test.
+            //
+            // Added by TRIM-008. Their absence was not costing correctness — nothing asserted on
+            // OutputCompilation — but it silently capped what this helper could ever detect: a
+            // generator change that emits uncompilable source was undetectable here, and the
+            // relay-handler renderer in particular has no other error signal (it bypasses
+            // NormalizeWhitespace, and FactoryRenderer swallows parse failures into a
+            // /* Error: */ comment rather than throwing).
+            MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.ServiceCollection).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.Logging.ILogger<>).Assembly.Location)
         };
 
-        // Add System.Runtime reference
+        // Add System.Runtime, plus System.ComponentModel — which is where IServiceProvider
+        // is surfaced for reference purposes. Generated registrars and factories take an
+        // IServiceProvider, so without it the output compilation reports CS0012 on every
+        // generated tree.
         var runtimeAssemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
-        var systemRuntimePath = Path.Combine(runtimeAssemblyPath!, "System.Runtime.dll");
-        if (File.Exists(systemRuntimePath))
+        foreach (var name in new[] { "System.Runtime.dll", "System.ComponentModel.dll" })
         {
-            references.Add(MetadataReference.CreateFromFile(systemRuntimePath));
+            var path = Path.Combine(runtimeAssemblyPath!, name);
+            if (File.Exists(path))
+            {
+                references.Add(MetadataReference.CreateFromFile(path));
+            }
         }
 
         return references;
