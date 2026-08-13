@@ -44,11 +44,11 @@ A third suspected gap turned out to be already fixed: event records derive `Fact
 | 001 | Done | [Positional-record preservation in factory signatures](./plans/001-positional-record-signature-preservation.md) | `DtoTypeWalker.WalkFactoryReturn` `HasParameterlessCtor` gate; zTreatment cut-over `StartVisitResultV2` hotfix |
 | 002 | Done | [`[Factory]` entity property-graph DTO discovery](./plans/002-factory-entity-property-dto-discovery.md) | `WalkFactoryReturn` bails on `[Factory]` roots without descending; zTreatment `TreatmentBanner` / `DashboardContactResult` hotfixes |
 | 003 | Done | [Verify event-record preservation needs no consumer entries](./plans/003-verify-event-record-preservation.md) | `FactoryEventBase` DAM annotation shipped v1.4.0; consumer entries predate it, never re-tested — **verification came back RED**, re-split → TRIM-007 |
-| 007 | Draft | [Subscribe-only event preservation fix](./plans/007-subscribe-only-event-preservation-fix.md) | TRIM-003 finding: inherited DAM doesn't flow to derived types under ILLink; ctor stripped in the subscribe-only shape; fix mechanism keyboard-validated |
-| 005 | Draft | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` |
-| 006 | Draft | [Incremental-generator caching regression test](./plans/006-incremental-cache-regression-test.md) | TRIM-001 gate: no test asserts cached pipeline steps — non-EquatableArray transform fields regress silently (plan review B1) |
+| 007 | Done | [Subscribe-only event preservation fix](./plans/007-subscribe-only-event-preservation-fix.md) | TRIM-003 finding: inherited DAM doesn't flow to derived types under ILLink; fixed via generator-emitted per-assembly event-preservation registrar |
+| 005 | Abandoned | [Server-only reference over-retention in trimmed clients](./plans/005-server-only-reference-over-retention.md) | TRIM-004 discovery: guarded-dead `LocalCreate` bodies retain server-only interface refs, contradicting `docs/trimming.md` — **diagnosis falsified at plan review**, see 2026-08-11 log entry |
+| 006 | In Progress | [Incremental-generator caching regression test](./plans/006-incremental-cache-regression-test.md) | TRIM-001 gate: no test asserts cached pipeline steps — non-EquatableArray transform fields regress silently (plan review B1) |
 
-Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`. Note: TRIM-003's branch (`TRIM-003-verify-event-preservation`) carries the intentionally red harness check and stays unmerged until TRIM-007 turns it green.
+Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows listed in execution order; numbering stays monotonic by creation). Branching: todo/plan docs commit on the `TRIM` branch; each plan's implementation gets its own branch off `TRIM`. (TRIM-003's red verification and TRIM-007's fix merged together via PR #71.)
 
 ## Skipped Steps
 
@@ -86,6 +86,11 @@ Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows liste
 - **Index changes:** add TRIM-006 (incremental-cache regression test — pre-existing tech debt, plan review B1), executed last.
 - **Follow-up:** TRIM-006.
 
+### 2026-07-13 — TRIM-007 (gates cleared, merged)
+- **Finding:** Generator-emission fix landed (PR #71, CI green first run): fourth pipeline branch + per-assembly `NeatooEventPreservationRegistrar`; TRIM-003's red check green in the pure consumer shape incl. nested record. Plan review's veto (accessibility gate — the repo's own private nested test events would have broken every consumer build) folded pre-implementation. Test gate cleared (10 unit tests incl. determinism + FQN-decoy guards). Code review caught 3 veto doc findings — the falsified DAM claim surviving in `FactoryEventRelayPattern.cs`, `docs/factory-events.md`, and the smoke test's own summary — all fixed, plus skill-reference and IL2026-justification callouts. Reviews: `reviews/007-*.md`.
+- **Decision:** Amend.
+- **Follow-up:** n/a — remaining queue: TRIM-005, TRIM-006, then todo-level release step (AC4 release notes deferred there).
+
 ### 2026-07-07 — TRIM-003 (verification RED, re-split → TRIM-007)
 - **Finding:** The subscribe-only consumer shape FAILS on a trimmed client: the event type survives (generic instantiation + runtime `[FactoryEvent]` scan) but its ctor is stripped — inherited `[DynamicallyAccessedMembers]` on `FactoryEventBase` does not flow to derived types under ILLink (DAM is `AttributeUsage(Inherited = false)`; the docs' "Inherited = true" story is runtime-reflection semantics). The todo's "third gap already fixed" premise was wrong; zTreatment's event LinkerConfig entries are load-bearing. Triplet evidence: red trimmed / green untrimmed / green trimmed with DAM on `Subscribe<TEvent>` (fix mechanism validated — the `Raise<T>` producer-side pattern). Long form: TRIM-003 Amendment 1.
 - **Decision:** Re-split.
@@ -108,3 +113,25 @@ Execution order: 004 → 001 → 002 → 003 → 007 → 005 → 006 (rows liste
 - **Decision:** Defer.
 - **Index changes:** add TRIM-005 (over-retention: generator guard-shape fix or docs correction), executed last.
 - **Follow-up:** TRIM-005.
+- **Correction (2026-08-11):** the causal half of this finding is **wrong** — see the 2026-08-11 entry. The observation (server-only refs retained) was real; the explanation was not.
+
+### 2026-08-11 — TRIM-005 (diagnosis falsified at plan review; abandoned)
+- **Finding:** TRIM-005 inherited the 2026-07-06 causal story without re-verifying it, and it is false. ILLink **does** eliminate class-factory guarded bodies at HEAD — `ICorrelationContext`, `IFactoryOnStart`, `IFactoryOnComplete`, `Stopwatch`, `FactoryOperation`, `ILogger` are all absent from the trimmed artifact; the early-`throw` shape works. The real seam: `StaticFactoryRenderer.cs:41` and `RelayHandlerRenderer.cs:32` point `[assembly: NeatooFactoryRegistrar(...)]` at *the consumer's own class* (class/interface renderers correctly target the generated factory type), and the attribute's `DAM(PublicMethods | NonPublicMethods)` (`FactoryAttributes.cs:157-168`) forces ILLink to retain every method on it. Evidence + 11 findings: `reviews/005-plan-review.md`.
+- **Decision:** Abandon.
+- **Index changes:** 005 → Abandoned. The corrected defect is deliberately **not** queued as a TRIM plan — it is outside this todo's Goal (over-retention, not preservation).
+- **Follow-up:** TRIM-006 next, then the release step. Registrar-DAM defect → fixed directly in plan mode (see below).
+
+### 2026-08-11 — Registrar-DAM over-preservation (out-of-goal defect, recorded for plan-mode fix)
+- **Finding:** For `[Execute]` static factories and `[FactoryEventHandler<T>]` classes, the generated `[assembly: NeatooFactoryRegistrar(typeof(<user's own class>))]` combined with `DAM(PublicMethods | NonPublicMethods)` preserves **every method on the consumer's class, bodies included** — so `[Remote]` server-only method bodies ship to the browser, decompilable. The DAM exists only to satisfy one reflective lookup (`AddRemoteFactoryServices.cs:168`, `GetMethod("FactoryServiceRegistrar")`), but DAM has no per-method granularity. This contradicts `docs/trimming.md:7`'s IP-protection promise and falsifies `docs/trimming.md:222`, `:35`, `:13`, `src/Design/CLAUDE-DESIGN.md:756`, and `skills/RemoteFactory/references/class-factory.md:318,333-334` + `advanced-patterns.md:227`. Class and interface factories are unaffected (`ClassFactoryRenderer.cs:54`, `InterfaceFactoryRenderer.cs:48` target the generated type). Advisory shape floated at review: move `FactoryServiceRegistrar` onto a nested generated type and point the attribute there — DAM on a type does not cover its nested types; mirrors the TRIM-007 per-assembly-registrar precedent. Not validated.
+- **Decision:** Defer — out of this todo's Goal.
+- **Follow-up:** n/a in TRIM. User decision 2026-08-11: fix directly in plan mode, not as a todo. Harness gap to close when it is fixed: no relay-handler target touches a server-only service, so that leg is currently unverifiable (`reviews/005-plan-review.md` B9).
+
+### 2026-08-12 — TRIM-006 (relay-handler cache break confirmed and fixed; guard sensitivity established)
+- **Finding:** Pre-flight's prediction held exactly — the relay-handler transform output was the one live cache break at HEAD (`RelayHandlerModel.Usings/Entries/Diagnostics` and `EventHandlerEntry.Parameters/ServiceParameters/AllParameters` were `IReadOnlyList<T>`, so a record's synthesized `Equals` fell back to reference equality on freshly allocated lists). The guard went red on `RelayHandler` with reason `Modified` while the other three branches cached, then green after the move to `EquatableArray<T>`. Emitted output unchanged, verified empirically rather than by inference: zero `git status` drift in the committed `Generated/` trees of both solutions after a rebuild that re-emitted them.
+- **Decision:** Fix in place, as Step 5 already scoped. Not an Amend — no scope change.
+- **Index changes:** none yet; 006 stays In Progress until the Step 5 gate runs.
+
+### 2026-08-12 — Generator tests can silently assert against stale generator code (harness gotcha)
+- **Finding:** `DiagnosticTestHelper` loads `Neatoo.Generator.dll` once per process via `Assembly.LoadFrom` into a static `Lazy`. Rebuilding **only** the generator project and re-running `dotnet test --no-build` can let a surviving testhost serve the previously loaded assembly, so a test reports on code that is no longer on disk. Caught during TRIM-006's negative control: the probe field was provably present in the loaded DLL (`grep` on the binary, plus a full tracked-step dump showing `Modified`) while the guard reported 6/6 green; rebuilding the test project produced the correct red. This is not specific to the caching guard — it applies to **every** test that goes through `DiagnosticTestHelper`, which is effectively the whole generator suite. A generator fix can appear verified when it was never loaded.
+- **Decision:** Document at the seam rather than re-architect the loader — `RunGeneratorTracked`'s remarks now carry the warning. CI is unaffected (cold build every run), so the exposure is local iteration only.
+- **Follow-up:** If this bites again, the durable fix is to make the helper fail fast on a generator DLL older than the test assembly. Deliberately not done here — out of TRIM-006's scope, and the plan's Constraints forbid reworking the shared helper.

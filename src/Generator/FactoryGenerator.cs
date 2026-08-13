@@ -26,7 +26,7 @@ public partial class Factory : IIncrementalGenerator
 				var typeDeclaration = (TypeDeclarationSyntax)ctx.TargetNode;
 				var semanticModel = ctx.SemanticModel;
 				return TransformTypeFactory(typeDeclaration, semanticModel);
-			});
+			}).WithTrackingName(TrackingNames.FactoryClass);
 
 		context.RegisterSourceOutput(classesToGenerate, static (spc, typeInfo) =>
 		{
@@ -59,7 +59,7 @@ public partial class Factory : IIncrementalGenerator
 											var interfaceSyntax = (InterfaceDeclarationSyntax)ctx.TargetNode;
 											var semanticModel = ctx.SemanticModel;
 											return TransformInterfaceFactory(interfaceSyntax, semanticModel);
-										});
+										}).WithTrackingName(TrackingNames.FactoryInterface);
 
 		context.RegisterSourceOutput(interfacesToGenerate, static (spc, typeInfo) =>
 		{
@@ -86,7 +86,7 @@ public partial class Factory : IIncrementalGenerator
 				var classDecl = (ClassDeclarationSyntax)ctx.TargetNode;
 				var semanticModel = ctx.SemanticModel;
 				return TransformRelayHandler(classDecl, semanticModel);
-			});
+			}).WithTrackingName(TrackingNames.RelayHandler);
 
 		context.RegisterSourceOutput(relayHandlersToGenerate, static (spc, model) =>
 		{
@@ -117,7 +117,8 @@ public partial class Factory : IIncrementalGenerator
 				&& !recordDecl.Modifiers.Any(SyntaxKind.AbstractKeyword),
 			transform: static (ctx, _) => TransformFactoryEvent((RecordDeclarationSyntax)ctx.Node, ctx.SemanticModel))
 			.Where(static info => info is not null)
-			.Collect();
+			.Collect()
+			.WithTrackingName(TrackingNames.FactoryEvents);
 
 		context.RegisterSourceOutput(factoryEventsToPreserve, static (spc, events) =>
 		{
