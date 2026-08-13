@@ -86,6 +86,28 @@ public sealed class DeleteAttribute : FactoryOperationAttribute
 	public DeleteAttribute() : base(FactoryOperation.Delete) { }
 }
 
+/// <summary>
+/// Marks a static method on a <c>[Factory]</c> static class as a request-response command.
+/// The generator emits a delegate type and its DI registration.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Trimming:</b> mark the method <c>private static</c> (the convention used throughout
+/// the Design projects) and the generated local registration is guarded by
+/// <c>NeatooRuntime.IsServerRuntime</c>, so on a client published with the feature switch
+/// set to <c>false</c> the method body, its <c>[Service]</c> dependencies, and their
+/// transitive references are removed from the output.
+/// </para>
+/// <para>
+/// <b><c>[Remote]</c> is decorative on <c>[Execute]</c> methods.</b> Static factories are
+/// exempt from the NF0105 <c>[Remote] public</c> check, and the renderer emits both a remote
+/// and a local registration for every delegate regardless of whether <c>[Remote]</c> is
+/// present — only the local one is feature-switch guarded. Trimming of the body therefore
+/// depends on the guard, not on <c>[Remote]</c>. This differs from class factories, where
+/// <c>[Remote] internal</c> is what drives the guard, and several documentation pages
+/// present <c>[Remote]</c> as the trimming-enabling marker generally.
+/// </para>
+/// </remarks>
 public sealed class ExecuteAttribute : FactoryOperationAttribute
 {
 	public ExecuteAttribute() : base(FactoryOperation.Execute) { }
@@ -105,6 +127,21 @@ public sealed class ExecuteAttribute : FactoryOperationAttribute
 /// former client-side relay pattern, now replaced by <see cref="IFactoryEventRelay"/>.
 /// Client-side event consumers implement <see cref="IFactoryEventRelay"/> to bridge
 /// relayed events to their own event aggregator.
+/// </para>
+/// <para>
+/// <b>Trimming:</b> every generated handler registration is wrapped in
+/// <c>NeatooRuntime.IsServerRuntime</c>, so on a client published with the feature switch
+/// set to <c>false</c> the handler bodies and their <c>[Service]</c> dependencies are
+/// removed from the output. This works because the generator points the assembly's
+/// <see cref="NeatooFactoryRegistrarAttribute"/> at a generated forwarding holder rather
+/// than at the handler class itself — the attribute preserves every method on whatever it
+/// names, bodies included, so naming the handler class would ship the handler bodies to the
+/// browser. Fixed in v1.7.0; before that, it did.
+/// </para>
+/// <para>
+/// One consequence for consumers: because the registrations are server-guarded, there is
+/// nothing on a trimmed client to resolve, and handler registration cannot be verified from
+/// a client-side test. Coverage for it lives in server-side/untrimmed tests.
 /// </para>
 /// </summary>
 /// <typeparam name="T">The event type (must inherit from <see cref="FactoryEventBase"/>).</typeparam>

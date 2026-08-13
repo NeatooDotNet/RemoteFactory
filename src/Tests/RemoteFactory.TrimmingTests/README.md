@@ -26,11 +26,22 @@ comes with a non-zero exit — new checks must follow that contract (append to
 # Clean and publish with trimming (net9.0)
 dotnet publish -c Release -r win-x64 --self-contained true
 
-# Search for server-only IMPLEMENTATION types in output (should return nothing).
-# The IServerOnlyRepository interface name is expected to remain — it is referenced
-# from guarded-dead LocalCreate bodies the trimmer retains (tracked as TRIM-005).
-grep -aob "ServerOnlyDirect" bin/Release/net9.0/win-x64/publish/RemoteFactory.TrimmingTests.dll
-grep -aobP '(?<!I)ServerOnlyRepository' bin/Release/net9.0/win-x64/publish/RemoteFactory.TrimmingTests.dll
+# Run the full absence gate — the same script CI runs. It checks every leg, names
+# the leg on failure, and carries positive controls so a missing or unreadable
+# artifact fails loudly instead of passing silently.
+./verify-trimmed.sh bin/Release/net9.0/win-x64/publish/RemoteFactory.TrimmingTests.dll
+
+# NOTE: do not hand-roll `grep -a` checks for the *_MARKER strings. Those are string
+# literals, which live UTF-16LE in the #US metadata heap, so a raw-byte grep can never
+# match them and reports "absent" for markers that are demonstrably present. Metadata
+# NAMES (types, methods) are UTF-8 and do match. verify-trimmed.sh searches both.
+#
+# This README previously exempted the IServerOnlyRepository interface name from the
+# absence check, on the grounds that guarded-dead LocalCreate bodies retained it
+# (attributed to TRIM-005). That diagnosis was disproven. The real cause was the
+# static-factory registrar attribute naming the consumer's class, which made
+# [DynamicallyAccessedMembers] retain every method on it — fixed in TRIM-008. The
+# interface name is now measured absent and the exemption is gone.
 
 # Decompile to inspect what the trimmer left
 ilspycmd bin/Release/net9.0/win-x64/publish/RemoteFactory.TrimmingTests.dll

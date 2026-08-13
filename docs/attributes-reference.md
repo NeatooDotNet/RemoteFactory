@@ -184,6 +184,10 @@ public static partial class PromoteCommand
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L88-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+**Trimming:** the generated local registration is guarded by `NeatooRuntime.IsServerRuntime`, so a client published with the feature switch set to `false` drops the method body, its `[Service]` dependencies, and their transitive references. See [IL Trimming](trimming.md).
+
+Note that `[Remote]` is **decorative** on `[Execute]` methods — static factories are exempt from the NF0105 `[Remote] public` check, and the generator emits both remote and local registrations regardless, guarding only the local one. What makes the body trimmable is the guard, not `[Remote]`. Keeping `[Remote]` on the method is still worthwhile as intent, and matches how the same marker behaves on class factories.
+
 ### [FactoryEventHandler\<T\>]
 
 Class-level attribute that marks a class as a **server-side** static handler for factory events of type `T` (where `T : FactoryEventBase`). The source generator finds one matching `static` method by signature and registers it with `FactoryEventHandlerRegistry`. See [Factory Events](factory-events.md) for the full pattern.
@@ -208,6 +212,8 @@ public static partial class OrderAuditHandler
         audit.LogAsync("Checkout", evt.OrderId, "Order", $"Total: {evt.Total:C}", ct);
 }
 ```
+
+**Trimming:** handler registrations are wrapped in `NeatooRuntime.IsServerRuntime`, so a client published with the feature switch set to `false` drops the handler bodies and their `[Service]` dependencies. Because those registrations are entirely server-guarded, there is nothing left on a trimmed client to resolve — handler registration cannot be verified from a client-side test, only from server-side or untrimmed ones. See [IL Trimming](trimming.md).
 
 Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. All handlers for the event type run sequentially, awaited, sharing the caller's `DbContext` and transaction. A throwing handler aborts the chain and propagates to the caller. For fire-and-forget work that should not participate in the caller's transaction, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)).
 

@@ -30,10 +30,19 @@ public static partial class TrimTestCommands
 
     // Positional records as [Execute] return type (with a nested record) and as a
     // non-service parameter — the zTreatment StartVisitResultV2 shape (TRIM-001).
-    // DTO discovery is signature-based, so the body deliberately never constructs
-    // the records: a `new TrimRecordResult(...)` here would root the ctor from the
-    // (retained, guarded-dead) method body and make RecordDtoSmokeTest pass even
-    // without the generator's PreserveType emission — a vacuous check.
+    //
+    // DTO discovery is signature-based, so the body deliberately never constructs the
+    // records. A `new TrimRecordResult(...)` here would root the ctor from this method
+    // body and make RecordDtoSmokeTest pass even without the generator's PreserveType
+    // emission — a vacuous check.
+    //
+    // This comment used to justify that by calling the body "retained, guarded-dead",
+    // per the TRIM-005 story that the trimmer keeps guarded-dead bodies. That story was
+    // disproven, and since TRIM-008 this body is measurably GONE from the trimmed client
+    // (_ProcessRecord is one of the gate's absence markers). The precaution still stands
+    // on its own footing though: the fixture must not depend on trimming behavior to stay
+    // non-vacuous, because a change that started retaining bodies again would silently
+    // re-root the ctor and turn RecordDtoSmokeTest green for the wrong reason.
     [Remote]
     [Execute]
     private static Task<TrimRecordResult?> _ProcessRecord(TrimRecordCommand command, [Service] IServerOnlyRepository repo)

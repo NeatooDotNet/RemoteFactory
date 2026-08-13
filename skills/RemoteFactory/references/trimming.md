@@ -129,6 +129,29 @@ The `Trim="true"` attribute on the `RuntimeHostConfigurationOption` is critical 
 - **.NET 9 or later** — `[FeatureSwitchDefinition]` was introduced in .NET 9
 - **`dotnet publish`** — Trimming runs during publish, not during `dotnet build` or `dotnet run`
 
+## What Gets Trimmed, By Factory Shape
+
+The guarantee is not uniform across factory shapes. What follows is measured against a published trimmed assembly, not inferred from the mechanism.
+
+| Shape | `[Remote]`/handler bodies removed? |
+|---|---|
+| Interface factory | Yes |
+| Static factory (`[Execute]`) | Yes, from v1.7.0 |
+| `[FactoryEventHandler<T>]` | Yes, from v1.7.0 |
+| Class factory | Yes, from v1.7.0 — synchronous operations were always removed; `async` ones needed the same release |
+
+### Why static factories and event handlers needed a fix
+
+The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` so factory registration survives trimming. That attribute carries `[DynamicallyAccessedMembers]`, which preserves **every method on the type it names, method bodies included**.
+
+Class and interface factories have a generated `{X}Factory` class to name. Static factories and `[FactoryEventHandler<T>]` classes do not — the generator re-opens *your* partial class to host the registrar — so before v1.7.0 the attribute named your class, and preservation covered your `[Remote]` method bodies along with it. They shipped to the browser.
+
+The fix emits a single-method forwarding holder for the attribute to point at instead. No action needed on your side; it is automatic. If you are on an earlier version and ship `[Execute]` commands or event handlers to a Blazor WASM client, upgrade — the bodies are in your published output today.
+
+### `[Remote]` is decorative on `[Execute]`
+
+Static factories are exempt from the NF0105 `[Remote] public` check, and the generator emits both remote and local registrations regardless, guarding only the local one with `IsServerRuntime`. Trimming of an `[Execute]` body follows from that guard, not from `[Remote]`. Keep `[Remote]` for intent — it reads consistently with class factories — but do not rely on it as the thing that makes the body trimmable.
+
 ## Verifying Results
 
 After publishing, confirm server-only types were removed:
@@ -140,6 +163,14 @@ dotnet publish -c Release
 # Search for server-only type names (should return no matches)
 grep -aob "YourRepositoryClassName" bin/Release/net9.0/publish/YourApp.dll
 ```
+
+**Searching for a string literal takes an extra step.** Type and method *names* are UTF-8 in assembly metadata, so `grep -a` finds them. String *literals* from method bodies are UTF-16, so `grep -a` cannot match them — it reports "absent" for text that is sitting in the file. Strip the nulls first:
+
+```bash
+tr -d '\000' < bin/Release/net9.0/publish/YourApp.dll | grep -c "SELECT * FROM"
+```
+
+Before trusting a clean result, run the same check against the **non-published** build output, where the server-only code definitely still exists. If it reports "absent" there too, your check is broken rather than your code being clean.
 
 If server-only type names still appear:
 1. Confirm `TrimMode` is `full` (not `partial` or omitted)

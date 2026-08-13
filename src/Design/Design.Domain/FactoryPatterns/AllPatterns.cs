@@ -353,6 +353,26 @@ public static partial class ExampleCommands
     /// GENERATOR BEHAVIOR: For this method, the generator creates:
     ///   - Delegate: Execute_ExampleCommands_SendNotification(string, string)
     ///   - Public method: ExampleCommands.SendNotification(string, string)
+    ///   - A forwarding holder, NeatooFactoryRegistrar_ExampleCommands, which the
+    ///     assembly-level [NeatooFactoryRegistrar] attribute points at
+    ///
+    /// TRIMMING: the holder is not incidental. The registrar attribute carries
+    /// [DynamicallyAccessedMembers], which preserves every method on the type it
+    /// names -- method BODIES included. Static factories have no separate generated
+    /// factory class (the generator re-opens this partial to host
+    /// FactoryServiceRegistrar), so before v1.7.0 the attribute named
+    /// ExampleCommands itself and _SendNotification's body shipped to trimmed
+    /// Blazor WASM clients, decompilable. The holder gives the attribute a
+    /// single-method type to preserve instead.
+    ///
+    /// Note [Remote] is decorative on [Execute]: static factories are exempt from
+    /// the NF0105 [Remote] public check, and both remote and local registrations
+    /// are emitted regardless, with only the local one guarded by IsServerRuntime.
+    /// The guard is what makes the body trimmable, not the attribute.
+    ///
+    /// Not demonstrated by a Design test: preservation and over-preservation are
+    /// only observable in a publish-trimmed artifact, and Design.Tests run
+    /// untrimmed. RemoteFactory.TrimmingTests is the verification surface.
     ///
     /// Usage from client:
     ///   var success = await ExampleCommands.SendNotification("recipient@example.com", "Hello!");

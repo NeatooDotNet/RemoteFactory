@@ -753,15 +753,22 @@ The concrete type is resolved at compile time using the naming convention (`IPer
 
 #### Trimming-Safe Factory Registration
 
-The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory type (class, static, and interface). The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)]` on its `Type` property, which creates a dataflow contract the IL trimmer follows — ensuring each factory type's `FactoryServiceRegistrar` method (and all other methods) survive trimming.
+The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory type (class, static, interface, and `[FactoryEventHandler<T>]`). The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)]` on its `Type` property, which creates a dataflow contract the IL trimmer follows — ensuring the named type's `FactoryServiceRegistrar` method survives trimming.
+
+**The attribute must name a generated type, never a consumer's class.** The annotation preserves every method on whatever it names, *method bodies included*, so naming a user class ships that class's `[Remote]` server-only bodies to a trimmed client. Class and interface factories have a generated `{X}Factory` to name. Static factories and `[FactoryEventHandler<T>]` classes do not — the generator re-opens the user's own partial to host the registrar — so each emits a single-method forwarding holder for the attribute to point at instead.
 
 At startup, `RegisterFactories()` enumerates these assembly attributes via `assembly.GetCustomAttributes<NeatooFactoryRegistrarAttribute>()` instead of scanning all types with `assembly.GetTypes()`. This makes factory discovery trimming-safe: the trimmer sees the static `typeof()` references in the assembly attributes and preserves the referenced types.
 
 | Factory Pattern | Assembly Attribute Target |
 |----------------|--------------------------|
 | Class Factory | `typeof({Namespace}.{ClassName}Factory)` — the generated factory implementation class |
-| Static Factory | `typeof({Namespace}.{StaticClassName})` — the static class itself |
+| Static Factory | `typeof({Namespace}.NeatooFactoryRegistrar_{StaticClassName})` — a generated forwarding holder |
 | Interface Factory | `typeof({Namespace}.{ImplName}Factory)` — the generated factory implementation class |
+| `[FactoryEventHandler<T>]` | `typeof({Namespace}.NeatooEventHandlerRegistrar_{ClassName})` — a generated forwarding holder |
+
+The two holder rows carry distinct prefixes deliberately: a class carrying both `[Factory]` and `[FactoryEventHandler<T>]` would otherwise collide on the holder type name.
+
+Until v1.7.0 the static-factory and `[FactoryEventHandler<T>]` rows named **the user's own class**, because there was no generated type to point at. Combined with the annotation above, that preserved every method on those classes — `[Remote]` bodies and all — on trimmed clients. The forwarding holders exist to close that.
 
 This mechanism is internal to the generator and library. Users do not need to emit or configure these attributes — they are generated automatically for every `[Factory]`-annotated type.
 
