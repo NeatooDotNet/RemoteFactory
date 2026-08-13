@@ -73,6 +73,28 @@ public static class DiagnosticTestHelper
         var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
         var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
 
+        var references = BuildReferences();
+
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "TestAssembly",
+            syntaxTrees: [syntaxTree],
+            references: references,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = GeneratorInstance.Value;
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
+        var runResult = driver.GetRunResult();
+
+        // Get diagnostics from the generator run result as well
+        var allDiagnostics = diagnostics.AddRange(runResult.Diagnostics);
+
+        return (allDiagnostics, outputCompilation, runResult);
+    }
+
+    private static List<MetadataReference> BuildReferences()
+    {
         // Get the RemoteFactory assembly for references
         var remoteFactoryAssembly = typeof(FactoryAttribute).Assembly;
 
@@ -91,22 +113,68 @@ public static class DiagnosticTestHelper
             references.Add(MetadataReference.CreateFromFile(systemRuntimePath));
         }
 
+        return references;
+    }
+
+    /// <summary>
+    /// Runs the generator twice with incremental step tracking enabled, applying an
+    /// unrelated edit between the runs, and returns the second run's result.
+    /// </summary>
+    /// <param name="source">The fixture source, present in both runs.</param>
+    /// <param name="appendedSource">An unrelated declaration appended for the second run.</param>
+    /// <remarks>
+    /// Two details make this a non-vacuous caching probe:
+    ///
+    /// 1. The edit REPLACES the existing syntax tree rather than adding a second one.
+    ///    Adding a separate tree would leave the fixture's nodes untouched, so Roslyn
+    ///    would serve every transform from its own upstream cache and the assertion
+    ///    would pass no matter how broken the transform-output equality is. Replacing
+    ///    the tree forces every transform in it to re-run, which is what makes the
+    ///    equality of the transform-output records the thing under test.
+    ///
+    /// 2. The edit is APPENDED, so the spans and line positions of the existing
+    ///    declarations do not move. TypeInfo and DiagnosticInfo capture file paths and
+    ///    line/column positions, so an edit that shifted them would change transform
+    ///    output for an entirely benign reason and the guard would fail without a defect.
+    ///
+    /// Local iteration gotcha: the generator is loaded once per process via
+    /// Assembly.LoadFrom and held in a static Lazy. If you rebuild ONLY the generator
+    /// and re-run with --no-build, a surviving testhost can serve the previously loaded
+    /// generator assembly, and the guard will report on stale code — it will appear to
+    /// pass against a generator you just broke. Rebuild the test project too (or run
+    /// without --no-build) when verifying a red/green cycle on this guard. CI is
+    /// unaffected: every run starts from a cold build.
+    /// </remarks>
+    public static (GeneratorDriverRunResult First, GeneratorDriverRunResult Second) RunGeneratorTracked(
+        string source,
+        string appendedSource)
+    {
+        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+        var firstTree = CSharpSyntaxTree.ParseText(source, parseOptions, path: "Fixture.cs");
+
         var compilation = CSharpCompilation.Create(
             assemblyName: "TestAssembly",
-            syntaxTrees: [syntaxTree],
-            references: references,
+            syntaxTrees: [firstTree],
+            references: BuildReferences(),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var generator = GeneratorInstance.Value;
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [GeneratorInstance.Value.AsSourceGenerator()],
+            additionalTexts: null,
+            parseOptions: parseOptions,
+            optionsProvider: null,
+            driverOptions: new GeneratorDriverOptions(
+                IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: true));
 
-        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
-        var runResult = driver.GetRunResult();
+        driver = driver.RunGenerators(compilation);
+        var first = driver.GetRunResult();
 
-        // Get diagnostics from the generator run result as well
-        var allDiagnostics = diagnostics.AddRange(runResult.Diagnostics);
+        var secondTree = CSharpSyntaxTree.ParseText(source + appendedSource, parseOptions, path: "Fixture.cs");
+        driver = driver.RunGenerators(compilation.ReplaceSyntaxTree(firstTree, secondTree));
+        var second = driver.GetRunResult();
 
-        return (allDiagnostics, outputCompilation, runResult);
+        return (first, second);
     }
 
     /// <summary>
