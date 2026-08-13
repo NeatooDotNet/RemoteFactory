@@ -106,11 +106,22 @@ Walked 2026-08-12 on branch `TRIM` (`25ac975`). Diagnosis verified at the keyboa
 
 ## Test Evidence
 
-Filled after implementation, before the Step 5 gate.
+Filled 2026-08-13, after implementation, before the gates.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| | | | |
+| `[Execute]` bodies absent from trimmed client | `[trimmed-harness]` | `verify-trimmed.sh` — `_DoWork`, `_ProcessRecord`, `DoServerWork`, `IServerOnlyRepository`, `ServerOnlyDirect`, `ServerOnlyHelper` under "static factory". Pre-fix baseline in the plan's Current State; post-fix probe `scratchpad/probe-postfix.txt` | `[trimmed-harness]` |
+| Handler bodies absent from trimmed client | `[trimmed-harness]` | `verify-trimmed.sh` — `RelayLegHandlerBody`, `IRelayLegPort`, `RelayLegInvoke`, `RelayLegBackend`, `RelayLegHandlerBody_MARKER`. **Present pre-fix, absent post-fix**, both recorded | `[trimmed-harness]` |
+| Both attributes name a generated holder, not the consumer type | `[unit]` | `AssemblyAttributeEmissionTests.StaticFactory_EmitsAssemblyAttribute`, `.StaticFactory_AssemblyAttribute_DoesNotNameConsumerType`, `.RelayHandler_EmitsAssemblyAttribute`, `.RelayHandler_AssemblyAttribute_DoesNotNameConsumerType` | `[unit]` |
+| Relay attribute is `global::`-qualified | `[unit]` | `AssemblyAttributeEmissionTests.RelayHandler_AssemblyAttribute_DoesNotNameConsumerType` — asserts absence of `NeatooFactoryRegistrar(typeof(TestNamespace.` (unqualified form) | `[unit]` |
+| Class/interface/event-preservation emission byte-identical | `[explicit-skip: one-off emission diff]` | Discharged by measurement instead of skipped — 732 emitted / 40 changed / 692 identical, every changed line matched against two permitted shapes, 0 outside. See the Acceptance bullet | **Upgraded** from explicit-skip to measured |
+| CI gate fails per-leg, durable positive control | `[explicit-skip: shell in YAML]` | **Skip retired.** Gate moved to `verify-trimmed.sh` and exercised against archived artifacts: fails naming the relay leg (`prefix-relayleg.dll`), fails naming the static leg (`baseline-prefix.dll`), fails on a missing path, passes on the fixed artifact | **Upgraded** from explicit-skip to executed |
+| Registration still works through the holder | `[trimmed-harness]` static / `[integration]` relay | Static + interface + save: `TrimmingTests/Program.cs` resolves `TrimTestCommands.DoWork`, `ITrimIfaceQueryFactory`, `ITrimSaveTargetFactory`; harness exits non-zero on failure, observed exit 0. Relay (structurally impossible in the trimmed harness — registrations are `IsServerRuntime`-guarded): `RemoteFactory.IntegrationTests` `TestTargets/Events/FactoryEventHandlerTargets.cs` family, 554 passing per TFM | `[trimmed-harness]` + `[integration]` |
+| B9 closed with pre-fix measurement per leg | `[trimmed-harness]` | `scratchpad/probe-prefix.txt` (pre-fix) vs `probe-postfix.txt` (post-fix). Relay present→absent; interface absent→absent; Save/Can\* present→present as TRIM-009 predicts. Probe self-validated against the untrimmed assembly (30/30 markers PRESENT) before any result was used | `[trimmed-harness]` |
+| No doc asserts the guarantee for a shape that lacks it | `[explicit-skip: documentation]` | `reviews/008-doc-anchor-inventory.md`; residual class-factory anchors deferred to TRIM-009, enumerated and release-blocking | `[explicit-skip: documentation]` |
+| Full build/test green both solutions | `[explicit-skip: build/test gates]` | Main 609+609 unit / 554+554 integration; Design 86+86; harness exit 0. `FactoryEventRelayTests` excluded — pre-existing flake, proven by identical failures with this branch's changes stashed | `[explicit-skip: build/test gates]` |
+
+**Not covered, deliberately:** no test asserts that a *consumer* pointing `[NeatooFactoryRegistrar]` at their own type is rejected — the contract added in Step 5 is documentation, not a diagnostic. A generator change that repoints the attribute at a user class is caught by the two `DoesNotNameConsumerType` tests; a hand-written attribute in consumer code is not caught at all. Recorded rather than silently absent.
 
 ---
 
