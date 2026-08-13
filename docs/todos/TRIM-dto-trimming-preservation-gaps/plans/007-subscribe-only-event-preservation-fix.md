@@ -3,8 +3,8 @@
 **Plan #:** 007
 **Date:** 2026-07-13
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
-**Last Updated:** 2026-07-13
+**Status:** Done
+**Last Updated:** 2026-08-12 (status header reconciled with the Plan Index at close-out audit V3; the plan completed and merged via PR #71 on 2026-07-13)
 **Plan-review opt-in:** Yes (new incremental-generator pipeline branch; generator emission contract change; corrects documented behavior that currently overpromises)
 **Code-review opt-in:** Yes (behavior-changing generator work)
 

@@ -56,8 +56,9 @@ namespace TestNamespace
     // populates DtoReturnTypes / DtoPreserveTypes on TypeInfo.
     public record OrderSummary(int Id, string Label);
 
-    // Branch 4: FactoryEventBase descendant.
+    // Branch 4: FactoryEventBase descendants.
     public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEventBase;
+    public record OrderShippedEvent(int OrderId, string Carrier) : FactoryEventBase;
 
     // Branch 1: [Factory] class — multiple methods, services, DTO in the signature.
     [Factory]
@@ -80,18 +81,25 @@ namespace TestNamespace
         }
     }
 
-    // Branch 2: [Factory] interface.
+    // Branch 2: [Factory] interface. No operation attributes on the members — the
+    // interface IS the remote boundary, and [Fetch] here is NF0106.
     [Factory]
     public interface IOrderReader
     {
-        [Fetch]
         OrderSummary? Read(int id);
     }
 
-    // Branch 3: [FactoryEventHandler<T>] — two handlers, each with non-service
-    // parameters, service parameters, and a CancellationToken, so Entries and all
-    // three parameter collections on EventHandlerEntry are non-empty.
+    // Branch 3: [FactoryEventHandler<T>] — TWO DISTINCT event types, one matching
+    // handler each, so RelayHandlerModel.Entries holds two EventHandlerEntry values
+    // and each entry's Parameters / ServiceParameters / AllParameters are non-empty.
+    //
+    // The two attributes must name DIFFERENT events. Two handlers for the SAME event
+    // is the NF0502 ambiguous-match shape: the transform reports the diagnostic and
+    // `continue`s WITHOUT adding an entry, leaving Entries empty and every
+    // EventHandlerEntry collection unconstructed — the guard would then cover none of
+    // them while appearing to. Fixture_ProducesNoDiagnostics pins this.
     [FactoryEventHandler<OrderPlacedEvent>]
+    [FactoryEventHandler<OrderShippedEvent>]
     public static partial class OrderHandlers
     {
         internal static async Task Notify(
@@ -103,11 +111,11 @@ namespace TestNamespace
         }
 
         internal static async Task Audit(
-            OrderPlacedEvent orderEvent,
+            OrderShippedEvent orderEvent,
             [Service] INotifier notifier,
             CancellationToken cancellationToken)
         {
-            await notifier.SendAsync(""audit@example.com"", ""audited"");
+            await notifier.SendAsync(""audit@example.com"", orderEvent.Carrier);
         }
     }
 }
@@ -164,6 +172,46 @@ namespace UnrelatedNamespace
                 + "gained a field whose equality falls back to reference semantics. Collections on "
                 + "transform outputs must be EquatableArray<T>, and their element types must be "
                 + "value-equatable all the way down.");
+    }
+
+    /// <summary>
+    /// Fixture health. A branch can report tracked steps while its transform bailed
+    /// early on a diagnostic, leaving the very collections under test unconstructed —
+    /// the guard then covers nothing and still passes. That is not hypothetical: the
+    /// first version of this fixture declared two handlers for one event, hit NF0502,
+    /// and silently guarded an empty <c>Entries</c> for the whole of TRIM-006.
+    /// </summary>
+    [Fact]
+    public void Fixture_ProducesNoDiagnostics()
+    {
+        var (_, second) = DiagnosticTestHelper.RunGeneratorTracked(Fixture, UnrelatedAppendix);
+
+        var nf = second.Diagnostics.Where(d => d.Id.StartsWith("NF")).ToList();
+
+        Assert.True(
+            nf.Count == 0,
+            "The caching fixture must generate cleanly. A diagnostic means some transform took an "
+                + "early-out path and never built the model the guard is supposed to protect: "
+                + string.Join("; ", nf.Select(d => $"{d.Id} {d.GetMessage()}")));
+    }
+
+    /// <summary>
+    /// Pins that the relay-handler branch actually reached emission. Complements
+    /// <see cref="Fixture_ProducesNoDiagnostics"/>: the relay output stage returns early
+    /// when <c>Entries.Count == 0</c>, so an empty-entry fixture produces no file here.
+    /// </summary>
+    [Fact]
+    public void Fixture_EmitsRelayHandlerOutput()
+    {
+        var (_, second) = DiagnosticTestHelper.RunGeneratorTracked(Fixture, UnrelatedAppendix);
+
+        var files = second.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath)).ToList();
+
+        Assert.True(
+            files.Any(f => f.EndsWith(".FactoryEventHandler.g.cs")),
+            "No relay-handler source was emitted, so RelayHandlerModel.Entries was empty and "
+                + "EventHandlerEntry's collections were never constructed — the RelayHandler case of "
+                + $"the caching guard would be vacuous. Emitted: {string.Join(", ", files)}");
     }
 
     [Fact]
