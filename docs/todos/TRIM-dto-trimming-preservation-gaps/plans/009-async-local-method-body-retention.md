@@ -58,17 +58,44 @@ The first draft of this paragraph argued: *"the attribute correctly names the ge
 
 The original framing — "async generated `Local*` methods retain their server-only bodies; sync ones do not" — was drawn from a two-case comparison. Three async targets were then added to the harness and **all trim clean**:
 
-| Shape | Guard | Reaches server-only code via | `async` | Result |
-|---|---|---|---|---|
-| static `[Execute]` | `if (IsServerRuntime) { … }` wrapping, in a non-async registrar | direct static call | yes | clean |
-| relay handler | same wrapping guard | direct static call | yes | clean |
-| interface factory | `if (!IsServerRuntime) throw` early | **the interface** (`GetRequiredService<T>()` then `target.M()`) | yes | clean |
-| class factory `Create` | `if (!IsServerRuntime) throw` early | direct call on the concrete type | **no** | clean |
-| class factory `Insert`/`Update`/`Delete` | `if (!IsServerRuntime) throw` early | direct call on the concrete type | **yes** | **LEAKS** |
+| Shape | Guard | Reaches server-only code via | `async` | Body rooted at all? | Result |
+|---|---|---|---|---|---|
+| static `[Execute]` | `if (IsServerRuntime) { … }` wrapping, in a non-async registrar | direct static call | yes | **no** — fold deletes the registration | absent (moot) |
+| relay handler | same wrapping guard | direct static call | yes | **no** — same | absent (moot) |
+| interface factory | `if (!IsServerRuntime) throw` early | **the interface** | yes | yes, but markers are behind the interface hop | **not measurable** |
+| class factory `Create` | `if (!IsServerRuntime) throw` early | direct call on the concrete type | **no** | yes | clean |
+| class factory `Insert`/`Update`/`Delete` | `if (!IsServerRuntime) throw` early | direct call on the concrete type | **yes** | yes | **LEAKS** |
 
-**This narrows the hypothesis; it does not falsify it.** None of the three clean async shapes is the leaking shape. The static and relay legs put their guard in a *wrapping* block inside a non-async method, so folding deletes the registration whole. The interface leg reaches its implementation through an interface, so no implementation body is statically reachable and its absence follows from indirection rather than from folding — that leg cannot detect a folding failure at all.
+**Read the first three rows carefully — they are weaker than they look**, and the first draft of this table overstated them as "clean".
 
-The leak so far requires **all three together**: an early-throw guard, an `async` method, and a direct call to a concrete type. The single-variable comparison that isolates `async` is still the class-factory pair (`Create` sync clean vs `Insert` async leaking) — same guard, same call shape, same rooting, same DAM.
+- **Static and relay** put their guard in a *wrapping* block inside the non-async `FactoryServiceRegistrar`, so the fold deletes the whole registration and the async body is never rooted. Their markers being absent is real evidence that TRIM-008's fix generalizes to async `[Execute]` (`_DoAsyncWork` is a method on the consumer's class, exactly what the DAM used to retain) — but it says nothing about async fold behaviour, because that mechanism is never reached.
+- **Interface factory cannot measure this property at all.** Its markers sit on the implementation, which the generated body reaches through an interface, so they read absent whether or not the body survives. This is structural: an interface factory reaches everything through interfaces. The direct fix — a `[Service]` parameter putting `GetRequiredService<IAsyncLegPort>()` into the generated body — was attempted and **does not compile** (Deferred Work item 19).
+
+**So the wider hypothesis is narrowed, not confirmed** — and the cross-class pair originally offered as "single-variable" was not. `TrimTestEntityFactory.LocalCreate` vs `TrimSaveTargetFactory.LocalInsert` differ in at least four further ways: an `[AuthorizeFactory<T>]` block, target-from-DI vs target-from-parameter, **one-hop vs two-hop rooting** (there is no `InsertDelegate`; `Insert` is reached through `SaveDelegate` → `LocalSave`), and an extra catch arm plus lifecycle probes. That last one matters most, because the arc's own disproven TRIM-004 story blamed exactly *"early-throw guard + try/catch defeats unreachable-code elimination"*.
+
+## The controlled experiment (2026-08-13) — `async` confirmed
+
+Run at TRIM-008's re-review rather than deferred to this plan, because it decides this plan's scope. `TrimTestEntity` gained an `async [Remote][Fetch] FetchAsync` beside its existing sync `[Remote][Create] Create`, each writing its own literal into its own body:
+
+| | `ClassSyncBody_MARKER` | `ClassAsyncBody_MARKER` |
+|---|---|---|
+| Body | `TrimTestEntity.Create` | `TrimTestEntity.FetchAsync` |
+| Declaring type / generated factory / registrar | identical | identical |
+| `[AuthorizeFactory<T>]` | none | none |
+| Rooting | one hop, own delegate | one hop, own delegate |
+| Reached by | direct call on the concrete type | direct call on the concrete type |
+| Literal position | in the domain body | in the domain body |
+| `async` | **no** | **yes** |
+| Untrimmed | PRESENT | PRESENT |
+| **Trimmed** | **absent** | **PRESENT** |
+
+Every confound listed above is controlled. **`async` is the operative variable for the class-factory leg**, and this plan's scope is correct.
+
+One co-variate cannot be separated from outside the generator: it emits an extra `catch (OperationCanceledException)` arm for async methods, so "async" and "extra catch arm" move together by construction. Distinguishing them requires changing the generator, which is this plan's work.
+
+Corroboration from the same run: `IClassLegPort` and `ClassLegInvoke` flipped to PRESENT once `FetchAsync` existed — retained by its in-body `GetRequiredService<IClassLegPort>()` — mirroring `ISaveLegPort`/`SaveLegInvoke` on the save leg. The gate caught that flip on its first run after the target landed, which is the per-leg attribution working.
+
+**Still open:** whether the early-throw guard shape and the direct-concrete-call shape are *necessary* as well. Neither has independent evidence — the static/relay rows cannot discriminate (over-determined) and the interface row cannot go red at all. Do not present them as established conditions.
 
 **For the design turn:** do not treat "async is the cause" as established. The controlled pair says `async` is the differing variable *within the class-factory leg*; whether the operative mechanism is the async state machine, the early-throw guard shape, or their combination is not settled, and the remedy differs for each. Re-derive it against the artifact before building on it.
 
@@ -80,6 +107,7 @@ The leak so far requires **all three together**: an early-throw guard, an `async
 
 - Is the remedy generator-side (guard the delegate registrations, restructure the emitted guard so the fold is not inside `MoveNext`, keep server-only work out of async `Local*` bodies) or configuration-side (an ILLink feature/substitution the generator emits)? Unknown; do not assume. Whichever it is, check whether the DAM root also has to be addressed — see the corrected paragraph above.
 - ~~Does the same retention affect **async `[Execute]`** and **async relay handlers**?~~ **Answered 2026-08-13: no.** Async targets were added to the harness for both legs plus an async interface-factory method, and all trim clean. See the table above for why none of them is the leaking shape.
-- Would changing the emitted guard from `if (!IsServerRuntime) throw …` to a *wrapping* `if (IsServerRuntime) { … }` block — the shape the static and relay legs already use and which demonstrably folds away — fix this without touching DAM or the registrations? That is the cheapest candidate the measurement suggests, and it is untested.
+- Would changing the emitted guard from `if (!IsServerRuntime) throw …` to a *wrapping* `if (IsServerRuntime) { … }` block fix this without touching DAM or the registrations? Worth trying because it is cheap, **but note that no measurement points at it**: the static and relay legs use that shape and are clean, yet their cleanliness is over-determined (post-TRIM-008 they are no longer DAM targets *and* their only reference sits inside the folded block), so they cannot show the guard shape is what does the work. Treat this as an untested idea, not as something the evidence suggests.
+- Does the extra `catch (OperationCanceledException)` arm the generator emits for async methods contribute? It moves with `async` by construction, so the controlled experiment cannot separate them — but the arc's disproven TRIM-004 story blamed try/catch, and that story was never re-tested after being set aside for the wrong reason.
 - Does `LocalSave`'s routing keep `LocalInsert`/`LocalUpdate`/`LocalDelete` rooted even if their own registrations were guarded?
 - CI gate: which of the new Save/Can\* markers can be asserted absent once this lands, and what is the durable positive control for them.

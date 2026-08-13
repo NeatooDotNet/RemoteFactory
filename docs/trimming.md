@@ -246,6 +246,8 @@ internal static class NeatooFactoryRegistrar_MyCommands
 
 The attribute names the holder. Preservation then reaches exactly one forwarding method instead of everything on `MyCommands`.
 
+**Naming a generated type is necessary, not sufficient.** What makes a holder safe is that it has exactly *one* method. A generated type that hosts many methods still has all of them preserved, bodies included — `{X}Factory` hosts every `Local*` method for its factory. So what keeps a class factory's server-only work off the client is the `IsServerRuntime` guard inside those methods, not the choice of attribute target.
+
 At startup, `AddNeatooRemoteFactory()` and `AddNeatooAspNetCore()` discover factory types by enumerating these assembly attributes rather than scanning all types via reflection. This means factory registration is fully trimming-safe — no factory types are lost during IL trimming, regardless of whether they are class factories, static factories, or interface factories.
 
 You do not need to take any action to preserve your factory types. This is handled automatically by the generator.

@@ -103,6 +103,33 @@ public sealed class TrimAsyncIfaceAuth : ITrimAsyncIfaceAuth
 /// <summary>
 /// Interface factory whose generated local method is <c>async</c>.
 /// </summary>
+/// <remarks>
+/// WHAT THIS TARGET CAN AND CANNOT MEASURE — read before citing its result.
+/// <para>
+/// Its markers live on <see cref="TrimAsyncIfaceServerSide"/>, which the generated
+/// <c>LocalQueryAsync</c> reaches only through the interface
+/// (<c>GetRequiredService&lt;ITrimAsyncIfaceQuery&gt;()</c> then <c>target.QueryAsync(...)</c>).
+/// So those markers are absent by fixture shape whether or not the generated body survives
+/// trimming. Their absence is **not** evidence that the feature-switch fold eliminated
+/// anything on this leg. It is a no-regression check that the implementation stays off the
+/// client, which is worth having and is all it is.
+/// </para>
+/// <para>
+/// This is structural, not a fixture defect that could be tidied up. An interface factory
+/// reaches everything through interfaces by design, so no server-only *implementation* name
+/// can appear directly in its generated local body. The obvious fix — a <c>[Service]</c>
+/// parameter, which would put <c>GetRequiredService&lt;IAsyncLegPort&gt;()</c> straight into
+/// the body — was tried and does not compile: the generator strips the service parameter from
+/// the proxy's implementing method while the interface still declares it, so the emitted
+/// factory fails CS0535. Recorded as Deferred Work item 19; nothing else in the repo uses
+/// that shape, which is why it was never caught.
+/// </para>
+/// <para>
+/// Consequence: the async-interface result contributes nothing to the question of whether
+/// async bodies fold. That question rests on the static and relay async targets and on the
+/// class-factory sync-vs-async pair.
+/// </para>
+/// </remarks>
 [Factory]
 [AuthorizeFactory<ITrimAsyncIfaceAuth>]
 public interface ITrimAsyncIfaceQuery

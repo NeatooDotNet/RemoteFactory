@@ -123,6 +123,24 @@ if (ifaceFactory == null)
     failedChecks.Add("interface factory resolution");
 }
 
+// The async interface-factory variant needs its own resolution check. Its type name survives
+// via the assembly attribute's DAM whether or not registration works, so asserting it PRESENT
+// in the CI gate without resolving it here would be the "absence assertions pass more easily
+// when registration is dead" hazard (plan review B2) applied to a positive control.
+ITrimAsyncIfaceQueryFactory? asyncIfaceFactory = null;
+try
+{
+    asyncIfaceFactory = checkScope.ServiceProvider.GetService<ITrimAsyncIfaceQueryFactory>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Async interface factory resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
+if (asyncIfaceFactory == null)
+{
+    failedChecks.Add("async interface factory resolution");
+}
+
 // Verify the Save/Can* leg still registers after trimming (TRIM-008).
 // Positive control for the write half of the class-factory shape.
 ITrimSaveTargetFactory? saveFactory = null;
@@ -145,6 +163,24 @@ if (saveFactory == null)
 // registrar body folds away entirely — there is no service, delegate, or registry
 // entry left to resolve. Its registration counter-signal lives in the untrimmed
 // integration suite (FactoryEventHandlerTargets), not in this harness.
+
+// The async [Execute] delegate needs its own resolution check for the same reason as the
+// async interface factory: without it, _DoAsyncWork's markers could go absent because the
+// delegate stopped generating rather than because trimming removed the body, and the gate
+// would stay green.
+TrimTestCommands.DoAsyncWork? doAsyncWorkDelegate = null;
+try
+{
+    doAsyncWorkDelegate = checkScope.ServiceProvider.GetService<TrimTestCommands.DoAsyncWork>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"DoAsyncWork delegate resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
+if (doAsyncWorkDelegate == null)
+{
+    failedChecks.Add("async static factory delegate resolution");
+}
 
 // Direct feature switch test: verifies that the trimmer constant-folds
 // NeatooRuntime.IsServerRuntime and removes dead code.
@@ -187,6 +223,7 @@ Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");
 Console.WriteLine($"Interface factory resolved: {ifaceFactory != null}");
+Console.WriteLine($"Async interface factory resolved: {asyncIfaceFactory != null}");
 Console.WriteLine($"Save target factory resolved: {saveFactory != null}");
 
 if (failedChecks.Count > 0)

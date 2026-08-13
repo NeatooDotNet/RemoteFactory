@@ -421,6 +421,11 @@ namespace TestNamespace
             "internal static Task Handle(",
             "private static Task Handle(");
 
+        // If the shared fixture's text drifts, Replace silently no-ops and this test quietly
+        // becomes a duplicate of the internal-handler test — green, and testing nothing.
+        Assert.NotEqual(RelayHandlerSource, source);
+        Assert.Contains("private static Task Handle(", source);
+
         var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(source);
 
         Assert.NotNull(runResult.GeneratedTrees.FirstOrDefault(t => t.FilePath.Contains("MyHandlers")));

@@ -68,9 +68,13 @@ fail() {
 # caught rather than silently turning that half of the gate into a no-op.
 # ---------------------------------------------------------------------------
 echo "-- positive controls"
+# Named in full, not by prefix. `NeatooEventHandlerRegistrar_` alone is satisfied by the sync
+# handler class, so the async handler class could stop generating entirely — taking its markers
+# absent for the wrong reason — while the gate stayed green.
 for control in \
-    "NeatooFactoryRegistrar_" \
-    "NeatooEventHandlerRegistrar_" \
+    "NeatooFactoryRegistrar_TrimTestCommands" \
+    "NeatooEventHandlerRegistrar_TrimRelayHandlers" \
+    "NeatooEventHandlerRegistrar_TrimAsyncRelayHandlers" \
     "TrimTestCommands" \
     "ITrimIfaceQueryFactory" \
     "ITrimAsyncIfaceQueryFactory" \
@@ -103,9 +107,19 @@ fi
 #   [R] no-regression  — absent both before and after. Going red means something NEW
 #                        started leaking. Real value, but it is not evidence that any
 #                        fix worked.
+#   [N] new baseline   — the target did not exist before the fix, so there is no pre-fix
+#                        measurement. First trimmed measurement is the baseline.
 #
-# Every marker in both categories has been shown PRESENT in the UNTRIMMED build, so
-# none of them is an assertion that could never fail.
+# Every marker here appears PRESENT in the UNTRIMMED build, which proves the PROBE can see
+# it. That is necessary but NOT sufficient for the check to be meaningful: `ServerOnlyHelper`
+# was untrimmed-PRESENT for months while nothing referenced it, so ILLink dropped it
+# unconditionally and its absence could never have gone red. A marker is only meaningful if
+# something a defect could plausibly affect actually roots it. The `*Backend` implementation
+# markers below (ClassLegBackend, AsyncLegBackend, IfaceLegBackend, SaveLegBackend,
+# RelayLegBackend) are reachable only from DI registrations inside the harness's own
+# IsServerRuntime block, so they can only go red if the feature switch stops folding
+# altogether — which ServerOnlyDirect already covers. They are kept as cheap breadth, not
+# relied on as leg-specific signals.
 # ---------------------------------------------------------------------------
 check_absent() {
     local marker="$1" leg="$2"
@@ -117,8 +131,12 @@ check_absent() {
 }
 
 echo "-- static factory ([Execute])"
-# [D] _DoWork, _ProcessRecord — retained pre-fix by the registrar-DAM defect.
-# [R] the rest. ServerOnlyRepository_MARKER is the IMPLEMENTATION body literal: the gate
+# [D] _DoWork, _ProcessRecord, IServerOnlyRepository, DoServerWork — all four measured PRESENT
+#     pre-fix (plan Current State, 2026-08-12 walk) and absent after. IServerOnlyRepository's
+#     flip is the headline evidence that the old (?<!I) exemption was unjustified, so labelling
+#     it [R] under-claimed the very marker this plan's Step 8 turns on.
+# [R] ServerOnlyDirect, ServerOnlyHelper, ServerOnlyHelper_MARKER — absent before and after.
+#     ServerOnlyRepository_MARKER is the IMPLEMENTATION body literal: the gate
 #     this replaced asserted it via `grep -aqP '(?<!I)ServerOnlyRepository'`, and the first
 #     rewrite dropped it, because grep -F "IServerOnlyRepository" cannot match the bare name.
 #     Restored as an explicit marker — it is unambiguous, and being UTF-16 it also exercises
@@ -129,8 +147,14 @@ for m in _DoWork _ProcessRecord DoServerWork IServerOnlyRepository ServerOnlyRep
 done
 
 echo "-- static factory, async body"
-# [R] async [Execute]. The static leg's clean result was measured only on synchronous
-#     bodies until TRIM-008's test review; this makes it a measurement.
+# [N] async [Execute]. _DoAsyncWork is a method on the CONSUMER'S class — exactly the surface
+#     the registrar-DAM defect retained — so its absence is real evidence the fix generalizes
+#     to async [Execute] methods.
+#
+#     It is NOT evidence about async fold behaviour. The static leg's guard is a WRAPPING
+#     `if (IsServerRuntime) { ... }` inside the non-async FactoryServiceRegistrar, so the fold
+#     deletes the whole registration and the body is never rooted in the first place. Its
+#     async-ness is therefore never exercised. Same for the relay handler below.
 for m in _DoAsyncWork StaticAsyncBody_MARKER; do
     check_absent "$m" "static factory (async)"
 done
@@ -158,20 +182,62 @@ echo "-- interface factory"
 for m in TrimIfaceServerSide IIfaceLegPort IfaceLegInvoke IfaceLegBackend IfaceLegServerBody_MARKER; do
     check_absent "$m" "interface factory"
 done
+# The async variant carries the SAME caveat, and it is structural rather than fixable here:
+# an interface factory reaches everything through interfaces, so no server-only implementation
+# name can appear directly in its generated local body. These markers cannot report on whether
+# the async body folded — they are no-regression checks only. See the remarks on
+# ITrimAsyncIfaceQuery, and Deferred Work item 19 for why the obvious fix does not compile.
 for m in TrimAsyncIfaceServerSide IfaceAsyncBody_MARKER; do
     check_absent "$m" "interface factory (async)"
 done
 
 echo "-- class factory, read path"
-# [R] own port, so a class-factory leak no longer reports as a static-factory failure.
-# Matters now: TRIM-009 changes this leg.
-for m in IClassLegPort ClassLegInvoke ClassLegBackend ClassLegBackend_MARKER; do
+# [N] own port, so a class-factory leak no longer reports as a static-factory failure.
+#
+# Only the two IMPLEMENTATION markers are absent. IClassLegPort and ClassLegInvoke are NOT
+# here: they are retained by the async FetchAsync body (TRIM-009) via its in-body
+# GetRequiredService<IClassLegPort>() and the port call, exactly as ISaveLegPort/SaveLegInvoke
+# are on the save leg. They are asserted PRESENT with the controlled pair below.
+# ClassLegBackend and its literal stay absent because they sit behind the IClassLegPort
+# interface hop, so nothing statically reaches them either way.
+for m in ClassLegBackend ClassLegBackend_MARKER; do
     check_absent "$m" "class factory"
 done
 
 echo "-- async-only port (shared by the three async targets above)"
 for m in IAsyncLegPort AsyncLegInvoke AsyncLegBackend; do
     check_absent "$m" "async port"
+done
+
+# ---------------------------------------------------------------------------
+# THE CONTROLLED PAIR — sync vs async inside ONE class factory.
+#
+# ClassSyncBody_MARKER  lives in TrimTestEntity.Create      (sync)  -> expected ABSENT
+# ClassAsyncBody_MARKER lives in TrimTestEntity.FetchAsync  (async) -> expected PRESENT
+#
+# Same class, same generated factory, same registrar, neither carrying [AuthorizeFactory<T>],
+# both one-hop rooted by their own delegate registration, both reached by a direct call on the
+# concrete type, both literals in the domain body rather than behind an interface hop.
+# The earlier sync/async comparison (this class's Create vs TrimSaveTarget's Insert) was NOT
+# controlled — it also differed in auth, target acquisition, one-hop vs two-hop rooting, and
+# catch-arm count, the last being the dimension the arc's disproven TRIM-004 story blamed.
+#
+# The remaining co-variate is that co-variate by construction: the generator emits an extra
+# `catch (OperationCanceledException)` arm for async methods, so "async" and "extra catch arm"
+# cannot be separated from outside the generator.
+#
+# ClassAsyncBody_MARKER is asserted PRESENT for the same reason as the save/can* block: it is
+# TRIM-009's defect, and the gate must fail loudly when it is fixed rather than silently
+# passing.
+# ---------------------------------------------------------------------------
+echo "-- controlled sync/async pair (class factory)"
+check_absent "ClassSyncBody_MARKER" "class factory (sync half of controlled pair)"
+for m in ClassAsyncBody_MARKER IClassLegPort ClassLegInvoke; do
+    if present "$m"; then
+        echo "   ok      $m (still present, as TRIM-009 expects)"
+    else
+        fail "[class factory] '$m' is now ABSENT. If TRIM-009 has landed, promote it into the absence checks above and delete it from here. If not, the async diagnosis is wrong and must be reopened."
+    fi
 done
 
 # ---------------------------------------------------------------------------
@@ -201,7 +267,9 @@ if [ "$failures" -gt 0 ]; then
     exit 1
 fi
 
-echo "Trimming verification passed: server-only code absent for the static, relay, interface, and"
-echo "class-factory-read legs, including their async bodies. The class-factory WRITE path"
-echo "(save/can*) still leaks by design of the current code — tracked as TRIM-009 and asserted"
-echo "PRESENT above so this gate fails loudly the moment that changes."
+echo "Trimming verification passed."
+echo "  Absent:  static factory ([Execute], sync and async), relay handler (sync and async),"
+echo "           interface factory implementations, and the SYNCHRONOUS class-factory body."
+echo "  Present, expected, tracked as TRIM-009: every ASYNC class-factory body — the save/can*"
+echo "           write path and the FetchAsync half of the controlled pair. Asserted PRESENT"
+echo "           above, so this gate fails loudly the moment TRIM-009 lands."
