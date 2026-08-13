@@ -1,7 +1,11 @@
 // DtoTypeWalker.cs
 // Shared walker for discovering DTO types reachable from a root symbol.
-// Used by the factory-signature path (MethodInfo.DiscoverDtoTypes) for both
-// return types and non-service parameters. Discovered types bucket-sort by
+// Three callers, all bucketing into the same two registries:
+//   - factory signatures (MethodInfo.DiscoverDtoTypes) — return types and
+//     non-service parameters
+//   - [Factory] entity property graphs (FactoryGenerator.Types.cs, TRIM-002)
+//   - FactoryEventBase descendant graphs (FactoryGenerator.Events.cs, TRIM-007)
+// Discovered types bucket-sort by
 // constructor shape: parameterless -> DtoConstructorRegistry.Register<T>(),
 // parameterized-only -> DtoConstructorRegistry.PreserveType<T>().
 

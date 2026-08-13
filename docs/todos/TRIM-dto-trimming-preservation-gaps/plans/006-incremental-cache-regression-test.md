@@ -3,7 +3,7 @@
 **Plan #:** 006
 **Date:** 2026-08-11
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-08-12
 **Plan-review opt-in:** No (test-first plan, narrow blast radius, emitted output unchanged; the diagnosis was verified at the keyboard at draft time rather than inherited — see Current State)
 **Code-review opt-in:** Yes (touches generator transform-output types)
@@ -87,7 +87,7 @@ Filled 2026-08-12, before the Step 5 gate. Logs in the session scratchpad; per-r
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
 | Every branch stays cached across an unrelated edit | `[unit]` | `IncrementalCacheTests.UnrelatedEdit_TransformOutputStaysCached` — `[Theory]`, 4 cases (`FactoryClass`, `FactoryInterface`, `RelayHandler`, `FactoryEvents`); non-vacuity backed by `Fixture_ExercisesEveryPipelineBranch` | `[unit]` |
-| Emitted output byte-identical before/after | `[unit]` | `UnrelatedEdit_GeneratedOutputIsIdentical` covers run-to-run determinism. The *before/after-this-plan* half is **not** a test — it is verified by zero `git status` drift in the committed `Generated/` trees of both solutions after a full rebuild that re-emitted them (relay-handler file re-emitted 09:42:33, checked 09:44:01) | `[unit]` + repo-artifact diff |
+| Emitted output byte-identical before/after | `[unit]` | `UnrelatedEdit_GeneratedOutputIsIdentical` covers run-to-run determinism. The *before/after-this-plan* half is **not** a test — it is a one-off measurement: `IntegrationTests`' full generated tree emitted with the pre-fix generator (`710498c^:RelayHandlerModel.cs`) into a clean directory, then with HEAD's, diffed recursively → **256 files byte-identical, including all 16 `.FactoryEventHandler.g.cs`**. (The original evidence here — zero `git status` drift under `Generated/` — was **vacuous**: `.gitignore:405` is `**/Generated/`, so git could not have reported drift. Corrected at close-out audit V2.) | `[unit]` + one-off emission diff |
 | Relay-handler branch caches | `[unit]` | Same `[Theory]`, `RelayHandler` case — observed `Modified` → `Unchanged` across the fix | `[unit]` |
 | Guard sensitivity (negative control) | `[explicit-skip]` | Performed at the keyboard, not committed — see Implementation Record. All four branches proven to go red on a reference-equality field | `[explicit-skip]` — honored |
 | Existing diagnostic suite unchanged | `[explicit-skip]` | Covered by full-suite run; `RunGenerator`'s signature and single-run behavior untouched (extraction of `BuildReferences` only) | `[explicit-skip]` — honored |
@@ -101,7 +101,7 @@ Filled 2026-08-12, before the Step 5 gate. Logs in the session scratchpad; per-r
 
 **Red → green (Step 5).** Guard against unmodified HEAD: `RelayHandler` failed with reason `Modified`, the other three cached — pre-flight's prediction confirmed exactly, and the guard proven non-vacuous before it was made to pass. After moving `RelayHandlerModel.Usings/Entries/Diagnostics` and `EventHandlerEntry.Parameters/ServiceParameters/AllParameters` onto `EquatableArray<T>`: 6/6 green. Constructors normalize incoming sequences rather than taking the array type, so a future call site cannot reintroduce the defect by passing a plain list.
 
-**Negative control (Step 6).** Added a `IReadOnlyList<string>` auto-property with a fresh-allocation initializer to `TypeInfo` (branches 1–2) and `FactoryEventInfo` (branch 4), covering the three branches that were *already* passing — the RelayHandler red above is the control for branch 3. Result: `FactoryClass`, `FactoryInterface`, `FactoryEvents` all went red with reason `Modified`; `RelayHandler` stayed `Unchanged`. Probes and the throwaway dump test removed; `git status` confirms no residue.
+**Negative control (Step 6).** Added a `IReadOnlyList<string>` auto-property with a fresh-allocation initializer to `TypeInfo` (branches 1–2) and `FactoryEventInfo` (branch 4), covering the three branches that were *already* passing — the RelayHandler red above is the control for branch 3. Result: `FactoryClass`, `FactoryInterface`, `FactoryEvents` all went red with reason `Modified`; `RelayHandler` stayed `Unchanged`. Probes and the throwaway dump test removed; `git status` confirms no residue. **This control tested transform-output *roots* only** — it did not reach nested element types, which is why the `EventHandlerEntry` gap survived it. See Plan Amendments; a fourth control at the nested level was added post-merge.
 
 **Finding — the guard can read stale generator code locally.** The first negative-control run *passed*, which was wrong. Cause: the generator is loaded once per process via `Assembly.LoadFrom` into a static `Lazy`, so rebuilding only the generator and re-running with `--no-build` let a surviving testhost serve the previously loaded assembly. A dump of all tracked steps proved the probe was live in the DLL while the guard reported green. Rebuilding the test project produced the correct red. Documented in `RunGeneratorTracked`'s remarks; CI is unaffected because every run starts cold. Recorded in the todo's Discovery Log — this will bite the next person doing a red/green cycle on any dynamically-loaded-generator test, not just this one.
 
@@ -111,7 +111,13 @@ Filled 2026-08-12, before the Step 5 gate. Logs in the session scratchpad; per-r
 
 ## Plan Amendments
 
-(None yet.)
+**2026-08-12 — post-merge correction from the close-out audit (V1, V2).** Recorded as an amendment because Step 4 was reported met when it was not.
+
+- **Step 4 was unmet and reported as met.** The fixture declared two matching handlers for the *same* event type, which is the NF0502 ambiguous-match shape: the transform reports the diagnostic and `continue`s without adding an entry. `RelayHandlerModel.Entries` was therefore empty, and `EventHandlerEntry.Parameters` / `ServiceParameters` / `AllParameters` — the three fields this plan converted — were never constructed and never guarded. The `RelayHandler` red→green transition recorded below was real but was driven entirely by `Usings` and `Diagnostics`; the nested type was never in play. The fixture's own comment asserted the opposite. Fixed: two distinct event types, one matching handler each; comment corrected to name the NF0502 trap; coverage re-proven by reverting `EventHandlerEntry.Parameters` to `IReadOnlyList<T>` and observing the `RelayHandler` case go red — coverage the guard provably did not have before.
+- **Two fixture-health tests added**, because "the fixture silently stopped exercising the thing" was the actual failure mode and nothing detected it: `Fixture_ProducesNoDiagnostics` (a diagnostic means some transform took an early-out and never built the model under guard) and `Fixture_EmitsRelayHandlerOutput` (the relay output stage returns early on `Entries.Count == 0`, so an empty-entry fixture emits no file). The first caught a **second** latent defect on its first run: `[Fetch]` on an interface-factory member (NF0106), which had been degrading the `FactoryInterface` branch too.
+- **The byte-identity evidence was vacuous** and is replaced — see the Test Evidence row.
+
+Root cause worth carrying: both defects were *self-reported as verified*. The lesson is the same one TRIM-005 produced — a claim of verification is not verification — and it recurred inside the very plan written to enforce non-vacuity.
 
 ---
 
