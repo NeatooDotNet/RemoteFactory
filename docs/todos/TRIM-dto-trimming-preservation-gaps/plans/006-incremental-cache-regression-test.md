@@ -4,7 +4,7 @@
 **Date:** 2026-08-11
 **Related Todo:** [../todo.md](../todo.md)
 **Status:** In Progress
-**Last Updated:** 2026-08-11
+**Last Updated:** 2026-08-12
 **Plan-review opt-in:** No (test-first plan, narrow blast radius, emitted output unchanged; the diagnosis was verified at the keyboard at draft time rather than inherited — see Current State)
 **Code-review opt-in:** Yes (touches generator transform-output types)
 
@@ -57,12 +57,12 @@ Close the project-wide hole plan-review B1 (TRIM-001) exposed: the generator's i
 
 ## Acceptance
 
-- [ ] An unrelated edit between two driver runs leaves every pipeline branch's source-output step reporting cached/unchanged. `[unit]`
-- [ ] Generated output is byte-identical before and after this plan's changes. `[unit]`
-- [ ] The relay-handler branch caches across an unrelated edit (it does not today). `[unit]`
-- [ ] The guard's sensitivity is proven by a keyboard negative control — a reference-equality field on a transform output turns the assertion red. `[explicit-skip: one-off keyboard verification, per TRIM-001/002/007 precedent]`
-- [ ] The existing diagnostic suite passes unchanged against `DiagnosticTestHelper.RunGenerator`. `[explicit-skip: regression of existing suite, satisfied by the full-suite run]`
-- [ ] Full solution build/test green (net9.0 + net10.0). `[explicit-skip: build/test gates]`
+- [x] An unrelated edit between two driver runs leaves every pipeline branch's source-output step reporting cached/unchanged. `[unit]`
+- [x] Generated output is byte-identical before and after this plan's changes. `[unit]`
+- [x] The relay-handler branch caches across an unrelated edit (it does not today). `[unit]`
+- [x] The guard's sensitivity is proven by a keyboard negative control — a reference-equality field on a transform output turns the assertion red. `[explicit-skip: one-off keyboard verification, per TRIM-001/002/007 precedent]`
+- [x] The existing diagnostic suite passes unchanged against `DiagnosticTestHelper.RunGenerator`. `[explicit-skip: regression of existing suite, satisfied by the full-suite run]`
+- [x] Full solution build/test green (net9.0 + net10.0). `[explicit-skip: build/test gates]`
 
 ---
 
@@ -82,11 +82,30 @@ Walked 2026-08-11 on branch `TRIM` (3fe679e). **Diagnosis verified at the keyboa
 
 ## Test Evidence
 
-Filled after implementation, before the Step 5 gate.
+Filled 2026-08-12, before the Step 5 gate. Logs in the session scratchpad; per-run detail in Implementation Record below.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| | | | |
+| Every branch stays cached across an unrelated edit | `[unit]` | `IncrementalCacheTests.UnrelatedEdit_TransformOutputStaysCached` — `[Theory]`, 4 cases (`FactoryClass`, `FactoryInterface`, `RelayHandler`, `FactoryEvents`); non-vacuity backed by `Fixture_ExercisesEveryPipelineBranch` | `[unit]` |
+| Emitted output byte-identical before/after | `[unit]` | `UnrelatedEdit_GeneratedOutputIsIdentical` covers run-to-run determinism. The *before/after-this-plan* half is **not** a test — it is verified by zero `git status` drift in the committed `Generated/` trees of both solutions after a full rebuild that re-emitted them (relay-handler file re-emitted 09:42:33, checked 09:44:01) | `[unit]` + repo-artifact diff |
+| Relay-handler branch caches | `[unit]` | Same `[Theory]`, `RelayHandler` case — observed `Modified` → `Unchanged` across the fix | `[unit]` |
+| Guard sensitivity (negative control) | `[explicit-skip]` | Performed at the keyboard, not committed — see Implementation Record. All four branches proven to go red on a reference-equality field | `[explicit-skip]` — honored |
+| Existing diagnostic suite unchanged | `[explicit-skip]` | Covered by full-suite run; `RunGenerator`'s signature and single-run behavior untouched (extraction of `BuildReferences` only) | `[explicit-skip]` — honored |
+| Full build/test green (net9.0 + net10.0) | `[explicit-skip]` | Solution: 601+601 unit, 561+561 integration, 0 failed, 5 pre-existing skips. Design solution: 86+86, 0 failed | `[explicit-skip]` — honored |
+
+---
+
+## Implementation Record
+
+**Landed:** `TrackingNames.cs` (new); `.WithTrackingName(...)` on all four pipeline nodes in `FactoryGenerator.cs`; `RunGeneratorTracked(...)` + `BuildReferences()` extraction in `DiagnosticTestHelper.cs`; `IncrementalCacheTests.cs` (new); `RelayHandlerModel`/`EventHandlerEntry` collections moved to `EquatableArray<T>`.
+
+**Red → green (Step 5).** Guard against unmodified HEAD: `RelayHandler` failed with reason `Modified`, the other three cached — pre-flight's prediction confirmed exactly, and the guard proven non-vacuous before it was made to pass. After moving `RelayHandlerModel.Usings/Entries/Diagnostics` and `EventHandlerEntry.Parameters/ServiceParameters/AllParameters` onto `EquatableArray<T>`: 6/6 green. Constructors normalize incoming sequences rather than taking the array type, so a future call site cannot reintroduce the defect by passing a plain list.
+
+**Negative control (Step 6).** Added a `IReadOnlyList<string>` auto-property with a fresh-allocation initializer to `TypeInfo` (branches 1–2) and `FactoryEventInfo` (branch 4), covering the three branches that were *already* passing — the RelayHandler red above is the control for branch 3. Result: `FactoryClass`, `FactoryInterface`, `FactoryEvents` all went red with reason `Modified`; `RelayHandler` stayed `Unchanged`. Probes and the throwaway dump test removed; `git status` confirms no residue.
+
+**Finding — the guard can read stale generator code locally.** The first negative-control run *passed*, which was wrong. Cause: the generator is loaded once per process via `Assembly.LoadFrom` into a static `Lazy`, so rebuilding only the generator and re-running with `--no-build` let a surviving testhost serve the previously loaded assembly. A dump of all tracked steps proved the probe was live in the DLL while the guard reported green. Rebuilding the test project produced the correct red. Documented in `RunGeneratorTracked`'s remarks; CI is unaffected because every run starts cold. Recorded in the todo's Discovery Log — this will bite the next person doing a red/green cycle on any dynamically-loaded-generator test, not just this one.
+
+**Environment note.** `csharp-ls` repeatedly re-locked `src/Generator/bin/Debug/netstandard2.0/Neatoo.Generator.dll`, failing the solution build with MSB3021/MSB3027 until killed (twice, with the user's authorization). Separately, one solution build failed with a spurious `MSB3552` (`**/*.resx` not found) in IntegrationTests; the project builds clean in isolation and the error did not recur — transient, unrelated to this plan.
 
 ---
 
