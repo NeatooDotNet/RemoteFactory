@@ -28,6 +28,17 @@ services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
 if (NeatooRuntime.IsServerRuntime)
 {
     services.AddScoped<IServerOnlyRepository, ServerOnlyRepository>();
+
+    // Per-leg server-only dependencies (TRIM-008). Same guard, same reason: a
+    // registration outside it would root the implementation from the DI graph
+    // and mask whatever the generator's own preservation is doing.
+    services.AddScoped<IRelayLegPort, RelayLegBackend>();
+    services.AddScoped<IIfaceLegPort, IfaceLegBackend>();
+    services.AddScoped<ISaveLegPort, SaveLegBackend>();
+
+    // Server-side implementation behind the interface factory. On the client the
+    // generated proxy stands in for it, so it is never registered there.
+    services.AddScoped<ITrimIfaceQuery, TrimIfaceServerSide>();
 }
 
 // Every named check appends to failedChecks; the process exits non-zero if any
@@ -91,6 +102,47 @@ if (doWorkDelegate == null)
     failedChecks.Add("static factory delegate resolution");
 }
 
+// Verify the interface-factory leg still registers after trimming (TRIM-008).
+// This is the positive control for that leg: the DAM-preservation question is
+// asked with absence greps, and an absence grep passes just as well when the
+// feature is dead. Resolving the generated proxy proves it is not.
+ITrimIfaceQueryFactory? ifaceFactory = null;
+try
+{
+    ifaceFactory = checkScope.ServiceProvider.GetService<ITrimIfaceQueryFactory>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Interface factory resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
+if (ifaceFactory == null)
+{
+    failedChecks.Add("interface factory resolution");
+}
+
+// Verify the Save/Can* leg still registers after trimming (TRIM-008).
+// Positive control for the write half of the class-factory shape.
+ITrimSaveTargetFactory? saveFactory = null;
+try
+{
+    saveFactory = checkScope.ServiceProvider.GetService<ITrimSaveTargetFactory>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Save target factory resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
+if (saveFactory == null)
+{
+    failedChecks.Add("save target factory resolution");
+}
+
+// NOTE: the [FactoryEventHandler<T>] leg has NO positive control here, and cannot.
+// RelayHandlerRenderer wraps every RegisterHandler call in
+// `if (NeatooRuntime.IsServerRuntime)`, so on a client publish the generated
+// registrar body folds away entirely — there is no service, delegate, or registry
+// entry left to resolve. Its registration counter-signal lives in the untrimmed
+// integration suite (FactoryEventHandlerTargets), not in this harness.
+
 // Direct feature switch test: verifies that the trimmer constant-folds
 // NeatooRuntime.IsServerRuntime and removes dead code.
 if (!DirectFeatureSwitchTest.Run())
@@ -131,6 +183,8 @@ if (!EventSubscribeOnlySmokeTest.Run())
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");
+Console.WriteLine($"Interface factory resolved: {ifaceFactory != null}");
+Console.WriteLine($"Save target factory resolved: {saveFactory != null}");
 
 if (failedChecks.Count > 0)
 {
