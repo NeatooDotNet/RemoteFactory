@@ -80,3 +80,49 @@ public sealed class SaveLegBackend : ISaveLegPort
 {
     public Task SaveLegInvoke(string operation) => Task.CompletedTask;
 }
+
+/// <summary>
+/// Server-only dependency of the CLASS-factory read path (<see cref="TrimTestEntity"/>).
+/// </summary>
+/// <remarks>
+/// Added by TRIM-008's test review. `TrimTestEntity` previously shared
+/// <see cref="IServerOnlyRepository"/> with the static-factory target, so a leak in either
+/// leg produced the same marker and the CI gate filed both under "static factory". That
+/// defeats the per-leg attribution this file exists for — and it matters now, because
+/// TRIM-009 works on the class-factory leg and its regressions would have been reported
+/// as static-factory failures.
+/// </remarks>
+public interface IClassLegPort
+{
+    string ClassLegInvoke(string input);
+}
+
+/// <summary>
+/// Server-side implementation of <see cref="IClassLegPort"/>.
+/// </summary>
+public sealed class ClassLegBackend : IClassLegPort
+{
+    public string ClassLegInvoke(string input) => "ClassLegBackend_MARKER: " + input;
+}
+
+/// <summary>
+/// Server-only dependency reached ONLY from `async` bodies.
+/// </summary>
+/// <remarks>
+/// Every leg TRIM-008 proved clean was measured with a SYNCHRONOUS server-only body, and the
+/// one leg with async bodies (Save/Can*) came back leaking. That made "static and relay are
+/// clean" an inference of exactly the class TRIM-009 falsified. These markers convert it into
+/// a measurement: an async `[Execute]` method and an async relay handler each reach this port.
+/// </remarks>
+public interface IAsyncLegPort
+{
+    Task<string> AsyncLegInvoke(string input);
+}
+
+/// <summary>
+/// Server-side implementation of <see cref="IAsyncLegPort"/>.
+/// </summary>
+public sealed class AsyncLegBackend : IAsyncLegPort
+{
+    public Task<string> AsyncLegInvoke(string input) => Task.FromResult("AsyncLegBackend_MARKER: " + input);
+}

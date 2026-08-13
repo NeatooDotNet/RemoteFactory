@@ -66,3 +66,30 @@ public static partial class TrimRelayHandlers
         return port.RelayLegInvoke("RelayLegHandlerBody_MARKER: " + relayEvent.Message);
     }
 }
+
+/// <summary>
+/// Second handler class, for a distinct event, whose handler body is <c>async</c>.
+/// </summary>
+/// <remarks>
+/// A separate class rather than a second method on <see cref="TrimRelayHandlers"/>: two static
+/// handlers matching the same event type on one class is the NF0502 ambiguous-match shape, and
+/// even for distinct event types keeping them apart means a failure names one handler.
+/// <para>
+/// Exists because every leg TRIM-008 proved clean was measured with a synchronous body, while
+/// the one async leg leaked. This converts "async relay handlers are also clean" from inference
+/// into measurement.
+/// </para>
+/// </remarks>
+public record TrimAsyncRelayEvent(int Id, string Message) : FactoryEventBase;
+
+[FactoryEventHandler<TrimAsyncRelayEvent>]
+public static partial class TrimAsyncRelayHandlers
+{
+    internal static async Task AsyncRelayHandlerBody(
+        TrimAsyncRelayEvent relayEvent,
+        [Service] IAsyncLegPort port,
+        CancellationToken cancellationToken)
+    {
+        await port.AsyncLegInvoke("RelayAsyncBody_MARKER: " + relayEvent.Message).ConfigureAwait(false);
+    }
+}

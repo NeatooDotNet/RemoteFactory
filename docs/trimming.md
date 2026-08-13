@@ -231,9 +231,9 @@ If server-only type names still appear in the output, check that:
 
 All factory types — class, static, and interface — are automatically preserved from trimming. The source generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory, creating a static reference that the IL trimmer follows. The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers]` annotations that instruct the trimmer to preserve **all methods on the referenced type, method bodies included**.
 
-That last part is why the attribute always names a **generated** type and never your own class. Preserving every method on a type means preserving what those methods *do*, so if the attribute named your class, your `[Remote]` method bodies would be preserved along with it — the opposite of the guarantee above.
+That last part is why the attribute never names your own class. Preserving every method on a type means preserving what those methods *do*, so if the attribute named your class, your `[Remote]` method bodies would be preserved along with it — the opposite of the guarantee above.
 
-For class and interface factories the generated factory (`{X}Factory`) hosts the registrar, so there is a natural type to name. Static factories and `[FactoryEventHandler<T>]` classes have no separate generated type — the generator re-opens your own partial class to host `FactoryServiceRegistrar` — so for those the generator emits a tiny holder whose only member forwards to it:
+For class and interface factories the generated factory (`{X}Factory`) hosts the registrar, so there is a type to name that is not yours. Static factories and `[FactoryEventHandler<T>]` classes have no separate generated type — the generator re-opens your own partial class to host `FactoryServiceRegistrar` — so for those the generator emits a tiny holder whose only member forwards to it:
 
 ```csharp
 // generated, alongside your partial class

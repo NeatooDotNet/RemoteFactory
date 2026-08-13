@@ -35,11 +35,16 @@ public class TrimTestEntity
     public TrimEntityCarriedInfo? Info { get; set; }
     public TrimEntityCarriedBanner? Banner { get; set; }
 
+    // Uses IClassLegPort, not the shared IServerOnlyRepository. Sharing a port with the
+    // static-factory target meant a leak in either leg produced the same marker, so the CI
+    // gate filed both under "static factory" — defeating per-leg attribution exactly when
+    // TRIM-009 starts changing this leg. Retains the IServerOnlyRepository dependency too,
+    // so the pre-existing markers keep their meaning.
     [Remote]
     [Create]
-    internal void Create(string name, [Service] IServerOnlyRepository repo)
+    internal void Create(string name, [Service] IServerOnlyRepository repo, [Service] IClassLegPort classPort)
     {
         Name = name;
-        ServerResult = repo.DoServerWork(name);
+        ServerResult = repo.DoServerWork(name) + classPort.ClassLegInvoke(name);
     }
 }

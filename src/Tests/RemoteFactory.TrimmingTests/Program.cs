@@ -35,10 +35,13 @@ if (NeatooRuntime.IsServerRuntime)
     services.AddScoped<IRelayLegPort, RelayLegBackend>();
     services.AddScoped<IIfaceLegPort, IfaceLegBackend>();
     services.AddScoped<ISaveLegPort, SaveLegBackend>();
+    services.AddScoped<IClassLegPort, ClassLegBackend>();
+    services.AddScoped<IAsyncLegPort, AsyncLegBackend>();
 
-    // Server-side implementation behind the interface factory. On the client the
-    // generated proxy stands in for it, so it is never registered there.
+    // Server-side implementations behind the interface factories. On the client the
+    // generated proxies stand in for them, so they are never registered there.
     services.AddScoped<ITrimIfaceQuery, TrimIfaceServerSide>();
+    services.AddScoped<ITrimAsyncIfaceQuery, TrimAsyncIfaceServerSide>();
 }
 
 // Every named check appends to failedChecks; the process exits non-zero if any

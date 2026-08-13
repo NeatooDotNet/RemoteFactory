@@ -73,6 +73,7 @@ for control in \
     "NeatooEventHandlerRegistrar_" \
     "TrimTestCommands" \
     "ITrimIfaceQueryFactory" \
+    "ITrimAsyncIfaceQueryFactory" \
     "ITrimSaveTargetFactory"
 do
     if present "$control"; then
@@ -92,8 +93,19 @@ fi
 
 # ---------------------------------------------------------------------------
 # ABSENCE CHECKS — per leg, so a failure names the culprit.
-# Every marker below was measured PRESENT before its leg was fixed and ABSENT
-# after, on a publish-trimmed artifact. See TRIM-008.
+#
+# NOT every marker here is a fix-discriminator. Mixing the two and calling them all
+# "measured present before the fix, absent after" is the claim-beyond-evidence this
+# arc keeps repeating, so the two kinds are labelled:
+#
+#   [D] discriminator  — measured PRESENT pre-fix and ABSENT post-fix. Going red means
+#                        the fix regressed.
+#   [R] no-regression  — absent both before and after. Going red means something NEW
+#                        started leaking. Real value, but it is not evidence that any
+#                        fix worked.
+#
+# Every marker in both categories has been shown PRESENT in the UNTRIMMED build, so
+# none of them is an assertion that could never fail.
 # ---------------------------------------------------------------------------
 check_absent() {
     local marker="$1" leg="$2"
@@ -105,18 +117,61 @@ check_absent() {
 }
 
 echo "-- static factory ([Execute])"
-for m in _DoWork _ProcessRecord DoServerWork IServerOnlyRepository ServerOnlyDirect ServerOnlyHelper; do
+# [D] _DoWork, _ProcessRecord — retained pre-fix by the registrar-DAM defect.
+# [R] the rest. ServerOnlyRepository_MARKER is the IMPLEMENTATION body literal: the gate
+#     this replaced asserted it via `grep -aqP '(?<!I)ServerOnlyRepository'`, and the first
+#     rewrite dropped it, because grep -F "IServerOnlyRepository" cannot match the bare name.
+#     Restored as an explicit marker — it is unambiguous, and being UTF-16 it also exercises
+#     the NUL-stripped path.
+for m in _DoWork _ProcessRecord DoServerWork IServerOnlyRepository ServerOnlyRepository_MARKER \
+         ServerOnlyDirect ServerOnlyHelper ServerOnlyHelper_MARKER; do
     check_absent "$m" "static factory"
 done
 
+echo "-- static factory, async body"
+# [R] async [Execute]. The static leg's clean result was measured only on synchronous
+#     bodies until TRIM-008's test review; this makes it a measurement.
+for m in _DoAsyncWork StaticAsyncBody_MARKER; do
+    check_absent "$m" "static factory (async)"
+done
+
 echo "-- relay handler ([FactoryEventHandler<T>])"
-for m in RelayLegHandlerBody IRelayLegPort RelayLegInvoke RelayLegBackend RelayLegHandlerBody_MARKER; do
+# [D] RelayLegHandlerBody, IRelayLegPort, RelayLegInvoke, RelayLegHandlerBody_MARKER.
+# [R] RelayLegBackend — absent pre-fix too (it is DI-registered only behind the harness's
+#     own IsServerRuntime guard, so nothing ever rooted it). Kept, but NOT fix evidence.
+for m in RelayLegHandlerBody IRelayLegPort RelayLegInvoke RelayLegHandlerBody_MARKER; do
     check_absent "$m" "relay handler"
+done
+check_absent "RelayLegBackend" "relay handler"
+for m in AsyncRelayHandlerBody RelayAsyncBody_MARKER; do
+    check_absent "$m" "relay handler (async)"
 done
 
 echo "-- interface factory"
+# [R] all of them — absent pre-fix as well, since this leg never had the defect.
+# NOTE what these do and do not prove. An interface factory reaches its implementation
+# through the INTERFACE (GetRequiredService<ITrimIfaceQuery>() then target.LookupAsync),
+# so the implementation body is never statically reachable from generated code and its
+# absence follows from that indirection — NOT from feature-switch folding. Useful as a
+# no-regression check on the implementation staying off the client; not evidence about
+# guard elimination.
 for m in TrimIfaceServerSide IIfaceLegPort IfaceLegInvoke IfaceLegBackend IfaceLegServerBody_MARKER; do
     check_absent "$m" "interface factory"
+done
+for m in TrimAsyncIfaceServerSide IfaceAsyncBody_MARKER; do
+    check_absent "$m" "interface factory (async)"
+done
+
+echo "-- class factory, read path"
+# [R] own port, so a class-factory leak no longer reports as a static-factory failure.
+# Matters now: TRIM-009 changes this leg.
+for m in IClassLegPort ClassLegInvoke ClassLegBackend ClassLegBackend_MARKER; do
+    check_absent "$m" "class factory"
+done
+
+echo "-- async-only port (shared by the three async targets above)"
+for m in IAsyncLegPort AsyncLegInvoke AsyncLegBackend; do
+    check_absent "$m" "async port"
 done
 
 # ---------------------------------------------------------------------------
@@ -146,4 +201,7 @@ if [ "$failures" -gt 0 ]; then
     exit 1
 fi
 
-echo "Trimming verification passed: server-only code absent for static, relay, and interface legs."
+echo "Trimming verification passed: server-only code absent for the static, relay, interface, and"
+echo "class-factory-read legs, including their async bodies. The class-factory WRITE path"
+echo "(save/can*) still leaks by design of the current code — tracked as TRIM-009 and asserted"
+echo "PRESENT above so this gate fails loudly the moment that changes."

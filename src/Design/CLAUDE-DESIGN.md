@@ -757,6 +757,8 @@ The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every fa
 
 **The attribute must name a generated type, never a consumer's class.** The annotation preserves every method on whatever it names, *method bodies included*, so naming a user class ships that class's `[Remote]` server-only bodies to a trimmed client. Class and interface factories have a generated `{X}Factory` to name. Static factories and `[FactoryEventHandler<T>]` classes do not — the generator re-opens the user's own partial to host the registrar — so each emits a single-method forwarding holder for the attribute to point at instead.
 
+Naming a generated type is necessary, not sufficient. The holders are safe because a holder has exactly **one** method; a generated type that hosts many methods still has all of them preserved with their bodies. `{X}Factory` hosts every `Local*` method, so what keeps a class factory's server-only work off the client is the `IsServerRuntime` guard inside those methods, not the choice of attribute target.
+
 At startup, `RegisterFactories()` enumerates these assembly attributes via `assembly.GetCustomAttributes<NeatooFactoryRegistrarAttribute>()` instead of scanning all types with `assembly.GetTypes()`. This makes factory discovery trimming-safe: the trimmer sees the static `typeof()` references in the assembly attributes and preserves the referenced types.
 
 | Factory Pattern | Assembly Attribute Target |

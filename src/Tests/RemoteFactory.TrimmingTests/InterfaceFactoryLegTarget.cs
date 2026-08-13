@@ -63,3 +63,67 @@ public sealed class TrimIfaceServerSide : ITrimIfaceQuery
         return Task.FromResult(port.IfaceLegInvoke("IfaceLegServerBody_MARKER: " + key));
     }
 }
+
+// =============================================================================
+// ASYNC INTERFACE-FACTORY VARIANT
+// =============================================================================
+//
+// The target above measures only the SYNCHRONOUS emission branch.
+// InterfaceFactoryRenderer emits `async` for a method only when the model's IsAsync is set,
+// and FactoryModelBuilder sets that from
+//     method.AuthMethodInfos.Any(m => m.IsTask) || method.AspAuthorizeCalls.Any()
+// — so an interface factory with no authorization can never produce an async Local* method.
+//
+// That distinction is not cosmetic here. TRIM-009 found that async generated Local* methods
+// retain their server-only bodies while sync ones do not. Claiming "the interface leg is
+// clean" off a sync-only measurement generalizes across exactly the boundary that broke the
+// class-factory leg. This variant carries a Task-returning auth method so the generated
+// LocalQueryAsync really is async, and gets its own marker.
+// =============================================================================
+
+/// <summary>
+/// Authorization contract whose method returns <c>Task&lt;bool&gt;</c>, which is what makes the
+/// generated interface-factory method <c>async</c>.
+/// </summary>
+public interface ITrimAsyncIfaceAuth
+{
+    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)]
+    Task<bool> CanQuery();
+}
+
+/// <summary>
+/// Trivial auth implementation — no server-only reach, for the reason recorded in
+/// SaveCanLegTarget.cs (auth registrations are emitted unguarded).
+/// </summary>
+public sealed class TrimAsyncIfaceAuth : ITrimAsyncIfaceAuth
+{
+    public Task<bool> CanQuery() => Task.FromResult(true);
+}
+
+/// <summary>
+/// Interface factory whose generated local method is <c>async</c>.
+/// </summary>
+[Factory]
+[AuthorizeFactory<ITrimAsyncIfaceAuth>]
+public interface ITrimAsyncIfaceQuery
+{
+    Task<string> QueryAsync(string key);
+}
+
+/// <summary>
+/// Server-side implementation for the async interface-factory variant.
+/// </summary>
+public sealed class TrimAsyncIfaceServerSide : ITrimAsyncIfaceQuery
+{
+    private readonly IAsyncLegPort port;
+
+    public TrimAsyncIfaceServerSide(IAsyncLegPort port)
+    {
+        this.port = port;
+    }
+
+    public Task<string> QueryAsync(string key)
+    {
+        return port.AsyncLegInvoke("IfaceAsyncBody_MARKER: " + key);
+    }
+}

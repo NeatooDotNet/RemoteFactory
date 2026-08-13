@@ -50,4 +50,15 @@ public static partial class TrimTestCommands
         repo.DoServerWork(command.Reason);
         return Task.FromResult<TrimRecordResult?>(null);
     }
+
+    // ASYNC [Execute]. Every leg TRIM-008 proved clean was measured with a synchronous
+    // server-only body; the one leg with async bodies came back leaking (TRIM-009). Without
+    // this target, "the static leg is clean" generalizes from sync to async by inference —
+    // the same inference TRIM-009 falsified for class factories.
+    [Remote]
+    [Execute]
+    private static async Task<string> _DoAsyncWork(string input, [Service] IAsyncLegPort port)
+    {
+        return await port.AsyncLegInvoke("StaticAsyncBody_MARKER: " + input).ConfigureAwait(false);
+    }
 }

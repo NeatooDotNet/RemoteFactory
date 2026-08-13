@@ -207,8 +207,18 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("internal static class NeatooFactoryRegistrar_MyCommands", generatedSource);
-        Assert.Contains("internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)", generatedSource);
+
+        // The method signature must be asserted INSIDE the holder, not merely present in the
+        // file. The user's partial class emits a byte-identical FactoryServiceRegistrar
+        // signature, so a bare Contains(...) for it is satisfied by that one and would still
+        // pass if the holder's method were renamed — which is the single failure mode that is
+        // silent, because AddRemoteFactoryServices looks it up by literal name and calls
+        // method?.Invoke. Anchoring the signature to the holder's class declaration is what
+        // actually pins plan Constraint "the holder's method must remain exactly
+        // FactoryServiceRegistrar".
+        Assert.Matches(
+            @"internal static class NeatooFactoryRegistrar_MyCommands\s*\{\s*internal static void FactoryServiceRegistrar\(IServiceCollection services, NeatooFactory remoteLocal\)",
+            generatedSource);
         Assert.Contains("global::TestNamespace.MyCommands.FactoryServiceRegistrar(services, remoteLocal);", generatedSource);
 
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
@@ -351,7 +361,14 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("internal static class NeatooEventHandlerRegistrar_MyHandlers", generatedSource);
+
+        // Anchored to the holder's class declaration for the same reason as the static leg:
+        // the user's partial class emits an identical signature, so an unanchored assertion
+        // would still pass with the holder's method renamed — and that rename fails silently
+        // at runtime (method?.Invoke).
+        Assert.Matches(
+            @"internal static class NeatooEventHandlerRegistrar_MyHandlers\s*\{\s*internal static void FactoryServiceRegistrar\(IServiceCollection services, NeatooFactory remoteLocal\)",
+            generatedSource);
         Assert.Contains("global::TestNamespace.MyHandlers.FactoryServiceRegistrar(services, remoteLocal);", generatedSource);
 
         // Distinct from the static-factory prefix, so the two never collide.
@@ -372,13 +389,89 @@ namespace TestNamespace
     [Fact]
     public void RelayHandler_GeneratedOutputCompilesWithoutErrors()
     {
-        var (_, outputCompilation, _) = DiagnosticTestHelper.RunGenerator(RelayHandlerSource);
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(RelayHandlerSource);
+
+        // Without this, the test passes on ZERO generated trees: if the fixture ever hits
+        // NF0502 or any transform early-out, the generator emits nothing, the input
+        // compilation is clean, and Assert.Empty(errors) is trivially satisfied. The other
+        // relay tests would fail in that state; this one would not.
+        Assert.NotNull(runResult.GeneratedTrees.FirstOrDefault(t => t.FilePath.Contains("MyHandlers")));
 
         var errors = outputCompilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToList();
 
         Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// A <c>private static</c> handler compiles — the reason the holder forwards rather than hosts.
+    /// </summary>
+    /// <remarks>
+    /// <c>FactoryGenerator.RelayHandler</c> filters only on <c>IsStatic</c>, with no accessibility
+    /// gate, so private handlers are legal today. That is precisely why a sibling holder cannot
+    /// *host* the registrar (it could not reach them — CS0122) and must forward to the user's
+    /// partial instead. The static leg already exercises this via its `private static` fixture;
+    /// the relay leg did not.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_PrivateHandler_GeneratedOutputCompilesWithoutErrors()
+    {
+        var source = RelayHandlerSource.Replace(
+            "internal static Task Handle(",
+            "private static Task Handle(");
+
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        Assert.NotNull(runResult.GeneratedTrees.FirstOrDefault(t => t.FilePath.Contains("MyHandlers")));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+    }
+
+    /// <summary>
+    /// A class carrying BOTH <c>[Factory]</c> (static) and <c>[FactoryEventHandler&lt;T&gt;]</c>
+    /// still fails with CS0111 only — the per-leg holder prefixes must not add CS0101 on top.
+    /// </summary>
+    /// <remarks>
+    /// This shape is broken at HEAD and deliberately not fixed (Deferred Work item 15): both
+    /// renderers re-open the same partial and each emits <c>FactoryServiceRegistrar</c>, which is
+    /// CS0111 duplicate-member. TRIM-008 asserted in three places that distinct holder prefixes
+    /// keep it at CS0111 rather than compounding it with CS0101 duplicate-type, and tested it
+    /// nowhere. This pins that claim so a future prefix change cannot quietly worsen an already
+    /// broken shape.
+    /// </remarks>
+    [Fact]
+    public void BothAttributes_EmitsDuplicateMemberOnly_NotDuplicateType()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record MyEvent(int Id) : FactoryEventBase;
+
+    [Factory]
+    [FactoryEventHandler<MyEvent>]
+    public static partial class MyBoth
+    {
+        [Execute]
+        private static Task<string> _DoWork(string input) => Task.FromResult(input);
+
+        internal static Task Handle(MyEvent evt) => Task.CompletedTask;
+    }
+}
+";
+        var (_, outputCompilation, _) = DiagnosticTestHelper.RunGenerator(source);
+
+        var errorIds = outputCompilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.Id)
+            .Distinct()
+            .ToList();
+
+        Assert.Contains("CS0111", errorIds);
+        Assert.DoesNotContain("CS0101", errorIds);
     }
 
     #endregion
