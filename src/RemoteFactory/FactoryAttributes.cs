@@ -203,13 +203,35 @@ public sealed class FactoryHintNameLengthAttribute : Attribute
 /// in a published <c>.wasm</c> that should never have left the server.
 /// </para>
 /// <para>
-/// This is not hypothetical. Static <c>[Factory]</c> classes and
-/// <c>[FactoryEventHandler&lt;T&gt;]</c> classes have no separate generated type to host
-/// <c>FactoryServiceRegistrar</c> — the generator re-opens the user's own partial class — so
-/// from v0.21.2 until this was fixed, both pointed here at the consumer's class and leaked
-/// their bodies. The fix was a generated forwarding holder per leg
-/// (<c>NeatooFactoryRegistrar_{TypeName}</c>, <c>NeatooEventHandlerRegistrar_{TypeName}</c>)
-/// whose single method is all the annotation can reach.
+/// This is not hypothetical, and it happened twice for two different reasons. Static
+/// <c>[Factory]</c> classes and <c>[FactoryEventHandler&lt;T&gt;]</c> classes have no separate
+/// generated type to host <c>FactoryServiceRegistrar</c> — the generator re-opens the user's
+/// own partial class — so from v0.21.2 until v1.7.0, both pointed here at the consumer's class
+/// and leaked their bodies.
+/// </para>
+/// <para>
+/// <b>"Generated, not consumer" is necessary but NOT sufficient, and assuming otherwise cost a
+/// second defect.</b> Class factories always pointed at the <i>generated</i>
+/// <c>{X}Factory</c> — and still leaked, because that type hosts every <c>Local*</c> method and
+/// the annotation preserves all of them. What bounds the damage is not that the named type is
+/// generated but that it has exactly <b>one</b> method. All three legs now emit a forwarding
+/// holder (<c>NeatooFactoryRegistrar_{TypeName}</c>,
+/// <c>NeatooEventHandlerRegistrar_{TypeName}</c>, <c>NeatooClassFactoryRegistrar_{TypeName}</c>),
+/// with distinct prefixes so a class carrying several factory attributes does not collide.
+/// </para>
+/// <para>
+/// The interface-factory leg still names <c>{ImplName}Factory</c>. No leak has been observed
+/// there, but the leg reaches its implementation through interfaces, so a client-side trimmed
+/// test cannot report on body elimination either way. Treat it as unverified, not proven.
+/// </para>
+/// <para>
+/// A holder is also not sufficient on its own for a class factory. The
+/// <c>IsServerRuntime</c> guard inside each <c>Local*</c> method does the other half, and for
+/// <c>async</c> operations that guard must be emitted in a <b>non-async wrapper</b> forwarding
+/// to a private core — inside an <c>async</c> method the guard is lowered into <c>MoveNext</c>
+/// within the builder's protected region, where the trimmer folds the switch but leaves the
+/// unreachable remainder in place. Removing either half reopens the leak; that was measured,
+/// not reasoned.
 /// </para>
 /// <para>
 /// Consequences for anyone editing the generator: point this attribute at a type that exists

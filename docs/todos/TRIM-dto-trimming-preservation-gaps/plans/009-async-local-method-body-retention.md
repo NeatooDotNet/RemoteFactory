@@ -3,8 +3,9 @@
 **Plan #:** 009
 **Date:** 2026-08-13
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Drafted — awaiting plan review
+**Status:** Done
 **Last Updated:** 2026-08-14
+**Plan review:** [`../reviews/009-plan-review.md`](../reviews/009-plan-review.md) — CONCERNS, 8 veto-tier, all closed before implementation
 **Plan-review opt-in:** Yes (same grounds as TRIM-008 — a false IP-protection guarantee, and the remedy is unknown at stub time)
 **Code-review opt-in:** Yes (behavior-changing generator work, if the remedy turns out to be generator-side)
 
@@ -281,3 +282,37 @@ This is the arc's own rule — *a check that could never go red is not evidence*
 - Deferred items 5, 9, 14, 15, 19 — each needs its own plan.
 - Replacing the reflective registrar lookup with `[ModuleInitializer]` registration, which would delete this defect class entirely. Rejected here for load-order hazards; worth its own plan.
 - The v1.7.0 release itself — TRIM-009 unblocks it; cutting it is the arc's close-out step.
+
+---
+
+## Current State (2026-08-14, implemented)
+
+**The fix, both halves.** `ClassFactoryRenderer` gained one shared helper, `RenderLocalMethodOpening`, applied at all five guarded `Local*` emission sites. For a guarded `async` method it emits a **non-async wrapper** carrying the `IsServerRuntime` guard and forwarding to a `private async …Core`; for everything else it emits exactly what it emitted before. Alongside it, the class-factory assembly attribute now names a generated single-method holder, `NeatooClassFactoryRegistrar_{ClassName}`, instead of `{X}Factory`.
+
+Both halves are required, and that is measured rather than argued — see the V3 row above for the wrapper alone, and the root inventory for why DAM keeps the private core alive without the holder.
+
+**What did not change:** the delegate registrations and the local ctor's method-group assignment. Both reference the *wrapper*, whose post-guard call folds away, so the core is de-rooted without touching either. That was the prediction Step 1 was written to test, and it held.
+
+## Test Evidence
+
+| Claim | Artifact | Result |
+|---|---|---|
+| H2 falsified — its constructs are not necessary | `probe-h1h2-v1-async-probes-suppressed.txt` | async minus all four probes and the OCE arm → **still leaked** |
+| H2 falsified — its constructs are not sufficient | `probe-h1h2-v2-sync-with-second-catch.txt` | sync plus catch arm and type-test → **still clean** (2 of 5 constructs; the awaiting probes cannot be grafted onto a sync body) |
+| Guard relocation alone is insufficient | `probe-h1h2-v3-sync-wrapper-async-core.txt` + its addendum | markers unmoved; `<LocalFetchAsyncCore>d__` survives. **Cannot** attribute that to DAM vs. the wrapper's surviving call — both roots were live |
+| Wrapper + holder clears every leaking marker | `probe-v4-wrapper-plus-holder.txt` | 8 markers flipped to absent; all async state machines gone; 52,224 bytes vs 66,560 |
+| The absences are trim results, not build artifacts | `probe-v4-selfcheck-untrimmed.txt` | every marker **PRESENT** in the untrimmed build from the same source |
+| The holder actually forwards (silent-failure check) | `harness-v4-liveness.log`, `harness-final.log` | exit 0; every factory resolves, including `Class [Execute] factory resolved: True` |
+| The CI gate passes on the real artifact | `gate-final-passing.log` | exit 0, 10/10 positive controls, no shape asserted PRESENT as a known leak |
+| Knob values are recoverable per variant | `knob-values-per-variant.txt` | plan-review finding B6 |
+| Apparatus was inert before use | `experiment-knobs.diff` | knobs at default reproduce HEAD's generated tree byte-for-byte |
+
+**Red before green, proven not asserted.** With the holder prefix broken and the wrapper split disabled, exactly three tests went red — `ClassFactory_EmitsAssemblyAttribute`, `ClassFactory_EmitsRegistrarHolder_ForwardingToFactory`, `ClassFactory_GuardedAsyncLocalMethod_SplitsIntoSyncWrapperAndAsyncCore` — while the sync-path control `ClassFactory_GuardedSyncLocalMethod_IsNotSplit` stayed green.
+
+**Blast radius on existing tests: one**, exactly the inversion plan review predicted at `AssemblyAttributeEmissionTests.cs:42`. Its original intent is preserved — the attribute is still emitted and still names the correct type; the correct type changed.
+
+## What this plan deliberately did not do
+
+- **The interface-factory leg.** It carries the same inside-the-async guard and still points its attribute at `{ImplName}Factory`, so it shares both mechanisms and received neither fix. Taking it on would have grown a plan whose arc was already flagged as over-running, and deferred item 19 makes the leg structurally unmeasurable from a client-side harness anyway. Deferred as **item 20** — with the published claim corrected from "Interface factory | Yes" to "not established" in both the skill and `CLAUDE-DESIGN.md`, because deferring work is acceptable and shipping a false claim is not.
+- **Narrowing the DAM** on `NeatooFactoryRegistrarAttribute`. Rejected at TRIM-008's plan review and still rejected; a prebuilt library with an `internal static` registrar would silently stop registering on a trimmed client.
+- **Design-project requirements verification** (Step 7B per `CLAUDE.md`) — deferred to the release step via existing item 11, now stated here rather than left to surface at close-out.

@@ -78,7 +78,10 @@ for control in \
     "TrimTestCommands" \
     "ITrimIfaceQueryFactory" \
     "ITrimAsyncIfaceQueryFactory" \
-    "ITrimSaveTargetFactory"
+    "ITrimSaveTargetFactory" \
+    "NeatooClassFactoryRegistrar_TrimTestEntity" \
+    "NeatooClassFactoryRegistrar_TrimSaveTarget" \
+    "NeatooClassFactoryRegistrar_TrimExecTarget"
 do
     if present "$control"; then
         echo "   ok      $control"
@@ -202,17 +205,27 @@ for m in TrimAsyncIfaceServerSide IfaceAsyncBody_MARKER; do
     check_absent "$m" "interface factory (async)"
 done
 
-echo "-- class factory, port implementation (behind an interface hop; not a leg signal)"
+echo "-- class factory port"
 # [N] own port, so a class-factory leak no longer reports as a static-factory failure.
 #
-# Only the two IMPLEMENTATION markers are absent. IClassLegPort and ClassLegInvoke are NOT
-# here: they are retained by the async FetchAsync body (TRIM-009) via its in-body
-# GetRequiredService<IClassLegPort>() and the port call, exactly as ISaveLegPort/SaveLegInvoke
-# are on the save leg. They are asserted PRESENT with the controlled pair below.
-# ClassLegBackend and its literal stay absent because they sit behind the IClassLegPort
+# IClassLegPort and ClassLegInvoke moved here from the assert-PRESENT block when TRIM-009
+# landed: the async FetchAsync body reached them via an in-body GetRequiredService<IClassLegPort>()
+# and a port call, and that body is now eliminated. They are the [D] discriminators for the
+# class leg — a regression in the async wrapper/holder fix turns these red first.
+# ClassLegBackend and its literal are weaker signals: they sit behind the IClassLegPort
 # interface hop, so nothing statically reaches them either way.
-for m in ClassLegBackend ClassLegBackend_MARKER; do
+for m in IClassLegPort ClassLegInvoke ClassLegBackend ClassLegBackend_MARKER; do
     check_absent "$m" "class factory"
+done
+
+echo "-- class-level [Execute] leg (TRIM-009)"
+# [N] Class-level [Execute] is a DIFFERENT emission path from static [Execute]
+# (ClassFactoryRenderer.RenderClassExecuteLocalMethod, not StaticFactoryRenderer) and is
+# emitted `async` unconditionally, so it was subject to TRIM-009's state-machine defect in
+# full. It had no harness coverage at all until TRIM-009 — found at plan review, before the
+# plan could close AC6 over an unmeasured shape.
+for m in IExecLegPort ExecLegInvoke ExecLegBackend ExecLegBackend_MARKER ClassExecBody_MARKER; do
+    check_absent "$m" "class [Execute]"
 done
 
 echo "-- async-only port (shared by the three async targets above)"
@@ -233,48 +246,35 @@ done
 # controlled — it also differed in auth, target acquisition, one-hop vs two-hop rooting, and
 # catch-arm count, the last being the dimension the arc's disproven TRIM-004 story blamed.
 #
-# CO-VARIATES, unseparable from outside the generator: it emits an extra
-# `catch (OperationCanceledException)` arm for async methods AND type-tests for
-# IFactoryOnStartAsync / IFactoryOnCompleteAsync / IFactoryOnCancelled / IFactoryOnCancelledAsync.
-# So this pair isolates "async-shaped emission" as a bundle, not the `async` keyword. The
-# sub-cause is UNDETERMINED: a state-machine fold failure and an unreachable-code-elimination
-# failure caused by the extra catch/type-tests predict the same result here and need different
-# fixes. TRIM-009 must separate them from inside the generator.
-
+# RESOLVED BY TRIM-009. This pair was the arc's decisive measurement; both halves are now
+# absent and both are asserted so. The co-variates once listed here as unseparable —
+# the extra `catch (OperationCanceledException)` arm and the four lifecycle type-tests —
+# WERE separated, from inside the generator:
 #
-# ClassAsyncBody_MARKER is asserted PRESENT for the same reason as the save/can* block: it is
-# TRIM-009's defect, and the gate must fail loudly when it is fixed rather than silently
-# passing.
+#   V1  async minus all four probes AND the catch arm  -> STILL LEAKED  (not necessary)
+#   V2  sync plus the catch arm and a type-test        -> STILL CLEAN   (not sufficient)
+#
+# so the async state machine is the mechanism, and the arc's TRIM-004 story ("early-throw
+# guard plus try/catch defeats elimination") is falsified for the third time. The fix is a
+# NON-async wrapper carrying the guard plus a single-method registrar holder; neither half
+# suffices alone, because [DynamicallyAccessedMembers] covers NonPublicMethods and roots the
+# private core independently.
 # ---------------------------------------------------------------------------
 echo "-- controlled sync/async pair (class factory)"
 check_absent "ClassSyncBody_MARKER" "class factory (sync half of controlled pair)"
-for m in ClassAsyncBody_MARKER IClassLegPort ClassLegInvoke; do
-    if present "$m"; then
-        echo "   ok      $m (still present, as TRIM-009 expects)"
-    else
-        fail "[class factory] '$m' is now ABSENT. If TRIM-009 has landed, promote it into the absence checks above and delete it from here. If not, check the fixture first (a changed or removed target is the most common cause), and only then reopen the async diagnosis."
-    fi
-done
+check_absent "ClassAsyncBody_MARKER" "class factory (async half of controlled pair)"
 
 # ---------------------------------------------------------------------------
-# KNOWN-BROKEN — asserted PRESENT on purpose (TRIM-009).
+# SAVE/CAN* WRITE PATH — absent since TRIM-009.
 #
-# Async generated Local* methods retain their server-only bodies; sync ones in the
-# same assembly do not. That is a different defect from the registrar-DAM one this
-# gate was written for, with a different fix, so TRIM-008 does not remove these.
-#
-# Asserting them PRESENT rather than omitting them is deliberate. Omitted, the gate
-# would quietly keep passing after TRIM-009 lands and nobody would tighten it.
-# Asserted, CI fails the moment the leak is fixed and the failure message says what
-# to do. This is a pending marker, not an endorsement.
+# These five were asserted PRESENT by TRIM-008 as a deliberate tripwire, so that CI would
+# fail loudly the moment the leak was fixed rather than quietly keep passing. It worked:
+# they are the markers TRIM-009 flipped, and they are [D] discriminators for the write path
+# (LocalInsert / LocalUpdate / LocalDelete, plus LocalSave routing into them).
 # ---------------------------------------------------------------------------
-echo "-- save/can* (known broken, TRIM-009)"
+echo "-- save/can* write path"
 for m in ISaveLegPort SaveLegInvoke SaveLegInsertBody_MARKER SaveLegUpdateBody_MARKER SaveLegDeleteBody_MARKER; do
-    if present "$m"; then
-        echo "   ok      $m (still present, as TRIM-009 expects)"
-    else
-        fail "[save/can*] '$m' is now ABSENT. If TRIM-009 has landed, this is good news: move '$m' up into the absence checks and delete it from this block. If TRIM-009 has NOT landed, check the fixture first — a changed or removed target is the most common cause — and only then reopen its diagnosis."
-    fi
+    check_absent "$m" "save/can*"
 done
 
 echo
@@ -285,7 +285,13 @@ fi
 
 echo "Trimming verification passed."
 echo "  Absent:  static factory ([Execute], sync and async), relay handler (sync and async),"
-echo "           interface factory implementations, and the SYNCHRONOUS class-factory body."
-echo "  Present, expected, tracked as TRIM-009: every ASYNC class-factory body — the save/can*"
-echo "           write path and the FetchAsync half of the controlled pair. Asserted PRESENT"
-echo "           above, so this gate fails loudly the moment TRIM-009 lands."
+echo "           interface factory implementations, class-level [Execute], and BOTH halves of"
+echo "           the class-factory body — sync and async, read and write."
+echo "  No shape is asserted PRESENT as a known leak. TRIM-008 and TRIM-009 closed the last two;"
+echo "  if a leak is found in a shape this gate does not name, add the marker rather than"
+echo "  widening an existing one, so the failure keeps naming its leg."
+echo
+echo "  NOT proven here: the interface-factory leg's method BODIES. It reaches everything"
+echo "  through interfaces, so its markers read absent either way (Deferred Work item 20;"
+echo "  item 19 blocks the fix that would give it a reachable marker). Absence above is a"
+echo "  no-regression signal for that leg, not a body-elimination proof."

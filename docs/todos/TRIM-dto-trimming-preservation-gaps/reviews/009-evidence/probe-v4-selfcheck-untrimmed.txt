@@ -1,0 +1,30 @@
+=== V4 SELF-CHECK — UNTRIMMED build, same source ===
+dll:  bin/Release/net9.0/RemoteFactory.TrimmingTests.dll
+size: 81920 bytes
+
+-- POSITIVE CONTROLS (must all be PRESENT, else the probe read nothing)
+   TrimTestCommands                   PRESENT (utf8)
+   NeatooFactoryRegistrar_TrimTestCommands PRESENT (utf8)
+   ITrimSaveTargetFactory             PRESENT (utf8)
+   TrimTestEntityFactory              PRESENT (utf8)
+   Trimming verification app completed PRESENT (utf16)
+   NeatooClassFactoryRegistrar_TrimTestEntity PRESENT (utf8)
+   NeatooClassFactoryRegistrar_TrimSaveTarget PRESENT (utf8)
+
+-- THE CONTROLLED PAIR (class factory, same type, same rooting)
+   ClassSyncBody_MARKER               PRESENT (utf16)
+   ClassAsyncBody_MARKER              PRESENT (utf16)
+   IClassLegPort                      PRESENT (utf8)
+   ClassLegInvoke                     PRESENT (utf8)
+
+-- SAVE/CAN* LEG (async write, two-hop rooting)
+   ISaveLegPort                       PRESENT (utf8)
+   SaveLegInvoke                      PRESENT (utf8)
+   SaveLegInsertBody_MARKER           PRESENT (utf16)
+   SaveLegUpdateBody_MARKER           PRESENT (utf16)
+   SaveLegDeleteBody_MARKER           PRESENT (utf16)
+
+-- SYNC-LEG CONTROLS (must stay absent)
+   IServerOnlyRepository              PRESENT (utf8)
+   DoServerWork                       PRESENT (utf8)
+   ServerOnlyRepository_MARKER        PRESENT (utf16)

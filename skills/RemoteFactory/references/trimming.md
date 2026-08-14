@@ -135,18 +135,28 @@ The guarantee is not uniform across factory shapes. What follows is measured aga
 
 | Shape | `[Remote]`/handler bodies removed? |
 |---|---|
-| Interface factory | Yes |
 | Static factory (`[Execute]`) | Yes, from v1.7.0 |
 | `[FactoryEventHandler<T>]` | Yes, from v1.7.0 |
 | Class factory | Yes, from v1.7.0 — synchronous operations were always removed; `async` ones needed the same release |
+| Class-level `[Execute]` | Yes, from v1.7.0 — emitted `async` always, so it needed the same fix |
+| Interface factory | **Not established.** No leak has been observed, but the leg reaches its implementation through interfaces, so a client-side test reads "absent" whether or not the body survives. Treat it as unverified rather than proven. |
 
-### Why static factories and event handlers needed a fix
+### Why the fix was needed
 
 The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` so factory registration survives trimming. That attribute carries `[DynamicallyAccessedMembers]`, which preserves **every method on the type it names, method bodies included**.
 
-Class and interface factories have a generated `{X}Factory` class to name. Static factories and `[FactoryEventHandler<T>]` classes do not — the generator re-opens *your* partial class to host the registrar — so before v1.7.0 the attribute named your class, and preservation covered your `[Remote]` method bodies along with it. They shipped to the browser.
+Two distinct problems followed from that, both fixed in v1.7.0:
 
-The fix emits a single-method forwarding holder for the attribute to point at instead. No action needed on your side; it is automatic. If you are on an earlier version and ship `[Execute]` commands or event handlers to a Blazor WASM client, upgrade — the bodies are in your published output today.
+1. **Static factories and `[FactoryEventHandler<T>]` classes had no generated type to name.** The generator re-opens *your* partial class to host the registrar, so the attribute named your class and preservation covered your `[Remote]` bodies. They shipped to the browser.
+2. **Class factories named `{X}Factory`, which was generated but not small.** It hosts every `Local*` method, so naming it preserved all of them, bodies included. Naming a generated type was never the point — naming a type with exactly *one* method is.
+
+Both are fixed by emitting a single-method forwarding holder for the attribute to point at.
+
+`async` class-factory operations needed a second fix on top. Inside an `async` method the compiler lowers the `IsServerRuntime` guard into the state machine's `MoveNext`, within the builder's own protected region; the trimmer folds the switch there but does not remove the unreachable remainder. So guarded `async` operations are now emitted as a non-async wrapper carrying the guard, forwarding to a private async core.
+
+No action needed on your side; it is automatic. If you are on an earlier version and ship `[Execute]` commands, event handlers, or `async` factory operations to a Blazor WASM client, upgrade — those bodies are in your published output today.
+
+One behaviour change to be aware of: the server-only guard now throws **synchronously** from the factory entry point rather than surfacing as a faulted `Task`. Code that awaited the call and caught the exception still works; code that called without awaiting and inspected the returned `Task` will now see the throw at the call site.
 
 ### `[Remote]` is decorative on `[Execute]`
 

@@ -755,22 +755,45 @@ The concrete type is resolved at compile time using the naming convention (`IPer
 
 The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory type (class, static, interface, and `[FactoryEventHandler<T>]`). The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)]` on its `Type` property, which creates a dataflow contract the IL trimmer follows — ensuring the named type's `FactoryServiceRegistrar` method survives trimming.
 
-**The attribute must name a generated type, never a consumer's class.** The annotation preserves every method on whatever it names, *method bodies included*, so naming a user class ships that class's `[Remote]` server-only bodies to a trimmed client. Class and interface factories have a generated `{X}Factory` to name. Static factories and `[FactoryEventHandler<T>]` classes do not — the generator re-opens the user's own partial to host the registrar — so each emits a single-method forwarding holder for the attribute to point at instead.
+**The attribute must name a single-method generated holder — naming a generated type is not enough.** The annotation preserves every method on whatever it names, *method bodies included*. Naming a consumer's class ships that class's `[Remote]` bodies to a trimmed client; naming `{X}Factory` ships every `Local*` body, because a generated type that hosts many methods still has all of them preserved. Only a holder with exactly **one** method bounds the blast radius to one method.
 
-Naming a generated type is necessary, not sufficient. The holders are safe because a holder has exactly **one** method; a generated type that hosts many methods still has all of them preserved with their bodies. `{X}Factory` hosts every `Local*` method, so what keeps a class factory's server-only work off the client is the `IsServerRuntime` guard inside those methods, not the choice of attribute target.
+Every factory shape therefore emits its own forwarding holder. Static factories and `[FactoryEventHandler<T>]` classes got theirs in v1.7.0 because they had no generated type at all — the generator re-opens the user's own partial to host the registrar. Class factories got theirs in the same release for the different reason above: `{X}Factory` exists, but it hosts the `Local*` methods whose bodies must not ship.
+
+A holder is necessary but still not sufficient for a class factory. The `IsServerRuntime` guard inside each `Local*` method does the other half — and for `async` operations the guard must sit in a **non-async wrapper** that forwards to a private core. Inside an `async` method the compiler lowers the guard into `MoveNext`, within the builder's own protected region; ILLink folds the switch there but does not eliminate the unreachable remainder, so the body survives. See *Async `Local*` emission* below.
 
 At startup, `RegisterFactories()` enumerates these assembly attributes via `assembly.GetCustomAttributes<NeatooFactoryRegistrarAttribute>()` instead of scanning all types with `assembly.GetTypes()`. This makes factory discovery trimming-safe: the trimmer sees the static `typeof()` references in the assembly attributes and preserves the referenced types.
 
 | Factory Pattern | Assembly Attribute Target |
 |----------------|--------------------------|
-| Class Factory | `typeof({Namespace}.{ClassName}Factory)` — the generated factory implementation class |
+| Class Factory | `typeof({Namespace}.NeatooClassFactoryRegistrar_{ClassName})` — a generated forwarding holder |
 | Static Factory | `typeof({Namespace}.NeatooFactoryRegistrar_{StaticClassName})` — a generated forwarding holder |
 | Interface Factory | `typeof({Namespace}.{ImplName}Factory)` — the generated factory implementation class |
 | `[FactoryEventHandler<T>]` | `typeof({Namespace}.NeatooEventHandlerRegistrar_{ClassName})` — a generated forwarding holder |
 
-The two holder rows carry distinct prefixes deliberately: a class carrying both `[Factory]` and `[FactoryEventHandler<T>]` would otherwise collide on the holder type name.
+The three holder rows carry distinct prefixes deliberately: a class carrying more than one factory attribute would otherwise collide on the holder type name.
 
-Until v1.7.0 the static-factory and `[FactoryEventHandler<T>]` rows named **the user's own class**, because there was no generated type to point at. Combined with the annotation above, that preserved every method on those classes — `[Remote]` bodies and all — on trimmed clients. The forwarding holders exist to close that.
+Until v1.7.0 the static-factory and `[FactoryEventHandler<T>]` rows named **the user's own class**, because there was no generated type to point at, and the class-factory row named `{X}Factory`, which hosts every `Local*` method. All three preserved `[Remote]` bodies on trimmed clients, for the two different reasons described above. The forwarding holders exist to close that.
+
+The interface-factory row still names `{ImplName}Factory` and has not been through this fix. Its bodies are reached through interfaces, which makes the leg structurally unable to report on body elimination from a client-side test — so the row is neither proven safe nor proven leaking. Tracked as Deferred Work item 20 on the TRIM todo.
+
+#### Async `Local*` emission
+
+A guarded `async` factory operation is emitted as a **non-async wrapper carrying the guard**, forwarding to a `private async` core:
+
+```csharp
+public Task<Person> LocalFetch(int id, CancellationToken cancellationToken = default)
+{
+    if (!NeatooRuntime.IsServerRuntime)
+        throw new InvalidOperationException("Server-only method called in non-server runtime.");
+    return LocalFetchCore(id, cancellationToken);
+}
+
+private async Task<Person> LocalFetchCore(int id, CancellationToken cancellationToken = default) { /* ... */ }
+```
+
+Synchronous operations keep the guard inline — they already trim correctly, because unreachability begins before any protected region and the whole remainder goes with it.
+
+**Behaviour note:** the guard now throws *synchronously* from the wrapper rather than surfacing as a faulted `Task`, and because the public entry point is itself non-async, that throw escapes through `I{X}Factory` as well as through `Local*`. Authorization failures, target casts, and DI resolution failures are unaffected — they stay in the core and still surface as faulted tasks.
 
 This mechanism is internal to the generator and library. Users do not need to emit or configure these attributes — they are generated automatically for every `[Factory]`-annotated type.
 

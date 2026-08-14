@@ -37,6 +37,7 @@ if (NeatooRuntime.IsServerRuntime)
     services.AddScoped<ISaveLegPort, SaveLegBackend>();
     services.AddScoped<IClassLegPort, ClassLegBackend>();
     services.AddScoped<IAsyncLegPort, AsyncLegBackend>();
+    services.AddScoped<IExecLegPort, ExecLegBackend>();
 
     // Server-side implementations behind the interface factories. On the client the
     // generated proxies stand in for them, so they are never registered there.
@@ -157,6 +158,22 @@ if (saveFactory == null)
     failedChecks.Add("save target factory resolution");
 }
 
+// Verify the class-level [Execute] factory survived trimming (TRIM-009, plan-review A3).
+// This leg is emitted async unconditionally and had no harness coverage before TRIM-009.
+ITrimExecTargetFactory? execFactory = null;
+try
+{
+    execFactory = checkScope.ServiceProvider.GetService<ITrimExecTargetFactory>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Class [Execute] factory resolution FAILED: {ex.GetType().Name}: {ex.Message}");
+}
+if (execFactory == null)
+{
+    failedChecks.Add("class [Execute] factory resolution");
+}
+
 // NOTE: the [FactoryEventHandler<T>] leg has NO positive control here, and cannot.
 // RelayHandlerRenderer wraps every RegisterHandler call in
 // `if (NeatooRuntime.IsServerRuntime)`, so on a client publish the generated
@@ -225,6 +242,7 @@ Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}")
 Console.WriteLine($"Interface factory resolved: {ifaceFactory != null}");
 Console.WriteLine($"Async interface factory resolved: {asyncIfaceFactory != null}");
 Console.WriteLine($"Save target factory resolved: {saveFactory != null}");
+Console.WriteLine($"Class [Execute] factory resolved: {execFactory != null}");
 
 if (failedChecks.Count > 0)
 {

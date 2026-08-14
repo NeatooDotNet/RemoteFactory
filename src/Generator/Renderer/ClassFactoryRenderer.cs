@@ -50,8 +50,12 @@ internal static class ClassFactoryRenderer
 
         sb.AppendLine();
 
-        // Assembly-level attribute for trimming-safe factory discovery
-        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{unit.Namespace}.{model.ImplementationTypeName}Factory))]");
+        // Assembly-level attribute for trimming-safe factory discovery.
+        // Names the single-method holder, NEVER {X}Factory: the attribute carries
+        // [DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)], so naming the
+        // factory roots every Local* method on it -- bodies included -- and no amount of
+        // guarding removes that root. See RenderRegistrarHolder.
+        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{unit.Namespace}.{RegistrarHolderPrefix}{model.ImplementationTypeName}))]");
         sb.AppendLine();
 
         sb.AppendLine("/*");
@@ -68,9 +72,40 @@ internal static class ClassFactoryRenderer
         // Factory class
         RenderFactoryClass(sb, model);
 
+        // Registrar holder -- the assembly attribute's DAM target
+        RenderRegistrarHolder(sb, unit, model);
+
         sb.AppendLine("}");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Prefix for the generated registrar holder. Distinct from the static-factory and
+    /// event-handler holder prefixes so a class carrying several factory attributes does
+    /// not collide on the holder type name.
+    /// </summary>
+    internal const string RegistrarHolderPrefix = "NeatooClassFactoryRegistrar_";
+
+    /// <summary>
+    /// Emits a top-level holder with exactly ONE method, forwarding to the factory's own
+    /// registrar. The assembly attribute names this type instead of <c>{X}Factory</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>[DynamicallyAccessedMembers]</c> has no sub-method granularity: it preserves every
+    /// method on the named type, bodies included. Naming a generated type is necessary but
+    /// not sufficient — <c>{X}Factory</c> is generated and still hosts every <c>Local*</c>.
+    /// What makes a holder safe is that it has exactly one method.
+    /// </remarks>
+    private static void RenderRegistrarHolder(StringBuilder sb, FactoryGenerationUnit unit, ClassFactoryModel model)
+    {
+        sb.AppendLine($"    internal static class {RegistrarHolderPrefix}{model.ImplementationTypeName}");
+        sb.AppendLine("    {");
+        sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            global::{unit.Namespace}.{model.ImplementationTypeName}Factory.FactoryServiceRegistrar(services, remoteLocal);");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
     }
 
     private static void RenderFactoryInterface(StringBuilder sb, ClassFactoryModel model)
@@ -308,27 +343,84 @@ internal static class ClassFactoryRenderer
         sb.AppendLine();
     }
 
+    /// <summary>
+    /// Emits the opening of a <c>Local*</c> factory method — signature, brace, and the
+    /// <see cref="NeatooRuntime.IsServerRuntime"/> guard when the method is server-only.
+    /// </summary>
+    /// <remarks>
+    /// For guarded <c>async</c> methods the guard is emitted in a NON-async wrapper that
+    /// forwards to a private async core, and the caller's body lands in the core.
+    /// <para>
+    /// The guard must sit outside the async state machine. When it is inside, the compiler
+    /// lowers the whole body — guard included — into <c>MoveNext</c>, inside the builder's
+    /// own protected region. ILLink folds the feature switch there but does not eliminate
+    /// the unreachable remainder, so <c>[Remote]</c> bodies, their <c>[Service]</c>
+    /// interfaces, and their string literals ship to publish-trimmed clients. A sync method
+    /// puts the guard ahead of any protected region, so the whole remainder goes.
+    /// </para>
+    /// <para>
+    /// Measured, not assumed (TRIM-009): stripping the async lifecycle probes and the
+    /// <c>OperationCanceledException</c> arm does not fix it, and adding them to a sync
+    /// method does not break it. Relocating the guard is necessary but NOT sufficient —
+    /// the assembly attribute must also name a single-method holder, or
+    /// <c>DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)</c> roots the
+    /// private core independently.
+    /// </para>
+    /// </remarks>
+    private static void RenderLocalMethodOpening(
+        StringBuilder sb,
+        string modifiers,
+        string returnType,
+        string uniqueName,
+        string parameters,
+        string forwardArgs,
+        bool needsAsync,
+        bool isServerOnly,
+        bool blankLineAfterGuard = true)
+    {
+        if (needsAsync && isServerOnly)
+        {
+            sb.AppendLine($"        {modifiers} {returnType} Local{uniqueName}({parameters})");
+            sb.AppendLine("        {");
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            sb.AppendLine($"            return Local{uniqueName}Core({forwardArgs});");
+            sb.AppendLine("        }");
+            sb.AppendLine();
+            sb.AppendLine($"        private async {returnType} Local{uniqueName}Core({parameters})");
+            sb.AppendLine("        {");
+            return;
+        }
+
+        var asyncKeyword = needsAsync ? "async " : "";
+        sb.AppendLine($"        {modifiers} {asyncKeyword}{returnType} Local{uniqueName}({parameters})");
+        sb.AppendLine("        {");
+
+        // Feature switch guard -- only emit for internal or [Remote] methods.
+        // Public non-[Remote] methods run on both client and server.
+        if (isServerOnly)
+        {
+            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+            if (blankLineAfterGuard)
+            {
+                sb.AppendLine();
+            }
+        }
+    }
+
     private static void RenderReadLocalMethod(StringBuilder sb, ReadMethodModel method, ClassFactoryModel model)
     {
         // Use async when the method uses await: domain method returns Task,
         // or the original factory method was async, or auth checks need await
         var needsAsync = method.IsAsync || method.IsDomainMethodTask;
-        var asyncKeyword = needsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
         // Local method signature excludes services - they're obtained via ServiceProvider inside
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+        var forwardArgs = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
-        sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
-        sb.AppendLine("        {");
-
-        // Feature switch guard -- only emit for internal or [Remote] methods.
-        // Public non-[Remote] methods run on both client and server.
-        if (method.IsInternal || method.IsRemote)
-        {
-            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-            sb.AppendLine();
-        }
+        RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
+            needsAsync, method.IsInternal || method.IsRemote);
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
@@ -748,18 +840,11 @@ internal static class ClassFactoryRenderer
     {
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+        var forwardArgs = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
-        sb.AppendLine($"        public async {returnType} Local{method.UniqueName}({parameters})");
-        sb.AppendLine("        {");
-
-        // Feature switch guard -- only emit for internal or [Remote] methods.
-        // Public non-[Remote] methods run on both client and server.
-        if (method.IsInternal || method.IsRemote)
-        {
-            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-            sb.AppendLine();
-        }
+        // Class-level [Execute] is emitted async unconditionally.
+        RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
+            needsAsync: true, isServerOnly: method.IsInternal || method.IsRemote);
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
@@ -806,22 +891,13 @@ internal static class ClassFactoryRenderer
         // Use async when the method uses await: domain method returns Task,
         // or the original factory method was async
         var needsAsync = method.IsAsync || method.IsDomainMethodTask;
-        var asyncKeyword = needsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
         // Local method signature excludes services - they're obtained via ServiceProvider inside
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+        var forwardArgs = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
-        sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
-        sb.AppendLine("        {");
-
-        // Feature switch guard -- only emit for internal or [Remote] methods.
-        // Public non-[Remote] methods run on both client and server.
-        if (method.IsInternal || method.IsRemote)
-        {
-            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-            sb.AppendLine();
-        }
+        RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
+            needsAsync, method.IsInternal || method.IsRemote);
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);
@@ -1039,16 +1115,8 @@ internal static class ClassFactoryRenderer
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
         var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
-        sb.AppendLine($"        public virtual {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
-        sb.AppendLine("        {");
-
-        // Feature switch guard -- only emit for internal or [Remote] methods.
-        // Public non-[Remote] methods run on both client and server.
-        if (method.IsInternal || method.IsRemote)
-        {
-            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-        }
+        RenderLocalMethodOpening(sb, "public virtual", returnType, method.UniqueName, parameters, paramIdentifiers,
+            method.IsAsync, method.IsInternal || method.IsRemote, blankLineAfterGuard: false);
         sb.AppendLine();
 
         // Default return value
@@ -1309,22 +1377,13 @@ internal static class ClassFactoryRenderer
 
     private static void RenderCanLocalMethod(StringBuilder sb, CanMethodModel method, ClassFactoryModel model)
     {
-        var asyncKeyword = method.IsAsync ? "async" : "";
         var returnType = method.IsTask ? "Task<Authorized>" : "Authorized";
         // Local method signature excludes services - they're obtained via ServiceProvider inside
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+        var forwardArgs = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
-        sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
-        sb.AppendLine("        {");
-
-        // Feature switch guard -- only emit for internal or [Remote] methods.
-        // Public non-[Remote] methods run on both client and server.
-        if (method.IsInternal || method.IsRemote)
-        {
-            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-            sb.AppendLine();
-        }
+        RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
+            method.IsAsync, method.IsInternal || method.IsRemote);
 
         // Authorization checks (inside guard -- auth types are server-only)
         RenderAuthorizationChecks(sb, method);

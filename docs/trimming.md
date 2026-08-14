@@ -246,7 +246,24 @@ internal static class NeatooFactoryRegistrar_MyCommands
 
 The attribute names the holder. Preservation then reaches exactly one forwarding method instead of everything on `MyCommands`.
 
-**Naming a generated type is necessary, not sufficient.** What makes a holder safe is that it has exactly *one* method. A generated type that hosts many methods still has all of them preserved, bodies included — `{X}Factory` hosts every `Local*` method for its factory. So what keeps a class factory's server-only work off the client is the `IsServerRuntime` guard inside those methods, not the choice of attribute target.
+**Naming a generated type is necessary, not sufficient.** What makes a holder safe is that it has exactly *one* method. A generated type that hosts many methods still has all of them preserved, bodies included — `{X}Factory` hosts every `Local*` method for its factory, which is why class factories emit a holder too (`NeatooClassFactoryRegistrar_{ClassName}`) rather than naming the factory directly.
+
+The `IsServerRuntime` guard inside each `Local*` method does the other half of the work. For `async` operations that guard is emitted in a **non-async wrapper** that forwards to a private core:
+
+```csharp
+public Task<Person> LocalFetch(int id, CancellationToken cancellationToken = default)
+{
+    if (!NeatooRuntime.IsServerRuntime)
+        throw new InvalidOperationException("Server-only method called in non-server runtime.");
+    return LocalFetchCore(id, cancellationToken);
+}
+
+private async Task<Person> LocalFetchCore(int id, CancellationToken cancellationToken = default) { /* ... */ }
+```
+
+Inside an `async` method the compiler lowers the whole body — guard included — into the state machine's `MoveNext`, within the builder's own protected region. The trimmer folds the feature switch there but does not eliminate the unreachable remainder, so the body survives. A synchronous method puts the guard ahead of any protected region, which is why sync operations always trimmed correctly and `async` ones did not until v1.7.0.
+
+**Behaviour change in v1.7.0:** the guard throws synchronously from the factory entry point rather than surfacing as a faulted `Task`. Awaiting callers are unaffected. Authorization failures, target casts, and DI resolution failures still surface as faulted tasks — only the server-only guard moved.
 
 At startup, `AddNeatooRemoteFactory()` and `AddNeatooAspNetCore()` discover factory types by enumerating these assembly attributes rather than scanning all types via reflection. This means factory registration is fully trimming-safe — no factory types are lost during IL trimming, regardless of whether they are class factories, static factories, or interface factories.
 

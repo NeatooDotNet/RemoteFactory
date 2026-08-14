@@ -68,20 +68,28 @@ public class TrimTestEntity
     // by DAM on TrimTestEntityFactory and by their own unguarded delegate registration — which
     // closes the "maybe the sync one just was not rooted" alternative outright.
     //
-    // DO NOT "TIDY UP" THE SERVICE PARAMETERS TO MATCH. The asymmetry is deliberate and
-    // load-bearing: Create takes IServerOnlyRepository and IClassLegPort, this takes only
-    // IClassLegPort. Because this body SURVIVES trimming, giving it IServerOnlyRepository would
-    // make IServerOnlyRepository and DoServerWork present in the trimmed output and turn the
-    // gate's static-factory [D] markers red — a real failure with a completely misleading
-    // cause. Keep them asymmetric until TRIM-009 lands.
+    // THE SERVICE ASYMMETRY IS NO LONGER LOAD-BEARING, and the note that said so has expired.
+    // Create takes IServerOnlyRepository and IClassLegPort; this takes only IClassLegPort.
+    // Until TRIM-009 this body SURVIVED trimming, so giving it IServerOnlyRepository would have
+    // surfaced that name in the trimmed output and turned the gate's static-factory markers red
+    // for a completely misleading reason. Now that both halves are eliminated, that hazard is
+    // gone. The asymmetry is kept only because changing it buys nothing and would cost a
+    // re-measurement of every marker in the gate.
     //
-    // WHAT THIS PAIR DOES NOT ISOLATE. The generator emits several things only for async
-    // methods: an extra catch (OperationCanceledException) arm, and type-tests for
-    // IFactoryOnStartAsync / IFactoryOnCompleteAsync / IFactoryOnCancelled /
-    // IFactoryOnCancelledAsync. They move with `async` by construction, so from outside the
-    // generator this pair isolates "async-shaped emission" as a bundle, not the keyword. The
-    // interface type-tests matter because they are a DIFFERENT ILLink retention mechanism from
-    // a state machine — see the TRIM-009 stub, which carries the competing hypotheses.
+    // WHAT THIS PAIR ISOLATES — settled 2026-08-14, from inside the generator.
+    // The co-variates once listed here as unseparable (an extra catch (OperationCanceledException)
+    // arm, and type-tests for IFactoryOnStartAsync / IFactoryOnCompleteAsync / IFactoryOnCancelled
+    // / IFactoryOnCancelledAsync) WERE separated by emitting variants:
+    //
+    //   V1  async minus all four probes AND the catch arm  -> STILL LEAKED  (not necessary)
+    //   V2  sync plus the catch arm and a type-test        -> STILL CLEAN   (not sufficient)
+    //
+    // So the mechanism is the async state machine, not the catch arm and not the type-tests —
+    // which also falsifies the arc's TRIM-004 story a third time, additively. The remedy is a
+    // NON-async wrapper carrying the guard (so the fold lands outside the builder's protected
+    // region) PLUS a single-method registrar holder (because DAM covers NonPublicMethods and
+    // would otherwise root the private core on its own). Neither half suffices alone; that was
+    // measured too, and the wrapper-only variant looked like progress while changing nothing.
     [Remote]
     [Fetch]
     internal async Task FetchAsync(string name, [Service] IClassLegPort classPort)
