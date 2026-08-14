@@ -63,9 +63,25 @@ public class TrimTestEntity
     // "early-throw guard + try/catch defeats unreachable-code elimination".
     //
     // This method controls all of it. Same class, same factory type, same registrar, same
-    // absence of auth, same one-hop delegate rooting, same shape of body — differing from
-    // Create in `async` and nothing else that matters. Its marker versus ClassLegBackend_MARKER
-    // is the comparison that actually isolates the variable.
+    // absence of auth, same one-hop delegate rooting, same direct concrete call, marker literal
+    // in the domain body on both sides. Both halves are also rooted TWICE and identically —
+    // by DAM on TrimTestEntityFactory and by their own unguarded delegate registration — which
+    // closes the "maybe the sync one just was not rooted" alternative outright.
+    //
+    // DO NOT "TIDY UP" THE SERVICE PARAMETERS TO MATCH. The asymmetry is deliberate and
+    // load-bearing: Create takes IServerOnlyRepository and IClassLegPort, this takes only
+    // IClassLegPort. Because this body SURVIVES trimming, giving it IServerOnlyRepository would
+    // make IServerOnlyRepository and DoServerWork present in the trimmed output and turn the
+    // gate's static-factory [D] markers red — a real failure with a completely misleading
+    // cause. Keep them asymmetric until TRIM-009 lands.
+    //
+    // WHAT THIS PAIR DOES NOT ISOLATE. The generator emits several things only for async
+    // methods: an extra catch (OperationCanceledException) arm, and type-tests for
+    // IFactoryOnStartAsync / IFactoryOnCompleteAsync / IFactoryOnCancelled /
+    // IFactoryOnCancelledAsync. They move with `async` by construction, so from outside the
+    // generator this pair isolates "async-shaped emission" as a bundle, not the keyword. The
+    // interface type-tests matter because they are a DIFFERENT ILLink retention mechanism from
+    // a state machine — see the TRIM-009 stub, which carries the competing hypotheses.
     [Remote]
     [Fetch]
     internal async Task FetchAsync(string name, [Service] IClassLegPort classPort)

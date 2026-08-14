@@ -89,9 +89,32 @@ Run at TRIM-008's re-review rather than deferred to this plan, because it decide
 | Untrimmed | PRESENT | PRESENT |
 | **Trimmed** | **absent** | **PRESENT** |
 
-Every confound listed above is controlled. **`async` is the operative variable for the class-factory leg**, and this plan's scope is correct.
+Every confound listed above is controlled, and both halves are rooted **twice and identically** — by DAM on `TrimTestEntityFactory` (the assembly attribute names the generated factory, which hosts both methods) and by their own unguarded delegate registration. That closes the "maybe the sync one simply was not rooted" alternative outright.
 
-One co-variate cannot be separated from outside the generator: it emits an extra `catch (OperationCanceledException)` arm for async methods, so "async" and "extra catch arm" move together by construction. Distinguishing them requires changing the generator, which is this plan's work.
+**`async`-shaped emission is the operative variable for the class-factory leg**, and this plan's scope is correct.
+
+### But the sub-cause is undetermined, and it changes the fix
+
+Say "async-shaped emission", not "the `async` keyword". Five constructs appear in the async body and not the sync one, all emitted *because* the method is async and therefore inseparable from outside the generator:
+
+1. an extra `catch (OperationCanceledException)` arm
+2. `if (target is IFactoryOnStartAsync) await …`
+3. `if (target is IFactoryOnCompleteAsync) await …`
+4. `if (target is IFactoryOnCancelled) …` (inside the OCE arm)
+5. `if (target is IFactoryOnCancelledAsync) await …` (inside the OCE arm)
+
+Items 2–5 are **interface type-tests**, a mechanically different ILLink retention path from a state machine: a type-test against a rooted type can keep its branch alive independently of any `MoveNext` fold. So two hypotheses survive the experiment and it cannot separate them:
+
+- **H1 — the fold does not propagate through the state machine.** The switch folds inside `MoveNext` and the remainder survives.
+- **H2 — the fold works, and unreachable-code elimination is defeated** by the second catch arm and/or the async lifecycle type-tests. **This is the disproven TRIM-004 story returning in async-only form** — the arc set that story aside for the wrong reason and never re-tested it.
+
+**They imply different remedies.** Under H1 the guard must move out of the async method entirely (a sync wrapper testing `IsServerRuntime` before calling the async body). Under H2 the state machine is innocent and the fix is to restructure catch/probe emission — and note `TrimTestEntity` implements **none** of those four interfaces while `target` is statically typed `TrimTestEntity`, so simply not emitting probes for interfaces the concrete type provably cannot implement may be the whole fix.
+
+**Separate them before choosing a remedy.** From inside the generator it is easy: emit a *sync* `Local*` carrying a second catch arm, or an *async* one without the probes, and re-probe. That is this plan's first step, not its design conclusion.
+
+**One remedy is ruled out already:** de-rooting. DAM on `typeof(TrimTestEntityFactory)` will always root `LocalFetchAsync` regardless of registration changes, so no amount of guarding the delegate registrations removes the root.
+
+**Free variable, controlled and harmless:** the sync half resolves two server-only services and the async half one. It cuts the safe way — the sync body has strictly *more* server-only reach and still folds clean. It is also load-bearing for the harness: giving the async half `IServerOnlyRepository` would surface that name in the trimmed output and turn the gate's static-factory `[D]` markers red for a misleading reason. The asymmetry must stay until this plan lands.
 
 Corroboration from the same run: `IClassLegPort` and `ClassLegInvoke` flipped to PRESENT once `FetchAsync` existed — retained by its in-body `GetRequiredService<IClassLegPort>()` — mirroring `ISaveLegPort`/`SaveLegInvoke` on the save leg. The gate caught that flip on its first run after the target landed, which is the per-leg attribution working.
 
@@ -108,6 +131,7 @@ Corroboration from the same run: `IClassLegPort` and `ClassLegInvoke` flipped to
 - Is the remedy generator-side (guard the delegate registrations, restructure the emitted guard so the fold is not inside `MoveNext`, keep server-only work out of async `Local*` bodies) or configuration-side (an ILLink feature/substitution the generator emits)? Unknown; do not assume. Whichever it is, check whether the DAM root also has to be addressed — see the corrected paragraph above.
 - ~~Does the same retention affect **async `[Execute]`** and **async relay handlers**?~~ **Answered 2026-08-13: no.** Async targets were added to the harness for both legs plus an async interface-factory method, and all trim clean. See the table above for why none of them is the leaking shape.
 - Would changing the emitted guard from `if (!IsServerRuntime) throw …` to a *wrapping* `if (IsServerRuntime) { … }` block fix this without touching DAM or the registrations? Worth trying because it is cheap, **but note that no measurement points at it**: the static and relay legs use that shape and are clean, yet their cleanliness is over-determined (post-TRIM-008 they are no longer DAM targets *and* their only reference sits inside the folded block), so they cannot show the guard shape is what does the work. Treat this as an untested idea, not as something the evidence suggests.
-- Does the extra `catch (OperationCanceledException)` arm the generator emits for async methods contribute? It moves with `async` by construction, so the controlled experiment cannot separate them — but the arc's disproven TRIM-004 story blamed try/catch, and that story was never re-tested after being set aside for the wrong reason.
+- **First step, before any design work: separate H1 from H2.** Emit a *sync* `Local*` with a second catch arm, or an *async* one without the lifecycle type-tests, and re-probe. The controlled experiment cannot do this from outside the generator; from inside it is cheap. Choosing a remedy before separating them is how TRIM-004 → TRIM-005 was lost.
+- Do the async lifecycle type-tests (`IFactoryOnStartAsync` / `IFactoryOnCompleteAsync` / `IFactoryOnCancelled` / `IFactoryOnCancelledAsync`) keep their branches alive? `TrimTestEntity` implements none of them and `target` is statically typed, so not emitting probes for interfaces the concrete type provably cannot implement is both a candidate fix and a worthwhile emission improvement regardless of the outcome.
 - Does `LocalSave`'s routing keep `LocalInsert`/`LocalUpdate`/`LocalDelete` rooted even if their own registrations were guarded?
 - CI gate: which of the new Save/Can\* markers can be asserted absent once this lands, and what is the durable positive control for them.

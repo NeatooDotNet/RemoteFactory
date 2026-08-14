@@ -1,0 +1,73 @@
+﻿=== V5c: sync vs async within ONE class factory ===
+dll: src\Tests\RemoteFactory.TrimmingTests\bin\Release\net9.0\win-x64\publish\RemoteFactory.TrimmingTests.dll
+size: 66560 bytes
+
+-- relay leg (UNFIXED at this probe)
+   RelayLegHandlerBody              absent  
+   IRelayLegPort                    absent  
+   RelayLegInvoke                   absent  
+   RelayLegHandlerBody_MARKER       absent  
+
+-- interface-factory leg (B9, never measured before)
+   TrimIfaceServerSide              absent  
+   IIfaceLegPort                    absent  
+   IfaceLegInvoke                   absent  
+   IfaceLegBackend                  absent  
+   IfaceLegServerBody_MARKER        absent  
+
+-- save/can* leg (B9, never measured before)
+   ISaveLegPort                     PRESENT (utf8)
+   SaveLegInvoke                    PRESENT (utf8)
+   SaveLegBackend                   absent  
+   SaveLegInsertBody_MARKER         PRESENT (utf16)
+   SaveLegUpdateBody_MARKER         PRESENT (utf16)
+   SaveLegDeleteBody_MARKER         PRESENT (utf16)
+
+-- ASYNC bodies (S7/P2 - inference converted to measurement)
+   _DoAsyncWork                     absent  
+   StaticAsyncBody_MARKER           absent  
+   AsyncRelayHandlerBody            absent  
+   RelayAsyncBody_MARKER            absent  
+   TrimAsyncIfaceServerSide         absent  
+   IfaceAsyncBody_MARKER            absent  
+   IAsyncLegPort                    absent  
+   AsyncLegInvoke                   absent  
+   AsyncLegBackend                  absent  
+
+-- class-factory leg (S8 - own port, was sharing with static)
+   IClassLegPort                    PRESENT (utf8)
+   ClassLegInvoke                   PRESENT (utf8)
+   ClassLegBackend                  absent  
+   ClassLegBackend_MARKER           absent  
+
+-- CONTROLLED PAIR: sync vs async in ONE class factory (V5c)
+   ClassSyncBody_MARKER             absent  
+   ClassAsyncBody_MARKER            PRESENT (utf16)
+
+-- pre-existing absent-expected (regression)
+   _DoWork                          absent  
+   _ProcessRecord                   absent  
+   IServerOnlyRepository            absent  
+   DoServerWork                     absent  
+   ServerOnlyDirect                 absent  
+   ServerOnlyHelper                 absent  
+   ServerOnlyRepository_MARKER      absent  
+   ServerOnlyHelper_MARKER          absent  
+
+-- positive controls (must be PRESENT)
+   TrimTestCommands                 PRESENT (utf8)
+   TrimRecordResult                 PRESENT (utf8,utf16)
+   ITrimIfaceQueryFactory           PRESENT (utf8)
+   ITrimAsyncIfaceQueryFactory      PRESENT (utf8)
+   ITrimSaveTargetFactory           PRESENT (utf8)
+   NeatooFactoryRegistrar_          PRESENT (utf8)
+   NeatooEventHandlerRegistrar_     PRESENT (utf8)
+   NeatooEventPreservationRegistrar PRESENT (utf8)
+   Trimming verification app completed PRESENT (utf16)
+
+-- measured, not asserted
+   TrimRelayHandlers                PRESENT (utf8)
+   TrimSaveAuthRules                PRESENT (utf8)
+   TrimRelayHandlerEvent            PRESENT (utf8,utf16)
+   RelayLegBackend                  absent  
+

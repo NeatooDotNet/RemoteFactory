@@ -1,0 +1,10 @@
+-- positive controls
+   ok      NeatooFactoryRegistrar_TrimTestCommands
+::error::Positive control 'NeatooEventHandlerRegistrar_TrimRelayHandlers' is MISSING from the trimmed assembly. Either registration was silently removed, or this gate is not reading a real trimmed artifact — do not trust the absence results below.
+::error::Positive control 'NeatooEventHandlerRegistrar_TrimAsyncRelayHandlers' is MISSING from the trimmed assembly. Either registration was silently removed, or this gate is not reading a real trimmed artifact — do not trust the absence results below.
+   ok      TrimTestCommands
+   ok      ITrimIfaceQueryFactory
+::error::Positive control 'ITrimAsyncIfaceQueryFactory' is MISSING from the trimmed assembly. Either registration was silently removed, or this gate is not reading a real trimmed artifact — do not trust the absence results below.
+   ok      ITrimSaveTargetFactory
+   ok      <utf16 extraction>
+::error::3 positive control(s) failed. This artifact is not a trustworthy trimmed build of the current harness — absence and presence results are NOT being reported, because they would be meaningless and their remediation advice actively misleading.

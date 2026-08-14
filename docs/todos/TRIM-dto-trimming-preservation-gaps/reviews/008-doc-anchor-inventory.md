@@ -10,7 +10,7 @@
 The plan's Files section lists these as *verified do-NOT-touch, class/interface-scoped, still true*:
 `docs/trimming.md:25,27,36`, `skills/.../class-factory.md:318,333-334`, `advanced-patterns.md:227`.
 
-**The 2026-08-13 pre-fix probe falsified the class-factory half of that.** Async generated `Local*` methods retain their server-only bodies (TRIM-009), so every anchor asserting that `[Remote] internal` class-factory bodies are trimmed is **false today** for aggregate roots with async write operations — which is most of them.
+**The 2026-08-13 pre-fix probe falsified the class-factory half of that.** Async generated `Local*` methods retain their server-only bodies (TRIM-009), so every anchor asserting that `[Remote] internal` class-factory bodies are trimmed is **false today** for any aggregate root with async operations — reads as well as writes, both measured 2026-08-13 — which is nearly all of them.
 
 **Disposition: do not edit them in TRIM-008.** TRIM-009 makes them true again, and nothing ships until both land (AC6 held whole; deferred item 2 gates the release on both). Editing them to say "leaks" and reverting after TRIM-009 is churn that would also publish a scarier claim than the shipped state ever has.
 
@@ -20,7 +20,7 @@ The plan's Files section lists these as *verified do-NOT-touch, class/interface-
 
 | Anchor | Claim | Status |
 |---|---|---|
-| `docs/trimming.md:25` | `[Remote] internal` → "Method body trimmed" | False for async write ops |
+| `docs/trimming.md:25` | `[Remote] internal` → "Method body trimmed" | False for async ops (read AND write — measured 2026-08-13) |
 | `docs/trimming.md:27` | `internal` (no `[Remote]`) → "Method body trimmed. Server-only." | Same |
 | `src/Design/CLAUDE-DESIGN.md:648,650` | Same visibility/guard table | Same |
 | `src/Design/CLAUDE-DESIGN.md:653` | "`[Remote]` requires `internal` so the IL trimmer can remove method bodies from client assemblies" | Same |
@@ -74,6 +74,6 @@ The bucket the first draft missed. These correctly describe "preserve all method
 | Anchor | Why it stands |
 |---|---|
 | `docs/trimming.md:26` | `public` non-`[Remote]` bodies survive — correct, and unaffected |
-| `docs/trimming.md:36` | Interface factories unreachable to the trimmer — **measured true**, all five iface markers absent |
+| `docs/trimming.md:36` | Interface factories unreachable to the trimmer — all iface markers absent, sync and async. **But the leg cannot in principle report on body elimination:** it reaches its implementation through the interface, so those markers are absent by fixture shape either way (deferred item 19 — the `[Service]` fix that would give it a reachable marker does not compile). Left standing because nothing contradicts it, not because it was measured. Corrected 2026-08-13; this row previously read "measured true", which the leg cannot deliver |
 | `docs/trimming.md:42` | Feature-switch mechanism — accurate |
 | `src/RemoteFactory/NeatooRuntime.cs:5-9` | Describes the switch, claims nothing about which shapes benefit |
