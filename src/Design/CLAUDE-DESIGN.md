@@ -757,7 +757,7 @@ The generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every fa
 
 **The attribute must name a single-method generated holder — naming a generated type is not enough.** The annotation preserves every method on whatever it names, *method bodies included*. Naming a consumer's class ships that class's `[Remote]` bodies to a trimmed client; naming `{X}Factory` ships every `Local*` body, because a generated type that hosts many methods still has all of them preserved. Only a holder with exactly **one** method bounds the blast radius to one method.
 
-Every factory shape therefore emits its own forwarding holder. Static factories and `[FactoryEventHandler<T>]` classes got theirs in v1.7.0 because they had no generated type at all — the generator re-opens the user's own partial to host the registrar. Class factories got theirs in the same release for the different reason above: `{X}Factory` exists, but it hosts the `Local*` methods whose bodies must not ship.
+Three of the four shapes therefore emit a forwarding holder. Static factories and `[FactoryEventHandler<T>]` classes got theirs in v1.7.0 because they had no generated type at all — the generator re-opens the user's own partial to host the registrar. Class factories got theirs in the same release for the different reason above: `{X}Factory` exists, but it hosts the `Local*` methods whose bodies must not ship. **Interface factories still name `{ImplName}Factory` and have not had this fix** — see the note below the table.
 
 A holder is necessary but still not sufficient for a class factory. The `IsServerRuntime` guard inside each `Local*` method does the other half — and for `async` operations the guard must sit in a **non-async wrapper** that forwards to a private core. Inside an `async` method the compiler lowers the guard into `MoveNext`, within the builder's own protected region; ILLink folds the switch there but does not eliminate the unreachable remainder, so the body survives. See *Async `Local*` emission* below.
 
@@ -793,7 +793,7 @@ private async Task<Person> LocalFetchCore(int id, CancellationToken cancellation
 
 Synchronous operations keep the guard inline — they already trim correctly, because unreachability begins before any protected region and the whole remainder goes with it.
 
-**Behaviour note:** the guard now throws *synchronously* from the wrapper rather than surfacing as a faulted `Task`, and because the public entry point is itself non-async, that throw escapes through `I{X}Factory` as well as through `Local*`. Authorization failures, target casts, and DI resolution failures are unaffected — they stay in the core and still surface as faulted tasks.
+**Behaviour note:** the guard now throws *synchronously* from the wrapper rather than surfacing as a faulted `Task`. Whether that reaches the caller synchronously depends on the public entry point: where it is non-async (`public virtual Task<T> Fetch(…) => FetchProperty(…)`) the throw escapes through `I{X}Factory` too; where it is `async` — notably `Save` on an authorized factory — it is captured back into a faulted `Task` as before. Authorization failures, target casts, and DI resolution failures are unaffected in every case: they stay in the core and still surface as faulted tasks.
 
 This mechanism is internal to the generator and library. Users do not need to emit or configure these attributes — they are generated automatically for every `[Factory]`-annotated type.
 

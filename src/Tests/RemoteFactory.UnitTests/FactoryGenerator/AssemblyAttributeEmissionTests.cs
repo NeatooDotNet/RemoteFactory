@@ -73,7 +73,13 @@ namespace TestNamespace
     [Fact]
     public void ClassFactory_EmitsRegistrarHolder_ForwardingToFactory()
     {
+        // The usings match StaticFactorySource: the generated factory references
+        // CancellationToken and IServiceProvider, so without them the compile assertion
+        // below fails on the FIXTURE rather than on the emission.
         var source = @"
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Neatoo.RemoteFactory;
 
 namespace TestNamespace
@@ -86,7 +92,7 @@ namespace TestNamespace
     }
 }
 ";
-        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(source);
 
         var generatedSource = runResult.GeneratedTrees
             .FirstOrDefault(t => t.FilePath.Contains("MyEntityFactory"))
@@ -102,6 +108,14 @@ namespace TestNamespace
         Assert.Contains(
             "global::TestNamespace.MyEntityFactory.FactoryServiceRegistrar(services, remoteLocal);",
             generatedSource);
+
+        // The class leg gained a new top-level type AND a new method per guarded async local,
+        // and FactoryRenderer swallows render exceptions into a /* Error: */ comment while
+        // NormalizeWhitespace parses with error recovery — malformed emission yields mangled
+        // output, not a throw. The static and relay legs already assert this; the class leg
+        // did not until TRIM-009's code review (C2).
+        Assert.Empty(outputCompilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error));
     }
 
     /// <summary>
@@ -155,6 +169,24 @@ namespace TestNamespace
             @"private async Task<MyEntity> LocalFetchItCore\([^)]*\)\s*\{\s*(?!\s*if \(!NeatooRuntime\.IsServerRuntime\))",
             generatedSource);
     }
+
+    // NO UNIT TEST FOR THE ASYNC GUARDED Can* SITE, AND THIS IS WHY.
+    //
+    // `RenderCanLocalMethod` is the fifth wrapper site and the only one with no emission
+    // assertion here — raised at TRIM-009's test review. An attempt to add one was removed
+    // rather than kept, because it did not test what it claimed: an `[AuthorizeFactory<T>]`
+    // whose method returns `Task<bool>` produces a Can* that is async but NOT server-only,
+    // so no guard is emitted and no split occurs. The assertion passed or failed for reasons
+    // unrelated to the wrapper.
+    //
+    // The shape that DOES produce a guarded async Can* is `[AspAuthorize]` policy auth, whose
+    // generated check is async by nature. That needs ASP.NET Core references, which
+    // `DiagnosticTestHelper.BuildReferences()` does not carry.
+    //
+    // The site is not unexercised: `Design.Domain.Aggregates.SecureOrder` and
+    // `RemoteFactory.AspNetCore.TestLibrary` both emit `LocalCan*Core` wrappers, both compile,
+    // and both are covered by passing suites (Design 86+86). What is missing is a dedicated
+    // emission assertion, which needs an ASP-auth fixture in this harness.
 
     /// <summary>
     /// A SYNCHRONOUS guarded <c>Local*</c> method keeps the guard inline and is not split.

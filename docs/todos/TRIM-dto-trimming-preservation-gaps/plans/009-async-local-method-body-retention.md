@@ -300,16 +300,22 @@ Both halves are required, and that is measured rather than argued — see the V3
 | H2 falsified — its constructs are not necessary | `probe-h1h2-v1-async-probes-suppressed.txt` | async minus all four probes and the OCE arm → **still leaked** |
 | H2 falsified — its constructs are not sufficient | `probe-h1h2-v2-sync-with-second-catch.txt` | sync plus catch arm and type-test → **still clean** (2 of 5 constructs; the awaiting probes cannot be grafted onto a sync body) |
 | Guard relocation alone is insufficient | `probe-h1h2-v3-sync-wrapper-async-core.txt` + its addendum | markers unmoved; `<LocalFetchAsyncCore>d__` survives. **Cannot** attribute that to DAM vs. the wrapper's surviving call — both roots were live |
-| Wrapper + holder clears every leaking marker | `probe-v4-wrapper-plus-holder.txt` | 8 markers flipped to absent; all async state machines gone; 52,224 bytes vs 66,560 |
-| The absences are trim results, not build artifacts | `probe-v4-selfcheck-untrimmed.txt` | every marker **PRESENT** in the untrimmed build from the same source |
-| The holder actually forwards (silent-failure check) | `harness-v4-liveness.log`, `harness-final.log` | exit 0; every factory resolves, including `Class [Execute] factory resolved: True` |
-| The CI gate passes on the real artifact | `gate-final-passing.log` | exit 0, 10/10 positive controls, no shape asserted PRESENT as a known leak |
+| Wrapper + holder clears the read and write legs | `probe-v4-wrapper-plus-holder.txt` | 8 markers flipped to absent; `<LocalFetchAsync>d__` / `<LocalInsert>d__` / `<LocalUpdate>d__` / `<LocalDelete>d__` / `<LocalSave>d__` all gone. **Does not cover class-`[Execute]`** — that target postdates this probe |
+| …and the class-`[Execute]` leg | `gate-final-passing.log` | all five `Exec*` markers absent |
+| The absences are trim results, not build artifacts | `probe-selfcheck-final-all-legs.txt` | every **body** marker PRESENT in the untrimmed build, **including all five class-`[Execute]` markers**. Supersedes `probe-v4-selfcheck-untrimmed.txt`, which covered 12 markers and none from the Exec leg |
+| The holder actually forwards (silent-failure check) | `harness-final.log` | every factory resolves, including `Class [Execute] factory resolved: True`. `harness-v4-liveness.log` is the earlier run and stops at the save leg |
+| The CI gate passes on the real artifact | `gate-final-passing.log` | exit 0, 10 named positive controls plus the UTF-16 control, no shape asserted PRESENT as a known leak |
 | Knob values are recoverable per variant | `knob-values-per-variant.txt` | plan-review finding B6 |
 | Apparatus was inert before use | `experiment-knobs.diff` | knobs at default reproduce HEAD's generated tree byte-for-byte |
+| Full suite green, both solutions, both TFMs | `test-main-full.log`, `test-design.log` | 614+614 unit, 561+561 integration (5 pre-existing skips), 86+86 Design |
 
-**Red before green, proven not asserted.** With the holder prefix broken and the wrapper split disabled, exactly three tests went red — `ClassFactory_EmitsAssemblyAttribute`, `ClassFactory_EmitsRegistrarHolder_ForwardingToFactory`, `ClassFactory_GuardedAsyncLocalMethod_SplitsIntoSyncWrapperAndAsyncCore` — while the sync-path control `ClassFactory_GuardedSyncLocalMethod_IsNotSplit` stayed green.
+**Assembly size:** 52,224 bytes post-fix (`probe-v4-wrapper-plus-holder.txt`). No archived artifact records HEAD's *pre-fix* trimmed size — the 66,560 figure quoted in the first draft is **V2's** knob variant, not HEAD, and the comparison has been withdrawn rather than restated from memory.
+
+**Red before green, proven not asserted — with a stated limit.** With the holder prefix broken and the wrapper split disabled, exactly three tests went red — `ClassFactory_EmitsAssemblyAttribute`, `ClassFactory_EmitsRegistrarHolder_ForwardingToFactory`, `ClassFactory_GuardedAsyncLocalMethod_SplitsIntoSyncWrapperAndAsyncCore` — while the sync-path control `ClassFactory_GuardedSyncLocalMethod_IsNotSplit` stayed green. **That run was filtered to this one test class (16 tests), so it is not a blast-radius statement** about the other 598. xUnit also aborts each test at its first failing assertion, so the later assertions in those tests — including the `DoesNotContain` regression assertion — were not individually observed red. Recorded rather than papered over.
 
 **Blast radius on existing tests: one**, exactly the inversion plan review predicted at `AssemblyAttributeEmissionTests.cs:42`. Its original intent is preserved — the attribute is still emitted and still names the correct type; the correct type changed.
+
+**Not covered here:** a dedicated emission assertion for the async guarded `Can*` site. The shape needs `[AspAuthorize]` policy auth, whose references `DiagnosticTestHelper.BuildReferences()` does not carry; an attempt using `[AuthorizeFactory<T>]` produced an *unguarded* async Can and was removed rather than kept. The site is exercised by `Design.Domain.Aggregates.SecureOrder` and `RemoteFactory.AspNetCore.TestLibrary`, both of which emit `LocalCan*Core` and pass. Reason recorded at the test file.
 
 ## What this plan deliberately did not do
 

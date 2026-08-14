@@ -28,3 +28,7 @@ size: 81920 bytes
    IServerOnlyRepository              PRESENT (utf8)
    DoServerWork                       PRESENT (utf8)
    ServerOnlyRepository_MARKER        PRESENT (utf16)
+
+-- SUPERSEDED by probe-selfcheck-final-all-legs.txt (2026-08-14, code review V4).
+-- Kept because the plan cites it by name: it covers 12 markers and NONE from the
+-- class-[Execute] leg, which is why the "every marker" claim built on it was false.

@@ -34,7 +34,7 @@ Not all factory methods get guards. The generator uses the developer's `public` 
 
 - **Static factories** — `[Execute]` delegate registrations are guarded. The trimmer removes the registration lambdas, their captured dependencies, and the `[Execute]` method bodies themselves. This requires the generated forwarding holder described under [Factory Type Preservation](#factory-type-preservation) — without it the registrar attribute names your static class and the trimmer preserves every method on it, bodies included.
 - **`[FactoryEventHandler<T>]` classes** — handler registrations are guarded, and the handler bodies plus their `[Service]` dependencies are removed. Same holder mechanism, same reason.
-- **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`, making the server-only code path unreachable to the trimmer.
+- **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`. Whether that makes the server-only code path unreachable to the trimmer is **not established** for this shape: the guard sits inside the method, which for `async` operations is not sufficient on its own (see *Async `Local*` emission*), and the leg still names `{ImplName}Factory` in its registrar attribute rather than a single-method holder. No leak has been observed, but the leg reaches its implementation through interfaces, so a client-side trimmed test reads "absent" either way and cannot prove elimination. Treat it as unverified rather than guaranteed.
 
 The key insight: the guards are in RemoteFactory's **generated** code, not in your application code. You don't need to modify your domain model at all.
 
@@ -233,7 +233,7 @@ All factory types — class, static, and interface — are automatically preserv
 
 That last part is why the attribute never names your own class. Preserving every method on a type means preserving what those methods *do*, so if the attribute named your class, your `[Remote]` method bodies would be preserved along with it — the opposite of the guarantee above.
 
-For class and interface factories the generated factory (`{X}Factory`) hosts the registrar, so there is a type to name that is not yours. Static factories and `[FactoryEventHandler<T>]` classes have no separate generated type — the generator re-opens your own partial class to host `FactoryServiceRegistrar` — so for those the generator emits a tiny holder whose only member forwards to it:
+Three of the four shapes emit a tiny holder whose only member forwards to the real registrar, for two different reasons. Static factories and `[FactoryEventHandler<T>]` classes have no separate generated type at all — the generator re-opens your own partial class to host `FactoryServiceRegistrar`, so naming the attribute's target at your class would preserve your bodies. Class factories *do* have a generated `{X}Factory`, but it hosts every `Local*` method, so naming it preserved all of those bodies instead. Interface factories still name `{ImplName}Factory` (see the note below the table). The holder looks like this:
 
 ```csharp
 // generated, alongside your partial class
@@ -263,7 +263,7 @@ private async Task<Person> LocalFetchCore(int id, CancellationToken cancellation
 
 Inside an `async` method the compiler lowers the whole body — guard included — into the state machine's `MoveNext`, within the builder's own protected region. The trimmer folds the feature switch there but does not eliminate the unreachable remainder, so the body survives. A synchronous method puts the guard ahead of any protected region, which is why sync operations always trimmed correctly and `async` ones did not until v1.7.0.
 
-**Behaviour change in v1.7.0:** the guard throws synchronously from the factory entry point rather than surfacing as a faulted `Task`. Awaiting callers are unaffected. Authorization failures, target casts, and DI resolution failures still surface as faulted tasks — only the server-only guard moved.
+**Behaviour change in v1.7.0:** the guard throws synchronously from the wrapper rather than surfacing as a faulted `Task`. Awaiting callers are unaffected. Whether it reaches *your* call site synchronously depends on the entry point — non-async entry points (most reads) propagate it; `async` ones (`Save` on an authorized factory) capture it back into a faulted `Task`. Authorization failures, target casts, and DI resolution failures still surface as faulted tasks in every case — only the server-only guard moved.
 
 At startup, `AddNeatooRemoteFactory()` and `AddNeatooAspNetCore()` discover factory types by enumerating these assembly attributes rather than scanning all types via reflection. This means factory registration is fully trimming-safe — no factory types are lost during IL trimming, regardless of whether they are class factories, static factories, or interface factories.
 

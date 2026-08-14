@@ -1109,7 +1109,6 @@ internal static class ClassFactoryRenderer
 
     private static void RenderSaveLocalMethod(StringBuilder sb, SaveMethodModel method, ClassFactoryModel model)
     {
-        var asyncKeyword = method.IsAsync ? "async" : "";
         var returnType = GetReturnType(method, includeTask: true, includeAuth: true);
         // Local method signature excludes services - they're obtained via ServiceProvider inside
         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);

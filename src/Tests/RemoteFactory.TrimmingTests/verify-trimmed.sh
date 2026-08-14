@@ -124,8 +124,14 @@ fi
 #   [N] new baseline   — the target did not exist before the fix, so there is no pre-fix
 #                        measurement. First trimmed measurement is the baseline.
 #
-# Every marker here appears PRESENT in the UNTRIMMED build, which proves the PROBE can see
-# it. That is necessary but NOT sufficient for the check to be meaningful: `ServerOnlyHelper`
+# Every BODY marker here has been measured PRESENT in the UNTRIMMED build, which proves the
+# PROBE can see it — see reviews/009-evidence/probe-selfcheck-final-all-legs.txt, which covers
+# every leg including class-[Execute]. (The state-machine names in the per-site block at the
+# bottom are the exception by construction: `<LocalX>d__` is ABSENT untrimmed precisely
+# because the site is wrapped, which is the property being asserted. Their untrimmed
+# counterparts are the `<LocalXCore>d__` names, measured PRESENT in the same file.)
+# Untrimmed presence is necessary but NOT sufficient for a check to be meaningful:
+# `ServerOnlyHelper`
 # was untrimmed-PRESENT for months while nothing referenced it, so ILLink dropped it
 # unconditionally and its absence could never have gone red. A marker is only meaningful if
 # something a defect could plausibly affect actually roots it. The `*Backend` implementation
@@ -221,9 +227,15 @@ done
 echo "-- class-level [Execute] leg (TRIM-009)"
 # [N] Class-level [Execute] is a DIFFERENT emission path from static [Execute]
 # (ClassFactoryRenderer.RenderClassExecuteLocalMethod, not StaticFactoryRenderer) and is
-# emitted `async` unconditionally, so it was subject to TRIM-009's state-machine defect in
-# full. It had no harness coverage at all until TRIM-009 — found at plan review, before the
-# plan could close AC6 over an unmeasured shape.
+# emitted `async` unconditionally. It had no harness coverage at all until TRIM-009 — found at
+# plan review, before the plan could close AC6 over an unmeasured shape.
+#
+# [N] is accurate and load-bearing: this target postdates the pre-fix probes, so there is NO
+# measurement of it leaking. Its body was rooted by an unguarded delegate registration and a
+# ctor method-group assignment, and H1 applies to its shape — but that is a reading of the
+# emitted source, not a measurement, and the distinction is exactly what AC6 asks for. What
+# IS measured: all five markers PRESENT in the untrimmed build (so these checks are not
+# vacuous), and absent here.
 for m in IExecLegPort ExecLegInvoke ExecLegBackend ExecLegBackend_MARKER ClassExecBody_MARKER; do
     check_absent "$m" "class [Execute]"
 done
@@ -275,6 +287,31 @@ check_absent "ClassAsyncBody_MARKER" "class factory (async half of controlled pa
 echo "-- save/can* write path"
 for m in ISaveLegPort SaveLegInvoke SaveLegInsertBody_MARKER SaveLegUpdateBody_MARKER SaveLegDeleteBody_MARKER; do
     check_absent "$m" "save/can*"
+done
+
+# ---------------------------------------------------------------------------
+# PER-SITE WRAPPER DISCRIMINATORS — the async state machines themselves.
+#
+# WHY THESE EXIST. Every marker above is a *body* signal, and body signals cannot
+# tell "this method was wrapped" from "an ancestor's fold removed the only reference
+# to it". LocalSaveCore routes to the Insert/Update/Delete WRAPPERS, so if a future
+# edit unwrapped RenderSaveLocalMethod (or the Can*/class-[Execute] site) the markers
+# above could still come back clean while a guarded async body shipped. TRIM-009's own
+# plan named that blind spot before it shipped one; this block closes it.
+#
+# HOW THEY DISCRIMINATE. A wrapped site has NO `<LocalX>d__` — the wrapper is not async,
+# and the state machine is named `<LocalXCore>d__` instead. Unwrap a site and `<LocalX>d__`
+# comes back AND (per H1) its body survives, so the name lands in the trimmed output.
+#
+# [D] for the first five: all were measured PRESENT in the pre-fix trimmed assembly
+# (reviews/009-evidence/probe-h1h2-v1/v2), so these are real discriminators with a
+# baseline, not new-shape guesses. [N] for LocalRunExecCommand — the class-[Execute]
+# target postdates the pre-fix probes; it is measured PRESENT untrimmed instead
+# (probe-selfcheck-final-all-legs.txt).
+# ---------------------------------------------------------------------------
+echo "-- per-site wrapper discriminators (async state machines)"
+for m in '<LocalFetchAsync>d__' '<LocalInsert>d__' '<LocalUpdate>d__' '<LocalDelete>d__' '<LocalSave>d__' '<LocalRunExecCommand>d__'; do
+    check_absent "$m" "guarded async site lost its sync wrapper"
 done
 
 echo
