@@ -40,7 +40,191 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.MyEntityFactory))]", generatedSource);
+
+        // The attribute names the generated single-method HOLDER, never the factory.
+        // Inverted by TRIM-009: this assertion previously expected
+        // `typeof(global::TestNamespace.MyEntityFactory)`. Original intent is preserved —
+        // the attribute is still emitted and still names the correct type — but the
+        // correct type changed, because [DynamicallyAccessedMembers(PublicMethods |
+        // NonPublicMethods)] on the attribute roots EVERY method on whatever it names,
+        // bodies included. {X}Factory hosts every Local*, so naming it kept [Remote]
+        // bodies on publish-trimmed clients. Measured, TRIM-009.
+        Assert.Contains(
+            "[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.NeatooClassFactoryRegistrar_MyEntity))]",
+            generatedSource);
+
+        // The regression assertion whose absence let the static leg ship broken for a year:
+        // assert the attribute does NOT name the factory type.
+        Assert.DoesNotContain(
+            "NeatooFactoryRegistrar(typeof(global::TestNamespace.MyEntityFactory))",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// The class-factory registrar holder is emitted as a top-level type with exactly one
+    /// method, forwarding to the factory's own registrar.
+    /// </summary>
+    /// <remarks>
+    /// Anchored with <see cref="Assert.Matches(string, string)"/> binding the signature to the
+    /// holder's class declaration. A bare Contains on the signature line is satisfied by
+    /// <c>{X}Factory.FactoryServiceRegistrar</c>, which emits a byte-identical line — that is
+    /// exactly how TRIM-008's first version of this test passed while pinning nothing.
+    /// </remarks>
+    [Fact]
+    public void ClassFactory_EmitsRegistrarHolder_ForwardingToFactory()
+    {
+        // The usings match StaticFactorySource: the generated factory references
+        // CancellationToken and IServiceProvider, so without them the compile assertion
+        // below fails on the FIXTURE rather than on the emission.
+        var source = @"
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public partial class MyEntity
+    {
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("MyEntityFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        Assert.Matches(
+            @"internal static class NeatooClassFactoryRegistrar_MyEntity\s*\{\s*internal static void FactoryServiceRegistrar\(IServiceCollection services, NeatooFactory remoteLocal\)",
+            generatedSource);
+
+        Assert.Contains(
+            "global::TestNamespace.MyEntityFactory.FactoryServiceRegistrar(services, remoteLocal);",
+            generatedSource);
+
+        // The class leg gained a new top-level type AND a new method per guarded async local,
+        // and FactoryRenderer swallows render exceptions into a /* Error: */ comment while
+        // NormalizeWhitespace parses with error recovery — malformed emission yields mangled
+        // output, not a throw. The static and relay legs already assert this; the class leg
+        // did not until TRIM-009's code review (C2).
+        Assert.Empty(outputCompilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error));
+    }
+
+    /// <summary>
+    /// A guarded <c>async</c> <c>Local*</c> method is emitted as a NON-async wrapper carrying
+    /// the feature-switch guard, forwarding to a private async core.
+    /// </summary>
+    /// <remarks>
+    /// The guard must not sit inside the async state machine. When it does, the compiler
+    /// lowers it into <c>MoveNext</c> inside the builder's protected region, ILLink folds the
+    /// switch but does not eliminate the unreachable remainder, and the <c>[Remote]</c> body
+    /// ships to trimmed clients. Measured, TRIM-009 — stripping the async lifecycle probes
+    /// and the OperationCanceledException arm did not fix it, and adding them to a sync
+    /// method did not break it.
+    /// </remarks>
+    [Fact]
+    public void ClassFactory_GuardedAsyncLocalMethod_SplitsIntoSyncWrapperAndAsyncCore()
+    {
+        var source = @"
+using System.Threading.Tasks;
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public partial class MyEntity
+    {
+        [Remote]
+        [Fetch]
+        internal async Task FetchIt(string name) { await Task.CompletedTask; }
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("MyEntityFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        // Wrapper: NOT async, carries the guard, forwards to the core.
+        Assert.Matches(
+            @"public Task<MyEntity> LocalFetchIt\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
+            generatedSource);
+        Assert.Contains("return LocalFetchItCore(name, cancellationToken);", generatedSource);
+
+        // Core: async, private, and carries NO guard — the guard already ran in the wrapper.
+        Assert.Contains("private async Task<MyEntity> LocalFetchItCore(", generatedSource);
+        Assert.Matches(
+            @"private async Task<MyEntity> LocalFetchItCore\([^)]*\)\s*\{\s*(?!\s*if \(!NeatooRuntime\.IsServerRuntime\))",
+            generatedSource);
+    }
+
+    // NO UNIT TEST FOR THE ASYNC GUARDED Can* SITE, AND THIS IS WHY.
+    //
+    // `RenderCanLocalMethod` is the fifth wrapper site and the only one with no emission
+    // assertion here — raised at TRIM-009's test review. An attempt to add one was removed
+    // rather than kept, because it did not test what it claimed: an `[AuthorizeFactory<T>]`
+    // whose method returns `Task<bool>` produces a Can* that is async but NOT server-only,
+    // so no guard is emitted and no split occurs. The assertion passed or failed for reasons
+    // unrelated to the wrapper.
+    //
+    // The shape that DOES produce a guarded async Can* is `[AspAuthorize]` policy auth, whose
+    // generated check is async by nature. That needs ASP.NET Core references, which
+    // `DiagnosticTestHelper.BuildReferences()` does not carry.
+    //
+    // The site is not unexercised: `Design.Domain.Aggregates.SecureOrder` and
+    // `RemoteFactory.AspNetCore.TestLibrary` both emit `LocalCan*Core` wrappers, both compile,
+    // and both are covered by passing suites (Design 86+86). What is missing is a dedicated
+    // emission assertion, which needs an ASP-auth fixture in this harness.
+
+    /// <summary>
+    /// A SYNCHRONOUS guarded <c>Local*</c> method keeps the guard inline and is not split.
+    /// </summary>
+    /// <remarks>
+    /// The sync shape already trims correctly — unreachability begins before any protected
+    /// region, so the whole remainder goes. Splitting it would be churn. This test is the
+    /// control that keeps the wrapper narrowly scoped to the shape that needed it.
+    /// </remarks>
+    [Fact]
+    public void ClassFactory_GuardedSyncLocalMethod_IsNotSplit()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public partial class MyEntity
+    {
+        [Remote]
+        [Create]
+        internal void Create(string name) { }
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("MyEntityFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+        Assert.DoesNotContain("LocalCreateCore", generatedSource);
+        Assert.Matches(
+            @"public Task<MyEntity> LocalCreate\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
+            generatedSource);
     }
 
     /// <summary>

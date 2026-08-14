@@ -1,0 +1,58 @@
+=== V3 — sync wrapper carries guard, async body in private Core ===
+dll:  bin/Release/net9.0/win-x64/publish/RemoteFactory.TrimmingTests.dll
+size: 67584 bytes
+
+-- POSITIVE CONTROLS (must all be PRESENT, else the probe read nothing)
+   TrimTestCommands                   PRESENT (utf8)
+   NeatooFactoryRegistrar_TrimTestCommands PRESENT (utf8)
+   ITrimSaveTargetFactory             PRESENT (utf8)
+   TrimTestEntityFactory              PRESENT (utf8)
+   Trimming verification app completed PRESENT (utf16)
+
+-- THE CONTROLLED PAIR (class factory, same type, same rooting)
+   ClassSyncBody_MARKER               absent
+   ClassAsyncBody_MARKER              PRESENT (utf16)
+   IClassLegPort                      PRESENT (utf8)
+   ClassLegInvoke                     PRESENT (utf8)
+
+-- SAVE/CAN* LEG (async write, two-hop rooting)
+   ISaveLegPort                       PRESENT (utf8)
+   SaveLegInvoke                      PRESENT (utf8)
+   SaveLegInsertBody_MARKER           PRESENT (utf16)
+   SaveLegUpdateBody_MARKER           PRESENT (utf16)
+   SaveLegDeleteBody_MARKER           PRESENT (utf16)
+
+-- SYNC-LEG CONTROLS (must stay absent)
+   IServerOnlyRepository              absent
+   DoServerWork                       absent
+   ServerOnlyRepository_MARKER        absent
+   ServerOnlyHelper                   absent
+
+-- STATE MACHINES SURVIVING
+   <LocalFetchAsync>d__               absent
+   <LocalInsert>d__                   PRESENT (utf8)
+   <LocalUpdate>d__                   PRESENT (utf8)
+   <LocalDelete>d__                   PRESENT (utf8)
+   <LocalSave>d__                     PRESENT (utf8)
+   <LocalCreate>d__                   absent
+
+-- ADDENDUM 2026-08-14, added at plan review (finding B2)
+-- The probe script above searched '<LocalFetchAsync>d__', which CANNOT match
+-- '<LocalFetchAsyncCore>d__' (the '>' falls after "Async", not after "AsyncCore").
+-- The Core state machine was measured separately in the same run but was not
+-- captured in this file. Re-measured against the same on-disk V3 artifact:
+   <LocalFetchAsyncCore>d__           PRESENT (utf8)
+   LocalFetchAsyncCore                PRESENT (utf8)
+   <LocalFetchAsync>d__               absent
+--
+-- READ THE THIRD ROW CORRECTLY. '<LocalFetchAsync>d__' is absent from V3 because
+-- the V3 knob emits LocalFetchAsync as a NON-async wrapper, so the compiler never
+-- creates a state machine by that name. Its absence is a compile-time consequence
+-- of the rename, not a trimming result, and it is NOT evidence that the fold works
+-- in the wrapper. This row could not have gone red.
+--
+-- V3 therefore cannot attribute the Core's survival: BOTH candidate roots were live
+-- in V3 -- DAM on the factory type, and the wrapper's own `return LocalFetchAsyncCore(...)`
+-- call site. "DAM roots the core" and "the wrapper's call survived the fold" predict
+-- the same observation here, and imply different remedies. Only TRIM-009 Step 1
+-- separates them.

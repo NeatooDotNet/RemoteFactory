@@ -126,3 +126,26 @@ public sealed class AsyncLegBackend : IAsyncLegPort
 {
     public Task<string> AsyncLegInvoke(string input) => Task.FromResult("AsyncLegBackend_MARKER: " + input);
 }
+
+/// <summary>
+/// Server-only dependency of the class-level <c>[Execute]</c> leg.
+/// </summary>
+/// <remarks>
+/// Distinct from <see cref="IClassLegPort"/> because class-level <c>[Execute]</c> is a
+/// separate emission path (<c>RenderClassExecuteLocalMethod</c>), emitted <c>async</c>
+/// UNCONDITIONALLY. TRIM-009's plan review found it had no harness coverage at all while
+/// being a Design source-of-truth pattern, so AC6's "proven, not inferred" could not be
+/// satisfied for it. This port is how it gets measured.
+/// </remarks>
+public interface IExecLegPort
+{
+    Task<string> ExecLegInvoke(string input);
+}
+
+/// <summary>
+/// Server-side implementation of <see cref="IExecLegPort"/>.
+/// </summary>
+public sealed class ExecLegBackend : IExecLegPort
+{
+    public Task<string> ExecLegInvoke(string input) => Task.FromResult("ExecLegBackend_MARKER: " + input);
+}

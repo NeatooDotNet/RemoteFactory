@@ -1,0 +1,37 @@
+=== V2 — sync WITH second catch arm + IFactoryOnCancelled probe ===
+dll:  bin/Release/net9.0/win-x64/publish/RemoteFactory.TrimmingTests.dll
+size: 66560 bytes
+
+-- POSITIVE CONTROLS (must all be PRESENT, else the probe read nothing)
+   TrimTestCommands                   PRESENT (utf8)
+   NeatooFactoryRegistrar_TrimTestCommands PRESENT (utf8)
+   ITrimSaveTargetFactory             PRESENT (utf8)
+   TrimTestEntityFactory              PRESENT (utf8)
+   Trimming verification app completed PRESENT (utf16)
+
+-- THE CONTROLLED PAIR (class factory, same type, same rooting)
+   ClassSyncBody_MARKER               absent
+   ClassAsyncBody_MARKER              PRESENT (utf16)
+   IClassLegPort                      PRESENT (utf8)
+   ClassLegInvoke                     PRESENT (utf8)
+
+-- SAVE/CAN* LEG (async write, two-hop rooting)
+   ISaveLegPort                       PRESENT (utf8)
+   SaveLegInvoke                      PRESENT (utf8)
+   SaveLegInsertBody_MARKER           PRESENT (utf16)
+   SaveLegUpdateBody_MARKER           PRESENT (utf16)
+   SaveLegDeleteBody_MARKER           PRESENT (utf16)
+
+-- SYNC-LEG CONTROLS (must stay absent)
+   IServerOnlyRepository              absent
+   DoServerWork                       absent
+   ServerOnlyRepository_MARKER        absent
+   ServerOnlyHelper                   absent
+
+-- STATE MACHINES SURVIVING
+   <LocalFetchAsync>d__               PRESENT (utf8)
+   <LocalInsert>d__                   PRESENT (utf8)
+   <LocalUpdate>d__                   PRESENT (utf8)
+   <LocalDelete>d__                   PRESENT (utf8)
+   <LocalSave>d__                     PRESENT (utf8)
+   <LocalCreate>d__                   absent
