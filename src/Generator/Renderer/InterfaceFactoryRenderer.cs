@@ -257,7 +257,25 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
 
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire body
+        // Feature switch guard -- when IsServerRuntime=false the switch folds to a constant and
+        // the body becomes unreachable.
+        //
+        // DO NOT READ THAT AS "the body is removed". For SYNC methods it is: unreachability
+        // begins before any protected region, so the whole remainder goes. For ASYNC methods it
+        // is NOT sufficient on its own -- the compiler lowers the guard into the state machine's
+        // MoveNext, inside the builder's protected region, where ILLink folds the switch but does
+        // not eliminate the remainder. That was measured, not reasoned (TRIM-009): the class
+        // factory needed a NON-async wrapper carrying the guard PLUS a single-method registrar
+        // holder, because [DynamicallyAccessedMembers] covers NonPublicMethods and roots the
+        // private core on its own.
+        //
+        // THIS LEG HAS RECEIVED NEITHER FIX. It still emits the guard inline (no wrapper split)
+        // and line 48 still points the assembly attribute at {ImplName}Factory, which hosts every
+        // Local* method. No leak has been observed here, but the leg reaches its implementation
+        // through interfaces, so a client-side trimmed harness reads "absent" either way and
+        // cannot prove elimination -- and Deferred Work item 19 blocks the fixture change that
+        // would give it a reachable marker. Treat body elimination on this leg as UNVERIFIED.
+        // Tracked as Deferred Work item 20 on the TRIM todo.
         sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
         sb.AppendLine();
