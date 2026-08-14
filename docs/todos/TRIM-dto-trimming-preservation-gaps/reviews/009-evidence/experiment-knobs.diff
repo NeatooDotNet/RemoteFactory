@@ -1,0 +1,140 @@
+diff --git a/src/Generator/Renderer/ClassFactoryRenderer.cs b/src/Generator/Renderer/ClassFactoryRenderer.cs
+index cfea275..e90213f 100644
+--- a/src/Generator/Renderer/ClassFactoryRenderer.cs
++++ b/src/Generator/Renderer/ClassFactoryRenderer.cs
+@@ -17,6 +17,19 @@ namespace Neatoo.RemoteFactory.Generator.Renderer;
+ /// </summary>
+ internal static class ClassFactoryRenderer
+ {
++    // ---------------------------------------------------------------------
++    // TRIM-009 SEPARATION EXPERIMENT — TEMPORARY. Revert before any commit.
++    // Separates H1 (the feature-switch fold does not propagate through the
++    // async state machine) from H2 (the fold works; unreachable-code
++    // elimination is defeated by the second catch arm and/or the awaiting
++    // lifecycle probes). See plans/009.
++    //   V1: SuppressAsyncProbes = true,  ForceSecondCatchArm = false
++    //   V2: SuppressAsyncProbes = false, ForceSecondCatchArm = true
++    // ---------------------------------------------------------------------
++    private const bool ExpSuppressAsyncProbes = false;
++    private const bool ExpForceSecondCatchArm = false;
++    private const bool ExpSyncWrapperForAsync = true;
++
+     /// <summary>
+     /// Renders the complete factory source code for a class/record.
+     /// </summary>
+@@ -318,16 +331,39 @@ internal static class ClassFactoryRenderer
+         // Local method signature excludes services - they're obtained via ServiceProvider inside
+         var parameters = GetParameterDeclarationsWithOptionalCancellationToken(method.Parameters, includeServices: false);
+ 
+-        sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
+-        sb.AppendLine("        {");
++        var isServerOnly = method.IsInternal || method.IsRemote;
+ 
+-        // Feature switch guard -- only emit for internal or [Remote] methods.
+-        // Public non-[Remote] methods run on both client and server.
+-        if (method.IsInternal || method.IsRemote)
++        if (ExpSyncWrapperForAsync && needsAsync && isServerOnly)
+         {
++            // V3: the guard lives in a NON-async wrapper; the async body moves to a private core.
++            var forwardArgs = string.Join(", ", method.Parameters
++                .Where(p => !p.IsService && !p.IsCancellationToken)
++                .Select(p => p.Name)
++                .Concat(new[] { "cancellationToken" }));
++
++            sb.AppendLine($"        public {returnType} Local{method.UniqueName}({parameters})");
++            sb.AppendLine("        {");
+             sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
+             sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
++            sb.AppendLine($"            return Local{method.UniqueName}Core({forwardArgs});");
++            sb.AppendLine("        }");
+             sb.AppendLine();
++            sb.AppendLine($"        private async {returnType} Local{method.UniqueName}Core({parameters})");
++            sb.AppendLine("        {");
++        }
++        else
++        {
++            sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
++            sb.AppendLine("        {");
++
++            // Feature switch guard -- only emit for internal or [Remote] methods.
++            // Public non-[Remote] methods run on both client and server.
++            if (isServerOnly)
++            {
++                sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
++                sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
++                sb.AppendLine();
++            }
+         }
+ 
+         // Authorization checks (inside guard -- auth types are server-only)
+@@ -518,9 +554,9 @@ internal static class ClassFactoryRenderer
+         sb.AppendLine("            }");
+ 
+         // For write-style async methods: catch OperationCanceledException
+-        if (isWriteStyleLifecycle && method.IsDomainMethodTask)
++        if (isWriteStyleLifecycle && ((method.IsDomainMethodTask && !ExpSuppressAsyncProbes) || ExpForceSecondCatchArm))
+         {
+-            RenderWriteLifecycleOnCancelled(sb, method, model, resultVar);
++            RenderWriteLifecycleOnCancelled(sb, method, model, resultVar, method.IsDomainMethodTask);
+         }
+ 
+         // Catch general exceptions
+@@ -641,7 +677,7 @@ internal static class ClassFactoryRenderer
+         sb.AppendLine("                }");
+ 
+         // Async start hook only for async domain methods
+-        if (isDomainMethodTask)
++        if (isDomainMethodTask && !ExpSuppressAsyncProbes)
+         {
+             sb.AppendLine($"                if ({targetVar} is IFactoryOnStartAsync _factoryOnStartAsync)");
+             sb.AppendLine("                {");
+@@ -663,7 +699,7 @@ internal static class ClassFactoryRenderer
+         sb.AppendLine("                }");
+ 
+         // Async complete hook only for async domain methods
+-        if (isDomainMethodTask)
++        if (isDomainMethodTask && !ExpSuppressAsyncProbes)
+         {
+             sb.AppendLine($"                if ({targetVar} is IFactoryOnCompleteAsync _factoryOnCompleteAsync)");
+             sb.AppendLine("                {");
+@@ -675,7 +711,7 @@ internal static class ClassFactoryRenderer
+     /// <summary>
+     /// Renders OperationCanceledException catch block with IFactoryOnCancelled hooks (async Write lifecycle only).
+     /// </summary>
+-    private static void RenderWriteLifecycleOnCancelled(StringBuilder sb, FactoryMethodModel method, ClassFactoryModel model, string targetVar)
++    private static void RenderWriteLifecycleOnCancelled(StringBuilder sb, FactoryMethodModel method, ClassFactoryModel model, string targetVar, bool isDomainMethodTask)
+     {
+         sb.AppendLine("            catch (OperationCanceledException)");
+         sb.AppendLine("            {");
+@@ -686,10 +722,15 @@ internal static class ClassFactoryRenderer
+         EmitLogInvokingOnCancelled(sb, "                    ", model.ServiceTypeName);
+         sb.AppendLine($"                    _factoryOnCancelled.FactoryCancelled(FactoryOperation.{method.Operation});");
+         sb.AppendLine("                }");
+-        sb.AppendLine($"                if ({targetVar} is IFactoryOnCancelledAsync _factoryOnCancelledAsync)");
+-        sb.AppendLine("                {");
+-        sb.AppendLine($"                    await _factoryOnCancelledAsync.FactoryCancelledAsync(FactoryOperation.{method.Operation});");
+-        sb.AppendLine("                }");
++        // The awaiting probe cannot be emitted into a sync method body.
++        if (isDomainMethodTask && !ExpSuppressAsyncProbes)
++        {
++            sb.AppendLine($"                if ({targetVar} is IFactoryOnCancelledAsync _factoryOnCancelledAsync)");
++            sb.AppendLine("                {");
++            sb.AppendLine($"                    await _factoryOnCancelledAsync.FactoryCancelledAsync(FactoryOperation.{method.Operation});");
++            sb.AppendLine("                }");
++        }
++
+         sb.AppendLine("                throw;");
+         sb.AppendLine("            }");
+     }
+@@ -941,9 +982,9 @@ internal static class ClassFactoryRenderer
+         sb.AppendLine("            }");
+ 
+         // For async Write methods: catch OperationCanceledException
+-        if (method.IsDomainMethodTask)
++        if ((method.IsDomainMethodTask && !ExpSuppressAsyncProbes) || ExpForceSecondCatchArm)
+         {
+-            RenderWriteLifecycleOnCancelled(sb, method, model, "cTarget");
++            RenderWriteLifecycleOnCancelled(sb, method, model, "cTarget", method.IsDomainMethodTask);
+         }
+ 
+         // Catch general exceptions

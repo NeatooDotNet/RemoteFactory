@@ -3,12 +3,12 @@
 **Plan #:** 009
 **Date:** 2026-08-13
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Stub
-**Last Updated:** 2026-08-13
+**Status:** Drafted — awaiting plan review
+**Last Updated:** 2026-08-14
 **Plan-review opt-in:** Yes (same grounds as TRIM-008 — a false IP-protection guarantee, and the remedy is unknown at stub time)
 **Code-review opt-in:** Yes (behavior-changing generator work, if the remedy turns out to be generator-side)
 
-> **Stub.** Scope and the measured evidence only. Steps, Acceptance, Current State, and Test Evidence flesh out at this plan's turn, per the iterative-todo workflow. Nothing below prescribes a remedy — the cause is measured, the fix is not yet designed.
+> **Promoted from Stub 2026-08-14.** The stub's declared first step — separate H1 from H2 — has been **run and answered** before any design work, and it also **falsified the remedy the stub predicted**. See [Separation experiment](#the-separation-experiment-2026-08-14) and [Approach](#approach). Everything above that section is the stub's original text, preserved.
 
 ---
 
@@ -135,3 +135,118 @@ Corroboration from the same run: `IClassLegPort` and `ClassLegInvoke` flipped to
 - Do the async lifecycle type-tests (`IFactoryOnStartAsync` / `IFactoryOnCompleteAsync` / `IFactoryOnCancelled` / `IFactoryOnCancelledAsync`) keep their branches alive? `TrimTestEntity` implements none of them and `target` is statically typed, so not emitting probes for interfaces the concrete type provably cannot implement is both a candidate fix and a worthwhile emission improvement regardless of the outcome.
 - Does `LocalSave`'s routing keep `LocalInsert`/`LocalUpdate`/`LocalDelete` rooted even if their own registrations were guarded?
 - CI gate: which of the new Save/Can\* markers can be asserted absent once this lands, and what is the durable positive control for them.
+
+---
+
+## The separation experiment (2026-08-14)
+
+The stub's declared first step, run before any design work. Evidence: [`../reviews/009-evidence/`](../reviews/009-evidence/).
+
+**Apparatus.** Two compile-time knobs in `ClassFactoryRenderer`, plus a third for the remedy probe. Before any variant was run, both knobs were built at their default (`false`) and the whole generated tree diffed against the pre-edit tree — **identical**, so the apparatus is inert and any later difference is attributable to the knob rather than to the refactor that carried it. The knobs were reverted afterwards and the emission re-diffed back to HEAD: **identical again**. Archived as `experiment-knobs.diff`.
+
+| | Shape emitted | `ClassSyncBody_MARKER` | `ClassAsyncBody_MARKER` | State machines |
+|---|---|---|---|---|
+| HEAD | as shipped | absent | **PRESENT** | `<LocalFetchAsync>d__` present |
+| **V1** | async, **minus** all four awaiting probes **and** the OCE catch arm | absent | **PRESENT** | `<LocalFetchAsync>d__` present |
+| **V2** | sync, **plus** an OCE catch arm **and** the `IFactoryOnCancelled` probe | **absent** | PRESENT (untouched) | `<LocalCreate>d__` absent |
+| **V3** | guard in a sync wrapper; async body in a `private` core | absent | **PRESENT** | `<LocalFetchAsync>d__` **absent**, `<LocalFetchAsyncCore>d__` **present** |
+
+All five positive controls passed on every run, so each "absent" is a real absence rather than an unread artifact.
+
+### H1 confirmed; H2 falsified in both directions
+
+- **V1 — subtractive.** Strip every construct H2 blames and the async body *still* leaks. H2's constructs are **not necessary** for the leak.
+- **V2 — additive.** Graft those same constructs onto the sync body and it *still* trims clean. H2's constructs are **not sufficient** to cause one.
+
+**H1 is the mechanism: the fold does not propagate out of the async state machine.** This also falsifies the TRIM-004 story — *"early-throw guard plus try/catch defeats unreachable-code elimination"* — for the **third** time in this arc, and for the first time by a direct additive test rather than by an argument.
+
+**Best-supported mechanism, offered as inference and not as measurement.** In an async method the *entire* user body — guard included — is lowered into `MoveNext` and wrapped in the compiler's own try/catch that funnels exceptions onto the builder. The fold therefore lands *inside* a protected region, and the unreachable remainder is not removed. In the sync method the guard sits *before* the user's `try`, so unreachability begins outside any protected region and the whole remainder, `try` block and all, is eliminated. This is consistent with all four rows; what is *measured* is the behaviour in the table, and any remedy must be re-verified against a published artifact rather than against this paragraph.
+
+### V3 falsifies the remedy the stub predicted
+
+The stub proposed "move the guard out of the async method entirely (a sync wrapper testing `IsServerRuntime` before calling the async body)". **Half of that prediction held and half failed, and the failing half would have shipped looking correct:**
+
+- **Held:** `<LocalFetchAsync>d__` is *gone* in V3. With the guard outside the state machine, the fold does its job.
+- **Failed:** `ClassAsyncBody_MARKER`, `IClassLegPort`, and `ClassLegInvoke` are **still present**, because `<LocalFetchAsyncCore>d__` survives. `DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)` covers **NonPublic**, so relocating the body into a `private` member of the same factory does not escape the DAM root.
+
+A guard-relocation-only fix would have produced a smaller assembly, deleted one state machine, and left the IP on the client.
+
+---
+
+## Root inventory (read out of the emitted source, not inferred)
+
+Two roots reach `LocalFetchAsync`:
+
+1. **DAM** — `[assembly: NeatooFactoryRegistrar(typeof(global::RemoteFactory.TrimmingTests.TrimTestEntityFactory))]`. The attribute names the factory itself, so `PublicMethods | NonPublicMethods` roots every `Local*` **and** any private core beside them.
+2. **The delegate registration closure** — `services.AddScoped<FetchAsyncDelegate>(cc => { var factory = …; return (…) => factory.LocalFetchAsync(…); })`, emitted with **no** `IsServerRuntime` guard, unlike the static and relay legs.
+
+**Not a root:** `ITrimTestEntityFactory` declares only `Create` and `FetchAsync` — the public entry points — never `Local*`. Verified in the emitted interface.
+
+**The sync `LocalCreate` carries both of those same roots and still trims clean.** So this was never a rooting problem in the sync case, and "de-root it" is not a description of the defect — it is one of two things the fix has to do, because rooting only becomes fatal once elimination stops working.
+
+---
+
+## Approach
+
+**Two changes, each already measured in isolation, never yet measured together.**
+
+1. **Sync wrapper for guarded async `Local*`** — the guard moves to a non-async wrapper; the async body moves to a private core. V3 proved this alone puts the fold back outside the protected region.
+2. **Holder indirection for class factories** — the assembly attribute names a generated single-method holder rather than `{X}Factory`, exactly as [TRIM-008](./008-registrar-dam-over-preservation.md) already did for the static and relay legs. This removes the DAM root that V3 proved is independently retaining the core.
+
+**The prediction that makes this small:** with the wrapper in place, the *closure* root dies too without being touched. The closure calls the **wrapper**; the wrapper's `return LocalXCore(…)` sits after the guard, so the fold removes it and the core loses its last reference. If that holds, **the delegate registrations need no guarding**, and root #2 above requires no code change.
+
+**This is a prediction, and the arc's rule applies to it.** Each half is measured; the combination is not. Step 1 is to measure the combination against a published artifact before anything else is built on it — the same discipline that just caught the stub's own predicted remedy.
+
+**Why holder indirection does not break prebuilt consumers.** It changes *which type the attribute names*, not the breadth of the DAM. A library compiled by an older generator keeps naming its factory and keeps exactly today's behaviour — no registration is lost and no diagnostic is needed. This is the compatibility argument TRIM-008 made and shipped; TRIM-009 reuses it rather than re-deriving it.
+
+**Rejected, with reason:** narrowing the DAM on `NeatooFactoryRegistrarAttribute` to `PublicMethods`. Rejected at TRIM-008's plan review and still rejected — a prebuilt library whose registrar is `internal static` would silently stop registering on a trimmed client, with no diagnostic. TRIM-009 changes nothing about `FactoryAttributes.cs`.
+
+---
+
+## Steps
+
+1. **Measure the combination (V4) before building on it.** Wrapper + holder together, published trimmed, probed. Expected: `ClassAsyncBody_MARKER`, `IClassLegPort`, `ClassLegInvoke`, and all three `SaveLeg*Body_MARKER` absent; positive controls unchanged. **If the closure root survives the wrapper, stop and re-design** — do not proceed on the assumption it will work.
+2. Emit the sync wrapper / private core split for guarded async `Local*` methods across **all three** emission sites in `ClassFactoryRenderer` — the read path and both write paths. The experiment only wired the read path; the Save/Can\* leg is reached by the other two.
+3. Emit the registrar holder for the class-factory leg and retarget its assembly attribute, reusing TRIM-008's proven shape and a leg-distinct prefix.
+4. Pin both in generator unit tests, including the regression assertion that the attribute **does not** name the factory type — the check whose absence let the static leg ship broken. Prove each new assertion RED before green.
+5. Flip the CI gate: the eight markers TRIM-008 deliberately asserted **PRESENT** as a TRIM-009 tripwire become absence assertions, each with a durable positive control.
+6. Retire the load-bearing asymmetry note in `TrimTestEntity.cs`. Its stated reason — that giving the async half `IServerOnlyRepository` would surface that name and redden the static-factory markers for a misleading reason — **expires when this lands**, and a stale do-not-touch comment is its own hazard.
+7. Work the nine **TRIM-009-dependent doc anchors** enumerated in [`../reviews/008-doc-anchor-inventory.md`](../reviews/008-doc-anchor-inventory.md), including the forward-looking skill table row TRIM-008 wrote on the promise this plan would land.
+8. Reconcile the container: close deferred item 18, update AC6, record what the experiment retired.
+
+## Acceptance
+
+- **AC6's third shape closes:** on a publish-trimmed client, an `async [Remote] internal` class-factory operation leaves behind no `[Service]` interface name, no called-member name, and no body literal — measured, both read (`Fetch`) and write (`Insert`/`Update`/`Delete`).
+- The sync leg does not regress: `ClassSyncBody_MARKER`, `IServerOnlyRepository`, `DoServerWork`, `ServerOnlyRepository_MARKER`, `ServerOnlyHelper` stay absent.
+- Positive controls still pass, so the absences remain falsifiable.
+- Full suite green on net9.0 + net10.0, both solutions, plus the harness exiting 0.
+- The nine dependent doc anchors are true of shipped behaviour.
+
+## Verification
+
+- **Red before green**, per this arc's standing rule and TRIM-006's two never-failing checks. Every flipped gate assertion must be observed failing against the pre-fix artifact — which for this plan is cheap, because HEAD *is* the pre-fix artifact and the probes are already archived.
+- **Baseline inherited, not re-derived.** The 2026-08-13 measurement plus the three variants above are the baseline; markers were proven visible by a self-check against the untrimmed assembly.
+- **Publish-only.** `dotnet build` / `run` / `test` prove nothing here; `dotnet test` never runs this project.
+- **Generated-output drift needs a real diff** — `**/Generated/` is gitignored, so "nothing else changed" must be measured, not asserted. The inert-knob diff above is the pattern to reuse.
+- **Zero incremental-cache delta.** No model, builder, or transform change is contemplated; `IncrementalCacheTests` should be untouched, and that claim is checkable with `git diff --name-only -- src/Generator/`.
+
+## Files
+
+**Generator:** `ClassFactoryRenderer.cs` — three `Local*` emission sites (lines ~334, ~832, ~1335 at HEAD) plus new holder emission. Deliberately **not** touched: `FactoryAttributes.cs`, any model, builder, or transform.
+
+**Tests:** `AssemblyAttributeEmissionTests.cs` (class-factory region, new), `verify-trimmed.sh` (eight assertions flip), `TrimTestEntity.cs` (asymmetry note retires).
+
+**Docs:** the nine anchors in the TRIM-009-dependent table of `008-doc-anchor-inventory.md`.
+
+## Risks
+
+- **The wrapper changes the emitted factory's method shape.** `public async Task<T> LocalX(…)` becomes `public Task<T> LocalX(…)` plus a private core. The *signature* is unchanged, so no public API break — but exception timing moves: an exception that used to surface as a faulted `Task` now throws synchronously from the wrapper. The guard already threw synchronously in the sync case, so this aligns the two; it is still a behaviour change and belongs in the release notes.
+- **Three emission sites, one experiment.** Only the read path was exercised. The write paths differ (`cTarget`, different lifecycle helpers) and are where the Save/Can\* leg lives.
+- **`NormalizeWhitespace` has no error signal** — malformed emission yields mangled output, not an exception. Assert on exact fragments.
+- **Two legs already carry holders with distinct prefixes**; a third must not collide with `NeatooFactoryRegistrar_` or `NeatooEventHandlerRegistrar_`, and a class carrying several factory attributes must not gain a CS0101 on top of its existing CS0111 (deferred item 15).
+
+## Out of scope
+
+- Deferred items 5, 9, 14, 15, 19 — each needs its own plan.
+- Replacing the reflective registrar lookup with `[ModuleInitializer]` registration, which would delete this defect class entirely. Rejected here for load-order hazards; worth its own plan.
+- The v1.7.0 release itself — TRIM-009 unblocks it; cutting it is the arc's close-out step.
