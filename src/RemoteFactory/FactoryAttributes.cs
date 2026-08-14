@@ -190,8 +190,9 @@ public sealed class FactoryHintNameLengthAttribute : Attribute
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>CONTRACT: the <see cref="Type"/> must be a GENERATED registrar type. Never a consumer's
-/// own class.</b>
+/// <b>CONTRACT: the <see cref="Type"/> must be a GENERATED single-method registrar holder.
+/// Never a consumer's own class — and "generated" alone is not enough.</b>
+/// (One leg does not yet satisfy this: see the interface-factory exception below.)
 /// </para>
 /// <para>
 /// The <c>[DynamicallyAccessedMembers]</c> annotation below preserves <b>every method on the

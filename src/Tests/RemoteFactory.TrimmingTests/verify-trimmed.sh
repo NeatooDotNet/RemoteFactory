@@ -249,7 +249,10 @@ done
 # THE CONTROLLED PAIR — sync vs async inside ONE class factory.
 #
 # ClassSyncBody_MARKER  lives in TrimTestEntity.Create      (sync)  -> expected ABSENT
-# ClassAsyncBody_MARKER lives in TrimTestEntity.FetchAsync  (async) -> expected PRESENT
+# ClassAsyncBody_MARKER lives in TrimTestEntity.FetchAsync  (async) -> expected ABSENT since TRIM-009
+#
+# (The async half was expected PRESENT while it was the open defect. Both are absent now --
+#  see the RESOLVED paragraph below. A red on either is a real regression, not an expectation.)
 #
 # Same class, same generated factory, same registrar, neither carrying [AuthorizeFactory<T>],
 # both one-hop rooted by their own delegate registration, both reached by a direct call on the
