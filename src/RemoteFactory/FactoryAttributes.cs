@@ -86,6 +86,28 @@ public sealed class DeleteAttribute : FactoryOperationAttribute
 	public DeleteAttribute() : base(FactoryOperation.Delete) { }
 }
 
+/// <summary>
+/// Marks a static method on a <c>[Factory]</c> static class as a request-response command.
+/// The generator emits a delegate type and its DI registration.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Trimming:</b> mark the method <c>private static</c> (the convention used throughout
+/// the Design projects) and the generated local registration is guarded by
+/// <c>NeatooRuntime.IsServerRuntime</c>, so on a client published with the feature switch
+/// set to <c>false</c> the method body, its <c>[Service]</c> dependencies, and their
+/// transitive references are removed from the output.
+/// </para>
+/// <para>
+/// <b><c>[Remote]</c> is decorative on <c>[Execute]</c> methods.</b> Static factories are
+/// exempt from the NF0105 <c>[Remote] public</c> check, and the renderer emits both a remote
+/// and a local registration for every delegate regardless of whether <c>[Remote]</c> is
+/// present — only the local one is feature-switch guarded. Trimming of the body therefore
+/// depends on the guard, not on <c>[Remote]</c>. This differs from class factories, where
+/// <c>[Remote] internal</c> is what drives the guard, and several documentation pages
+/// present <c>[Remote]</c> as the trimming-enabling marker generally.
+/// </para>
+/// </remarks>
 public sealed class ExecuteAttribute : FactoryOperationAttribute
 {
 	public ExecuteAttribute() : base(FactoryOperation.Execute) { }
@@ -105,6 +127,21 @@ public sealed class ExecuteAttribute : FactoryOperationAttribute
 /// former client-side relay pattern, now replaced by <see cref="IFactoryEventRelay"/>.
 /// Client-side event consumers implement <see cref="IFactoryEventRelay"/> to bridge
 /// relayed events to their own event aggregator.
+/// </para>
+/// <para>
+/// <b>Trimming:</b> every generated handler registration is wrapped in
+/// <c>NeatooRuntime.IsServerRuntime</c>, so on a client published with the feature switch
+/// set to <c>false</c> the handler bodies and their <c>[Service]</c> dependencies are
+/// removed from the output. This works because the generator points the assembly's
+/// <see cref="NeatooFactoryRegistrarAttribute"/> at a generated forwarding holder rather
+/// than at the handler class itself — the attribute preserves every method on whatever it
+/// names, bodies included, so naming the handler class would ship the handler bodies to the
+/// browser. Fixed in v1.7.0; before that, it did.
+/// </para>
+/// <para>
+/// One consequence for consumers: because the registrations are server-guarded, there is
+/// nothing on a trimmed client to resolve, and handler registration cannot be verified from
+/// a client-side test. Coverage for it lives in server-side/untrimmed tests.
 /// </para>
 /// </summary>
 /// <typeparam name="T">The event type (must inherit from <see cref="FactoryEventBase"/>).</typeparam>
@@ -151,9 +188,58 @@ public sealed class FactoryHintNameLengthAttribute : Attribute
 /// <see cref="RegisterFactories"/> enumerates these to discover FactoryServiceRegistrar methods
 /// in a trimming-safe way (replaces the trim-unsafe assembly.GetTypes() scan).
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>CONTRACT: the <see cref="Type"/> must be a GENERATED registrar type. Never a consumer's
+/// own class.</b>
+/// </para>
+/// <para>
+/// The <c>[DynamicallyAccessedMembers]</c> annotation below preserves <b>every method on the
+/// named type, method bodies included</b>. Naming a consumer's class therefore ships that
+/// class's <c>[Remote]</c> server-only method bodies — SQL, business rules, credentials,
+/// whatever they contain — to a trimmed Blazor WebAssembly client, where they are
+/// decompilable. That is the exact opposite of what RemoteFactory promises, and it is
+/// invisible: everything compiles, every test passes, and the only symptom is code sitting
+/// in a published <c>.wasm</c> that should never have left the server.
+/// </para>
+/// <para>
+/// This is not hypothetical. Static <c>[Factory]</c> classes and
+/// <c>[FactoryEventHandler&lt;T&gt;]</c> classes have no separate generated type to host
+/// <c>FactoryServiceRegistrar</c> — the generator re-opens the user's own partial class — so
+/// from v0.21.2 until this was fixed, both pointed here at the consumer's class and leaked
+/// their bodies. The fix was a generated forwarding holder per leg
+/// (<c>NeatooFactoryRegistrar_{TypeName}</c>, <c>NeatooEventHandlerRegistrar_{TypeName}</c>)
+/// whose single method is all the annotation can reach.
+/// </para>
+/// <para>
+/// Consequences for anyone editing the generator: point this attribute at a type that exists
+/// only to forward, keep its surface to the one <c>FactoryServiceRegistrar</c> method, and do
+/// not "simplify" it away by naming the class that already has the method. Pointing it
+/// somewhere convenient is what caused the defect.
+/// </para>
+/// <para>
+/// The annotation is deliberately <b>not</b> narrowed to <c>PublicMethods</c>.
+/// <c>DynamicallyAccessedMemberTypes</c> has no sub-method granularity, so no narrowing can
+/// keep <c>FactoryServiceRegistrar</c> rooted while dropping siblings — the holder indirection
+/// is the only mechanism that shrinks the blast radius. Narrowing would also silently unroot
+/// the registrars of any prebuilt library compiled by an older generator, whose registrar is
+/// <c>internal static</c>: its factories would stop registering on a trimmed client with no
+/// diagnostic and no exception.
+/// </para>
+/// <para>
+/// The method this attribute exists to reach is looked up by the literal name
+/// <c>"FactoryServiceRegistrar"</c> and invoked with a null-conditional call, so a holder whose
+/// method is renamed or missing produces <b>no diagnostic and no exception</b> — registration
+/// simply stops for that type and surfaces later as an unrelated DI resolution failure.
+/// </para>
+/// </remarks>
 [System.AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = true)]
 public sealed class NeatooFactoryRegistrarAttribute : Attribute
 {
+	/// <param name="type">
+	/// The generated registrar holder type. Must never be a consumer-authored class — see the
+	/// contract on the type-level documentation for why.
+	/// </param>
 	public NeatooFactoryRegistrarAttribute(
 		[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
 			System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods |
@@ -162,6 +248,11 @@ public sealed class NeatooFactoryRegistrarAttribute : Attribute
 		Type = type;
 	}
 
+	/// <summary>
+	/// The generated registrar holder whose <c>FactoryServiceRegistrar</c> method is invoked
+	/// during registration. Every method on this type is preserved under trimming, bodies
+	/// included, so it must be a generated forwarding type and never a consumer's class.
+	/// </summary>
 	[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
 		System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods |
 		System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods)]

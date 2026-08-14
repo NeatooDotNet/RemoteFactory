@@ -84,6 +84,8 @@ private static Task<bool> _SendNotification(...) { }
 
 The generator creates the public method. Your code provides the private implementation.
 
+`private static` also matters for trimming: the generated local registration is guarded by `NeatooRuntime.IsServerRuntime`, so on a Blazor WASM client published with the feature switch set to `false`, the method body, its `[Service]` dependencies, and their transitive references are removed. Note that `[Remote]` is decorative here — static factories are exempt from the NF0105 `[Remote] public` check, and what makes the body trimmable is the guard, not the attribute. Keep `[Remote]` for intent. See `references/trimming.md`, which documents what each factory shape does and does not remove.
+
 ### [Execute] must return `Task<T>`, not `Task`
 
 ```csharp

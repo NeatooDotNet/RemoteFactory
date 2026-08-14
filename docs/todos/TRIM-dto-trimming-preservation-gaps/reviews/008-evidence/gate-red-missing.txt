@@ -1,0 +1,1 @@
+::error::Trimmed assembly not found at 'C:/Users/keith/AppData/Local/Temp/claude/C--Users-keith-source-repos-neatoodotnet-RemoteFactory/f1851286-87dc-40c8-a14e-6c005df7aef1/scratchpad/nope.dll'. The gate read nothing, so it proved nothing.

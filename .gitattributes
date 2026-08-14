@@ -1,0 +1,5 @@
+# Shell scripts must keep LF endings regardless of the contributor's platform.
+# CI runs them on Linux; a CRLF checkout puts a stray \r on the shebang line and
+# bash fails with "bad interpreter: /usr/bin/env bash^M" — an error that reads like
+# a missing interpreter rather than a line-ending problem.
+*.sh text eol=lf

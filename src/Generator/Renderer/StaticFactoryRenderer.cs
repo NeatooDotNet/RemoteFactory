@@ -37,8 +37,12 @@ internal static class StaticFactoryRenderer
 
         sb.AppendLine();
 
-        // Assembly-level attribute for trimming-safe factory discovery
-        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{unit.Namespace}.{model.TypeName}))]");
+        // Assembly-level attribute for trimming-safe factory discovery.
+        // Targets the generated registrar holder, NEVER the user's own class: the
+        // attribute's [DynamicallyAccessedMembers] preserves every method on whatever
+        // type it names, bodies included, so naming the user's class would ship their
+        // [Remote] server-only bodies to a trimmed client (TRIM-008).
+        sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{unit.Namespace}.{RegistrarHolderPrefix}{model.TypeName}))]");
         sb.AppendLine();
 
         sb.AppendLine("/*");
@@ -61,10 +65,20 @@ internal static class StaticFactoryRenderer
 
         sb.AppendLine();
 
-        // FactoryServiceRegistrar
+        // FactoryServiceRegistrar. Stays on the user's partial class deliberately —
+        // its body calls the [Execute] domain methods, which are `private static` by
+        // convention (see Design AllPatterns.cs), so a sibling type cannot reach them.
         RenderFactoryServiceRegistrar(sb, model);
 
         sb.AppendLine("    }");
+
+        // Registrar holder — the assembly attribute's DAM target. Exists so the DAM
+        // blast radius is this one forwarding method instead of every method on the
+        // user's class. Top-level rather than nested: the proven in-tree shape
+        // (EventPreservationRenderer) is top-level, and DAM's behavior toward nested
+        // types is not something this repo has verified.
+        sb.AppendLine();
+        RenderRegistrarHolder(sb, unit, model);
         sb.AppendLine("}");
 
         return sb.ToString();
@@ -83,6 +97,40 @@ internal static class StaticFactoryRenderer
         var nullableMarker = del.IsNullable ? "Nullable" : "";
 
         sb.AppendLine($"        public delegate Task<{del.ReturnType}> {del.DelegateName}({paramDecl});");
+    }
+
+    /// <summary>
+    /// Prefix for the generated registrar holder type. Mirrored as a literal in
+    /// AssemblyAttributeEmissionTests so a rename fails loudly rather than silently
+    /// repointing the attribute.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately a PREFIX, not a suffix. A suffixed name (<c>MyCommandsNeatooFactoryRegistrar</c>)
+    /// is a prefix-extension of the user's type, so <c>global::Ns.MyCommands</c> remains a
+    /// substring of the holder's fully-qualified name — which makes the "attribute must not
+    /// name the consumer's type" regression assertion a false red, and an unclosed
+    /// <c>Contains("typeof(global::Ns.MyCommands")</c> a false green. Prefixing breaks the
+    /// namespace-qualified substring outright, so the assertion means what it says.
+    /// The relay leg uses a distinct prefix so the two never collide on a class carrying
+    /// both attributes (see Deferred Work item 15).
+    /// </remarks>
+    internal const string RegistrarHolderPrefix = "NeatooFactoryRegistrar_";
+
+    /// <summary>
+    /// Emits the holder the assembly attribute points at. It does nothing but forward
+    /// to the real registrar on the user's partial class — the indirection exists
+    /// purely so the attribute's [DynamicallyAccessedMembers] has a single-method type
+    /// to preserve instead of the user's whole class.
+    /// </summary>
+    private static void RenderRegistrarHolder(StringBuilder sb, FactoryGenerationUnit unit, StaticFactoryModel model)
+    {
+        sb.AppendLine($"    internal static class {RegistrarHolderPrefix}{model.TypeName}");
+        sb.AppendLine("    {");
+        sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            global::{unit.Namespace}.{model.TypeName}.FactoryServiceRegistrar(services, remoteLocal);");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
     }
 
     private static void RenderFactoryServiceRegistrar(StringBuilder sb, StaticFactoryModel model)

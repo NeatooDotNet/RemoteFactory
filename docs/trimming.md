@@ -30,9 +30,10 @@ Not all factory methods get guards. The generator uses the developer's `public` 
 
 `public` non-`[Remote]` methods like `Create(string name)` or `CanCreate()` have no guard because they are designed to run on the client. Marking child entity factory methods as `internal` (without `[Remote]`) also makes them trimmable.
 
-### Static and Interface Factories
+### Static, Interface, and Event Handler Factories
 
-- **Static factories** — `[Execute]` delegate registrations are guarded. The trimmer removes the registration lambdas and their captured dependencies.
+- **Static factories** — `[Execute]` delegate registrations are guarded. The trimmer removes the registration lambdas, their captured dependencies, and the `[Execute]` method bodies themselves. This requires the generated forwarding holder described under [Factory Type Preservation](#factory-type-preservation) — without it the registrar attribute names your static class and the trimmer preserves every method on it, bodies included.
+- **`[FactoryEventHandler<T>]` classes** — handler registrations are guarded, and the handler bodies plus their `[Service]` dependencies are removed. Same holder mechanism, same reason.
 - **Interface factories** — Local method bodies throw `InvalidOperationException` when `IsServerRuntime` is `false`, making the server-only code path unreachable to the trimmer.
 
 The key insight: the guards are in RemoteFactory's **generated** code, not in your application code. You don't need to modify your domain model at all.
@@ -212,6 +213,15 @@ grep -aob "YourRepositoryClassName" bin/Release/net9.0/publish/YourApp.dll
 ilspycmd bin/Release/net9.0/publish/YourApp.dll
 ```
 
+**Grepping for a string literal needs a second step.** Type and method *names* are UTF-8 in the assembly's metadata, so `grep -a` finds them. String *literals* from method bodies are UTF-16, so `grep -a` never matches them and reports "absent" for text that is demonstrably in the file. If you are looking for a literal — a connection string fragment, a SQL keyword, a distinctive message — strip the null bytes first:
+
+```bash
+# Literals: collapse UTF-16 to ASCII before searching
+tr -d '\000' < bin/Release/net9.0/publish/YourApp.dll | grep -c "SELECT * FROM"
+```
+
+Verify your check can actually find things before trusting a clean result: run it against the **non-published** build output, where the server-only code definitely still exists. If it reports "absent" there too, the check is broken, not the code.
+
 If server-only type names still appear in the output, check that:
 1. `TrimMode` is set to `full` (not `partial` or omitted)
 2. The `RuntimeHostConfigurationOption` has `Trim="true"`
@@ -219,7 +229,24 @@ If server-only type names still appear in the output, check that:
 
 ## Factory Type Preservation
 
-All factory types — class, static, and interface — are automatically preserved from trimming. The source generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory, creating a static reference that the IL trimmer follows. The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers]` annotations that instruct the trimmer to preserve all methods on the referenced type, including the internal `FactoryServiceRegistrar` method used for DI registration.
+All factory types — class, static, and interface — are automatically preserved from trimming. The source generator emits `[assembly: NeatooFactoryRegistrar(typeof(X))]` for every factory, creating a static reference that the IL trimmer follows. The `NeatooFactoryRegistrarAttribute` carries `[DynamicallyAccessedMembers]` annotations that instruct the trimmer to preserve **all methods on the referenced type, method bodies included**.
+
+That last part is why the attribute never names your own class. Preserving every method on a type means preserving what those methods *do*, so if the attribute named your class, your `[Remote]` method bodies would be preserved along with it — the opposite of the guarantee above.
+
+For class and interface factories the generated factory (`{X}Factory`) hosts the registrar, so there is a type to name that is not yours. Static factories and `[FactoryEventHandler<T>]` classes have no separate generated type — the generator re-opens your own partial class to host `FactoryServiceRegistrar` — so for those the generator emits a tiny holder whose only member forwards to it:
+
+```csharp
+// generated, alongside your partial class
+internal static class NeatooFactoryRegistrar_MyCommands
+{
+    internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+        => MyCommands.FactoryServiceRegistrar(services, remoteLocal);
+}
+```
+
+The attribute names the holder. Preservation then reaches exactly one forwarding method instead of everything on `MyCommands`.
+
+**Naming a generated type is necessary, not sufficient.** What makes a holder safe is that it has exactly *one* method. A generated type that hosts many methods still has all of them preserved, bodies included — `{X}Factory` hosts every `Local*` method for its factory. So what keeps a class factory's server-only work off the client is the `IsServerRuntime` guard inside those methods, not the choice of attribute target.
 
 At startup, `AddNeatooRemoteFactory()` and `AddNeatooAspNetCore()` discover factory types by enumerating these assembly attributes rather than scanning all types via reflection. This means factory registration is fully trimming-safe — no factory types are lost during IL trimming, regardless of whether they are class factories, static factories, or interface factories.
 

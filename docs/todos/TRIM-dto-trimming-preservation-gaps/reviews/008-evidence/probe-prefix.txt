@@ -1,0 +1,47 @@
+﻿=== PRE-FIX PROBE: relay leg UNFIXED, new B9 targets first measurement ===
+dll: src\Tests\RemoteFactory.TrimmingTests\bin\Release\net9.0\win-x64\publish\RemoteFactory.TrimmingTests.dll
+size: 55808 bytes
+
+-- relay leg (UNFIXED at this probe)
+   RelayLegHandlerBody              PRESENT (utf8,utf16)
+   IRelayLegPort                    PRESENT (utf8)
+   RelayLegInvoke                   PRESENT (utf8)
+   RelayLegHandlerBody_MARKER       PRESENT (utf16)
+
+-- interface-factory leg (B9, never measured before)
+   TrimIfaceServerSide              absent  
+   IIfaceLegPort                    absent  
+   IfaceLegInvoke                   absent  
+   IfaceLegBackend                  absent  
+   IfaceLegServerBody_MARKER        absent  
+
+-- save/can* leg (B9, never measured before)
+   ISaveLegPort                     PRESENT (utf8)
+   SaveLegInvoke                    PRESENT (utf8)
+   SaveLegBackend                   absent  
+   SaveLegInsertBody_MARKER         PRESENT (utf16)
+   SaveLegUpdateBody_MARKER         PRESENT (utf16)
+   SaveLegDeleteBody_MARKER         PRESENT (utf16)
+
+-- pre-existing absent-expected (regression)
+   _DoWork                          absent  
+   _ProcessRecord                   absent  
+   IServerOnlyRepository            absent  
+   DoServerWork                     absent  
+   ServerOnlyDirect                 absent  
+   ServerOnlyHelper                 absent  
+
+-- positive controls (must be PRESENT)
+   TrimTestCommands                 PRESENT (utf8)
+   TrimRecordResult                 PRESENT (utf8,utf16)
+   ITrimIfaceQueryFactory           PRESENT (utf8)
+   ITrimSaveTargetFactory           PRESENT (utf8)
+   NeatooFactoryRegistrar_          PRESENT (utf8)
+   NeatooEventPreservationRegistrar PRESENT (utf8)
+
+-- measured, not asserted
+   TrimRelayHandlers                PRESENT (utf8)
+   TrimSaveAuthRules                PRESENT (utf8)
+   TrimRelayHandlerEvent            PRESENT (utf8,utf16)
+   RelayLegBackend                  absent  
+

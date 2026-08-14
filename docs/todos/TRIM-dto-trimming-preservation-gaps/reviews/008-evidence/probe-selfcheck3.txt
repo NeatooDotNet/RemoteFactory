@@ -1,0 +1,73 @@
+﻿=== SELF-CHECK v3: UNTRIMMED, every marker must be PRESENT ===
+dll: src\Tests\RemoteFactory.TrimmingTests\bin\Release\net9.0\RemoteFactory.TrimmingTests.dll
+size: 80896 bytes
+
+-- relay leg
+   RelayLegHandlerBody              PRESENT (utf8,utf16)
+   IRelayLegPort                    PRESENT (utf8)
+   RelayLegInvoke                   PRESENT (utf8)
+   RelayLegHandlerBody_MARKER       PRESENT (utf16)
+
+-- interface-factory leg (B9, never measured before)
+   TrimIfaceServerSide              PRESENT (utf8)
+   IIfaceLegPort                    PRESENT (utf8)
+   IfaceLegInvoke                   PRESENT (utf8)
+   IfaceLegBackend                  PRESENT (utf8)
+   IfaceLegServerBody_MARKER        PRESENT (utf16)
+
+-- save/can* leg (B9, never measured before)
+   ISaveLegPort                     PRESENT (utf8)
+   SaveLegInvoke                    PRESENT (utf8)
+   SaveLegBackend                   PRESENT (utf8)
+   SaveLegInsertBody_MARKER         PRESENT (utf16)
+   SaveLegUpdateBody_MARKER         PRESENT (utf16)
+   SaveLegDeleteBody_MARKER         PRESENT (utf16)
+
+-- ASYNC bodies (S7/P2 - inference converted to measurement)
+   _DoAsyncWork                     PRESENT (utf8)
+   StaticAsyncBody_MARKER           PRESENT (utf16)
+   AsyncRelayHandlerBody            PRESENT (utf8)
+   RelayAsyncBody_MARKER            PRESENT (utf16)
+   TrimAsyncIfaceServerSide         PRESENT (utf8)
+   IfaceAsyncBody_MARKER            PRESENT (utf16)
+   IAsyncLegPort                    PRESENT (utf8)
+   AsyncLegInvoke                   PRESENT (utf8)
+   AsyncLegBackend                  PRESENT (utf8,utf16)
+
+-- class-factory leg (S8 - own port, was sharing with static)
+   IClassLegPort                    PRESENT (utf8)
+   ClassLegInvoke                   PRESENT (utf8)
+   ClassLegBackend                  PRESENT (utf8,utf16)
+   ClassLegBackend_MARKER           PRESENT (utf16)
+
+-- CONTROLLED PAIR: sync vs async in ONE class factory (V5c)
+   ClassSyncBody_MARKER             PRESENT (utf16)
+   ClassAsyncBody_MARKER            PRESENT (utf16)
+
+-- pre-existing absent-expected (regression)
+   _DoWork                          PRESENT (utf8)
+   _ProcessRecord                   PRESENT (utf8)
+   IServerOnlyRepository            PRESENT (utf8)
+   DoServerWork                     PRESENT (utf8)
+   ServerOnlyDirect                 PRESENT (utf8,utf16)
+   ServerOnlyHelper                 PRESENT (utf8,utf16)
+   ServerOnlyRepository_MARKER      PRESENT (utf16)
+   ServerOnlyHelper_MARKER          PRESENT (utf16)
+
+-- positive controls (must be PRESENT)
+   TrimTestCommands                 PRESENT (utf8)
+   TrimRecordResult                 PRESENT (utf8,utf16)
+   ITrimIfaceQueryFactory           PRESENT (utf8)
+   ITrimAsyncIfaceQueryFactory      PRESENT (utf8)
+   ITrimSaveTargetFactory           PRESENT (utf8)
+   NeatooFactoryRegistrar_          PRESENT (utf8)
+   NeatooEventHandlerRegistrar_     PRESENT (utf8)
+   NeatooEventPreservationRegistrar PRESENT (utf8)
+   Trimming verification app completed PRESENT (utf16)
+
+-- measured, not asserted
+   TrimRelayHandlers                PRESENT (utf8)
+   TrimSaveAuthRules                PRESENT (utf8)
+   TrimRelayHandlerEvent            PRESENT (utf8,utf16)
+   RelayLegBackend                  PRESENT (utf8)
+

@@ -1,0 +1,57 @@
+-- positive controls
+   ok      NeatooFactoryRegistrar_TrimTestCommands
+   ok      NeatooEventHandlerRegistrar_TrimRelayHandlers
+   ok      NeatooEventHandlerRegistrar_TrimAsyncRelayHandlers
+   ok      TrimTestCommands
+   ok      ITrimIfaceQueryFactory
+   ok      ITrimAsyncIfaceQueryFactory
+   ok      ITrimSaveTargetFactory
+   ok      <utf16 extraction>
+-- static factory ([Execute])
+::error::[static factory] '_DoWork' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory] '_ProcessRecord' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory] 'DoServerWork' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory] 'IServerOnlyRepository' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory] 'ServerOnlyRepository_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory] 'ServerOnlyDirect' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory] 'ServerOnlyHelper' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory] 'ServerOnlyHelper_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+-- static factory, async body
+::error::[static factory (async)] '_DoAsyncWork' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[static factory (async)] 'StaticAsyncBody_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+-- relay handler ([FactoryEventHandler<T>])
+::error::[relay handler] 'RelayLegHandlerBody' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[relay handler] 'IRelayLegPort' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[relay handler] 'RelayLegInvoke' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[relay handler] 'RelayLegHandlerBody_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[relay handler] 'RelayLegBackend' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[relay handler (async)] 'AsyncRelayHandlerBody' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[relay handler (async)] 'RelayAsyncBody_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+-- interface factory
+::error::[interface factory] 'TrimIfaceServerSide' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[interface factory] 'IIfaceLegPort' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[interface factory] 'IfaceLegInvoke' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[interface factory] 'IfaceLegBackend' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[interface factory] 'IfaceLegServerBody_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[interface factory (async)] 'TrimAsyncIfaceServerSide' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[interface factory (async)] 'IfaceAsyncBody_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+-- class factory, port implementation (behind an interface hop; not a leg signal)
+::error::[class factory] 'ClassLegBackend' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[class factory] 'ClassLegBackend_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+-- async-only port (shared by the three async targets above)
+::error::[async port] 'IAsyncLegPort' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[async port] 'AsyncLegInvoke' found in the trimmed assembly. Server-only code is shipping to clients.
+::error::[async port] 'AsyncLegBackend' found in the trimmed assembly. Server-only code is shipping to clients.
+-- controlled sync/async pair (class factory)
+::error::[class factory (sync half of controlled pair)] 'ClassSyncBody_MARKER' found in the trimmed assembly. Server-only code is shipping to clients.
+   ok      ClassAsyncBody_MARKER (still present, as TRIM-009 expects)
+   ok      IClassLegPort (still present, as TRIM-009 expects)
+   ok      ClassLegInvoke (still present, as TRIM-009 expects)
+-- save/can* (known broken, TRIM-009)
+   ok      ISaveLegPort (still present, as TRIM-009 expects)
+   ok      SaveLegInvoke (still present, as TRIM-009 expects)
+   ok      SaveLegInsertBody_MARKER (still present, as TRIM-009 expects)
+   ok      SaveLegUpdateBody_MARKER (still present, as TRIM-009 expects)
+   ok      SaveLegDeleteBody_MARKER (still present, as TRIM-009 expects)
+
+::error::Trimming verification FAILED (30 check(s)).
