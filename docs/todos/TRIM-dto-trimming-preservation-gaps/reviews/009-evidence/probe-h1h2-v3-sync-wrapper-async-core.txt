@@ -35,3 +35,24 @@ size: 67584 bytes
    <LocalDelete>d__                   PRESENT (utf8)
    <LocalSave>d__                     PRESENT (utf8)
    <LocalCreate>d__                   absent
+
+-- ADDENDUM 2026-08-14, added at plan review (finding B2)
+-- The probe script above searched '<LocalFetchAsync>d__', which CANNOT match
+-- '<LocalFetchAsyncCore>d__' (the '>' falls after "Async", not after "AsyncCore").
+-- The Core state machine was measured separately in the same run but was not
+-- captured in this file. Re-measured against the same on-disk V3 artifact:
+   <LocalFetchAsyncCore>d__           PRESENT (utf8)
+   LocalFetchAsyncCore                PRESENT (utf8)
+   <LocalFetchAsync>d__               absent
+--
+-- READ THE THIRD ROW CORRECTLY. '<LocalFetchAsync>d__' is absent from V3 because
+-- the V3 knob emits LocalFetchAsync as a NON-async wrapper, so the compiler never
+-- creates a state machine by that name. Its absence is a compile-time consequence
+-- of the rename, not a trimming result, and it is NOT evidence that the fold works
+-- in the wrapper. This row could not have gone red.
+--
+-- V3 therefore cannot attribute the Core's survival: BOTH candidate roots were live
+-- in V3 -- DAM on the factory type, and the wrapper's own `return LocalFetchAsyncCore(...)`
+-- call site. "DAM roots the core" and "the wrapper's call survived the fold" predict
+-- the same observation here, and imply different remedies. Only TRIM-009 Step 1
+-- separates them.

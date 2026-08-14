@@ -1,0 +1,23 @@
+TRIM-009 separation experiment — knob values per variant
+Recorded at plan review (finding B6). experiment-knobs.diff captures only ONE
+configuration (V3's), so the other two were recoverable by inference only.
+
+All three constants live in ClassFactoryRenderer, added and reverted for the
+experiment. Defaults (all false) were proven to reproduce HEAD's emission
+byte-for-byte before any variant was run.
+
+                             SuppressAsyncProbes  ForceSecondCatchArm  SyncWrapperForAsync
+  inertness check                   false                false                (absent)
+  V1  async minus probes/OCE         true                false                (absent)
+  V2  sync plus second catch        false                 true                (absent)
+  V3  sync wrapper + async core     false                false                 true
+
+V1 suppresses all four awaiting lifecycle probes AND the OCE catch arm, at the
+read path and both write paths. LocalFetchAsync stays async: `needsAsync` is
+untouched by the knob and `await target.FetchAsync(...)` remains in the body.
+
+V2 grafts only 2 of the 5 constructs — the OCE catch arm and the non-awaiting
+IFactoryOnCancelled probe. The three awaiting probes cannot be emitted into a
+sync method body, so V2 cannot speak to them. The H2 falsification rests on V1.
+
+V3 wired the READ PATH ONLY. The write, save, and can paths kept HEAD's shape.
