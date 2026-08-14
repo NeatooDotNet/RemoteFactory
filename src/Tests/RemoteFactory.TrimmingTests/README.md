@@ -14,11 +14,48 @@ comes with a non-zero exit — new checks must follow that contract (append to
 
 ## How It Works
 
+The trimmer removes a `[Remote]` body only when **both** of the following hold. Each was
+broken independently before v1.7.0, and each is measured separately by the gate.
+
+**A. The guard folds, and the remainder is unreachable.**
+
 1. `TrimTestEntity` has a `[Remote, Create]` method with a `[Service] IServerOnlyRepository` parameter
-2. The generated factory's `LocalCreate` method is guarded by `if (!NeatooRuntime.IsServerRuntime) throw ...`
+2. The generated `Local*` method is guarded by `if (!NeatooRuntime.IsServerRuntime) throw ...`
 3. The project sets `IsServerRuntime=false` via `RuntimeHostConfigurationOption` with `Trim="true"`
 4. When published with `PublishTrimmed=true`, the trimmer constant-folds `IsServerRuntime` to `false`
 5. Everything after the throw guard becomes dead code and is removed
+
+Step 5 holds only for a **synchronous** method. In an `async` method the compiler lowers the
+whole body — guard included — into the state machine's `MoveNext`, inside the builder's
+protected region; ILLink folds the switch there but does not eliminate the unreachable
+remainder. Since v1.7.0 the generator emits `async` guards in a **non-async wrapper**
+(`LocalX`) forwarding to a private `async` core (`LocalXCore`), so the guard again sits ahead
+of any protected region. The gate asserts the state machines themselves are absent
+(`<LocalFetchAsync>d__`, `<LocalSave>d__`, …) precisely so a regression here cannot hide
+behind an absent marker string.
+
+**B. Nothing else roots the body.**
+
+`[assembly: NeatooFactoryRegistrar(typeof(T))]` carries
+`[DynamicallyAccessedMembers(PublicMethods | NonPublicMethods)]`, which preserves **every**
+method on `T` — bodies included, private ones included. Naming a *generated* type is
+necessary but not sufficient: `{X}Factory` hosts every `Local*` method for its factory, and
+`NonPublicMethods` covers the private core from A. So each leg emits a **single-method
+forwarding holder** and the attribute names that instead:
+
+| Leg | Holder prefix |
+|---|---|
+| Class factory | `NeatooClassFactoryRegistrar_` |
+| Static factory (`[Execute]`) | `NeatooFactoryRegistrar_` |
+| `[FactoryEventHandler<T>]` | `NeatooEventHandlerRegistrar_` |
+
+The gate carries a positive control for each holder, so "absent" cannot be an artifact of the
+holders never having been emitted.
+
+**Interface factories have neither fix.** That leg still guards inline in the `async` body and
+still names `{ImplName}Factory`. It reaches its implementation through interfaces, so this
+client-side harness reads "absent" whether or not the body survives — the leg is structurally
+unmeasurable here and its checks are **not** evidence of body removal.
 
 ## Running the Verification
 
