@@ -65,6 +65,41 @@ public partial class ClassExecuteDemo
     /// - Interface method: IClassExecuteDemoFactory.RunCommand(string input)
     /// - Factory implementation with Local/Remote method pair
     /// - Delegate for remote execution
+    /// - A forwarding holder, NeatooClassFactoryRegistrar_ClassExecuteDemo, which the
+    ///   assembly-level [NeatooFactoryRegistrar] attribute points at
+    ///
+    /// TRIMMING: class-level [Execute] is emitted `async` unconditionally, which made it
+    /// the shape most exposed by the two defects fixed in v1.7.0.
+    ///
+    /// 1. The guard now lives in a NON-ASYNC wrapper forwarding to a private core:
+    ///        public Task&lt;ClassExecuteDemo&gt; LocalRunCommand(...)
+    ///        {
+    ///            if (!NeatooRuntime.IsServerRuntime) throw new InvalidOperationException(...);
+    ///            return LocalRunCommandCore(...);
+    ///        }
+    ///        private async Task&lt;ClassExecuteDemo&gt; LocalRunCommandCore(...) { ... }
+    ///    Inside an `async` method the compiler lowers the whole body -- guard included --
+    ///    into the state machine's MoveNext, within the builder's protected region. ILLink
+    ///    folds the feature switch there but does not eliminate the unreachable remainder,
+    ///    so this body shipped to trimmed Blazor WASM clients, decompilable. A synchronous
+    ///    method puts the guard ahead of any protected region, which is why sync operations
+    ///    always trimmed correctly and `async` ones did not.
+    ///
+    /// 2. The registrar attribute's [DynamicallyAccessedMembers] preserves every method on
+    ///    the type it names, bodies included. Naming the GENERATED type is necessary but not
+    ///    sufficient: {X}Factory hosts every Local* method, so class factories emit a
+    ///    single-method holder rather than naming the factory directly. DAM covers
+    ///    NonPublicMethods, so the holder alone would still root the private core -- both
+    ///    halves are required.
+    ///
+    /// BEHAVIOUR (v1.7.0): the server-only guard throws synchronously from the wrapper
+    /// rather than surfacing as a faulted Task. Awaiting callers are unaffected.
+    /// Authorization failures, target casts, and DI resolution failures still surface as
+    /// faulted tasks -- only the server-only guard moved.
+    ///
+    /// Not demonstrated by a Design test: over-preservation is only observable in a
+    /// publish-trimmed artifact, and Design.Tests run untrimmed. RemoteFactory.TrimmingTests
+    /// is the verification surface; this shape is measured absent there.
     /// </remarks>
     [Remote, Execute]
     public static async Task<ClassExecuteDemo> RunCommand(
