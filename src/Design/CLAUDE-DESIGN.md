@@ -1014,6 +1014,10 @@ These are known limitations or open questions. They are documented here to preve
 | 3009 | `FactoryEventDeserializationFailed` | Error | Wire-format event deserialization fails (e.g. `UnknownFactoryEventTypeException`) | Swallowed; `Relay` is NOT invoked for that call (the one legitimate case of zero `Relay` invocations for a [Remote] call) |
 | 3011 | `NoOpFactoryEventRelayFirstEvent` | Warning | `NoOpFactoryEventRelay` receives its first non-empty batch (consumer forgot to register a relay) | Informational; fires once per process |
 | 3012 | `FactoryEventTypeRegistryCollision` | Warning | `FactoryEventTypeRegistry` assembly scan finds two distinct `Type`s sharing the same `FullName` | Documents kept/dropped assembly; wire messages resolve to the kept type |
+| 9001 | `FactoryEventPhaseQueued` | Debug | A handler registered at a non-`Immediate` `DispatchPhase` is deferred instead of dispatched at `Raise` time | Informational |
+| 9002 | `FactoryEventPhaseDrained` | Debug | A phase drain completes, reporting how many dispatches ran through the requested phase (earlier phases included) | Informational |
+| 9003 | `FactoryEventPhaseHandlerFailed` | Error | A deferred handler throws during a **post-completion** drain (no ambient transaction) | Swallowed — the exception can no longer roll anything back; remaining queued handlers still run. `OperationCanceledException` still propagates. In-transaction drains propagate instead, so this never fires for them. |
+| 9004 | `FactoryEventPhaseNoQueueInScope` | Debug | An event with a phased handler is raised in a scope with no `IFactoryEventPhaseScheduler` registered | Dispatched immediately rather than dropped |
 
 ### Public Exception
 

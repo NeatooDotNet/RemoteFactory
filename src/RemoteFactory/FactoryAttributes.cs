@@ -113,43 +113,6 @@ public sealed class ExecuteAttribute : FactoryOperationAttribute
 	public ExecuteAttribute() : base(FactoryOperation.Execute) { }
 }
 
-/// <summary>
-/// Marks a class as a handler for factory events of type <typeparamref name="T"/>.
-/// The handler method must be <c>static</c>, return <see cref="Task"/>, and have a first
-/// non-[Service]/non-CancellationToken parameter of type <typeparamref name="T"/>.
-/// <para>
-/// Handlers are registered in <see cref="FactoryEventHandlerRegistry"/> and dispatched
-/// via <see cref="IFactoryEvents.Raise{T}"/> on the server, in the caller's DI scope,
-/// sequentially, awaited.
-/// </para>
-/// <para>
-/// Instance-method handlers are silently ignored by the generator — they were the
-/// former client-side relay pattern, now replaced by <see cref="IFactoryEventRelay"/>.
-/// Client-side event consumers implement <see cref="IFactoryEventRelay"/> to bridge
-/// relayed events to their own event aggregator.
-/// </para>
-/// <para>
-/// <b>Trimming:</b> every generated handler registration is wrapped in
-/// <c>NeatooRuntime.IsServerRuntime</c>, so on a client published with the feature switch
-/// set to <c>false</c> the handler bodies and their <c>[Service]</c> dependencies are
-/// removed from the output. This works because the generator points the assembly's
-/// <see cref="NeatooFactoryRegistrarAttribute"/> at a generated forwarding holder rather
-/// than at the handler class itself — the attribute preserves every method on whatever it
-/// names, bodies included, so naming the handler class would ship the handler bodies to the
-/// browser. Fixed in v1.7.0; before that, it did.
-/// </para>
-/// <para>
-/// One consequence for consumers: because the registrations are server-guarded, there is
-/// nothing on a trimmed client to resolve, and handler registration cannot be verified from
-/// a client-side test. Coverage for it lives in server-side/untrimmed tests.
-/// </para>
-/// </summary>
-/// <typeparam name="T">The event type (must inherit from <see cref="FactoryEventBase"/>).</typeparam>
-[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-#pragma warning disable CA1813 // Sealed generic attribute must be unsealed for generator discovery
-public sealed class FactoryEventHandlerAttribute<T> : Attribute { }
-#pragma warning restore CA1813
-
 [System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class AuthorizeFactoryAttribute<T> : Attribute
 {

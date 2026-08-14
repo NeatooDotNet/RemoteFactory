@@ -22,4 +22,17 @@ coordinator is a drain trigger, nothing more.
 
 ---
 
-*(Stub — Intent, Alignment, Constraints, Steps, Acceptance filled at Step 2.)*
+## Inherited from PHASE-001 (recorded at its Step 5 gate)
+
+- **The fail-open sweep is already implemented and test-pinned.** `DrainAsync(phase, …)`
+  drains the requested phase *and every earlier one*, earliest first, so `AfterFlush`
+  handlers a consumer never drained are swept up at the `AfterCommit` point under that
+  drain point's swallow semantics (`FactoryEventPhaseSchedulerTests.DrainAsync_SweepsAnEarlierPhaseTheConsumerNeverDrained`).
+  What is missing is only the **logged warning** the todo's AC-5 requires — and the
+  discriminator is already plumbed: `TryDequeueThrough` returns the phase each dispatch was
+  queued at (code review C3). Wire the warning; do not re-plumb the sweep.
+- `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` should call through to the
+  scheduler with `inTransaction: true` so handler exceptions propagate and the consumer's
+  transaction can still roll back.
+
+*(Stub — Intent, Alignment, remaining Constraints, Steps, Acceptance filled at Step 2.)*
