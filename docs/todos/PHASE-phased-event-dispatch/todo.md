@@ -91,8 +91,12 @@ exposes drain points.
   concurrent flows sharing a scope already share DbContexts and every scoped service.
   The actual semantics are pinned
   (`ConcurrentFlowsInOneScope_ShareEntryState_FailedFlowsWorkRidesTheSurvivingDrain`)
-  so any change to them is a conscious one. Per-flow tracking (AsyncLocal) would be a
-  design change with its own hazards — revisit only if a real consumer hits this.
+  so any change to them is a conscious one. A second window exists and is recorded but
+  not pinned (round-2 N1): work a concurrent flow enqueues *while* the survivor's
+  outermost drain is running either joins that drain or is discarded by the post-drain
+  clear, depending on timing — inherent to the same per-scope granularity. Per-flow
+  tracking (AsyncLocal) would be a design change with its own hazards — revisit only if
+  a real consumer hits this.
 - **Follow-up:** PHASE-005 documents "one factory call per scope at a time" as the
   concurrency guidance.
 

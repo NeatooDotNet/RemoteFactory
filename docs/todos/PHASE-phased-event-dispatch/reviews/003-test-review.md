@@ -74,6 +74,48 @@ relay-collection restorations).
 **Post-closure totals:** unit 668×2, integration 579×2 (+5 skipped), Design 86×2 — 0
 failures. Logs regenerated.
 
-## Round 2 — 2026-08-14
+## Round 2 — 2026-08-14 (re-review after the add-tests loop)
 
-*(appended after re-review)*
+All 3 must-cover and all 6 should-cover round-1 findings **verified closed** by reading
+the closing tests against production: each pins what the disposition claims, at the
+right tier, and would go red on the regression it names. Both nice-to-haves closed. The
+closure commit (`595d195`) touched only tests and docs — no production code was reshaped
+to fit a test — and the red-proofed tests are byte-identical to their state when
+`003-redproof.log` was captured, so reusing that log is valid. Suite arithmetic checks
+out (+6 unit, +4 integration → 668×2 / 579×2 +5 / 86×2, 0 failures; build warnings all
+pre-existing and unrelated).
+
+Two new **should-cover** findings, both one-liners, neither invalidating a closed must:
+
+1. `AspForbidException_AfterEnqueueingPhasedWork_ClearsWithoutDraining` asserted only the
+   "without draining" half — a forbid route that skipped `EndEntryCallAsync(false)`
+   would leave a long-lived scope at depth ≥ 1 and silently kill every subsequent drain
+   while staying green.
+2. `Raise_DeferredHandlerWithServerOnly_IsNotCollectedForRelay` received
+   `BeginEntryCall()` but not the `HasPending` premise assertion its sibling got — the
+   exact round-1 vacating failure mode, and the Gate-closure row overstated by one test.
+
+Nice-to-have: the concurrent-flows pin covers only the enqueue-before-either-exits
+interleaving; the enqueue-during-the-survivor's-drain window is timing-dependent
+(joins the drain or is cleared) and was unrecorded. Also noted: the OCE mid-drain test
+depends on registry handler order (fails loudly, not falsely), and the forbidden-path
+tests asserted consequence without premise.
+
+Open-by-choice items and tech-debt routing re-checked and found honestly recorded.
+
+### Round 2 disposition (orchestrator)
+
+- **S1 closed:** the AspForbid test now follows the forbidden call with a successful
+  `Create` in the same server scope and asserts that call's full drain — a stuck depth
+  fails it.
+- **S2 closed:** `HasPending` premise assertion added to the ServerOnly sibling;
+  Gate-closure row corrected to record the two-round history honestly.
+- **N1 recorded:** the Discovery Log's concurrent-flows entry now names the
+  enqueue-during-drain window as inherent to per-scope granularity (not pinned — same
+  documented-limitation posture).
+- N2/N3 noted, no action: the OCE order dependence fails loudly; the forbidden-path
+  premise is now indirectly asserted by S1's follow-on drain.
+
+**Gate closed.** Final totals: unit 668×2, integration 579×2 +5 skipped, Design 86×2 —
+0 failures (both round-2 closures strengthened existing tests rather than adding new
+ones; logs regenerated).

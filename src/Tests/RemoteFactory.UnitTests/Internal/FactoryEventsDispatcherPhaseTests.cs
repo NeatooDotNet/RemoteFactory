@@ -381,6 +381,8 @@ public class FactoryEventsDispatcherPhaseTests
             await events.Raise(new RelayCollectionEvent("x"), RaiseOptions.ServerOnly);
 
             Assert.Empty(collector.GetCollectedEvents());
+            // The deferral premise, asserted so it cannot vacate silently again.
+            Assert.True(queue.HasPending);
         }
     }
 }

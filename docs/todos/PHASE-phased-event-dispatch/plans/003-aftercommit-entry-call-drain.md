@@ -441,7 +441,7 @@ both restored with `BeginEntryCall` (the failure mode pre-declaration cannot cat
 | Must 3: interface-renderer emission unpinned | `InterfaceFactory_GuardedLocalMethod_SplitsIntoSyncWrapperAndCore` | unit |
 | Should 4: nesting tests didn't discriminate | `NestedChildSave_DoesNotDrainAtTheChildsCompletion` | integration |
 | Should 5: post-OCE clear + double-End tolerance unpinned | `HandlerThrowsOperationCanceled_MidDrain_EntryExitStillClearsAndDepthSurvives` | unit |
-| Should 6: relay-collection premise vacuous | Both tests restored with `BeginEntryCall` + `HasPending` assertion | unit |
+| Should 6: relay-collection premise vacuous | Both tests restored with `BeginEntryCall`; the `HasPending` premise assertion initially landed in only one — round 2 caught the omission and both now carry it | unit |
 | Should 7: 9005 emission unpinned | Positive Debug 9005 assertion added to the outside-entry test | unit |
 | Should 8: caught-nested-failure + handler-invokes-factory | `NestedEntryFails_OuterCatchesAndSucceeds_TheEntryStillDrains`, `DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress` | unit |
 | Should 9: interface success-path + generated sync shape | `InterfaceFactory_AsTheOutermostEntry_DrainsOnSuccess`, `SyncFactoryMethod_WithPendingPhasedWork_BlockDrainsAtCompletion` | integration |

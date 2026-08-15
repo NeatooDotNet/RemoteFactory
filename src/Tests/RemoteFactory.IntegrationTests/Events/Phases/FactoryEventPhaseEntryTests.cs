@@ -266,6 +266,14 @@ public class FactoryEventPhaseEntryTests
         Assert.Equal(Guid.Empty, returned);
 
         Assert.Empty(RecordedFor(server, id));
+
+        // The clear half (round-2 S1): the forbid exit must release entry state, not
+        // just skip the drain. A forbid route that skipped EndEntryCallAsync(false)
+        // would leave this long-lived server scope at depth >= 1 and silently kill
+        // every subsequent drain — so a follow-on success in the same scope must drain.
+        var successId = Guid.NewGuid();
+        await client.GetRequiredService<IPhaseEntryTargetFactory>().Create(successId);
+        Assert.Equal(["immediate", "create-method-done", "after-commit"], RecordedFor(server, successId));
     }
 
     [Fact]
