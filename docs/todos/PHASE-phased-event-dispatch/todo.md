@@ -82,6 +82,19 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-14 — Ordering: PHASE-003 worked ahead of PHASE-002
+- **Finding:** PHASE-002 (generator threads the attribute's phase argument to
+  registration) and PHASE-003 (entry-call tracking + AfterCommit drain) are independent:
+  PHASE-003's tests can register phased handlers through the registry's 3-arg overload
+  directly, so nothing in it waits on the generator pass-through.
+- **Decision:** Re-split (ordering only — no index rows change). Work PHASE-003 next:
+  it is the plan the review flagged as riskiest, it restates PHASE-001's interim
+  acceptance pins, and the RFEF sibling todo is blocked on it. PHASE-002 follows and
+  makes the attribute phase flow end-to-end.
+- **Follow-up:** PHASE-003's branch is stacked on the PHASE-001 plan branch (its
+  scheduler work isn't on `main` yet) — a recorded deviation from the "plan branches off
+  the todo branch" convention; see the plan's Notes.
+
 ### 2026-08-14 — PHASE-001 (gate found a real defect)
 - **Finding:** The test-review gate caught that the drain resolved only the requested
   phase's queue, so work a handler enqueued into an already-passed phase was silently
