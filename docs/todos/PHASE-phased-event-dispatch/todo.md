@@ -82,6 +82,66 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-15 — PHASE-002 (plan review: the duplicate-attribute severity, settled)
+
+- **Finding:** The draft took the deferred duplicate-same-event decision toward an **Error**
+  diagnostic, reasoning from "NF0501/NF0502 are errors". The review found the project's own
+  documented precedent pointing the other way: NF0503 chose Warning *explicitly* to keep the
+  build green for the identical shape (a declaration that compiles and is silently inert),
+  and the real dividing line in this generator is what gets emitted — NF0501/NF0502 add no
+  entry and the class emits no file at all, whereas a duplicate attribute still produces a
+  working registration.
+- **Decision:** Amend — **Warning**, paired with skipping the duplicate's entry at emission so
+  the generated output matches the diagnostic's message. Last-wins was the other option the
+  PHASE-001 entry queued by name; rejected because it needs the registry's dedupe key widened
+  (runtime work, not this plan's) and makes the winner depend on assembly-scan order. Warning
+  also keeps source that compiles at v1.7.0 compiling, so the arc stays a minor release.
+- **Follow-up:** [reviews/002-plan-review.md](./reviews/002-plan-review.md). Closes the
+  2026-08-14 PHASE-001 deferral below.
+
+### 2026-08-15 — PHASE-002 (a third "can't go red" bullet, caught before implementation)
+
+- **Finding:** Two of the draft's acceptance bullets could not fail for what they claimed.
+  The incremental-cache bullet asserts equality of transform outputs across runs, which any
+  deterministic scalar satisfies — a phase field hardcoded to `Immediate` passes it, and
+  because `ReplaceSyntaxTree` reuses the reference manager, even a `TypedConstant` field
+  (the actual cache hazard) would likely stay green. The emission bullet would have been
+  satisfied by a `Contains("DispatchPhase.AfterCommit")` that cannot distinguish the
+  `global::`-qualified form from the bare one — the latent bug `RelayHandlerRenderer.cs:38-40`
+  documents as having shipped for four releases.
+- **Decision:** Amend before the first edit — the cache bullet now claims only determinism
+  plus future collection-shaped-field coverage; the representation rule became a Constraint
+  enforced by code review rather than a claimed test; the qualification became a Constraint
+  with the acceptance bullet worded to require a negative pin on the bare form. A second
+  non-discriminating test was considered as a replacement and declined.
+- **Follow-up:** This is the "verify, don't inherit" failure mode recurring in a plan written
+  with that lesson loaded — the third instance in this arc. The pre-flight had *spotted* the
+  qualification and recorded it as an observation with nothing enforcing it, which is how it
+  would have been lost.
+
+### 2026-08-15 — PHASE-002 (docs this plan invalidates — handed to PHASE-005)
+
+- **Finding:** PHASE-002 is the plan that makes the attribute's phase real, so on the day it
+  lands, published prose describing all handlers as in-scope/in-transaction/before-`Raise`-
+  returns becomes conditionally false, and three diagnostics tables go stale. Concrete
+  anchors: `docs/attributes-reference.md:218` and `:202`,
+  `skills/RemoteFactory/references/factory-events.md:115` and `:541-543`,
+  `docs/factory-events.md:370-372`. PHASE-005's stub named the phase contract but not the
+  diagnostics tables.
+- **Decision:** Defer to PHASE-005 with the anchors recorded in its Scope, rather than
+  widening PHASE-002.
+- **Follow-up:** PHASE-005.
+
+### 2026-08-15 — PHASE-002 (undefined enum values are expressible and will not drain)
+
+- **Finding:** `[FactoryEventHandler<T>((DispatchPhase)99)]` compiles. Faithful pass-through
+  renders the cast, and the handler then never runs — the scheduler's drain sweeps only
+  defined phases, so the registration is a silent no-op.
+- **Decision:** Not diagnosed. Undefined enum values are a C# hazard generally, and policing
+  them is out of proportion to this plan. Recorded so the choice is visible rather than
+  accidental.
+- **Follow-up:** none. Revisit only if a consumer hits it.
+
 ### 2026-08-14 — PHASE-003 (code review: interface leg aligned on the registrar-holder shape)
 - **Finding:** Code review V1: introducing the wrapper/core split on the interface leg
   moved its bodies into private `Local*Core` methods while the assembly attribute still
@@ -213,6 +273,8 @@ exposes drain points.
 - **Decision:** Defer
 - **Follow-up:** PHASE-002 (likely a generator diagnostic for duplicate same-event
   attributes; decide there whether to diagnose or define last-wins semantics).
+  **Closed** 2026-08-15 — diagnose at Warning, skip the duplicate entry; see the PHASE-002
+  plan-review entry at the top of this log.
 
 ---
 
