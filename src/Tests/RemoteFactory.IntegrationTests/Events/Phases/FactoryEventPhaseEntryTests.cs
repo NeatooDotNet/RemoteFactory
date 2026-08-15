@@ -249,6 +249,73 @@ public class FactoryEventPhaseEntryTests
         Assert.Equal(["cancel-after-commit"], RecordedFor(server, id));
     }
 
+    [Fact]
+    public async Task AspForbidException_AfterEnqueueingPhasedWork_ClearsWithoutDraining()
+    {
+        // The one failure path with a success-shaped return: the choke point converts
+        // AspForbidException to an empty RemoteResponseDto. The drain must not ride
+        // that shape — the entry failed, the queued work clears.
+        var (server, client, _) = ClientServerContainers.Scopes();
+        var run = client.ServiceProvider.GetRequiredService<PhaseStaticCommands.RunAspForbid>();
+        var id = Guid.NewGuid();
+
+        // The empty-shape response deserializes to default client-side — the
+        // pre-existing forbid semantics for value returns. Pinned here so a change to
+        // that shape is a conscious one; the load-bearing assertion is the no-drain.
+        var returned = await run(id);
+        Assert.Equal(Guid.Empty, returned);
+
+        Assert.Empty(RecordedFor(server, id));
+    }
+
+    [Fact]
+    public async Task NestedChildSave_DoesNotDrainAtTheChildsCompletion()
+    {
+        // The inner-vs-outer discriminator: the parent's Insert raises phased work,
+        // saves a child through the child's factory (a nested entry), then records
+        // "parent-after-child". A drain firing at ANY inner completion would land
+        // "nested-after-commit" between the two markers.
+        var (_, _, local) = ClientServerContainers.Scopes();
+        var factory = local.GetRequiredService<IPhaseParentTargetFactory>();
+        var id = Guid.NewGuid();
+
+        await factory.Save(new PhaseParentTarget { Id = id });
+
+        Assert.Equal(
+            ["child-insert-done", "parent-after-child", "nested-after-commit"],
+            RecordedFor(local, id));
+    }
+
+    [Fact]
+    public async Task InterfaceFactory_AsTheOutermostEntry_DrainsOnSuccess()
+    {
+        // Success-path drain on the interface leg, resolved directly server-side so the
+        // interface factory itself is the depth-1 entry (behind the choke point it is
+        // always nested).
+        var (server, _, _) = ClientServerContainers.Scopes();
+        var factory = server.GetRequiredService<IPhaseAuditServiceFactory>();
+        var id = Guid.NewGuid();
+
+        await factory.AuditPhased(id);
+
+        Assert.Equal(["interface-method-done", "interface-after-commit"], RecordedFor(server, id));
+    }
+
+    [Fact]
+    public void SyncFactoryMethod_WithPendingPhasedWork_BlockDrainsAtCompletion()
+    {
+        // The generated Run route (sync non-Task factory shape) with deferred work
+        // actually pending — no-silent-loss at the generated level, not just the
+        // FactoryEntryCall.Run unit level.
+        var (server, _, _) = ClientServerContainers.Scopes();
+        var factory = server.GetRequiredService<IPhaseSyncTargetFactory>();
+        var id = Guid.NewGuid();
+
+        factory.Create(id);
+
+        Assert.Equal(["sync-method-done", "sync-after-commit"], RecordedFor(server, id));
+    }
+
     private sealed class CapturingRelay(ConcurrentBag<FactoryEventBase> sink) : IFactoryEventRelay
     {
         public Task Relay(IReadOnlyList<FactoryEventBase> factoryEvents)

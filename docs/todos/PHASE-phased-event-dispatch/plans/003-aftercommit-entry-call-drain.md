@@ -265,8 +265,10 @@ New in this plan:
       inner completion. `[unit]`
 - [ ] Backward compatibility: the full existing suite — unit, integration, AND the
       Design solution's suite (renderer changes regenerate every Design factory) —
-      passes with only the six pre-declared pin amendments named in Constraints (each
-      listed in Test Evidence with intent preserved). `[integration]`
+      passes with only the pre-declared amendment set: the six pin tests named in
+      Constraints plus the two TRIM-009 emission-shape pins and the two relay-collection
+      premise restorations disclosed in Test Evidence (each with intent preserved).
+      `[integration]`
 
 ---
 
@@ -373,9 +375,13 @@ every "drains exactly once" assertion.
 
 ## Test Evidence
 
+*(Updated after the test-review round 1 loop — see `reviews/003-test-review.md` for the
+findings and their disposition.)*
+
 Suites (Release, both TFMs, logs in `reviews/003-build.log` / `reviews/003-test.log`):
-unit **662×2** (baseline 653; +8 new, +1 renamed), integration **575×2 +5 skipped**
-(baseline 561+5; +14 new), Design **86×2** (unchanged). 0 failures.
+unit **668×2** (baseline 653; +9 in the first pass, +6 closing the gate's findings; one
+rename is count-neutral), integration **579×2 +5 skipped** (baseline 561+5; +14 first
+pass, +4 closing findings), Design **86×2** (unchanged). 0 failures.
 
 Unit tests live in `FactoryEntryCallTests` (new), `FactoryEventsDispatcherPhaseTests`;
 integration tests in `Events/Phases/FactoryEventPhaseEntryTests` (new) with targets in
@@ -385,15 +391,15 @@ integration tests in `Events/Phases/FactoryEventPhaseEntryTests` (new) with targ
 |---|---|---|
 | HTTP entry: AfterCommit after entry completes + same-response relay | `RemoteCreate_AfterCommitHandlerRunsAfterTheEntryCallCompletes` (ordering discriminator: handler after `create-method-done`); relay half: `EventsRaisedByAfterCommitHandlers_JoinTheSameResponsesRelayBatch` | integration ✓ |
 | Logical entry through the public wrapper (class factory) | `LogicalCreate_AfterCommitHandlerRunsAfterTheWrapperCompletes` | integration ✓ |
-| `LocalSave` nesting drains exactly once at the outermost | `LogicalSave_NestedInsert_DrainsExactlyOnceAfterTheOutermostCompletion`, `RemoteSave_NestedUnderTheChokePoint_StillDrainsExactlyOnce` (depth-3: choke → LocalSave → LocalInsert; a depth mismatch throws on the success path, so green = depth-correct) | integration ✓ |
+| `LocalSave` nesting drains exactly once at the outermost | `LogicalSave_NestedInsert_DrainsExactlyOnceAfterTheOutermostCompletion`, `RemoteSave_NestedUnderTheChokePoint_StillDrainsExactlyOnce` (once-only + depth-3 shape), and — the actual inner-vs-outer discriminator, added at the gate after review round 1 showed the first two cannot separate the drains — `NestedChildSave_DoesNotDrainAtTheChildsCompletion` (parent Insert saves a child then records a marker; an inner drain lands between the markers) | integration ✓ |
 | AfterFlush before AfterCommit at the entry drain | `EntryDrain_SweepsAfterFlushBeforeAfterCommit` (registration order deliberately inverted) | integration ✓ |
 | Entry throws → queued handlers never run (both entry families) | `RemoteEntryFails_QueuedHandlersNeverRun`, `LogicalEntryFails_QueuedHandlersNeverRun` | integration ✓ |
 | Failure then success in the same scope runs only the success's work | `FailedCall_ThenSuccessfulCall_InTheSameServerScope_RunsOnlyTheSecond` (harness's single reused server scope); unit-level: `FailedEntryCall_ClearsDeferredWork_AndTheNextSuccessRunsOnlyItsOwn` | integration ✓ |
-| Forbidden call does not drain (falsifiable form) | `ForbiddenInnerCall_AfterEnqueueingPhasedWork_NothingRuns` — outer enqueues, then a `NotAuthorizedException`-throwing interface-factory denial. **Note:** the harness has no ASP.NET pipeline, so the `AspForbidException` shape specifically is unexercised; it rides the same choke-point catch as every throw (see Current State), and the class-factory `Authorized<T>` denial is a *successful* call by design (Intent). | integration ✓ (noted gap) |
+| Forbidden call does not drain (falsifiable form) | `ForbiddenInnerCall_AfterEnqueueingPhasedWork_NothingRuns` (outer enqueues, then a `NotAuthorizedException`-throwing interface-factory denial) and `AspForbidException_AfterEnqueueingPhasedWork_ClearsWithoutDraining` (the success-shaped-return denial: the exception type is public in the core package — review round 1 corrected the earlier claim that it needed an ASP.NET pipeline; the test also pins the pre-existing empty-shape → `default` client observable). The class-factory `Authorized<T>` denial remains a *successful* call by design (Intent). | integration ✓ |
 | Handler exception swallowed, response succeeds, survivors run | `ThrowingAfterCommitHandler_IsSwallowed_TheCallSucceeds_AndTheSurvivorStillRuns`; scheduler-level 9003/OCE pins carried from PHASE-001 | integration ✓ |
 | Client-raised event (`RaiseUntyped` remote path) gets entry semantics | `ClientRaisedEvent_PhasedHandlerGetsEntrySemantics_NotTheOutsideEntryFallback` (9001 queued in logs; 9004/9005 absent) — also closes the RaiseUntyped tech debt together with `RaiseUntyped_DeferredHandler_DefersJustLikeRaise` | integration ✓ |
 | Event raised by a draining handler joins the current drain (B-V3) | `DrainedHandlerRaisingAnEvent_GoesThroughTheRealRaisePath` (re-pointed; mid-drain marker discriminates) — **red-proofed** | unit ✓ |
-| Raise outside any factory call dispatches immediately + debug log | `Raise_PhasedHandlerOutsideAnyFactoryCall_DispatchesImmediately` (9005 emission pinned indirectly via the integration log test's DoesNotContain) | unit ✓ |
+| Raise outside any factory call dispatches immediately + debug log | `Raise_PhasedHandlerOutsideAnyFactoryCall_DispatchesImmediately` — now with a **positive** 9005 Debug emission assertion via a capturing logger (review round 1: an absence assertion cannot pin an emission) | unit ✓ |
 | Entry drain passes no token and sits before the cancellation check | `TokenCancelledAfterTheEntryCallSucceeds_DrainStillRuns` `[integration]` — **red-proofed**; token identity: `RunAsync_EntryDrainPassesNoCancellationToken` `[unit]` | integration ✓ |
 | Sync (non-`Task`) factory entry loses nothing | `Run_SyncEntryWithDeferredWork_DoesNotLoseIt` | unit ✓ |
 | Nested factory calls don't drain at the inner completion | `RunAsync_NestedEntry_DoesNotDrainAtTheInnerCompletion` | unit ✓ |
@@ -420,7 +426,31 @@ Also amended (in-charter, generator emission shape): two TRIM-009 pins in
 `AssemblyAttributeEmissionTests` — the async-split test's forward line updated to the
 `FactoryEntryCall` route, and `ClassFactory_GuardedSyncLocalMethod_IsNotSplit` renamed to
 `…_SplitsIntoSyncWrapperAndSyncCore` (every `Local*` now splits; the pinned trimming
-property — guard never inside a state machine — is asserted in its new form).
+property — guard never inside a state machine — is asserted in its new form). Review
+round 1 also caught two tests **weakened by omission** rather than edit —
+`Raise_DeferredHandler_StillCollectsForRelayAtRaiseTime` and its ServerOnly sibling ran
+with no entry active after the dispatcher change, so their deferral premise was vacuous;
+both restored with `BeginEntryCall` (the failure mode pre-declaration cannot catch).
+
+**Gate-closure additions (after test-review round 1):**
+
+| Round-1 finding | Closing test | Tier |
+|---|---|---|
+| Must 1: `AspForbidException` success-shaped denial unexercised | `AspForbidException_AfterEnqueueingPhasedWork_ClearsWithoutDraining` | integration |
+| Must 2: concurrent flows in one scope — semantics unrecorded | `ConcurrentFlowsInOneScope_ShareEntryState_FailedFlowsWorkRidesTheSurvivingDrain` (pins the documented limitation; Discovery Log entry records the posture) | unit |
+| Must 3: interface-renderer emission unpinned | `InterfaceFactory_GuardedLocalMethod_SplitsIntoSyncWrapperAndCore` | unit |
+| Should 4: nesting tests didn't discriminate | `NestedChildSave_DoesNotDrainAtTheChildsCompletion` | integration |
+| Should 5: post-OCE clear + double-End tolerance unpinned | `HandlerThrowsOperationCanceled_MidDrain_EntryExitStillClearsAndDepthSurvives` | unit |
+| Should 6: relay-collection premise vacuous | Both tests restored with `BeginEntryCall` + `HasPending` assertion | unit |
+| Should 7: 9005 emission unpinned | Positive Debug 9005 assertion added to the outside-entry test | unit |
+| Should 8: caught-nested-failure + handler-invokes-factory | `NestedEntryFails_OuterCatchesAndSucceeds_TheEntryStillDrains`, `DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress` | unit |
+| Should 9: interface success-path + generated sync shape | `InterfaceFactory_AsTheOutermostEntry_DrainsOnSuccess`, `SyncFactoryMethod_WithPendingPhasedWork_BlockDrainsAtCompletion` | integration |
+| (nice) sync no-scheduler mirror; strengthened misuse pin | `Run_NoSchedulerInScope_JustRunsTheBody`; `EndEntryCall_WithoutBegin_ThrowsOnTheSuccessPath` now asserts depth survival + a working follow-on cycle | unit |
+
+Not closed this round (recorded, not hidden): 9002/9004/9006 positive emission pins and
+the `ClientServerContainers` tuple-order/duplication hazard → routed to the PHASE-007
+tech-debt plan; the relay-batch integration test was not red-proofed (structurally sound;
+noted).
 
 ---
 

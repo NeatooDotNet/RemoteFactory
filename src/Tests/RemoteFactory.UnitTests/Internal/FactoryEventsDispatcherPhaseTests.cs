@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.Internal;
 
@@ -224,24 +225,56 @@ public class FactoryEventsDispatcherPhaseTests
     {
         // A scheduler exists in the scope, but no entry factory call is active — the
         // "Raise outside any factory call" case. The phased handler dispatches
-        // immediately (with a debug log) instead of queueing into a drain nobody owns.
+        // immediately, with the 9005 debug log positively pinned here (an absence
+        // assertion elsewhere cannot pin an emission).
         lock (Dispatched) { Dispatched.Clear(); }
         FactoryEventHandlerRegistry.RegisterHandler<OutsideEntryEvent>(typeof(DeferredHandler), DispatchPhase.AfterCommit, Recording("deferred"));
 
-        var (provider, scope) = ServerScope();
-        using (provider)
-        using (scope)
+        var capture = new CapturingProvider();
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(capture).SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace));
+        services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(FactoryEventsDispatcherPhaseTests).Assembly);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
+        var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
+
+        await events.Raise(new OutsideEntryEvent("x"));
+
+        lock (Dispatched)
         {
-            var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
-            var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
+            Assert.Equal(["deferred"], Dispatched);
+        }
+        Assert.False(queue.HasPending);
+        lock (capture.Entries)
+        {
+            Assert.Contains(capture.Entries, e =>
+                e.EventId == 9005 && e.Level == Microsoft.Extensions.Logging.LogLevel.Debug);
+        }
+    }
 
-            await events.Raise(new OutsideEntryEvent("x"));
+    private sealed class CapturingProvider : Microsoft.Extensions.Logging.ILoggerProvider
+    {
+        public List<(int EventId, Microsoft.Extensions.Logging.LogLevel Level)> Entries { get; } = [];
 
-            lock (Dispatched)
+        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new CapturingLogger(this);
+
+        public void Dispose() { }
+
+        private sealed class CapturingLogger(CapturingProvider owner) : Microsoft.Extensions.Logging.ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
-                Assert.Equal(["deferred"], Dispatched);
+                lock (owner.Entries)
+                {
+                    owner.Entries.Add((eventId.Id, logLevel));
+                }
             }
-            Assert.False(queue.HasPending);
         }
     }
 
@@ -317,11 +350,16 @@ public class FactoryEventsDispatcherPhaseTests
         {
             var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
             var collector = scope.ServiceProvider.GetRequiredService<IFactoryEventCollector>();
+            var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
 
+            // Entry active so the handler genuinely DEFERS — collection at raise time
+            // is only meaningful while the dispatch hasn't happened yet.
+            queue.BeginEntryCall();
             await events.Raise(new RelayCollectionEvent("x"));
 
             var collected = Assert.Single(collector.GetCollectedEvents());
             Assert.IsType<RelayCollectionEvent>(collected);
+            Assert.True(queue.HasPending);
         }
     }
 
@@ -336,7 +374,10 @@ public class FactoryEventsDispatcherPhaseTests
         {
             var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
             var collector = scope.ServiceProvider.GetRequiredService<IFactoryEventCollector>();
+            var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
 
+            // Entry active — see Raise_DeferredHandler_StillCollectsForRelayAtRaiseTime.
+            queue.BeginEntryCall();
             await events.Raise(new RelayCollectionEvent("x"), RaiseOptions.ServerOnly);
 
             Assert.Empty(collector.GetCollectedEvents());

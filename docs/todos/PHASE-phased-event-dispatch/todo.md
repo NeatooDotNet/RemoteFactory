@@ -76,11 +76,39 @@ exposes drain points.
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types) | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins; `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-14 — PHASE-003 (concurrent flows share entry state — documented limitation)
+- **Finding:** The test-review gate pressed on plan-review B-C2: the scheduler's lock
+  gives data-race safety, but entry tracking is per-scope, not per-flow. Two concurrent
+  flows in one scope interleave on one depth counter — a failed flow's exit is a nested
+  exit (no clear), so its queued work rides the surviving flow's drain.
+- **Decision:** Document, don't redesign. Scopes are the framework's isolation unit;
+  concurrent flows sharing a scope already share DbContexts and every scoped service.
+  The actual semantics are pinned
+  (`ConcurrentFlowsInOneScope_ShareEntryState_FailedFlowsWorkRidesTheSurvivingDrain`)
+  so any change to them is a conscious one. Per-flow tracking (AsyncLocal) would be a
+  design change with its own hazards — revisit only if a real consumer hits this.
+- **Follow-up:** PHASE-005 documents "one factory call per scope at a time" as the
+  concurrency guidance.
+
+### 2026-08-14 — PHASE-003 (test-review round 1: 3 must-cover, all closed)
+- **Finding:** The gate's sharpest catches: the `AspForbidException` mitigation note was
+  factually wrong (the type is public in core — no ASP.NET pipeline needed to exercise
+  it); the nested-save tests could not discriminate inner-vs-outer drain and the
+  evidence row's justification was incorrect; and two sacred relay-collection tests had
+  been silently weakened by the dispatcher change without being edited — the failure
+  mode pre-declaration cannot catch.
+- **Decision:** Amend — all 3 must-cover and all 6 should-cover findings closed with
+  tests (+6 unit, +4 integration); evidence rows corrected; two nice-to-haves left open
+  by choice and recorded.
+- **Follow-up:** [reviews/003-test-review.md](./reviews/003-test-review.md); 9002/9004/
+  9006 emission pins and the `ClientServerContainers` tuple-order/duplication hazard
+  routed to PHASE-007 (its scope grows accordingly).
 
 ### 2026-08-14 — PHASE-003 (plan review)
 - **Finding:** Plan review returned CONCERNS — 6 veto findings. The sharpest: the

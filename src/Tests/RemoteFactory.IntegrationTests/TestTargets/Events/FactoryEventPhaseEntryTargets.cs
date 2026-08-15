@@ -33,6 +33,10 @@ public record PhasedRelayChainEvent(Guid Id) : FactoryEventBase;
 public record PhasedRelayOutEvent(Guid Id) : FactoryEventBase;
 public record PhasedUntypedRemoteEvent(Guid Id) : FactoryEventBase;
 public record PhasedCancelAfterSuccessEvent(Guid Id) : FactoryEventBase;
+public record PhasedAspForbidEvent(Guid Id) : FactoryEventBase;
+public record PhasedNestedSaveEvent(Guid Id) : FactoryEventBase;
+public record PhasedInterfaceEvent(Guid Id) : FactoryEventBase;
+public record PhasedSyncEntryEvent(Guid Id) : FactoryEventBase;
 
 // -----------------------------------------------------------------------------
 // HANDLER MARKER CLASSES — registration keys only; the invokers are lambdas in
@@ -160,6 +164,38 @@ public static class PhaseHandlerRegistrations
             (sp, evt, _, _) =>
             {
                 sp.GetRequiredService<IEventTestService>().RecordEventFired("cancel-after-commit", ((PhasedCancelAfterSuccessEvent)evt).Id);
+                return Task.CompletedTask;
+            });
+
+        FactoryEventHandlerRegistry.RegisterHandler<PhasedAspForbidEvent>(
+            typeof(PhasedAfterCommitMarker), DispatchPhase.AfterCommit,
+            (sp, evt, _, _) =>
+            {
+                sp.GetRequiredService<IEventTestService>().RecordEventFired("aspforbid-after-commit", ((PhasedAspForbidEvent)evt).Id);
+                return Task.CompletedTask;
+            });
+
+        FactoryEventHandlerRegistry.RegisterHandler<PhasedNestedSaveEvent>(
+            typeof(PhasedAfterCommitMarker), DispatchPhase.AfterCommit,
+            (sp, evt, _, _) =>
+            {
+                sp.GetRequiredService<IEventTestService>().RecordEventFired("nested-after-commit", ((PhasedNestedSaveEvent)evt).Id);
+                return Task.CompletedTask;
+            });
+
+        FactoryEventHandlerRegistry.RegisterHandler<PhasedInterfaceEvent>(
+            typeof(PhasedAfterCommitMarker), DispatchPhase.AfterCommit,
+            (sp, evt, _, _) =>
+            {
+                sp.GetRequiredService<IEventTestService>().RecordEventFired("interface-after-commit", ((PhasedInterfaceEvent)evt).Id);
+                return Task.CompletedTask;
+            });
+
+        FactoryEventHandlerRegistry.RegisterHandler<PhasedSyncEntryEvent>(
+            typeof(PhasedAfterCommitMarker), DispatchPhase.AfterCommit,
+            (sp, evt, _, _) =>
+            {
+                sp.GetRequiredService<IEventTestService>().RecordEventFired("sync-after-commit", ((PhasedSyncEntryEvent)evt).Id);
                 return Task.CompletedTask;
             });
 
@@ -302,6 +338,23 @@ public static partial class PhaseStaticCommands
     }
 
     /// <summary>
+    /// Enqueues phased work, then throws <see cref="AspForbidException"/> — the denial
+    /// shape the choke point converts to a success-shaped empty response. It must clear,
+    /// never drain, despite that return shape. (The exception type is public in the core
+    /// package; only its producers live in the AspNetCore package.)
+    /// </summary>
+    [Execute]
+    [Remote]
+    internal static async Task<Guid> _RunAspForbid(
+        Guid id,
+        [Service] IFactoryEvents events,
+        CancellationToken ct)
+    {
+        await events.Raise(new PhasedAspForbidEvent(id), RaiseOptions.None, ct);
+        throw new AspForbidException($"phased entry forbidden for {id}");
+    }
+
+    /// <summary>
     /// Enqueues phased work, then cancels the request token — the call itself has
     /// already succeeded, so the entry drain must still run in full.
     /// </summary>
@@ -328,6 +381,104 @@ public sealed class PhaseCancellationTrigger
 {
     public Action? OnCancel { get; set; }
     public void Cancel() => OnCancel?.Invoke();
+}
+
+/// <summary>
+/// Child entity for the nested-save discriminator: the parent's Insert saves this child
+/// through its factory (a nested entry), then records a marker. A drain firing at the
+/// child's completion instead of the parent's lands between the two markers.
+/// </summary>
+[Factory]
+public partial class PhaseChildTarget : IFactorySaveMeta
+{
+    public Guid Id { get; set; }
+    public bool IsDeleted { get; set; }
+    public bool IsNew { get; set; } = true;
+
+    [Insert]
+    internal Task Insert([Service] IEventTestService testService)
+    {
+        testService.RecordEventFired("child-insert-done", Id);
+        IsNew = false;
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Parent whose Insert raises a phased event, saves a child through the child's factory,
+/// and then records "parent-after-child" — the inner-vs-outer drain discriminator.
+/// </summary>
+[Factory]
+public partial class PhaseParentTarget : IFactorySaveMeta
+{
+    public Guid Id { get; set; }
+    public bool IsDeleted { get; set; }
+    public bool IsNew { get; set; } = true;
+
+    [Insert]
+    internal async Task Insert(
+        [Service] IFactoryEvents events,
+        [Service] IPhaseChildTargetFactory childFactory,
+        [Service] IEventTestService testService,
+        CancellationToken ct)
+    {
+        await events.Raise(new PhasedNestedSaveEvent(Id), RaiseOptions.None, ct);
+        await childFactory.Save(new PhaseChildTarget { Id = Id }, ct);
+        testService.RecordEventFired("parent-after-child", Id);
+        IsNew = false;
+    }
+}
+
+/// <summary>
+/// Interface factory whose implementation raises a phased event — success-path drain
+/// coverage for the interface leg, as the OUTERMOST entry (resolved directly server-side,
+/// depth 1, unlike the always-nested position behind the choke point).
+/// </summary>
+[Factory]
+public interface IPhaseAuditService
+{
+    Task<Guid> AuditPhased(Guid id);
+}
+
+/// <summary>Named to match IPhaseAuditService for RegisterMatchingName.</summary>
+public class PhaseAuditService : IPhaseAuditService
+{
+    private readonly IFactoryEvents _events;
+    private readonly IEventTestService _testService;
+
+    public PhaseAuditService(IFactoryEvents events, IEventTestService testService)
+    {
+        _events = events;
+        _testService = testService;
+    }
+
+    public async Task<Guid> AuditPhased(Guid id)
+    {
+        await _events.Raise(new PhasedInterfaceEvent(id));
+        _testService.RecordEventFired("interface-method-done", id);
+        return id;
+    }
+}
+
+/// <summary>
+/// Sync (non-Task) factory method that enqueues phased work via a blocking Raise —
+/// the generated Run route (value-object shape) with pending deferred work.
+/// </summary>
+[Factory]
+public partial class PhaseSyncTarget
+{
+    public Guid Id { get; set; }
+
+    [Create]
+    internal void Create(
+        Guid id,
+        [Service] IFactoryEvents events,
+        [Service] IEventTestService testService)
+    {
+        Id = id;
+        events.Raise(new PhasedSyncEntryEvent(id)).GetAwaiter().GetResult();
+        testService.RecordEventFired("sync-method-done", id);
+    }
 }
 
 /// <summary>Authorization that always denies reads.</summary>

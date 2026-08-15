@@ -456,6 +456,58 @@ namespace TestNamespace
         Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.MyServiceFactory))]", generatedSource);
     }
 
+    /// <summary>
+    /// The interface leg's <c>Local*</c> methods split into a NON-async guarded wrapper
+    /// forwarding through the entry-call helper to a private, unguarded core.
+    /// </summary>
+    /// <remarks>
+    /// Introduced by PHASE-003 — this leg previously emitted the guard inline on the
+    /// method itself with a conditional <c>async</c> keyword, the shape TRIM-009
+    /// measured as guard-inside-<c>MoveNext</c> on the class leg whenever the method
+    /// went async. Body elimination on the interface leg is still UNVERIFIED (TRIM
+    /// Deferred Work item 20: the single-method registrar holder half of the fix is
+    /// absent here), so this emission pin is the only obtainable evidence that the
+    /// guard sits in a non-async wrapper. An <c>async</c> keyword appearing on the
+    /// wrapper must go red here.
+    /// </remarks>
+    [Fact]
+    public void InterfaceFactory_GuardedLocalMethod_SplitsIntoSyncWrapperAndCore()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public interface IMyService
+    {
+        Task<string> DoWork(string input);
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("MyServiceFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        // Wrapper: NOT async, carries the guard, forwards through the entry-call helper.
+        Assert.Matches(
+            @"public Task<string> LocalDoWork\([^)]*\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
+            generatedSource);
+        Assert.DoesNotContain("public async Task<string> LocalDoWork(", generatedSource);
+        Assert.Contains("return FactoryEntryCall.RunAsync(ServiceProvider, () => LocalDoWorkCore(", generatedSource);
+
+        // Core: private and unguarded (this fixture's body forwards the target's task
+        // without awaiting, so no async keyword; the guard already ran in the wrapper).
+        Assert.Matches(
+            @"private (async )?Task<string> LocalDoWorkCore\([^)]*\)\s*\{\s*(?!\s*if \(!NeatooRuntime\.IsServerRuntime\))",
+            generatedSource);
+    }
+
     #endregion
 
     #region Relay Handler
