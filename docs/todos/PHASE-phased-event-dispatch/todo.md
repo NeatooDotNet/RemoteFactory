@@ -127,7 +127,13 @@ exposes drain points.
 
 ## Sibling Todos
 
-*(none)*
+- [ ] [RFEF — RemoteFactory.EntityFrameworkCore, declarative factory transactions](../RFEF-factory-transactions/todo.md)
+  — surfaced 2026-08-14 while discussing this todo's target consumer code (per-method
+  begin/commit boilerplate); doesn't advance PHASE's goal (persistence stays out of this
+  framework arc) but builds directly on PHASE-003's entry-call tracking and PHASE-004's
+  drain semantics, and would generate the `AfterFlush` drain call PHASE-004 otherwise
+  leaves to consumer code. Blocked until those plans land. (Link resolves once the RFEF
+  branch merges to main.)
 
 ---
 
