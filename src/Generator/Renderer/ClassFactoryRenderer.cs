@@ -398,7 +398,7 @@ internal static class ClassFactoryRenderer
             sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
         }
 
-        sb.AppendLine($"            return FactoryEntryCall.{entryRun}(ServiceProvider, () => Local{uniqueName}Core({forwardArgs}));");
+        sb.AppendLine($"            return global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.{entryRun}(ServiceProvider, () => Local{uniqueName}Core({forwardArgs}));");
         sb.AppendLine("        }");
         sb.AppendLine();
         var asyncKeyword = needsAsync ? "async " : "";
@@ -419,7 +419,7 @@ internal static class ClassFactoryRenderer
         RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
             needsAsync, method.IsInternal || method.IsRemote);
 
-        // Authorization checks (inside guard -- auth types are server-only)
+        // Authorization checks — in the unguarded Core, reached only through the guarded wrapper
         RenderAuthorizationChecks(sb, method);
 
         // Determine if this is a "read-style" (constructor/static factory) or "write-style" (instance target) invocation.
@@ -843,7 +843,7 @@ internal static class ClassFactoryRenderer
         RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
             needsAsync: true, isServerOnly: method.IsInternal || method.IsRemote);
 
-        // Authorization checks (inside guard -- auth types are server-only)
+        // Authorization checks — in the unguarded Core, reached only through the guarded wrapper
         RenderAuthorizationChecks(sb, method);
 
         // Service assignments
@@ -896,7 +896,7 @@ internal static class ClassFactoryRenderer
         RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
             needsAsync, method.IsInternal || method.IsRemote);
 
-        // Authorization checks (inside guard -- auth types are server-only)
+        // Authorization checks — in the unguarded Core, reached only through the guarded wrapper
         RenderAuthorizationChecks(sb, method);
 
         // Cast target to implementation type
@@ -1380,7 +1380,7 @@ internal static class ClassFactoryRenderer
         RenderLocalMethodOpening(sb, "public", returnType, method.UniqueName, parameters, forwardArgs,
             method.IsAsync, method.IsInternal || method.IsRemote);
 
-        // Authorization checks (inside guard -- auth types are server-only)
+        // Authorization checks — in the unguarded Core, reached only through the guarded wrapper
         RenderAuthorizationChecks(sb, method);
 
         // Return success

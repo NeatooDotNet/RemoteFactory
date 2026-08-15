@@ -3,7 +3,7 @@
 **Plan #:** 003
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-08-14
 **Plan-review opt-in:** Yes (touches all three factory renderers; entry-shape subtleties found at recon make this the riskiest plan)
 **Code-review opt-in:** Yes (behavior-changing across generated code and runtime)
@@ -488,6 +488,19 @@ pending in a sync entry is a fire-and-forget `Raise` inside a synchronous factor
 method, and no-silent-loss outranks non-blocking there. With nothing pending the
 completion is fully synchronous.
 
+### 2026-08-14 — Code-review fixes (V1, C1, C4, C9)
+
+The interface leg gained the single-method registrar holder
+(`NeatooInterfaceFactoryRegistrar_` prefix; assembly attribute repointed) so the new
+`Local*Core` split does not sit in the DAM-roots-everything configuration TRIM-009
+measured as insufficient — see the Discovery Log entry. `EndEntryCallAsync`'s
+check-then-decrement collapsed into one lock acquisition (C1: the two-acquisition window
+could reach depth 0 having neither drained nor cleared). Log 9006 renamed
+`FactoryEventPhaseDiscardedAtExit` with a cause-neutral message (C4: the shared clear
+also runs on the post-OCE success-path cleanup). `FactoryEntryCall` is emitted
+`global::`-qualified (C9). Full findings + dispositions:
+[../reviews/003-code-review.md](../reviews/003-code-review.md).
+
 ### 2026-08-14 — Post-OCE clear at the entry drain
 
 If the entry drain itself throws (a handler's own `OperationCanceledException`), the
@@ -507,3 +520,14 @@ drain — so "between entry calls the scheduler is empty" holds on every exit pa
   2026-08-14). Tests here register phased handlers via the registry's 3-arg overload;
   PHASE-002 later makes the attribute's phase argument flow end-to-end and owns the
   duplicate-registration diagnostic decision.
+- **Recorded limitations (code review C5–C8, accepted):** every factory call now pays a
+  closure + delegate + (on await) a state machine, and the client-reachable value-object
+  `Run` route pays one null `GetService` lookup per call — unmeasured (the only perf
+  suite is skipped); a `ref`/`in`/`out`/ref-struct factory parameter would fail to
+  compile in generated code under the lambda capture (no diagnostic yet — if the shape
+  compiles today on `main`, a generator diagnostic warrants its own Draft row); the
+  `Local{X}Core` name-collision surface widened to all factory methods; static-leg
+  delegates resolved from the root provider now touch a scoped service and throw under
+  `ValidateScopes` (delegates are meant to be scope-resolved). OCE-from-a-drained-
+  handler still fails an already-succeeded call (chartered by the todo AC); whether a
+  post-completion drain should swallow OCE too is handed to PHASE-004.

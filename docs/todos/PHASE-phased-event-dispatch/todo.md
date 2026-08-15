@@ -72,7 +72,7 @@ exposes drain points.
 |---|------|-------|--------|
 | 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Done |
 | 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Draft |
-| 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | In Progress |
+| 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
@@ -81,6 +81,32 @@ exposes drain points.
 ---
 
 ## Discovery Log
+
+### 2026-08-14 — PHASE-003 (code review: interface leg aligned on the registrar-holder shape)
+- **Finding:** Code review V1: introducing the wrapper/core split on the interface leg
+  moved its bodies into private `Local*Core` methods while the assembly attribute still
+  pointed at `{Impl}Factory` — whose `[DynamicallyAccessedMembers]` roots every method —
+  i.e. the configuration TRIM-009 *measured* as insufficient on the class leg. "TRIM
+  item 20 status unchanged" understated a direction-of-change.
+- **Decision:** Amend — the interface renderer now emits a single-method registrar
+  holder (`NeatooInterfaceFactoryRegistrar_` prefix) and points the attribute at it,
+  aligning all three legs on the measured-good shape. Elimination on this leg is still
+  UNVERIFIED (TRIM Deferred Work item 20; fixture blocked by item 19) — but the shape is
+  no longer the measured-bad one.
+- **Follow-up:** TRIM item 20's eventual verification now tests the holder shape.
+  [reviews/003-code-review.md](./reviews/003-code-review.md).
+
+### 2026-08-14 — PHASE-003 (the RFEF substrate, as actually built)
+- **Finding:** RFEF plans to build declarative transactions on this plan's entry-call
+  tracking. What landed, for its Current State: tracking lives on
+  `IFactoryEventPhaseScheduler` (events-named, scoped, Server+Logical) with **no
+  observer hook** — RFEF needs a seam that does not exist yet; granularity is per-scope
+  (concurrent flows share depth; see the limitation entry below); and generated
+  `Can*`/`LocalCan*` authorization probes are now full entry calls — under RFEF a
+  read-only auth probe would open and commit a transaction unless excluded.
+- **Decision:** Record here; no code change in PHASE. RFEF-001's draft inherits these
+  three facts as Current State constraints.
+- **Follow-up:** RFEF todo (sibling; blocked on PHASE-003/004 — 003 is now landing).
 
 ### 2026-08-14 — PHASE-003 (concurrent flows share entry state — documented limitation)
 - **Finding:** The test-review gate pressed on plan-review B-C2: the scheduler's lock

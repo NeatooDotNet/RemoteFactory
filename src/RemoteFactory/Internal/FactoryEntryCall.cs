@@ -84,6 +84,14 @@ public static class FactoryEntryCall
     /// invariant outranks staying non-blocking on this edge. With nothing deferred, the
     /// completion is fully synchronous.
     /// </summary>
+    /// <remarks>
+    /// The blocking drain can deadlock under a captured <see cref="SynchronizationContext"/>
+    /// (e.g. Logical mode inside a Blazor Server circuit) if a drained handler awaits
+    /// without <c>ConfigureAwait(false)</c> — the continuation posts to the context this
+    /// call is blocking. Handlers registered at a non-Immediate phase should not assume
+    /// a context, and synchronous factory methods should not raise phased events on
+    /// context-bound scopes.
+    /// </remarks>
     public static T Run<T>(IServiceProvider serviceProvider, Func<T> body)
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);

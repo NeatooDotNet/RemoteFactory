@@ -142,7 +142,9 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
             return;
         }
 
-        bool outermost;
+        // Single lock acquisition: a check-then-decrement across two acquisitions opens
+        // a window (interleaved with a concurrent flow's failure exit) where depth hits
+        // zero having neither drained nor cleared (code review C1).
         lock (_gate)
         {
             if (_entryDepth == 0)
@@ -151,17 +153,11 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                     $"{nameof(EndEntryCallAsync)} called without a matching {nameof(BeginEntryCall)}.");
             }
 
-            outermost = _entryDepth == 1;
-        }
-
-        if (!outermost)
-        {
-            lock (_gate)
+            if (_entryDepth > 1)
             {
                 _entryDepth--;
+                return;
             }
-
-            return;
         }
 
         // The entry stays active (depth 1) for the duration of the drain, so an event a
@@ -272,7 +268,7 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
 
         if (discarded > 0)
         {
-            _logger?.FactoryEventPhaseClearedOnFailure(discarded);
+            _logger?.FactoryEventPhaseDiscardedAtExit(discarded);
         }
     }
 

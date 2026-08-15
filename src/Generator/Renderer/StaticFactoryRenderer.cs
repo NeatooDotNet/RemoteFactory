@@ -237,7 +237,7 @@ internal static class StaticFactoryRenderer
         sb.AppendLine("                {");
         sb.AppendLine($"                    services.AddTransient<{typeName}.{del.DelegateName}>(cc =>");
         sb.AppendLine("                    {");
-        sb.AppendLine($"                        return ({paramDecl}) => FactoryEntryCall.RunAsync(cc, () => {{");
+        sb.AppendLine($"                        return ({paramDecl}) => global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(cc, () => {{");
 
         if (!string.IsNullOrEmpty(serviceAssignments))
         {

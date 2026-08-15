@@ -163,7 +163,7 @@ namespace TestNamespace
         Assert.Matches(
             @"public Task<MyEntity> LocalFetchIt\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
             generatedSource);
-        Assert.Contains("return FactoryEntryCall.RunAsync(ServiceProvider, () => LocalFetchItCore(name, cancellationToken));", generatedSource);
+        Assert.Contains("return global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(ServiceProvider, () => LocalFetchItCore(name, cancellationToken));", generatedSource);
 
         // Core: async, private, and carries NO guard — the guard already ran in the wrapper.
         Assert.Contains("private async Task<MyEntity> LocalFetchItCore(", generatedSource);
@@ -232,7 +232,7 @@ namespace TestNamespace
         Assert.Matches(
             @"public Task<MyEntity> LocalCreate\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
             generatedSource);
-        Assert.Contains("return FactoryEntryCall.RunAsync(ServiceProvider, () => LocalCreateCore(name, cancellationToken));", generatedSource);
+        Assert.Contains("return global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(ServiceProvider, () => LocalCreateCore(name, cancellationToken));", generatedSource);
 
         // Core: private, NOT async (the sync body keeps its shape), and carries no guard.
         Assert.Matches(
@@ -427,9 +427,16 @@ namespace TestNamespace
     #region Interface Factory
 
     /// <summary>
-    /// Interface factory generated source contains the assembly-level NeatooFactoryRegistrar
-    /// attribute with the fully-qualified implementation factory type name.
+    /// Interface factory generated source points the assembly-level NeatooFactoryRegistrar
+    /// attribute at a single-method registrar holder — never at the factory class, whose
+    /// methods (including the private Local*Core bodies) the attribute's
+    /// [DynamicallyAccessedMembers] would otherwise root into trimmed clients.
     /// </summary>
+    /// <remarks>
+    /// Amended by PHASE-003 (code review V1): previously the attribute named
+    /// MyServiceFactory itself, which became the TRIM-009 measured-insufficient
+    /// configuration once the Local* wrapper/core split landed on this leg.
+    /// </remarks>
     [Fact]
     public void InterfaceFactory_EmitsAssemblyAttribute()
     {
@@ -453,7 +460,17 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.MyServiceFactory))]", generatedSource);
+        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.NeatooInterfaceFactoryRegistrar_MyService))]", generatedSource);
+
+        // The attribute must not name the factory type (the prefix convention keeps the
+        // factory's qualified name from being a substring of the holder's).
+        Assert.DoesNotContain("NeatooFactoryRegistrar(typeof(global::TestNamespace.MyServiceFactory)", generatedSource);
+
+        // The holder exists and forwards to the factory's registrar.
+        Assert.Matches(
+            @"internal static class NeatooInterfaceFactoryRegistrar_MyService\s*\{\s*internal static void FactoryServiceRegistrar\(IServiceCollection services, NeatooFactory remoteLocal\)",
+            generatedSource);
+        Assert.Contains("global::TestNamespace.MyServiceFactory.FactoryServiceRegistrar(services, remoteLocal);", generatedSource);
     }
 
     /// <summary>
@@ -499,7 +516,7 @@ namespace TestNamespace
             @"public Task<string> LocalDoWork\([^)]*\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
             generatedSource);
         Assert.DoesNotContain("public async Task<string> LocalDoWork(", generatedSource);
-        Assert.Contains("return FactoryEntryCall.RunAsync(ServiceProvider, () => LocalDoWorkCore(", generatedSource);
+        Assert.Contains("return global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(ServiceProvider, () => LocalDoWorkCore(", generatedSource);
 
         // Core: private and unguarded (this fixture's body forwards the target's task
         // without awaiting, so no async keyword; the guard already ran in the wrapper).

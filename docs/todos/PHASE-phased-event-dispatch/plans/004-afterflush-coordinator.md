@@ -35,4 +35,18 @@ coordinator is a drain trigger, nothing more.
   scheduler with `inTransaction: true` so handler exceptions propagate and the consumer's
   transaction can still roll back.
 
+---
+
+## Inherited from PHASE-003 (recorded at its Step 5 gates)
+
+- **Open question this plan owns (code review C2):** a drained handler's
+  `OperationCanceledException` at the *AfterCommit entry drain* propagates and fails a
+  call that already succeeded — chartered by the todo's AC ("OCE still propagates") but
+  in tension with the no-token entry-drain policy. Decide here, as the owner of the
+  consumer-facing drain surface, whether post-completion drains should swallow OCE too
+  (and if so, restate the AC as a planned amendment).
+- The entry drain passes `CancellationToken.None`; the coordinator's `AfterFlush` drain
+  is in-transaction and consumer-invoked, so it takes the consumer's token — the two
+  drain points deliberately differ.
+
 *(Stub — Intent, Alignment, remaining Constraints, Steps, Acceptance filled at Step 2.)*

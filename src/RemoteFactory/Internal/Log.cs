@@ -522,8 +522,8 @@ internal static partial class Log
     [LoggerMessage(
         EventId = 9006,
         Level = LogLevel.Debug,
-        Message = "Discarded {DiscardedCount} deferred handler dispatch(es) because the entry factory call did not complete successfully.")]
-    public static partial void FactoryEventPhaseClearedOnFailure(
+        Message = "Discarded {DiscardedCount} deferred handler dispatch(es) at entry-call exit without running them.")]
+    public static partial void FactoryEventPhaseDiscardedAtExit(
         this ILogger logger,
         int discardedCount);
 }
