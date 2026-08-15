@@ -26,4 +26,23 @@ directly, bypassing public wrappers. This plan does NOT own the consumer-facing 
 
 ---
 
-*(Stub — Intent, Alignment, Constraints, Steps, Acceptance filled at Step 2.)*
+## Constraints inherited from PHASE-001 (recorded at its Step 5 gate)
+
+- **The drain call sits on the success path only** — never in a `finally`, never in a
+  scope-disposal hook or middleware that runs on failure. Rollback-discard is emergent
+  ("a scope that fails simply never drains"), so a drain on the failure path breaks the
+  todo's AC-2 silently and no primitive-level test can catch it (code review C4).
+- The scheduler API to call is `IFactoryEventPhaseScheduler.DrainAsync(phase,
+  inTransaction, ct)` in `Neatoo.RemoteFactory.Internal` — public so generated code can
+  reach it. Pass `inTransaction: false` at the entry-call drain point.
+- The cancellation-token *policy* question is open here: queued dispatches currently
+  receive the drain-time token (pinned by
+  `FactoryEventPhaseSchedulerTests.DrainAsync_HandlerReceivesTheDrainTimeCancellationToken`).
+  Decide whether a post-completion drain should pass the request token at all — an
+  `OperationCanceledException` from it fails a call that already succeeded (plan review
+  B-C5).
+- `IFactoryEvents.RaiseUntyped` has no general test coverage repo-wide; it is the
+  server-side landing point for client-raised events, so this plan's remote-entry work is
+  the natural place to add it (tech debt raised at PHASE-001's gate).
+
+*(Stub — Intent, Alignment, remaining Constraints, Steps, Acceptance filled at Step 2.)*

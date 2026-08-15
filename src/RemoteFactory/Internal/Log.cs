@@ -470,4 +470,43 @@ internal static partial class Log
         string typeName,
         long elapsedMs,
         int jsonLength);
+
+    // ===== Phased Event Dispatch (9xxx) =====
+
+    [LoggerMessage(
+        EventId = 9001,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} queued for {Phase} dispatch")]
+    public static partial void FactoryEventPhaseQueued(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9002,
+        Level = LogLevel.Debug,
+        Message = "Drained {HandlerCount} queued handler dispatch(es) through phase {Phase}")]
+    public static partial void FactoryEventPhaseDrained(
+        this ILogger logger,
+        int handlerCount,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9003,
+        Level = LogLevel.Error,
+        Message = "A {Phase} handler for factory event {EventType} threw after the factory operation completed; the exception was logged and swallowed because it can no longer roll anything back. Remaining queued handlers still run.")]
+    public static partial void FactoryEventPhaseHandlerFailed(
+        this ILogger logger,
+        DispatchPhase phase,
+        string eventType,
+        Exception? exception);
+
+    [LoggerMessage(
+        EventId = 9004,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} has a {Phase} handler but no phase queue exists in this scope; dispatching it immediately instead.")]
+    public static partial void FactoryEventPhaseNoQueueInScope(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
 }

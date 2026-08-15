@@ -3,7 +3,7 @@
 **Plan #:** 001
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** Done
 **Last Updated:** 2026-08-14
 **Plan-review opt-in:** Yes (public API: new enum, attribute constructor, registry signature — hard to change after release)
 **Code-review opt-in:** Yes (changes the core dispatch path every event flows through)
@@ -128,6 +128,11 @@ the consumer-facing coordinator is PHASE-004), and does not change relay or seri
 - [ ] An event raised by a handler *during* a drain, whose handlers land in the draining
       or an already-passed phase, is processed in the same drain (drain-until-empty —
       nothing is silently dropped). `[unit]`
+- [ ] A drain also sweeps up any earlier phase the consumer never drained, earliest phase
+      first, under the drain point's failure semantics — the fail-open behavior PHASE-004
+      builds its warning on. Later phases than the one requested are left alone. `[unit]`
+- [ ] A queued dispatch reaches its handler with the event instance, `RaiseOptions`, and
+      originating scope provider it was queued with. `[unit]`
 - [ ] Two scopes' queues are independent; a scope disposed without draining runs nothing
       (rollback-discard). *(Same interim annotation as bullet 2.)* `[unit]`
 - [ ] A phase-registered event raised without `ServerOnly` is still collected for the
@@ -175,13 +180,76 @@ Walked 2026-08-14 against v1.7.0 (`main` @ 94a8a12):
 
 ## Test Evidence
 
-*(Filled after implementation, before the Step 5 gate.)*
+All cited tests live in `src/Tests/RemoteFactory.UnitTests/Internal/`; namespace prefix
+`RemoteFactory.UnitTests.Internal` omitted below for width.
+
+| Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
+|---|---|---|---|
+| Phase-less handler keeps today's contract | `[explicit-skip]` | No existing test modified (`git status src/Tests` shows only new files). Suite: 653 unit × net9.0/net10.0 (0 failures) against a 614 baseline on `main` — +39 new cases, all added by this plan; integration 561 passed / 5 skipped / 566 total × 2 (`reviews/001-test.log`); Design 86 × 2, 0 failures (`reviews/001-test-design.log`) | ✓ |
+| AfterCommit handler not invoked at raise time | `[unit]` | `FactoryEventsDispatcherPhaseTests.Raise_DeferredHandler_DoesNotDispatchAtRaiseTime`; primitive-level: `FactoryEventPhaseSchedulerTests.Enqueue_DoesNotInvokeHandler` | ✓ |
+| Mixed phases: Immediate runs, other queues | `[unit]` | `FactoryEventsDispatcherPhaseTests.Raise_MixedPhases_ImmediateRunsAndDeferredWaits` (also pins cross-phase ordering) | ✓ |
+| Post-completion drain: FIFO, logged+swallowed, rest still run, OCE propagates | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_RunsDeferredDispatchesInFifoOrder`, `.DrainAsync_PostCompletion_SwallowsHandlerExceptionAndRunsTheRest`, `.DrainAsync_PostCompletion_StillPropagatesCancellation`, and for the log half `.DrainAsync_PostCompletionSwallow_LogsTheDedicatedEventIdWithTheException` (asserts event id 9003 + attached exception) | ✓ |
+| Drain sweeps earlier phases the consumer never drained | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_SweepsAnEarlierPhaseTheConsumerNeverDrained` (also asserts 9003 attributes the failure to the *queued* phase), `.DrainAsync_MidDrainEarlierPhaseWork_PreemptsRemainingLaterPhaseWork` (pins the ordering choice), `.DrainAsync_DoesNotRunLaterPhasesThanRequested` — **all three verified red** against the pre-fix drain (`reviews/001-redproof.log`) | ✓ |
+| Queued dispatch carries its event, options, and provider intact | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_HandlerReceivesTheEventAndOptionsItWasQueuedWith` (asserts `Assert.Same` on the originating scope provider, not merely non-null) | ✓ |
+| In-transaction drain propagates; same handlers swallow at post-completion point | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_InTransaction_PropagatesHandlerExceptionAndAbortsRemaining`, `.DrainAsync_SamePhaseHandlersDrainPoint_KeysSemanticsNotThePhase` | ✓ |
+| Re-entrant enqueue during drain runs in same drain (same phase AND already-passed phase) | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_ReentrantEnqueueDuringDrain_RunsInTheSameDrain` (same phase), `.DrainAsync_ReentrantEnqueueIntoAnAlreadyPassedPhase_StillRunsInThisDrain` (already-passed — **verified red against the pre-fix single-queue drain**), `.DrainAsync_DoesNotRunLaterPhasesThanRequested` (bounds it); real raise-path re-entrancy: `FactoryEventsDispatcherPhaseTests.DrainedHandlerRaisingAnEvent_GoesThroughTheRealRaisePath` | ✓ |
+| Scope independence; never-drained runs nothing | `[unit]` | `FactoryEventPhaseRegistrationTests.PhaseDispatcher_IsScoped_NotSharedAcrossScopes`, `FactoryEventPhaseSchedulerTests.ScopeDisposedWithoutDraining_RunsNothing` (real scope, disposed) | ✓ |
+| Phase-registered event still collected for relay | `[unit]` | `FactoryEventsDispatcherPhaseTests.Raise_DeferredHandler_StillCollectsForRelayAtRaiseTime` (Server-mode container, per review B-C3); `ServerOnly` counterpart: `.Raise_DeferredHandlerWithServerOnly_IsNotCollectedForRelay` | ✓ |
+| Registry dedupe holds; first-registration-wins documented | `[unit]` | `FactoryEventPhaseRegistrationTests.RegisterHandler_RepeatedContainerBuilds_DedupesByEventAndHandlerClass`, `.RegisterHandler_SameHandlerClassTwoPhases_KeepsTheFirstRegistration` | ✓ |
+| Build/test green | `[explicit-skip]` | `reviews/001-build.log` (0 errors, net9.0+net10.0), `reviews/001-test.log` (0 failures) | ✓ |
+
+Additional coverage not tied to a single bullet: `RegisterHandler_WithoutPhase_DefaultsToImmediate`,
+`RegisterHandler_WithPhase_RoundTripsThePhase`, `PhaseDispatcher_RegisteredInModesThatDispatchHandlers`
+(Theory: Server + Logical), `PhaseDispatcher_NotRegisteredInRemoteMode`,
+`DrainAsync_OnlyDrainsTheRequestedPhase`, `DrainAsync_NothingDeferred_IsANoOp`,
+`DrainAsync_DeferredDispatchesRunOnce_NotOnASecondDrain`,
+`Attribute_NoArgument_DefaultsToImmediate`, `Attribute_ExplicitPhase_RoundTrips` (Theory: all
+three phases), `RaiseUntyped_DeferredHandler_DefersJustLikeRaise`,
+`Raise_PhasedHandlerWithNoQueueInScope_DispatchesImmediatelyRatherThanVanishing`,
+`DrainAsync_HandlerReceivesTheDrainTimeCancellationToken` (pins the drain-time token choice
+PHASE-003 will reason from), `Enqueue_NullEvent_Throws`.
+
+**Deliberately not covered here** (drain *points* are PHASE-003/004's deliverable, so no
+integration-tier coverage of real factory calls belongs to this plan): entry-call tracking,
+the consumer coordinator, and the same-response relay-batch guarantee.
 
 ---
 
 ## Plan Amendments
 
-*(none yet)*
+### 2026-08-14 — Handler attribute moved out of the generator-linked source file
+
+- **Section affected:** Step 1
+- **Original said:** add the optional phase argument to `[FactoryEventHandler<T>]` in place.
+- **What changed:** the attribute moved to its own `FactoryEventHandlerAttribute.cs`.
+- **Why:** `FactoryAttributes.cs` is `<Compile Include>`-linked into the netstandard2.0
+  Generator project, so referencing `DispatchPhase` from it compiled the enum into
+  `Neatoo.Generator.dll`, duplicating a public runtime type (CS0436/CS0433 in every project
+  referencing both). The generator matches the attribute by metadata-name string and never
+  needed the type.
+- **Discovery Log link:** 2026-08-14 — PHASE-001 (shared-source build constraint)
+
+### 2026-08-14 — Drain sweeps earlier phases, not just the requested one
+
+- **Section affected:** Step 5, Constraints (re-entrant enqueue)
+- **Original said:** drain-until-empty within the phase being drained.
+- **What changed:** `DrainAsync` drains the requested phase *and every earlier phase*,
+  earliest first, until none remain.
+- **Why:** the test-review gate found the original shape silently dropped work enqueued
+  into an already-passed phase — and, separately, would have lost `AfterFlush` handlers
+  entirely for any consumer who never called the coordinator. That fail-open behavior is
+  PHASE-004's AC-5, now structurally satisfied here.
+- **Discovery Log link:** 2026-08-14 — PHASE-001 (gate found a real defect)
+
+### 2026-08-14 — Scheduler naming
+
+- **Section affected:** Step 5
+- **Original said:** the drain primitive as `IFactoryEventPhaseDispatcher`.
+- **What changed:** renamed to `IFactoryEventPhaseScheduler` / `FactoryEventPhaseScheduler`.
+- **Why:** code review C1 — two "…Dispatcher" types in one assembly doing different jobs,
+  settled before PHASE-003 emits generated call sites against the name. `…Queue` was
+  unavailable: CA1711 forbids the suffix.
+- **Discovery Log link:** see [reviews/001-code-review.md](../reviews/001-code-review.md)
 
 ---
 

@@ -70,16 +70,36 @@ exposes drain points.
 
 | # | File | Title | Status |
 |---|------|-------|--------|
-| 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Draft |
+| 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Done |
 | 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Draft |
 | 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Draft |
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-14 — PHASE-001 (gate found a real defect)
+- **Finding:** The test-review gate caught that the drain resolved only the requested
+  phase's queue, so work a handler enqueued into an already-passed phase was silently
+  dropped — the exact silent-loss class this todo exists to remove.
+- **Decision:** Amend — replaced with a drain that sweeps the requested phase and every
+  earlier one, earliest first; three tests verified red against the pre-fix code.
+- **Follow-up:** PHASE-004 inherits the sweep (it implements that plan's fail-open path);
+  constraint recorded in its draft. See [reviews/001-test-review.md](./reviews/001-test-review.md).
+
+### 2026-08-14 — PHASE-001 (shared-source build constraint)
+- **Finding:** `FactoryAttributes.cs` is linked into the netstandard2.0 Generator project,
+  so putting `DispatchPhase` on the handler attribute compiled the enum into
+  `Neatoo.Generator.dll` too — duplicating a public runtime type and breaking every
+  project referencing both (CS0436 in RemoteFactory, CS0433 in UnitTests).
+- **Decision:** Amend — moved `FactoryEventHandlerAttribute<T>` to its own unlinked file;
+  the generator matches it by metadata-name string and never needed the type.
+- **Follow-up:** n/a (PHASE-002 must not re-link `DispatchPhase` into the generator; the
+  new file's XML doc carries the warning).
 
 ### 2026-08-14 — PHASE-001 (plan review)
 - **Finding:** Plan review returned CONCERNS — 4 veto findings, the sharpest being that
@@ -107,7 +127,13 @@ exposes drain points.
 
 ## Sibling Todos
 
-*(none)*
+- [ ] [RFEF — RemoteFactory.EntityFrameworkCore, declarative factory transactions](../RFEF-factory-transactions/todo.md)
+  — surfaced 2026-08-14 while discussing this todo's target consumer code (per-method
+  begin/commit boilerplate); doesn't advance PHASE's goal (persistence stays out of this
+  framework arc) but builds directly on PHASE-003's entry-call tracking and PHASE-004's
+  drain semantics, and would generate the `AfterFlush` drain call PHASE-004 otherwise
+  leaves to consumer code. Blocked until those plans land. (Link resolves once the RFEF
+  branch merges to main.)
 
 ---
 

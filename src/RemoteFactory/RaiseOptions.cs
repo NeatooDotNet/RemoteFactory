@@ -5,11 +5,17 @@ namespace Neatoo.RemoteFactory;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>FactoryEvent</c> raises are always <b>shared-scope, sequential, and awaited</b>:
-/// handlers share the caller's DI scope (and therefore the caller's <c>DbContext</c> and
+/// <c>FactoryEvent</c> raises are <b>shared-scope, sequential, and awaited</b>: handlers
+/// share the caller's DI scope (and therefore the caller's <c>DbContext</c> and
 /// transaction), run one after another in unspecified order, and any handler exception
 /// aborts the remaining handlers and propagates to the caller. Across the client/server
 /// boundary the HTTP call stays open until every server-side handler completes.
+/// </para>
+/// <para>
+/// That describes <see cref="DispatchPhase.Immediate"/> handlers, which is the default and
+/// was the only behavior before phases existed. Handlers registered at another
+/// <see cref="DispatchPhase"/> are queued at raise time and run when their phase drains —
+/// still in the same scope, but no longer before <c>Raise</c> returns.
 /// </para>
 /// </remarks>
 [Flags]
