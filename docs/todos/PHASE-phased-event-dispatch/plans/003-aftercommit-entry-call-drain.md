@@ -20,8 +20,9 @@ the "Raise outside any factory call" semantics (dispatch immediately, debug log)
 that is the absence-of-entry-tracking case. Known recon risks this plan must resolve at
 the keyboard: the three renderers share no pipeline helper; static factories have no
 `Local*` methods (DI delegate lambdas instead); public wrappers are mostly non-async;
-`LocalSave` nests into `LocalInsert`/`LocalUpdate`/`LocalDelete`; HTTP calls enter `Local*`
-directly, bypassing public wrappers. This plan does NOT own the consumer-facing drain API
+`LocalSave` nests into `LocalInsert`/`LocalUpdate`/`LocalDelete`; HTTP calls enter
+`Local*` directly on the class leg but through the public wrapper on the interface leg.
+This plan does NOT own the consumer-facing drain API
 (PHASE-004), and does NOT thread the attribute's phase argument through the generator
 (PHASE-002) — its tests register phased handlers through the registry's 3-arg overload.
 
@@ -42,14 +43,31 @@ plan, the framework knows when an entry call begins and ends:
   every client-raised event) all pass through the single runtime choke point that resolves
   and invokes the DI-registered delegate; that choke point marks the entry and drains on
   success, before relay collection, so events raised by `AfterCommit` handlers join the
-  same HTTP response's relay batch. Local/direct entries (Logical mode, server-side code
-  calling a factory) are marked by generated code at the local execution seam in all three
-  factory patterns. Both families drain by calling the PHASE-001 scheduler
-  (`DrainAsync(AfterCommit, inTransaction: false, …)` — which sweeps `AfterFlush` first,
-  giving PHASE-004's fail-open its drain point for free).
-- **Failure discards structurally.** The drain call exists only on the success path. An
-  entry call that throws — or is forbidden by authorization — simply never drains; the
-  scope dies with its queues. No discard code, nothing to get wrong on the failure path.
+  same HTTP response's relay batch — and *before* the choke point's post-invoke
+  cancellation check, so a token cancelled between success and drain cannot skip the
+  drain (plan review B-V2: the same failure mode B-C5 flagged, relocated). Local/direct
+  entries (Logical mode, server-side code calling a factory) are marked by generated code
+  at the local execution seam in all three factory patterns. Both families drain by
+  calling the PHASE-001 scheduler (`DrainAsync(AfterCommit, inTransaction: false, …)` —
+  which sweeps `AfterFlush` first, giving PHASE-004's fail-open its drain point for
+  free).
+- **Failure discards explicitly — a clear, never a drain.** The drain call exists only on
+  the success path. At the *outermost* exit of a failed entry call, the queues are
+  **cleared** (plan review A-V2: "the scope dies with its queues" is false for long-lived
+  scopes — Logical mode, Blazor Server circuits, and the integration harness's single
+  reused server scope — where surviving queues would drain into the *next* successful
+  call). Clearing is not draining: PHASE-001's C4 constraint forbids running handlers on
+  the failure path; it says nothing against discarding them there. The resulting
+  invariant: **between entry calls, the scheduler is always empty.** (The
+  `AspForbidException` denial shape throws and therefore clears; the `Authorized<T>`
+  denial shape returns normally — a successful call whose body never ran — and drains an
+  empty queue harmlessly.)
+- **The entry stays active for the duration of the entry drain** (plan review B-V3):
+  depth pops only after the drain completes. An event raised *by* a drained handler
+  therefore still queues through the dispatcher and joins the current drain via the
+  scheduler's drain-until-empty contract — preserving the sweep behavior installed by
+  PHASE-001's gate-defect fix. "Raise outside a factory call" can never trigger during a
+  drain.
 - **Raise outside any factory call stops queueing.** When no entry call is active, phased
   handlers dispatch immediately with a debug-level log — the designed replacement for
   PHASE-001's interim "queue and hope someone drains" behavior. The existing no-scheduler
@@ -108,54 +126,96 @@ New in this plan:
 - **Depth correctness is the invariant everything hangs on:** a drain that fires at a
   nested completion (e.g., inside `LocalInsert` while `LocalSave` is still the entry)
   runs handlers mid-operation — in-transaction once RFEF exists. One entry, one drain,
-  at the outermost successful completion only.
+  at the outermost successful completion only. Two known traps (plan review B-C6, B-C2):
+  depth must release on *task completion*, not method return — `LocalSave` is a sync
+  forwarder with four return paths that returns inner tasks directly, so a naive
+  `try/finally` fires the drain mid-operation and `LocalSave` needs a split it doesn't
+  have; and the scheduler's state is unsynchronized while long-lived scopes (Blazor
+  Server circuits, Logical mode, the shared-scope harness) make concurrent flows in one
+  scope realistic — the keyboard decides the synchronization posture and records it.
 - **The authorization-forbidden path is a failure path.** The remote choke point returns
-  a success-shaped empty response for `AspForbidException`; it must not drain.
+  a success-shaped empty response for `AspForbidException`; it must not drain, and it
+  clears like any other failure. (The `Authorized<T>` denial shape is a *successful*
+  call — see Intent.)
 - **No silent loss from sync entries.** Some factory methods generate synchronous,
   non-`Task` signatures (value-object `Create`). A `Raise` inside one can enqueue phased
   work before any await. Whatever shape the keyboard picks (block-drain when pending,
   immediate-dispatch semantics for sync entries, or a generator diagnostic), queued work
-  must not evaporate — and the chosen shape gets a Plan Amendment recording it.
-- **Planned restatement of PHASE-001 interim pins — not test-gutting.** PHASE-001's gate
-  annotated specific tests as pinning interim behavior this plan is chartered to invert
-  (dispatcher queues whenever a scheduler exists; nothing drains at entry). Those tests
-  are amended here with intent preserved and each amendment listed in this plan's Test
-  Evidence; every other existing test passes unmodified.
+  must not evaporate — and the chosen shape gets a Plan Amendment recording it. Note the
+  sync shape is also **client-reachable**: `LocalCreate` on a value-object factory has no
+  `IsServerRuntime` guard and ships into trimmed client assemblies, so whatever is
+  emitted there must resolve services null-tolerantly and no-op cleanly (plan review
+  B-C3).
+- **Planned restatement of PHASE-001 pins — pre-declared, not test-gutting.** The
+  following six tests (all in `FactoryEventsDispatcherPhaseTests` /
+  `FactoryEventPhaseRegistrationTests` / `FactoryEventPhaseSchedulerTests`) pin interim
+  behavior this plan is chartered to invert — the dispatcher queueing on a bare scope
+  with no entry call active, and drained-handler re-raise semantics with no entry
+  tracking. Each is amended with its original intent preserved and restated under entry
+  semantics, and each amendment is listed in this plan's Test Evidence (plan review
+  B-V4 widened this set beyond PHASE-001's three annotated bullets):
+  - `Raise_DeferredHandler_DoesNotDispatchAtRaiseTime` → defers *during an entry call*.
+  - `Raise_MixedPhases_ImmediateRunsAndDeferredWaits` → same restatement.
+  - `RaiseUntyped_DeferredHandler_DefersJustLikeRaise` → RaiseUntyped parity, restated
+    under an active entry (was never annotated interim — flagged by review as the gap).
+  - `PhaseDispatcher_IsScoped_NotSharedAcrossScopes` → scope isolation, restated with
+    entries active in each scope.
+  - `ScopeDisposedWithoutDraining_RunsNothing` → intent survives; the equivalent designed
+    behavior is now failure-clear plus never-queued-outside-entry.
+  - `DrainedHandlerRaisingAnEvent_GoesThroughTheRealRaisePath` → re-pointed to run under
+    entry-active-during-drain semantics so it can go red (review showed the current form
+    stays green under either B-V3 answer).
+  Every other existing test passes unmodified, including the Design solution's suite.
 - **Remote-mode containers are untouched:** no scheduler, no tracker, no behavior change
   client-side; generated entry-tracking code must resolve services null-tolerantly.
+- **The client-raise relay gap is not this plan's to fix.** `ForDelegateEvent` discards
+  the response today, so nothing raised during a client-initiated `Raise` is ever relayed
+  back — a pre-existing gap affecting Immediate handlers equally, with an echo-to-self
+  design question attached (plan review A-V1). Recorded in the todo Discovery Log;
+  this plan's remote-raise Acceptance claims the drain only.
 
 ---
 
 ## Steps
 
 1. Add entry-call tracking to the runtime: per-scope, depth-aware begin/end with
-   drain-on-outermost-success. Whether it lives on the scheduler or as a small sibling
+   drain-on-outermost-success and clear-on-outermost-failure; the entry stays active
+   until the drain completes. Whether it lives on the scheduler or as a small sibling
    service in `Internal` is a keyboard decision; it must be reachable from both runtime
    and generated code.
 2. Wire the remote choke point: mark entry around delegate invocation in the portal
-   request handler; on success, drain before relay collection so drained-handler events
-   join the same response. Forbidden and thrown paths never drain.
+   request handler; on success, drain *before* the post-invoke cancellation check and
+   before relay collection so drained-handler events join the same response. Forbidden
+   and thrown paths never drain (they clear via the entry-exit failure path).
 3. Change the dispatcher's queue-or-dispatch decision: queue phased handlers only while
    an entry call is active; otherwise dispatch immediately and log a new debug event id
    ("raise outside factory call"). Keep the existing no-scheduler fallback (9004).
 4. Emit entry begin/drain in the class-factory renderer at the local execution seam
    (`Local*` methods), following the guard + `*Core` split precedent; verify the
-   `LocalSave` → `LocalInsert`/`Update`/`Delete` nesting drains exactly once.
-5. Do the same for the interface-factory renderer (its `Local*` seam) and the
-   static-factory renderer (its server-side DI lambda seam, including `[Execute]`
-   delegates).
-6. Resolve the sync (non-`Task`) factory-method shape at the keyboard under the
+   `LocalSave` → `LocalInsert`/`Update`/`Delete` nesting drains exactly once, with depth
+   released on task completion, not method return.
+5. Interface-factory renderer: **introduce** the guard + `*Core` split on its `Local*`
+   seam — this leg has the guard inline today, no split, and its trimming behavior is
+   explicitly unverified (TRIM Deferred Work item 20), so this is a trimming-invariant
+   change, not a mechanical repeat of Step 4. Its delegate lambdas also route through
+   the public wrapper, adding one nesting level the depth gating must absorb.
+6. Static-factory renderer: mark entry in the server-side DI lambda seam (including
+   `[Execute]` delegates) — the cheap leg: every delegate is `Task`-returning and the
+   `IsServerRuntime` guard wraps the registration, not the lambda body, so an async
+   lambda moves no guard into a state machine.
+7. Resolve the sync (non-`Task`) factory-method shape at the keyboard under the
    no-silent-loss invariant; record the chosen shape as a Plan Amendment.
-7. Amend the PHASE-001 interim-behavior tests flagged for restatement (dispatcher
-   queue-when-scheduler-present pins), preserving each test's original intent; list every
-   amended test in Test Evidence.
-8. Add `RaiseUntyped` remote-entry coverage: a client-raised event with phased handlers
+8. Amend the six pre-declared PHASE-001 pin tests (named in Constraints), preserving
+   each test's original intent restated under entry semantics; list every amendment in
+   Test Evidence.
+9. Add `RaiseUntyped` remote-entry coverage: a client-raised event with phased handlers
    gets entry semantics (queued during dispatch, drained after the raise delegate
-   completes, relayed in the same response).
-9. End-to-end integration coverage via `ClientServerContainers` with handlers registered
-   through the registry's 3-arg overload (PHASE-002 not yet landed): success drain, relay
-   batch inclusion, rollback-discard, handler-failure swallow not failing the response.
-10. Add the new log event ids to `Internal/Log.cs` and the `CLAUDE-DESIGN.md` Runtime Log
+   completes). The relay half of that path is the deferred A-V1 gap — out of scope.
+10. End-to-end integration coverage via `ClientServerContainers` with handlers registered
+    through the registry's 3-arg overload (PHASE-002 not yet landed): success drain,
+    relay batch inclusion, failure-clear (including a subsequent success in the same
+    scope), handler-failure swallow not failing the response.
+11. Add the new log event ids to `Internal/Log.cs` and the `CLAUDE-DESIGN.md` Runtime Log
     Events table.
 
 ---
@@ -166,7 +226,8 @@ New in this plan:
       HTTP-dispatched `[Remote]` call, and events it raises reach the client in the same
       response's relay batch. `[integration]`
 - [ ] An `AfterCommit` handler runs after the entry factory call completes for a direct
-      Logical/server-side invocation through the public factory wrapper. `[integration]`
+      Logical/server-side invocation through the public factory wrapper (a *class*
+      factory — interface factories register nothing in Logical mode). `[integration]`
 - [ ] A `Save` on an entity (the `LocalSave` → `LocalInsert` nesting) drains exactly once,
       after the outermost save completes — never at the nested completion. `[integration]`
 - [ ] Queued `AfterFlush` dispatches run before queued `AfterCommit` dispatches at the
@@ -174,25 +235,38 @@ New in this plan:
       level). `[integration]`
 - [ ] If the entry factory call throws, queued phased handlers never run — for both the
       remote choke point and the direct/local path. `[integration]`
-- [ ] An authorization-forbidden remote call does not drain. `[integration]`
+- [ ] After a failed entry call, a *subsequent successful* call in the same scope runs
+      only its own queued handlers — the failure's queued work was cleared, not left to
+      ride the next drain (the long-lived-scope case: the harness's single reused server
+      scope is the natural fixture). `[integration]`
+- [ ] An authorization-forbidden remote call does not drain: an entry that enqueues
+      phased work and then hits a forbidden call fails without running it (the falsifiable
+      form — a bare forbidden call has an empty queue and proves nothing).
+      `[integration]`
 - [ ] An `AfterCommit` handler exception at the entry drain is logged (9003) and swallowed
       and does not fail the entry call's response; remaining queued handlers still run.
       `[integration]`
 - [ ] A client-raised event (`RaiseUntyped` remote path) with phased handlers gets entry
-      semantics: drained after the raise completes, relayed in the same response.
-      `[integration]`
+      semantics: drained after the raise delegate completes. (Relay of that path is the
+      deferred A-V1 gap — not claimed here.) `[integration]`
+- [ ] An event raised *by* an `AfterCommit` handler during the entry drain, itself having
+      phased handlers, joins the current drain — it is not dispatched inline as
+      "outside a factory call" (entry-active-during-drain, B-V3). `[unit]`
 - [ ] A server-side `Raise` outside any factory call with phase-registered handlers
       dispatches immediately with a debug-level log (no queue growth, no silent drop).
       `[unit]`
-- [ ] The entry drain passes no cancellation token: cancelling the request token after the
-      entry call succeeds does not abort the drain. `[unit]`
+- [ ] The entry drain passes no cancellation token, and it runs *before* the choke
+      point's post-invoke cancellation check: cancelling the request token after the
+      delegate succeeds neither aborts nor skips the drain (exercised at the choke point
+      — a scheduler-level assertion cannot fail on the placement risk). `[integration]`
 - [ ] A synchronous (non-`Task`) factory method that enqueued phased work does not lose it
       silently. `[unit]`
 - [ ] Nested factory calls (a factory method invoking another factory) do not drain at the
       inner completion. `[unit]`
-- [ ] Backward compatibility: the full existing suite passes with only the pre-declared
-      PHASE-001 interim-pin amendments (each listed in Test Evidence with intent
-      preserved). `[integration]`
+- [ ] Backward compatibility: the full existing suite — unit, integration, AND the
+      Design solution's suite (renderer changes regenerate every Design factory) —
+      passes with only the six pre-declared pin amendments named in Constraints (each
+      listed in Test Evidence with intent preserved). `[integration]`
 
 ---
 
@@ -250,9 +324,19 @@ and invokes the hidden `_Method` (30–37); the Remote registration is a lambda 
 to `IMakeRemoteDelegateRequest` (20–23). The server lambda body is the entry seam. The
 lambda is non-async, returning the user method's task directly.
 
-**Generated interface factory** (walked `…IExampleRepositoryFactory.g.cs`): shaped like
-the class factory — `Local*` methods (58, 76, 94) with delegate registrations — same seam
-as the class renderer.
+**Generated interface factory** (walked `…IExampleRepositoryFactory.g.cs`) — **corrected
+per plan review B-V1; the original walk got this wrong.** It has `Local*` methods (58,
+76, 94) but is NOT the class renderer's shape: `InterfaceFactoryRenderer.RenderLocalMethod`
+(`InterfaceFactoryRenderer.cs:250–309`) emits the `IsServerRuntime` guard **inline**
+(279–281) with no guard + `*Core` split and a conditional `async` keyword (252); its own
+comment (272–278) marks body elimination on this leg UNVERIFIED — TRIM Deferred Work
+item 20. Making its sync `Local*` forwarders `async` to await a drain would lower the
+guard into `MoveNext`, the measured-bad shape `ClassFactoryRenderer.cs:350–368`
+documents — so this leg gets the split *introduced*, not repeated. Its registrar lambdas
+also route through the **public wrapper** (`IExampleRepositoryFactory.g.cs:122, 127,
+132` call `factory.GetAllAsync()` → delegate property → `Local*`), one extra nesting
+level vs. the class leg's direct `Local*` routing. And it registers for `Remote` (106)
+and `Server` (115) only — **Logical mode registers nothing** for interface factories.
 
 **Sync factory methods are real** — `…MoneyFactory.g.cs` generates
 `public virtual Money Create(...)` (37) and a sync `LocalCreate` (42): non-`Task`
@@ -268,7 +352,22 @@ No shared pipeline helper across the three — each gets its own emission change
 `Internal/FactoryEventPhaseScheduler.cs`: `bool HasPending`, `Enqueue(phase, evt,
 options, invoke)`, `DrainAsync(phase, inTransaction, ct = default)`; drain sweeps the
 requested phase and all earlier phases, earliest first, drain-until-empty; `inTransaction:
-false` → swallow + 9003, OCE rethrows. No entry-call/depth state exists anywhere yet.
+false` → swallow + 9003, OCE rethrows. No entry-call/depth state exists anywhere yet, no
+`Clear` on the interface, and the internal `Dictionary<DispatchPhase, Queue<>>` is
+unsynchronized.
+
+**Two registrations of the choke point** — the core package registers
+`HandleRemoteDelegateRequest` transient (`AddRemoteFactoryServices.cs:140–144`); the
+AspNetCore package registers a scoped copy that wins in a real server
+(`ServiceCollectionExtensions.cs:33`). Both capture the resolving provider, so tracker
+resolution sees the request scope either way — but "one choke point" means one code
+path, not one registration.
+
+**Harness scope lifetime** — `ClientServerContainers` creates **one** server scope per
+`Scopes()` call and reuses it for every remote call in a test (146–158, 62–65). Queues,
+collector contents, and depth state persist across calls within a test — the fixture
+that makes the failure-then-success Acceptance bullet natural, and a fidelity caveat for
+every "drains exactly once" assertion.
 
 ---
 

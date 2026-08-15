@@ -82,6 +82,32 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-14 — PHASE-003 (plan review)
+- **Finding:** Plan review returned CONCERNS — 6 veto findings. The sharpest: the
+  "structural" rollback-discard story is false for long-lived scopes (a failed call's
+  queues would drain into the next successful call in the same scope — Logical mode,
+  Blazor Server, the integration harness); the interface renderer is not the class
+  renderer's shape (inline guard, no `*Core` split, trimming UNVERIFIED — TRIM item 20);
+  and the drain-vs-cancellation-check ordering inside the choke point could silently
+  recreate the B-C5 failure mode.
+- **Decision:** Amend (draft edited before implementation; all vetoes addressed —
+  failure now *clears* explicitly at outermost exit, never drains; entry stays active
+  through the drain; pre-declared pin-amendment set widened to six named tests).
+- **Follow-up:** [reviews/003-plan-review.md](./reviews/003-plan-review.md) — includes
+  the full disposition table.
+
+### 2026-08-14 — Client-raise relay gap (pre-existing, deferred)
+- **Finding:** Review A-V1: `MakeRemoteDelegateRequest.ForDelegateEvent` discards the
+  server response, so events raised during a client-initiated `Raise` — by handlers of
+  any phase, including Immediate, today — are collected server-side but never relayed
+  back. Naively wiring relay in would echo the client's own event back to its own
+  relay, against the "one `[Remote]` call = exactly one `Relay` invocation" contract.
+- **Decision:** Defer — pre-existing gap, not phase-related; PHASE-003's remote-raise
+  acceptance claims the drain only. Needs a user decision on whether it warrants a plan
+  row (echo-to-self semantics are a real design question) or is working-as-intended.
+- **Follow-up:** revisit at PHASE-004 (which owns consumer-facing drain/relay surface)
+  or at todo close.
+
 ### 2026-08-14 — Ordering: PHASE-003 worked ahead of PHASE-002
 - **Finding:** PHASE-002 (generator threads the attribute's phase argument to
   registration) and PHASE-003 (entry-call tracking + AfterCommit drain) are independent:
