@@ -373,13 +373,96 @@ every "drains exactly once" assertion.
 
 ## Test Evidence
 
-*(filled before the Step 5 gate)*
+Suites (Release, both TFMs, logs in `reviews/003-build.log` / `reviews/003-test.log`):
+unit **662×2** (baseline 653; +8 new, +1 renamed), integration **575×2 +5 skipped**
+(baseline 561+5; +14 new), Design **86×2** (unchanged). 0 failures.
+
+Unit tests live in `FactoryEntryCallTests` (new), `FactoryEventsDispatcherPhaseTests`;
+integration tests in `Events/Phases/FactoryEventPhaseEntryTests` (new) with targets in
+`TestTargets/Events/FactoryEventPhaseEntryTargets.cs`.
+
+| Acceptance bullet | Test(s) | Tier |
+|---|---|---|
+| HTTP entry: AfterCommit after entry completes + same-response relay | `RemoteCreate_AfterCommitHandlerRunsAfterTheEntryCallCompletes` (ordering discriminator: handler after `create-method-done`); relay half: `EventsRaisedByAfterCommitHandlers_JoinTheSameResponsesRelayBatch` | integration ✓ |
+| Logical entry through the public wrapper (class factory) | `LogicalCreate_AfterCommitHandlerRunsAfterTheWrapperCompletes` | integration ✓ |
+| `LocalSave` nesting drains exactly once at the outermost | `LogicalSave_NestedInsert_DrainsExactlyOnceAfterTheOutermostCompletion`, `RemoteSave_NestedUnderTheChokePoint_StillDrainsExactlyOnce` (depth-3: choke → LocalSave → LocalInsert; a depth mismatch throws on the success path, so green = depth-correct) | integration ✓ |
+| AfterFlush before AfterCommit at the entry drain | `EntryDrain_SweepsAfterFlushBeforeAfterCommit` (registration order deliberately inverted) | integration ✓ |
+| Entry throws → queued handlers never run (both entry families) | `RemoteEntryFails_QueuedHandlersNeverRun`, `LogicalEntryFails_QueuedHandlersNeverRun` | integration ✓ |
+| Failure then success in the same scope runs only the success's work | `FailedCall_ThenSuccessfulCall_InTheSameServerScope_RunsOnlyTheSecond` (harness's single reused server scope); unit-level: `FailedEntryCall_ClearsDeferredWork_AndTheNextSuccessRunsOnlyItsOwn` | integration ✓ |
+| Forbidden call does not drain (falsifiable form) | `ForbiddenInnerCall_AfterEnqueueingPhasedWork_NothingRuns` — outer enqueues, then a `NotAuthorizedException`-throwing interface-factory denial. **Note:** the harness has no ASP.NET pipeline, so the `AspForbidException` shape specifically is unexercised; it rides the same choke-point catch as every throw (see Current State), and the class-factory `Authorized<T>` denial is a *successful* call by design (Intent). | integration ✓ (noted gap) |
+| Handler exception swallowed, response succeeds, survivors run | `ThrowingAfterCommitHandler_IsSwallowed_TheCallSucceeds_AndTheSurvivorStillRuns`; scheduler-level 9003/OCE pins carried from PHASE-001 | integration ✓ |
+| Client-raised event (`RaiseUntyped` remote path) gets entry semantics | `ClientRaisedEvent_PhasedHandlerGetsEntrySemantics_NotTheOutsideEntryFallback` (9001 queued in logs; 9004/9005 absent) — also closes the RaiseUntyped tech debt together with `RaiseUntyped_DeferredHandler_DefersJustLikeRaise` | integration ✓ |
+| Event raised by a draining handler joins the current drain (B-V3) | `DrainedHandlerRaisingAnEvent_GoesThroughTheRealRaisePath` (re-pointed; mid-drain marker discriminates) — **red-proofed** | unit ✓ |
+| Raise outside any factory call dispatches immediately + debug log | `Raise_PhasedHandlerOutsideAnyFactoryCall_DispatchesImmediately` (9005 emission pinned indirectly via the integration log test's DoesNotContain) | unit ✓ |
+| Entry drain passes no token and sits before the cancellation check | `TokenCancelledAfterTheEntryCallSucceeds_DrainStillRuns` `[integration]` — **red-proofed**; token identity: `RunAsync_EntryDrainPassesNoCancellationToken` `[unit]` | integration ✓ |
+| Sync (non-`Task`) factory entry loses nothing | `Run_SyncEntryWithDeferredWork_DoesNotLoseIt` | unit ✓ |
+| Nested factory calls don't drain at the inner completion | `RunAsync_NestedEntry_DoesNotDrainAtTheInnerCompletion` | unit ✓ |
+| Backward compatibility (full suites + Design, only pre-declared amendments) | Suite totals above; zero failures outside the amended set | integration ✓ |
+
+**Red-proofing** (`reviews/003-redproof.log`): three deliberate wrong-implementations,
+each turning exactly the predicted tests red on both TFMs — (1) depth popped before the
+drain → re-entrancy order inverts; (2) drain moved after the choke point's cancellation
+check → cancel-after-success handler never runs; (3) failure decrements without clearing
+→ the failed call's work rides the next drain at both tiers.
+
+**Pre-declared amendment set — actual outcomes:**
+
+| Test | Outcome |
+|---|---|
+| `Raise_DeferredHandler_DoesNotDispatchAtRaiseTime` | Amended: raise now inside `BeginEntryCall`; drain via `EndEntryCallAsync(true)`. Intent (defer at raise, dispatch at drain) preserved. |
+| `Raise_MixedPhases_ImmediateRunsAndDeferredWaits` | Amended likewise; cross-phase ordering assertion unchanged. |
+| `RaiseUntyped_DeferredHandler_DefersJustLikeRaise` | Amended likewise; RaiseUntyped parity intent unchanged. |
+| `PhaseDispatcher_IsScoped_NotSharedAcrossScopes` | **No change needed** — registers/enqueues at the scheduler level, unaffected by the dispatcher's entry gate; still green, still pins scope isolation. |
+| `ScopeDisposedWithoutDraining_RunsNothing` | **No change needed** — scheduler-level pin (disposal runs nothing) still meaningful and green. |
+| `DrainedHandlerRaisingAnEvent_GoesThroughTheRealRaisePath` | Re-pointed with the mid-drain marker so it discriminates (red-proof 1). |
+
+Also amended (in-charter, generator emission shape): two TRIM-009 pins in
+`AssemblyAttributeEmissionTests` — the async-split test's forward line updated to the
+`FactoryEntryCall` route, and `ClassFactory_GuardedSyncLocalMethod_IsNotSplit` renamed to
+`…_SplitsIntoSyncWrapperAndSyncCore` (every `Local*` now splits; the pinned trimming
+property — guard never inside a state machine — is asserted in its new form).
 
 ---
 
 ## Plan Amendments
 
-*(none yet)*
+### 2026-08-14 — Entry tracking lives on the scheduler; generated code routes through a helper
+
+Step 1's keyboard decision: `BeginEntryCall`/`EndEntryCallAsync(success)`/`IsEntryCallActive`
+went onto `IFactoryEventPhaseScheduler` itself (already scoped, already registered in
+Server+Logical, already the drain surface) rather than a sibling service. Generated code
+does not emit begin/try/catch scaffolding — it routes the local execution through a new
+public helper, `Neatoo.RemoteFactory.Internal.FactoryEntryCall.Run/RunAsync(sp, body)`,
+which concentrates the entry semantics in one unit-testable place and keeps every
+generated wrapper **non-async** (guard never enters a state machine — the B-V1 trimming
+concern never materializes). The scheduler's queues and depth are lock-guarded (B-C2).
+
+### 2026-08-14 — Every `Local*` method now splits into wrapper + Core
+
+The TRIM-009 guard-split, previously emitted only for async server-only methods, is now
+the uniform shape: non-async wrapper (guard when server-only + `FactoryEntryCall`
+forward) → private `Local*Core` keeping the body's original asyncness. The interface
+renderer gained the split for the first time (its inline-guard comment updated; TRIM
+item 20's elimination-UNVERIFIED status stands — the single-method-holder half of the
+TRIM-009 fix is still absent on that leg). The static renderer wraps its server DI-lambda
+body in `FactoryEntryCall.RunAsync` (all static delegates are `Task`-returning; its
+guard wraps the registration, so nothing moved into a state machine). `LocalSave`'s
+depth releases on task completion because the helper awaits the returned task (B-C6).
+
+### 2026-08-14 — Sync (non-`Task`) entry shape: block-drain only when pending (Step 7)
+
+`FactoryEntryCall.Run` resolves the scheduler null-tolerantly (client-reachable unguarded
+shapes no-op, B-C3); on outermost success with pending deferred work it drains via
+`GetAwaiter().GetResult()` — blocking, accepted deliberately: the only way work is
+pending in a sync entry is a fire-and-forget `Raise` inside a synchronous factory
+method, and no-silent-loss outranks non-blocking there. With nothing pending the
+completion is fully synchronous.
+
+### 2026-08-14 — Post-OCE clear at the entry drain
+
+If the entry drain itself throws (a handler's own `OperationCanceledException`), the
+outermost exit still releases depth and discards whatever remained — a clear, never a
+drain — so "between entry calls the scheduler is empty" holds on every exit path.
 
 ---
 
