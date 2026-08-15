@@ -28,8 +28,16 @@ docs/todos/
   land there.
 - Each plan's implementation gets its own branch `{ID}-{NNN}-{short-name}` off the
   todo branch.
-- PRs target `main` (CI's `pull_request` trigger only watches `main`); after merge,
-  pull `main` back into the todo branch and continue.
+- **Plan PRs target their arc branch `{ID}`; the arc PRs to `main` at close-out.**
+  CI covers both: `build.yml`'s `pull_request` trigger watches `main` *and* arc
+  branches (`[A-Z][A-Z][A-Z]*`), added 2026-08-14 when the PHASE arc adopted this
+  flow. Without that trigger a PR into an arc branch gets no build — the gap that
+  left the TRIM arc branch unbuilt and stale (TRIM dropped arc PRs for that reason;
+  its note records the history).
+- After the arc merges, pull `main` back into any live arc branch and continue.
+- A plan branch that must build on an unmerged predecessor stacks on it
+  (`{ID}-{NNN}` off `{ID}-{MMM}`) rather than off the arc branch; record the stack in
+  the plan's Notes and merge in order.
 
 ## Commits
 
