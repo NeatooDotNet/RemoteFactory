@@ -6,8 +6,17 @@ namespace RemoteFactory.UnitTests.Internal;
 
 /// <summary>
 /// Covers what <see cref="IFactoryEvents.Raise{T}"/> does with phase-registered handlers:
-/// Immediate dispatches as it always has, other phases defer to the scope's queue.
+/// Immediate dispatches as it always has; other phases defer to the scope's scheduler
+/// while an entry factory call is active (PHASE-003) and dispatch immediately otherwise.
 /// </summary>
+/// <remarks>
+/// PHASE-003 amended the deferral tests here to raise inside an active entry call
+/// (<see cref="IFactoryEventPhaseScheduler.BeginEntryCall"/>): PHASE-001's interim
+/// behavior — queue whenever a scheduler exists — was chartered to be inverted by the
+/// entry-call work, and each test's original intent (defer at raise time, dispatch at
+/// the drain, cross-phase ordering, RaiseUntyped parity) is restated under entry
+/// semantics rather than removed.
+/// </remarks>
 public class FactoryEventsDispatcherPhaseTests
 {
     private sealed record ImmediateOnlyEvent(string Value) : FactoryEventBase;
@@ -18,6 +27,9 @@ public class FactoryEventsDispatcherPhaseTests
     private sealed record ChainedSourceEvent(string Value) : FactoryEventBase;
     private sealed record ChainedFollowUpEvent(string Value) : FactoryEventBase;
     private sealed record NoQueueEvent(string Value) : FactoryEventBase;
+    private sealed record OutsideEntryEvent(string Value) : FactoryEventBase;
+    private sealed record FailedEntryEvent(string Value) : FactoryEventBase;
+    private sealed record SecondEntryEvent(string Value) : FactoryEventBase;
 
     private sealed class ImmediateHandler { }
     private sealed class DeferredHandler { }
@@ -77,6 +89,7 @@ public class FactoryEventsDispatcherPhaseTests
             var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
             var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
 
+            queue.BeginEntryCall();
             await events.Raise(new DeferredOnlyEvent("x"));
 
             lock (Dispatched)
@@ -85,7 +98,7 @@ public class FactoryEventsDispatcherPhaseTests
             }
             Assert.True(queue.HasPending);
 
-            await queue.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+            await queue.EndEntryCallAsync(success: true);
 
             lock (Dispatched)
             {
@@ -108,6 +121,7 @@ public class FactoryEventsDispatcherPhaseTests
             var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
             var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
 
+            queue.BeginEntryCall();
             await events.Raise(new MixedPhaseEvent("x"));
 
             lock (Dispatched)
@@ -115,7 +129,7 @@ public class FactoryEventsDispatcherPhaseTests
                 Assert.Equal(["immediate"], Dispatched);
             }
 
-            await queue.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+            await queue.EndEntryCallAsync(success: true);
 
             // Cross-phase ordering: the Immediate handler completed before the deferred one ran.
             lock (Dispatched)
@@ -140,6 +154,7 @@ public class FactoryEventsDispatcherPhaseTests
             var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
             var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
 
+            queue.BeginEntryCall();
             await events.RaiseUntyped(new UntypedRaiseEvent("x"));
 
             lock (Dispatched)
@@ -148,7 +163,7 @@ public class FactoryEventsDispatcherPhaseTests
             }
             Assert.True(queue.HasPending);
 
-            await queue.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+            await queue.EndEntryCallAsync(success: true);
 
             lock (Dispatched)
             {
@@ -162,6 +177,13 @@ public class FactoryEventsDispatcherPhaseTests
     {
         // Re-entrancy as production hits it: handler -> IFactoryEvents.Raise -> registry
         // lookup -> defer, rather than calling Enqueue directly.
+        //
+        // PHASE-003 re-pointed this test to discriminate on WHERE the follow-up runs.
+        // The entry stays active for the duration of the entry drain, so the follow-up
+        // raised by the draining source handler must QUEUE and run after the source
+        // handler completes ("source-after-raise" before "follow-up"). If entry depth
+        // popped before the drain, the follow-up would dispatch inline inside the
+        // source handler's Raise call and the order would invert.
         lock (Dispatched) { Dispatched.Clear(); }
 
         var (provider, scope) = ServerScope();
@@ -179,16 +201,87 @@ public class FactoryEventsDispatcherPhaseTests
                     Dispatched.Add("source");
                 }
                 await sp.GetRequiredService<IFactoryEvents>().Raise(new ChainedFollowUpEvent("chained"), RaiseOptions.None, ct);
+                lock (Dispatched)
+                {
+                    Dispatched.Add("source-after-raise");
+                }
             });
 
+            queue.BeginEntryCall();
             await events.Raise(new ChainedSourceEvent("x"));
-            await queue.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+            await queue.EndEntryCallAsync(success: true);
 
             lock (Dispatched)
             {
-                Assert.Equal(["source", "follow-up"], Dispatched);
+                Assert.Equal(["source", "source-after-raise", "follow-up"], Dispatched);
             }
             Assert.False(queue.HasPending);
+        }
+    }
+
+    [Fact]
+    public async Task Raise_PhasedHandlerOutsideAnyFactoryCall_DispatchesImmediately()
+    {
+        // A scheduler exists in the scope, but no entry factory call is active — the
+        // "Raise outside any factory call" case. The phased handler dispatches
+        // immediately (with a debug log) instead of queueing into a drain nobody owns.
+        lock (Dispatched) { Dispatched.Clear(); }
+        FactoryEventHandlerRegistry.RegisterHandler<OutsideEntryEvent>(typeof(DeferredHandler), DispatchPhase.AfterCommit, Recording("deferred"));
+
+        var (provider, scope) = ServerScope();
+        using (provider)
+        using (scope)
+        {
+            var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
+            var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
+
+            await events.Raise(new OutsideEntryEvent("x"));
+
+            lock (Dispatched)
+            {
+                Assert.Equal(["deferred"], Dispatched);
+            }
+            Assert.False(queue.HasPending);
+        }
+    }
+
+    [Fact]
+    public async Task FailedEntryCall_ClearsDeferredWork_AndTheNextSuccessRunsOnlyItsOwn()
+    {
+        // The long-lived-scope case (plan review A-V2): a failed entry call's deferred
+        // work must not ride into the next successful call's drain in the same scope.
+        lock (Dispatched) { Dispatched.Clear(); }
+        FactoryEventHandlerRegistry.RegisterHandler<FailedEntryEvent>(typeof(DeferredHandler), DispatchPhase.AfterCommit, Recording("from-failed-call"));
+        FactoryEventHandlerRegistry.RegisterHandler<SecondEntryEvent>(typeof(DeferredHandler), DispatchPhase.AfterCommit, Recording("from-second-call"));
+
+        var (provider, scope) = ServerScope();
+        using (provider)
+        using (scope)
+        {
+            var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
+            var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
+
+            // First entry call defers work, then fails.
+            queue.BeginEntryCall();
+            await events.Raise(new FailedEntryEvent("x"));
+            Assert.True(queue.HasPending);
+            await queue.EndEntryCallAsync(success: false);
+
+            Assert.False(queue.HasPending);
+            lock (Dispatched)
+            {
+                Assert.Empty(Dispatched);
+            }
+
+            // Second entry call in the SAME scope succeeds and drains only its own work.
+            queue.BeginEntryCall();
+            await events.Raise(new SecondEntryEvent("y"));
+            await queue.EndEntryCallAsync(success: true);
+
+            lock (Dispatched)
+            {
+                Assert.Equal(["from-second-call"], Dispatched);
+            }
         }
     }
 

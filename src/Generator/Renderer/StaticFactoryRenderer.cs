@@ -227,11 +227,17 @@ internal static class StaticFactoryRenderer
         var allParamIdentifiers = BuildDomainMethodInvocationParams(del);
 
         // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire registration
+        // The delegate body routes through FactoryEntryCall (PHASE-003): the delegate IS the
+        // static pattern's local execution seam — its entry marks the factory call, drains
+        // AfterCommit at the outermost successful completion, and discards deferred work on
+        // failure. Service resolution sits inside the entry, so a missing server-only service
+        // counts as entry failure (clear, no drain). The guard wraps the registration itself,
+        // so no async state machine ever hosts it.
         sb.AppendLine("                if (NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("                {");
         sb.AppendLine($"                    services.AddTransient<{typeName}.{del.DelegateName}>(cc =>");
         sb.AppendLine("                    {");
-        sb.AppendLine($"                        return ({paramDecl}) => {{");
+        sb.AppendLine($"                        return ({paramDecl}) => FactoryEntryCall.RunAsync(cc, () => {{");
 
         if (!string.IsNullOrEmpty(serviceAssignments))
         {
@@ -239,7 +245,7 @@ internal static class StaticFactoryRenderer
         }
 
         sb.AppendLine($"                        return {typeName}.{del.Name}({allParamIdentifiers});");
-        sb.AppendLine("                        };");
+        sb.AppendLine("                        });");
         sb.AppendLine("                    });");
         sb.AppendLine("                }");
     }

@@ -62,21 +62,32 @@ internal sealed class FactoryEventsDispatcher : IFactoryEvents
         // callers must not depend on it. Exceptions propagate immediately and abort
         // the remaining handlers so the caller's transaction can roll back.
         //
-        // Phased handlers are queued instead, and run when their phase drains. Without a
-        // queue in the scope they fall back to immediate dispatch rather than vanishing.
+        // Phased handlers are queued only while an entry factory call is active — that
+        // is the only time a drain point is coming. The entry stays active through the
+        // entry-call drain itself, so an event a drained handler raises still queues
+        // here and joins the current drain. Raised outside any factory call (or in a
+        // scope with no scheduler at all), phased handlers dispatch immediately rather
+        // than vanishing, each case with its own debug log.
         foreach (var (phase, handler) in handlers)
         {
             if (phase != DispatchPhase.Immediate)
             {
-                if (_phaseQueue != null)
+                if (_phaseQueue != null && _phaseQueue.IsEntryCallActive)
                 {
                     _phaseQueue.Enqueue(phase, (FactoryEventBase)factoryEvent, options, handler);
                     continue;
                 }
 
-                _sp.GetService<ILoggerFactory>()?
-                    .CreateLogger(NeatooLoggerCategories.Server)
-                    .FactoryEventPhaseNoQueueInScope(eventType.Name, phase);
+                var logger = _sp.GetService<ILoggerFactory>()?
+                    .CreateLogger(NeatooLoggerCategories.Server);
+                if (_phaseQueue == null)
+                {
+                    logger?.FactoryEventPhaseNoQueueInScope(eventType.Name, phase);
+                }
+                else
+                {
+                    logger?.FactoryEventPhaseRaisedOutsideEntryCall(eventType.Name, phase);
+                }
             }
 
             await handler(_sp, factoryEvent, options, cancellationToken).ConfigureAwait(false);

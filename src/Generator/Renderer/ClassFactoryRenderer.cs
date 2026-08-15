@@ -344,19 +344,26 @@ internal static class ClassFactoryRenderer
     }
 
     /// <summary>
-    /// Emits the opening of a <c>Local*</c> factory method — signature, brace, and the
-    /// <see cref="NeatooRuntime.IsServerRuntime"/> guard when the method is server-only.
+    /// Emits a <c>Local*</c> factory method as a NON-async wrapper — signature, the
+    /// <see cref="NeatooRuntime.IsServerRuntime"/> guard when the method is server-only,
+    /// and an entry-call forward to a private <c>Local*Core</c> whose opening is emitted
+    /// last; the caller's body lands in the core.
     /// </summary>
     /// <remarks>
-    /// For guarded <c>async</c> methods the guard is emitted in a NON-async wrapper that
-    /// forwards to a private async core, and the caller's body lands in the core.
+    /// The wrapper routes through <c>FactoryEntryCall</c> (PHASE-003): entry-call
+    /// tracking is depth-aware, drains <c>AfterCommit</c> at the outermost successful
+    /// completion, and discards deferred work on failure. Nested calls — <c>LocalSave</c>
+    /// into <c>LocalInsert</c>, the remote request handler around any <c>Local*</c> —
+    /// only increment depth. The helper resolves the scheduler null-tolerantly, so
+    /// client-reachable unguarded methods (public non-<c>[Remote]</c>) reduce to the body.
     /// <para>
-    /// The guard must sit outside the async state machine. When it is inside, the compiler
-    /// lowers the whole body — guard included — into <c>MoveNext</c>, inside the builder's
-    /// own protected region. ILLink folds the feature switch there but does not eliminate
-    /// the unreachable remainder, so <c>[Remote]</c> bodies, their <c>[Service]</c>
-    /// interfaces, and their string literals ship to publish-trimmed clients. A sync method
-    /// puts the guard ahead of any protected region, so the whole remainder goes.
+    /// The guard must sit outside the async state machine, which is why the wrapper is
+    /// never <c>async</c>. When the guard is inside, the compiler lowers the whole body —
+    /// guard included — into <c>MoveNext</c>, inside the builder's own protected region.
+    /// ILLink folds the feature switch there but does not eliminate the unreachable
+    /// remainder, so <c>[Remote]</c> bodies, their <c>[Service]</c> interfaces, and their
+    /// string literals ship to publish-trimmed clients. A sync method puts the guard
+    /// ahead of any protected region, so the whole remainder goes.
     /// </para>
     /// <para>
     /// Measured, not assumed (TRIM-009): stripping the async lifecycle probes and the
@@ -375,25 +382,12 @@ internal static class ClassFactoryRenderer
         string parameters,
         string forwardArgs,
         bool needsAsync,
-        bool isServerOnly,
-        bool blankLineAfterGuard = true)
+        bool isServerOnly)
     {
-        if (needsAsync && isServerOnly)
-        {
-            sb.AppendLine($"        {modifiers} {returnType} Local{uniqueName}({parameters})");
-            sb.AppendLine("        {");
-            sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
-            sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-            sb.AppendLine($"            return Local{uniqueName}Core({forwardArgs});");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine($"        private async {returnType} Local{uniqueName}Core({parameters})");
-            sb.AppendLine("        {");
-            return;
-        }
+        var isTaskReturn = returnType == "Task" || returnType.StartsWith("Task<", StringComparison.Ordinal);
+        var entryRun = isTaskReturn ? "RunAsync" : "Run";
 
-        var asyncKeyword = needsAsync ? "async " : "";
-        sb.AppendLine($"        {modifiers} {asyncKeyword}{returnType} Local{uniqueName}({parameters})");
+        sb.AppendLine($"        {modifiers} {returnType} Local{uniqueName}({parameters})");
         sb.AppendLine("        {");
 
         // Feature switch guard -- only emit for internal or [Remote] methods.
@@ -402,11 +396,14 @@ internal static class ClassFactoryRenderer
         {
             sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
             sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
-            if (blankLineAfterGuard)
-            {
-                sb.AppendLine();
-            }
         }
+
+        sb.AppendLine($"            return FactoryEntryCall.{entryRun}(ServiceProvider, () => Local{uniqueName}Core({forwardArgs}));");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        var asyncKeyword = needsAsync ? "async " : "";
+        sb.AppendLine($"        private {asyncKeyword}{returnType} Local{uniqueName}Core({parameters})");
+        sb.AppendLine("        {");
     }
 
     private static void RenderReadLocalMethod(StringBuilder sb, ReadMethodModel method, ClassFactoryModel model)
@@ -1115,8 +1112,7 @@ internal static class ClassFactoryRenderer
         var paramIdentifiers = GetParameterIdentifiersWithCancellationToken(method.Parameters, includeServices: false);
 
         RenderLocalMethodOpening(sb, "public virtual", returnType, method.UniqueName, parameters, paramIdentifiers,
-            method.IsAsync, method.IsInternal || method.IsRemote, blankLineAfterGuard: false);
-        sb.AppendLine();
+            method.IsAsync, method.IsInternal || method.IsRemote);
 
         // Default return value
         var defaultReturn = method.HasAuth

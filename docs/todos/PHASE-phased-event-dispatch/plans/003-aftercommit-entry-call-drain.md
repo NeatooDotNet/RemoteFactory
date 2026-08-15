@@ -3,7 +3,7 @@
 **Plan #:** 003
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-08-14
 **Plan-review opt-in:** Yes (touches all three factory renderers; entry-shape subtleties found at recon make this the riskiest plan)
 **Code-review opt-in:** Yes (behavior-changing across generated code and runtime)

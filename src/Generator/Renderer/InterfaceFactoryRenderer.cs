@@ -249,13 +249,14 @@ internal static class InterfaceFactoryRenderer
 
     private static void RenderLocalMethod(StringBuilder sb, InterfaceMethodModel method, InterfaceFactoryModel model)
     {
-        var asyncKeyword = method.IsAsync ? "async" : "";
+        var asyncKeyword = method.IsAsync ? "async " : "";
         var returnType = GetReturnType(method);
         var parameters = GetParameterDeclarations(method.Parameters);
+        var forwardArgs = GetParameterIdentifiers(method.Parameters);
         var paramIdentifiers = GetParameterIdentifiers(method.Parameters, includeServices: false);
 
-        sb.AppendLine($"        public {asyncKeyword} {returnType} Local{method.UniqueName}({parameters})");
-        sb.AppendLine("        {");
+        var isTaskReturn = returnType == "Task" || returnType.StartsWith("Task<", StringComparison.Ordinal);
+        var entryRun = isTaskReturn ? "RunAsync" : "Run";
 
         // Feature switch guard -- when IsServerRuntime=false the switch folds to a constant and
         // the body becomes unreachable.
@@ -269,16 +270,23 @@ internal static class InterfaceFactoryRenderer
         // holder, because [DynamicallyAccessedMembers] covers NonPublicMethods and roots the
         // private core on its own.
         //
-        // THIS LEG HAS RECEIVED NEITHER FIX. It still emits the guard inline (no wrapper split)
-        // and line 48 still points the assembly attribute at {ImplName}Factory, which hosts every
-        // Local* method. No leak has been observed here, but the leg reaches its implementation
-        // through interfaces, so a client-side trimmed harness reads "absent" either way and
-        // cannot prove elimination -- and Deferred Work item 19 blocks the fixture change that
-        // would give it a reachable marker. Treat body elimination on this leg as UNVERIFIED.
-        // Tracked as Deferred Work item 20 on the TRIM todo.
+        // PHASE-003 introduced the wrapper split on this leg: the guard now sits in a NON-async
+        // wrapper that forwards through FactoryEntryCall (entry-call tracking + AfterCommit
+        // drain), and the body lands in a private Local*Core. That aligns the guard topology
+        // with the class leg, but the second TRIM-009 fix -- a single-method registrar holder --
+        // is still absent here (the assembly attribute still points at {ImplName}Factory, which
+        // hosts every Local* method), and Deferred Work item 19 still blocks the fixture change
+        // that would give this leg a reachable marker. Treat body elimination on this leg as
+        // UNVERIFIED. Tracked as Deferred Work item 20 on the TRIM todo.
+        sb.AppendLine($"        public {returnType} Local{method.UniqueName}({parameters})");
+        sb.AppendLine("        {");
         sb.AppendLine("            if (!NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("                throw new InvalidOperationException(\"Server-only method called in non-server runtime.\");");
+        sb.AppendLine($"            return FactoryEntryCall.{entryRun}(ServiceProvider, () => Local{method.UniqueName}Core({forwardArgs}));");
+        sb.AppendLine("        }");
         sb.AppendLine();
+        sb.AppendLine($"        private {asyncKeyword}{returnType} Local{method.UniqueName}Core({parameters})");
+        sb.AppendLine("        {");
 
         // CanXxx methods only perform authorization checks and return the result
         if (method.Name.StartsWith("Can"))

@@ -98,39 +98,68 @@ public static class LocalServer
 				trace.TraceInvokingDelegate(correlationId);
 				var invokeSw = Stopwatch.StartNew();
 				object? result;
+
+				// Entry-call tracking: this delegate invocation is the entry factory call for
+				// every remote request — [Remote] factory methods and client-raised events
+				// alike. Generated Local* methods nest inside it (depth > 1), so the drain
+				// happens here, once, at the outermost completion. The drain sits BEFORE the
+				// post-invoke cancellation check and before relay collection: a token
+				// cancelled after the delegate succeeded must neither skip the drain nor
+				// abort it, and events raised by drained handlers must join this response's
+				// relay batch. Failure paths (throw, forbid, cancellation during the
+				// delegate) discard the deferred work — a clear, never a drain.
+				var phaseScheduler = serviceProvider.GetService<IFactoryEventPhaseScheduler>();
+				phaseScheduler?.BeginEntryCall();
 				try
 				{
-					result = method.DynamicInvoke(invokeParams);
-				}
-				catch (TargetInvocationException tie) when (tie.InnerException != null)
-				{
-					// Unwrap the TargetInvocationException from DynamicInvoke
-					System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
-					throw; // Unreachable, but required by compiler
-				}
-
-				if (result is Task task)
-				{
-					trace.TraceAwaitingResult(correlationId);
-					await task;
-					invokeSw.Stop();
-					trace.TraceDelegateCompleted(correlationId, invokeSw.ElapsedMilliseconds, true);
-					// Only get result for Task<T>, not for non-generic Task (events, void methods)
-					var resultProperty = task.GetType().GetProperty(Result);
-					if (resultProperty != null && resultProperty.PropertyType != typeof(void) &&
-						resultProperty.PropertyType.Name != "VoidTaskResult")
+					try
 					{
-						result = resultProperty.GetValue(task);
+						result = method.DynamicInvoke(invokeParams);
+					}
+					catch (TargetInvocationException tie) when (tie.InnerException != null)
+					{
+						// Unwrap the TargetInvocationException from DynamicInvoke
+						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+						throw; // Unreachable, but required by compiler
+					}
+
+					if (result is Task task)
+					{
+						trace.TraceAwaitingResult(correlationId);
+						await task;
+						invokeSw.Stop();
+						trace.TraceDelegateCompleted(correlationId, invokeSw.ElapsedMilliseconds, true);
+						// Only get result for Task<T>, not for non-generic Task (events, void methods)
+						var resultProperty = task.GetType().GetProperty(Result);
+						if (resultProperty != null && resultProperty.PropertyType != typeof(void) &&
+							resultProperty.PropertyType.Name != "VoidTaskResult")
+						{
+							result = resultProperty.GetValue(task);
+						}
+						else
+						{
+							result = null;
+						}
 					}
 					else
 					{
-						result = null;
+						invokeSw.Stop();
+						trace.TraceDelegateCompleted(correlationId, invokeSw.ElapsedMilliseconds, false);
+					}
+
+					if (phaseScheduler != null)
+					{
+						await phaseScheduler.EndEntryCallAsync(success: true);
 					}
 				}
-				else
+				catch
 				{
-					invokeSw.Stop();
-					trace.TraceDelegateCompleted(correlationId, invokeSw.ElapsedMilliseconds, false);
+					if (phaseScheduler != null)
+					{
+						await phaseScheduler.EndEntryCallAsync(success: false);
+					}
+
+					throw;
 				}
 
 				// Check for cancellation before serializing response

@@ -157,11 +157,13 @@ namespace TestNamespace
 
         Assert.NotNull(generatedSource);
 
-        // Wrapper: NOT async, carries the guard, forwards to the core.
+        // Wrapper: NOT async, carries the guard, forwards to the core through the
+        // entry-call helper (PHASE-003). The trimming-relevant property is unchanged:
+        // the guard sits in a non-async method, never inside a state machine.
         Assert.Matches(
             @"public Task<MyEntity> LocalFetchIt\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
             generatedSource);
-        Assert.Contains("return LocalFetchItCore(name, cancellationToken);", generatedSource);
+        Assert.Contains("return FactoryEntryCall.RunAsync(ServiceProvider, () => LocalFetchItCore(name, cancellationToken));", generatedSource);
 
         // Core: async, private, and carries NO guard — the guard already ran in the wrapper.
         Assert.Contains("private async Task<MyEntity> LocalFetchItCore(", generatedSource);
@@ -189,15 +191,19 @@ namespace TestNamespace
     // emission assertion, which needs an ASP-auth fixture in this harness.
 
     /// <summary>
-    /// A SYNCHRONOUS guarded <c>Local*</c> method keeps the guard inline and is not split.
+    /// A SYNCHRONOUS guarded <c>Local*</c> method splits into a non-async guarded wrapper
+    /// and a NON-async private core.
     /// </summary>
     /// <remarks>
-    /// The sync shape already trims correctly — unreachability begins before any protected
-    /// region, so the whole remainder goes. Splitting it would be churn. This test is the
-    /// control that keeps the wrapper narrowly scoped to the shape that needed it.
+    /// Amended by PHASE-003 (was <c>ClassFactory_GuardedSyncLocalMethod_IsNotSplit</c>):
+    /// every <c>Local*</c> method now splits so the wrapper can route through the
+    /// entry-call helper. The trimming intent this test pins is unchanged from TRIM-009 —
+    /// the guard must sit ahead of any protected region — and the sync shape still
+    /// satisfies it: the wrapper is not async, and the core keeps the body's original
+    /// synchronous form (no <c>async</c> keyword, no state machine hosting the guard).
     /// </remarks>
     [Fact]
-    public void ClassFactory_GuardedSyncLocalMethod_IsNotSplit()
+    public void ClassFactory_GuardedSyncLocalMethod_SplitsIntoSyncWrapperAndSyncCore()
     {
         var source = @"
 using Neatoo.RemoteFactory;
@@ -221,10 +227,18 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.DoesNotContain("LocalCreateCore", generatedSource);
+
+        // Wrapper: NOT async, carries the guard, forwards through the entry-call helper.
         Assert.Matches(
             @"public Task<MyEntity> LocalCreate\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
             generatedSource);
+        Assert.Contains("return FactoryEntryCall.RunAsync(ServiceProvider, () => LocalCreateCore(name, cancellationToken));", generatedSource);
+
+        // Core: private, NOT async (the sync body keeps its shape), and carries no guard.
+        Assert.Matches(
+            @"private Task<MyEntity> LocalCreateCore\([^)]*\)\s*\{\s*(?!\s*if \(!NeatooRuntime\.IsServerRuntime\))",
+            generatedSource);
+        Assert.DoesNotContain("private async Task<MyEntity> LocalCreateCore(", generatedSource);
     }
 
     /// <summary>

@@ -4,25 +4,55 @@ namespace Neatoo.RemoteFactory.Internal;
 
 /// <summary>
 /// Scope-scoped store of factory-event dispatches deferred by their
-/// <see cref="DispatchPhase"/>, plus the drain primitive that runs them.
+/// <see cref="DispatchPhase"/>, plus the drain primitive that runs them and the
+/// entry-call tracking that decides when the framework drains on its own.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Public because generated factory code calls <see cref="DrainAsync"/> at the entry-call
+/// Public because generated factory code calls the entry-call members at the entry-call
 /// boundary; it lives in the <c>Internal</c> namespace alongside
 /// <see cref="IMakeRemoteDelegateRequest"/> and <see cref="ICorrelationContext"/>, which
 /// are public for the same reason.
 /// </para>
 /// <para>
-/// State is per DI scope and holds no persistence concepts. A scope whose factory
-/// operation fails is simply never drained — that is what makes rollback-discard
-/// structural rather than a rule anyone has to remember.
+/// State is per DI scope and holds no persistence concepts. Entry-call tracking is
+/// depth-aware: nested factory work (a save cascading into an insert, one factory
+/// invoking another, the remote request handler wrapping a local method) increments
+/// depth rather than starting a second entry, and only the outermost completion is
+/// "the entry call completing." A failed entry call <b>clears</b> its deferred work at
+/// the outermost exit — never drains it — so between entry calls the scheduler is
+/// always empty. Scopes can be long-lived (Blazor Server circuits, Logical mode); the
+/// clear is what keeps a failed call's work from riding into the next call's drain.
 /// </para>
 /// </remarks>
 public interface IFactoryEventPhaseScheduler
 {
     /// <summary>True when any phase has deferred dispatches waiting.</summary>
     bool HasPending { get; }
+
+    /// <summary>
+    /// True while an entry factory call is in flight in this scope — including for the
+    /// duration of the entry-call drain itself, so work a drained handler raises still
+    /// queues and joins the current drain.
+    /// </summary>
+    bool IsEntryCallActive { get; }
+
+    /// <summary>Marks the start of a factory call. Nested calls increment depth.</summary>
+    void BeginEntryCall();
+
+    /// <summary>
+    /// Marks the end of a factory call. At the outermost exit: a successful entry drains
+    /// <see cref="DispatchPhase.AfterCommit"/> (which sweeps earlier phases first) with
+    /// no cancellation token — the entry call already succeeded, so nothing may abort its
+    /// post-completion work — while a failed entry discards all deferred dispatches
+    /// without running any. Nested exits only decrement depth.
+    /// </summary>
+    /// <param name="success">
+    /// Whether the factory call completed successfully. Callers pass
+    /// <see langword="false"/> from failure paths only; this method never throws when
+    /// <paramref name="success"/> is <see langword="false"/>.
+    /// </param>
+    Task EndEntryCallAsync(bool success);
 
     /// <summary>Defers a handler dispatch until <paramref name="phase"/> drains.</summary>
     void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler);
@@ -57,6 +87,12 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     private readonly ILogger? _logger;
     private readonly Dictionary<DispatchPhase, Queue<QueuedDispatch>> _deferred = new();
 
+    // Guards _deferred and _entryDepth. Scopes can be shared by concurrent flows
+    // (Blazor Server circuits, Logical mode, a reused test scope); handlers are
+    // invoked outside the lock.
+    private readonly object _gate = new();
+    private int _entryDepth;
+
     public FactoryEventPhaseScheduler(IServiceProvider sp, ILoggerFactory? loggerFactory = null)
     {
         _sp = sp;
@@ -68,20 +104,98 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
         RaiseOptions Options,
         Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Handler);
 
-    public bool HasPending => _deferred.Any(q => q.Value.Count > 0);
+    public bool HasPending
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _deferred.Any(q => q.Value.Count > 0);
+            }
+        }
+    }
+
+    public bool IsEntryCallActive
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _entryDepth > 0;
+            }
+        }
+    }
+
+    public void BeginEntryCall()
+    {
+        lock (_gate)
+        {
+            _entryDepth++;
+        }
+    }
+
+    public async Task EndEntryCallAsync(bool success)
+    {
+        if (!success)
+        {
+            ClearAtExit();
+            return;
+        }
+
+        bool outermost;
+        lock (_gate)
+        {
+            if (_entryDepth == 0)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(EndEntryCallAsync)} called without a matching {nameof(BeginEntryCall)}.");
+            }
+
+            outermost = _entryDepth == 1;
+        }
+
+        if (!outermost)
+        {
+            lock (_gate)
+            {
+                _entryDepth--;
+            }
+
+            return;
+        }
+
+        // The entry stays active (depth 1) for the duration of the drain, so an event a
+        // drained handler raises still queues through the dispatcher and joins this drain
+        // via drain-until-empty. No token: the entry call already succeeded, so nothing
+        // may abort its post-completion work.
+        try
+        {
+            await DrainAsync(DispatchPhase.AfterCommit, inTransaction: false, CancellationToken.None).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Depth release and a discard of anything a thrown drain (handler OCE) left
+            // behind — a clear, never a drain, preserving "between entry calls the
+            // scheduler is empty."
+            ClearAtExit();
+        }
+    }
 
     public void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler)
     {
         ArgumentNullException.ThrowIfNull(factoryEvent);
         ArgumentNullException.ThrowIfNull(handler);
 
-        if (!_deferred.TryGetValue(phase, out var queue))
+        lock (_gate)
         {
-            queue = new Queue<QueuedDispatch>();
-            _deferred[phase] = queue;
-        }
+            if (!_deferred.TryGetValue(phase, out var queue))
+            {
+                queue = new Queue<QueuedDispatch>();
+                _deferred[phase] = queue;
+            }
 
-        queue.Enqueue(new QueuedDispatch(factoryEvent, options, handler));
+            queue.Enqueue(new QueuedDispatch(factoryEvent, options, handler));
+        }
 
         if (_logger?.IsEnabled(LogLevel.Debug) == true)
         {
@@ -132,25 +246,59 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     }
 
     /// <summary>
+    /// Outermost-exit cleanup shared by the failure path and the post-drain release:
+    /// decrements depth (tolerantly — failure paths run inside catch blocks and must
+    /// never throw) and, at depth zero, discards whatever is still deferred.
+    /// </summary>
+    private void ClearAtExit()
+    {
+        int discarded = 0;
+        lock (_gate)
+        {
+            if (_entryDepth > 0)
+            {
+                _entryDepth--;
+            }
+
+            if (_entryDepth == 0)
+            {
+                foreach (var queue in _deferred.Values)
+                {
+                    discarded += queue.Count;
+                    queue.Clear();
+                }
+            }
+        }
+
+        if (discarded > 0)
+        {
+            _logger?.FactoryEventPhaseClearedOnFailure(discarded);
+        }
+    }
+
+    /// <summary>
     /// Takes the next dispatch from the earliest non-empty phase at or before
     /// <paramref name="through"/>, so cross-phase ordering holds even for work a handler
     /// enqueues mid-drain.
     /// </summary>
     private bool TryDequeueThrough(DispatchPhase through, out QueuedDispatch dispatch, out DispatchPhase phase)
     {
-        foreach (var candidate in _deferred.Keys.Where(p => p <= through).OrderBy(p => p))
+        lock (_gate)
         {
-            var queue = _deferred[candidate];
-            if (queue.Count > 0)
+            foreach (var candidate in _deferred.Keys.Where(p => p <= through).OrderBy(p => p))
             {
-                dispatch = queue.Dequeue();
-                phase = candidate;
-                return true;
+                var queue = _deferred[candidate];
+                if (queue.Count > 0)
+                {
+                    dispatch = queue.Dequeue();
+                    phase = candidate;
+                    return true;
+                }
             }
-        }
 
-        dispatch = default;
-        phase = through;
-        return false;
+            dispatch = default;
+            phase = through;
+            return false;
+        }
     }
 }
