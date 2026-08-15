@@ -1018,6 +1018,8 @@ These are known limitations or open questions. They are documented here to preve
 | 9002 | `FactoryEventPhaseDrained` | Debug | A phase drain completes, reporting how many dispatches ran through the requested phase (earlier phases included) | Informational |
 | 9003 | `FactoryEventPhaseHandlerFailed` | Error | A deferred handler throws during a **post-completion** drain (no ambient transaction) | Swallowed — the exception can no longer roll anything back; remaining queued handlers still run. `OperationCanceledException` still propagates. In-transaction drains propagate instead, so this never fires for them. |
 | 9004 | `FactoryEventPhaseNoQueueInScope` | Debug | An event with a phased handler is raised in a scope with no `IFactoryEventPhaseScheduler` registered | Dispatched immediately rather than dropped |
+| 9005 | `FactoryEventPhaseRaisedOutsideEntryCall` | Debug | An event with a phased handler is raised while no entry factory call is active in the scope | Dispatched immediately rather than queued into a drain nobody owns |
+| 9006 | `FactoryEventPhaseDiscardedAtExit` | Debug | An entry-call exit discards deferred dispatches without running them — a failed call's clear, or the leftovers of a drain a handler's `OperationCanceledException` aborted | The clear (never a drain) that keeps discarded work from riding a later call's drain in long-lived scopes |
 
 ### Public Exception
 

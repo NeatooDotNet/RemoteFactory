@@ -509,4 +509,21 @@ internal static partial class Log
         this ILogger logger,
         string eventType,
         DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9005,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} has a {Phase} handler but was raised outside any factory call; dispatching it immediately instead.")]
+    public static partial void FactoryEventPhaseRaisedOutsideEntryCall(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9006,
+        Level = LogLevel.Debug,
+        Message = "Discarded {DiscardedCount} deferred handler dispatch(es) at entry-call exit without running them.")]
+    public static partial void FactoryEventPhaseDiscardedAtExit(
+        this ILogger logger,
+        int discardedCount);
 }

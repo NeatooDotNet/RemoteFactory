@@ -157,11 +157,13 @@ namespace TestNamespace
 
         Assert.NotNull(generatedSource);
 
-        // Wrapper: NOT async, carries the guard, forwards to the core.
+        // Wrapper: NOT async, carries the guard, forwards to the core through the
+        // entry-call helper (PHASE-003). The trimming-relevant property is unchanged:
+        // the guard sits in a non-async method, never inside a state machine.
         Assert.Matches(
             @"public Task<MyEntity> LocalFetchIt\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
             generatedSource);
-        Assert.Contains("return LocalFetchItCore(name, cancellationToken);", generatedSource);
+        Assert.Contains("return global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(ServiceProvider, () => LocalFetchItCore(name, cancellationToken));", generatedSource);
 
         // Core: async, private, and carries NO guard — the guard already ran in the wrapper.
         Assert.Contains("private async Task<MyEntity> LocalFetchItCore(", generatedSource);
@@ -189,15 +191,19 @@ namespace TestNamespace
     // emission assertion, which needs an ASP-auth fixture in this harness.
 
     /// <summary>
-    /// A SYNCHRONOUS guarded <c>Local*</c> method keeps the guard inline and is not split.
+    /// A SYNCHRONOUS guarded <c>Local*</c> method splits into a non-async guarded wrapper
+    /// and a NON-async private core.
     /// </summary>
     /// <remarks>
-    /// The sync shape already trims correctly — unreachability begins before any protected
-    /// region, so the whole remainder goes. Splitting it would be churn. This test is the
-    /// control that keeps the wrapper narrowly scoped to the shape that needed it.
+    /// Amended by PHASE-003 (was <c>ClassFactory_GuardedSyncLocalMethod_IsNotSplit</c>):
+    /// every <c>Local*</c> method now splits so the wrapper can route through the
+    /// entry-call helper. The trimming intent this test pins is unchanged from TRIM-009 —
+    /// the guard must sit ahead of any protected region — and the sync shape still
+    /// satisfies it: the wrapper is not async, and the core keeps the body's original
+    /// synchronous form (no <c>async</c> keyword, no state machine hosting the guard).
     /// </remarks>
     [Fact]
-    public void ClassFactory_GuardedSyncLocalMethod_IsNotSplit()
+    public void ClassFactory_GuardedSyncLocalMethod_SplitsIntoSyncWrapperAndSyncCore()
     {
         var source = @"
 using Neatoo.RemoteFactory;
@@ -221,10 +227,18 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.DoesNotContain("LocalCreateCore", generatedSource);
+
+        // Wrapper: NOT async, carries the guard, forwards through the entry-call helper.
         Assert.Matches(
             @"public Task<MyEntity> LocalCreate\(string name, CancellationToken cancellationToken = default\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
             generatedSource);
+        Assert.Contains("return global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(ServiceProvider, () => LocalCreateCore(name, cancellationToken));", generatedSource);
+
+        // Core: private, NOT async (the sync body keeps its shape), and carries no guard.
+        Assert.Matches(
+            @"private Task<MyEntity> LocalCreateCore\([^)]*\)\s*\{\s*(?!\s*if \(!NeatooRuntime\.IsServerRuntime\))",
+            generatedSource);
+        Assert.DoesNotContain("private async Task<MyEntity> LocalCreateCore(", generatedSource);
     }
 
     /// <summary>
@@ -413,9 +427,16 @@ namespace TestNamespace
     #region Interface Factory
 
     /// <summary>
-    /// Interface factory generated source contains the assembly-level NeatooFactoryRegistrar
-    /// attribute with the fully-qualified implementation factory type name.
+    /// Interface factory generated source points the assembly-level NeatooFactoryRegistrar
+    /// attribute at a single-method registrar holder — never at the factory class, whose
+    /// methods (including the private Local*Core bodies) the attribute's
+    /// [DynamicallyAccessedMembers] would otherwise root into trimmed clients.
     /// </summary>
+    /// <remarks>
+    /// Amended by PHASE-003 (code review V1): previously the attribute named
+    /// MyServiceFactory itself, which became the TRIM-009 measured-insufficient
+    /// configuration once the Local* wrapper/core split landed on this leg.
+    /// </remarks>
     [Fact]
     public void InterfaceFactory_EmitsAssemblyAttribute()
     {
@@ -439,7 +460,69 @@ namespace TestNamespace
             ?.ToString();
 
         Assert.NotNull(generatedSource);
-        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.MyServiceFactory))]", generatedSource);
+        Assert.Contains("[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::TestNamespace.NeatooInterfaceFactoryRegistrar_MyService))]", generatedSource);
+
+        // The attribute must not name the factory type (the prefix convention keeps the
+        // factory's qualified name from being a substring of the holder's).
+        Assert.DoesNotContain("NeatooFactoryRegistrar(typeof(global::TestNamespace.MyServiceFactory)", generatedSource);
+
+        // The holder exists and forwards to the factory's registrar.
+        Assert.Matches(
+            @"internal static class NeatooInterfaceFactoryRegistrar_MyService\s*\{\s*internal static void FactoryServiceRegistrar\(IServiceCollection services, NeatooFactory remoteLocal\)",
+            generatedSource);
+        Assert.Contains("global::TestNamespace.MyServiceFactory.FactoryServiceRegistrar(services, remoteLocal);", generatedSource);
+    }
+
+    /// <summary>
+    /// The interface leg's <c>Local*</c> methods split into a NON-async guarded wrapper
+    /// forwarding through the entry-call helper to a private, unguarded core.
+    /// </summary>
+    /// <remarks>
+    /// Introduced by PHASE-003 — this leg previously emitted the guard inline on the
+    /// method itself with a conditional <c>async</c> keyword, the shape TRIM-009
+    /// measured as guard-inside-<c>MoveNext</c> on the class leg whenever the method
+    /// went async. Body elimination on the interface leg is still UNVERIFIED (TRIM
+    /// Deferred Work item 20: the single-method registrar holder half of the fix is
+    /// absent here), so this emission pin is the only obtainable evidence that the
+    /// guard sits in a non-async wrapper. An <c>async</c> keyword appearing on the
+    /// wrapper must go red here.
+    /// </remarks>
+    [Fact]
+    public void InterfaceFactory_GuardedLocalMethod_SplitsIntoSyncWrapperAndCore()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    [Factory]
+    public interface IMyService
+    {
+        Task<string> DoWork(string input);
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("MyServiceFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        // Wrapper: NOT async, carries the guard, forwards through the entry-call helper.
+        Assert.Matches(
+            @"public Task<string> LocalDoWork\([^)]*\)\s*\{\s*if \(!NeatooRuntime\.IsServerRuntime\)",
+            generatedSource);
+        Assert.DoesNotContain("public async Task<string> LocalDoWork(", generatedSource);
+        Assert.Contains("return global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(ServiceProvider, () => LocalDoWorkCore(", generatedSource);
+
+        // Core: private and unguarded (this fixture's body forwards the target's task
+        // without awaiting, so no async keyword; the guard already ran in the wrapper).
+        Assert.Matches(
+            @"private (async )?Task<string> LocalDoWorkCore\([^)]*\)\s*\{\s*(?!\s*if \(!NeatooRuntime\.IsServerRuntime\))",
+            generatedSource);
     }
 
     #endregion
