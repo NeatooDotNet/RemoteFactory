@@ -6,13 +6,7 @@ on:
     tags:
       - 'v*'
   pull_request:
-    # `main` plus todo arc branches (3-5 uppercase letters, e.g. PHASE, RFEF, TRIM).
-    # Plan PRs target their arc branch, so without this they would get no build at all —
-    # the gap that left the TRIM arc branch unbuilt and ultimately stale (see the TRIM
-    # todo's branching note).
-    branches:
-      - main
-      - '[A-Z][A-Z][A-Z]*'
+    branches: [main]
   workflow_dispatch:
     inputs:
       publish_nuget:

@@ -29,11 +29,11 @@ docs/todos/
 - Each plan's implementation gets its own branch `{ID}-{NNN}-{short-name}` off the
   todo branch.
 - **Plan PRs target their arc branch `{ID}`; the arc PRs to `main` at close-out.**
-  CI covers both: `build.yml`'s `pull_request` trigger watches `main` *and* arc
-  branches (`[A-Z][A-Z][A-Z]*`), added 2026-08-14 when the PHASE arc adopted this
-  flow. Without that trigger a PR into an arc branch gets no build — the gap that
-  left the TRIM arc branch unbuilt and stale (TRIM dropped arc PRs for that reason;
-  its note records the history).
+- **CI does not run on plan PRs, deliberately.** `build.yml`'s `pull_request` trigger
+  watches `main` only, so the arc → `main` PR is the single CI gate for the whole arc.
+  Do not widen the trigger to arc branches. Per-plan verification is the Step 5 gate's
+  local full-suite run, whose logs live in the todo's `reviews/{NNN}-build.log` and
+  `reviews/{NNN}-test.log` — a plan does not reach Done without them.
 - After the arc merges, pull `main` back into any live arc branch and continue.
 - A plan branch that must build on an unmerged predecessor stacks on it
   (`{ID}-{NNN}` off `{ID}-{MMM}`) rather than off the arc branch; record the stack in
