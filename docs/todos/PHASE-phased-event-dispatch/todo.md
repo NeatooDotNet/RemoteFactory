@@ -82,7 +82,7 @@ exposes drain points.
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline (all routed from 004's gate) | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it (all routed from 004's gate) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
@@ -114,6 +114,15 @@ exposes drain points.
   PHASE-007's harness items; `SingleEventRelay_ConsumerReceivesEvent`'s hard 2-second
   poll flakes under full-parallel load (2 of 3 full-solution runs today, never
   serialized) — PHASE-007's harness scope grows by that timeout.
+  **Round 2 (2026-08-16): clean close** at must- and should-cover — the reviewer traced
+  both rejected designs against the shipped source and derived that the new pin catches
+  the subtler flag-plus-stamp variant too. It also caught that RP-7's closing sentence
+  claimed that variant *without measuring it* — the same species as the RP-3 miss the
+  round-1 closure had just corrected, one entry below it in the same file. Measured as
+  RP-9 (derivation held); RP-8 added for the counter-vs-bool claim; overlap test given a
+  witness dispatch; gate log now records its `-m:1` invocation. Worth keeping: the
+  reasoning-dressed-as-evidence habit reappeared *inside the fix for itself*, which
+  suggests the tell is the confident sentence with no run behind it, not the topic.
 
 ### 2026-08-15 — PHASE-004 (plan review: 5 vetoes, all adopted before implementation)
 

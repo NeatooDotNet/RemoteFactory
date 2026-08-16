@@ -88,6 +88,41 @@ assertion); RP-4 proved both red against the reverted behavior. No other pre-exi
 test edited; the reviewer's semantic-weakening sweep (total-count and level-based log
 assertions that 9007's arrival could hollow out) found none.
 
+---
+
+## Round 2 — Verification (2026-08-16): CLEAN CLOSE at must-cover and should-cover
+
+The reviewer re-read the production source and traced both rejected designs against the
+shipped code, independently deriving that the new entry-call pin catches the pure
+guarded flag *and* the subtler flag-plus-stamp variant, and that the overlap pin's
+coordinator genuinely delegates (depth stays 1 through the entry drain, so the
+short-circuit does not fire). Counts reconciled (701 + 4 = 705, no new skips); Evidence
+map spot-checked at all ten rows; sacred-tests sweep clean (harness extraction verbatim,
+the two ordering sequences strengthened 4 markers → 5, the relay flake diagnosed and
+routed rather than skipped or modified).
+
+**Five nice-to-haves returned; all five taken:**
+
+1. **RP-9 added** — the flag-plus-stamp variant *measured* rather than derived. Exactly
+   one red, and it is the entry-call pin; the carve-out test stays green (stamp intact),
+   confirming no other test covers that variant. RP-7's overreaching sentence rewritten
+   to point at the measurement. (Round 2 flagged it as the same species as the RP-3 miss
+   — correct.)
+2. **RP-8 added** — `_activeDrains` degraded to a bool. Exactly one red: the overlap pin.
+   The counter-vs-bool claim is now evidence, not a code comment's argument.
+3. **Overlap test hardened** — it now enqueues a witness AfterFlush dispatch before the
+   inner drain and asserts it runs *before* `inner-drain-done`, so the test cannot go
+   silently vacuous if the short-circuit predicate is ever narrowed. (Position relative
+   to `late-enqueue` would prove nothing — the sweep also runs AfterFlush work first.)
+4. **`004-test.log` now carries an invocation header** recording the `-m:1` run and why,
+   so a reader of the gate log alone knows what kind of green it is. The red-proof log's
+   preamble states the `rp*-build.log` files are transient scratch and the recorded error
+   counts are the artifact.
+5. **`Enqueue` null-guard pin routed into the PHASE-007 index row** with its five
+   siblings; `CapturingLoggerProvider.Entries` snapshot-accessor note carried there too.
+
+Final: build 0 errors; unit 705×2, integration 587 + 5 standing skips ×2, Design 86×2.
+
 ## Test-Quality Notes Disposition
 
 `DrainAsync_ConsumerDrainedAfterFlush_NeverWarns` acknowledged near-tautological —

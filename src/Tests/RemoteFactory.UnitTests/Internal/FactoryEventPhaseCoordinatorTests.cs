@@ -49,6 +49,8 @@ public class FactoryEventPhaseCoordinatorTests
     private static IFactoryEventPhaseScheduler NewScheduler()
         => NewScheduler(out _);
 
+    // Not disposed: the scheduler holds a logger created from this factory for the
+    // lifetime of the test (same shape as FactoryEventPhaseSchedulerTests).
     private static IFactoryEventPhaseScheduler NewScheduler(out CapturingLoggerProvider logs)
     {
         var services = new ServiceCollection();
@@ -332,9 +334,15 @@ public class FactoryEventPhaseCoordinatorTests
             async (_, _, _, _) =>
             {
                 log.Add("inner-drain");
-                // Inner drain overlapping the entry sweep; AfterFlush queue is empty,
-                // so this exercises only the drain-in-progress accounting.
+                // Witness dispatch: it must run INSIDE the inner drain — i.e. before
+                // "inner-drain-done" — which is what proves the coordinator delegated
+                // rather than short-circuiting. (Position relative to "late-enqueue"
+                // proves nothing: a short-circuited coordinator leaves the witness for
+                // the sweep, which also runs AfterFlush work first.)
+                scheduler.Enqueue(DispatchPhase.AfterFlush, new CoordinatorDrainEvent("w"), RaiseOptions.None,
+                    (_, _, _, _) => { log.Add("witness-flush"); return Task.CompletedTask; });
                 await coordinator.DrainAsync(DispatchPhase.AfterFlush);
+                log.Add("inner-drain-done");
             });
         scheduler.Enqueue(DispatchPhase.AfterCommit, new CoordinatorDrainEvent("b"), RaiseOptions.None,
             (_, _, _, _) =>
@@ -347,7 +355,7 @@ public class FactoryEventPhaseCoordinatorTests
 
         await scheduler.EndEntryCallAsync(success: true);
 
-        Assert.Equal(["inner-drain", "late-enqueue", "late-flush"], log);
+        Assert.Equal(["inner-drain", "witness-flush", "inner-drain-done", "late-enqueue", "late-flush"], log);
         Assert.DoesNotContain(logs.Entries, e => e.EventId == 9007);
     }
 
