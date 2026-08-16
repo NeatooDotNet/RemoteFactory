@@ -117,15 +117,46 @@ internal static class RelayHandlerRenderer
     }
 
     /// <summary>
-    /// Server-side: register into FactoryEventHandlerRegistry. Handlers run in the
-    /// caller's DI scope (shared DbContext/transaction), sequentially, awaited.
-    /// [Service] parameters resolve from the caller's sp. CancellationToken flows
-    /// through from IFactoryEvents.Raise. Invocation arguments are emitted in the
-    /// order the user declared them on the handler method.
+    /// Fully-qualified name of the runtime dispatch-phase enum, as literal text.
     /// </summary>
+    /// <remarks>
+    /// Text, not a type reference: the enum cannot be referenced from this netstandard2.0
+    /// project without duplicating a public runtime type (see the warning on
+    /// <c>FactoryEventHandlerAttribute&lt;T&gt;</c>).
+    /// <para>
+    /// <c>global::</c>-qualified for the same reason as the assembly attribute above, and it
+    /// is load-bearing for the same reason: a consumer namespace shadowing the first segment
+    /// of this one would otherwise bind the argument to the wrong type. The generated file's
+    /// <c>using Neatoo.RemoteFactory;</c> is not enough — that bug shipped for four releases
+    /// on the attribute before v1.7.0, and this is a new type-bearing token in the same file.
+    /// </para>
+    /// </remarks>
+    private const string DispatchPhaseType = "global::Neatoo.RemoteFactory.DispatchPhase";
+
+    /// <summary>
+    /// Server-side: register into FactoryEventHandlerRegistry at the phase the attribute
+    /// declared. Handlers run in the caller's DI scope; <c>Immediate</c> handlers dispatch at
+    /// raise time (shared DbContext/transaction), later phases are queued and drained at their
+    /// drain point. [Service] parameters resolve from the caller's sp. CancellationToken flows
+    /// through from IFactoryEvents.Raise. Invocation arguments are emitted in the order the
+    /// user declared them on the handler method.
+    /// </summary>
+    /// <remarks>
+    /// The phase-taking overload is emitted for every handler, including unphased ones, so
+    /// there is one shape to read and one path to test — the defaulted case pins
+    /// <c>Immediate</c> positively rather than pinning an absence. This leaves the two-argument
+    /// <c>RegisterHandler</c> overload with no generated call sites; it stays because it is
+    /// public API.
+    /// </remarks>
     private static void RenderServerSideHandler(StringBuilder sb, EventHandlerEntry handler, string className)
     {
         var eventTypeName = handler.EventTypeName;
+
+        // An empty name means the consumer cast an undefined value onto the enum; render it
+        // faithfully rather than coercing it to a phase they did not ask for.
+        var phase = handler.PhaseName.Length > 0
+            ? $"{DispatchPhaseType}.{handler.PhaseName}"
+            : $"({DispatchPhaseType}){handler.PhaseValue}";
 
         // Emit arguments in declaration order so a handler like
         // `(TestEvent evt, CancellationToken ct, [Service] IFoo svc)` binds correctly.
@@ -139,7 +170,7 @@ internal static class RelayHandlerRenderer
 
         sb.AppendLine("            if (NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("            {");
-        sb.AppendLine($"                FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>(typeof({className}), async (sp, eventObj, options, ct) =>");
+        sb.AppendLine($"                FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>(typeof({className}), {phase}, async (sp, eventObj, options, ct) =>");
         sb.AppendLine("                {");
         sb.AppendLine($"                    var {handler.Parameters.First(p => !p.IsCancellationToken).Name} = ({eventTypeName})eventObj;");
         if (!string.IsNullOrEmpty(serviceAssignments))

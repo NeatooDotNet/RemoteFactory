@@ -197,7 +197,35 @@ Walked 2026-08-15, before any edit. No surprise large enough to reshape the plan
 
 ## Test Evidence
 
-*(Filled after implementation, before the Step 5 gate.)*
+Unit tests are in `RemoteFactory.UnitTests.FactoryGenerator.AssemblyAttributeEmissionTests`
+(namespace elided below); integration tests in
+`RemoteFactory.IntegrationTests.Events.Phases.FactoryEventPhaseAttributeTests`.
+
+| Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
+|---|---|---|---|
+| Attribute-declared `AfterCommit` handler defers and drains, no hand-written registration | `[integration]` | `FactoryEventPhaseAttributeTests.RemoteCreate_AttributeDeclaredPhases_GovernWhenHandlersRun` + `.LogicalCreate_…` | ✓ |
+| Handler with no phase argument still dispatches at raise time | `[integration]` | same two tests — the asserted sequence puts `attr-immediate` before `attr-method-done` | ✓ |
+| Explicit phase passes through the phase-taking overload, `global::`-qualified, bare form absent | `[unit]` | `RelayHandler_PhasedHandler_RegistersAtTheDeclaredPhase`; `RelayHandler_PhaseArgument_IsGlobalQualified` (negative pin) | ✓ |
+| Defaulted handler registers at `Immediate` | `[unit]` | `RelayHandler_UnphasedHandler_RegistersAtImmediate` | ✓ |
+| Several event types at different phases each register at their own | `[unit]` | `RelayHandler_SeveralEventTypes_EachRegistersAtItsOwnPhase` | ✓ |
+| Duplicate event type reports a Warning naming the surviving phase, one registration not two | `[unit]` | `RelayHandler_DuplicateEventType_ReportsNF0504AsWarning`; `RelayHandler_DuplicateEventType_EmitsOneRegistrationNotTwo` | ✓ |
+| `RelayHandler` branch stays cached with phase data populated | `[unit]` | `IncrementalCacheTests.UnrelatedEdit_TransformOutputStaysCached("RelayHandler")` — fixture now declares one phased attribute | ✓ (determinism only, by design — see Notes) |
+| Registration stays server-guarded; attribute still names the holder | `[unit]` | `RelayHandler_EmitsAssemblyAttribute`, `RelayHandler_AssemblyAttribute_DoesNotNameConsumerType`, `RelayHandler_RegistrarHolder_ForwardsToUserClass` — pre-existing, unmodified, still green | ✓ |
+| Existing suite passes unmodified | `[explicit-skip]` | Step 5 full-suite run; no existing test's assertions were edited (two comments updated, one fixture attribute phased) | n/a |
+| Build/test green on both TFMs | `[explicit-skip]` | `reviews/002-build.log`, `reviews/002-test.log` | n/a |
+
+Beyond the bullets, three tests pin decisions the plan records rather than acceptance
+signals: `RelayHandler_UndefinedPhaseValue_RendersAsACast` (undefined enum values render
+faithfully), `RelayHandler_DuplicateAfterAFailedFirstDeclaration_RepeatsTheOriginalDiagnostic`
+(the tracker populates on success only, so NF0501/NF0502 emission counts are unchanged), and
+`RelayHandler_PhasedOutput_CompilesWithoutErrors` (the renderer swallows parse failures into a
+comment, so string containment alone can pass on uncompilable source).
+
+**Red-proofing:** all four sharp discriminators verified red against deliberate wrong
+implementations on both TFMs — see [reviews/002-redproof.log](../reviews/002-redproof.log).
+The log also records a first attempt that produced a *false* green (the sabotage failed to
+compile, so the tests ran against the correct generator); build-error counts are checked
+explicitly in every experiment as a result.
 
 ---
 

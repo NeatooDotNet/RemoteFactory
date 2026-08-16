@@ -98,7 +98,14 @@ namespace TestNamespace
     // `continue`s WITHOUT adding an entry, leaving Entries empty and every
     // EventHandlerEntry collection unconstructed — the guard would then cover none of
     // them while appearing to. Fixture_ProducesNoDiagnostics pins this.
-    [FactoryEventHandler<OrderPlacedEvent>]
+    //
+    // One phased and one defaulted, so EventHandlerEntry's phase fields are populated on
+    // both paths. Note what this does and does NOT buy: the guard compares transform outputs
+    // across two runs, so a scalar phase field is equal either way — including if the
+    // generator hardcoded Immediate. It would catch a future phase representation that went
+    // COLLECTION-shaped, which is the regression class this fixture exists for. Correctness
+    // of the phase read is pinned in AssemblyAttributeEmissionTests, where it can go red.
+    [FactoryEventHandler<OrderPlacedEvent>(DispatchPhase.AfterCommit)]
     [FactoryEventHandler<OrderShippedEvent>]
     public static partial class OrderHandlers
     {

@@ -64,10 +64,13 @@ public class FactoryEventPhaseRegistrationTests
     [Fact]
     public void RegisterHandler_SameHandlerClassTwoPhases_KeepsTheFirstRegistration()
     {
-        // Documents the interim semantics of the (eventType, handlerClassType) dedupe key:
-        // a handler class declaring one event at two phases keeps the phase registered
-        // first, for the life of the process. PHASE-002 decides whether the generator
-        // should diagnose this instead.
+        // Documents the semantics of the (eventType, handlerClassType) dedupe key: a handler
+        // class declaring one event at two phases keeps the phase registered first, for the
+        // life of the process. Still reachable through this public API, and still the reason
+        // the generator now reports NF0504 (Warning) and skips the duplicate's entry rather
+        // than emitting two registrations and letting this dedupe pick a winner silently
+        // (PHASE-002). The diagnostic cannot reach a direct RegisterHandler call, so this
+        // behavior stands as pinned.
         FactoryEventHandlerRegistry.RegisterHandler<RegistrationEventD>(typeof(HandlerOne), DispatchPhase.AfterCommit, NoOp);
         FactoryEventHandlerRegistry.RegisterHandler<RegistrationEventD>(typeof(HandlerOne), DispatchPhase.Immediate, NoOp);
 

@@ -5,6 +5,7 @@ using Neatoo.RemoteFactory.FactoryGenerator;
 using Neatoo.RemoteFactory.Generator;
 using Neatoo.RemoteFactory.Generator.Model;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Neatoo;
@@ -17,6 +18,48 @@ public partial class Factory
     /// A matching method: non-private, returns Task, first non-[Service]/non-CT parameter is T.
     /// Static methods → server-side handler. Instance methods → client-side relay handler.
     /// </summary>
+    /// <summary>
+    /// Reads the <c>DispatchPhase</c> argument off a <c>[FactoryEventHandler&lt;T&gt;]</c>
+    /// attribute, as the member's name plus its numeric value. No argument means the
+    /// attribute's parameterless constructor, which is <c>Immediate</c>.
+    /// </summary>
+    /// <remarks>
+    /// Two deliberate choices here. The member name is looked up on the enum symbol instead of
+    /// being mapped from a hardcoded table, so a phase added to the runtime enum flows through
+    /// with no generator change. And only primitives escape this method — the
+    /// <c>TypedConstant</c> and the <c>IFieldSymbol</c> stay local, because either one stored
+    /// on the transform output would root a <c>Compilation</c> in the incremental cache.
+    /// <para>
+    /// An empty name means the declared value matches no member — an explicit cast to an
+    /// undefined value. Rendered faithfully as a cast rather than diagnosed or silently
+    /// coerced; such a handler registers and never drains, since the scheduler sweeps only
+    /// defined phases.
+    /// </para>
+    /// </remarks>
+    private static (string Name, int Value) ReadDispatchPhase(AttributeData attr)
+    {
+        const string ImmediateName = "Immediate";
+        const int ImmediateValue = 0;
+
+        if (attr.ConstructorArguments.Length == 0)
+            return (ImmediateName, ImmediateValue);
+
+        var arg = attr.ConstructorArguments[0];
+        if (arg.Kind == TypedConstantKind.Error || arg.Value == null)
+            return (ImmediateName, ImmediateValue);
+
+        var value = Convert.ToInt32(arg.Value, CultureInfo.InvariantCulture);
+
+        var member = (arg.Type as INamedTypeSymbol)?
+            .GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(f => f.HasConstantValue
+                && f.ConstantValue != null
+                && Convert.ToInt32(f.ConstantValue, CultureInfo.InvariantCulture) == value);
+
+        return (member?.Name ?? "", value);
+    }
+
     private static RelayHandlerModel? TransformRelayHandler(ClassDeclarationSyntax classDecl, SemanticModel semanticModel)
     {
         var symbol = semanticModel.GetDeclaredSymbol(classDecl);
@@ -28,6 +71,20 @@ public partial class Factory
 
         var classLocation = classDecl.Identifier.GetLocation();
         var classLineSpan = classLocation.GetLineSpan();
+
+        // Event types that already produced an entry, mapped to the phase that entry
+        // registered at. Stacking [FactoryEventHandler<T>] is for several event TYPES; a
+        // repeat of the same type resolves to the same handler method (the scan below is a
+        // pure function of the event type, not of which attribute is being processed), so a
+        // duplicate could only re-register what the first declaration already registered —
+        // and FactoryEventHandlerRegistry keeps the first. NF0504 reports it and the entry is
+        // skipped, so the emitted code matches what the diagnostic says.
+        //
+        // Populated only on SUCCESS, deliberately: when the first declaration failed with
+        // NF0501/NF0502 nothing is registered, so there is no surviving phase to name and no
+        // duplicate to report. The second declaration then repeats the scan and repeats that
+        // diagnostic, exactly as it did before NF0504 existed.
+        var registeredPhaseByEventType = new Dictionary<string, string>();
 
         // Check partial
         if (!classDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
@@ -61,6 +118,23 @@ public partial class Factory
             var eventTypeName = eventType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             if (eventTypeName.StartsWith("global::"))
                 eventTypeName = eventTypeName.Substring("global::".Length);
+
+            if (registeredPhaseByEventType.TryGetValue(eventTypeName, out var survivingPhase))
+            {
+                diagnostics.Add(new DiagnosticInfo(
+                    "NF0504",
+                    classLineSpan.Path ?? "",
+                    classLineSpan.StartLinePosition.Line,
+                    classLineSpan.StartLinePosition.Character,
+                    classLineSpan.EndLinePosition.Line,
+                    classLineSpan.EndLinePosition.Character,
+                    classLocation.SourceSpan.Start,
+                    classLocation.SourceSpan.Length,
+                    symbol.Name,
+                    eventTypeName,
+                    survivingPhase));
+                continue;
+            }
 
             // Find matching STATIC methods. Instance-method handlers are the former
             // client-side relay pattern (now replaced by IFactoryEventRelay) — they are
@@ -200,6 +274,8 @@ public partial class Factory
             bool isAsync = method.IsAsync ||
                 (method.ReturnType.ToDisplayString() == "System.Threading.Tasks.Task" && method.IsAsync);
 
+            var (phaseName, phaseValue) = ReadDispatchPhase(attr);
+
             entries.Add(new EventHandlerEntry(
                 eventTypeName: eventTypeName,
                 methodName: method.Name,
@@ -207,7 +283,12 @@ public partial class Factory
                 isAsync: method.IsAsync,
                 parameters: parameters,
                 serviceParameters: serviceParameters,
-                allParameters: allParameters));
+                allParameters: allParameters,
+                phaseName: phaseName,
+                phaseValue: phaseValue));
+
+            registeredPhaseByEventType[eventTypeName] =
+                phaseName.Length > 0 ? phaseName : phaseValue.ToString();
         }
 
         if (entries.Count == 0 && diagnostics.Count == 0)
