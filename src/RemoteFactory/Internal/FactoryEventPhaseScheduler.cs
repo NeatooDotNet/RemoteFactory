@@ -78,7 +78,9 @@ public interface IFactoryEventPhaseScheduler
     /// <see cref="OperationCanceledException"/>. Only genuine cooperative cancellation
     /// (an <see cref="OperationCanceledException"/> while
     /// <paramref name="cancellationToken"/> is cancelled) propagates, abandoning the rest
-    /// of the drain; the abandoned dispatches stay queued for the entry exit's clear.
+    /// of the drain; those dispatches stay queued, to be discarded by the exit clear if
+    /// the cancellation fails the entry call, or swept at the
+    /// <see cref="DispatchPhase.AfterCommit"/> point if it does not.
     /// </param>
     /// <param name="cancellationToken">Token passed to the drained handlers.</param>
     Task DrainAsync(DispatchPhase phase, bool inTransaction, CancellationToken cancellationToken = default);

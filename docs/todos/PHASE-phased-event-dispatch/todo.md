@@ -30,8 +30,15 @@ exposes drain points.
 
 - [ ] A handler registered `AfterCommit` runs after the entry factory call completes (works
       for both HTTP-dispatched `[Remote]` calls and direct server-side/local invocation),
-      and all `Immediate` handlers for the same save complete before any `AfterFlush`
-      handler, which complete before any `AfterCommit` handler.
+      and cross-phase ordering is anchored **per drain point**: for work raised before a
+      given drain point, all `Immediate` handlers complete before any `AfterFlush` handler,
+      which complete before any `AfterCommit` handler. Code that raises *after* its own
+      `AfterFlush` drain interleaves that later `Immediate` work between drain points —
+      the guarantee is per drain point, not a global barrier over the operation.
+      *(Restated by PHASE-004, which created the in-body consumer drain point that makes
+      the interleave reachable; the original wording was "all `Immediate` handlers for the
+      same save complete before any `AfterFlush` handler, which complete before any
+      `AfterCommit` handler.")*
 - [ ] If the entry factory call throws, queued `AfterFlush`/`AfterCommit` handlers never
       run — the queues are discarded.
 - [ ] An `AfterCommit` handler exception is logged (dedicated event id) and swallowed;
@@ -79,15 +86,38 @@ exposes drain points.
 | 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Done |
 | 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Done |
 | 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
-| 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
+| 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it (all routed from 004's gate) | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-16 — PHASE-004 (code review: the plan restated the AC it was chartered to restate, and missed the one it broke)
+
+- **Finding:** Code review V1. PHASE-004 falsified **two** acceptance criteria and restated
+  one. AC-3's restatement was chartered, anticipated, executed with provenance. AC-1 —
+  "all `Immediate` handlers complete before any `AfterFlush` handler" — was falsified as a
+  side effect of creating the in-body consumer drain point, and a test this plan shipped
+  asserts the contradiction outright (`["ord-immediate", "ord-flush", "ord-immediate", …]`).
+  The code side had been handled correctly: plan review A-C3 caught the ordering sentence
+  and `DispatchPhase.cs` was rescoped. Nobody carried that same rescoping back to the
+  requirements doc — including me, one entry after adopting A-V1, whose whole content was
+  "the requirements doc must not contradict shipped behavior."
+- **Decision:** Amend — AC-1 restated in AC-3's exact form with provenance; plan Acceptance
+  bullet 3 reworded to the five-marker sequence its test asserts. Four callouts closed in
+  place (two public-XML precision fixes shipped now as permanent contract text, the plan's
+  carve-out Constraint widened to the shipped "any drain in flight" rule).
+- **Follow-up:** [reviews/004-code-review.md](./reviews/004-code-review.md). The pattern
+  worth carrying: an *expected* doc invalidation gets tracked and executed; an *incidental*
+  one — same plan, same file, discovered by the same review lineage — slips, because the
+  attention goes to the change that was planned for. When a plan restates one AC, that is
+  the moment to re-read all of them. PHASE-007 also grew an item: the coordinator's
+  short-circuit is silent, so a consumer who wires the drain *outside* the factory call
+  gets nothing plus a 9007 telling them to do what they just did.
 
 ### 2026-08-15 — PHASE-004 (gate: the case-3 pin ran where production can't, and the red-proof log had an unmeasured claim)
 

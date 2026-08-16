@@ -3,8 +3,8 @@
 **Plan #:** 004
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
-**Last Updated:** 2026-08-15
+**Status:** Done
+**Last Updated:** 2026-08-16
 **Plan-review opt-in:** Yes (new public interface; contract with consumer transaction abstractions)
 **Code-review opt-in:** Yes (behavior-changing)
 
@@ -120,8 +120,15 @@ coordinator is a drain trigger, nothing more.
   premise depends on it (inherited PHASE-002).
 - The fail-open warning discriminates **per dispatch, not per entry call**: any
   `AfterFlush` dispatch swept at the post-completion drain warns — including work the
-  consumer raised after their own drain — *except* work created during that sweep by a
-  later-phase handler (the documented carve-out, which had no drain point left to miss).
+  consumer raised after their own drain — *except* work enqueued **while any drain was
+  in flight in the scope** (the documented carve-out: its drain points had already
+  passed). The typical case is a later-phase handler raising during the sweep; the rule
+  as shipped is the broader "any drain in flight," which also covers the aborted-drain
+  corner (a consumer drain that throws, is swallowed, and the call still succeeds) and,
+  under the documented per-scope granularity, a concurrent flow's work. Wording widened
+  at the Step 5 code review (C4) to match what shipped and what `CLAUDE-DESIGN.md`'s
+  9007 row already states — the narrower phrasing invited a "fix" toward a rule the
+  scheduler does not implement.
   AC-5 stands as written. A per-entry-call "consumer drained" flag was considered and
   rejected at plan review (A-V2: it silently under-warns the raised-after-the-drain case
   and carries a reset hazard in long-lived scopes, B-C1).
@@ -210,8 +217,11 @@ coordinator is a drain trigger, nothing more.
       ordering a no-op coordinator (whose markers land after completion, via the
       PHASE-002 fail-open sweep) cannot produce. `[integration]`
 - [x] Cross-phase ordering holds as one observed sequence for a factory operation raising
-      events in all three phases: `Immediate` markers, then the consumer drain's
-      `AfterFlush` markers, then the method-completion marker, then `AfterCommit` markers. `[integration]`
+      events in all three phases: `Immediate` marker, then the consumer drain's
+      `AfterFlush` marker, then a second `Immediate` marker for an event raised *after*
+      that drain (ordering is anchored per drain point, not a global barrier — todo AC-1
+      as restated by this plan), then the method-completion marker, then the
+      `AfterCommit` marker. `[integration]`
 - [x] Fail-open end to end: the same attribute-declared `AfterFlush` handler in a call
       with no consumer drain runs **after** the method-completion marker (the sweep — 
       shipping since PHASE-002), and the new dedicated warning event id appears in the
@@ -325,7 +335,50 @@ red-proofing: [004-redproof.log](../reviews/004-redproof.log).
 
 ## Plan Amendments
 
-*(none yet)*
+### 2026-08-16 — Cross-phase ordering is per drain point, not a global barrier
+
+- **Section affected:** Scope (frozen text), Acceptance bullet 3, todo AC-1
+- **Original said:** Scope promises "the cross-phase ordering guarantee tests (all
+  `Immediate` before any `AfterFlush` before any `AfterCommit`)" — the global-barrier
+  reading, inherited from todo AC-1.
+- **What changed:** Ordering is anchored per drain point. For work raised before a given
+  drain point the old sequence holds; code that raises *after* its own `AfterFlush` drain
+  interleaves that later `Immediate` work between drain points. The shipped test asserts
+  the five-marker sequence including that interleave; `DispatchPhase`'s XML, todo AC-1,
+  and Acceptance bullet 3 all say so. Scope's wording is left frozen per the workflow —
+  this entry is the correction of record.
+- **Why:** Creating an in-body consumer drain point made the interleave reachable for the
+  first time. Plan review A-C3 caught it for the XML; the Step 5 code review (V1) caught
+  that the requirements doc had not followed.
+- **Discovery Log link:** 2026-08-16 — PHASE-004 (code review)
+
+### 2026-08-16 — Fail-open carve-out is "any drain in flight," not "during that sweep"
+
+- **Section affected:** Constraints & Invariants
+- **Original said:** the carve-out covers "work created during that sweep by a
+  later-phase handler."
+- **What changed:** the shipped stamp exempts work enqueued while **any** drain is in
+  flight in the scope — which additionally covers an aborted consumer drain whose call
+  still succeeds, and (under per-scope granularity) a concurrent flow's work.
+- **Why:** code review C4 — `CLAUDE-DESIGN.md` already documented the shipped rule, so
+  only the plan's phrasing was narrow, and a narrow Constraint invites a "fix" toward a
+  rule the scheduler does not implement.
+- **Discovery Log link:** 2026-08-16 — PHASE-004 (code review)
+
+### 2026-08-15 — Five plan-review vetoes adopted before the first edit
+
+- **Section affected:** Intent, Constraints & Invariants, Steps, Acceptance
+- **Original said:** per-entry-call warning flag; "framework-owned phases rejected"
+  (blacklist-shaped); an attribute-declared bullet green against a no-op coordinator;
+  "benign no-op outside any entry call"; the OCE restatement's amendment set covering
+  only XML and two tests.
+- **What changed:** per-dispatch warning discriminator; whitelist validation naming
+  undefined casts; bullet 2 requires the before-method-done marker ordering and heads the
+  red-proof list; short-circuit decided and pinned falsifiably; `CLAUDE-DESIGN.md`'s
+  9003/9006 rows added to the pre-declared amendment set.
+- **Why:** [reviews/004-plan-review.md](../reviews/004-plan-review.md) — CONCERNS, 5
+  veto-tier findings, full disposition table there.
+- **Discovery Log link:** 2026-08-15 — PHASE-004 (plan review)
 
 ---
 

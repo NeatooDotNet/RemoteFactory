@@ -31,10 +31,9 @@ namespace Neatoo.RemoteFactory;
 public interface IFactoryEventPhaseCoordinator
 {
     /// <summary>
-    /// Runs the deferred dispatches queued at <paramref name="phase"/> for the factory
-    /// call currently in flight in this scope, including dispatches that handlers
-    /// running in this drain enqueue at or before <paramref name="phase"/>, until none
-    /// are left.
+    /// Runs the dispatches deferred at <paramref name="phase"/> <b>in this DI scope</b>,
+    /// including dispatches that handlers running in this drain enqueue at or before
+    /// <paramref name="phase"/>, until none are left.
     /// </summary>
     /// <param name="phase">
     /// The consumer-owned phase to drain. <see cref="DispatchPhase.AfterFlush"/> is the
@@ -46,21 +45,37 @@ public interface IFactoryEventPhaseCoordinator
     /// </param>
     /// <param name="cancellationToken">
     /// The consumer's token, passed to the drained handlers. Cancellation propagates to
-    /// this call and abandons the rest of the drain; abandoned dispatches stay queued
-    /// and are discarded at the entry call's exit.
+    /// this call and abandons the rest of the drain, leaving those dispatches queued.
+    /// What happens to them next follows the entry call: if the cancellation fails it —
+    /// the usual case, since it propagates out of the factory method — the exit clear
+    /// discards them; if the consumer swallows it and the call still succeeds, they are
+    /// swept at the <see cref="DispatchPhase.AfterCommit"/> point with the fail-open
+    /// warning, like any other undrained work.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="phase"/> is anything other than
     /// <see cref="DispatchPhase.AfterFlush"/>.
     /// </exception>
     /// <remarks>
+    /// <para>
+    /// Scope-wide, not call-wide: the scope is the framework's isolation unit. If two
+    /// factory calls share one scope — concurrent flows on a Blazor Server circuit, in
+    /// Logical mode, or in a reused test scope — this drain runs the other flow's
+    /// deferred work too, on this caller's token and inside this caller's transaction.
+    /// That is the same per-scope granularity that already governs entry-call tracking
+    /// and every scoped service; the guidance is one factory call per scope at a time.
+    /// </para>
+    /// <para>
     /// Outside an entry factory call this method returns without draining anything.
-    /// That is deliberate, not just harmless: scopes can be shared by concurrent flows
-    /// (the framework's documented per-scope granularity), so "no entry call of mine is
-    /// active" can coincide with another flow's live entry call — and an unconditional
-    /// drain would run that flow's in-transaction work on the wrong token. Events raised
-    /// outside any entry call dispatch immediately and never queue, so there is nothing
-    /// of the caller's to drain.
+    /// That is deliberate, not just harmless: by the same per-scope granularity, "no
+    /// entry call of mine is active" can coincide with another flow's live entry call —
+    /// and an unconditional drain would run that flow's in-transaction work on the wrong
+    /// token. Events raised outside any entry call dispatch immediately and never queue,
+    /// so there is nothing of the caller's to drain. Note the consequence for a
+    /// transaction abstraction that wraps the factory call from <i>outside</i>: by the
+    /// time it drains, the entry call has closed and its work has already been swept —
+    /// the drain must run inside the factory method body.
+    /// </para>
     /// </remarks>
     Task DrainAsync(DispatchPhase phase, CancellationToken cancellationToken = default);
 }
