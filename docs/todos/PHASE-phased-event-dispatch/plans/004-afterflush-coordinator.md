@@ -199,39 +199,39 @@ coordinator is a drain trigger, nothing more.
 
 ## Acceptance
 
-- [ ] Mid-entry-call, `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush, ct)` runs the
+- [x] Mid-entry-call, `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush, ct)` runs the
       queued `AfterFlush` handlers at that point, in-transaction: a handler exception
       propagates to the drain caller, and when the entry call then fails, nothing queued
       survives into the next entry call. `[unit]`
-- [ ] End to end, an attribute-declared `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]`
+- [x] End to end, an attribute-declared `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]`
       handler — registered only through the generated registrar, no hand registration —
       runs at the consumer's drain point, for both remote and logical invocation: its
       marker is recorded **before** the factory method's completion marker, the one
       ordering a no-op coordinator (whose markers land after completion, via the
       PHASE-002 fail-open sweep) cannot produce. `[integration]`
-- [ ] Cross-phase ordering holds as one observed sequence for a factory operation raising
+- [x] Cross-phase ordering holds as one observed sequence for a factory operation raising
       events in all three phases: `Immediate` markers, then the consumer drain's
       `AfterFlush` markers, then the method-completion marker, then `AfterCommit` markers. `[integration]`
-- [ ] Fail-open end to end: the same attribute-declared `AfterFlush` handler in a call
+- [x] Fail-open end to end: the same attribute-declared `AfterFlush` handler in a call
       with no consumer drain runs **after** the method-completion marker (the sweep — 
       shipping since PHASE-002), and the new dedicated warning event id appears in the
       captured server logs. The warning is the load-bearing half of this bullet. `[integration]`
-- [ ] The warning discriminates per dispatch: `AfterFlush` work created mid-sweep by a
+- [x] The warning discriminates per dispatch: `AfterFlush` work created mid-sweep by a
       later-phase handler runs warning-free (the documented carve-out), while work the
       consumer raised after their own drain completed still warns. `[unit]`
-- [ ] The consumer's token reaches the drained handlers, and cooperative cancellation
+- [x] The consumer's token reaches the drained handlers, and cooperative cancellation
       propagates to the drain caller. `[unit]`
-- [ ] OCE policy: at a post-completion drain, a handler-internal OCE (no live cancelled
+- [x] OCE policy: at a post-completion drain, a handler-internal OCE (no live cancelled
       token) is logged and swallowed and the dispatches queued behind it still run; a
       genuinely cancelled token still propagates, abandoning the rest of the drain — the
       abandoned dispatches stay queued for the exit clear. `[unit]`
-- [ ] Coordinator surface: resolvable in Server and Logical scopes, absent in Remote;
+- [x] Coordinator surface: resolvable in Server and Logical scopes, absent in Remote;
       every phase but `AfterFlush` is rejected — `AfterCommit` and an undefined cast such
       as `(DispatchPhase)99` both throw; outside any entry call the coordinator
       short-circuits — work enqueued directly (no entry call active) is left untouched
       rather than drained. `[unit]`
-- [ ] The restated OCE contract is reflected in the `DispatchPhase` and scheduler XML docs. `[explicit-skip: doc bullet — checked at code review]`
-- [ ] Full existing suite green with only the pre-declared pin amendments touched. `[explicit-skip: meta-bullet — verified from the Step 5 gate logs]`
+- [x] The restated OCE contract is reflected in the `DispatchPhase` and scheduler XML docs. `[explicit-skip: doc bullet — checked at code review]`
+- [x] Full existing suite green with only the pre-declared pin amendments touched. `[explicit-skip: meta-bullet — verified from the Step 5 gate logs]`
 
 ---
 
@@ -299,7 +299,24 @@ coordinator targets follow the attribute-declared model: factory methods inject
 
 ## Test Evidence
 
-*(filled after implementation, before the Step 5 gate)*
+Unit tests in `RemoteFactory.UnitTests.Internal`; integration tests in
+`RemoteFactory.IntegrationTests.Events.Phases.FactoryEventPhaseCoordinatorTests`
+(distinct assembly/namespace from the unit class of the same name). Logs:
+[004-build.log](../reviews/004-build.log), [004-test.log](../reviews/004-test.log);
+red-proofing: [004-redproof.log](../reviews/004-redproof.log).
+
+| Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
+|---|---|---|---|
+| Mid-entry-call drain, in-transaction; entry failure discards | `[unit]` | `FactoryEventPhaseCoordinatorTests.DrainAsync_MidEntryCall_DrainsQueuedAfterFlushAtTheCallPoint` + `.DrainAsync_HandlerException_PropagatesAndTheFailedEntryDiscardsTheRest` (RP-1) | ✓ |
+| Attribute-declared AfterFlush at the consumer's point, marker before method-done, remote + logical | `[integration]` | `FactoryEventPhaseCoordinatorTests.RemoteCreate_CoordinatorDrain_RunsAfterFlushHandlersAtTheConsumersPoint` + `.LogicalCreate_…` (RP-1) | ✓ |
+| Three-phase ordering as one observed sequence | `[integration]` | `.RemoteExecute_ThreePhases_RunInPhaseOrderNotRaiseOrder` + `.LogicalExecute_…` (RP-1; raise order is reverse phase order) | ✓ |
+| Fail-open end to end + 9007 in captured logs | `[integration]` | `.RemoteCreate_NeverDrainedAfterFlush_RunsAtTheSweepWithTheWarning` (RP-3) — warning-free drained path: `.RemoteCreate_ConsumerDrainedAfterFlush_ProducesNoWarning` (RP-1) | ✓ |
+| Warning discriminates per dispatch (carve-out silent; raised-after-drain warns) | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_AfterFlushWorkCreatedMidSweep_RunsWithoutTheFailOpenWarning` (RP-2) + `.DrainAsync_AfterFlushRaisedAfterTheConsumersOwnDrain_StillWarnsAtTheSweep` (RP-3) + `.DrainAsync_PostCompletionSweepOfUndrainedAfterFlush_WarnsPerDispatchNamingTheEventType` (RP-3) + `.DrainAsync_ConsumerDrainedAfterFlush_NeverWarns` | ✓ |
+| Consumer token reaches handlers; cooperative cancellation propagates | `[unit]` | `FactoryEventPhaseCoordinatorTests.DrainAsync_PassesTheConsumersTokenToDrainedHandlers` (RP-1) + `FactoryEventPhaseSchedulerTests.DrainAsync_PostCompletion_CooperativeCancellationStillPropagatesAndAbandonsTheRest` | ✓ |
+| OCE policy: handler-internal swallowed + rest runs; cooperative propagates + abandons | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_PostCompletion_SwallowsHandlerInternalCancellationAndRunsTheRest` + `FactoryEntryCallTests.HandlerThrowsOperationCanceled_MidEntryDrain_IsSwallowedAndTheEntryStillSucceeds` (both RP-4, the amended pre-declared pins) + the cooperative test above | ✓ |
+| Coordinator surface: modes, whitelist incl. undefined casts, short-circuit | `[unit]` | `FactoryEventPhaseRegistrationTests.PhaseCoordinator_RegisteredInModesThatDispatchHandlers` + `.PhaseCoordinator_NotRegisteredInRemoteMode` + `FactoryEventPhaseCoordinatorTests.DrainAsync_EveryPhaseButAfterFlush_IsRejected` (Theory: Immediate, AfterCommit, 99, −1; RP-5) + `.DrainAsync_OutsideAnyEntryCall_LeavesQueuedWorkUntouched` (RP-6) | ✓ |
+| Restated OCE contract in XML docs | `[explicit-skip: doc bullet]` | `DispatchPhase.cs` (ordering scoped per A-C3 + AfterCommit OCE prose), scheduler interface `inTransaction` doc, `EndEntryCallAsync` finally comment, `CLAUDE-DESIGN.md` 9003/9006 rows + 9007 row; `FactoryEventHandlerAttribute.cs` verified — no OCE/ordering claims, no edit needed (B-C7 outcome) | ✓ (code review checks) |
+| Full suite green, only pre-declared pins touched | `[explicit-skip: meta-bullet]` | 004-build.log (0 errors), 004-test.log: unit 701×2, integration 587+5skip×2, Design 86×2. One flaky first-run failure in the untouched relay-timing area, re-run per protocol and recorded in 004-redproof.log | ✓ |
 
 ---
 
