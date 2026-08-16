@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using RemoteFactory.UnitTests.TestContainers;
+using System.Globalization;
 
 namespace RemoteFactory.UnitTests.FactoryGenerator;
 
@@ -744,6 +745,381 @@ namespace TestNamespace
 
         Assert.Contains("CS0111", errorIds);
         Assert.DoesNotContain("CS0101", errorIds);
+    }
+
+    #endregion
+
+    #region Relay Handler — Dispatch Phase (PHASE-002)
+
+    /// <summary>
+    /// Two event types on one class, one explicitly phased and one defaulted.
+    /// </summary>
+    /// <remarks>
+    /// The two attributes must name DIFFERENT events — same-event stacking is NF0504 and skips
+    /// the duplicate's entry, which would silently remove whichever registration a test here
+    /// was trying to assert. Distinct handler methods for the same reason: two methods matching
+    /// one event is NF0502 and emits nothing at all.
+    /// </remarks>
+    private const string PhasedRelayHandlerSource = @"
+using Neatoo.RemoteFactory;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record ProjectionEvent(int Id) : FactoryEventBase;
+    public record AtomicEvent(int Id) : FactoryEventBase;
+    public record StagedEvent(int Id) : FactoryEventBase;
+
+    public interface IProjectionPort
+    {
+        Task Send(string message);
+    }
+
+    [FactoryEventHandler<ProjectionEvent>(DispatchPhase.AfterCommit)]
+    [FactoryEventHandler<AtomicEvent>]
+    [FactoryEventHandler<StagedEvent>(DispatchPhase.AfterFlush)]
+    public static partial class MixedHandlers
+    {
+        internal static Task Project(ProjectionEvent evt) => Task.CompletedTask;
+
+        internal static Task Apply(AtomicEvent evt) => Task.CompletedTask;
+
+        internal static Task Stage(StagedEvent evt, [Service] IProjectionPort port, CancellationToken ct)
+            => port.Send(""staged"");
+    }
+}
+";
+
+    private static string GeneratedSourceFor(string source, string hintFragment)
+    {
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains(hintFragment))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+        return generatedSource;
+    }
+
+    /// <summary>
+    /// A handler declaring no phase argument registers at <c>Immediate</c> — the pre-PHASE-002
+    /// contract, now stated positively in the emitted call rather than implied by an absence.
+    /// </summary>
+    /// <remarks>
+    /// The phase-taking overload is emitted for every handler, including defaulted ones, so this
+    /// asserts the argument is present and correct rather than asserting the two-argument form.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_UnphasedHandler_RegistersAtImmediate()
+    {
+        var generatedSource = GeneratedSourceFor(RelayHandlerSource, "MyHandlers");
+
+        Assert.Contains(
+            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.MyEvent>(typeof(MyHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate, async (sp, eventObj, options, ct) =>",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// An explicitly phased handler registers at the phase the attribute declared.
+    /// </summary>
+    /// <remarks>
+    /// Before PHASE-002 the generator read the attribute's type argument and never its
+    /// constructor arguments, so this assertion is the one that would have caught the phase
+    /// being silently dropped — every registration landed at <c>Immediate</c> no matter what
+    /// the consumer wrote.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_PhasedHandler_RegistersAtTheDeclaredPhase()
+    {
+        var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
+
+        Assert.Contains(
+            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, async (sp, eventObj, options, ct) =>",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// One class declaring several event types at different phases registers each at its own
+    /// phase — the phase is per-attribute, not per-class.
+    /// </summary>
+    [Fact]
+    public void RelayHandler_SeveralEventTypes_EachRegistersAtItsOwnPhase()
+    {
+        var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
+
+        Assert.Contains(
+            "RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit,",
+            generatedSource);
+        Assert.Contains(
+            "RegisterHandler<TestNamespace.AtomicEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate,",
+            generatedSource);
+
+        // AfterFlush has no drain point of its own until PHASE-004, but the member-name lookup
+        // is generic over the enum symbol and this is the only phase not otherwise emitted
+        // anywhere. Its handler also carries [Service] + CancellationToken alongside a phase,
+        // so the phase token and the parameter list are pinned interacting.
+        Assert.Contains(
+            "RegisterHandler<TestNamespace.StagedEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterFlush, async (sp, eventObj, options, ct) =>",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// The registration stays inside the server-runtime guard, and the guard's body is the
+    /// registration — asserted in order, not as two independent containments.
+    /// </summary>
+    /// <remarks>
+    /// The relay leg had no <c>IsServerRuntime</c> assertion anywhere in the unit suite before
+    /// this; the only control on it was the CI publish-trimmed gate's absence check, which is
+    /// reasoned from the marker's reachability, runs only on push/PR, and is not in the Step 5
+    /// logs. The guard is what keeps handler bodies and their server-only services out of a
+    /// trimmed client, and this plan's renderer edit is inside the method that emits it.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_PhasedRegistration_StaysInsideTheServerRuntimeGuard()
+    {
+        var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
+
+        Assert.Matches(
+            @"if \(NeatooRuntime\.IsServerRuntime\)\s*\{\s*FactoryEventHandlerRegistry\.RegisterHandler<",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// The emitted phase argument is <c>global::</c>-qualified.
+    /// </summary>
+    /// <remarks>
+    /// The positive assertions above would pass just as happily on a bare
+    /// <c>DispatchPhase.AfterCommit</c> bound by the generated file's <c>using</c>, so they
+    /// cannot pin this. The unqualified form is the latent bug documented at
+    /// <c>RelayHandlerRenderer.cs:38-40</c> — it shipped for four releases on the registrar
+    /// attribute, where a consumer namespace shadowing the first segment of ours bound the
+    /// argument to the wrong type. This plan emits a NEW type-bearing token into the same file,
+    /// so it needs the same negative pin the registrar attribute got.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_PhaseArgument_IsGlobalQualified()
+    {
+        var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
+
+        // The argument position specifically: qualified emission always reads
+        // ", global::Neatoo.RemoteFactory.DispatchPhase.", never ", DispatchPhase.".
+        Assert.DoesNotContain(", DispatchPhase.", generatedSource);
+        Assert.Contains(", global::Neatoo.RemoteFactory.DispatchPhase.", generatedSource);
+    }
+
+    /// <summary>
+    /// A value cast onto the enum that matches no member renders as a cast rather than being
+    /// coerced to a phase the consumer did not ask for.
+    /// </summary>
+    /// <remarks>
+    /// Pins a decision, not an aspiration: such a handler registers and then never drains,
+    /// because the scheduler sweeps only defined phases. Diagnosing it was judged out of
+    /// proportion for this plan (todo Discovery Log, 2026-08-15). Silently coercing it to
+    /// <c>Immediate</c> would be worse — it would run handlers at a phase nobody declared.
+    /// </remarks>
+    /// <param name="literal">The cast value as written in source.</param>
+    /// <param name="expected">The value as it must appear in the emitted argument.</param>
+    [Theory]
+    [InlineData("99", "99")]
+    // Negative values reach the numeric fallback too, and interpolation would format them with
+    // the BUILD MACHINE's culture. On a culture whose negative sign is not ASCII '-' — sv-SE
+    // resolves to U+2212 under ICU — an unqualified format emits CS1056 into the consumer's
+    // build. This case exists so the invariant formatting has something holding it down.
+    [InlineData("-1", "-1")]
+    public void RelayHandler_UndefinedPhaseValue_RendersAsACast(string literal, string expected)
+    {
+        var source = PhasedRelayHandlerSource.Replace(
+            "[FactoryEventHandler<ProjectionEvent>(DispatchPhase.AfterCommit)]",
+            $"[FactoryEventHandler<ProjectionEvent>((DispatchPhase)({literal}))]");
+
+        Assert.NotEqual(PhasedRelayHandlerSource, source);
+
+        var generatedSource = GeneratedSourceFor(source, "MixedHandlers");
+
+        Assert.Contains(
+            $"typeof(MixedHandlers), (global::Neatoo.RemoteFactory.DispatchPhase){expected}, async (sp, eventObj, options, ct) =>",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// Declaring the same event type twice on one class reports NF0504 as a Warning.
+    /// </summary>
+    /// <remarks>
+    /// Warning, not Error, deliberately: the severity split in this generator tracks what gets
+    /// emitted. NF0501/NF0502 add no entry and the class emits no file, so those declarations
+    /// are dead. A duplicate still produces a working registration and only the second
+    /// declaration is inert — NF0503's shape, whose Warning severity was chosen to keep the
+    /// build green. Pinning the severity keeps that reasoning from being reversed silently.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_DuplicateEventType_ReportsNF0504AsWarning()
+    {
+        var source = RelayHandlerSource.Replace(
+            "[FactoryEventHandler<MyEvent>]",
+            "[FactoryEventHandler<MyEvent>]\n    [FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]");
+
+        Assert.NotEqual(RelayHandlerSource, source);
+
+        var (diagnostics, _, _) = DiagnosticTestHelper.RunGenerator(source);
+
+        var duplicate = Assert.Single(diagnostics.Where(d => d.Id == "NF0504"));
+        Assert.Equal(DiagnosticSeverity.Warning, duplicate.Severity);
+
+        // The message names the phase that survives, so the consumer knows which declaration
+        // won rather than having to reason about registry dedupe order. NOTE: the survivor here
+        // is Immediate, which is also what a hardcoded message would say —
+        // RelayHandler_DuplicateEventType_PhasedFirst_... is the test that discriminates.
+        Assert.Contains("DispatchPhase.Immediate", duplicate.GetMessage(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
+    /// With the PHASED declaration first, the message names <c>AfterCommit</c> and the emitted
+    /// registration is <c>AfterCommit</c> — source order wins, and the message reports it.
+    /// </summary>
+    /// <remarks>
+    /// This is the discriminating half of the pair, and the reason it exists is worth keeping.
+    /// Its sibling stacks unphased-first, so the surviving phase there is <c>Immediate</c> —
+    /// which is also the hardcoded default constant, the value the malformed-argument fallback
+    /// returns, and what a <c>messageFormat</c> with the phase placeholder deleted would print.
+    /// That test stays green against three separate wrong implementations. Both gates on this
+    /// plan flagged it independently; this is the version that can go red, and it pins source
+    /// order at the same time, which nothing else did.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_DuplicateEventType_PhasedFirst_KeepsThatPhaseAndNamesItInTheMessage()
+    {
+        var source = RelayHandlerSource.Replace(
+            "[FactoryEventHandler<MyEvent>]",
+            "[FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]\n    [FactoryEventHandler<MyEvent>]");
+
+        Assert.NotEqual(RelayHandlerSource, source);
+
+        var (diagnostics, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var duplicate = Assert.Single(diagnostics.Where(d => d.Id == "NF0504"));
+        var message = duplicate.GetMessage(CultureInfo.InvariantCulture);
+        Assert.Contains("DispatchPhase.AfterCommit", message);
+        Assert.DoesNotContain("DispatchPhase.Immediate", message);
+
+        var generatedSource = runResult.GeneratedTrees
+            .First(t => t.FilePath.Contains("MyHandlers"))
+            .GetText()
+            .ToString();
+
+        Assert.Contains("global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit,", generatedSource);
+        Assert.DoesNotContain("DispatchPhase.Immediate", generatedSource);
+    }
+
+    /// <summary>
+    /// NF0504 is located at the handler class's identifier.
+    /// </summary>
+    /// <remarks>
+    /// Asserted through the source span rather than a line/column pair, so an edit to the
+    /// shared fixture cannot silently turn this into a false red — or, worse, leave it green
+    /// while pointing somewhere else. The class location matches NF0501/NF0502's convention;
+    /// pointing at the redundant attribute itself would serve a consumer with several stacked
+    /// attributes better, and is recorded as a callout rather than done here.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_DuplicateEventType_DiagnosticIsLocatedAtTheClass()
+    {
+        var source = RelayHandlerSource.Replace(
+            "[FactoryEventHandler<MyEvent>]",
+            "[FactoryEventHandler<MyEvent>]\n    [FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]");
+
+        var (diagnostics, _, _) = DiagnosticTestHelper.RunGenerator(source);
+
+        var duplicate = Assert.Single(diagnostics.Where(d => d.Id == "NF0504"));
+        var span = duplicate.Location.SourceSpan;
+
+        Assert.Equal("MyHandlers", source.Substring(span.Start, span.Length));
+    }
+
+    /// <summary>
+    /// The duplicate's entry is skipped, so one registration is emitted rather than two.
+    /// </summary>
+    /// <remarks>
+    /// This is the half that keeps Warning honest. Left emitting both, a duplicate declaring
+    /// two different phases would emit <c>Immediate</c> then <c>AfterCommit</c> and the
+    /// registry's first-wins dedupe would silently pick one — reintroducing exactly the silent
+    /// phase loss this todo exists to remove, under a diagnostic that says the duplicate is
+    /// "ignored". Skipping the entry makes the emitted code match the message.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_DuplicateEventType_EmitsOneRegistrationNotTwo()
+    {
+        var source = RelayHandlerSource.Replace(
+            "[FactoryEventHandler<MyEvent>]",
+            "[FactoryEventHandler<MyEvent>]\n    [FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]");
+
+        var generatedSource = GeneratedSourceFor(source, "MyHandlers");
+
+        var registrations = generatedSource.Split(["RegisterHandler<TestNamespace.MyEvent>"], StringSplitOptions.None).Length - 1;
+
+        Assert.Equal(1, registrations);
+        Assert.DoesNotContain("DispatchPhase.AfterCommit", generatedSource);
+    }
+
+    /// <summary>
+    /// When the FIRST declaration of an event type fails to produce an entry, the duplicate is
+    /// not reported as one — the original diagnostic repeats instead, exactly as it did before
+    /// NF0504 existed.
+    /// </summary>
+    /// <remarks>
+    /// The duplicate tracker is populated only on success, and this pins why. If it were
+    /// populated on sight of the attribute, this shape would report NF0502 once plus an NF0504
+    /// claiming the handler "is registered at Immediate" — a message that is simply false here,
+    /// since two matching methods means nothing is registered at all. This also holds the
+    /// pre-existing NF0502 emission count steady, which was not something NF0504 was allowed
+    /// to change.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_DuplicateAfterAFailedFirstDeclaration_RepeatsTheOriginalDiagnostic()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record MyEvent(int Id) : FactoryEventBase;
+
+    [FactoryEventHandler<MyEvent>]
+    [FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]
+    public static partial class AmbiguousHandlers
+    {
+        internal static Task HandleOne(MyEvent evt) => Task.CompletedTask;
+
+        internal static Task HandleTwo(MyEvent evt) => Task.CompletedTask;
+    }
+}
+";
+        var (diagnostics, _, _) = DiagnosticTestHelper.RunGenerator(source);
+
+        Assert.Equal(2, diagnostics.Count(d => d.Id == "NF0502"));
+        Assert.Empty(diagnostics.Where(d => d.Id == "NF0504"));
+    }
+
+    /// <summary>
+    /// Phased emission compiles.
+    /// </summary>
+    /// <remarks>
+    /// Same reasoning as <see cref="RelayHandler_GeneratedOutputCompilesWithoutErrors"/>: relay
+    /// output bypasses <c>NormalizeWhitespace</c> and the renderer swallows throws into a
+    /// comment, so string containment can pass on source that does not compile. A malformed
+    /// phase argument is precisely the shape that would do that.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_PhasedOutput_CompilesWithoutErrors()
+    {
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(PhasedRelayHandlerSource);
+
+        Assert.NotNull(runResult.GeneratedTrees.FirstOrDefault(t => t.FilePath.Contains("MixedHandlers")));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
     }
 
     #endregion

@@ -98,7 +98,14 @@ namespace TestNamespace
     // `continue`s WITHOUT adding an entry, leaving Entries empty and every
     // EventHandlerEntry collection unconstructed — the guard would then cover none of
     // them while appearing to. Fixture_ProducesNoDiagnostics pins this.
-    [FactoryEventHandler<OrderPlacedEvent>]
+    //
+    // One phased and one defaulted, so EventHandlerEntry's phase fields are populated on
+    // both paths. Note what this does and does NOT buy: the guard compares transform outputs
+    // across two runs, so a scalar phase field is equal either way — including if the
+    // generator hardcoded Immediate. It would catch a future phase representation that went
+    // COLLECTION-shaped, which is the regression class this fixture exists for. Correctness
+    // of the phase read is pinned in AssemblyAttributeEmissionTests, where it can go red.
+    [FactoryEventHandler<OrderPlacedEvent>(DispatchPhase.AfterCommit)]
     [FactoryEventHandler<OrderShippedEvent>]
     public static partial class OrderHandlers
     {
@@ -212,6 +219,34 @@ namespace UnrelatedNamespace
             "No relay-handler source was emitted, so RelayHandlerModel.Entries was empty and "
                 + "EventHandlerEntry's collections were never constructed — the RelayHandler case of "
                 + $"the caching guard would be vacuous. Emitted: {string.Join(", ", files)}");
+    }
+
+    /// <summary>
+    /// Pins that the fixture's phase argument still binds, so the phase fields it claims to
+    /// populate are actually populated.
+    /// </summary>
+    /// <remarks>
+    /// Third fixture-health guard in this file, and the same vacuity class as the other two.
+    /// If the phase argument ever stopped binding — a <c>using</c> dropped, a fixture edit —
+    /// the transform's malformed-argument fallback returns <c>Immediate</c> silently, the
+    /// fixture degrades to two defaulted attributes, and every test here stays green while
+    /// covering less than its comment claims. Nothing else would notice:
+    /// <c>RunGeneratorTracked</c> never inspects the input compilation for CS errors, and
+    /// <see cref="Fixture_ProducesNoDiagnostics"/> filters on <c>NF</c> ids only.
+    /// </remarks>
+    [Fact]
+    public void Fixture_PopulatesThePhaseArgument()
+    {
+        var (_, second) = DiagnosticTestHelper.RunGeneratorTracked(Fixture, UnrelatedAppendix);
+
+        var relaySource = second.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.EndsWith(".FactoryEventHandler.g.cs"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(relaySource);
+        Assert.Contains("DispatchPhase.AfterCommit", relaySource);
+        Assert.Contains("DispatchPhase.Immediate", relaySource);
     }
 
     [Fact]

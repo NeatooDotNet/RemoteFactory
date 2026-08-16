@@ -49,4 +49,18 @@ coordinator is a drain trigger, nothing more.
   is in-transaction and consumer-invoked, so it takes the consumer's token — the two
   drain points deliberately differ.
 
+---
+
+## Inherited from PHASE-002 (recorded at its Step 5 gates)
+
+- **`AfterFlush` is already consumer-reachable, and already fail-opens — silently.** PHASE-002
+  made the attribute's phase argument real, so `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]`
+  works today and the scheduler's sweep drains it at the AfterCommit entry point. What is
+  missing is only AC-5's logged warning. Acceptance here must cover an **attribute-declared**
+  AfterFlush handler, not only one registered through the registry's 3-arg overload — the
+  consumer-facing path is otherwise untested end to end.
+- NF0504 (Warning) now fires when one class declares the same event type twice, and the
+  duplicate's entry is skipped. If this plan widens the registry's `(event type, handler class
+  type)` dedupe key for any reason, that diagnostic's premise changes and it must be revisited.
+
 *(Stub — Intent, Alignment, remaining Constraints, Steps, Acceptance filled at Step 2.)*
