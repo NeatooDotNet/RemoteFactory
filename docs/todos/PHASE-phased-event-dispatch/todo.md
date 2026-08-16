@@ -35,7 +35,13 @@ exposes drain points.
 - [ ] If the entry factory call throws, queued `AfterFlush`/`AfterCommit` handlers never
       run — the queues are discarded.
 - [ ] An `AfterCommit` handler exception is logged (dedicated event id) and swallowed;
-      remaining queued handlers still run; `OperationCanceledException` still propagates.
+      remaining queued handlers still run. A handler-internal `OperationCanceledException`
+      is swallowed the same way — the entry drain passes no token, so nothing may abort a
+      succeeded call's post-completion work; only genuine cooperative cancellation (the
+      drain's own token cancelled) propagates, at drain points that take one.
+      *(Restated by PHASE-004, exercising the decision PHASE-003's code review C2
+      delegated to it; the original wording was "`OperationCanceledException` still
+      propagates.")*
 - [ ] Events raised *by* `AfterCommit` handlers still reach the client in the same HTTP
       response's relay batch.
 - [ ] `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` drains the AfterFlush queue at

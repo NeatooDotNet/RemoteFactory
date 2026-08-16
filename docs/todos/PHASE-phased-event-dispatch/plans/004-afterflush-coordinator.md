@@ -3,7 +3,7 @@
 **Plan #:** 004
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-08-15
 **Plan-review opt-in:** Yes (new public interface; contract with consumer transaction abstractions)
 **Code-review opt-in:** Yes (behavior-changing)
@@ -237,7 +237,63 @@ coordinator is a drain trigger, nothing more.
 
 ## Current State (Pre-Flight)
 
-*(filled at Step 3)*
+Walked 2026-08-15, after plan review, before the first edit.
+
+**Scheduler** — `src/RemoteFactory/Internal/FactoryEventPhaseScheduler.cs`. The interface is
+public in the `Internal` namespace; the impl is `internal sealed`, per-scope, one `_gate`
+lock over `Dictionary<DispatchPhase, Queue<QueuedDispatch>>` + `_entryDepth`.
+`DrainAsync(phase, inTransaction, ct)` (`:202`) dequeues one-at-a-time via
+`TryDequeueThrough` (`:280`), which already returns the queued phase — the warning's
+discriminator input is plumbed exactly as PHASE-001's inherited note claimed. The
+post-completion branch's OCE carve-out is `catch (OperationCanceledException) { throw; }`
+(`:227-230`) ahead of the general swallow that logs 9003 — the OCE policy change is a
+`when` filter on that catch, nothing structural. The entry drain is
+`EndEntryCallAsync(true)` → `DrainAsync(AfterCommit, false, CancellationToken.None)`
+(`:169`) with `ClearAtExit()` in a `finally` (`:176`); `ClearAtExit` (`:249`) is the
+depth-0 reset point. `QueuedDispatch` (`:102`) is a private `record struct` — the natural
+carrier for the per-dispatch "created mid-drain" mark; a drain-in-progress counter under
+`_gate` gives `Enqueue` (`:180`) the stamp.
+
+**Where the coordinator plugs in** — `AddRemoteFactoryServices.cs:72-97`: the non-Remote
+`else` branch holds `TryAddScoped<IFactoryEventPhaseScheduler>(sp => new …)` (`:84-85`).
+The coordinator registration goes beside it and must resolve
+`sp.GetRequiredService<IFactoryEventPhaseScheduler>()` (B-C2). Public interface file goes
+in the root namespace beside `IFactoryEvents`; impl beside the scheduler in `Internal/`.
+
+**Log** — `Internal/Log.cs` 9xxx region ends at 9006; 9007 is free for the warning.
+
+**Entry-call seam for unit tests** — `Internal/FactoryEntryCall.cs`: public static
+`RunAsync<T>/RunAsync/Run` wrappers; null-tolerant scheduler resolution. Existing
+`FactoryEntryCallTests` drive real Server-mode scopes through it — the coordinator's
+unit tests follow that shape. The OCE pin to repurpose sits at `:220`; the scheduler pin
+at `FactoryEventPhaseSchedulerTests.cs:146`.
+
+**Unit log capture** — `FactoryEventPhaseSchedulerTests.NewDispatcher(out CapturingLoggerProvider)`
+(`:16-71`) exists and pins 9003, exactly as B-C3 said. Its `LogEntry` records
+`(EventId, Level, Exception, Phase)` but not the event-type value — pinning "the warning
+names the event type" needs a small additive extension (capture the `EventType` structured
+value or the formatted message). Additive harness change, not a pin edit.
+
+**Docs to touch, verified** — `DispatchPhase.cs:16-19` states the cross-phase ordering
+unconditionally (A-C3's sentence, confirmed); `:44-52` (AfterFlush) already names
+`IFactoryEventPhaseCoordinator.DrainAsync` — the interface does not exist yet, so this
+plan makes an already-published doc reference true; `:54-64` (AfterCommit) says "OCE still
+propagates" — restate. Scheduler interface XML `:76-79` — restate. The attribute's XML
+(`FactoryEventHandlerAttribute.cs:7-14`, B-C7) describes phase timing only — no OCE or
+ordering claims; expected outcome: no edit, verified at Step 6. `CLAUDE-DESIGN.md`
+Runtime Log Events rows confirmed at `:1021` (9003) and `:1024` (9006); 9007 row appends.
+
+**Integration harness** — `ClientServerContainers.Scopes()` returns
+`(client, server, local)`; `ScopesWithLogging(out TestLoggerProvider)` (`:207`) returns
+`(server, client, local)` — the tuple-order divergence PHASE-007 tracks; read
+destructurings carefully. PHASE-003's `FactoryEventPhaseEntryTargets.cs` +
+`PhaseHandlerRegistrations.EnsureRegistered()` is the hand-registered model;
+PHASE-002's `FactoryEventPhaseAttributeTargets.cs` is the attribute-declared model with
+the one-event-type-per-scenario discipline and the `*-method-done` ordering marker. New
+coordinator targets follow the attribute-declared model: factory methods inject
+`IFactoryEventPhaseCoordinator` via `[Service]`, drain mid-body, record markers.
+
+**No surprises that shift the plan** — no amendments needed at pre-flight.
 
 ---
 

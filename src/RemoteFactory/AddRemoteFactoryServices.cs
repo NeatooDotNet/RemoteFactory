@@ -84,6 +84,13 @@ public static partial class RemoteFactoryServices
 			services.TryAddScoped<IFactoryEventPhaseScheduler>(sp =>
 				new FactoryEventPhaseScheduler(sp, sp.GetService<ILoggerFactory>()));
 
+			// Consumer-facing drain trigger for the AfterFlush point. Resolves the
+			// scope's EXISTING scheduler — a registration that constructed its own would
+			// give the scope two schedulers, and the coordinator would drain an
+			// always-empty twin while the dispatcher queues into the real one.
+			services.TryAddScoped<IFactoryEventPhaseCoordinator>(sp =>
+				new FactoryEventPhaseCoordinator(sp.GetRequiredService<IFactoryEventPhaseScheduler>()));
+
 			// Register the delegate handler for remote IFactoryEvents.Raise requests.
 			// When a Remote client sends a RaiseFactoryEventRemote request, the server
 			// resolves this delegate, dispatches to local handlers in the request scope,

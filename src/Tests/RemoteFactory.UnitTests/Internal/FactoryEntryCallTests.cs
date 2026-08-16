@@ -218,13 +218,16 @@ public class FactoryEntryCallTests
     }
 
     [Fact]
-    public async Task HandlerThrowsOperationCanceled_MidDrain_EntryExitStillClearsAndDepthSurvives()
+    public async Task HandlerThrowsOperationCanceled_MidEntryDrain_IsSwallowedAndTheEntryStillSucceeds()
     {
-        // The one exit path where EndEntryCallAsync(true) itself throws: a handler's own
-        // OperationCanceledException aborts the drain (scheduler contract), the helper's
-        // catch then calls EndEntryCallAsync(false) — a second End for one Begin, safe by
-        // the depth tolerance — and "between entry calls the scheduler is empty" must
-        // still hold on the way out.
+        // PHASE-004 pre-declared pin amendment. This test previously pinned the one exit
+        // path where EndEntryCallAsync(true) itself threw: a handler's OCE aborted the
+        // drain, failed the already-succeeded call, and discarded the sibling dispatch
+        // queued behind it. Under the restated contract that path no longer exists — the
+        // entry drain passes no token, so a handler's OCE can never mean "the caller
+        // cancelled" and is swallowed like any other post-completion failure. What this
+        // pins now: the entry call SUCCEEDS, the dispatch behind the OCE still runs, and
+        // the scope exits clean and reusable.
         var dispatched = new List<string>();
         FactoryEventHandlerRegistry.RegisterHandler<OceThrowingEvent>(typeof(PhaseOceThrower), DispatchPhase.AfterCommit,
             (_, _, _, _) => throw new OperationCanceledException());
@@ -241,26 +244,27 @@ public class FactoryEntryCallTests
             var events = sp.GetRequiredService<IFactoryEvents>();
             var scheduler = sp.GetRequiredService<IFactoryEventPhaseScheduler>();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() =>
-                FactoryEntryCall.RunAsync(sp, async () =>
-                {
-                    await events.Raise(new OceThrowingEvent("x"));
-                    return 0;
-                }));
+            // No throw: the completed call cannot be failed by its post-completion work.
+            var result = await FactoryEntryCall.RunAsync(sp, async () =>
+            {
+                await events.Raise(new OceThrowingEvent("x"));
+                return 42;
+            });
+            Assert.Equal(42, result);
 
-            // The aborted drain's leftover was cleared (a clear, never a drain) and the
+            // The OCE was swallowed mid-drain and the sibling dispatch still ran; the
             // entry state fully released.
-            Assert.Empty(dispatched);
+            Assert.Equal(["behind-the-oce"], dispatched);
             Assert.False(scheduler.HasPending);
             Assert.False(scheduler.IsEntryCallActive);
 
-            // The scope is reusable: a fresh entry drains only its own work.
+            // The scope stays reusable: a fresh entry drains only its own work.
             await FactoryEntryCall.RunAsync(sp, async () =>
             {
                 await events.Raise(new OceRecoveryEvent("y"));
                 return 0;
             });
-            Assert.Equal(["recovery"], dispatched);
+            Assert.Equal(["behind-the-oce", "recovery"], dispatched);
         }
     }
 

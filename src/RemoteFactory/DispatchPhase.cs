@@ -13,10 +13,17 @@ namespace Neatoo.RemoteFactory;
 /// the queues are discarded and the handlers never run.
 /// </para>
 /// <para>
-/// Cross-phase ordering is guaranteed: for one factory operation, all
-/// <see cref="Immediate"/> handlers complete before any <see cref="AfterFlush"/> handler
-/// runs, and all <see cref="AfterFlush"/> handlers complete before any
-/// <see cref="AfterCommit"/> handler runs. Order <i>within</i> a phase is unspecified.
+/// Cross-phase ordering is anchored to the drain points: an event's own
+/// <see cref="Immediate"/> handlers complete synchronously at its raise,
+/// <see cref="AfterFlush"/> handlers run only when an AfterFlush drain runs, and
+/// <see cref="AfterCommit"/> handlers only after the entry call completes. For events
+/// raised before the consumer's AfterFlush drain point — the whole operation, when the
+/// consumer never drains — that means all <see cref="Immediate"/> handlers complete
+/// before any <see cref="AfterFlush"/> handler, which complete before any
+/// <see cref="AfterCommit"/> handler. Code that raises further events after its own
+/// drain call interleaves that later <see cref="Immediate"/> work between drain points —
+/// the ordering is per drain point, not a global barrier over the operation. Order
+/// <i>within</i> a phase is unspecified.
 /// </para>
 /// <para>
 /// One carve-out: a handler running in a drain can itself raise an event whose handlers
@@ -57,7 +64,10 @@ public enum DispatchPhase
     /// returns" — it is "after commit" because consumers commit inside their factory
     /// bodies, which is the universal RemoteFactory pattern. Handlers run with no ambient
     /// transaction; a handler exception cannot roll anything back, so the framework logs
-    /// it and continues (<see cref="OperationCanceledException"/> still propagates).
+    /// it and continues — including a handler-internal
+    /// <see cref="OperationCanceledException"/>: the entry drain passes no token, so no
+    /// cancellation may abort a succeeded call's post-completion work, and an OCE a
+    /// handler produces on its own is swallowed like any other post-completion failure.
     /// Events raised by these handlers still join the same response's relay batch.
     /// The right phase for read-only projections.
     /// </summary>
