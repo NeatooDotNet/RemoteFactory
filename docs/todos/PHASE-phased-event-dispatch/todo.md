@@ -83,6 +83,32 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-15 — PHASE-004 (plan review: 5 vetoes, all adopted before implementation)
+
+- **Finding:** Plan review returned CONCERNS. The sharpest: the draft's per-entry-call
+  "consumer drained" flag was narrower than AC-5's own wording — work a consumer raises
+  *after* their drain is literally "never drained by the consumer," yet the flag silences
+  it, and the draft's Intent and Constraints described two different promises without
+  noticing (A-V2). Also: the OCE restatement contradicted two `CLAUDE-DESIGN.md` log-table
+  rows outside the pre-declared amendment set (A-V1); "framework-owned phases rejected"
+  invited a blacklist that would let `(DispatchPhase)99` sweep the AfterCommit queue
+  in-transaction through the `p <= through` sweep (B-V1); the attribute-declared
+  consumer-drain bullet was green against a no-op coordinator — the arc's sixth "can't go
+  red" instance, caught at draft this time (B-V2); and "benign no-op outside an entry
+  call" was unfalsifiable while hiding an undecided delegate-vs-short-circuit choice that
+  matters under the per-scope concurrency limitation (B-V3).
+- **Decision:** Amend — all five vetoes adopted: per-dispatch warning discriminator
+  (created-mid-sweep is the only silent case; AC-5 stands as written), CLAUDE-DESIGN rows
+  into the amendment set, whitelist validation, before-method-done marker ordering as the
+  coordinator's red-proofed discriminator, short-circuit outside entry calls pinned via
+  direct `Enqueue`. Reviewer also verified (not inherited) that the AC-3 restatement is
+  legitimately chartered (003-code-review C2) and that the choke point's post-invoke
+  cancellation check keeps its integration pins green under the OCE change.
+- **Follow-up:** [reviews/004-plan-review.md](./reviews/004-plan-review.md) — full
+  disposition table. B-C3 note: the draft claimed a unit-tier log-capture harness needed
+  building; `FactoryEventPhaseSchedulerTests` already has one pinning 9003 — "verify,
+  don't inherit," caught by the reviewer this time.
+
 ### 2026-08-15 — PHASE-002 (both gates found the same unfalsifiable assertion)
 
 - **Finding:** The test-review gate (should-cover #2) and the code review (veto V1) landed
