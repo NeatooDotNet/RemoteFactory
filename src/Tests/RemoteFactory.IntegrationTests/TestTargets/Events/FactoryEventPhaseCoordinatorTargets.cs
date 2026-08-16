@@ -144,11 +144,17 @@ public static partial class CoordinatorOrderingCommands
 {
     /// <summary>
     /// Raises the three phases in REVERSE phase order (commit, flush, immediate) so the
-    /// expected sequence ["ord-immediate", "ord-flush", "ord-method-done", "ord-commit"]
-    /// cannot be produced by raise order: a generator or registration that ignored
-    /// phases would replay the raise order, and a no-op coordinator would push
-    /// "ord-flush" after "ord-method-done".
+    /// expected sequence cannot be produced by raise order: a generator or registration
+    /// that ignored phases would replay the raise order, and a no-op coordinator would
+    /// push "ord-flush" after "ord-method-done".
     /// </summary>
+    /// <remarks>
+    /// The second Immediate raise sits AFTER the drain call, pinning the scoped
+    /// ordering sentence <c>DispatchPhase</c>'s docs now carry (plan review A-C3):
+    /// ordering is anchored per drain point, not a global barrier — code that raises
+    /// after its own drain interleaves that later Immediate work between the AfterFlush
+    /// and AfterCommit drain points.
+    /// </remarks>
     [Execute]
     [Remote]
     internal static async Task<Guid> _RunOrdered(
@@ -162,6 +168,7 @@ public static partial class CoordinatorOrderingCommands
         await events.Raise(new CoordinatorOrderedFlushEvent(id), RaiseOptions.None, ct);
         await events.Raise(new CoordinatorOrderedImmediateEvent(id), RaiseOptions.None, ct);
         await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct);
+        await events.Raise(new CoordinatorOrderedImmediateEvent(id), RaiseOptions.None, ct);
         testService.RecordEventFired("ord-method-done", id);
         return id;
     }

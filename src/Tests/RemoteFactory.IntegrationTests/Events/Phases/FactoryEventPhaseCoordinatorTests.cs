@@ -66,6 +66,9 @@ public class FactoryEventPhaseCoordinatorTests
     /// The todo's AC-1 ordering guarantee as one observed sequence, with the consumer
     /// drain in play: Immediate at raise, AfterFlush at the coordinator call,
     /// AfterCommit after completion — against a raise order chosen to be the reverse.
+    /// The second "ord-immediate" (raised after the drain) pins the scoped ordering
+    /// sentence from plan review A-C3: later Immediate work interleaves between drain
+    /// points rather than being barriered before all AfterFlush work.
     /// </summary>
     [Fact]
     public async Task RemoteExecute_ThreePhases_RunInPhaseOrderNotRaiseOrder()
@@ -77,7 +80,7 @@ public class FactoryEventPhaseCoordinatorTests
         await run(id);
 
         Assert.Equal(
-            ["ord-immediate", "ord-flush", "ord-method-done", "ord-commit"],
+            ["ord-immediate", "ord-flush", "ord-immediate", "ord-method-done", "ord-commit"],
             RecordedFor(server, id));
     }
 
@@ -92,7 +95,7 @@ public class FactoryEventPhaseCoordinatorTests
         await run(id);
 
         Assert.Equal(
-            ["ord-immediate", "ord-flush", "ord-method-done", "ord-commit"],
+            ["ord-immediate", "ord-flush", "ord-immediate", "ord-method-done", "ord-commit"],
             RecordedFor(local, id));
     }
 

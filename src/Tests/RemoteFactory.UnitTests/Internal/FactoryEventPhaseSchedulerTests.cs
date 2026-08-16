@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.Internal;
+using RemoteFactory.UnitTests.TestContainers;
 
 namespace RemoteFactory.UnitTests.Internal;
 
@@ -32,49 +33,8 @@ public class FactoryEventPhaseSchedulerTests
         return new FactoryEventPhaseScheduler(services.BuildServiceProvider(), loggerFactory);
     }
 
-    private sealed record LogEntry(int EventId, LogLevel Level, Exception? Exception, DispatchPhase? Phase, string? EventType);
-
-    private sealed class CapturingLoggerProvider : ILoggerProvider
-    {
-        public List<LogEntry> Entries { get; } = [];
-
-        public ILogger CreateLogger(string categoryName) => new CapturingLogger(this);
-
-        public void Dispose() { }
-
-        private sealed class CapturingLogger(CapturingLoggerProvider owner) : ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-            public bool IsEnabled(LogLevel logLevel) => true;
-
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                DispatchPhase? phase = null;
-                string? eventType = null;
-                if (state is IReadOnlyList<KeyValuePair<string, object?>> values)
-                {
-                    foreach (var pair in values)
-                    {
-                        if (pair.Key == "Phase" && pair.Value is DispatchPhase p)
-                        {
-                            phase = p;
-                        }
-
-                        if (pair.Key == "EventType" && pair.Value is string et)
-                        {
-                            eventType = et;
-                        }
-                    }
-                }
-
-                lock (owner.Entries)
-                {
-                    owner.Entries.Add(new LogEntry(eventId.Id, logLevel, exception, phase, eventType));
-                }
-            }
-        }
-    }
+    // LogEntry / CapturingLoggerProvider extracted to TestContainers (PHASE-004) so
+    // entry-call-scoped tests can wire the capture into a real DI container.
 
     private static Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Recording(List<string> log, string name)
         => (_, _, _, _) =>

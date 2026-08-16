@@ -82,12 +82,38 @@ exposes drain points.
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins; `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline (all routed from 004's gate) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-15 — PHASE-004 (gate: the case-3 pin ran where production can't, and the red-proof log had an unmeasured claim)
+
+- **Finding:** The test-review gate's must-cover: the A-V2 case-3 warning pin drove a
+  bare scheduler with no entry call — a state the dispatcher never produces (it only
+  enqueues while an entry call is active) — and the *properly guarded* variant of the
+  rejected per-entry-call flag passed the entire suite, because that flag never latches
+  without an entry call. The red-proof log even claimed the flag design "would turn
+  [the bare test] red" — asserted, never measured, and false for the guarded variant.
+  Seventh "can't go red" instance in the arc, and the first found inside the red-proof
+  log itself. Two should-covers landed nearby: cooperative cancellation was pinned only
+  at the scheduler's post-completion drain (the evidence row cited the wrong drain
+  point), and `_activeDrains`-as-counter was a load-bearing comment a bool satisfied.
+- **Decision:** Amend — all three closed with tests: an entry-call-scoped case-3 pin
+  (raise → coordinator drain → raise again → exactly one 9007), a
+  cancel-mid-coordinator-drain pin, and an overlapping-drains pin. RP-7 added: the
+  guarded flag *actually implemented* and measured — new pin red, bare pin green
+  (measuring the gate's diagnosis) — and RP-3's false sentence corrected in place.
+  Two nice-to-haves taken (validation-before-short-circuit; the A-C3 interleave raise
+  added to the ordering sequences). Unit 701→705.
+- **Follow-up:** [reviews/004-test-review.md](./reviews/004-test-review.md) — includes
+  routing: the accepted undefined-phase silent no-op gets a documenting pin in
+  PHASE-007; `IEventTestService`/`ScopesWithLogging` attribution weaknesses fold into
+  PHASE-007's harness items; `SingleEventRelay_ConsumerReceivesEvent`'s hard 2-second
+  poll flakes under full-parallel load (2 of 3 full-solution runs today, never
+  serialized) — PHASE-007's harness scope grows by that timeout.
 
 ### 2026-08-15 — PHASE-004 (plan review: 5 vetoes, all adopted before implementation)
 
