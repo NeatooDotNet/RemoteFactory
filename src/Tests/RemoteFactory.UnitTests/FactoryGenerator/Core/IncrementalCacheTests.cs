@@ -221,6 +221,34 @@ namespace UnrelatedNamespace
                 + $"the caching guard would be vacuous. Emitted: {string.Join(", ", files)}");
     }
 
+    /// <summary>
+    /// Pins that the fixture's phase argument still binds, so the phase fields it claims to
+    /// populate are actually populated.
+    /// </summary>
+    /// <remarks>
+    /// Third fixture-health guard in this file, and the same vacuity class as the other two.
+    /// If the phase argument ever stopped binding — a <c>using</c> dropped, a fixture edit —
+    /// the transform's malformed-argument fallback returns <c>Immediate</c> silently, the
+    /// fixture degrades to two defaulted attributes, and every test here stays green while
+    /// covering less than its comment claims. Nothing else would notice:
+    /// <c>RunGeneratorTracked</c> never inspects the input compilation for CS errors, and
+    /// <see cref="Fixture_ProducesNoDiagnostics"/> filters on <c>NF</c> ids only.
+    /// </remarks>
+    [Fact]
+    public void Fixture_PopulatesThePhaseArgument()
+    {
+        var (_, second) = DiagnosticTestHelper.RunGeneratorTracked(Fixture, UnrelatedAppendix);
+
+        var relaySource = second.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.EndsWith(".FactoryEventHandler.g.cs"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(relaySource);
+        Assert.Contains("DispatchPhase.AfterCommit", relaySource);
+        Assert.Contains("DispatchPhase.Immediate", relaySource);
+    }
+
     [Fact]
     public void Fixture_ExercisesEveryPipelineBranch()
     {

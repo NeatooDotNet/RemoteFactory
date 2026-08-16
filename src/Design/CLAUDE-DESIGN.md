@@ -260,7 +260,8 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 - `FactoryEventTypeRegistry` (internal, runtime) lazily scans `AppDomain.CurrentDomain.GetAssemblies()` on first use; rescans on miss to pick up dynamically-loaded assemblies. Logs EventId 3012 (Warning) on `FullName` collisions.
 - In Remote mode, if the consumer registers nothing, `NoOpFactoryEventRelay` is registered via `TryAddSingleton`. It logs EventId 3011 (Warning) once per process on the first non-empty batch it drops — a signal the consumer forgot to register a custom relay.
 - Logical mode registers neither the collector nor the relay (no cross-boundary communication needed). Server mode does not register `IFactoryEventRelay`.
-- NF0501 if no matching server handler method; NF0502 if multiple methods match; NF0503 (Warning) if an instance method is declared inside a `[FactoryEventHandler<T>]` class.
+- NF0501 if no matching server handler method; NF0502 if multiple methods match; NF0503 (Warning) if an instance method is declared inside a `[FactoryEventHandler<T>]` class; NF0504 (Warning) if one class declares the same event type more than once.
+- The attribute's `DispatchPhase` argument reaches registration: `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` registers at that phase, no argument registers at `Immediate`. The phase is per-attribute, so one class can hold several event types at different phases.
 
 ---
 
@@ -1005,6 +1006,7 @@ These are known limitations or open questions. They are documented here to preve
 | NF0501 | Error | `[FactoryEventHandler<T>]` class has no matching method | Declare exactly one method returning `Task` whose first non-`[Service]`/non-`CancellationToken` parameter is of type `T` |
 | NF0502 | Error | `[FactoryEventHandler<T>]` class has multiple matching methods | Remove the extras or split into separate handler classes |
 | NF0503 | Warning | `[FactoryEventHandler<T>]` class has an **instance**-method handler (former client-relay pattern) | Make the method `static` (server-side handler) **or** implement `IFactoryEventRelay` on the class and register it in DI (client-side reception). Instance methods are silently skipped at runtime. |
+| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once | Remove the duplicate. Stacking is for several event *types*; a repeat resolves to the same handler method, so only the first declaration registers — including its phase. The message names the surviving phase. |
 
 ### Runtime Log Events
 

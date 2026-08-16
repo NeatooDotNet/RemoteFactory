@@ -3,7 +3,7 @@
 **Plan #:** 002
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** Done
 **Last Updated:** 2026-08-15
 **Plan-review opt-in:** Yes (adds a generator diagnostic — new compile outcomes for source that builds today; raised from "No" at drafting)
 **Code-review opt-in:** Yes (generator emission change; incremental-cache equality contract at stake)
@@ -110,27 +110,27 @@ factory-method emission (PHASE-003).
 
 ## Acceptance
 
-- [ ] A handler class declaring `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` has its
+- [x] A handler class declaring `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` has its
       handler deferred at raise time and run when the entry factory call completes, with no
       hand-written `RegisterHandler` call in the test. `[integration]`
-- [ ] A handler class declaring no phase argument still dispatches at raise time, inside the
+- [x] A handler class declaring no phase argument still dispatches at raise time, inside the
       factory call. `[integration]`
-- [ ] Generated registration for an explicitly phased handler passes the named phase through
+- [x] Generated registration for an explicitly phased handler passes the named phase through
       the phase-taking overload, `global::`-qualified — the bare `DispatchPhase.X` form is
       pinned absent, the way `RelayHandler_AssemblyAttribute_DoesNotNameConsumerType` pins the
       bare registrar argument. The defaulted handler registers at `Immediate`. `[unit]`
-- [ ] One handler class declaring several event types at different phases registers each at
+- [x] One handler class declaring several event types at different phases registers each at
       its own phase. `[unit]`
-- [ ] Declaring the same event type twice on one handler class reports a Warning located at
+- [x] Declaring the same event type twice on one handler class reports a Warning located at
       the class naming the surviving phase, and emits one registration rather than two. `[unit]`
-- [ ] The `RelayHandler` incremental branch stays cached across an unrelated edit, with the
+- [x] The `RelayHandler` incremental branch stays cached across an unrelated edit, with the
       fixture populating phase data. Pins determinism and guards a future collection-shaped
       phase field; it does **not** pin the phase read — see Notes. `[unit]`
-- [ ] Registration remains inside the server-runtime guard and the assembly attribute still
+- [x] Registration remains inside the server-runtime guard and the assembly attribute still
       names the generated holder. `[unit]`
-- [ ] The existing suite passes unmodified — no test edited to accommodate the new emission.
+- [x] The existing suite passes unmodified — no test edited to accommodate the new emission.
       `[explicit-skip: regression meta-bullet, satisfied by the Step 5 full-suite run]`
-- [ ] Build/test green on both target frameworks.
+- [x] Build/test green on both target frameworks.
       `[explicit-skip: meta-bullet, satisfied by the Step 5 gate logs]`
 
 ---
@@ -208,9 +208,9 @@ Unit tests are in `RemoteFactory.UnitTests.FactoryGenerator.AssemblyAttributeEmi
 | Explicit phase passes through the phase-taking overload, `global::`-qualified, bare form absent | `[unit]` | `RelayHandler_PhasedHandler_RegistersAtTheDeclaredPhase`; `RelayHandler_PhaseArgument_IsGlobalQualified` (negative pin) | ✓ |
 | Defaulted handler registers at `Immediate` | `[unit]` | `RelayHandler_UnphasedHandler_RegistersAtImmediate` | ✓ |
 | Several event types at different phases each register at their own | `[unit]` | `RelayHandler_SeveralEventTypes_EachRegistersAtItsOwnPhase` | ✓ |
-| Duplicate event type reports a Warning naming the surviving phase, one registration not two | `[unit]` | `RelayHandler_DuplicateEventType_ReportsNF0504AsWarning`; `RelayHandler_DuplicateEventType_EmitsOneRegistrationNotTwo` | ✓ |
-| `RelayHandler` branch stays cached with phase data populated | `[unit]` | `IncrementalCacheTests.UnrelatedEdit_TransformOutputStaysCached("RelayHandler")` — fixture now declares one phased attribute | ✓ (determinism only, by design — see Notes) |
-| Registration stays server-guarded; attribute still names the holder | `[unit]` | `RelayHandler_EmitsAssemblyAttribute`, `RelayHandler_AssemblyAttribute_DoesNotNameConsumerType`, `RelayHandler_RegistrarHolder_ForwardsToUserClass` — pre-existing, unmodified, still green | ✓ |
+| Duplicate event type reports a Warning at the class naming the surviving phase, one registration not two | `[unit]` | `RelayHandler_DuplicateEventType_ReportsNF0504AsWarning`; `…_PhasedFirst_KeepsThatPhaseAndNamesItInTheMessage` (the discriminating one); `…_DiagnosticIsLocatedAtTheClass`; `…_EmitsOneRegistrationNotTwo` | ✓ |
+| `RelayHandler` branch stays cached with phase data populated | `[unit]` | `IncrementalCacheTests.UnrelatedEdit_TransformOutputStaysCached("RelayHandler")` — fixture now declares one phased attribute, and `IncrementalCacheTests.Fixture_PopulatesThePhaseArgument` pins that the argument still binds | ✓ (determinism only, by design — see Notes) |
+| Registration stays server-guarded; attribute still names the holder | `[unit]` | `RelayHandler_PhasedRegistration_StaysInsideTheServerRuntimeGuard` (**new** — the guard half had no unit assertion at all before the gate caught it); `RelayHandler_EmitsAssemblyAttribute`, `…_DoesNotNameConsumerType`, `…_RegistrarHolder_ForwardsToUserClass` for the holder half — pre-existing, unmodified, still green | ✓ |
 | Existing suite passes unmodified | `[explicit-skip]` | Step 5 full-suite run; no existing test's assertions were edited (two comments updated, one fixture attribute phased) | n/a |
 | Build/test green on both TFMs | `[explicit-skip]` | `reviews/002-build.log`, `reviews/002-test.log` | n/a |
 
@@ -231,7 +231,48 @@ explicitly in every experiment as a result.
 
 ## Plan Amendments
 
-*(none yet)*
+### 2026-08-15 — Duplicate diagnostic: Warning, and the duplicate's entry is skipped
+
+- **Section affected:** Step 4, Framework Alignment, Notes
+- **Original said:** Report the duplicate at Error, matching NF0501/NF0502.
+- **What changed:** Warning, paired with skipping the duplicate's entry at emission.
+- **Why:** Plan review A-V1 found the project's documented precedent — NF0503 chose Warning
+  explicitly to keep the build green for the identical shape — and showed the draft had
+  mis-applied its own stated taxonomy. The dividing line is what the generator emits: a
+  duplicate still produces a working registration. Skipping the entry is what keeps Warning
+  honest (B-C3), otherwise two registrations at different phases would reintroduce the silent
+  loss under a diagnostic saying "the duplicate is ignored".
+- **Discovery Log link:** 2026-08-15 — PHASE-002 (plan review: the duplicate-attribute
+  severity, settled)
+
+### 2026-08-15 — Two acceptance bullets reworded so they can fail
+
+- **Section affected:** Acceptance, Constraints
+- **Original said:** The cache bullet claimed the branch stays cached "with the new phase data
+  actually populated"; the emission bullet claimed the named phase passes through.
+- **What changed:** The cache bullet now claims determinism plus future collection-shaped-field
+  coverage only, with the primitive-representation rule moved to a Constraint enforced by code
+  review; the emission bullet requires the `global::`-qualified form with a negative pin on the
+  bare one.
+- **Why:** Plan review B-V1 and B-V2 — neither bullet could go red for what it claimed. The
+  cache test compares transform outputs across runs sharing a reference manager; a scalar is
+  equal either way, and `Contains("DispatchPhase.AfterCommit")` cannot tell the qualified form
+  from the bare one.
+- **Discovery Log link:** 2026-08-15 — PHASE-002 (a third "can't go red" bullet)
+
+### 2026-08-15 — Gate round: five tests added, four code fixes
+
+- **Section affected:** Test Evidence, Notes
+- **Original said:** Nine tests covered the acceptance surface.
+- **What changed:** Added the phased-first duplicate test (the discriminating one), the
+  server-runtime-guard assertion, the NF0504 location pin, the cache-fixture binding pin, and
+  a negative value in the undefined-phase theory. Code fixes: `InvariantCulture` on both
+  numeric-to-string paths, `is int` patterns replacing `Convert.ToInt32`, a misplaced XML doc
+  restored, and NF0504's row added to `CLAUDE-DESIGN.md`.
+- **Why:** Test review (4 should-cover) and code review (V1 + C1/C2/C3/C6), which independently
+  converged on the unfalsifiable NF0504 message assertion.
+- **Discovery Log link:** 2026-08-15 — PHASE-002 (both gates found the same unfalsifiable
+  assertion)
 
 ---
 

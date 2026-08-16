@@ -13,12 +13,6 @@ namespace Neatoo;
 public partial class Factory
 {
     /// <summary>
-    /// Transforms a class decorated with [FactoryEventHandler&lt;T&gt;] into a RelayHandlerModel.
-    /// Extracts event types from the generic attribute and finds matching handler methods.
-    /// A matching method: non-private, returns Task, first non-[Service]/non-CT parameter is T.
-    /// Static methods → server-side handler. Instance methods → client-side relay handler.
-    /// </summary>
-    /// <summary>
     /// Reads the <c>DispatchPhase</c> argument off a <c>[FactoryEventHandler&lt;T&gt;]</c>
     /// attribute, as the member's name plus its numeric value. No argument means the
     /// attribute's parameterless constructor, which is <c>Immediate</c>.
@@ -44,22 +38,31 @@ public partial class Factory
         if (attr.ConstructorArguments.Length == 0)
             return (ImmediateName, ImmediateValue);
 
+        // Pattern match rather than Convert.ToInt32, matching the idiom already used for
+        // attribute constructor arguments in FactoryGenerator.cs. Convert throws on a
+        // non-IConvertible, a non-numeric string, or an out-of-range value, and a throw inside
+        // a transform surfaces as CS8785 "generator failed to generate source" — taking every
+        // other generated file in the compilation down with it, not just this one. No shape
+        // that compiles is known to reach those, but the crash class is not worth carrying for
+        // a construct that costs nothing to write safely.
         var arg = attr.ConstructorArguments[0];
-        if (arg.Kind == TypedConstantKind.Error || arg.Value == null)
+        if (arg.Kind == TypedConstantKind.Error || arg.Value is not int value)
             return (ImmediateName, ImmediateValue);
-
-        var value = Convert.ToInt32(arg.Value, CultureInfo.InvariantCulture);
 
         var member = (arg.Type as INamedTypeSymbol)?
             .GetMembers()
             .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.HasConstantValue
-                && f.ConstantValue != null
-                && Convert.ToInt32(f.ConstantValue, CultureInfo.InvariantCulture) == value);
+            .FirstOrDefault(f => f.HasConstantValue && f.ConstantValue is int fieldValue && fieldValue == value);
 
         return (member?.Name ?? "", value);
     }
 
+    /// <summary>
+    /// Transforms a class decorated with [FactoryEventHandler&lt;T&gt;] into a RelayHandlerModel.
+    /// Extracts event types from the generic attribute and finds matching handler methods.
+    /// A matching method: non-private, returns Task, first non-[Service]/non-CT parameter is T.
+    /// Static methods → server-side handler. Instance methods → client-side relay handler.
+    /// </summary>
     private static RelayHandlerModel? TransformRelayHandler(ClassDeclarationSyntax classDecl, SemanticModel semanticModel)
     {
         var symbol = semanticModel.GetDeclaredSymbol(classDecl);
@@ -84,6 +87,12 @@ public partial class Factory
         // NF0501/NF0502 nothing is registered, so there is no surviving phase to name and no
         // duplicate to report. The second declaration then repeats the scan and repeats that
         // diagnostic, exactly as it did before NF0504 existed.
+        //
+        // One count DOES change, in a shape no test covers: a class with a duplicate attribute
+        // AND a matching instance method now emits NF0503 once instead of twice, because the
+        // duplicate short-circuits before the instance-method scan. Reporting one migration
+        // warning per class instead of one per redundant attribute is the better outcome, so
+        // this is recorded rather than worked around.
         var registeredPhaseByEventType = new Dictionary<string, string>();
 
         // Check partial
@@ -288,7 +297,7 @@ public partial class Factory
                 phaseValue: phaseValue));
 
             registeredPhaseByEventType[eventTypeName] =
-                phaseName.Length > 0 ? phaseName : phaseValue.ToString();
+                phaseName.Length > 0 ? phaseName : phaseValue.ToString(CultureInfo.InvariantCulture);
         }
 
         if (entries.Count == 0 && diagnostics.Count == 0)

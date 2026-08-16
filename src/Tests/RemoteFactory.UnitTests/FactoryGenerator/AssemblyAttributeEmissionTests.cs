@@ -769,14 +769,24 @@ namespace TestNamespace
 {
     public record ProjectionEvent(int Id) : FactoryEventBase;
     public record AtomicEvent(int Id) : FactoryEventBase;
+    public record StagedEvent(int Id) : FactoryEventBase;
+
+    public interface IProjectionPort
+    {
+        Task Send(string message);
+    }
 
     [FactoryEventHandler<ProjectionEvent>(DispatchPhase.AfterCommit)]
     [FactoryEventHandler<AtomicEvent>]
+    [FactoryEventHandler<StagedEvent>(DispatchPhase.AfterFlush)]
     public static partial class MixedHandlers
     {
         internal static Task Project(ProjectionEvent evt) => Task.CompletedTask;
 
         internal static Task Apply(AtomicEvent evt) => Task.CompletedTask;
+
+        internal static Task Stage(StagedEvent evt, [Service] IProjectionPort port, CancellationToken ct)
+            => port.Send(""staged"");
     }
 }
 ";
@@ -846,6 +856,35 @@ namespace TestNamespace
         Assert.Contains(
             "RegisterHandler<TestNamespace.AtomicEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate,",
             generatedSource);
+
+        // AfterFlush has no drain point of its own until PHASE-004, but the member-name lookup
+        // is generic over the enum symbol and this is the only phase not otherwise emitted
+        // anywhere. Its handler also carries [Service] + CancellationToken alongside a phase,
+        // so the phase token and the parameter list are pinned interacting.
+        Assert.Contains(
+            "RegisterHandler<TestNamespace.StagedEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterFlush, async (sp, eventObj, options, ct) =>",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// The registration stays inside the server-runtime guard, and the guard's body is the
+    /// registration — asserted in order, not as two independent containments.
+    /// </summary>
+    /// <remarks>
+    /// The relay leg had no <c>IsServerRuntime</c> assertion anywhere in the unit suite before
+    /// this; the only control on it was the CI publish-trimmed gate's absence check, which is
+    /// reasoned from the marker's reachability, runs only on push/PR, and is not in the Step 5
+    /// logs. The guard is what keeps handler bodies and their server-only services out of a
+    /// trimmed client, and this plan's renderer edit is inside the method that emits it.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_PhasedRegistration_StaysInsideTheServerRuntimeGuard()
+    {
+        var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
+
+        Assert.Matches(
+            @"if \(NeatooRuntime\.IsServerRuntime\)\s*\{\s*FactoryEventHandlerRegistry\.RegisterHandler<",
+            generatedSource);
     }
 
     /// <summary>
@@ -881,19 +920,27 @@ namespace TestNamespace
     /// proportion for this plan (todo Discovery Log, 2026-08-15). Silently coercing it to
     /// <c>Immediate</c> would be worse — it would run handlers at a phase nobody declared.
     /// </remarks>
-    [Fact]
-    public void RelayHandler_UndefinedPhaseValue_RendersAsACast()
+    /// <param name="literal">The cast value as written in source.</param>
+    /// <param name="expected">The value as it must appear in the emitted argument.</param>
+    [Theory]
+    [InlineData("99", "99")]
+    // Negative values reach the numeric fallback too, and interpolation would format them with
+    // the BUILD MACHINE's culture. On a culture whose negative sign is not ASCII '-' — sv-SE
+    // resolves to U+2212 under ICU — an unqualified format emits CS1056 into the consumer's
+    // build. This case exists so the invariant formatting has something holding it down.
+    [InlineData("-1", "-1")]
+    public void RelayHandler_UndefinedPhaseValue_RendersAsACast(string literal, string expected)
     {
         var source = PhasedRelayHandlerSource.Replace(
             "[FactoryEventHandler<ProjectionEvent>(DispatchPhase.AfterCommit)]",
-            "[FactoryEventHandler<ProjectionEvent>((DispatchPhase)99)]");
+            $"[FactoryEventHandler<ProjectionEvent>((DispatchPhase)({literal}))]");
 
         Assert.NotEqual(PhasedRelayHandlerSource, source);
 
         var generatedSource = GeneratedSourceFor(source, "MixedHandlers");
 
         Assert.Contains(
-            "typeof(MixedHandlers), (global::Neatoo.RemoteFactory.DispatchPhase)99, async (sp, eventObj, options, ct) =>",
+            $"typeof(MixedHandlers), (global::Neatoo.RemoteFactory.DispatchPhase){expected}, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -926,8 +973,73 @@ namespace TestNamespace
         Assert.Equal(DiagnosticSeverity.Warning, duplicate.Severity);
 
         // The message names the phase that survives, so the consumer knows which declaration
-        // won rather than having to reason about registry dedupe order.
+        // won rather than having to reason about registry dedupe order. NOTE: the survivor here
+        // is Immediate, which is also what a hardcoded message would say —
+        // RelayHandler_DuplicateEventType_PhasedFirst_... is the test that discriminates.
         Assert.Contains("DispatchPhase.Immediate", duplicate.GetMessage(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
+    /// With the PHASED declaration first, the message names <c>AfterCommit</c> and the emitted
+    /// registration is <c>AfterCommit</c> — source order wins, and the message reports it.
+    /// </summary>
+    /// <remarks>
+    /// This is the discriminating half of the pair, and the reason it exists is worth keeping.
+    /// Its sibling stacks unphased-first, so the surviving phase there is <c>Immediate</c> —
+    /// which is also the hardcoded default constant, the value the malformed-argument fallback
+    /// returns, and what a <c>messageFormat</c> with the phase placeholder deleted would print.
+    /// That test stays green against three separate wrong implementations. Both gates on this
+    /// plan flagged it independently; this is the version that can go red, and it pins source
+    /// order at the same time, which nothing else did.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_DuplicateEventType_PhasedFirst_KeepsThatPhaseAndNamesItInTheMessage()
+    {
+        var source = RelayHandlerSource.Replace(
+            "[FactoryEventHandler<MyEvent>]",
+            "[FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]\n    [FactoryEventHandler<MyEvent>]");
+
+        Assert.NotEqual(RelayHandlerSource, source);
+
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var duplicate = Assert.Single(runResult.Diagnostics.Where(d => d.Id == "NF0504"));
+        var message = duplicate.GetMessage(CultureInfo.InvariantCulture);
+        Assert.Contains("DispatchPhase.AfterCommit", message);
+        Assert.DoesNotContain("DispatchPhase.Immediate", message);
+
+        var generatedSource = runResult.GeneratedTrees
+            .First(t => t.FilePath.Contains("MyHandlers"))
+            .GetText()
+            .ToString();
+
+        Assert.Contains("global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit,", generatedSource);
+        Assert.DoesNotContain("DispatchPhase.Immediate", generatedSource);
+    }
+
+    /// <summary>
+    /// NF0504 is located at the handler class's identifier.
+    /// </summary>
+    /// <remarks>
+    /// Asserted through the source span rather than a line/column pair, so an edit to the
+    /// shared fixture cannot silently turn this into a false red — or, worse, leave it green
+    /// while pointing somewhere else. The class location matches NF0501/NF0502's convention;
+    /// pointing at the redundant attribute itself would serve a consumer with several stacked
+    /// attributes better, and is recorded as a callout rather than done here.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_DuplicateEventType_DiagnosticIsLocatedAtTheClass()
+    {
+        var source = RelayHandlerSource.Replace(
+            "[FactoryEventHandler<MyEvent>]",
+            "[FactoryEventHandler<MyEvent>]\n    [FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]");
+
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var duplicate = Assert.Single(runResult.Diagnostics.Where(d => d.Id == "NF0504"));
+        var span = duplicate.Location.SourceSpan;
+
+        Assert.Equal("MyHandlers", source.Substring(span.Start, span.Length));
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Neatoo.RemoteFactory.Generator.Model;
@@ -154,9 +155,13 @@ internal static class RelayHandlerRenderer
 
         // An empty name means the consumer cast an undefined value onto the enum; render it
         // faithfully rather than coercing it to a phase they did not ask for.
+        // InvariantCulture on the numeric fallback: interpolation would format with the
+        // build machine's CurrentCulture, and a negative value on a culture whose negative
+        // sign is not ASCII '-' (sv-SE resolves to U+2212 under ICU) emits a CS1056 into the
+        // consumer's build. `(DispatchPhase)(-1)` compiles, so the path is reachable.
         var phase = handler.PhaseName.Length > 0
             ? $"{DispatchPhaseType}.{handler.PhaseName}"
-            : $"({DispatchPhaseType}){handler.PhaseValue}";
+            : $"({DispatchPhaseType}){handler.PhaseValue.ToString(CultureInfo.InvariantCulture)}";
 
         // Emit arguments in declaration order so a handler like
         // `(TestEvent evt, CancellationToken ct, [Service] IFoo svc)` binds correctly.

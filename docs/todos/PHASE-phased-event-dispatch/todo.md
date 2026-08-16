@@ -71,16 +71,66 @@ exposes drain points.
 | # | File | Title | Status |
 |---|------|-------|--------|
 | 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Done |
-| 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Draft |
+| 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Done |
 | 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
 | 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins; `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication | Draft |
+| 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `DiagnosticTestHelper` returns every generator diagnostic twice and `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests` | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-15 — PHASE-002 (both gates found the same unfalsifiable assertion)
+
+- **Finding:** The test-review gate (should-cover #2) and the code review (veto V1) landed
+  independently on the same test: NF0504's message assertion stacked the *unphased* attribute
+  first, so the surviving phase was `Immediate` — which is simultaneously the hardcoded
+  default constant, the value the malformed-argument fallback returns, and what a message
+  format with the placeholder deleted would print. Green against three distinct wrong
+  implementations. Four other bullets *were* red-proofed; this was the one claim neither
+  pinned nor declared unpinnable.
+- **Decision:** Amend — added the phased-first case (which also pins source-order-wins,
+  previously unpinned) and red-proofed it by hardcoding the phase into the message format.
+  Three further should-cover gaps closed the same way: the relay leg had **no**
+  `IsServerRuntime` assertion anywhere in the unit suite, NF0504's location was unasserted
+  while the bullet claimed it, and the cache fixture's phase argument could silently stop
+  binding and degrade the fixture with every test still green.
+- **Follow-up:** [reviews/002-test-review.md](./reviews/002-test-review.md),
+  [reviews/002-code-review.md](./reviews/002-code-review.md),
+  [reviews/002-redproof.log](./reviews/002-redproof.log) (second round). Fourth instance of
+  the "can't go red" shape in this arc — and the first where red-proofing four discriminators
+  did *not* by itself prevent a fifth from slipping through, because the unproofed one was
+  not on the list.
+
+### 2026-08-15 — PHASE-002 (generator emission hygiene — new plan 008)
+
+- **Finding:** Both gates surfaced defects adjacent to this plan but outside it. The sharpest:
+  the **event type** token in the same emitted registration statement is *not* `global::`-
+  qualified — the identical hazard this plan spent a Constraint, a veto, and a negative pin on,
+  three tokens to the left. Also: attributes split across partial declarations should collide
+  on hint name (`ForAttributeWithMetadataName` fires per syntax node, the transform reads
+  `symbol.GetAttributes()`) — inferred, not measured; `DiagnosticTestHelper.RunGenerator`
+  returns every generator diagnostic **twice**, which no current test trips but which silently
+  breaks any count assertion; `RunGeneratorTracked` never checks the input compilation for CS
+  errors; and `NF04xx…Tests.cs` contains `class NF05xx…Tests`.
+- **Decision:** Re-split — new Index row 008 rather than widening PHASE-007, which both
+  reviewers noted already carries three unrelated items. Index changes: 008 added as Draft.
+- **Follow-up:** Note the ratchet on the `global::` item — five new assertions in this plan
+  hardcode the unqualified event-type form and will need editing when 008 lands.
+
+### 2026-08-15 — PHASE-002 (AfterFlush became consumer-reachable ahead of its drain point)
+
+- **Finding:** As of this plan `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` is
+  expressible by consumers for the first time, and the scheduler's sweep already drains it at
+  the AfterCommit entry point — fail-open, but *without* the logged warning PHASE-004's
+  AC-5 promises. The feature is live and half-documented in the window between the two plans.
+- **Decision:** Accept the window; PHASE-002 does not own the warning. But PHASE-004's
+  acceptance must cover an **attribute-declared** AfterFlush handler, not only a
+  hand-registered one — otherwise the consumer-facing path stays untested.
+- **Follow-up:** recorded in PHASE-004's inherited section.
 
 ### 2026-08-15 — PHASE-002 (plan review: the duplicate-attribute severity, settled)
 
