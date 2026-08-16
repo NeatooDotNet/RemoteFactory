@@ -260,6 +260,21 @@ explicitly in every experiment as a result.
   from the bare one.
 - **Discovery Log link:** 2026-08-15 — PHASE-002 (a third "can't go red" bullet)
 
+### 2026-08-15 — `DiagnosticTestHelper` double-count fixed here rather than in plan 008
+
+- **Section affected:** Scope (widened), Test Evidence
+- **Original said:** The helper defect was routed to the new tech-debt plan 008.
+- **What changed:** Fixed in this plan at the user's direction. `RunGenerator` no longer
+  concatenates the driver's out-param with `GetRunResult().Diagnostics` — the same set twice.
+  Three harness tests added (`DiagnosticTestHelperTests`), and the five NF0504/NF0502 tests
+  that had been reading `runResult.Diagnostics` to route around the doubling now use the
+  returned array.
+- **Why:** No caller counted, so nothing was red, but the natural assertion was wrong in a way
+  that reads as a product bug — which is how it presented when NF0504's test asserted
+  `Single()` and got two. Red-proofed (RP-7); the accompanying RP-8 disproved the stated
+  rationale for *how* it was fixed and the comments were corrected.
+- **Discovery Log link:** 2026-08-15 — PHASE-002 (a red-proof that disproved its own premise)
+
 ### 2026-08-15 — Gate round: five tests added, four code fixes
 
 - **Section affected:** Test Evidence, Notes

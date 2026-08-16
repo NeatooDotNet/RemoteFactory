@@ -87,10 +87,28 @@ public static class DiagnosticTestHelper
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
         var runResult = driver.GetRunResult();
 
-        // Get diagnostics from the generator run result as well
-        var allDiagnostics = diagnostics.AddRange(runResult.Diagnostics);
-
-        return (allDiagnostics, outputCompilation, runResult);
+        // The driver's out-param already holds every generator diagnostic from this run, and
+        // GetRunResult().Diagnostics holds the same ones — so the AddRange this used to do
+        // returned every diagnostic TWICE. Nothing consumed the count, so nothing was red, but
+        // it silently falsified any count assertion written against this array. Found while
+        // writing NF0504's tests, which asserted Single() and got two.
+        //
+        // Returning one source rather than Distinct()-ing the union, for a narrower reason than
+        // it first appears. Distinct() also works — measured, not assumed: the two collections
+        // hold the SAME Diagnostic instances, so identity dedupe removes the doubling, while
+        // two genuinely repeated diagnostics (a class stacking attributes that each fail the
+        // same way reports NF0502 once per attribute, same location, byte-identical message)
+        // are separate instances and survive. But that correctness rests entirely on the two
+        // collections sharing object identity, which is a Roslyn implementation detail no test
+        // here controls. Not concatenating needs no such assumption.
+        //
+        // Whichever way this is written, multiplicity must be preserved — a genuine repeat is
+        // signal, and DiagnosticTestHelperTests pins it.
+        //
+        // This is the compilation-filtered set — what a consumer's build actually surfaces,
+        // with severity settings and suppressions applied. Callers needing the raw, unfiltered
+        // generator output can still reach RunResult.Diagnostics on the third tuple element.
+        return (diagnostics, outputCompilation, runResult);
     }
 
     private static List<MetadataReference> BuildReferences()

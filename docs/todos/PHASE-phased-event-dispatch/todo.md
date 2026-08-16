@@ -77,7 +77,7 @@ exposes drain points.
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
 | 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins; `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication | Draft |
-| 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `DiagnosticTestHelper` returns every generator diagnostic twice and `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests` | Draft |
+| 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
 
@@ -104,6 +104,25 @@ exposes drain points.
   the "can't go red" shape in this arc — and the first where red-proofing four discriminators
   did *not* by itself prevent a fifth from slipping through, because the unproofed one was
   not on the list.
+
+### 2026-08-15 — PHASE-002 (a red-proof that disproved its own premise)
+
+- **Finding:** Fixing `DiagnosticTestHelper`'s double-count, I wrote a comment warning that
+  `Distinct()` would be a destructive "obvious fix" — it would collapse genuinely repeated
+  diagnostics (NF0502 fires once per attribute, same location, identical message) because
+  `Diagnostic` has value equality. Red-proofing that claim showed it is **false**: comparison
+  behaves by identity, the doubling came from concatenating two collections holding the *same
+  instances*, and genuine repeats are distinct instances that survive. `Distinct()` would have
+  worked.
+- **Decision:** Keep the chosen fix — return the driver's out-param, no concatenation — but on
+  the corrected, narrower ground: `Distinct()`'s correctness depends on the two collections
+  sharing object identity, a Roslyn implementation detail nothing here controls. Rewrote the
+  helper comment and the test remarks, which had stated the disproved claim as fact.
+- **Follow-up:** Recorded in [reviews/002-redproof.log](./reviews/002-redproof.log) (RP-8)
+  rather than deleted. A confident-and-wrong warning comment in a shared test helper outlives
+  whoever wrote it; this one lasted three minutes because it was tested. Worth remembering that
+  red-proofing pays out twice — it confirms the tests that go red, and it kills the reasoning
+  that turns out to be decoration.
 
 ### 2026-08-15 — PHASE-002 (generator emission hygiene — new plan 008)
 

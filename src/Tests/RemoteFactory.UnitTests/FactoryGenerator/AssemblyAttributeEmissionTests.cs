@@ -963,13 +963,9 @@ namespace TestNamespace
 
         Assert.NotEqual(RelayHandlerSource, source);
 
-        // runResult.Diagnostics, not the helper's combined array: RunGenerator concatenates
-        // the driver's out-param with runResult.Diagnostics, and generator diagnostics appear
-        // in BOTH, so every diagnostic comes back doubled. Harmless for the Contains/Any
-        // assertions everywhere else in this file, fatal for a count.
-        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        var (diagnostics, _, _) = DiagnosticTestHelper.RunGenerator(source);
 
-        var duplicate = Assert.Single(runResult.Diagnostics.Where(d => d.Id == "NF0504"));
+        var duplicate = Assert.Single(diagnostics.Where(d => d.Id == "NF0504"));
         Assert.Equal(DiagnosticSeverity.Warning, duplicate.Severity);
 
         // The message names the phase that survives, so the consumer knows which declaration
@@ -1001,9 +997,9 @@ namespace TestNamespace
 
         Assert.NotEqual(RelayHandlerSource, source);
 
-        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        var (diagnostics, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
 
-        var duplicate = Assert.Single(runResult.Diagnostics.Where(d => d.Id == "NF0504"));
+        var duplicate = Assert.Single(diagnostics.Where(d => d.Id == "NF0504"));
         var message = duplicate.GetMessage(CultureInfo.InvariantCulture);
         Assert.Contains("DispatchPhase.AfterCommit", message);
         Assert.DoesNotContain("DispatchPhase.Immediate", message);
@@ -1034,9 +1030,9 @@ namespace TestNamespace
             "[FactoryEventHandler<MyEvent>]",
             "[FactoryEventHandler<MyEvent>]\n    [FactoryEventHandler<MyEvent>(DispatchPhase.AfterCommit)]");
 
-        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        var (diagnostics, _, _) = DiagnosticTestHelper.RunGenerator(source);
 
-        var duplicate = Assert.Single(runResult.Diagnostics.Where(d => d.Id == "NF0504"));
+        var duplicate = Assert.Single(diagnostics.Where(d => d.Id == "NF0504"));
         var span = duplicate.Location.SourceSpan;
 
         Assert.Equal("MyHandlers", source.Substring(span.Start, span.Length));
@@ -1102,12 +1098,10 @@ namespace TestNamespace
     }
 }
 ";
-        // runResult.Diagnostics — see the note in the NF0504 severity test; the helper's
-        // combined array double-counts, which a count assertion cannot survive.
-        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        var (diagnostics, _, _) = DiagnosticTestHelper.RunGenerator(source);
 
-        Assert.Equal(2, runResult.Diagnostics.Count(d => d.Id == "NF0502"));
-        Assert.Empty(runResult.Diagnostics.Where(d => d.Id == "NF0504"));
+        Assert.Equal(2, diagnostics.Count(d => d.Id == "NF0502"));
+        Assert.Empty(diagnostics.Where(d => d.Id == "NF0504"));
     }
 
     /// <summary>
