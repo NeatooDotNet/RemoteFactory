@@ -34,4 +34,17 @@ Notable verification beyond the map's own claims:
 
 Closures: 2 new tests (Design 91 → 93, green both TFMs, logs overwritten with round-2 runs; unit 705×2 and integration 587×2 +5 skips unchanged). Red-proof addendum records why the no-leak discriminator is argued from PHASE-003's measured production sabotage rather than re-measured, and that the positive-control half is new-code-verified.
 
-**Round-2 reviewer verification:** *(pending — appended below when the reviewer returns)*
+**Round-2 reviewer verification: all six closures confirmed. Nothing reopened. Gate closes at must-cover and should-cover.**
+
+The reviewer verified from the round-2 logs and source, not from the closure descriptions:
+
+- **Log integrity re-checked:** round-2 headers present; Design 93 on both TFMs reconciled against the 7 `[Fact]` methods; build timestamps still precede the `--no-build` run; unit/integration totals unmoved.
+- **The no-leak discriminator traced mechanically, not inherited:** handlers record under the *event's* id, so a leaked rejected-call dispatch lands under `rejectedId` — the second assertion catches it and is not masked by the first (the accepted trail stays its exact five markers under a leak). Under the shipped sweep-earlier-phases semantics, removing the failure-clear routes both rejected dispatches into the survivor's drains → red. Both calls verifiably share one server scope through `ServerServiceProvider`.
+- **Positive control lands:** the accepted trail exercises all three Payment handler classes — deleting any one now turns a test red. Unclaimed bonus: it also pins drain *position* for a static `[Execute]` factory.
+- **Finding 3's scope judged correct:** only the test doc comment changed; the pattern-file and CLAUDE-DESIGN 9007 statements rightly stand (they document real production behavior).
+- **Finding 4 is a true three-way pin** (client null, server AND local non-null) — cannot pass via "nothing registered anywhere."
+- **Sacred tests still clean:** the round-1 discard test changed only at its call site with assertions byte-identical (a test this plan authored, intent preserved).
+- **Red-proof quality noted:** the addendum plainly labels the not-measured claim and names the upstream measured pin — the arc's confident-sentence-with-no-run-behind-it failure mode, not recurring this time.
+- **Residual (fixed in place, no reopen):** RP-0's rule sentence still said "91" above an addendum saying 93; corrected so a top-down reader doesn't hit a stale gate rule first.
+
+**Recommendation: close the gate. No further test work required for PHASE-005.**

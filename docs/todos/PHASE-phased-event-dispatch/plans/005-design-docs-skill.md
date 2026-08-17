@@ -3,7 +3,7 @@
 **Plan #:** 005
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-08-17
 **Plan-review opt-in:** No (documentation of already-reviewed behavior)
 **Code-review opt-in:** No (doc-only; Design code samples are exercised by Design.Tests)
@@ -149,29 +149,29 @@ Design projects, published docs, or the skill — gets the same, accurate phase 
 
 ## Acceptance
 
-- [ ] Design.Domain declares attribute-registered handlers at all three phases and a
+- [x] Design.Domain declares attribute-registered handlers at all three phases and a
       factory method that drains `AfterFlush` through a `[Service]`-injected
       `IFactoryEventPhaseCoordinator`; Design.Tests observe the three-phase drain-point
       ordering (Immediate at raise, AfterFlush at the coordinator call inside the body,
       AfterCommit after completion) against a raise order chosen to differ. `[integration]`
-- [ ] Design.Tests observe the fail-open path: an attribute-declared `AfterFlush` handler
+- [x] Design.Tests observe the fail-open path: an attribute-declared `AfterFlush` handler
       whose factory never drains still runs, after the method body returns. `[integration]`
-- [ ] Design.Tests observe that a failed entry call discards queued phased work — the
+- [x] Design.Tests observe that a failed entry call discards queued phased work — the
       handlers never run. `[integration]`
-- [ ] `docs/factory-events.md` documents the full phase contract: three phases with the
+- [x] `docs/factory-events.md` documents the full phase contract: three phases with the
       Immediate-default rescope, coordinator drain, fail-open + 9007, per-drain-point
       ordering, discard on failure, staged-state note, per-scope concurrency guidance,
       NF0504 row, 9001–9007 rows, phase-service DI rows.
       `[explicit-skip: prose deliverable — verified by the stale-claim sweep and review]`
-- [ ] `docs/attributes-reference.md` documents the phase argument with corrected
+- [x] `docs/attributes-reference.md` documents the phase argument with corrected
       phase-scoped prose; `docs/interfaces-reference.md` gains the coordinator entry.
       `[explicit-skip: prose deliverable]`
-- [ ] The skill's `factory-events.md` and SKILL.md carry the same contract; every code
+- [x] The skill's `factory-events.md` and SKILL.md carry the same contract; every code
       sample and reference stays inside the skill directory.
       `[explicit-skip: prose deliverable + self-containment check]`
-- [ ] A sweep of docs/ and skills/ finds no remaining instance of the invalidated
+- [x] A sweep of docs/ and skills/ finds no remaining instance of the invalidated
       universal claims. `[explicit-skip: grep gate, recorded in the plan]`
-- [ ] Existing Design tests unmodified; full solution build and test green.
+- [x] Existing Design tests unmodified; full solution build and test green.
       `[explicit-skip: meta-bullet, satisfied by the Step 8 gate run]`
 
 ---
