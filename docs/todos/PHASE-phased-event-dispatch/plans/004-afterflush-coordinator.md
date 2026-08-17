@@ -335,6 +335,28 @@ red-proofing: [004-redproof.log](../reviews/004-redproof.log).
 
 ## Plan Amendments
 
+### 2026-08-16 — `Internal` implementations are public; the namespace is the warning
+
+- **Section affected:** Framework & Architectural Alignment ("Consumer-facing public
+  surface … scope-scoped runtime services"), post-Done on the open PR
+- **Original said:** the coordinator implementation shipped `internal sealed`, matching
+  what the sibling `FactoryEventPhaseScheduler` did.
+- **What changed:** both are now `public` and unsealed. The coordinator's `DrainAsync` is
+  `virtual` and its scheduler is exposed as a `protected` property so a derived type can
+  add behavior without duplicating the whitelist/short-circuit logic. The scheduler's
+  members stay non-virtual **by stated design** — its queueing/entry-depth/drain semantics
+  are one interlocking contract, and replacement goes through the interface
+  (`TryAddScoped`, so a consumer registering first wins).
+- **Why:** the user's framework-wide policy, which the repo already followed and this plan
+  broke: `FactoryEntryCall` is `public static` in `Internal` and
+  `IFactoryEventPhaseScheduler` is `public` in `Internal`, while both implementations were
+  `internal sealed`. `Internal` conveys "extend at your own risk" — nothing is cut off.
+  Verified against EF Core 10.0.3, which does exactly this at scale (~4,500 public
+  documented members in `*.Internal`; `DbContextServices` is `public`, unsealed, and the
+  namespace alone is the marker). Policy now written down in `CLAUDE-DESIGN.md` rather
+  than left as an inferred convention.
+- **Discovery Log link:** 2026-08-16 — PHASE-004 (Internal namespace policy)
+
 ### 2026-08-16 — Cross-phase ordering is per drain point, not a global barrier
 
 - **Section affected:** Scope (frozen text), Acceptance bullet 3, todo AC-1

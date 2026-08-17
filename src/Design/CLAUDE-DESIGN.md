@@ -997,6 +997,36 @@ These are known limitations or open questions. They are documented here to preve
 
 ---
 
+## The `Neatoo.RemoteFactory.Internal` Namespace
+
+**Types in `Neatoo.RemoteFactory.Internal` are `public`. The namespace is the warning, not a wall.**
+
+The framework is fully extensible: nothing a consumer might legitimately need is cut off by
+an access modifier. What `Internal` conveys is *"extend at your own risk"* — these types
+support the runtime and are not subject to the same compatibility standards as the rest of
+the public API. They may change or be removed in any release.
+
+This follows Entity Framework Core, which does the same thing at scale — EF Core 10 ships
+~4,500 documented members in `*.Internal` namespaces, all public, each carrying the same
+kind of warning. `DbContextServices`, for example, is `public class`, not sealed.
+
+**Rules for types in this namespace:**
+
+| Rule | Why |
+|------|-----|
+| Declare `public`, not `internal` | A guess that no consumer will ever need it is a guess that is sometimes wrong; when it is, their only recourse is to fork |
+| Do not `seal` without a stated reason | `sealed` re-imposes the wall the namespace exists to avoid |
+| Carry the risk paragraph in the type's XML `<remarks>` | Today the doc comment is the only place the warning reaches a consumer |
+| State explicitly when members are non-virtual by design | Interlocking contracts (e.g. the scheduler's queue/depth/drain semantics) can be legitimately closed to piecemeal override — say so, don't leave it implied |
+
+**Known gap:** EF Core's version of this policy has a third leg — an analyzer (EF1001,
+`Usage`, Warning by default) that flags consumer code touching `*.Internal` namespaces at
+the point of use. RemoteFactory has no equivalent, so the warning currently reaches only
+readers of the XML docs. Worth building; the generator's NF-prefixed diagnostic
+infrastructure already exists.
+
+---
+
 ## Diagnostics and Log Events (Factory Events Relay)
 
 ### Compile-Time Diagnostics

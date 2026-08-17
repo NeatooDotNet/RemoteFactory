@@ -5,21 +5,37 @@ namespace Neatoo.RemoteFactory.Internal;
 /// <see cref="IFactoryEventPhaseScheduler"/> with in-transaction semantics.
 /// </summary>
 /// <remarks>
+/// <para>
+/// This is infrastructure that supports the RemoteFactory runtime and is not subject to
+/// the same compatibility standards as the rest of the public API. It may change or be
+/// removed in any release. Deriving from it or calling it directly is supported in the
+/// sense that nothing stops you — the <c>Internal</c> namespace is the warning, not a
+/// wall — but do so knowing a future version may break you.
+/// </para>
+/// <para>
 /// Constructed over the scope's existing scheduler instance — the DI registration
 /// resolves <see cref="IFactoryEventPhaseScheduler"/> rather than constructing one, so
 /// there is exactly one queue per scope. A registration that newed up its own scheduler
-/// would drain an always-empty twin while the dispatcher queues into the real one.
+/// would drain an always-empty twin while the dispatcher queues into the real one; a
+/// derived type replacing this registration must preserve that.
+/// </para>
 /// </remarks>
-internal sealed class FactoryEventPhaseCoordinator : IFactoryEventPhaseCoordinator
+public class FactoryEventPhaseCoordinator : IFactoryEventPhaseCoordinator
 {
-    private readonly IFactoryEventPhaseScheduler _scheduler;
+    /// <summary>
+    /// The scope's queue and drain primitive. Exposed so a derived type can add behavior
+    /// around <see cref="DrainAsync"/> without re-resolving or duplicating it.
+    /// </summary>
+    protected IFactoryEventPhaseScheduler Scheduler { get; }
 
+    /// <summary>Creates a coordinator over the scope's existing scheduler.</summary>
     public FactoryEventPhaseCoordinator(IFactoryEventPhaseScheduler scheduler)
     {
-        _scheduler = scheduler;
+        this.Scheduler = scheduler;
     }
 
-    public Task DrainAsync(DispatchPhase phase, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public virtual Task DrainAsync(DispatchPhase phase, CancellationToken cancellationToken = default)
     {
         // Whitelist, not a blacklist: the scheduler's drain sweeps every phase at or
         // before the requested one, so an undefined value like (DispatchPhase)99 waved
@@ -42,11 +58,11 @@ internal sealed class FactoryEventPhaseCoordinator : IFactoryEventPhaseCoordinat
         // which draining is provably not running someone else's in-transaction work on
         // this caller's token. When an entry call IS active, per-scope granularity is
         // the documented contract and the drain proceeds.
-        if (!_scheduler.IsEntryCallActive)
+        if (!this.Scheduler.IsEntryCallActive)
         {
             return Task.CompletedTask;
         }
 
-        return _scheduler.DrainAsync(DispatchPhase.AfterFlush, inTransaction: true, cancellationToken);
+        return this.Scheduler.DrainAsync(DispatchPhase.AfterFlush, inTransaction: true, cancellationToken);
     }
 }

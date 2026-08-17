@@ -96,6 +96,29 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-16 — PHASE-004 (the `Internal` namespace is a warning, not a wall — and the repo already said so)
+
+- **Finding:** User review of the open PR: `FactoryEventPhaseCoordinator` shipped
+  `internal sealed`, against the framework's extensibility policy — `Internal` conveys
+  "extend at your own risk," but nothing is to be cut off. The repo already followed this
+  (`FactoryEntryCall` is `public static` in `Internal`; `IFactoryEventPhaseScheduler` is
+  `public` in `Internal`) while both implementations behind those types were
+  `internal sealed`. The convention existed; it was just never written down, so this plan
+  reproduced the exception rather than the rule.
+- **Decision:** Amend — coordinator and scheduler both `public` and unsealed; the
+  coordinator's `DrainAsync` is `virtual` with a `protected` scheduler property; the
+  scheduler's members stay non-virtual with the reason stated in XML (interlocking
+  contract, replace via the interface). Policy written into `CLAUDE-DESIGN.md` so the next
+  type in that namespace inherits the rule instead of a coin flip.
+- **Follow-up:** Verified against EF Core 10.0.3 rather than asserted: ~4,500 public
+  documented members in `*.Internal`, `DbContextServices` is `public` and unsealed with no
+  marker attribute — the namespace alone. **The gap worth acting on:** EF's policy has a
+  third leg this repo lacks — `InternalUsageDiagnosticAnalyzer` (EF1001, `Usage`, Warning
+  by default) flags consumer code touching `*.Internal` *at the point of use*. Without it
+  the warning only reaches people who read XML docs. Candidate for its own plan; the
+  generator's NF-diagnostic infrastructure already exists. Also worth a sweep: ~20 other
+  types in `Neatoo.RemoteFactory.Internal` have not been audited against this policy.
+
 ### 2026-08-16 — PHASE-004 (code review: the plan restated the AC it was chartered to restate, and missed the one it broke)
 
 - **Finding:** Code review V1. PHASE-004 falsified **two** acceptance criteria and restated

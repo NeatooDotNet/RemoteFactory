@@ -86,7 +86,25 @@ public interface IFactoryEventPhaseScheduler
     Task DrainAsync(DispatchPhase phase, bool inTransaction, CancellationToken cancellationToken = default);
 }
 
-internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
+/// <summary>
+/// The per-scope queue and drain primitive behind <see cref="IFactoryEventPhaseScheduler"/>.
+/// </summary>
+/// <remarks>
+/// Infrastructure supporting the RemoteFactory runtime, not subject to the same
+/// compatibility standards as the rest of the public API — it may change or be removed in
+/// any release. The <c>Internal</c> namespace is the warning, not a wall: nothing here is
+/// closed off, and extending it is your call to make with that risk understood.
+/// <para>
+/// Members are deliberately non-virtual for now. The queueing, entry-depth, and drain
+/// semantics are a single interlocking contract — pinned by
+/// <c>FactoryEventPhaseSchedulerTests</c> and <c>FactoryEntryCallTests</c> — and opening
+/// individual members to override would publish seams that cannot be honored
+/// independently of each other. Replace the whole implementation through
+/// <see cref="IFactoryEventPhaseScheduler"/> if you need different behavior; the DI
+/// registration is <c>TryAddScoped</c>, so registering your own first wins.
+/// </para>
+/// </remarks>
+public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
 {
     private readonly IServiceProvider _sp;
     private readonly ILogger? _logger;
