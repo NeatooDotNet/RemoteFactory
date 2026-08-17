@@ -3,7 +3,7 @@
 **Plan #:** 005
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-08-17
 **Plan-review opt-in:** No (documentation of already-reviewed behavior)
 **Code-review opt-in:** No (doc-only; Design code samples are exercised by Design.Tests)
@@ -240,11 +240,26 @@ decision recorded at draft time is the hand-written-vs-mdsnippets convention cal
 
 ## Test Evidence
 
-*(filled after implementation, before the Step 5 gate)*
+Filled 2026-08-17, after implementation, before the gate. All cited tests are new in
+this plan, in `Design.Tests.FactoryTests.FactoryEventPhasesTests`, run through
+`DesignClientServerContainers` (client/server/local containers with real serialization
+— the Design tier's integration shape). Gate logs: `reviews/005-build.log`
+(both solutions — see the RP-0 note), `reviews/005-test.log` (unit 705×2,
+integration 587×2 + 5 standing skips, Design 91×2 — 86 pre-existing + these 5).
+Red-proof: `reviews/005-redproof.log` (RP-1 measured — exact predicted 2-red
+signature; RP-0 records the stale-DLL false-green incident and the resulting
+"Design total must read 91" gate rule).
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| | | | |
+| Three phases attribute-declared; coordinator drain inside the body; ordering vs. differing raise order | `[integration]` | `Finalize_Remote_RunsEachPhaseAtItsDrainPoint`, `Finalize_Logical_RunsEachPhaseAtItsDrainPoint` (drain position, both modes), `QuarterClose_Remote_RunsInPhaseOrderNotRaiseOrder` (reverse raise order + post-drain interleave) | ✓ |
+| Fail-open: never-drained AfterFlush runs after the body | `[integration]` | `Archive_NeverDrained_AfterFlushHandlerRunsAtTheSweep` | ✓ |
+| Failed entry call discards queued phased work | `[integration]` | `PaymentIntake_EntryCallThrows_QueuedPhasedWorkIsDiscarded` | ✓ |
+| `docs/factory-events.md` full phase contract | `[explicit-skip: prose]` | — (Dispatch Phases section + NF0504 + 9001–9007 + DI rows shipped; verified by the Step 7 sweep) | n/a |
+| attributes-reference phase argument; interfaces-reference coordinator entry | `[explicit-skip: prose]` | — (both shipped; line-218 clauses and stacking prose corrected per the inherited anchors) | n/a |
+| Skill carries the contract, stays self-contained | `[explicit-skip: prose]` | — (phases section, tables, SKILL.md rows; link grep found no reference outside the skill directory) | n/a |
+| Stale-claim sweep clean | `[explicit-skip: grep gate]` | — (patterns: before-Raise-returns, propagates-to-caller/aborts-chain, same-transaction/sharing-caller, Raise-returns-only-after, all/every-handlers-complete; fixed beyond the anchor list: `docs/decision-guide.md:120`, `docs/factory-operations.md:448`, `docs/interfaces-reference.md` IFactoryEvents entry, both relay data-flow diagrams, 3 quick-decision rows. Exclusions: `docs/release-notes/**`, `docs/plans/**`, `docs/todos/**` — versioned history and working documents) | n/a |
+| Existing Design tests unmodified; build/test green | `[explicit-skip: meta]` | — (`git diff` touches no existing test file except the additive container registration; gate logs green) | n/a |
 
 ---
 
