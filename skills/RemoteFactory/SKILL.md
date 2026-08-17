@@ -71,7 +71,7 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Should child entity methods be `internal`? | Yes - server-only, trimmable, invisible to client |
 | Can [Execute] return void? | No, must return Task<T> |
 | Can [Execute] go on a class factory? | Yes, if `public static` and returns containing type |
-| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope (shared DbContext/transaction), sequentially, awaited |
+| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope, sequentially; at the default `Immediate` phase that means shared DbContext/transaction, awaited at `Raise` |
 | How do I handle a factory event on the client? | Implement `IFactoryEventRelay` and register it in DI — RemoteFactory invokes `Relay(IReadOnlyList<FactoryEventBase>)` once per `[Remote]` call |
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No — separate generator pipeline |
 | I want a handler that participates in the factory's DB transaction | Use `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` — shared scope, sequential; at the default `Immediate` phase, exceptions propagate and roll back |

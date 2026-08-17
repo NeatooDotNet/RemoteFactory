@@ -213,9 +213,11 @@ CLIENT                           SERVER
   |-------------------------------->|
   |                                 | 2. Create runs in the request scope
   |                                 | 3. await events.Raise(new OrderCheckoutCompleted(...))
-  |                                 |    - every server-side [FactoryEventHandler<T>] static
+  |                                 |    - every Immediate [FactoryEventHandler<T>] static
   |                                 |      handler runs sequentially in the same scope;
-  |                                 |      Raise returns only after all handlers complete
+  |                                 |      Raise returns after they complete. AfterFlush/
+  |                                 |      AfterCommit handlers are queued for their
+  |                                 |      drain points (still before the response)
   |                                 |    - event is also captured in IFactoryEventCollector
   |                                 |
   |        RemoteResponseDto        | 4. HandleRemoteDelegateRequest attaches
@@ -227,7 +229,7 @@ CLIENT                           SERVER
   |    (fire-and-forget, strictly after step 5)
 ```
 
-The server awaits every `[FactoryEventHandler<T>]` before serializing the response, so a server handler exception propagates back to the client. On the client, the factory result is returned to the caller **before** `IFactoryEventRelay.Relay` is invoked — this is a hard ordering guarantee backed by a `Task.Run + Task.Yield` dispatch in `MakeRemoteDelegateRequest`.
+The server runs every handler before serializing the response — `Immediate` at `Raise`, deferred phases at their [drain points](#dispatch-phases) — so events raised by deferred handlers still join the same relay batch. An in-transaction handler exception (`Immediate` dispatch, the consumer's `AfterFlush` drain) fails the operation and propagates back to the client; post-completion handler exceptions are logged (9003) and never fail the response. On the client, the factory result is returned to the caller **before** `IFactoryEventRelay.Relay` is invoked — this is a hard ordering guarantee backed by a `Task.Run + Task.Yield` dispatch in `MakeRemoteDelegateRequest`.
 
 ### Client-Side Relay (Consumer Implements `IFactoryEventRelay`)
 

@@ -241,10 +241,12 @@ CLIENT                           SERVER
   | 1. _entity = await factory.Create(...)
   |------------------------------>| 2. Create runs in the request scope
   |                               | 3. await events.Raise(new OrderCheckoutCompleted(...))
-  |                               |    - every server-side [FactoryEventHandler<T>]
+  |                               |    - every Immediate [FactoryEventHandler<T>]
   |                               |      static handler runs sequentially in the same
-  |                               |      scope, awaited; Raise returns only after all
-  |                               |      handlers complete (or one throws)
+  |                               |      scope, awaited; Raise returns only after they
+  |                               |      complete (or one throws). AfterFlush/AfterCommit
+  |                               |      handlers are queued for their drain points
+  |                               |      (still before the response is serialized)
   |                               |    - event is captured in IFactoryEventCollector
   |      RemoteResponseDto        | 4. Server attaches collected events to response
   |  { Json, RelayedEvents: [..] }|

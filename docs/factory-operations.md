@@ -445,7 +445,7 @@ Use class factory Execute when the orchestration logic is tightly coupled to the
 
 ## Events
 
-There is no `[Event]` method attribute. Domain events are published via the mediator surface — `IFactoryEvents.Raise<T>` inside a factory method, dispatched to server-side `[FactoryEventHandler<T>]` static handlers and optionally relayed to the client. Handlers run **in the caller's DI scope, sequentially, awaited** — they participate in the caller's transaction. See [Factory Events](factory-events.md) for the full pattern.
+There is no `[Event]` method attribute. Domain events are published via the mediator surface — `IFactoryEvents.Raise<T>` inside a factory method, dispatched to server-side `[FactoryEventHandler<T>]` static handlers and optionally relayed to the client. Handlers run **in the caller's DI scope, sequentially, awaited** — at the default `Immediate` phase they participate in the caller's transaction, while `AfterFlush`/`AfterCommit` handlers defer to later drain points. See [Factory Events](factory-events.md) for the full pattern and [Dispatch Phases](factory-events.md#dispatch-phases) for the phase contract.
 
 For fire-and-forget work that must not participate in the caller's transaction (email, webhooks, audit sinks to external systems), RemoteFactory no longer ships a framework-supplied surface. Compose a manual pattern inside the factory method:
 
