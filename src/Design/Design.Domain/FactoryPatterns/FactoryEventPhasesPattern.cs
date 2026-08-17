@@ -396,11 +396,17 @@ public partial class InvoiceArchiver
 // SCENARIO 4: A FAILED ENTRY CALL DISCARDS QUEUED WORK
 // =============================================================================
 //
-// _Record raises an event with handlers at all three phases, then throws. The
-// Immediate handler already ran at Raise — inside the transaction the consumer's
-// rollback unwinds, which is exactly why Immediate is the atomic phase. The
-// queued AfterFlush and AfterCommit work is DISCARDED (logged at Debug, 9006):
-// deferred handlers never observe an operation that failed.
+// _Record raises an event with handlers at all three phases, then either
+// completes the consumer pattern (drain, marker) or throws before the drain.
+//
+// On the failure path the Immediate handler has already run at Raise — inside
+// the transaction the consumer's rollback unwinds, which is exactly why
+// Immediate is the atomic phase. The queued AfterFlush and AfterCommit work is
+// DISCARDED (logged at Debug, 9006): deferred handlers never observe an
+// operation that failed. Discarded, not merely skipped — a later successful
+// call in the same scope drains only its own work; the failed call's queue
+// does not ride along (the success path exists in this scenario precisely so
+// a test can prove that from the audit trail).
 // =============================================================================
 
 public record PaymentRecordedEvent(Guid PaymentId) : FactoryEventBase;
@@ -441,7 +447,10 @@ public static partial class PaymentReceiptProjection
     }
 }
 
-/// <summary>Raises phased work, then fails — the queues must be discarded.</summary>
+/// <summary>
+/// Raises phased work, then either completes the consumer pattern (accept) or
+/// throws before the drain (reject) — the queues must be discarded on rejection.
+/// </summary>
 [Factory]
 public static partial class PaymentIntake
 {
@@ -449,12 +458,24 @@ public static partial class PaymentIntake
     [Remote]
     internal static async Task<Guid> _Record(
         Guid paymentId,
+        bool reject,
         [Service] IFactoryEvents events,
+        [Service] IFactoryEventPhaseCoordinator coordinator,
         [Service] IPhaseAuditService audit,
         CancellationToken ct)
     {
         audit.Record(paymentId, "pay-started");
         await events.Raise(new PaymentRecordedEvent(paymentId), RaiseOptions.None, ct);
-        throw new InvalidOperationException("Payment rejected after the raise — the entry call fails.");
+
+        if (reject)
+        {
+            // Failing before the drain: the AfterFlush and AfterCommit queues are
+            // discarded at entry-call exit. The Immediate handler already ran.
+            throw new InvalidOperationException("Payment rejected after the raise — the entry call fails.");
+        }
+
+        await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct);
+        audit.Record(paymentId, "pay-done");
+        return paymentId;
     }
 }

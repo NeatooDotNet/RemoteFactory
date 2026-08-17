@@ -1,5 +1,6 @@
 using Design.Domain.FactoryPatterns;
 using Design.Tests.TestInfrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory;
 
 namespace Design.Tests.FactoryTests;
@@ -31,12 +32,16 @@ public class FactoryEventPhasesTests
         var factory = client.GetRequiredService<IInvoiceFactory>();
         var id = Guid.NewGuid();
 
-        await factory.Finalize(id, 100m);
+        var invoice = await factory.Finalize(id, 100m);
 
         var audit = server.GetRequiredService<IPhaseAuditService>();
         Assert.Equal(
             ["invoice-immediate", "invoice-flush", "invoice-method-done", "invoice-commit"],
             audit.EntriesFor(id));
+
+        // The remote leg is real: the entity serialized back across the boundary.
+        Assert.Equal(id, invoice.Id);
+        Assert.Equal(100m, invoice.Total);
 
         server.Dispose();
         client.Dispose();
@@ -89,10 +94,12 @@ public class FactoryEventPhasesTests
 
     /// <summary>
     /// Fail-open: an AfterFlush handler whose factory method never drains still
-    /// runs — after the method body, at the AfterCommit point (with Warning 9007
-    /// in the server's logs naming the event type). Compare the marker order with
-    /// Finalize_Remote above: the drain call is what moves "archive-flush" ahead
-    /// of the method-done marker.
+    /// runs — after the method body, at the AfterCommit point. (The framework also
+    /// logs Warning 9007 naming the event type; that emission is pinned by the
+    /// unit and integration suites — this harness runs a NullLogger, so only the
+    /// marker order is observed here.) Compare the order with Finalize_Remote
+    /// above: the drain call is what moves "archive-flush" ahead of the
+    /// method-done marker.
     /// </summary>
     [Fact]
     public async Task Archive_NeverDrained_AfterFlushHandlerRunsAtTheSweep()
@@ -122,12 +129,66 @@ public class FactoryEventPhasesTests
         var record = client.GetRequiredService<PaymentIntake.Record>();
         var id = Guid.NewGuid();
 
-        await Assert.ThrowsAnyAsync<Exception>(() => record(id));
+        await Assert.ThrowsAnyAsync<Exception>(() => record(id, reject: true));
 
         var audit = server.GetRequiredService<IPhaseAuditService>();
         Assert.Equal(["pay-started", "pay-immediate"], audit.EntriesFor(id));
 
         server.Dispose();
         client.Dispose();
+    }
+
+    /// <summary>
+    /// The positive control for the discard demonstration, and the proof the
+    /// failed call's queue was discarded rather than left dangling: a failed call
+    /// followed by a successful call in the SAME server scope. The success runs
+    /// all four of its own markers; the failed call's trail never grows — its
+    /// queued work does not ride the survivor's drain.
+    /// </summary>
+    [Fact]
+    public async Task PaymentIntake_FailedThenSuccessfulCall_SameScope_DiscardsRatherThanLeaks()
+    {
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var record = client.GetRequiredService<PaymentIntake.Record>();
+        var rejectedId = Guid.NewGuid();
+        var acceptedId = Guid.NewGuid();
+
+        await Assert.ThrowsAnyAsync<Exception>(() => record(rejectedId, reject: true));
+        await record(acceptedId, reject: false);
+
+        var audit = server.GetRequiredService<IPhaseAuditService>();
+
+        // The success path proves every Payment handler is wired end to end.
+        Assert.Equal(
+            ["pay-started", "pay-immediate", "pay-flush", "pay-done", "pay-commit"],
+            audit.EntriesFor(acceptedId));
+
+        // Discarded, not leaked: the rejected call's flush/commit work did not
+        // run during the accepted call's drains.
+        Assert.Equal(["pay-started", "pay-immediate"], audit.EntriesFor(rejectedId));
+
+        server.Dispose();
+        client.Dispose();
+    }
+
+    /// <summary>
+    /// The DI boundary: the coordinator is registered where handlers dispatch
+    /// (Server, Logical) and absent in Remote mode — a client container has no
+    /// handlers to drain, so resolving it there yields null (and `[Service]`
+    /// injection on a non-[Remote] method would fail with the standard
+    /// not-registered exception).
+    /// </summary>
+    [Fact]
+    public void Coordinator_NotRegisteredInTheRemoteClientContainer()
+    {
+        var (server, client, local) = DesignClientServerContainers.Scopes();
+
+        Assert.Null(client.ServiceProvider.GetService<IFactoryEventPhaseCoordinator>());
+        Assert.NotNull(server.ServiceProvider.GetService<IFactoryEventPhaseCoordinator>());
+        Assert.NotNull(local.ServiceProvider.GetService<IFactoryEventPhaseCoordinator>());
+
+        server.Dispose();
+        client.Dispose();
+        local.Dispose();
     }
 }

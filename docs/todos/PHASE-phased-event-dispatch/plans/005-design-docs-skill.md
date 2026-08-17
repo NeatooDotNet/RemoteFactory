@@ -240,22 +240,23 @@ decision recorded at draft time is the hand-written-vs-mdsnippets convention cal
 
 ## Test Evidence
 
-Filled 2026-08-17, after implementation, before the gate. All cited tests are new in
-this plan, in `Design.Tests.FactoryTests.FactoryEventPhasesTests`, run through
+Filled 2026-08-17, after implementation, before the gate; amended after gate round 1
+(two should-cover closures added 2 tests). All cited tests are new in this plan, in
+`Design.Tests.FactoryTests.FactoryEventPhasesTests`, run through
 `DesignClientServerContainers` (client/server/local containers with real serialization
 — the Design tier's integration shape). Gate logs: `reviews/005-build.log`
-(both solutions — see the RP-0 note), `reviews/005-test.log` (unit 705×2,
-integration 587×2 + 5 standing skips, Design 91×2 — 86 pre-existing + these 5).
+(both solutions — see the RP-0 note), `reviews/005-test.log` (round 2: unit 705×2,
+integration 587×2 + 5 standing skips, Design 93×2 — 86 pre-existing + these 7).
 Red-proof: `reviews/005-redproof.log` (RP-1 measured — exact predicted 2-red
 signature; RP-0 records the stale-DLL false-green incident and the resulting
-"Design total must read 91" gate rule).
+Design-count gate rule, now 93). Gate record: `reviews/005-test-review.md`.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
 | Three phases attribute-declared; coordinator drain inside the body; ordering vs. differing raise order | `[integration]` | `Finalize_Remote_RunsEachPhaseAtItsDrainPoint`, `Finalize_Logical_RunsEachPhaseAtItsDrainPoint` (drain position, both modes), `QuarterClose_Remote_RunsInPhaseOrderNotRaiseOrder` (reverse raise order + post-drain interleave) | ✓ |
 | Fail-open: never-drained AfterFlush runs after the body | `[integration]` | `Archive_NeverDrained_AfterFlushHandlerRunsAtTheSweep` | ✓ |
-| Failed entry call discards queued phased work | `[integration]` | `PaymentIntake_EntryCallThrows_QueuedPhasedWorkIsDiscarded` | ✓ |
-| `docs/factory-events.md` full phase contract | `[explicit-skip: prose]` | — (Dispatch Phases section + NF0504 + 9001–9007 + DI rows shipped; verified by the Step 7 sweep) | n/a |
+| Failed entry call discards queued phased work | `[integration]` | `PaymentIntake_EntryCallThrows_QueuedPhasedWorkIsDiscarded`; `PaymentIntake_FailedThenSuccessfulCall_SameScope_DiscardsRatherThanLeaks` (gate round 1: positive control + discard-vs-leak) | ✓ |
+| `docs/factory-events.md` full phase contract | `[explicit-skip: prose]` | — (Dispatch Phases section + NF0504 + 9001–9007 + DI rows shipped; verified by the Step 7 sweep and the gate's independent prose-vs-code check; the DI table's Remote-mode row additionally pinned by `Coordinator_NotRegisteredInTheRemoteClientContainer`, gate round 1) | n/a |
 | attributes-reference phase argument; interfaces-reference coordinator entry | `[explicit-skip: prose]` | — (both shipped; line-218 clauses and stacking prose corrected per the inherited anchors) | n/a |
 | Skill carries the contract, stays self-contained | `[explicit-skip: prose]` | — (phases section, tables, SKILL.md rows; link grep found no reference outside the skill directory) | n/a |
 | Stale-claim sweep clean | `[explicit-skip: grep gate]` | — (patterns: before-Raise-returns, propagates-to-caller/aborts-chain, same-transaction/sharing-caller, Raise-returns-only-after, all/every-handlers-complete; fixed beyond the anchor list: `docs/decision-guide.md:120`, `docs/factory-operations.md:448`, `docs/interfaces-reference.md` IFactoryEvents entry, both relay data-flow diagrams, 3 quick-decision rows. Exclusions: `docs/release-notes/**`, `docs/plans/**`, `docs/todos/**` — versioned history and working documents) | n/a |
