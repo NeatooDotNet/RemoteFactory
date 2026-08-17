@@ -74,24 +74,56 @@ public interface IFactoryEventPhaseScheduler
     /// phase. <see langword="true"/> when the caller still has a transaction open, so a
     /// handler exception propagates and the caller can roll back. <see langword="false"/>
     /// for a post-completion drain, where a throw can no longer roll anything back and is
-    /// therefore logged and swallowed per handler;
-    /// <see cref="OperationCanceledException"/> still propagates.
+    /// therefore logged and swallowed per handler — including a handler-internal
+    /// <see cref="OperationCanceledException"/>. Only genuine cooperative cancellation
+    /// (an <see cref="OperationCanceledException"/> while
+    /// <paramref name="cancellationToken"/> is cancelled) propagates, abandoning the rest
+    /// of the drain; those dispatches stay queued, to be discarded by the exit clear if
+    /// the cancellation fails the entry call, or swept at the
+    /// <see cref="DispatchPhase.AfterCommit"/> point if it does not.
     /// </param>
     /// <param name="cancellationToken">Token passed to the drained handlers.</param>
     Task DrainAsync(DispatchPhase phase, bool inTransaction, CancellationToken cancellationToken = default);
 }
 
-internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
+/// <summary>
+/// The per-scope queue and drain primitive behind <see cref="IFactoryEventPhaseScheduler"/>.
+/// </summary>
+/// <remarks>
+/// Infrastructure supporting the RemoteFactory runtime, not subject to the same
+/// compatibility standards as the rest of the public API — it may change or be removed in
+/// any release. The <c>Internal</c> namespace is the warning, not a wall: nothing here is
+/// closed off, and extending it is your call to make with that risk understood.
+/// <para>
+/// Members are deliberately non-virtual for now. The queueing, entry-depth, and drain
+/// semantics are a single interlocking contract — pinned by
+/// <c>FactoryEventPhaseSchedulerTests</c> and <c>FactoryEntryCallTests</c> — and opening
+/// individual members to override would publish seams that cannot be honored
+/// independently of each other. Replace the whole implementation through
+/// <see cref="IFactoryEventPhaseScheduler"/> if you need different behavior; the DI
+/// registration is <c>TryAddScoped</c>, so registering your own first wins.
+/// </para>
+/// </remarks>
+public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
 {
     private readonly IServiceProvider _sp;
     private readonly ILogger? _logger;
     private readonly Dictionary<DispatchPhase, Queue<QueuedDispatch>> _deferred = new();
 
-    // Guards _deferred and _entryDepth. Scopes can be shared by concurrent flows
-    // (Blazor Server circuits, Logical mode, a reused test scope); handlers are
-    // invoked outside the lock.
+    // Guards _deferred, _entryDepth, and _activeDrains. Scopes can be shared by
+    // concurrent flows (Blazor Server circuits, Logical mode, a reused test scope);
+    // handlers are invoked outside the lock.
     private readonly object _gate = new();
     private int _entryDepth;
+
+    // Nonzero while any DrainAsync loop is in flight in this scope. Enqueue stamps each
+    // dispatch with it, which is what lets the post-completion sweep tell "the consumer
+    // never drained this" (warn) from "a handler created this mid-drain, after every
+    // drain point it could have used had passed" (the documented carve-out, silent).
+    // A counter rather than a bool: a consumer AfterFlush drain can run while the entry
+    // drain is active (a swept handler calling the coordinator), and the mark must not
+    // drop early.
+    private int _activeDrains;
 
     public FactoryEventPhaseScheduler(IServiceProvider sp, ILoggerFactory? loggerFactory = null)
     {
@@ -102,7 +134,8 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     private readonly record struct QueuedDispatch(
         FactoryEventBase Event,
         RaiseOptions Options,
-        Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Handler);
+        Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Handler,
+        bool EnqueuedMidDrain);
 
     public bool HasPending
     {
@@ -170,9 +203,11 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
         }
         finally
         {
-            // Depth release and a discard of anything a thrown drain (handler OCE) left
-            // behind — a clear, never a drain, preserving "between entry calls the
-            // scheduler is empty."
+            // Depth release. With CancellationToken.None the drain's cancellation filter
+            // is constant-false and every handler exception is swallowed, so this drain
+            // no longer throws — the finally stays as armor for that invariant rather
+            // than for a known path, preserving "between entry calls the scheduler is
+            // empty" even if the drain's contract drifts.
             ClearAtExit();
         }
     }
@@ -190,7 +225,7 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                 _deferred[phase] = queue;
             }
 
-            queue.Enqueue(new QueuedDispatch(factoryEvent, options, handler));
+            queue.Enqueue(new QueuedDispatch(factoryEvent, options, handler, EnqueuedMidDrain: _activeDrains > 0));
         }
 
         if (_logger?.IsEnabled(LogLevel.Debug) == true)
@@ -203,36 +238,70 @@ internal sealed class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     {
         var drained = 0;
 
-        // Dequeue one at a time rather than snapshotting: a handler running here may raise
-        // an event whose handlers are deferred, and those dispatches belong to this drain.
-        // TryDequeueThrough also picks up earlier phases, which a handler can still enqueue
-        // into after that phase's own drain point has passed — without this they would sit
-        // in a scope nobody drains again. An unterminated raise loop is the consumer's bug,
-        // exactly as it is for today's synchronous chained raises.
-        while (TryDequeueThrough(phase, out var dispatch, out var dispatchPhase))
+        lock (_gate)
         {
-            drained++;
+            _activeDrains++;
+        }
 
-            if (inTransaction)
+        try
+        {
+            // Dequeue one at a time rather than snapshotting: a handler running here may raise
+            // an event whose handlers are deferred, and those dispatches belong to this drain.
+            // TryDequeueThrough also picks up earlier phases, which a handler can still enqueue
+            // into after that phase's own drain point has passed — without this they would sit
+            // in a scope nobody drains again. An unterminated raise loop is the consumer's bug,
+            // exactly as it is for today's synchronous chained raises.
+            while (TryDequeueThrough(phase, out var dispatch, out var dispatchPhase))
             {
-                await dispatch.Handler(_sp, dispatch.Event, dispatch.Options, cancellationToken).ConfigureAwait(false);
-                continue;
-            }
+                drained++;
+
+                if (inTransaction)
+                {
+                    await dispatch.Handler(_sp, dispatch.Event, dispatch.Options, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                // Fail-open announcement (AC-5): an AfterFlush dispatch reaching a
+                // post-completion drain was never drained by the consumer — whether they
+                // wired no drain at all or raised this after their drain had run — UNLESS
+                // it was created mid-drain, where every drain point it could have used had
+                // already passed (the documented carve-out). Logged before invoking: the
+                // warning is about when the work ran, not whether it succeeded.
+                if (dispatchPhase == DispatchPhase.AfterFlush && !dispatch.EnqueuedMidDrain)
+                {
+                    _logger?.FactoryEventPhaseNeverDrained(dispatch.Event.GetType().Name);
+                }
 
 #pragma warning disable CA1031 // Post-completion handler exceptions cannot roll anything back; swallowing is the contract.
-            try
-            {
-                await dispatch.Handler(_sp, dispatch.Event, dispatch.Options, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger?.FactoryEventPhaseHandlerFailed(dispatchPhase, dispatch.Event.GetType().Name, ex);
-            }
+                try
+                {
+                    await dispatch.Handler(_sp, dispatch.Event, dispatch.Options, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Genuine cooperative cancellation: the drain's own token fired, so the
+                    // caller asked to stop — propagate, abandoning the rest of the queue
+                    // (the entry exit's clear discards it). The framework's entry drain
+                    // passes CancellationToken.None, so this filter is constant-false
+                    // there by design: nothing may abort a succeeded call's
+                    // post-completion work, and a handler-internal OCE falls through to
+                    // the swallow below like any other post-completion failure (PHASE-004,
+                    // restating the earlier "OCE still propagates" contract).
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.FactoryEventPhaseHandlerFailed(dispatchPhase, dispatch.Event.GetType().Name, ex);
+                }
 #pragma warning restore CA1031
+            }
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                _activeDrains--;
+            }
         }
 
         if (drained > 0 && _logger?.IsEnabled(LogLevel.Debug) == true)

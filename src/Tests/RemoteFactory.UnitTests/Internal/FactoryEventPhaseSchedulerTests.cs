@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.Internal;
+using RemoteFactory.UnitTests.TestContainers;
 
 namespace RemoteFactory.UnitTests.Internal;
 
@@ -32,43 +33,8 @@ public class FactoryEventPhaseSchedulerTests
         return new FactoryEventPhaseScheduler(services.BuildServiceProvider(), loggerFactory);
     }
 
-    private sealed record LogEntry(int EventId, LogLevel Level, Exception? Exception, DispatchPhase? Phase);
-
-    private sealed class CapturingLoggerProvider : ILoggerProvider
-    {
-        public List<LogEntry> Entries { get; } = [];
-
-        public ILogger CreateLogger(string categoryName) => new CapturingLogger(this);
-
-        public void Dispose() { }
-
-        private sealed class CapturingLogger(CapturingLoggerProvider owner) : ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-            public bool IsEnabled(LogLevel logLevel) => true;
-
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                DispatchPhase? phase = null;
-                if (state is IReadOnlyList<KeyValuePair<string, object?>> values)
-                {
-                    foreach (var pair in values)
-                    {
-                        if (pair.Key == "Phase" && pair.Value is DispatchPhase p)
-                        {
-                            phase = p;
-                        }
-                    }
-                }
-
-                lock (owner.Entries)
-                {
-                    owner.Entries.Add(new LogEntry(eventId.Id, logLevel, exception, phase));
-                }
-            }
-        }
-    }
+    // LogEntry / CapturingLoggerProvider extracted to TestContainers (PHASE-004) so
+    // entry-call-scoped tests can wire the capture into a real DI container.
 
     private static Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Recording(List<string> log, string name)
         => (_, _, _, _) =>
@@ -143,15 +109,58 @@ public class FactoryEventPhaseSchedulerTests
         Assert.Equal(["before", "after"], log);
     }
 
+    /// <summary>
+    /// PHASE-004 pre-declared pin amendment: this test previously pinned
+    /// "OCE still propagates at a post-completion drain" and now pins the restated
+    /// contract — a handler-internal OCE with no live cancelled token is a
+    /// post-completion failure like any other: swallowed, logged as 9003, and the
+    /// dispatches behind it still run. The old behavior failed a call that had already
+    /// succeeded AND silently discarded the rest of the queue — the exact loss AC-3
+    /// exists to prevent.
+    /// </summary>
     [Fact]
-    public async Task DrainAsync_PostCompletion_StillPropagatesCancellation()
+    public async Task DrainAsync_PostCompletion_SwallowsHandlerInternalCancellationAndRunsTheRest()
     {
-        var dispatcher = NewDispatcher();
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
 
         dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("a"), RaiseOptions.None, Throwing(new OperationCanceledException()));
+        dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "behind-the-oce"));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(
-            () => dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false));
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["behind-the-oce"], log);
+        Assert.False(dispatcher.HasPending);
+        var failure = Assert.Single(logs.Entries, e => e.EventId == 9003);
+        Assert.IsAssignableFrom<OperationCanceledException>(failure.Exception);
+    }
+
+    /// <summary>
+    /// The half of the restated contract that keeps "OCE still propagates" true where it
+    /// means something: the drain's own token going cancelled is genuine cooperative
+    /// cancellation, and it aborts the drain — the un-run dispatch stays queued (for the
+    /// entry exit's clear), it is not swallowed-and-continued past.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_PostCompletion_CooperativeCancellationStillPropagatesAndAbandonsTheRest()
+    {
+        var dispatcher = NewDispatcher();
+        var log = new List<string>();
+        using var cts = new CancellationTokenSource();
+
+        dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("a"), RaiseOptions.None, (_, _, _, ct) =>
+        {
+            cts.Cancel();
+            ct.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        });
+        dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "never runs"));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false, cts.Token));
+
+        Assert.Empty(log);
+        Assert.True(dispatcher.HasPending);
     }
 
     [Fact]
@@ -273,6 +282,103 @@ public class FactoryEventPhaseSchedulerTests
         // that was requested.
         var failure = Assert.Single(logs.Entries, e => e.EventId == 9003);
         Assert.Equal(DispatchPhase.AfterFlush, failure.Phase);
+    }
+
+    /// <summary>
+    /// AC-5's warning (PHASE-004): every AfterFlush dispatch the post-completion sweep
+    /// picks up warns, per dispatch, naming the event type — including one whose handler
+    /// then throws, because the warning is about when the work ran, not whether it
+    /// succeeded.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_PostCompletionSweepOfUndrainedAfterFlush_WarnsPerDispatchNamingTheEventType()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, Throwing(new InvalidOperationException("boom")));
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "flush"));
+
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["flush"], log);
+        var warnings = logs.Entries.Where(e => e.EventId == 9007).ToList();
+        Assert.Equal(2, warnings.Count);
+        Assert.All(warnings, w =>
+        {
+            Assert.Equal(LogLevel.Warning, w.Level);
+            Assert.Equal(nameof(PhaseTestEvent), w.EventType);
+        });
+    }
+
+    /// <summary>
+    /// The documented carve-out stays silent: work a handler creates mid-sweep had no
+    /// drain point left to miss, so it runs without the fail-open warning.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_AfterFlushWorkCreatedMidSweep_RunsWithoutTheFailOpenWarning()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("a"), RaiseOptions.None, (_, _, _, _) =>
+        {
+            log.Add("commit");
+            dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("late"), RaiseOptions.None, Recording(log, "late-flush"));
+            return Task.CompletedTask;
+        });
+
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["commit", "late-flush"], log);
+        Assert.DoesNotContain(logs.Entries, e => e.EventId == 9007);
+    }
+
+    /// <summary>
+    /// AC-5's letter, third case: the consumer drained, then raised MORE AfterFlush work
+    /// from their own code — not from inside any drain. That work was never drained by
+    /// the consumer, runs at the sweep, and warns. (A per-entry-call "consumer drained"
+    /// flag would silence this case; the per-dispatch discriminator does not — plan
+    /// review A-V2.)
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_AfterFlushRaisedAfterTheConsumersOwnDrain_StillWarnsAtTheSweep()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        // The consumer's drain: covers everything queued so far.
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, Recording(log, "drained-by-consumer"));
+        await dispatcher.DrainAsync(DispatchPhase.AfterFlush, inTransaction: true);
+        Assert.DoesNotContain(logs.Entries, e => e.EventId == 9007);
+
+        // Raised after the drain, outside any drain loop.
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "raised-after-drain"));
+
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["drained-by-consumer", "raised-after-drain"], log);
+        var warning = Assert.Single(logs.Entries, e => e.EventId == 9007);
+        Assert.Equal(nameof(PhaseTestEvent), warning.EventType);
+    }
+
+    /// <summary>
+    /// The happy path is silent end to end: work the consumer actually drains produces
+    /// no fail-open warning at either drain.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_ConsumerDrainedAfterFlush_NeverWarns()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, Recording(log, "flush"));
+        await dispatcher.DrainAsync(DispatchPhase.AfterFlush, inTransaction: true);
+
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["flush"], log);
+        Assert.DoesNotContain(logs.Entries, e => e.EventId == 9007);
     }
 
     [Fact]

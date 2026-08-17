@@ -130,6 +130,39 @@ public class FactoryEventPhaseRegistrationTests
         Assert.Null(scope.ServiceProvider.GetService<IFactoryEventPhaseScheduler>());
     }
 
+    [Theory]
+    [InlineData(NeatooFactory.Server)]
+    [InlineData(NeatooFactory.Logical)]
+    public void PhaseCoordinator_RegisteredInModesThatDispatchHandlers(NeatooFactory mode)
+    {
+        // Registration parity with the scheduler (PHASE-004): where handlers dispatch,
+        // a consumer can drain.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddNeatooRemoteFactory(mode, typeof(FactoryEventPhaseRegistrationTests).Assembly);
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.NotNull(scope.ServiceProvider.GetService<IFactoryEventPhaseCoordinator>());
+    }
+
+    [Fact]
+    public void PhaseCoordinator_NotRegisteredInRemoteMode()
+    {
+        // Remote mode has no handlers to drain; [Service]-injecting the coordinator on a
+        // non-[Remote] method there gets the standard not-registered failure — the
+        // client/server-boundary contract, not a silent no-op.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(FactoryEventPhaseRegistrationTests).Assembly);
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.Null(scope.ServiceProvider.GetService<IFactoryEventPhaseCoordinator>());
+    }
+
     [Fact]
     public void PhaseDispatcher_IsScoped_NotSharedAcrossScopes()
     {

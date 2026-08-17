@@ -30,12 +30,25 @@ exposes drain points.
 
 - [ ] A handler registered `AfterCommit` runs after the entry factory call completes (works
       for both HTTP-dispatched `[Remote]` calls and direct server-side/local invocation),
-      and all `Immediate` handlers for the same save complete before any `AfterFlush`
-      handler, which complete before any `AfterCommit` handler.
+      and cross-phase ordering is anchored **per drain point**: for work raised before a
+      given drain point, all `Immediate` handlers complete before any `AfterFlush` handler,
+      which complete before any `AfterCommit` handler. Code that raises *after* its own
+      `AfterFlush` drain interleaves that later `Immediate` work between drain points —
+      the guarantee is per drain point, not a global barrier over the operation.
+      *(Restated by PHASE-004, which created the in-body consumer drain point that makes
+      the interleave reachable; the original wording was "all `Immediate` handlers for the
+      same save complete before any `AfterFlush` handler, which complete before any
+      `AfterCommit` handler.")*
 - [ ] If the entry factory call throws, queued `AfterFlush`/`AfterCommit` handlers never
       run — the queues are discarded.
 - [ ] An `AfterCommit` handler exception is logged (dedicated event id) and swallowed;
-      remaining queued handlers still run; `OperationCanceledException` still propagates.
+      remaining queued handlers still run. A handler-internal `OperationCanceledException`
+      is swallowed the same way — the entry drain passes no token, so nothing may abort a
+      succeeded call's post-completion work; only genuine cooperative cancellation (the
+      drain's own token cancelled) propagates, at drain points that take one.
+      *(Restated by PHASE-004, exercising the decision PHASE-003's code review C2
+      delegated to it; the original wording was "`OperationCanceledException` still
+      propagates.")*
 - [ ] Events raised *by* `AfterCommit` handlers still reach the client in the same HTTP
       response's relay batch.
 - [ ] `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` drains the AfterFlush queue at
@@ -73,15 +86,122 @@ exposes drain points.
 | 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Done |
 | 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Done |
 | 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
-| 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Draft |
+| 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins; `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-16 — PHASE-004 (the `Internal` namespace is a warning, not a wall — and the repo already said so)
+
+- **Finding:** User review of the open PR: `FactoryEventPhaseCoordinator` shipped
+  `internal sealed`, against the framework's extensibility policy — `Internal` conveys
+  "extend at your own risk," but nothing is to be cut off. The repo already followed this
+  (`FactoryEntryCall` is `public static` in `Internal`; `IFactoryEventPhaseScheduler` is
+  `public` in `Internal`) while both implementations behind those types were
+  `internal sealed`. The convention existed; it was just never written down, so this plan
+  reproduced the exception rather than the rule.
+- **Decision:** Amend — coordinator and scheduler both `public` and unsealed; the
+  coordinator's `DrainAsync` is `virtual` with a `protected` scheduler property; the
+  scheduler's members stay non-virtual with the reason stated in XML (interlocking
+  contract, replace via the interface). Policy written into `CLAUDE-DESIGN.md` so the next
+  type in that namespace inherits the rule instead of a coin flip.
+- **Follow-up:** Verified against EF Core 10.0.3 rather than asserted: ~4,500 public
+  documented members in `*.Internal`, `DbContextServices` is `public` and unsealed with no
+  marker attribute — the namespace alone. **The gap worth acting on:** EF's policy has a
+  third leg this repo lacks — `InternalUsageDiagnosticAnalyzer` (EF1001, `Usage`, Warning
+  by default) flags consumer code touching `*.Internal` *at the point of use*. Without it
+  the warning only reaches people who read XML docs. Candidate for its own plan; the
+  generator's NF-diagnostic infrastructure already exists. Also worth a sweep: ~20 other
+  types in `Neatoo.RemoteFactory.Internal` have not been audited against this policy.
+
+### 2026-08-16 — PHASE-004 (code review: the plan restated the AC it was chartered to restate, and missed the one it broke)
+
+- **Finding:** Code review V1. PHASE-004 falsified **two** acceptance criteria and restated
+  one. AC-3's restatement was chartered, anticipated, executed with provenance. AC-1 —
+  "all `Immediate` handlers complete before any `AfterFlush` handler" — was falsified as a
+  side effect of creating the in-body consumer drain point, and a test this plan shipped
+  asserts the contradiction outright (`["ord-immediate", "ord-flush", "ord-immediate", …]`).
+  The code side had been handled correctly: plan review A-C3 caught the ordering sentence
+  and `DispatchPhase.cs` was rescoped. Nobody carried that same rescoping back to the
+  requirements doc — including me, one entry after adopting A-V1, whose whole content was
+  "the requirements doc must not contradict shipped behavior."
+- **Decision:** Amend — AC-1 restated in AC-3's exact form with provenance; plan Acceptance
+  bullet 3 reworded to the five-marker sequence its test asserts. Four callouts closed in
+  place (two public-XML precision fixes shipped now as permanent contract text, the plan's
+  carve-out Constraint widened to the shipped "any drain in flight" rule).
+- **Follow-up:** [reviews/004-code-review.md](./reviews/004-code-review.md). The pattern
+  worth carrying: an *expected* doc invalidation gets tracked and executed; an *incidental*
+  one — same plan, same file, discovered by the same review lineage — slips, because the
+  attention goes to the change that was planned for. When a plan restates one AC, that is
+  the moment to re-read all of them. PHASE-007 also grew an item: the coordinator's
+  short-circuit is silent, so a consumer who wires the drain *outside* the factory call
+  gets nothing plus a 9007 telling them to do what they just did.
+
+### 2026-08-15 — PHASE-004 (gate: the case-3 pin ran where production can't, and the red-proof log had an unmeasured claim)
+
+- **Finding:** The test-review gate's must-cover: the A-V2 case-3 warning pin drove a
+  bare scheduler with no entry call — a state the dispatcher never produces (it only
+  enqueues while an entry call is active) — and the *properly guarded* variant of the
+  rejected per-entry-call flag passed the entire suite, because that flag never latches
+  without an entry call. The red-proof log even claimed the flag design "would turn
+  [the bare test] red" — asserted, never measured, and false for the guarded variant.
+  Seventh "can't go red" instance in the arc, and the first found inside the red-proof
+  log itself. Two should-covers landed nearby: cooperative cancellation was pinned only
+  at the scheduler's post-completion drain (the evidence row cited the wrong drain
+  point), and `_activeDrains`-as-counter was a load-bearing comment a bool satisfied.
+- **Decision:** Amend — all three closed with tests: an entry-call-scoped case-3 pin
+  (raise → coordinator drain → raise again → exactly one 9007), a
+  cancel-mid-coordinator-drain pin, and an overlapping-drains pin. RP-7 added: the
+  guarded flag *actually implemented* and measured — new pin red, bare pin green
+  (measuring the gate's diagnosis) — and RP-3's false sentence corrected in place.
+  Two nice-to-haves taken (validation-before-short-circuit; the A-C3 interleave raise
+  added to the ordering sequences). Unit 701→705.
+- **Follow-up:** [reviews/004-test-review.md](./reviews/004-test-review.md) — includes
+  routing: the accepted undefined-phase silent no-op gets a documenting pin in
+  PHASE-007; `IEventTestService`/`ScopesWithLogging` attribution weaknesses fold into
+  PHASE-007's harness items; `SingleEventRelay_ConsumerReceivesEvent`'s hard 2-second
+  poll flakes under full-parallel load (2 of 3 full-solution runs today, never
+  serialized) — PHASE-007's harness scope grows by that timeout.
+  **Round 2 (2026-08-16): clean close** at must- and should-cover — the reviewer traced
+  both rejected designs against the shipped source and derived that the new pin catches
+  the subtler flag-plus-stamp variant too. It also caught that RP-7's closing sentence
+  claimed that variant *without measuring it* — the same species as the RP-3 miss the
+  round-1 closure had just corrected, one entry below it in the same file. Measured as
+  RP-9 (derivation held); RP-8 added for the counter-vs-bool claim; overlap test given a
+  witness dispatch; gate log now records its `-m:1` invocation. Worth keeping: the
+  reasoning-dressed-as-evidence habit reappeared *inside the fix for itself*, which
+  suggests the tell is the confident sentence with no run behind it, not the topic.
+
+### 2026-08-15 — PHASE-004 (plan review: 5 vetoes, all adopted before implementation)
+
+- **Finding:** Plan review returned CONCERNS. The sharpest: the draft's per-entry-call
+  "consumer drained" flag was narrower than AC-5's own wording — work a consumer raises
+  *after* their drain is literally "never drained by the consumer," yet the flag silences
+  it, and the draft's Intent and Constraints described two different promises without
+  noticing (A-V2). Also: the OCE restatement contradicted two `CLAUDE-DESIGN.md` log-table
+  rows outside the pre-declared amendment set (A-V1); "framework-owned phases rejected"
+  invited a blacklist that would let `(DispatchPhase)99` sweep the AfterCommit queue
+  in-transaction through the `p <= through` sweep (B-V1); the attribute-declared
+  consumer-drain bullet was green against a no-op coordinator — the arc's sixth "can't go
+  red" instance, caught at draft this time (B-V2); and "benign no-op outside an entry
+  call" was unfalsifiable while hiding an undecided delegate-vs-short-circuit choice that
+  matters under the per-scope concurrency limitation (B-V3).
+- **Decision:** Amend — all five vetoes adopted: per-dispatch warning discriminator
+  (created-mid-sweep is the only silent case; AC-5 stands as written), CLAUDE-DESIGN rows
+  into the amendment set, whitelist validation, before-method-done marker ordering as the
+  coordinator's red-proofed discriminator, short-circuit outside entry calls pinned via
+  direct `Enqueue`. Reviewer also verified (not inherited) that the AC-3 restatement is
+  legitimately chartered (003-code-review C2) and that the choke point's post-invoke
+  cancellation check keeps its integration pins green under the OCE change.
+- **Follow-up:** [reviews/004-plan-review.md](./reviews/004-plan-review.md) — full
+  disposition table. B-C3 note: the draft claimed a unit-tier log-capture harness needed
+  building; `FactoryEventPhaseSchedulerTests` already has one pinning 9003 — "verify,
+  don't inherit," caught by the reviewer this time.
 
 ### 2026-08-15 — PHASE-002 (both gates found the same unfalsifiable assertion)
 

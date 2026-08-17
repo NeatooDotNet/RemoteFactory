@@ -997,6 +997,36 @@ These are known limitations or open questions. They are documented here to preve
 
 ---
 
+## The `Neatoo.RemoteFactory.Internal` Namespace
+
+**Types in `Neatoo.RemoteFactory.Internal` are `public`. The namespace is the warning, not a wall.**
+
+The framework is fully extensible: nothing a consumer might legitimately need is cut off by
+an access modifier. What `Internal` conveys is *"extend at your own risk"* — these types
+support the runtime and are not subject to the same compatibility standards as the rest of
+the public API. They may change or be removed in any release.
+
+This follows Entity Framework Core, which does the same thing at scale — EF Core 10 ships
+~4,500 documented members in `*.Internal` namespaces, all public, each carrying the same
+kind of warning. `DbContextServices`, for example, is `public class`, not sealed.
+
+**Rules for types in this namespace:**
+
+| Rule | Why |
+|------|-----|
+| Declare `public`, not `internal` | A guess that no consumer will ever need it is a guess that is sometimes wrong; when it is, their only recourse is to fork |
+| Do not `seal` without a stated reason | `sealed` re-imposes the wall the namespace exists to avoid |
+| Carry the risk paragraph in the type's XML `<remarks>` | Today the doc comment is the only place the warning reaches a consumer |
+| State explicitly when members are non-virtual by design | Interlocking contracts (e.g. the scheduler's queue/depth/drain semantics) can be legitimately closed to piecemeal override — say so, don't leave it implied |
+
+**Known gap:** EF Core's version of this policy has a third leg — an analyzer (EF1001,
+`Usage`, Warning by default) that flags consumer code touching `*.Internal` namespaces at
+the point of use. RemoteFactory has no equivalent, so the warning currently reaches only
+readers of the XML docs. Worth building; the generator's NF-prefixed diagnostic
+infrastructure already exists.
+
+---
+
 ## Diagnostics and Log Events (Factory Events Relay)
 
 ### Compile-Time Diagnostics
@@ -1018,10 +1048,11 @@ These are known limitations or open questions. They are documented here to preve
 | 3012 | `FactoryEventTypeRegistryCollision` | Warning | `FactoryEventTypeRegistry` assembly scan finds two distinct `Type`s sharing the same `FullName` | Documents kept/dropped assembly; wire messages resolve to the kept type |
 | 9001 | `FactoryEventPhaseQueued` | Debug | A handler registered at a non-`Immediate` `DispatchPhase` is deferred instead of dispatched at `Raise` time | Informational |
 | 9002 | `FactoryEventPhaseDrained` | Debug | A phase drain completes, reporting how many dispatches ran through the requested phase (earlier phases included) | Informational |
-| 9003 | `FactoryEventPhaseHandlerFailed` | Error | A deferred handler throws during a **post-completion** drain (no ambient transaction) | Swallowed — the exception can no longer roll anything back; remaining queued handlers still run. `OperationCanceledException` still propagates. In-transaction drains propagate instead, so this never fires for them. |
+| 9003 | `FactoryEventPhaseHandlerFailed` | Error | A deferred handler throws during a **post-completion** drain (no ambient transaction) | Swallowed — the exception can no longer roll anything back; remaining queued handlers still run. A handler-internal `OperationCanceledException` is swallowed the same way; only genuine cooperative cancellation (the drain's own token is cancelled) propagates, and the framework's entry drain passes no token, so nothing aborts a succeeded call's post-completion work. In-transaction drains propagate instead, so this never fires for them. |
 | 9004 | `FactoryEventPhaseNoQueueInScope` | Debug | An event with a phased handler is raised in a scope with no `IFactoryEventPhaseScheduler` registered | Dispatched immediately rather than dropped |
 | 9005 | `FactoryEventPhaseRaisedOutsideEntryCall` | Debug | An event with a phased handler is raised while no entry factory call is active in the scope | Dispatched immediately rather than queued into a drain nobody owns |
-| 9006 | `FactoryEventPhaseDiscardedAtExit` | Debug | An entry-call exit discards deferred dispatches without running them — a failed call's clear, or the leftovers of a drain a handler's `OperationCanceledException` aborted | The clear (never a drain) that keeps discarded work from riding a later call's drain in long-lived scopes |
+| 9006 | `FactoryEventPhaseDiscardedAtExit` | Debug | An entry-call exit discards deferred dispatches without running them — a failed call's clear, including dispatches a cancelled consumer drain abandoned when that cancellation fails the call (if the consumer swallows it and the call still succeeds, those dispatches are swept at the `AfterCommit` point instead, with 9007) | The clear (never a drain) that keeps discarded work from riding a later call's drain in long-lived scopes |
+| 9007 | `FactoryEventPhaseNeverDrained` | Warning | The post-completion sweep picks up an `AfterFlush` dispatch the consumer never drained — no `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` covered it (work enqueued *while any drain is in flight in the scope* is exempt: its drain points had already passed — which, under the documented per-scope granularity, also exempts a concurrent flow's work enqueued during another flow's drain) | Fail-open: the dispatch still runs, at the `AfterCommit` point, under post-completion swallow semantics it did not ask for. One warning per dispatch, naming the event type. |
 
 ### Public Exception
 
