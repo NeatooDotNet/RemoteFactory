@@ -58,6 +58,11 @@ exposes drain points.
       immediately with a debug-level log (no throw, no silent drop).
 - [ ] Backward compatibility: handlers without a phase argument behave exactly as today —
       the full existing test suite passes unmodified.
+- [ ] Opt-in same-event coalescing (added 2026-08-18, tracing the 2026-08-14 user
+      decision that queued PHASE-006): a handler that opts in on its attribute runs
+      once per drain when the same `Equals`-identical event was raised N times during
+      the entry call; without the flag, N raises still produce N dispatches; no
+      collapse erases a fail-open 9007 obligation; the relay batch is unaffected.
 - [ ] Trimming safety preserved: phase registrations flow through the v1.7.0
       forwarding-holder pattern; nothing new ships handler bodies to trimmed clients.
 - [ ] Design projects demonstrate phased handlers (source of truth updated); published
@@ -67,7 +72,9 @@ exposes drain points.
 ## Out of Scope
 
 - Cross-event coalescing ("any of these four events → one recompute") — proposal
-  explicitly defers it; handlers can guard internally.
+  explicitly defers it; handlers can guard internally. *Same-event* coalescing is NOT
+  out of scope: the user carved it in as PHASE-006 (2026-08-14, "implement only if
+  001–005 land smoothly" — condition met 2026-08-17).
 - Fresh-scope execution for `AfterCommit` handlers — v1 runs them in the originating
   scope (proposal open question 1, resolved: same scope).
 - Any persistence concept in the framework: no flush, no commit, no transaction
@@ -95,6 +102,34 @@ exposes drain points.
 ---
 
 ## Discovery Log
+
+### 2026-08-18 — PHASE-006 (plan review: the collapse can delete a promised warning, and a ninth "can't go red" caught at draft)
+
+- **Finding:** Plan review returned CONCERNS — 4 vetoes. The sharpest: `QueuedDispatch`
+  is not just (handler, event) — the `EnqueuedMidDrain` bit is load-bearing for 9007,
+  and a collapse keyed without it silently picks one warn-bit; latest-wins erases the
+  warning todo AC-5 promises, with no trace. Also: the draft's composition bullet
+  bundled three claims of which the discard leg was green against a do-nothing
+  implementation (the discriminating 9006 count depended on an undecided design
+  question — the ninth "can't go red" instance, caught at draft like the sixth);
+  "events are records → value equality" is a false universal (reference-typed payloads
+  silently defeat coalescing for exactly the motivating shape; custom `Equals` can
+  over-collapse); and the NF0504 survivor rule is published in five strings the doc
+  step hadn't named — the incidental-invalidation species from PHASE-004's code
+  review, nearly repeated.
+- **Decision:** Amend — all 4 vetoes adopted by draft amendment before implementation:
+  warn-preserving merge as a Constraint with a red-proof-required pin; the bullet
+  split, which forced settling the collapse point to pending-queue semantics (counts
+  reflect the collapsed state — the reviewer showed falsifiability and that design
+  choice were coupled, not independent); identity restated as the `Equals` contract
+  with both hazards; Step 7 widened to the five survivor-rule strings. All 10
+  callouts folded in — including that two of the draft's five "open questions" were
+  already answered elsewhere in the draft itself, and that `Enqueue`'s 53 pinned call
+  sites force the overload shape.
+- **Follow-up:** [reviews/006-plan-review.md](./reviews/006-plan-review.md) — full
+  disposition. Todo edits in this entry's commit: coalescing AC bullet added (tracing
+  the 2026-08-14 user decision that queued 006), Out of Scope bullet now
+  distinguishes cross-event (out) from same-event (carved in).
 
 ### 2026-08-17 — PHASE-005 (gate round 1: clean at must-cover; the demonstration's own handlers had never been observed running)
 

@@ -4,8 +4,8 @@
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
 **Status:** Draft
-**Last Updated:** 2026-08-17
-**Plan-review opt-in:** Yes (public API surface on the attribute; dedup semantics are contract)
+**Last Updated:** 2026-08-18
+**Plan-review opt-in:** Yes (public API surface on the attribute; dedup semantics are contract) — **ran 2026-08-18, CONCERNS; all 4 vetoes adopted by draft amendment, see [reviews/006-plan-review.md](../reviews/006-plan-review.md)**
 **Code-review opt-in:** Yes (behavior-changing)
 
 ---
@@ -13,16 +13,19 @@
 ## Scope
 
 Queued per user decision (2026-08-14), condition met (001–005 landed): add an opt-in
-flag to `[FactoryEventHandler<T>]` so identical queued `(handler, event)` pairs (events
-are records — value equality) collapse to one dispatch when a phase queue drains,
-addressing the multiple-recomputes-per-save observation from the motivating proposal
-without consumer code. Same-event coalescing only — cross-event coalescing stays out of
-scope per the parent todo. The flag threads attribute → generator → registration →
-scheduler; docs, skill, CLAUDE-DESIGN, and the Design projects each gain their
-coalescing coverage in the surfaces PHASE-005 just laid. This plan does NOT change any
-behavior for handlers that don't opt in, does not coalesce `Immediate` dispatches
-(they are never queued), and does not touch the relay batch (every `Raise` is still
-collected and relayed — coalescing is about handler dispatch, not event delivery).
+flag to `[FactoryEventHandler<T>]` so identical queued `(handler, event)` pairs collapse
+to one pending dispatch, addressing the multiple-recomputes-per-save observation from
+the motivating proposal without consumer code. "Identical" means the queued events
+compare equal per `Equals` — the synthesized structural equality records give by
+default, with the two documented hazards that entails (see Constraints). Same-event
+coalescing only — cross-event coalescing stays out of scope per the parent todo. The
+flag threads attribute → generator → registration → scheduler; docs, skill,
+CLAUDE-DESIGN, and the Design projects each gain their coalescing coverage in the
+surfaces PHASE-005 just laid. This plan does NOT change any behavior for handlers that
+don't opt in, does not affect any dispatch that is never queued (`Immediate`, and the
+9004/9005 no-scheduler / no-entry-call fall-throughs), and does not touch the relay
+batch (every `Raise` is still collected and relayed — coalescing is about handler
+dispatch, not event delivery).
 
 ---
 
@@ -36,9 +39,14 @@ collected and relayed — coalescing is about handler dispatch, not event delive
   event type can have both coalescing and non-coalescing handlers.
 - Nothing changes for anyone who doesn't opt in: duplicate queued dispatches still run
   once each, in order — today's contract, pinned as backcompat.
-- The consumer-visible contract (what "identical" means, which dispatch survives, how
-  mid-drain raises interact) is documented wherever PHASE-005 documented the phase
-  contract.
+- **Pending-queue collapse semantics** (plan-review Q4, settled at draft): at any
+  moment the scope holds at most one pending dispatch per identity key, so the
+  observable counts — 9002 drained, 9006 discarded, `HasPending` — reflect the
+  collapsed state. This is what makes the discard-path acceptance falsifiable; the
+  in-lock mechanism that achieves it is the keyboard's choice (see Notes).
+- The consumer-visible contract (the identity key, its hazards, the fail-open-warning
+  preservation, unqueued-path behavior) is documented wherever PHASE-005 documented
+  the phase contract.
 
 ---
 
@@ -52,17 +60,20 @@ collected and relayed — coalescing is about handler dispatch, not event delive
   coalescing changes how many dispatches a drain runs, never when a drain runs, what
   exceptions do, or cross-phase ordering.
 - **Registry dedupe precedent:** `(event type, handler class)` first-registration-wins
-  and NF0504's "the first declaration registers, including its phase" extend to the new
-  flag — the surviving declaration's flag is the flag.
-- **Compiles-but-inert shapes diagnose as Warning** (NF0503/NF0504 precedent) — the
-  candidate here is the flag on an `Immediate` registration, which has no queue to
-  coalesce.
+  and NF0504's "the first declaration registers" extend to the new flag — the
+  surviving declaration's flag is the flag. The five published survivor-rule strings
+  this widens are enumerated in Step 7 (plan review A-V1).
+- **Compiles-but-inert shapes diagnose as Warning** (NF0503/NF0504 precedent) — here,
+  the flag on an `Immediate`-declared registration. The runtime unqueued paths
+  (9004/9005 fall-throughs) are unreachable by any compile-time diagnostic and are
+  handled by documentation instead (plan review B-C4).
 - **`Internal` namespace policy (PHASE-004):** scheduler changes stay public/unsealed
-  per CLAUDE-DESIGN's policy section; the scheduler interface may change shape there
-  ("may change in any release" is the namespace's contract).
-- **Docs land with the behavior** (project rule): the PHASE-005 surfaces (docs
-  factory-events + attributes-reference, skill, CLAUDE-DESIGN, Design projects) grow
-  their coalescing rows/paragraphs in this plan, not a follow-up.
+  per CLAUDE-DESIGN's policy section; the scheduler interface grows an overload
+  ("may change in any release" is the namespace's contract, but 53 pinned test call
+  sites make a required-parameter change contradict this plan's own backcompat
+  constraint — plan review B-C1).
+- **Docs land with the behavior** (project rule): the PHASE-005 surfaces grow their
+  coalescing rows/paragraphs in this plan, not a follow-up.
 
 ---
 
@@ -71,51 +82,80 @@ collected and relayed — coalescing is about handler dispatch, not event delive
 - **Backcompat is absolute:** without the flag, queued duplicate dispatches run once
   each — the full existing suite passes unmodified (existing tests are sacred).
 - **The relay batch is untouched:** coalescing never drops a collected event;
-  `IFactoryEventRelay` consumers see every raise.
-- **`Immediate` dispatch is never coalesced** — it is never queued; the flag on an
-  `Immediate` registration must be loud (diagnostic or documented no-op — plan review
-  weighs in), never silently meaningful.
-- **Discard-on-failure, fail-open 9007, the mid-drain carve-out, and per-scope
-  granularity all survive unchanged** — the PHASE-001..005 pins for these stay green
-  unmodified.
-- **Coalescing must not reorder:** the surviving dispatch occupies a position that
-  respects the existing earliest-first cross-phase sweep.
+  `IFactoryEventRelay` consumers see every raise. (Structurally true — collection
+  happens at raise time before any queueing — and stays that way.)
+- **No collapse may erase a fail-open warning obligation (plan review B-V1):** a
+  surviving dispatch warns (9007) at the post-completion sweep if *any* collapsed
+  constituent would have warned — the `EnqueuedMidDrain` merge is warn-preserving,
+  pinned by a test that goes red under a latest-bit-wins merge. A consumer who wired
+  no drain at all must still get their 9007.
+- **The identity contract is `Equals`, stated with both hazards (plan review B-V3):**
+  reference-typed event members defeat synthesized equality → the feature is a
+  documented no-op there (raises stay distinct, N dispatches, no signal beyond the
+  docs saying so); a custom `Equals` override can over-collapse semantically distinct
+  raises → documented consumer responsibility. Identity is evaluated when work
+  becomes pending (pending-queue semantics), so record mutability cannot reopen the
+  question at drain time. Docs recommend value-only payloads for coalescing handlers.
+- **What ordering actually requires (plan review B-C7):** the cross-phase
+  earliest-first sweep is preserved (duplicates share a phase queue by definition;
+  within-phase order is documented unspecified) — the real invariants a collapse must
+  respect are the sweep and the warn-bit, not a within-phase position.
+- **Flag is inert wherever no queue exists:** `Immediate` dispatch, and phased raises
+  hitting the 9004 (no scheduler) / 9005 (no entry call) immediate fall-throughs, run
+  N times regardless of the flag — stated in the attribute XML and docs.
+- **Test-isolation discipline (plan review B-C8):** coalescing and non-coalescing
+  integration cases use distinct handler classes *and* distinct event types (the
+  registry is process-static, first-wins, `Clear()` uncalled); the N identical raises
+  share one per-test Guid, while distinctness controls vary it.
 - **Generator cache safety:** the flag crosses the transform boundary as a primitive.
 - **Trimming posture unchanged:** registrations stay inside the `IsServerRuntime`
   guard and the forwarding-holder shape; nothing new ships handler bodies to clients.
-- Release impact: `feat:` — minor bump; no breaking public API (new overloads/optional
-  members only on non-`Internal` surfaces).
+- Release impact: `feat:` — minor bump. Public-API growth is by **new overloads**
+  (`RegisterHandler`) and a new attribute member — never optional parameters on
+  existing public methods, which are binary-breaking (plan review B-C2).
 
 ---
 
 ## Steps
 
-1. **Attribute surface:** add the opt-in member to `[FactoryEventHandler<T>]` (named
-   flag alongside the phase), with XML that states the coalescing contract — what
-   "identical" means, per-drain collapse, no effect at `Immediate`, no effect on relay.
-2. **Registry:** carry the flag per handler entry through registration and
-   `GetHandlers`, preserving the first-wins dedupe contract (the surviving
-   declaration's flag wins with it).
-3. **Generator pass-through:** read the flag as a primitive in the relay-handler
-   transform, emit it in the registration call; settle the `Immediate`+flag shape
-   (diagnostic vs. documented inert) per plan review.
-4. **Scheduler:** collapse identical pending pairs so a drain runs one dispatch where
-   today it runs N — scoped to pending work (already-dispatched work is history, not a
-   dedupe target), with a Debug log event announcing each collapse, and the 9007
-   warning firing once for the surviving dispatch rather than once per collapsed raise.
-5. **Dispatcher:** thread the flag from `GetHandlers` to `Enqueue`.
-6. **Tests at every seam:** registry flag round-trip; scheduler collapse semantics
-   (identical pairs collapse; distinct events, distinct handlers, and distinct options
-   don't; ordering position; 9007-once; mid-drain raise behavior); generator emission
-   (flag read, rendered form, NF0504 survivor's flag, `Immediate`+flag shape);
-   end-to-end attribute-declared coalescing through the client/server containers, plus
-   the backcompat pin (no flag → N dispatches).
+1. **Attribute surface:** add the opt-in member to `[FactoryEventHandler<T>]` as a
+   named property (the ctor-overload form has a silent trap: the transform treats any
+   non-`int` first constructor argument as `Immediate` — plan review B-C3), with XML
+   stating the contract: the `Equals` identity key and its two hazards, per-drain
+   collapse, warn-preservation, inert on any unqueued dispatch, no effect on relay.
+   Keyboard check: verify the property form binds as an attribute named argument.
+2. **Registry:** carry the flag per handler entry through registration (new public
+   overload; existing overloads untouched) and `GetHandlers`, preserving the
+   first-wins dedupe contract — the surviving declaration's flag wins with it.
+3. **Generator pass-through:** read the flag from the attribute's named arguments as a
+   primitive, emit it in the registration call; NF0505 (Warning) for the flag on an
+   `Immediate`-declared registration, per the inert-shape precedent; reword NF0504's
+   message so the survivor rule covers the whole registration (phase and flag), not
+   the phase alone.
+4. **Scheduler:** pending-queue collapse behind a new `Enqueue` overload — at most one
+   pending dispatch per (handler delegate, event-`Equals`, options) key, with the
+   warn-preserving `EnqueuedMidDrain` merge, a Debug log event (9008) announcing each
+   collapse, and 9001/9002/9006 counts reflecting the collapsed queue (a collapsed
+   raise logs 9008 rather than a second 9001).
+5. **Dispatcher:** thread the flag from `GetHandlers` to the new `Enqueue` overload.
+6. **Tests at every seam:** registry flag round-trip and survivor's-flag; scheduler
+   collapse semantics (identical pairs collapse to one pending dispatch; distinct
+   events, handlers, options, and phases don't; warn-preserving merge red-proofed
+   against latest-bit-wins; 9008 emission; 9002/9006 counts); generator emission
+   (named-arg read, rendered form, NF0505, NF0504 message + survivor flag);
+   end-to-end attribute-declared coalescing plus the backcompat and
+   discard-count pins through the client/server containers.
 7. **Docs + Design:** coalescing paragraph/rows in `docs/factory-events.md` and
    `attributes-reference.md`, the skill reference + SKILL.md row, CLAUDE-DESIGN
-   (pattern narrative + Quick Decisions + log-event row), and a Design-project
-   demonstration with tests.
-8. **Gate:** Test Evidence, single build+test run to logs (both solutions — RP-0
-   rule), test-reviewer; code review (opted in).
+   (pattern narrative + Quick Decisions + log-event rows: new 9008, plus the
+   9001/9002/9006 rows' behavior under collapse), a Design-project demonstration with
+   tests — **plus the five survivor-rule strings (plan review A-V1):**
+   `docs/factory-events.md` NF0504 row, `docs/attributes-reference.md` (both
+   occurrences), the NF0504 message format itself, and the registry XML's
+   "keeps the phase registered first" remark.
+8. **Gate:** Test Evidence with expected totals recorded per suite (the RP-0
+   countermeasure is the count check, not just building both solutions), single
+   build+test run to logs, test-reviewer; code review (opted in).
 
 ---
 
@@ -126,22 +166,31 @@ collected and relayed — coalescing is about handler dispatch, not event delive
       call — observed end to end with attribute-declared handlers through the
       client/server containers. `[integration]`
 - [ ] Without the flag, the same N raises produce N dispatches at the drain point —
-      the backcompat contract, pinned positively. `[integration]`
-- [ ] Value-distinct events, distinct handler registrations for the same event, and
-      the same event at distinct phases do not collapse into each other. `[unit]`
-- [ ] Coalescing composes with the shipped semantics: discarded on entry-call failure,
-      fail-open with a single 9007 for a never-drained surviving dispatch, and the
-      mid-drain carve-out — no existing pin modified. `[unit]`
-- [ ] The generator threads the flag from attribute to registration; the NF0504
-      survivor's flag is the one that registers; the `Immediate`+flag shape resolves
-      loudly per the plan-review decision. `[unit]`
-- [ ] Each collapse is observable in logs at Debug with a dedicated event id.
-      `[unit]`
+      the backcompat contract, pinned positively with a distinct handler class and
+      event type from the coalescing case. `[integration]`
+- [ ] Value-distinct events, distinct handler registrations for the same event, the
+      same event at distinct phases, and distinct `RaiseOptions` do not collapse into
+      each other. `[unit]`
+- [ ] On entry-call failure, a coalescing handler's N identical raises are discarded
+      as **one** pending dispatch — 9006 reports the collapsed count (a non-coalescing
+      sibling in the same test reports N) — and the handler never runs. `[unit]`
+- [ ] A never-drained coalescing `AfterFlush` handler gets exactly one 9007 for the
+      surviving dispatch — including when pre-drain and mid-drain raises collapsed:
+      the warn-preserving merge is pinned by a test that goes red under a
+      latest-bit-wins merge. `[unit]`
+- [ ] Each collapse is observable at Debug with the new event id (9008), and a
+      collapsed raise does not double-log 9001. `[unit]`
+- [ ] The generator threads the flag from named argument to registration; NF0505
+      (Warning) fires for the flag on an `Immediate`-declared registration and does
+      not fire otherwise; the NF0504 survivor's flag is the one that registers and
+      the reworded message covers it. `[unit]`
 - [ ] Docs, skill, CLAUDE-DESIGN, and Design projects document/demonstrate the
-      coalescing contract on the surfaces PHASE-005 established.
+      coalescing contract — including the identity hazards, unqueued-path inertness,
+      and the five widened survivor-rule strings.
       `[explicit-skip: prose + Design demonstration, gated like PHASE-005's]`
-- [ ] Full existing suite passes unmodified; build green both solutions.
-      `[explicit-skip: meta-bullet, satisfied by the gate run]`
+- [ ] Full existing suite passes unmodified (verified at the gate as a diff property,
+      not claimed as a test); build green both solutions with expected totals
+      matching. `[explicit-skip: meta-bullet, satisfied by the gate run]`
 
 ---
 
@@ -163,7 +212,28 @@ collected and relayed — coalescing is about handler dispatch, not event delive
 
 ## Plan Amendments
 
-*(none yet)*
+### 2026-08-18 — Plan review adopted (pre-implementation draft amendment)
+
+- **Section affected:** Scope, Intent, Framework Alignment, Constraints, Steps 1–8,
+  Acceptance, Notes
+- **Original said:** identity = "events are records — value equality"; Acceptance
+  bullet 4 bundled discard + 9007 + a diff property; Step 7 named only the new
+  coalescing prose; five design questions listed as open.
+- **What changed:** all 4 vetoes adopted — warn-preserving `EnqueuedMidDrain` merge as
+  a Constraint with a red-proof-required pin (B-V1); bullet 4 split into separately
+  falsifiable bullets with the 9006-count discriminator, which forced settling Q4 to
+  pending-queue collapse semantics (B-V2 + the reviewer's unnamed coupling); identity
+  restated as `Equals` with both hazards documented (B-V3); Step 7 widened to the five
+  survivor-rule strings (A-V1). Callouts folded in: `RegisterHandler`/`Enqueue` grow
+  overloads not optional parameters (B-C1/C2), named attribute property (B-C3),
+  unqueued-path inertness broadened beyond `Immediate` (B-C4), 9001/9002/9006
+  behavior decided and documented (B-C5), Q2 closed as Step 6 already implied —
+  options in the key (B-C6), the vacuous ordering Constraint replaced (B-C7),
+  test-isolation Constraint added (B-C8), enqueue-scan cost named in Notes (B-C9),
+  gate records expected totals (B-C10). A-C1 handled in the parent todo (AC bullet +
+  Out of Scope clause + Discovery Log trace for the 2026-08-14 queueing decision).
+- **Why:** plan review 2026-08-18 (CONCERNS).
+- **Discovery Log link:** 2026-08-18 — PHASE-006 plan review entry.
 
 ---
 
@@ -173,20 +243,18 @@ collected and relayed — coalescing is about handler dispatch, not event delive
   `PHASE-005-design-docs-skill` (PR #83, open at branch time) rather than on `PHASE`,
   because 006 edits the todo bookkeeping and the doc surfaces 005 created. Merge in
   order: #83 first, then this plan's PR.
-- **Open questions flagged for plan review** (named, not designed — the keyboard and
-  the reviewer settle them):
-  1. The `Immediate`+flag shape: Warning diagnostic (NF0505?) per the NF0503/NF0504
-     inert-shape precedent, vs. documented runtime no-op.
-  2. The identity key: does `RaiseOptions` participate (ServerOnly vs. None duplicates
-     — identical or distinct)?
-  3. Which dispatch survives a collapse — the earliest position (keeps sweep ordering
-     trivially) or the latest — and whether the answer is observable at all given
-     value-identical events.
-  4. Collapse point: on enqueue (pending-queue check) vs. at drain (dequeue-time
-     dedupe) — semantics differ only for raises that interleave with a drain in
-     flight; the mid-drain carve-out constraint above bounds the answer.
-  5. Whether the scheduler's `Enqueue` grows a parameter (an `Internal` interface —
-     allowed to change) or an overload.
+- **Questions settled at draft (were "open" in the pre-review draft):** Immediate+flag
+  → NF0505 Warning + documented runtime inertness on all unqueued paths; identity key
+  includes `RaiseOptions` (distinct options don't collapse; note: options are
+  invisible to attribute-declared handlers — the emitted lambda never forwards them —
+  so including them can only under-coalesce there, never miscall a handler); survivor
+  observability → the warn-bit makes it observable, settled by the warn-preserving
+  merge; collapse point → pending-queue semantics; interface shape → overloads.
+- **Left to the keyboard, deliberately:** the in-lock mechanism for pending-queue
+  collapse. `Queue<T>` has no removal primitive and `_gate` serializes concurrent
+  flows, so a naive per-enqueue scan is O(n²) under the lock (plan review B-C9) —
+  side index keyed on the identity vs. mark-and-replace are both acceptable so long
+  as the pending-queue counts and the warn-merge hold.
 - The motivating observation is the zTreatment proposal's "any of these four events →
   one recompute" — the deferred cross-event half stays out; this plan only removes
   the same-event N× duplication.
