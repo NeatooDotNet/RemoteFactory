@@ -47,7 +47,38 @@ the wait's silent return.
 - `HasPending` allocates a LINQ enumerator per call under `_gate` — unchanged by this
   plan, noted because the storage comment now claims performance as a motive.
 
-## Round-2 verification
+## Round 2 (2026-08-18) — gate closed at must- and should-cover
+
+Every closure verified by re-tracing the mechanism, not by accepting the citation, and
+each sabotage log checked by **failing-test name** rather than count (counts alone would
+not show that the *predicted* test is the one that reddened). All 2 must-cover and all 5
+should-cover confirmed closed; no closure introduced a new can't-go-red.
+
+Three residuals, all fixed in the round-2 commit:
+
+| # | Tier | Finding | Disposition |
+|---|------|---------|-------------|
+| H1 | should-cover | **The retracted A4 claim still stood verbatim in the red-proof log** — the round-1 "Not measured, and why" bullet on the warn-merge pins still said neither ordering is reachable, ~35 lines below its own retraction. Same species as PHASE-004's RP-3 sentence and PHASE-005's RP-0 rule sentence; the arc's convention is to correct in place, and the retraction had been written as a new section instead. | **Corrected in place**, with the reason recorded. |
+| H2 | nice-to-have | `DesignServerCompositionTests`' remarks still named `AddDesignServerServices` after the seam widened to `AddDesignServer` — a stale cross-reference inside the file whose whole subject is drift, on the sentence carrying the load-bearing "rather than from a copy of it" claim. | **Fixed.** |
+| H3 | nice-to-have | Acceptance bullet 4 was ticked with the wording A1 had retracted ("resolves every `[Service]` parameter type"). | **Restated with provenance**, following the todo's own AC-1/AC-3 precedent, rather than ticked as written. |
+
+It also sharpened this plan's recorded lesson and answered both questions I put to it:
+
+- **The first root-cause diagnosis was too loose.** "A cursor change needs a test that
+  leaves the structure partially consumed" would not have caught RP-2 round 2, which
+  *did* leave it partially consumed and still passed — the slot blanking ate it. The
+  invariant that covers all three wrong predictions: every `_head`-dependent member is
+  observable only inside `0 < _head < _items.Count`, and two independent housekeeping
+  actions attack that window (`Clear()` collapses it, blanking neuters its contents), so
+  a cursor test must leave the queue partially consumed **and** assert something the
+  blanking cannot also satisfy. Substituted into the Discovery Log entry.
+- **One fourth instance exists and is deliberately not tested:** the `Clear()` call inside
+  `Dequeue` cannot be failed by any test — delete it and behavior is identical, only the
+  backing array grows. On the reviewer's own recommendation (a capacity assertion would
+  be white-box and brittle) it is **recorded in the comment as unpinnable** rather than
+  given a test, so it stops reading as an intentional behavior among pinned ones.
+
+## Round-3 verification
 
 Builds: both solutions Release, 0 errors. Serial (`-m:1`): unit 743×2, integration
 595×2 (+5 standing skips), Design 98×2. Full-parallel (default `-m`): identical totals,

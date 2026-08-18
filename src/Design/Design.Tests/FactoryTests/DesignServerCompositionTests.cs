@@ -33,10 +33,11 @@ namespace Design.Tests.FactoryTests;
 /// domain and reading the state back catches it.
 /// </para>
 /// <para>
-/// The tests below build a container from <see cref="ServerServices.AddDesignServerServices"/>
-/// — the same method <c>Program.cs</c> calls — rather than from a copy of it. That
-/// distinction is the whole point: a test that re-listed the registrations would pass
-/// no matter what the server did.
+/// The tests below build a container from <see cref="ServerServices.AddDesignServer"/>
+/// — the same method <c>Program.cs</c> calls, and the one that owns the
+/// <c>AddNeatooAspNetCore</c> call too — rather than from a copy of it. That distinction
+/// is the whole point: a test that re-listed the registrations would pass no matter what
+/// the server did.
 /// </para>
 /// <para>
 /// The residuals, stated rather than papered over. <b>One:</b> this pins the services

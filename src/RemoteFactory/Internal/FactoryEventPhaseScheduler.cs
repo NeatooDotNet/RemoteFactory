@@ -209,6 +209,15 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                 // The queue drained empty, which is the common end state of every
                 // drain: reset rather than let the backing list grow across an
                 // entry call's worth of enqueues.
+                //
+                // NO TEST CAN OBSERVE THIS. Delete it and behavior is identical —
+                // only the backing array keeps growing. It is memory hygiene, not
+                // semantics, and it is recorded as unpinnable rather than left
+                // looking like the pinned members around it. Worth knowing when
+                // writing tests for anything cursor-dependent: this reset, and the
+                // slot blanking above, are what make _head-dependent code invisible
+                // outside the window 0 < _head < _items.Count. Two of PHASE-007's
+                // red-proof predictions were wrong because of exactly that.
                 Clear();
             }
 

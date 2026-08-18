@@ -149,9 +149,15 @@ contract beyond the one new Debug log id.
 - [x] The coordinator short-circuit emits the new Debug event exactly when it returns
       without draining, and not when a drain proceeds; the id appears in all three
       log tables. `[unit]` (tables `[explicit-skip: prose]`)
-- [x] A Design.Server composition test resolves every `[Service]` parameter type of
-      Design.Domain's factory methods; it fails before the Program registrations are
-      fixed and passes after (measured, not asserted). `[integration]`
+- [x] A Design.Server composition test resolves the server-only dependency types
+      Design.Domain's factory methods declare **by name**, and runs domain operations
+      that exercise them; it fails before the registrations are fixed and passes
+      after (measured, not asserted). `[integration]`
+      *(Restated at implementation. The original wording — "resolves **every**
+      `[Service]` parameter type" — describes a reflective enumeration, which the
+      no-reflection rule bars; see Amendment A1, which also records what the
+      named-and-exercised form does not cover. Restated here rather than ticked as
+      written, following the todo's own AC-1/AC-3 precedent.)*
 - [x] The three `FactoryEventHandlerTests` demonstrations assert observable dispatch
       behavior; their original intent statements are preserved. `[integration]`
 - [x] One relay-wait helper and one logging-scopes helper exist; the divergences that

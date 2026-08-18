@@ -132,12 +132,26 @@ exposes drain points.
   *inside a correction of that same failure mode* — the first attempt replaced C5's
   wrong remedy with a wrong claim instead of with a test. PHASE-004's round 2 hit the
   identical recursion. The tell is unchanged and now has a third instance behind it:
-  a confident sentence about what code does, with no run behind it. Also worth
-  keeping: **three separate predictions in this plan were wrong in the same
-  direction** (RP-2 twice, RP-7 once) because `PhaseQueue.Clear()` resets the cursor
-  when a queue drains empty — a refactor's own defensive resets can make its new
-  arithmetic unobservable, so a cursor-style change needs a test that leaves the
-  structure *partially* consumed or it pins nothing.
+  a confident sentence about what code does, with no run behind it.
+  **Round 2 (2026-08-18): gate closed at must- and should-cover** — every closure
+  verified by re-tracing rather than by citation, and each sabotage log checked by
+  failing-test *name*, not count. It caught the retracted A4 claim still standing
+  verbatim in the red-proof log's round-1 section, ~35 lines below its own
+  retraction (the stale-sentence species PHASE-004's RP-3 and PHASE-005's RP-0 both
+  hit; corrected in place), and it sharpened this entry's own lesson. **Three
+  predictions in this plan were wrong** (RP-2 twice, RP-7 once), and the first
+  diagnosis — "a cursor change needs a test that leaves the structure partially
+  consumed" — is true as a slogan but wrong as a procedure: RP-2 round 2 *did* leave
+  the queue partially consumed and still came back green, because `Dequeue` blanks
+  the slot it vacates. The invariant that covers all three: **every `_head`-dependent
+  member is observable only inside the window `0 < _head < _items.Count`, and two
+  independent housekeeping actions attack it — `Clear()` collapses the window,
+  blanking neuters its contents — so a cursor test must leave the queue partially
+  consumed *and* assert something the blanking cannot also satisfy.** The audit of
+  every `PhaseQueue` member found one thing nothing can fail on (the `Clear()` call
+  inside `Dequeue`, pure memory hygiene); by the reviewer's own recommendation that
+  is recorded in the comment as unpinnable rather than given a brittle white-box
+  test.
 
 ### 2026-08-18 — PHASE-007 (pre-flight and implementation: the sample server could not serve the domain it hosts, and the convention that would have fixed it registers transient)
 
