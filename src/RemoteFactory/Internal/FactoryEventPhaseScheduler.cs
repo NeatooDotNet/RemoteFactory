@@ -276,11 +276,6 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                         // moves toward "would warn" (false). A latest-bit-wins merge
                         // would let a mid-drain re-raise silently erase the 9007 a
                         // consumer who never drained is owed.
-                        // Warn-preserving merge: the survivor warns at the fail-open
-                        // sweep if ANY absorbed raise would have — the bit only ever
-                        // moves toward "would warn" (false). A latest-bit-wins merge
-                        // would let a mid-drain re-raise silently erase the 9007 a
-                        // consumer who never drained is owed.
                         if (existing.EnqueuedMidDrain && !enqueuedMidDrain)
                         {
                             queue[i] = existing with { EnqueuedMidDrain = false };

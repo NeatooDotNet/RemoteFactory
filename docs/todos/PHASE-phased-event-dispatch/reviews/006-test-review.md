@@ -43,4 +43,13 @@ logs overwritten with round-2 runs, all green with expected totals. Red-proof ad
 records why the three closures are argued-not-sabotaged (two-way exact assertions whose
 failure mode is the alternative implementation; wiring measured by RP-1/RP-2).
 
-**Round-2 reviewer verification:** *(pending — appended when the reviewer returns)*
+**Round-2 reviewer verification: CONFIRMED — all three closures genuinely closed, nothing reopened, the gate closes.** Zero must-cover findings across both rounds; Done-eligible from this gate's side, pending the opted-in code review.
+
+Verified from the round-2 logs and the diff, not the closure descriptions:
+
+- Logs re-verified by count with round-2 headers: 728 = 726+2, 591 = 590+1, 94 unchanged — every delta reconciles exactly with the three new methods.
+- **Closure 1 judged stronger than requested:** the `["first"]` assertion discriminates three ways at once (latest-wins → `["second"]`, no-collapse → `["first","second"]`, dead handler → `[]`), and its green state also proves the custom `Equals` is reached through the `FactoryEventBase`-typed virtual dispatch — a leg round 1 could only reason about. The XML sentence (the half that mattered most) landed.
+- **Closure 3 correctly paired:** relay-count-only would stay green if coalescing broke; run-count-only would stay green if the relay dropped — both halves are two-way, and the poll timeout fails safe (red, never false green).
+- **The argued-not-sabotaged case accepted**, with one wording correction applied to the red-proof addendum: closure 2 is a one-way boundary pin (red only under a *stronger* comparer; RP-2 measures the working direction) — the blanket "two-way" phrasing over-claimed it.
+- **Evidence map honest:** row 9's correction precise, the two new rows accurate and correctly tiered, header totals reconcile, all 23 cited methods exist, no padding.
+- Two nice-to-have observations, both acted on post-verification: the duplicated warn-merge comment block (introduced by the round-2 commit's sabotage revert — **deduplicated before the code review**, with provenance passed along), and the relay-harness duplication annotated onto the two existing PHASE-007 rows (2s-poll flake and tuple-order items each gained a dependent).
