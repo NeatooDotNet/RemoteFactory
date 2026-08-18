@@ -355,8 +355,8 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 - `FactoryEventTypeRegistry` (internal, runtime) lazily scans `AppDomain.CurrentDomain.GetAssemblies()` on first use; rescans on miss to pick up dynamically-loaded assemblies. Logs EventId 3012 (Warning) on `FullName` collisions.
 - In Remote mode, if the consumer registers nothing, `NoOpFactoryEventRelay` is registered via `TryAddSingleton`. It logs EventId 3011 (Warning) once per process on the first non-empty batch it drops — a signal the consumer forgot to register a custom relay.
 - Logical mode registers neither the collector nor the relay (no cross-boundary communication needed). Server mode does not register `IFactoryEventRelay`.
-- NF0501 if no matching server handler method; NF0502 if multiple methods match; NF0503 (Warning) if an instance method is declared inside a `[FactoryEventHandler<T>]` class; NF0504 (Warning) if one class declares the same event type more than once.
-- The attribute's `DispatchPhase` argument reaches registration: `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` registers at that phase, no argument registers at `Immediate`. The phase is per-attribute, so one class can hold several event types at different phases.
+- NF0501 if no matching server handler method; NF0502 if multiple methods match; NF0503 (Warning) if an instance method is declared inside a `[FactoryEventHandler<T>]` class; NF0504 (Warning) if one class declares the same event type more than once; NF0505 (Warning) if `Coalesce = true` is declared at `Immediate`.
+- The attribute's `DispatchPhase` argument and `Coalesce` named argument reach registration: `[FactoryEventHandler<T>(DispatchPhase.AfterCommit, Coalesce = true)]` registers at that phase with coalescing on; no arguments register at `Immediate` without it. Both are per-attribute, so one class can hold several event types at different phases and flags.
 
 ---
 

@@ -66,13 +66,14 @@ public interface IFactoryEventPhaseScheduler
     /// handler delegate, an <see cref="object.Equals(object)"/>-equal event, and the same
     /// <see cref="RaiseOptions"/> absorbs this one: the scope holds at most one pending
     /// dispatch per such identity, the survivor keeps its (earliest) queue position, and
-    /// the counts observable through <see cref="HasPending"/>, the drain report, and the
-    /// exit discard reflect the collapsed state. The merge preserves the fail-open
-    /// obligation — the survivor warns at the post-completion sweep if <i>any</i> absorbed
-    /// raise would have. Identity looks only at pending work: a dispatch already taken by
-    /// a running drain is history, and a raise arriving after it collapses with nothing.
-    /// An overload rather than a parameter so existing callers (and their pins) stand
-    /// unchanged.
+    /// the collapsed state is what <see cref="HasPending"/> and the drain/discard counts
+    /// observe. The merge preserves the fail-open obligation — the survivor warns at the
+    /// post-completion sweep if <i>any</i> absorbed raise would have. Identity looks only
+    /// at pending work: a dispatch already taken by a running drain is history, and a
+    /// raise arriving after it collapses with nothing. An overload rather than a
+    /// parameter so existing callers (and their pins) stand unchanged — noting that a
+    /// new interface member is still a break for third-party implementors, which the
+    /// <c>Internal</c> namespace's may-change-in-any-release contract covers.
     /// </remarks>
     void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler, bool coalesce);
 
@@ -129,15 +130,21 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     private readonly ILogger? _logger;
 
     // List rather than Queue: the coalescing warn-merge rewrites one pending entry's
-    // EnqueuedMidDrain bit in place, which Queue<T> cannot express. Dequeue is a
-    // front-removal; pending queues live for one entry call and stay small, so the O(n)
-    // shift is cheaper than a side structure. The coalescing identity scan (opted-in
-    // enqueues only) is O(pending) under _gate for the same reason.
+    // EnqueuedMidDrain bit in place, which the readonly record struct element cannot
+    // express inside a Queue<T> (a mutable reference-typed element could; the struct
+    // was kept). Dequeue is a front-removal — O(n) per dequeue, paid by every path
+    // including non-coalescing ones — accepted on the ASSUMPTION that pending queues
+    // live for one entry call and stay small; nothing enforces that, and a bulk save
+    // raising thousands of deferred events would feel it (recorded, PHASE-007). The
+    // coalescing identity scan (opted-in enqueues only) is O(pending) under _gate.
     private readonly Dictionary<DispatchPhase, List<QueuedDispatch>> _deferred = new();
 
     // Guards _deferred, _entryDepth, and _activeDrains. Scopes can be shared by
     // concurrent flows (Blazor Server circuits, Logical mode, a reused test scope);
-    // handlers are invoked outside the lock.
+    // handlers are invoked outside the lock. One consumer call IS made under it: the
+    // coalescing identity scan invokes the event's Equals (custom overrides included)
+    // per pending entry — keep event Equals cheap and non-re-entrant; a re-entrant
+    // Equals that touches this scheduler mutates the queue mid-scan.
     private readonly object _gate = new();
     private int _entryDepth;
 

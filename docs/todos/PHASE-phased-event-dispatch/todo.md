@@ -95,13 +95,42 @@ exposes drain points.
 | 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
-| 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | In Progress |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution (another divergent call site in 006's relay-pin helper, acknowledged in its comment); documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs (006 duplicated the `ScopesWithRelay`/`WaitForAsync` harness into `FactoryEventCoalescingTests` — consolidate when fixing); `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates); Design.Server composition test — it registers 3 services while Design.Domain `[Service]`-injects `INotificationService` and `IPhaseAuditService`, and no Design.Server test exists (005 gate); `FactoryEventHandlerTests` `Assert.True(true)` trio — the Design tier's nominal `Immediate` pin asserts nothing (005 gate); explicit `Design.sln` build in any verification harness/docs — the main solution omits it (005 RP-0); coalescing runtime-inertness pin on an unqueued path (9004/9005 fall-through — the XML claims it, only emission is pinned), NF0505 location pin, 9002 collapsed drained-count pin (006 gate); NOTE: the registry-`Clear()` and `CapturingLoggerProvider`-snapshot items each gained dependents under 006 (3 more unique event types; 3 more pins on the raw `Entries` list + a widened `LogEntry`) | Draft |
+| 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution (another divergent call site in 006's relay-pin helper, acknowledged in its comment); documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs (006 duplicated the `ScopesWithRelay`/`WaitForAsync` harness into `FactoryEventCoalescingTests` — consolidate when fixing); `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates); Design.Server composition test — it registers 3 services while Design.Domain `[Service]`-injects `INotificationService` and `IPhaseAuditService`, and no Design.Server test exists (005 gate); `FactoryEventHandlerTests` `Assert.True(true)` trio — the Design tier's nominal `Immediate` pin asserts nothing (005 gate); explicit `Design.sln` build in any verification harness/docs — the main solution omits it (005 RP-0); coalescing runtime-inertness pin on an unqueued path (9004/9005 fall-through — the XML claims it, only emission is pinned), NF0505 location pin, 9002 collapsed drained-count pin (006 gate); NOTE: the registry-`Clear()` and `CapturingLoggerProvider`-snapshot items each gained dependents under 006 (3 more unique event types; 3 more pins on the raw `Entries` list + a widened `LogEntry`); scheduler storage shape — O(n) front-dequeue on `List` paid by the non-opted-in path on an unenforced queues-stay-small assumption (006 code review C3); production-shaped variant of the warn-merge pin — it drives `Enqueue(Immediate, …)`, which the dispatcher never produces (006 code review C5) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-18 — PHASE-006 (code review: the veto-adopted constraint's own branch was dead code to the suite — and the anchor list that guarded against stale docs was itself incomplete)
+
+- **Finding:** Code review returned zero vetoes and seven callouts. C1, the sharpest:
+  the warn-preserving merge's true→false branch — the mechanism behind the plan's #1
+  veto-adopted constraint — was **dead code as far as the suite was concerned**.
+  RP-1 had measured the flip direction (a latest-bit-wins merge erasing a warning),
+  but no test ordered the mid-drain raise *first*, so deleting the merge assignment
+  outright left all 728/591/94 green. Eleventh "can't go red" instance in the arc,
+  and the first found sitting directly on a constraint a red-proof had already
+  "covered" from the other side. C2, the transferable one: CLAUDE-DESIGN's narrative
+  diagnostics bullet and pass-through bullet were a sixth and seventh
+  survivor-species string that plan review A-V1's five-string enumeration missed —
+  the enumeration that exists to prevent incidental doc invalidation is itself a
+  claim that can be incomplete. C4: the coalescing identity scan runs consumer
+  `Equals` under `_gate`, contradicting the class's own "handlers are invoked outside
+  the lock" comment.
+- **Decision:** Amend — C1 closed with the mirror-ordering pin and the omission
+  sabotage **measured as RP-3** (exactly the predicted 1 red ×2 TFMs); C2's two
+  bullets fixed; C3/C4/C6/C7 comment and XML corrections in place; C3's
+  storage-shape question (O(n) front-dequeue paid by the non-opted-in path on an
+  unenforced smallness assumption) and C5's synthetic-state note (the warn pin
+  drives `Enqueue(Immediate, …)`, which the dispatcher never produces) routed to
+  PHASE-007. Unit 728 → 729.
+- **Follow-up:** [reviews/006-code-review.md](./reviews/006-code-review.md). Worth
+  keeping: a red-proof that measures one direction of a two-directional mechanism
+  reads as full coverage — RP-1's "signature exact" was true and still left the
+  deletion sabotage green. The tell is a guard whose *taken* branch no test drives,
+  which is checkable mechanically (branch coverage would have shown it).
 
 ### 2026-08-18 — PHASE-006 (gate round 1: clean at must-cover; the survivor's payload was contract nobody had stated)
 

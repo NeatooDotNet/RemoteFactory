@@ -291,6 +291,46 @@ public class FactoryEventPhaseCoalescingTests
         Assert.Equal(1, logs.Entries.Count(e => e.EventId == 9007));
     }
 
+    /// <summary>
+    /// The mirror ordering of the pin above, and the one that executes the merge's
+    /// true→false branch (code review C1): the MID-DRAIN raise lands first (bit true —
+    /// exempt on its own), survives an Immediate-only drain as pending, and then absorbs
+    /// a PRE-DRAIN raise that is owed the warning. The merge must move the survivor's
+    /// bit to false; deleting the merge assignment leaves the bit true and erases the
+    /// 9007 — this test goes red (measured, RP-3).
+    /// </summary>
+    [Fact]
+    public async Task Coalesce_MidDrainRaiseFirst_ThenPreDrainRaiseCollapses_TheSurvivorStillWarns9007()
+    {
+        var scheduler = NewScheduler(out var logs);
+        var log = new List<string>();
+        var evt = new CoalesceTestEvent("same");
+        var flushProjection = Recording(log, "flush-projection");
+
+        // An Immediate-phase dispatch that enqueues the AfterFlush work while a drain
+        // is in flight — the survivor starts life mid-drain-stamped (bit true).
+        scheduler.Enqueue(
+            DispatchPhase.Immediate,
+            new CoalesceTestEvent("trigger"),
+            RaiseOptions.None,
+            (_, _, _, _) =>
+            {
+                scheduler.Enqueue(DispatchPhase.AfterFlush, evt, RaiseOptions.None, flushProjection, coalesce: true);
+                return Task.CompletedTask;
+            });
+
+        // Drain ONLY Immediate: the mid-drain AfterFlush entry stays pending.
+        await scheduler.DrainAsync(DispatchPhase.Immediate, inTransaction: false);
+
+        // Now the pre-drain raise (bit false — owed a 9007) collapses into it.
+        scheduler.Enqueue(DispatchPhase.AfterFlush, evt, RaiseOptions.None, flushProjection, coalesce: true);
+
+        await scheduler.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["flush-projection"], log);
+        Assert.Equal(1, logs.Entries.Count(e => e.EventId == 9007));
+    }
+
     // ------------------------------------------------------------------
     // Discard on failure — the collapsed count is the discriminator
     // ------------------------------------------------------------------

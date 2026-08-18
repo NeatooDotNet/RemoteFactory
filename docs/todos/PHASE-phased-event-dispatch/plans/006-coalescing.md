@@ -3,7 +3,7 @@
 **Plan #:** 006
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-08-18
 **Plan-review opt-in:** Yes (public API surface on the attribute; dedup semantics are contract) — **ran 2026-08-18, CONCERNS; all 4 vetoes adopted by draft amendment, see [reviews/006-plan-review.md](../reviews/006-plan-review.md)**
 **Code-review opt-in:** Yes (behavior-changing)
@@ -161,34 +161,38 @@ dispatch, not event delivery).
 
 ## Acceptance
 
-- [ ] A handler opted in at `AfterFlush` or `AfterCommit` runs **once** at its drain
+- [x] A handler opted in at `AfterFlush` or `AfterCommit` runs **once** at its drain
       point when the same value-identical event was raised N times during the entry
       call — observed end to end with attribute-declared handlers through the
       client/server containers. `[integration]`
-- [ ] Without the flag, the same N raises produce N dispatches at the drain point —
+- [x] Without the flag, the same N raises produce N dispatches at the drain point —
       the backcompat contract, pinned positively with a distinct handler class and
       event type from the coalescing case. `[integration]`
-- [ ] Value-distinct events, distinct handler registrations for the same event, the
+- [x] Value-distinct events, distinct handler registrations for the same event, the
       same event at distinct phases, and distinct `RaiseOptions` do not collapse into
       each other. `[unit]`
-- [ ] On entry-call failure, a coalescing handler's N identical raises are discarded
+- [x] On entry-call failure, a coalescing handler's N identical raises are discarded
       as **one** pending dispatch — 9006 reports the collapsed count (a non-coalescing
       sibling in the same test reports N) — and the handler never runs. `[unit]`
-- [ ] A never-drained coalescing `AfterFlush` handler gets exactly one 9007 for the
+      *(Shipped as two paired tests rather than one; the discriminator is identical —
+      code review noted, no change needed.)*
+- [x] A never-drained coalescing `AfterFlush` handler gets exactly one 9007 for the
       surviving dispatch — including when pre-drain and mid-drain raises collapsed:
       the warn-preserving merge is pinned by a test that goes red under a
-      latest-bit-wins merge. `[unit]`
-- [ ] Each collapse is observable at Debug with the new event id (9008), and a
+      latest-bit-wins merge. *(And, per code review C1, by a mirror-ordering test
+      that goes red under merge deletion — both directions measured.)* `[unit]`
+- [x] Each collapse is observable at Debug with the new event id (9008), and a
       collapsed raise does not double-log 9001. `[unit]`
-- [ ] The generator threads the flag from named argument to registration; NF0505
+- [x] The generator threads the flag from named argument to registration; NF0505
       (Warning) fires for the flag on an `Immediate`-declared registration and does
       not fire otherwise; the NF0504 survivor's flag is the one that registers and
       the reworded message covers it. `[unit]`
-- [ ] Docs, skill, CLAUDE-DESIGN, and Design projects document/demonstrate the
+- [x] Docs, skill, CLAUDE-DESIGN, and Design projects document/demonstrate the
       coalescing contract — including the identity hazards, unqueued-path inertness,
-      and the five widened survivor-rule strings.
+      and the five widened survivor-rule strings (plus the two narrative strings
+      code review C2 found beyond that enumeration).
       `[explicit-skip: prose + Design demonstration, gated like PHASE-005's]`
-- [ ] Full existing suite passes unmodified (verified at the gate as a diff property,
+- [x] Full existing suite passes unmodified (verified at the gate as a diff property,
       not claimed as a test); build green both solutions with expected totals
       matching. `[explicit-skip: meta-bullet, satisfied by the gate run]`
 
@@ -251,16 +255,18 @@ as read; no pre-flight amendments needed.
 ## Test Evidence
 
 Filled 2026-08-18, after implementation, before the gate; amended after gate round 1
-(three should-cover closures added 3 tests). Gate logs: `reviews/006-build.log`
-(both solutions, 0 errors), `reviews/006-test.log` (round 2) with expected totals
-matching per suite — unit 728×2 (705 + 23 new), integration 591×2 (587 + 4 new,
-5 standing skips), Design 94×2 (93 + 1 new) — the RP-0 count rule applied per
-plan-review B-C10. Red-proof: `reviews/006-redproof.log` — RP-1 (latest-bit-wins
-merge → exactly the predicted 1 red ×2 TFMs) and RP-2 (collapse disabled →
-exactly the predicted 4 reds ×2 TFMs, including the 9006 collapsed-count pin,
-measuring B-V2's do-nothing-implementation hazard directly). Gate record:
-`reviews/006-test-review.md`. Unit tests live in `FactoryEventPhaseCoalescingTests`
-unless noted.
+(three should-cover closures) and after the code review (C1 closure). Gate logs:
+`reviews/006-build.log` (both solutions, 0 errors), `reviews/006-test.log` (round 3)
+with expected totals matching per suite — unit 729×2 (705 + 24 new), integration
+591×2 (587 + 4 new, 5 standing skips), Design 94×2 (93 + 1 new) — the RP-0 count
+rule applied per plan-review B-C10. Red-proof: `reviews/006-redproof.log` — RP-1
+(latest-bit-wins merge → exactly the predicted 1 red ×2 TFMs), RP-2 (collapse
+disabled → exactly the predicted 4 reds ×2 TFMs, including the 9006
+collapsed-count pin, measuring B-V2's do-nothing-implementation hazard directly),
+and RP-3 (merge deleted → exactly the predicted 1 red, the code-review C1 pin,
+measuring the omission direction RP-1 could not). Gate records:
+`reviews/006-test-review.md`, `reviews/006-code-review.md`. Unit tests live in
+`FactoryEventPhaseCoalescingTests` unless noted.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
@@ -268,7 +274,7 @@ unless noted.
 | Without the flag, N raises produce N dispatches (distinct class + event type) | `[integration]` | `FactoryEventCoalescingTests.RemoteExecute_NonCoalescingHandler_ThreeIdenticalRaises_RunsThrice`; unit: `NoCoalesce_IdenticalRaises_StillRunOncePerRaise` | ✓ |
 | Distinct events / handlers / phases / options don't collapse | `[unit]` | `Coalesce_ValueDistinctEvents_DoNotCollapse`, `Coalesce_DistinctHandlerDelegates_DoNotCollapse`, `Coalesce_SameIdentityAtDistinctPhases_DoesNotCollapseAcrossQueues`, `Coalesce_DistinctRaiseOptions_DoNotCollapse` | ✓ |
 | Failure discards the collapsed count (one, not N; sibling reports N) | `[unit]` | `EntryCallFails_CoalescedRaisesWereOnePendingDispatch_9006ReportsTheCollapsedCount` + `EntryCallFails_NonCoalescingSibling_9006ReportsOnePerRaise` (RP-2-measured discriminator) | ✓ |
-| Warn-preserving merge: one 9007 survives a cross-bit collapse | `[unit]` | `Coalesce_PreDrainAndMidDrainRaisesCollapse_TheSurvivorStillWarns9007` (RP-1-measured against latest-bit-wins) | ✓ |
+| Warn-preserving merge: one 9007 survives a cross-bit collapse | `[unit]` | `Coalesce_PreDrainAndMidDrainRaisesCollapse_TheSurvivorStillWarns9007` (RP-1-measured against latest-bit-wins) + `Coalesce_MidDrainRaiseFirst_ThenPreDrainRaiseCollapses_TheSurvivorStillWarns9007` (code review C1; RP-3-measured against merge deletion — the omission direction) | ✓ |
 | Collapse observable at Debug (9008), no double 9001 | `[unit]` | `Coalesce_IdenticalPendingRaises_RunOnceAtTheDrain` (asserts 1× 9001 + 2× 9008) | ✓ |
 | Generator: named-arg → registration; NF0505 fires/doesn't; NF0504 survivor flag + reworded message | `[unit]` | `NF0505CoalesceOnImmediateTests` (5 tests incl. faithful-emission), `AssemblyAttributeEmissionTests.RelayHandler_CoalesceTrue_EmitsTheFlagOnTheRegistration`, `RelayHandler_DuplicateEventType_CoalescingSurvivor_NamesTheFlagInTheMessage` | ✓ |
 | Docs/skill/CLAUDE-DESIGN/Design demonstrate the contract incl. the five survivor-rule strings | `[explicit-skip: prose + Design]` | — Design: Scenario 5 + `StatementClose_...` test; all five A-V1 strings updated (both docs anchors, NF0504 message format + its message-assertion tests, registry XML); skill link-grep stays internal | n/a |
