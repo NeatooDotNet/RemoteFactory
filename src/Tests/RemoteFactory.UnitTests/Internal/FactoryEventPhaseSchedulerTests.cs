@@ -573,6 +573,53 @@ public class FactoryEventPhaseSchedulerTests
     }
 
     /// <summary>
+    /// 9006 counts what is still pending, not what was ever queued — asserted after a
+    /// drain has already taken part of the queue.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The queue has to be left <b>partially</b> drained, which needs a drain that stops
+    /// early — here an in-transaction handler exception, the same abort the coordinator's
+    /// drain point exposes. A drain that runs to completion empties its queue and
+    /// <c>PhaseQueue</c> resets the cursor, so the arithmetic below is invisible: the
+    /// first version of this test drained a whole phase and passed under the sabotage
+    /// (measured, RP-7).
+    /// </para>
+    /// <para>
+    /// PHASE-007 replaced the front-removal dequeue with a head cursor, making
+    /// <c>Count</c> a subtraction. Drop it and this reports the two already-run
+    /// dispatches as discarded too — inflating the number PHASE-006 built the discard
+    /// leg's falsifiability on, in the one state where it can be wrong.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task EndEntryCallAsync_Failed_AfterAnAbortedDrain_DiscardCountExcludesWhatAlreadyRan()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.BeginEntryCall();
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, Recording(log, "flush-1"));
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("b"), RaiseOptions.None,
+            Throwing(new InvalidOperationException("flush handler blew up")));
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("c"), RaiseOptions.None, Recording(log, "flush-3"));
+
+        // In-transaction: the exception propagates and abandons the rest, leaving one
+        // dispatch pending behind a cursor that has advanced past two.
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => dispatcher.DrainAsync(DispatchPhase.AfterFlush, inTransaction: true));
+
+        Assert.Equal(["flush-1"], log);
+        Assert.True(dispatcher.HasPending);
+
+        await dispatcher.EndEntryCallAsync(success: false);
+
+        var discarded = Assert.Single(logs.Entries, e => e.EventId == 9006);
+        Assert.Contains("Discarded 1 deferred handler dispatch(es)", discarded.Message);
+        Assert.Equal(["flush-1"], log);
+    }
+
+    /// <summary>
     /// A documenting pin for the behavior PHASE-002 accepted rather than diagnosed
     /// (Discovery Log, 2026-08-15): <c>(DispatchPhase)99</c> is expressible, the
     /// generator renders the cast faithfully, and the registration is then a silent

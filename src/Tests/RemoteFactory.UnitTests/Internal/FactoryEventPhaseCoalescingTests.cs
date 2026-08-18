@@ -310,30 +310,34 @@ public class FactoryEventPhaseCoalescingTests
     // ------------------------------------------------------------------
     // The warn-preserving merge (plan review B-V1)
     //
-    // REACHABILITY (PHASE-007, correcting the remedy PHASE-006's code review C5
-    // proposed). C5 flagged that the first of these two pins drives
-    // Enqueue(Immediate, …) as its mid-drain trigger — a state the dispatcher never
-    // produces, since Immediate handlers are never queued — and suggested an AfterFlush
-    // trigger as the production-shaped variant. Tracing the drain instead of inheriting
-    // that suggestion: it does not work, and the deeper answer is that BOTH merge
-    // orderings are unreachable through the framework's current drain points.
+    // REACHABILITY (PHASE-007, answering PHASE-006's code review C5 — at the second
+    // attempt). C5 flagged that the first two pins below drive Enqueue(Immediate, …) as
+    // their mid-drain trigger, a state the dispatcher never produces, and suggested an
+    // AfterFlush trigger as the production-shaped variant. That suggestion does not work
+    // on its own: an AfterFlush trigger is consumed by the same sweep it would trigger
+    // from, leaving no pending entry to collapse into.
     //
-    // The merge needs two identical raises with differing EnqueuedMidDrain bits pending
-    // AT THE SAME TIME. Every drain sweeps earliest-phase-first and runs until empty, so
-    // the moment a drain reaches AfterFlush it consumes the pending dispatch; anything
-    // raised afterwards has no collapse target left. For a pre-drain entry to still be
-    // pending when a mid-drain raise arrives, some dispatch must run BEFORE AfterFlush is
-    // swept — which in production means a queued Immediate dispatch, and there are none.
-    // An AfterFlush trigger is consumed by the same sweep it would trigger from.
+    // The first correction attempt concluded from that "both orderings are unreachable,
+    // because every drain runs until empty" — and the gate caught it as false. A drain
+    // does NOT always run until empty. The in-transaction branch of DrainAsync has no
+    // catch, so a handler exception propagates and abandons the rest of the queue
+    // (DrainAsync_InTransaction_PropagatesHandlerExceptionAndAbortsRemaining); a
+    // cancelled drain does the same. Either leaves pending work behind a non-zero head
+    // cursor, stamped mid-drain because _activeDrains was non-zero when it was enqueued.
     //
-    // The pins stay, and stay as they are: they protect the merge against the drain
-    // points that would make it reachable — a second consumer-drainable phase, per-flow
-    // entry tracking, or any drain that stops short of AfterFlush — and the merge is the
-    // mechanism behind a veto-adopted constraint (a latest-bit-wins collapse erasing the
-    // 9007 todo AC-5 promises). Deleting it was measured green across the suite once
-    // already (code review C1) before the second ordering was pinned. What changes here
-    // is only the claim: these are guards against a future drain point, not
-    // reproductions of a current one.
+    // So the merge IS reachable through the drain point that ships today, and
+    // Coalesce_AbortedConsumerDrain_ThenPreDrainRaiseCollapses_TheSurvivorStillWarns9007
+    // below is that path: consumer drains AfterFlush -> a handler raises the coalescing
+    // event (bit true) -> a later handler in the same drain throws -> the consumer
+    // catches and continues (the coordinator's XML makes the exception theirs to handle,
+    // and handling it is not the same as failing the factory call) -> they raise the
+    // same event again (bit false) -> the merge must move the survivor's bit to false so
+    // the AfterCommit sweep still owes its 9007.
+    //
+    // The two synthetic pins stay: they isolate the merge from the entry-call machinery,
+    // and the merge is the mechanism behind a veto-adopted constraint (a latest-bit-wins
+    // collapse erasing the 9007 todo AC-5 promises) that was measured green across the
+    // whole suite once already when deleted (code review C1).
     // ------------------------------------------------------------------
 
     /// <summary>
@@ -409,6 +413,76 @@ public class FactoryEventPhaseCoalescingTests
         await scheduler.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
 
         Assert.Equal(["flush-projection"], log);
+        Assert.Equal(1, logs.Entries.Count(e => e.EventId == 9007));
+    }
+
+    /// <summary>
+    /// The merge in the shape production actually reaches: a consumer's AfterFlush drain
+    /// that aborts partway, leaving mid-drain-stamped work pending behind a non-zero head
+    /// cursor, and a later raise of the same event that must restore the warning
+    /// obligation.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Everything here is a state the framework produces on its own. The consumer drains
+    /// AfterFlush inside their entry call (in-transaction, the coordinator's drain
+    /// point). One drained handler raises the coalescing event — enqueued while
+    /// <c>_activeDrains</c> is non-zero, so its bit is true and it is exempt from 9007 on
+    /// its own. A later handler in that same drain throws; the in-transaction branch has
+    /// no catch, so the drain unwinds and abandons the rest of the queue. The consumer
+    /// handles the exception without failing the factory call, then raises the same event
+    /// again, now outside any drain (bit false, owed a 9007). The merge has to move the
+    /// survivor's bit to false, or the AfterCommit sweep runs the handler silently.
+    /// </para>
+    /// <para>
+    /// Two things only this test discriminates. First, it is the answer to PHASE-006's
+    /// code review C5, whose complaint — the shipped merge pins drive states the
+    /// dispatcher never produces — the gate confirmed still stood after PHASE-007's first
+    /// attempt tried to argue the state was unreachable. Second, it is the only merge
+    /// that runs with the head cursor off zero, which is what puts
+    /// <c>PhaseQueue.Replace</c>'s <c>_head +</c> offset under test: without the offset
+    /// the merge writes into the blanked slot the aborted drain left behind, the real
+    /// survivor keeps its true bit, and the 9007 disappears with every other test green.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task Coalesce_AbortedConsumerDrain_ThenPreDrainRaiseCollapses_TheSurvivorStillWarns9007()
+    {
+        var scheduler = NewScheduler(out var logs);
+        var log = new List<string>();
+        var evt = new CoalesceTestEvent("recompute");
+        var projection = Recording(log, "projection");
+
+        scheduler.BeginEntryCall();
+
+        // First in the queue: raises the coalescing event mid-drain (bit true).
+        scheduler.Enqueue(DispatchPhase.AfterFlush, new CoalesceTestEvent("first"), RaiseOptions.None,
+            (_, _, _, _) =>
+            {
+                log.Add("first");
+                scheduler.Enqueue(DispatchPhase.AfterFlush, evt, RaiseOptions.None, projection, coalesce: true);
+                return Task.CompletedTask;
+            });
+
+        // Second: throws, which abandons the drain with the coalescing entry still
+        // pending and the head cursor advanced past the two taken dispatches.
+        scheduler.Enqueue(DispatchPhase.AfterFlush, new CoalesceTestEvent("boom"), RaiseOptions.None,
+            (_, _, _, _) => throw new InvalidOperationException("flush handler blew up"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => scheduler.DrainAsync(DispatchPhase.AfterFlush, inTransaction: true));
+
+        Assert.Equal(["first"], log);
+        Assert.True(scheduler.HasPending);
+
+        // The consumer handled their exception and carried on: this raise is outside any
+        // drain, so it is owed the warning the survivor is currently exempt from.
+        scheduler.Enqueue(DispatchPhase.AfterFlush, evt, RaiseOptions.None, projection, coalesce: true);
+
+        await scheduler.EndEntryCallAsync(success: true);
+
+        // Collapsed to one dispatch, and the survivor kept the obligation.
+        Assert.Equal(["first", "projection"], log);
         Assert.Equal(1, logs.Entries.Count(e => e.EventId == 9007));
     }
 

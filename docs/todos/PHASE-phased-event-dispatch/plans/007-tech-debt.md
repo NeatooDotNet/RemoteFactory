@@ -139,31 +139,31 @@ contract beyond the one new Debug log id.
 
 ## Acceptance
 
-- [ ] 9002, 9004, and 9006 each have a positive unit pin (message, level, and the
+- [x] 9002, 9004, and 9006 each have a positive unit pin (message, level, and the
       count where the message carries one), and 9002's count reflects a collapsed
       queue. `[unit]`
-- [ ] The accepted behaviors are pinned as documented: undefined-phase registration
+- [x] The accepted behaviors are pinned as documented: undefined-phase registration
       never drains (silent no-op), `Enqueue` null-handler throws, NF0505 locates at
       the attribute, the coalesce flag is runtime-inert on an unqueued dispatch path,
       and the warn-merge holds in a production-shaped ordering. `[unit]`
-- [ ] The coordinator short-circuit emits the new Debug event exactly when it returns
+- [x] The coordinator short-circuit emits the new Debug event exactly when it returns
       without draining, and not when a drain proceeds; the id appears in all three
       log tables. `[unit]` (tables `[explicit-skip: prose]`)
-- [ ] A Design.Server composition test resolves every `[Service]` parameter type of
+- [x] A Design.Server composition test resolves every `[Service]` parameter type of
       Design.Domain's factory methods; it fails before the Program registrations are
       fixed and passes after (measured, not asserted). `[integration]`
-- [ ] The three `FactoryEventHandlerTests` demonstrations assert observable dispatch
+- [x] The three `FactoryEventHandlerTests` demonstrations assert observable dispatch
       behavior; their original intent statements are preserved. `[integration]`
-- [ ] One relay-wait helper and one logging-scopes helper exist; the divergences that
+- [x] One relay-wait helper and one logging-scopes helper exist; the divergences that
       stay are documented at their declarations. `[explicit-skip: harness refactor —
       verified by the suite staying green and by review]`
-- [ ] A full-parallel (default `-m`) solution test run passes with the relay tests
+- [x] A full-parallel (default `-m`) solution test run passes with the relay tests
       included. `[explicit-skip: run evidence in the gate log, noted alongside the
       -m:1 run]`
-- [ ] The scheduler's default-path dequeue decision is executed or formally recorded;
+- [x] The scheduler's default-path dequeue decision is executed or formally recorded;
       either way the 006 coalescing/ordering/count pins are untouched and green.
       `[unit]` (acceptance-of-record variant `[explicit-skip: recorded decision]`)
-- [ ] Full suites green both solutions, expected totals reconciled. `[explicit-skip:
+- [x] Full suites green both solutions, expected totals reconciled. `[explicit-skip:
       meta-bullet, satisfied by the gate run]`
 
 ---
@@ -224,8 +224,9 @@ with `queue[0]` + `RemoveAt(0)` in `TryDequeueThrough`.
 
 ## Test Evidence
 
-Counts, both TFMs: unit 739 → **740** (+11), integration 595 (+4 over 591), Design
-94 → **98** (+4). Build and test logs for both solutions in the gate record.
+Counts, both TFMs: unit 729 → **743** (+14), integration 591 → **595** (+4), Design
+94 → **98** (+4). Baselines are PHASE-006's closing totals. Build and test logs for
+both solutions in the gate record; +3 of the unit delta are gate-round-1 closures.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
@@ -236,7 +237,7 @@ Counts, both TFMs: unit 739 → **740** (+11), integration 595 (+4 over 591), De
 | `Enqueue` null-handler guard | `[unit]` | `FactoryEventPhaseSchedulerTests.Enqueue_NullHandler_ThrowsAtEnqueueNotAtDrain` | ✓ |
 | NF0505 locates at the attribute | `[unit]` | `NF0505CoalesceOnImmediateTests.NF0505_DiagnosticIsLocatedAtTheAttributeNotTheClass` — went red on first run against a wrong expectation (bracketed text vs. the `AttributeSyntax` span) and was corrected to the real location | ✓ |
 | Coalesce flag runtime-inert on unqueued paths | `[unit]` | `FactoryEventsDispatcherPhaseTests.Raise_CoalescingHandlerWithNoQueueInScope_RunsPerRaiseNotOnce` (9004 path) and `…OutsideAnyFactoryCall_RunsPerRaiseNotOnce` (9005 path) | ✓ |
-| Coordinator short-circuit emits 9009, and only there | `[unit]` | `FactoryEventPhaseCoordinatorTests.DrainAsync_OutsideAnyEntryCall_LogsTheShortCircuit` + `DrainAsync_InsideAnEntryCall_LogsNoShortCircuit`; both measured red under RP-1 | ✓ |
+| Coordinator short-circuit emits 9009, and only there | `[unit]` | `FactoryEventPhaseCoordinatorTests.DrainAsync_OutsideAnyEntryCall_LogsTheShortCircuit` + `DrainAsync_InsideAnEntryCall_LogsNoShortCircuit`; both measured red under RP-1. **Gate round 1 (must-cover):** both construct the coordinator by hand, so the DI wiring was unpinned — `DrainAsync_ResolvedFromDI_OutsideAnyEntryCall_LogsTheShortCircuit` added and measured (RP-5: dropping the logger factory from the registration reds it alone, the two hand-built pins stay green) | ✓ |
 | 9009 in all three log tables | `[explicit-skip: prose]` | CLAUDE-DESIGN.md, docs/factory-events.md, skill reference — no test asserts published prose | n/a |
 | Design.Server composition resolves every server-only dependency | `[integration]` | `DesignServerCompositionTests.ServerComposition_ResolvesEveryServerOnlyDependency` + `…ResolvesThePhaseDispatchServices`. Fails before the fix and passes after — **measured** (RP-3: deleting one registration reds this test alone, 97/98, while all 94 pre-existing Design tests stay green) | ✓ |
 | …and actually runs the domain | `[integration]` | `…RunsAPhasedFactoryOperationEndToEnd` (three phase markers + the method-done marker) and `…RunsTheOrderAggregateSavePath`. The first is the one that caught the transient-lifetime defect the resolution tests could not see | ✓ |
@@ -244,7 +245,8 @@ Counts, both TFMs: unit 739 → **740** (+11), integration 595 (+4 over 591), De
 | One relay-wait helper and one scopes helper | `[explicit-skip: harness refactor]` | `RelayTestHarness` replaces both copies; verified by the suite staying green and by `ClientServerContainersOrderTests.RelayTestHarness_ScopesWithRelay_ReturnsServerClientRelay` | n/a |
 | Tuple-order divergence documented **and pinned** | `[integration]` | `ClientServerContainersOrderTests` (4 tests) — went beyond the bullet, which offered "aligned or documented". RP-4 measured 35 integration reds from a one-line reorder | ✓ (upgraded) |
 | Full-parallel run passes with the relay tests | `[explicit-skip: run evidence]` | Recorded in the gate record alongside the `-m:1` run | n/a |
-| Scheduler default-path dequeue decision executed | `[unit]` | Head cursor implemented (amortized O(1)); the PHASE-006 ordering/collapse/count pins are untouched and green, and `Coalesce_RaiseAfterTheDispatchWasTaken_WithWorkStillQueuedBehindIt_StartsAFreshDispatch` is new coverage the refactor required (RP-2) | ✓ |
+| Warn-merge holds in a production-shaped ordering | `[unit]` | `Coalesce_AbortedConsumerDrain_ThenPreDrainRaiseCollapses_TheSurvivorStillWarns9007` — consumer AfterFlush drain aborted by a handler exception, then a later identical raise; every state framework-produced. **Added at gate round 1**: the draft map had no row for this clause of Acceptance bullet 2 and no `MISSING —` row either; it was disposed of in Amendment A4's prose, which the gate then falsified | ✓ |
+| Scheduler default-path dequeue decision executed | `[unit]` | Head cursor implemented (amortized O(1)); the PHASE-006 ordering/collapse/count pins are untouched and green, and `Coalesce_RaiseAfterTheDispatchWasTaken_WithWorkStillQueuedBehindIt_StartsAFreshDispatch` is new coverage the refactor required (RP-2). **Gate round 1 (must-cover + should-cover):** the refactor's own arithmetic was unpinned — `PhaseQueue.Replace`'s head offset (closed by the production-shaped merge pin above, RP-6) and `Count`'s head subtraction (closed by `EndEntryCallAsync_Failed_AfterAnAbortedDrain_DiscardCountExcludesWhatAlreadyRan`, RP-7, whose first version could not go red because a fully-drained queue resets the cursor) | ✓ |
 | `Design.sln` build in verification docs | `[explicit-skip: prose]` | CLAUDE.md's Key Build Commands now builds and tests both solutions, with the false-green symptom named | n/a |
 
 ---
@@ -279,17 +281,23 @@ assertion a different `IPhaseAuditService`. Stateful services are now registered
 explicitly as scoped, with the failure mode written down where the next person will
 add a service.
 
-**A4 — Code review C5's proposed remedy was wrong, and the finding is answered by
-correcting the claim instead.** C5 said the warn-merge pin drives `Enqueue(Immediate, …)`,
-a state the dispatcher never produces, and suggested an AfterFlush trigger as the
-production-shaped variant. Tracing the drain rather than inheriting that: an AfterFlush
-trigger is consumed by the same sweep it would trigger from, and more generally the
-merge needs two identical raises with differing `EnqueuedMidDrain` bits pending
-simultaneously — which requires some dispatch to run *before* AfterFlush is swept, and
-production queues nothing earlier than AfterFlush. **Both** merge orderings are
-unreachable through the framework's current drain points. The pins stay (they guard a
-veto-adopted constraint against a future drain point that would make it reachable);
-what changed is the claim attached to them, now written at the tests.
+**A4 — RETRACTED at the gate. C5's complaint stood; the production-shaped pin was
+owed and is now written.** The original amendment argued that C5's suggested remedy
+(an AfterFlush trigger) fails — true, it is consumed by the same sweep it would
+trigger from — and concluded that **both** merge orderings are therefore unreachable,
+resting on "every drain sweeps earliest-phase-first and runs until empty." That
+premise is false, and the gate caught it. The in-transaction branch of `DrainAsync`
+has no catch, so a handler exception propagates and abandons the rest of the queue
+(pinned since PHASE-001 by
+`DrainAsync_InTransaction_PropagatesHandlerExceptionAndAbortsRemaining`); a cancelled
+drain does the same. Either leaves mid-drain-stamped work pending behind a non-zero
+head cursor — exactly the state the merge needs. Verified against the source before
+acting on it. `Coalesce_AbortedConsumerDrain_ThenPreDrainRaiseCollapses_TheSurvivor-
+StillWarns9007` is the production-shaped variant, measured red under both the deleted
+merge and a mis-offset `Replace` (RP-6). Worth keeping: this is the arc's
+reasoning-dressed-as-evidence failure mode occurring *inside a correction of that same
+failure mode* — the first attempt replaced C5's wrong remedy with a wrong claim rather
+than with a test.
 
 **A5 — The tuple-order bullet was over-delivered, and one live mislabel was fixed.**
 The bullet offered "aligned or documented." Aligning is a one-line change no compiler

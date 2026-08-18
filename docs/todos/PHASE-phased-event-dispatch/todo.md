@@ -98,11 +98,72 @@ exposes drain points.
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
 | 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
-| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan; candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear) | Draft |
+| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan, and raised again by 007's storage change: `PhaseQueue.Pending` now hands out a `Span<QueuedDispatch>` over the live backing array, so a re-entrant `Equals` that enqueues mutates an array a span is open over, not just a `List` (007 gate); candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear); also carries the accepted-not-closed registry isolation risk — `FactoryEventHandlerRegistry.Clear()` stays internal and uncalled, and 007's discipline notes live in two files a new test author may not open (007 gate) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-18 — PHASE-007 (gate round 1: the correction of a reasoning-dressed-as-evidence finding was itself reasoning dressed as evidence)
+
+- **Finding:** The gate returned **2 must-cover**, both in code this plan itself
+  introduced — 9009's DI wiring (both pins built the coordinator by hand, so
+  dropping the logger factory from the registration silenced the feature in every
+  real application with the suite green) and `PhaseQueue.Replace`'s head offset (the
+  warn-merge's only write path, exercised by every merge test at cursor zero where
+  the offset is a no-op). The sharpest, though, was a should-cover: **Plan Amendment
+  A4 was false.** PHASE-006's code review C5 said the warn-merge pins drive states
+  the dispatcher never produces; A4 answered by arguing the state is *unreachable*,
+  resting on "every drain sweeps earliest-phase-first and runs until empty." The
+  in-transaction branch of `DrainAsync` has no catch — a handler exception abandons
+  the queue, as a test pinned since PHASE-001 says — so the merge is reachable
+  through the drain point that ships today, and C5's complaint stood.
+- **Decision:** Amend — all 2 must-cover and all 5 should-cover closed; 4 of 6
+  nice-to-haves taken. A4 **retracted** in the plan and the in-file reachability
+  block rewritten; `Coalesce_AbortedConsumerDrain_…StillWarns9007` is the
+  production-shaped variant C5 asked for and closes the `Replace` finding too. The
+  Design.Server seam widened to include the framework registration call, because the
+  test had been restating it (a drifting assembly argument would have gone unnoticed).
+  Three sabotages measured (RP-5/6/7), one of which — RP-7 — **came back green** on
+  its first attempt because a fully-drained queue resets the cursor, so the discard
+  test was rebuilt around an aborted drain. Unit 740 → 743.
+- **Follow-up:** [reviews/007-test-review.md](./reviews/007-test-review.md). Worth
+  keeping: this is the arc's reasoning-dressed-as-evidence failure mode appearing
+  *inside a correction of that same failure mode* — the first attempt replaced C5's
+  wrong remedy with a wrong claim instead of with a test. PHASE-004's round 2 hit the
+  identical recursion. The tell is unchanged and now has a third instance behind it:
+  a confident sentence about what code does, with no run behind it. Also worth
+  keeping: **three separate predictions in this plan were wrong in the same
+  direction** (RP-2 twice, RP-7 once) because `PhaseQueue.Clear()` resets the cursor
+  when a queue drains empty — a refactor's own defensive resets can make its new
+  arithmetic unobservable, so a cursor-style change needs a test that leaves the
+  structure *partially* consumed or it pins nothing.
+
+### 2026-08-18 — PHASE-007 (pre-flight and implementation: the sample server could not serve the domain it hosts, and the convention that would have fixed it registers transient)
+
+- **Finding:** Design.Server had **no tests at all** and was missing four server-only
+  registrations, not the two the row recorded. Closing the gap with
+  `RegisterMatchingName` — the convention `Person.Server` uses and the docs teach —
+  produced a *second*, quieter defect: it registers **transient**, so the factory
+  method, each handler, and the assertion each held a different `IPhaseAuditService`;
+  every phase ran and the audit read back empty. The resolution-only test passed in
+  both states. Separately, pre-flight found that two log ids the row called unpinned
+  were not: 9005 was already pinned, and 9004's only reference matched `9005 || 9004`
+  and so could not discriminate between the two fallbacks at all.
+- **Decision:** Implement — the registrations moved to a seam
+  (`ServerServices.AddDesignServer`) that `Program.cs` and the new composition test
+  both call, so the check runs against the server's own list rather than a copy;
+  stateful services registered explicitly as scoped with the failure mode written
+  where the next person adds one. The reflective `[Service]`-enumeration drift
+  detector the plan's Acceptance implied was **rejected under the no-reflection
+  rule** and its residual stated rather than papered over.
+- **Follow-up:** [reviews/007-redproof.log](./reviews/007-redproof.log) (local-only
+  evidence per the 2026-08-17 ruling). Worth keeping: `RegisterMatchingName` is a
+  transient convention, and the repo teaches it in several places without saying so —
+  a candidate doc fix beyond this arc. Also: RP-4 measured that swapping
+  `ClientServerContainers`' tuple order silently sends **35** integration tests the
+  wrong container with no compiler complaint, which is why 007 pinned the three
+  orders instead of aligning them.
 
 ### 2026-08-18 — PHASE-007 drafted; PHASE-009 re-split (scheduler concurrency gets its own plan)
 

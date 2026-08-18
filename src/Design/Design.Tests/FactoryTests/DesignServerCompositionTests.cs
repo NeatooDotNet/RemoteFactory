@@ -1,5 +1,7 @@
 using Design.Domain.Aggregates;
+using Design.Domain.Entities;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.ValueObjects;
 using Design.Server;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,26 +39,35 @@ namespace Design.Tests.FactoryTests;
 /// no matter what the server did.
 /// </para>
 /// <para>
-/// The residual, stated rather than papered over: this pins the services named below
-/// and the operations exercised below. A new <c>[Service]</c> type added to
+/// The residuals, stated rather than papered over. <b>One:</b> this pins the services
+/// named below and the operations exercised below — a new <c>[Service]</c> type added to
 /// Design.Domain and used by no operation covered here would still be missed. Closing
 /// that completely means enumerating <c>[Service]</c> parameters reflectively, which
-/// this repository does not do.
+/// this repository does not do. <b>Two:</b> the seam covers the registrations and the
+/// framework call, but not the fact that <c>Program.cs</c> calls it — delete that one
+/// line and these tests stay green against a server that registers nothing. That is why
+/// the seam is a single method: one line to delete is easier to notice missing than one
+/// of several.
 /// </para>
 /// </remarks>
 public class DesignServerCompositionTests
 {
     /// <summary>
-    /// The server's composition, minus the web host: the same RemoteFactory
-    /// registration call and the same server-only service seam Program.cs uses.
+    /// The server's composition, minus the web host.
     /// </summary>
+    /// <remarks>
+    /// Calls <see cref="ServerServices.AddDesignServer"/> — the single method
+    /// <c>Program.cs</c> calls — rather than restating its contents. That includes the
+    /// <c>AddNeatooAspNetCore</c> call and its assembly argument, which an earlier draft
+    /// of this file duplicated: with it restated here, changing the argument in
+    /// <c>Program.cs</c> would have left these tests passing.
+    /// </remarks>
     private static ServiceProvider ServerComposition()
     {
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddProvider(NullLoggerProvider.Instance));
 
-        services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
-        services.AddDesignServerServices();
+        services.AddDesignServer();
 
         return services.BuildServiceProvider();
     }
@@ -83,6 +94,15 @@ public class DesignServerCompositionTests
 
         // Constructor injection — resolved when the factory news up the entity.
         Assert.NotNull(sp.GetRequiredService<ITenantTokenService>());
+
+        // Generated factory interfaces, also method-injected by Design.Domain. They come
+        // from AddNeatooAspNetCore's registrar rather than the server-only seam, so a
+        // registrar regression surfaces here as a named missing type instead of inside
+        // whichever factory call happened to need it first.
+        Assert.NotNull(sp.GetRequiredService<ILazyLoadFactory>());
+        Assert.NotNull(sp.GetRequiredService<IOrderLineFactory>());
+        Assert.NotNull(sp.GetRequiredService<IOrderLineListFactory>());
+        Assert.NotNull(sp.GetRequiredService<IMoneyFactory>());
     }
 
     /// <summary>

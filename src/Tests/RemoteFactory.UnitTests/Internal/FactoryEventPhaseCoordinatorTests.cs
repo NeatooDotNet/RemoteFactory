@@ -421,6 +421,36 @@ public class FactoryEventPhaseCoordinatorTests
     }
 
     /// <summary>
+    /// The same event through the DI registration, which is the only path a real
+    /// application takes.
+    /// </summary>
+    /// <remarks>
+    /// The two pins around this one construct the coordinator directly and pass a logger
+    /// factory by hand. The constructor parameter is optional, so dropping
+    /// <c>sp.GetService&lt;ILoggerFactory&gt;()</c> from the registration in
+    /// <c>AddRemoteFactoryServices</c> would silence 9009 in every real application while
+    /// leaving both of them green — the plan's headline feature passing by accident. This
+    /// resolves the coordinator from a configured container instead, so the wiring is
+    /// what is under test rather than the emission.
+    /// </remarks>
+    [Fact]
+    public async Task DrainAsync_ResolvedFromDI_OutsideAnyEntryCall_LogsTheShortCircuit()
+    {
+        var (provider, scope, logs) = ServerScopeWithLogs();
+        using (provider)
+        using (scope)
+        {
+            var coordinator = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseCoordinator>();
+
+            await coordinator.DrainAsync(DispatchPhase.AfterFlush);
+
+            var shortCircuit = Assert.Single(logs.Entries, e => e.EventId == 9009);
+            Assert.Equal(LogLevel.Debug, shortCircuit.Level);
+            Assert.Equal(DispatchPhase.AfterFlush, shortCircuit.Phase);
+        }
+    }
+
+    /// <summary>
     /// The discriminating half: a drain that actually drains says nothing. Logging 9009
     /// unconditionally would fire it on every correctly-placed consumer drain, which is
     /// the opposite of the signal.

@@ -28,6 +28,7 @@
 using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
 using Neatoo.RemoteFactory;
+using Neatoo.RemoteFactory.AspNetCore;
 
 namespace Design.Server;
 
@@ -37,13 +38,41 @@ namespace Design.Server;
 public static class ServerServices
 {
     /// <summary>
+    /// The server's whole service composition: RemoteFactory itself, then every
+    /// server-only service Design.Domain needs.
+    /// </summary>
+    /// <remarks>
+    /// <c>Program.cs</c> calls exactly this, and so does
+    /// <c>DesignServerCompositionTests</c> — including the
+    /// <see cref="ServiceCollectionExtensions.AddNeatooAspNetCore(IServiceCollection, System.Reflection.Assembly[])"/>
+    /// call and its assembly argument. Keeping the framework registration inside the
+    /// seam rather than in <c>Program.cs</c> is deliberate: with it outside, the test
+    /// had to restate that line, and a drifting assembly argument (or a deleted
+    /// registration call) would have left the test green against a server that registers
+    /// nothing.
+    /// </remarks>
+    public static IServiceCollection AddDesignServer(this IServiceCollection services)
+    {
+        // -------------------------------------------------------------------
+        // DESIGN DECISION: AddNeatooAspNetCore registers everything RemoteFactory needs
+        //
+        // Scans the assembly for [Factory] types, registers the generated factory
+        // delegates, configures the middleware, and sets Mode = Server.
+        //
+        // COMMON MISTAKE: Forgetting to pass the assembly
+        //
+        // WRONG:  services.AddNeatooAspNetCore();                     // nothing registered
+        // RIGHT:  services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+        // -------------------------------------------------------------------
+        services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+
+        return services.AddDesignServerServices();
+    }
+
+    /// <summary>
     /// Registers every server-only service Design.Domain needs, in the composition
     /// order a real server would use.
     /// </summary>
-    /// <remarks>
-    /// Called by <c>Program.cs</c> at startup and by <c>DesignServerCompositionTests</c>,
-    /// which is what makes the composition testable without standing up the web host.
-    /// </remarks>
     public static IServiceCollection AddDesignServerServices(this IServiceCollection services)
     {
         // ---------------------------------------------------------------------

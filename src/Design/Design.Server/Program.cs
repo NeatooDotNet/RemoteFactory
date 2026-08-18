@@ -16,52 +16,30 @@
 //
 // =============================================================================
 
-using Design.Domain.Aggregates;
 using Design.Server;
-using Neatoo.RemoteFactory.AspNetCore;
+using Neatoo.RemoteFactory.AspNetCore;   // for app.UseNeatoo() below
 
 var builder = WebApplication.CreateBuilder(args);
 
 // -------------------------------------------------------------------------
-// DESIGN DECISION: AddNeatooAspNetCore registers everything needed
+// Register everything: RemoteFactory itself plus the server-only services
+// Design.Domain's factory methods resolve by [Service] injection.
 //
-// This single call:
-// - Scans the assembly for [Factory] types
-// - Registers generated factory delegates
-// - Configures the RemoteFactory middleware
-// - Sets NeatooFactory.Mode = Server (remote operations execute here)
+// DESIGN DECISION: One named seam instead of a list of calls here
 //
-// COMMON MISTAKE: Forgetting to pass the assembly
+// The whole composition lives in ServerServices.cs so a test can call the
+// same method and verify this server can actually serve the domain it hosts
+// -- see DesignServerCompositionTests. When the registrations were inline
+// here, four of them were simply missing and nothing caught it: the test
+// harness has its own container and stayed green either way.
 //
-// WRONG:
-// builder.Services.AddNeatooAspNetCore();  // <-- No assembly = nothing registered
+// The AddNeatooAspNetCore call is inside the seam too, not left here. With
+// it out here, the test would have had to restate it, and a drifting
+// assembly argument would have gone unnoticed for the same reason.
 //
-// RIGHT:
-// builder.Services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+// Add new server-only services THERE, not here.
 // -------------------------------------------------------------------------
-builder.Services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
-
-// -------------------------------------------------------------------------
-// Register server-only services
-//
-// DESIGN DECISION: Server-only dependencies are registered here
-//
-// These services are only available on the server. They're injected into
-// factory methods via [Service] parameters (method injection).
-//
-// The client container will NOT have these registrations, which is why
-// calling a method with [Service] parameters from the client fails at
-// runtime if it's not marked [Remote].
-//
-// DESIGN DECISION: One named seam instead of a list of AddScoped calls
-//
-// The registrations live in ServerServices.cs so a test can call the same
-// method and verify this server can actually serve the domain it hosts.
-// When they were inline here, three of the seven were simply missing and
-// nothing caught it -- the test harness had its own container and stayed
-// green. Add new server-only services THERE, not here.
-// -------------------------------------------------------------------------
-builder.Services.AddDesignServerServices();
+builder.Services.AddDesignServer();
 
 var app = builder.Build();
 

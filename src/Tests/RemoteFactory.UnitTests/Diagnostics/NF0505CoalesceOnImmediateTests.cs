@@ -90,9 +90,8 @@ namespace TestNamespace
 
         // The AttributeSyntax node, which excludes the enclosing brackets of its
         // AttributeList — Roslyn's convention, and what a squiggle over "this attribute"
-        // means.
+        // means. NF0501/NF0502/NF0504 would put "CoalesceHandlers" here instead.
         Assert.Equal("FactoryEventHandler<CoalesceEvent>(Coalesce = true)", located);
-        Assert.NotEqual("CoalesceHandlers", located);
     }
 
     [Fact]

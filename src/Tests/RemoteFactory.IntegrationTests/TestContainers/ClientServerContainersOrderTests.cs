@@ -94,6 +94,11 @@ public class ClientServerContainersOrderTests
 
         AssertIsServerScope(server);
         AssertIsClientScope(client);
-        Assert.NotNull(relay);
+
+        // The relay must be registered on the CLIENT container — that is where the
+        // fire-and-forget delivery resolves it. Registered on the server (or on a
+        // container the returned scopes do not belong to) every relay test would wait
+        // for events that never arrive.
+        Assert.Same(relay, client.ServiceProvider.GetRequiredService<Neatoo.RemoteFactory.IFactoryEventRelay>());
     }
 }
