@@ -3,7 +3,7 @@
 **Plan #:** 007
 **Date:** 2026-08-18
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** Implemented — gate pending
 **Last Updated:** 2026-08-18
 **Plan-review opt-in:** No (test infrastructure and pins; the one behavior addition is a Debug log event; blast radius bounded by the sacred-tests rule)
 **Code-review opt-in:** Yes (touches sacred harness files broadly; one runtime addition; a possible scheduler storage tweak)
@@ -170,23 +170,143 @@ contract beyond the one new Debug log id.
 
 ## Current State (Pre-Flight)
 
-*(filled at Step 3 of the workflow, before the first edit)*
+Read before the first edit. Five findings changed the plan; they are carried into
+Plan Amendments below.
+
+**Log-event coverage is not what the Inherited list assumed.** 9005 is *already*
+positively pinned (`FactoryEventsDispatcherPhaseTests.cs:253` — id + Debug level).
+9002 has no assertion anywhere in either suite. 9004's only mention
+(`FactoryEventPhaseEntryTests.cs:226`) matches `9005 || 9004`, so it cannot
+discriminate between the two fallbacks and is not a pin. 9006 has PHASE-006's two
+count pins (`FactoryEventPhaseCoalescingTests.cs:356,375`) asserting the message
+text, but no level assertion. So the real gap is 9002 (nothing), 9004 (nothing
+discriminating), 9006 (level only) — not the three-way hole the row implied.
+`Log.cs` tops out at 9008, so **9009 is free** for the coordinator short-circuit.
+
+**Design.Server's drift is wider than "two missing registrations."** It registers
+three services (`IOrderRepository`, `IExampleRepository`, `IExampleService`) and
+calls neither `RegisterMatchingName` (which `Person.Server/Program.cs:11` does) nor
+anything else. Design.Domain `[Service]`-injects four more:
+`INotificationService`, `IProductReviewService`, `IPhaseAuditService`, and —
+through constructor injection on `CtorInjectedEntity`/`ExecCtorEntity` —
+`ITenantTokenService`. Two of those (`IOrderRepository` → `InMemoryOrderRepository`,
+`IProductReviewService` → `InMemoryProductReviewService`) break the `IFoo`→`Foo`
+convention, so `RegisterMatchingName` alone does not close the gap.
+
+**The composition test cannot be built the way the Acceptance bullet described.**
+"Resolve every `[Service]` parameter type declared by Design.Domain factory methods"
+is a reflective enumeration, and the standing rule is no reflection without approval
+(global CLAUDE.md). Non-reflective alternatives split into a hand-maintained mirror
+of Program.cs (which cannot go red when Program.cs drifts — the arc's own recurring
+defect, deliberately introduced) and a shared compiled seam. **Measured:** adding a
+`ProjectReference` from Design.Tests to Design.Server builds clean despite the
+Blazor WASM chain (`dotnet build src/Design/Design.sln -c Release` → Build
+succeeded), so the shared seam is available and the mirror is not needed.
+
+**`Enqueue`'s null-handler guard is genuinely unpinned** — `Enqueue_NullEvent_Throws`
+(`FactoryEventPhaseSchedulerTests.cs:486`) covers only the event argument. The
+NF0504 location assertion at `AssemblyAttributeEmissionTests.cs:1036`
+(`duplicate.Location.SourceSpan`) is the pattern NF0505's location pin follows.
+
+**Harness duplication is three-way, not two-way.** `WaitForAsync` is byte-identical
+in `FactoryEventRelayTests.cs:23` and `FactoryEventCoalescingTests.cs:31`;
+`ScopesWithRelay` exists in both with *different return arities*; and
+`ClientServerContainers` publishes **three** tuple orders — `Scopes()` and
+`ScopesWithLogging` return `(server, client, local)` while
+`Scopes(configureClient, configureServer, configureLocal)` returns
+`(client, server, local)`. The two relay helpers both consume the odd one out, which
+is why both carry a comment about it.
+
+Scheduler storage as it stands: `Dictionary<DispatchPhase, List<QueuedDispatch>>`
+with `queue[0]` + `RemoveAt(0)` in `TryDequeueThrough`.
 
 ---
 
 ## Test Evidence
 
-*(filled after implementation, before the gate)*
+Counts, both TFMs: unit 739 → **740** (+11), integration 595 (+4 over 591), Design
+94 → **98** (+4). Build and test logs for both solutions in the gate record.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| | | | |
+| 9002 pinned (message, level, count) | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_LogsTheDrainedCountAndPhase` — asserts Debug, phase, and "Drained **3**" where the requested phase held 2 (the third is the swept earlier phase, which is the count's whole point); plus `DrainAsync_NothingDrained_LogsNo9002` for the other direction | ✓ |
+| 9004 pinned, discriminated from 9005 | `[unit]` | `FactoryEventsDispatcherPhaseTests.Raise_PhasedHandlerWithNoQueueInScope_DispatchesImmediatelyRatherThanVanishing` — id, Debug, event type, phase, **and `DoesNotContain(9005)`**; the 9005 pin gained the mirror `DoesNotContain(9004)`. The pre-existing integration assertion matched `9005 \|\| 9004` and could not tell them apart | ✓ |
+| 9006 level and cross-phase total | `[unit]` | `FactoryEventPhaseSchedulerTests.EndEntryCallAsync_Failed_LogsTheDiscardedTotalAcrossAllPhases` (PHASE-006 already pinned the collapsed count; level and the across-queues total were unasserted) | ✓ |
+| Undefined-phase silent no-op documented | `[unit]` | `FactoryEventPhaseSchedulerTests.DrainAsync_UndefinedPhaseRegistration_IsASilentNoOp` | ✓ |
+| `Enqueue` null-handler guard | `[unit]` | `FactoryEventPhaseSchedulerTests.Enqueue_NullHandler_ThrowsAtEnqueueNotAtDrain` | ✓ |
+| NF0505 locates at the attribute | `[unit]` | `NF0505CoalesceOnImmediateTests.NF0505_DiagnosticIsLocatedAtTheAttributeNotTheClass` — went red on first run against a wrong expectation (bracketed text vs. the `AttributeSyntax` span) and was corrected to the real location | ✓ |
+| Coalesce flag runtime-inert on unqueued paths | `[unit]` | `FactoryEventsDispatcherPhaseTests.Raise_CoalescingHandlerWithNoQueueInScope_RunsPerRaiseNotOnce` (9004 path) and `…OutsideAnyFactoryCall_RunsPerRaiseNotOnce` (9005 path) | ✓ |
+| Coordinator short-circuit emits 9009, and only there | `[unit]` | `FactoryEventPhaseCoordinatorTests.DrainAsync_OutsideAnyEntryCall_LogsTheShortCircuit` + `DrainAsync_InsideAnEntryCall_LogsNoShortCircuit`; both measured red under RP-1 | ✓ |
+| 9009 in all three log tables | `[explicit-skip: prose]` | CLAUDE-DESIGN.md, docs/factory-events.md, skill reference — no test asserts published prose | n/a |
+| Design.Server composition resolves every server-only dependency | `[integration]` | `DesignServerCompositionTests.ServerComposition_ResolvesEveryServerOnlyDependency` + `…ResolvesThePhaseDispatchServices`. Fails before the fix and passes after — **measured** (RP-3: deleting one registration reds this test alone, 97/98, while all 94 pre-existing Design tests stay green) | ✓ |
+| …and actually runs the domain | `[integration]` | `…RunsAPhasedFactoryOperationEndToEnd` (three phase markers + the method-done marker) and `…RunsTheOrderAggregateSavePath`. The first is the one that caught the transient-lifetime defect the resolution tests could not see | ✓ |
+| `Assert.True(true)` trio asserts observable dispatch | `[integration]` | `FactoryEventHandlerTests.Raise_DispatchesToAllHandlers` (both handlers, both messages exact), `…Raise_NoHandlers_CompletesWithoutError` (nothing dispatched — the no-op observed, not merely un-thrown), `…Raise_EventWithNestedRecord_DispatchesSuccessfully` (reads through the nested record into the message) | ✓ |
+| One relay-wait helper and one scopes helper | `[explicit-skip: harness refactor]` | `RelayTestHarness` replaces both copies; verified by the suite staying green and by `ClientServerContainersOrderTests.RelayTestHarness_ScopesWithRelay_ReturnsServerClientRelay` | n/a |
+| Tuple-order divergence documented **and pinned** | `[integration]` | `ClientServerContainersOrderTests` (4 tests) — went beyond the bullet, which offered "aligned or documented". RP-4 measured 35 integration reds from a one-line reorder | ✓ (upgraded) |
+| Full-parallel run passes with the relay tests | `[explicit-skip: run evidence]` | Recorded in the gate record alongside the `-m:1` run | n/a |
+| Scheduler default-path dequeue decision executed | `[unit]` | Head cursor implemented (amortized O(1)); the PHASE-006 ordering/collapse/count pins are untouched and green, and `Coalesce_RaiseAfterTheDispatchWasTaken_WithWorkStillQueuedBehindIt_StartsAFreshDispatch` is new coverage the refactor required (RP-2) | ✓ |
+| `Design.sln` build in verification docs | `[explicit-skip: prose]` | CLAUDE.md's Key Build Commands now builds and tests both solutions, with the false-green symptom named | n/a |
 
 ---
 
 ## Plan Amendments
 
-*(none yet)*
+**A1 — The composition test is not the reflective drift-detector the Acceptance bullet
+described.** The bullet said "resolve every `[Service]` parameter type declared by
+Design.Domain factory methods," which is a reflective enumeration, and the standing
+rule is no reflection without approval. The two non-reflective options were a
+hand-maintained mirror of `Program.cs` (green no matter what the server does — the
+arc's own recurring defect, deliberately built) and a shared compiled seam. Measured
+that Design.Tests can reference Design.Server despite the Blazor WASM chain, so the
+seam won: `Design.Server/ServerServices.cs` holds `AddDesignServerServices`, `Program.cs`
+calls it, and the test calls the same method. **Residual, stated rather than papered
+over:** the test covers the services it names and the operations it runs. A new
+`[Service]` type used by no covered operation would still slip. RP-3 measures what it
+does catch.
+
+**A2 — The Constraint "no production restructuring of the sample server" was relaxed,
+deliberately.** Extracting seven inline `AddScoped` lines into a named method is a
+restructuring, and without it there is no seam to test. `Program.cs` keeps its teaching
+comments and gains one naming the seam and saying to add services there. The
+alternative that honored the Constraint literally was the mirror test A1 rejects.
+
+**A3 — The drift was four services, not two, and there was a second defect class.**
+Pre-flight found `INotificationService`, `IProductReviewService`, `IPhaseAuditService`
+and `ITenantTokenService` missing, not the two the row recorded. Then the end-to-end
+test found the lifetime problem: `RegisterMatchingName` registers **transient**, so
+closing the gap by convention alone gave the factory method, each handler, and the
+assertion a different `IPhaseAuditService`. Stateful services are now registered
+explicitly as scoped, with the failure mode written down where the next person will
+add a service.
+
+**A4 — Code review C5's proposed remedy was wrong, and the finding is answered by
+correcting the claim instead.** C5 said the warn-merge pin drives `Enqueue(Immediate, …)`,
+a state the dispatcher never produces, and suggested an AfterFlush trigger as the
+production-shaped variant. Tracing the drain rather than inheriting that: an AfterFlush
+trigger is consumed by the same sweep it would trigger from, and more generally the
+merge needs two identical raises with differing `EnqueuedMidDrain` bits pending
+simultaneously — which requires some dispatch to run *before* AfterFlush is swept, and
+production queues nothing earlier than AfterFlush. **Both** merge orderings are
+unreachable through the framework's current drain points. The pins stay (they guard a
+veto-adopted constraint against a future drain point that would make it reachable);
+what changed is the claim attached to them, now written at the tests.
+
+**A5 — The tuple-order bullet was over-delivered, and one live mislabel was fixed.**
+The bullet offered "aligned or documented." Aligning is a one-line change no compiler
+checks — RP-4 measured 35 integration tests silently exercising the wrong container —
+so the orders are documented at the declarations *and* pinned by
+`ClientServerContainersOrderTests`, which is what would make a future alignment safe.
+Separately, `FactoryEventHandlerLocalTests.CreateScopes` declared its tuple
+`(server, client, local)` while returning `(client, server, local)`; every test in the
+file destructured positionally and was accidentally correct, but the signature was
+lying. Corrected.
+
+**A6 — The scheduler dequeue was executed, not accepted, and the refactor needed a new
+test.** Head cursor (`PhaseQueue`), amortized O(1), semantics unchanged. RP-2's first
+two rounds came back green against a red prediction, which surfaced that the taken-entry
+boundary had no coverage at all and that two independent guards protect it. New pin
+added; the comment and the test remarks now state the measured redundancy instead of the
+reasoning that turned out to be wrong.
 
 ---
 

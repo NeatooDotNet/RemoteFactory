@@ -129,15 +129,18 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     private readonly IServiceProvider _sp;
     private readonly ILogger? _logger;
 
-    // List rather than Queue: the coalescing warn-merge rewrites one pending entry's
-    // EnqueuedMidDrain bit in place, which the readonly record struct element cannot
+    // Not Queue<T>: the coalescing warn-merge rewrites one pending entry's
+    // EnqueuedMidDrain bit in place, which a readonly record struct element cannot
     // express inside a Queue<T> (a mutable reference-typed element could; the struct
-    // was kept). Dequeue is a front-removal — O(n) per dequeue, paid by every path
-    // including non-coalescing ones — accepted on the ASSUMPTION that pending queues
-    // live for one entry call and stay small; nothing enforces that, and a bulk save
-    // raising thousands of deferred events would feel it (recorded, PHASE-007). The
-    // coalescing identity scan (opted-in enqueues only) is O(pending) under _gate.
-    private readonly Dictionary<DispatchPhase, List<QueuedDispatch>> _deferred = new();
+    // was kept). PhaseQueue is a list plus a head cursor, which keeps that in-place
+    // rewrite and the identity scan while making dequeue amortized O(1).
+    //
+    // The cursor replaces a front-removal (PHASE-006 code review C3): RemoveAt(0) is
+    // O(n) and every path paid it, including the non-opted-in default that has no use
+    // for coalescing at all, on an ASSUMPTION that pending queues stay small which
+    // nothing enforced. A bulk save raising thousands of deferred events made the drain
+    // quadratic.
+    private readonly Dictionary<DispatchPhase, PhaseQueue> _deferred = new();
 
     // Guards _deferred, _entryDepth, and _activeDrains. Scopes can be shared by
     // concurrent flows (Blazor Server circuits, Logical mode, a reused test scope);
@@ -168,6 +171,56 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
         RaiseOptions Options,
         Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Handler,
         bool EnqueuedMidDrain);
+
+    /// <summary>
+    /// One phase's pending dispatches: append at the tail, take from a head cursor,
+    /// rewrite in place. Every member runs under the scheduler's <c>_gate</c>.
+    /// </summary>
+    private sealed class PhaseQueue
+    {
+        private readonly List<QueuedDispatch> _items = [];
+        private int _head;
+
+        public int Count => _items.Count - _head;
+
+        /// <summary>The pending entries, oldest first — what the identity scan walks.</summary>
+        public ReadOnlySpan<QueuedDispatch> Pending
+            => System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_items)[_head..];
+
+        public void Add(QueuedDispatch dispatch) => _items.Add(dispatch);
+
+        /// <summary>Rewrites a pending entry, indexed as <see cref="Pending"/> indexes it.</summary>
+        public void Replace(int pendingIndex, QueuedDispatch dispatch) => _items[_head + pendingIndex] = dispatch;
+
+        public QueuedDispatch Dequeue()
+        {
+            var dispatch = _items[_head];
+
+            // Release the reference so a drained dispatch's event and handler are not
+            // held alive by the backing array until the next Clear. It doubles as the
+            // second of two guards keeping a taken dispatch out of the coalescing
+            // identity scan (the Pending slice is the first): a cleared slot has a null
+            // Handler, which no live handler is reference-equal to.
+            _items[_head] = default;
+            _head++;
+
+            if (_head == _items.Count)
+            {
+                // The queue drained empty, which is the common end state of every
+                // drain: reset rather than let the backing list grow across an
+                // entry call's worth of enqueues.
+                Clear();
+            }
+
+            return dispatch;
+        }
+
+        public void Clear()
+        {
+            _items.Clear();
+            _head = 0;
+        }
+    }
 
     public bool HasPending
     {
@@ -258,7 +311,7 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
         {
             if (!_deferred.TryGetValue(phase, out var queue))
             {
-                queue = new List<QueuedDispatch>();
+                queue = new PhaseQueue();
                 _deferred[phase] = queue;
             }
 
@@ -269,11 +322,13 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                 // Identity: same handler delegate (one delegate instance per surviving
                 // registration, so reference equality is "same registration"), an
                 // Equals-equal event, and the same options. Only PENDING work is a
-                // collapse target — a dispatch a running drain has already taken is gone
-                // from this list, so a raise after it starts a fresh pending dispatch.
-                for (var i = 0; i < queue.Count; i++)
+                // collapse target — a dispatch a running drain has already taken is
+                // behind the head cursor, so a raise after it starts a fresh pending
+                // dispatch.
+                var pending = queue.Pending;
+                for (var i = 0; i < pending.Length; i++)
                 {
-                    var existing = queue[i];
+                    var existing = pending[i];
                     if (ReferenceEquals(existing.Handler, handler)
                         && existing.Options == options
                         && existing.Event.Equals(factoryEvent))
@@ -285,7 +340,7 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                         // consumer who never drained is owed.
                         if (existing.EnqueuedMidDrain && !enqueuedMidDrain)
                         {
-                            queue[i] = existing with { EnqueuedMidDrain = false };
+                            queue.Replace(i, existing with { EnqueuedMidDrain = false });
                         }
 
                         coalesced = true;
@@ -436,8 +491,7 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                 var queue = _deferred[candidate];
                 if (queue.Count > 0)
                 {
-                    dispatch = queue[0];
-                    queue.RemoveAt(0);
+                    dispatch = queue.Dequeue();
                     phase = candidate;
                     return true;
                 }

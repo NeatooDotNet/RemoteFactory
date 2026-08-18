@@ -654,6 +654,7 @@ public static partial class HandlerB
 | 9006 | Debug | Phase scheduler | A failed entry call discarded its deferred dispatches without running them. |
 | 9007 | Warning | Phase scheduler | An `AfterFlush` dispatch the consumer never drained ran at the `AfterCommit` point instead (fail-open). One warning per dispatch, naming the event type — call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit, or register the handler at a different phase. A coalesced survivor warns if any absorbed raise would have. |
 | 9008 | Debug | Phase scheduler | A raise for a `Coalesce = true` handler collapsed into an identical pending dispatch — logged instead of a second 9001; the 9002/9006 counts reflect the collapsed queue. |
+| 9009 | Debug | Phase coordinator | `IFactoryEventPhaseCoordinator.DrainAsync` was called with no entry factory call active, so nothing was drained. Usually means the drain wraps the factory call from outside rather than running inside the factory method body. Debug, not Warning — draining a scope with no factory work in flight is also correct. |
 
 ---
 

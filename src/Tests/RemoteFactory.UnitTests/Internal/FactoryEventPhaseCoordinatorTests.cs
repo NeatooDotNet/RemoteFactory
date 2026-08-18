@@ -372,4 +372,79 @@ public class FactoryEventPhaseCoordinatorTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
             () => coordinator.DrainAsync(DispatchPhase.AfterCommit));
     }
+
+    // A scheduler and a coordinator over it, both logging into one capture — the
+    // coordinator's own emissions were unobservable while it took no logger factory.
+    private static (IFactoryEventPhaseScheduler Scheduler, IFactoryEventPhaseCoordinator Coordinator) NewPair(out CapturingLoggerProvider logs)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var captured = new CapturingLoggerProvider();
+        var loggerFactory = LoggerFactory.Create(b =>
+        {
+            b.SetMinimumLevel(LogLevel.Debug);
+            b.AddProvider(captured);
+        });
+        logs = captured;
+        var scheduler = new FactoryEventPhaseScheduler(services.BuildServiceProvider(), loggerFactory);
+        return (scheduler, new FactoryEventPhaseCoordinator(scheduler, loggerFactory));
+    }
+
+    /// <summary>
+    /// PHASE-007: the short-circuit announces itself. The consumer this exists for wraps
+    /// the factory call from the OUTSIDE — their transaction abstraction drains, no entry
+    /// call is active yet, and before this event the only thing they ever heard was a
+    /// 9007 afterwards telling them to call the drain they had just called. Debug rather
+    /// than Warning because a drain with no factory work in flight is also the correct
+    /// steady state.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_OutsideAnyEntryCall_LogsTheShortCircuit()
+    {
+        var (scheduler, coordinator) = NewPair(out var logs);
+        var log = new List<string>();
+
+        scheduler.Enqueue(DispatchPhase.AfterFlush, new CoordinatorDrainEvent("x"), RaiseOptions.None,
+            (_, _, _, _) => { log.Add("drained"); return Task.CompletedTask; });
+
+        await coordinator.DrainAsync(DispatchPhase.AfterFlush);
+
+        var shortCircuit = Assert.Single(logs.Entries, e => e.EventId == 9009);
+        Assert.Equal(LogLevel.Debug, shortCircuit.Level);
+        Assert.Equal(DispatchPhase.AfterFlush, shortCircuit.Phase);
+        Assert.Contains("no factory entry call active in this scope", shortCircuit.Message);
+
+        // Still a short-circuit, not a drain — the behavior this plan added observability
+        // to is unchanged.
+        Assert.Empty(log);
+        Assert.True(scheduler.HasPending);
+    }
+
+    /// <summary>
+    /// The discriminating half: a drain that actually drains says nothing. Logging 9009
+    /// unconditionally would fire it on every correctly-placed consumer drain, which is
+    /// the opposite of the signal.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_InsideAnEntryCall_LogsNoShortCircuit()
+    {
+        var (scheduler, coordinator) = NewPair(out var logs);
+        var log = new List<string>();
+
+        scheduler.BeginEntryCall();
+        try
+        {
+            scheduler.Enqueue(DispatchPhase.AfterFlush, new CoordinatorDrainEvent("x"), RaiseOptions.None,
+                (_, _, _, _) => { log.Add("drained"); return Task.CompletedTask; });
+
+            await coordinator.DrainAsync(DispatchPhase.AfterFlush);
+        }
+        finally
+        {
+            await scheduler.EndEntryCallAsync(success: true);
+        }
+
+        Assert.Equal(["drained"], log);
+        Assert.DoesNotContain(logs.Entries, e => e.EventId == 9009);
+    }
 }

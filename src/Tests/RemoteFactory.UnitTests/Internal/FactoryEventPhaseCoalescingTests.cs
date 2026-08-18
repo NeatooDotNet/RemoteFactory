@@ -251,8 +251,89 @@ public class FactoryEventPhaseCoalescingTests
         Assert.Equal(["projection", "projection"], log);
     }
 
+    /// <summary>
+    /// The same rule with the queue still occupied behind the dispatch that was taken —
+    /// which is the case the test above cannot reach.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// PHASE-007 replaced the front-removal dequeue with a head cursor, so a taken
+    /// dispatch stays in the backing list until the queue drains empty. The test above
+    /// enqueues exactly one dispatch, so the queue empties and resets on that first
+    /// dequeue and no stale entry ever exists. A second, unrelated dispatch queued
+    /// behind the first keeps the cursor off zero while the re-raise scans, which is the
+    /// only arrangement in either suite where a taken-but-still-present entry is in
+    /// front of the scan.
+    /// </para>
+    /// <para>
+    /// What it actually discriminates, measured rather than reasoned (RP-2): two
+    /// independent guards keep a taken dispatch out of the identity scan — the
+    /// <c>Pending</c> slice starts at the cursor, and <c>Dequeue</c> blanks the slot it
+    /// leaves behind, so a stale entry has a null handler that matches nothing. Removing
+    /// EITHER one alone leaves this test and both full suites green; removing BOTH
+    /// collapses the re-raise into the already-dispatched entry and turns this test red,
+    /// alone, on both frameworks. So this is the pin for the pair, not for the cursor —
+    /// and the redundancy is now recorded instead of being mistaken for coverage.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task Coalesce_RaiseAfterTheDispatchWasTaken_WithWorkStillQueuedBehindIt_StartsAFreshDispatch()
+    {
+        var scheduler = NewScheduler(out _);
+        var log = new List<string>();
+        var evt = new CoalesceTestEvent("same");
+
+        Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task>? projection = null;
+        var reRaised = false;
+        projection = (_, _, _, _) =>
+        {
+            log.Add("projection");
+            if (!reRaised)
+            {
+                reRaised = true;
+                scheduler.Enqueue(DispatchPhase.AfterCommit, evt, RaiseOptions.None, projection!, coalesce: true);
+            }
+            return Task.CompletedTask;
+        };
+
+        scheduler.Enqueue(DispatchPhase.AfterCommit, evt, RaiseOptions.None, projection, coalesce: true);
+        // A different handler, so it is never a collapse candidate — it is here only to
+        // keep the queue non-empty while the re-raise scans it.
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new CoalesceTestEvent("other"), RaiseOptions.None,
+            Recording(log, "unrelated"));
+
+        await scheduler.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["projection", "unrelated", "projection"], log);
+    }
+
     // ------------------------------------------------------------------
     // The warn-preserving merge (plan review B-V1)
+    //
+    // REACHABILITY (PHASE-007, correcting the remedy PHASE-006's code review C5
+    // proposed). C5 flagged that the first of these two pins drives
+    // Enqueue(Immediate, …) as its mid-drain trigger — a state the dispatcher never
+    // produces, since Immediate handlers are never queued — and suggested an AfterFlush
+    // trigger as the production-shaped variant. Tracing the drain instead of inheriting
+    // that suggestion: it does not work, and the deeper answer is that BOTH merge
+    // orderings are unreachable through the framework's current drain points.
+    //
+    // The merge needs two identical raises with differing EnqueuedMidDrain bits pending
+    // AT THE SAME TIME. Every drain sweeps earliest-phase-first and runs until empty, so
+    // the moment a drain reaches AfterFlush it consumes the pending dispatch; anything
+    // raised afterwards has no collapse target left. For a pre-drain entry to still be
+    // pending when a mid-drain raise arrives, some dispatch must run BEFORE AfterFlush is
+    // swept — which in production means a queued Immediate dispatch, and there are none.
+    // An AfterFlush trigger is consumed by the same sweep it would trigger from.
+    //
+    // The pins stay, and stay as they are: they protect the merge against the drain
+    // points that would make it reachable — a second consumer-drainable phase, per-flow
+    // entry tracking, or any drain that stops short of AfterFlush — and the merge is the
+    // mechanism behind a veto-adopted constraint (a latest-bit-wins collapse erasing the
+    // 9007 todo AC-5 promises). Deleting it was measured green across the suite once
+    // already (code review C1) before the second ordering was pinned. What changes here
+    // is only the claim: these are guards against a future drain point, not
+    // reproductions of a current one.
     // ------------------------------------------------------------------
 
     /// <summary>

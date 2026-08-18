@@ -543,4 +543,12 @@ internal static partial class Log
         this ILogger logger,
         string eventType,
         DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9009,
+        Level = LogLevel.Debug,
+        Message = "IFactoryEventPhaseCoordinator.DrainAsync({Phase}) was called with no factory entry call active in this scope; nothing was drained. Call it from inside the factory call — a drain that wraps the factory call from the outside runs before the work it means to flush has been queued.")]
+    public static partial void FactoryEventPhaseDrainWithoutEntryCall(
+        this ILogger logger,
+        DispatchPhase phase);
 }

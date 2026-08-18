@@ -63,6 +63,38 @@ namespace TestNamespace
         DiagnosticTestHelper.AssertNoRemoteFactoryDiagnostics(source);
     }
 
+    /// <summary>
+    /// NF0505 is located at the <b>attribute</b>, not at the handler class's identifier —
+    /// deliberately diverging from NF0501/NF0502/NF0504's class-identifier convention.
+    /// </summary>
+    /// <remarks>
+    /// The divergence is the point: <c>[FactoryEventHandler&lt;T&gt;]</c> is
+    /// <c>AllowMultiple</c>, so a class can carry several, and only one of them declared
+    /// the inert flag. A class-located squiggle would tell a consumer with four stacked
+    /// attributes that something on this class is wrong without saying which — the
+    /// complaint NF0504's own location remark records as a callout. Asserted through the
+    /// source span rather than a line/column pair so an edit to the fixture cannot leave
+    /// this green while pointing somewhere else. If someone "fixes" the inconsistency by
+    /// moving NF0505 to the class, this goes red and the choice gets made on purpose.
+    /// </remarks>
+    [Fact]
+    public void NF0505_DiagnosticIsLocatedAtTheAttributeNotTheClass()
+    {
+        var source = HandlerSource("[FactoryEventHandler<CoalesceEvent>(Coalesce = true)]");
+
+        var (diagnostics, _, _) = DiagnosticTestHelper.RunGenerator(source);
+
+        var coalesceOnImmediate = Assert.Single(diagnostics.Where(d => d.Id == "NF0505"));
+        var span = coalesceOnImmediate.Location.SourceSpan;
+        var located = source.Substring(span.Start, span.Length);
+
+        // The AttributeSyntax node, which excludes the enclosing brackets of its
+        // AttributeList — Roslyn's convention, and what a squiggle over "this attribute"
+        // means.
+        Assert.Equal("FactoryEventHandler<CoalesceEvent>(Coalesce = true)", located);
+        Assert.NotEqual("CoalesceHandlers", located);
+    }
+
     [Fact]
     public void NF0505_RegistrationIsStillEmittedFaithfully()
     {

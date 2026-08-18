@@ -483,6 +483,7 @@ public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
 | 9006 | `FactoryEventPhaseDiscardedAtExit` | Debug | A failed entry call discarded its deferred dispatches without running them |
 | 9007 | `FactoryEventPhaseNeverDrained` | Warning | The post-completion sweep picked up an `AfterFlush` dispatch the consumer never drained — it ran at the `AfterCommit` point instead (fail-open). One warning per dispatch, naming the event type. Call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit, or register the handler at a different phase. A coalesced survivor warns if any absorbed raise would have. |
 | 9008 | `FactoryEventPhaseCoalesced` | Debug | A raise for a `Coalesce = true` handler collapsed into an identical pending dispatch — logged instead of a second 9001; the 9002/9006 counts reflect the collapsed queue |
+| 9009 | `FactoryEventPhaseDrainWithoutEntryCall` | Debug | `IFactoryEventPhaseCoordinator.DrainAsync` was called with no entry factory call active in the scope, so nothing was drained. Usually means the drain wraps the factory call from outside instead of running inside the factory method body — see [Draining AfterFlush](#draining-afterflush--ifactoryeventphasecoordinator). Debug rather than Warning because draining a scope with no factory work in flight is also a correct steady state. |
 
 `UnknownFactoryEventTypeException` is public and carries `UnresolvedTypeFullName` plus `BatchTypeFullNames` for diagnostics — consumers may inspect it via log context.
 

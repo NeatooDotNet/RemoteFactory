@@ -17,7 +17,7 @@
 // =============================================================================
 
 using Design.Domain.Aggregates;
-using Design.Domain.FactoryPatterns;
+using Design.Server;
 using Neatoo.RemoteFactory.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,10 +52,16 @@ builder.Services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 // The client container will NOT have these registrations, which is why
 // calling a method with [Service] parameters from the client fails at
 // runtime if it's not marked [Remote].
+//
+// DESIGN DECISION: One named seam instead of a list of AddScoped calls
+//
+// The registrations live in ServerServices.cs so a test can call the same
+// method and verify this server can actually serve the domain it hosts.
+// When they were inline here, three of the seven were simply missing and
+// nothing caught it -- the test harness had its own container and stayed
+// green. Add new server-only services THERE, not here.
 // -------------------------------------------------------------------------
-builder.Services.AddScoped<IOrderRepository, InMemoryOrderRepository>();
-builder.Services.AddScoped<IExampleRepository, ExampleRepository>();
-builder.Services.AddScoped<IExampleService, ExampleService>();
+builder.Services.AddDesignServerServices();
 
 var app = builder.Build();
 

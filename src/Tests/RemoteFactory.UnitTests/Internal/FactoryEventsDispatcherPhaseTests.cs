@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.Internal;
+using RemoteFactory.UnitTests.TestContainers;
 
 namespace RemoteFactory.UnitTests.Internal;
 
@@ -28,7 +29,9 @@ public class FactoryEventsDispatcherPhaseTests
     private sealed record ChainedSourceEvent(string Value) : FactoryEventBase;
     private sealed record ChainedFollowUpEvent(string Value) : FactoryEventBase;
     private sealed record NoQueueEvent(string Value) : FactoryEventBase;
+    private sealed record NoQueueCoalesceEvent(string Value) : FactoryEventBase;
     private sealed record OutsideEntryEvent(string Value) : FactoryEventBase;
+    private sealed record OutsideEntryCoalesceEvent(string Value) : FactoryEventBase;
     private sealed record FailedEntryEvent(string Value) : FactoryEventBase;
     private sealed record SecondEntryEvent(string Value) : FactoryEventBase;
 
@@ -230,9 +233,9 @@ public class FactoryEventsDispatcherPhaseTests
         lock (Dispatched) { Dispatched.Clear(); }
         FactoryEventHandlerRegistry.RegisterHandler<OutsideEntryEvent>(typeof(DeferredHandler), DispatchPhase.AfterCommit, Recording("deferred"));
 
-        var capture = new CapturingProvider();
+        var capture = new CapturingLoggerProvider();
         var services = new ServiceCollection();
-        services.AddLogging(b => b.AddProvider(capture).SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace));
+        services.AddLogging(b => b.AddProvider(capture).SetMinimumLevel(LogLevel.Trace));
         services.AddNeatooRemoteFactory(NeatooFactory.Server, typeof(FactoryEventsDispatcherPhaseTests).Assembly);
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
@@ -247,35 +250,15 @@ public class FactoryEventsDispatcherPhaseTests
             Assert.Equal(["deferred"], Dispatched);
         }
         Assert.False(queue.HasPending);
-        lock (capture.Entries)
-        {
-            Assert.Contains(capture.Entries, e =>
-                e.EventId == 9005 && e.Level == Microsoft.Extensions.Logging.LogLevel.Debug);
-        }
-    }
 
-    private sealed class CapturingProvider : Microsoft.Extensions.Logging.ILoggerProvider
-    {
-        public List<(int EventId, Microsoft.Extensions.Logging.LogLevel Level)> Entries { get; } = [];
-
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new CapturingLogger(this);
-
-        public void Dispose() { }
-
-        private sealed class CapturingLogger(CapturingProvider owner) : Microsoft.Extensions.Logging.ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
-
-            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                lock (owner.Entries)
-                {
-                    owner.Entries.Add((eventId.Id, logLevel));
-                }
-            }
-        }
+        var fallback = Assert.Single(capture.Entries, e => e.EventId == 9005);
+        Assert.Equal(LogLevel.Debug, fallback.Level);
+        Assert.Equal(nameof(OutsideEntryEvent), fallback.EventType);
+        Assert.Equal(DispatchPhase.AfterCommit, fallback.Phase);
+        // The two fallbacks are distinct diagnoses — "no queue in this scope" is a
+        // composition problem, "outside any factory call" is a timing one. A test that
+        // accepted either could not tell a consumer which they have.
+        Assert.DoesNotContain(capture.Entries, e => e.EventId == 9004);
     }
 
     [Fact]
@@ -326,8 +309,9 @@ public class FactoryEventsDispatcherPhaseTests
 
         // A container without the phase queue registered — the fallback path in
         // FactoryEventsDispatcher.
+        var capture = new CapturingLoggerProvider();
         var services = new ServiceCollection();
-        services.AddLogging();
+        services.AddLogging(b => b.AddProvider(capture).SetMinimumLevel(LogLevel.Trace));
         using var provider = services.BuildServiceProvider();
         var dispatcher = new FactoryEventsDispatcher(provider);
 
@@ -336,6 +320,74 @@ public class FactoryEventsDispatcherPhaseTests
         lock (Dispatched)
         {
             Assert.Equal(["deferred"], Dispatched);
+        }
+
+        // 9004's positive pin. Previously this path was covered only by an integration
+        // assertion matching "9005 OR 9004", which cannot tell the two fallbacks apart.
+        var fallback = Assert.Single(capture.Entries, e => e.EventId == 9004);
+        Assert.Equal(LogLevel.Debug, fallback.Level);
+        Assert.Equal(nameof(NoQueueEvent), fallback.EventType);
+        Assert.Equal(DispatchPhase.AfterCommit, fallback.Phase);
+        Assert.DoesNotContain(capture.Entries, e => e.EventId == 9005);
+    }
+
+    /// <summary>
+    /// Documenting pin for a claim the attribute's XML makes and only emission covered:
+    /// the <c>Coalesce</c> flag is inert on the dispatch paths that never queue. Here
+    /// there is no scheduler at all (the 9004 fall-through), so three raises of an
+    /// Equals-identical event run the handler three times — coalescing is a property of
+    /// the pending queue, not of raising. A "collapse identical raises earlier" change
+    /// would silently drop two dispatches on this path and turn this red.
+    /// </summary>
+    [Fact]
+    public async Task Raise_CoalescingHandlerWithNoQueueInScope_RunsPerRaiseNotOnce()
+    {
+        lock (Dispatched) { Dispatched.Clear(); }
+        FactoryEventHandlerRegistry.RegisterHandler<NoQueueCoalesceEvent>(
+            typeof(DeferredHandler), DispatchPhase.AfterCommit, coalesce: true, Recording("coalescing"));
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        using var provider = services.BuildServiceProvider();
+        var dispatcher = new FactoryEventsDispatcher(provider);
+
+        // Equals-identical: the exact identity the queue's collapse keys on.
+        await dispatcher.Raise(new NoQueueCoalesceEvent("same"));
+        await dispatcher.Raise(new NoQueueCoalesceEvent("same"));
+        await dispatcher.Raise(new NoQueueCoalesceEvent("same"));
+
+        lock (Dispatched)
+        {
+            Assert.Equal(["coalescing", "coalescing", "coalescing"], Dispatched);
+        }
+    }
+
+    /// <summary>
+    /// The sibling inertness pin on the other unqueued path (9005): a scheduler exists
+    /// but no entry call is active, so nothing is pending to collapse into.
+    /// </summary>
+    [Fact]
+    public async Task Raise_CoalescingHandlerOutsideAnyFactoryCall_RunsPerRaiseNotOnce()
+    {
+        lock (Dispatched) { Dispatched.Clear(); }
+        FactoryEventHandlerRegistry.RegisterHandler<OutsideEntryCoalesceEvent>(
+            typeof(DeferredHandler), DispatchPhase.AfterCommit, coalesce: true, Recording("coalescing"));
+
+        var (provider, scope) = ServerScope();
+        using (provider)
+        using (scope)
+        {
+            var events = scope.ServiceProvider.GetRequiredService<IFactoryEvents>();
+            var queue = scope.ServiceProvider.GetRequiredService<IFactoryEventPhaseScheduler>();
+
+            await events.Raise(new OutsideEntryCoalesceEvent("same"));
+            await events.Raise(new OutsideEntryCoalesceEvent("same"));
+
+            lock (Dispatched)
+            {
+                Assert.Equal(["coalescing", "coalescing"], Dispatched);
+            }
+            Assert.False(queue.HasPending);
         }
     }
 
