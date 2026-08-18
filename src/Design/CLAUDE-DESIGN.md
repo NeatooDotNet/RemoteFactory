@@ -279,6 +279,36 @@ Needs flushed state (DB-generated keys) while the transaction can still abort �
 `AfterFlush` + a coordinator drain. Read-only projection that must never fail
 the save → `AfterCommit`.
 
+**Coalescing (opt-in)** — a save that raises the same event N times gives a
+deferred projection N identical recomputes. The attribute's `Coalesce` named
+argument collapses identical *queued* dispatches to one per drain
+(`FactoryEventPhasesPattern.cs` Scenario 5):
+
+```csharp
+[FactoryEventHandler<StatementChanged>(DispatchPhase.AfterCommit, Coalesce = true)]
+```
+
+- **Identity is `Equals`** — same handler registration, `Equals`-equal event,
+  same `RaiseOptions`. Records give structural equality by default, with two
+  hazards: a reference-typed event member (a `List<T>`, an entity) never
+  compares equal across raises, so coalescing is a silent no-op there — prefer
+  value-only payloads on events whose handlers coalesce; a custom `Equals`
+  override that equates semantically distinct raises collapses dispatches you
+  expected, and the override owns that.
+- **Pending work only.** The scope holds at most one pending dispatch per
+  identity; a dispatch a running drain already took is history, and a raise
+  after it starts fresh. Observable counts (9002 drained, 9006 discarded)
+  reflect the collapsed queue; a collapsed raise logs Debug **9008** instead of
+  a second 9001.
+- **A collapse never erases a 9007 obligation** — if any absorbed raise would
+  have warned at the fail-open sweep, the survivor warns.
+- **Inert wherever nothing queues:** `Immediate` (NF0505 warns), and phased
+  raises falling through to immediate dispatch (9004 no-scheduler / 9005
+  no-entry-call) run once per raise regardless. The relay is untouched — every
+  `Raise` is still collected and relayed.
+- **Same-event only.** Cross-event coalescing ("any of these four events → one
+  recompute") stays a consumer guard.
+
 **For fire-and-forget work** (email, webhooks, audit sinks to external systems,
 queue publishes): compose your own fire-and-forget pattern inside a factory
 method — `Task.Run(...)` plus `IServiceScopeFactory.CreateScope()` to obtain a
@@ -358,6 +388,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | My handler needs database-generated state (identity keys) but must still be able to roll the save back. | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` between the factory body's flush and commit | `FactoryEventPhasesPattern.cs` (`Invoice.Finalize`) | Queued at `Raise`, drained in-transaction at the consumer's chosen point; exceptions propagate to the drain call |
 | I want a read-only projection that must never fail the save. | `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` | `FactoryEventPhasesPattern.cs` (`InvoiceSearchIndexRefresh`) | Framework drains after the entry call succeeds; no ambient transaction; exceptions logged (9003) and swallowed |
 | What happens if I declare `AfterFlush` but never drain? | The handler still runs — at the `AfterCommit` point, with Warning 9007 | `FactoryEventPhasesPattern.cs` (`InvoiceArchiver`) | Fail-open: forgetting the drain costs transaction placement, never the handler |
+| One save raises the same event N times and my deferred projection recomputes N times. | `Coalesce = true` on the attribute — identical queued dispatches collapse to one per drain | `FactoryEventPhasesPattern.cs` (`StatementProjection`) | Identity is `Equals` + same options + same registration; value-only event payloads coalesce reliably; flagless handlers keep one-run-per-raise |
 | Do phased handlers run if the factory call throws? | No — queued work is discarded (9006); only the `Immediate` handlers already ran, inside the rolled-back transaction | `FactoryEventPhasesPattern.cs` (`PaymentIntake`) | Deferred handlers never observe a failed operation |
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
@@ -1105,7 +1136,8 @@ infrastructure already exists.
 | NF0501 | Error | `[FactoryEventHandler<T>]` class has no matching method | Declare exactly one method returning `Task` whose first non-`[Service]`/non-`CancellationToken` parameter is of type `T` |
 | NF0502 | Error | `[FactoryEventHandler<T>]` class has multiple matching methods | Remove the extras or split into separate handler classes |
 | NF0503 | Warning | `[FactoryEventHandler<T>]` class has an **instance**-method handler (former client-relay pattern) | Make the method `static` (server-side handler) **or** implement `IFactoryEventRelay` on the class and register it in DI (client-side reception). Instance methods are silently skipped at runtime. |
-| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once | Remove the duplicate. Stacking is for several event *types*; a repeat resolves to the same handler method, so only the first declaration registers — including its phase. The message names the surviving phase. |
+| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once | Remove the duplicate. Stacking is for several event *types*; a repeat resolves to the same handler method, so only the first declaration registers — its phase and its `Coalesce` flag. The message names the surviving registration. |
+| NF0505 | Warning | `Coalesce = true` on an `Immediate`-declared registration | Immediate dispatches are never queued — nothing to coalesce; the flag is inert. Remove it or defer the handler to `AfterFlush`/`AfterCommit`. The registration is still emitted faithfully. |
 
 ### Runtime Log Events
 
@@ -1121,7 +1153,8 @@ infrastructure already exists.
 | 9004 | `FactoryEventPhaseNoQueueInScope` | Debug | An event with a phased handler is raised in a scope with no `IFactoryEventPhaseScheduler` registered | Dispatched immediately rather than dropped |
 | 9005 | `FactoryEventPhaseRaisedOutsideEntryCall` | Debug | An event with a phased handler is raised while no entry factory call is active in the scope | Dispatched immediately rather than queued into a drain nobody owns |
 | 9006 | `FactoryEventPhaseDiscardedAtExit` | Debug | An entry-call exit discards deferred dispatches without running them — a failed call's clear, including dispatches a cancelled consumer drain abandoned when that cancellation fails the call (if the consumer swallows it and the call still succeeds, those dispatches are swept at the `AfterCommit` point instead, with 9007) | The clear (never a drain) that keeps discarded work from riding a later call's drain in long-lived scopes |
-| 9007 | `FactoryEventPhaseNeverDrained` | Warning | The post-completion sweep picks up an `AfterFlush` dispatch the consumer never drained — no `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` covered it (work enqueued *while any drain is in flight in the scope* is exempt: its drain points had already passed — which, under the documented per-scope granularity, also exempts a concurrent flow's work enqueued during another flow's drain) | Fail-open: the dispatch still runs, at the `AfterCommit` point, under post-completion swallow semantics it did not ask for. One warning per dispatch, naming the event type. |
+| 9007 | `FactoryEventPhaseNeverDrained` | Warning | The post-completion sweep picks up an `AfterFlush` dispatch the consumer never drained — no `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` covered it (work enqueued *while any drain is in flight in the scope* is exempt: its drain points had already passed — which, under the documented per-scope granularity, also exempts a concurrent flow's work enqueued during another flow's drain) | Fail-open: the dispatch still runs, at the `AfterCommit` point, under post-completion swallow semantics it did not ask for. One warning per dispatch, naming the event type. A coalesced survivor warns if *any* absorbed raise would have — the merge preserves the obligation. |
+| 9008 | `FactoryEventPhaseCoalesced` | Debug | A raise for a `Coalesce = true` handler collapsed into an identical pending dispatch (logged *instead of* a second 9001; the 9002/9006 counts reflect the collapsed queue) | Informational — the drain runs the handler once for the collapsed set |
 
 ### Public Exception
 
@@ -1160,7 +1193,7 @@ infrastructure already exists.
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
 | `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler running in the caller's DI scope (shared DbContext/transaction), sequential, awaited |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | Consumer-implemented `IFactoryEventRelay.Relay` — bridges relayed events to an aggregator (demonstrates the `InMemoryAggregatorRelay` reference impl) |
-| `Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs` | `DispatchPhase` on the handler attribute — consumer `AfterFlush` drain via `IFactoryEventPhaseCoordinator`, per-drain-point ordering, fail-open never-drained path, discard on failure |
+| `Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs` | `DispatchPhase` on the handler attribute — consumer `AfterFlush` drain via `IFactoryEventPhaseCoordinator`, per-drain-point ordering, fail-open never-drained path, discard on failure, opt-in `Coalesce` collapse vs. per-raise control |
 | `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | `Relay(IReadOnlyList<FactoryEventBase>)` invocation, batch contents, `RaiseOptions.ServerOnly` exclusion, empty-batch still invokes Relay once |
