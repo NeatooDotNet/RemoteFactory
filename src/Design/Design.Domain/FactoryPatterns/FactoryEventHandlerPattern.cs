@@ -9,7 +9,15 @@ namespace Design.Domain.FactoryPatterns;
 // [FactoryEventHandler<T>] + IFactoryEvents.Raise<T>() is Neatoo's path for
 // domain events that must participate in the caller's transaction.
 //
-// EXECUTION MODEL (the three invariants that define FactoryEvent):
+// EXECUTION MODEL (the three invariants of the DEFAULT — Immediate — phase):
+//
+// Everything below describes a handler whose [FactoryEventHandler<T>] attribute
+// has no DispatchPhase argument, which registers at DispatchPhase.Immediate.
+// Handlers can instead defer to the AfterFlush or AfterCommit drain points —
+// see FactoryEventPhasesPattern.cs for the phase contract. Note the flip side
+// of invariant 1: an Immediate handler observes the caller's STAGED (unflushed)
+// state — a projection that queries the database here reads the world without
+// the aggregate's pending writes. That is what the later phases are for.
 //
 //   1. SHARED SCOPE. Handlers resolve their [Service] dependencies from the
 //      caller's IServiceProvider. A DbContext injected into the factory method

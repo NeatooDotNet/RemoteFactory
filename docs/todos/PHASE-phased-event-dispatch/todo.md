@@ -87,14 +87,73 @@ exposes drain points.
 | 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Done |
 | 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
-| 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Draft |
+| 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates) | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates); Design.Server composition test — it registers 3 services while Design.Domain `[Service]`-injects `INotificationService` and `IPhaseAuditService`, and no Design.Server test exists (005 gate); `FactoryEventHandlerTests` `Assert.True(true)` trio — the Design tier's nominal `Immediate` pin asserts nothing (005 gate); explicit `Design.sln` build in any verification harness/docs — the main solution omits it (005 RP-0) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-17 — PHASE-005 (gate round 1: clean at must-cover; the demonstration's own handlers had never been observed running)
+
+- **Finding:** The test-review gate returned **zero must-cover findings** and verified
+  the evidence map independently (its decisive check: all five expected sequences go
+  red under a generator phase-pass-through regression — the plan's charter is pinned,
+  not assumed). The sharpest should-cover: the discard demonstration's load-bearing
+  content is the *absence* of two markers, and nothing in the Design assembly ever ran
+  `pay-flush`/`pay-commit` — delete a Payment handler class and the test stays green
+  while demonstrating nothing. Its sibling: "discarded" vs. "leaked" was
+  undiscriminated at this tier because no second call follows in the scope.
+- **Decision:** Amend — one edit closed both (a `reject` flag on `PaymentIntake._Record`
+  plus `PaymentIntake_FailedThenSuccessfulCall_SameScope_DiscardsRatherThanLeaks`:
+  success path asserts all four markers; the rejected call's trail must not grow
+  during the survivor's drains). Three nice-to-haves taken (9007 prose softened to
+  name where the emission is actually pinned; Remote-mode coordinator-absent DI pin;
+  `Finalize` round-trip `Id`/`Total` assertions). Design 91 → 93.
+- **Follow-up:** [reviews/005-test-review.md](./reviews/005-test-review.md) — full
+  disposition. Routed to PHASE-007: a Design.Server composition test (it registers 3
+  services while Design.Domain `[Service]`-injects `INotificationService` — drift
+  predating this plan — and now `IPhaseAuditService`; no Design.Server test exists at
+  all), and the `FactoryEventHandlerTests` `Assert.True(true)` trio, which after this
+  plan's rescope is the Design tier's nominal `Immediate` pin yet asserts nothing.
+  **Escalated to the user:** `.gitignore:94` (`*.log`) keeps every arc's
+  `reviews/*.log` evidence out of the repo — the todo docs cite files that exist on
+  one machine, and the Step 7 close-out audit will cite them again. Fix is an ignore
+  exception for `docs/todos/**/reviews/*.log` (or `.md` extensions); arc-level call.
+  **Ruled 2026-08-17: leave as local-only evidence** — the `.log` files stay
+  gitignored; the committed gate records (`reviews/*-test-review.md` etc.) carry the
+  numbers and verdicts, and the logs back them up on the machine that ran them. The
+  close-out audit cites the logs as local artifacts, not repo files.
+  **Round 2 (2026-08-17): all six closures confirmed, nothing reopened — gate closed
+  at must- and should-cover.** The reviewer traced the no-leak discriminator
+  mechanically (event-id attribution means the second assertion catches a leak and
+  cannot be masked by the first; the shipped sweep-earlier-phases semantics route a
+  leaked queue into the survivor's drain → red) rather than accepting the inheritance
+  argument, and confirmed the round-2 red-proof addendum plainly labels its
+  not-measured claim — the arc's reasoning-dressed-as-evidence failure mode, not
+  recurring this time. One residual fixed in place: RP-0's rule sentence said "91"
+  above an addendum saying 93 — the stale-gate-rule species, caught before it aged.
+
+### 2026-08-17 — PHASE-005 (the main solution does not contain the Design projects — a green run without your tests in it)
+
+- **Finding:** After writing PHASE-005's five new Design tests, the first test run
+  reported **86/86 green — the pre-plan count**, new tests absent. Cause:
+  `src/Neatoo.RemoteFactory.sln` does not include the Design projects (they live in
+  `src/Design/Design.sln`), so the solution build "succeeded" without compiling the
+  new files, and `dotnet test --no-build` ran the Aug-15 DLLs. Eighth "can't go red"
+  instance in the arc, and the first produced by *solution topology* rather than test
+  design — every assertion was sound; the binaries just predated them. What caught it
+  was the test **count**, not a failure.
+- **Decision:** Amend (procedural) — this plan's gate builds both solutions into
+  `005-build.log` and requires the Design total to read 91 (86 + 5). Recorded as RP-0
+  in [reviews/005-redproof.log](./reviews/005-redproof.log); RP-1 then measured the
+  load-bearing drain-position discriminator with a compiling sabotage (exact predicted
+  2-red signature on both TFMs).
+- **Follow-up:** The Step 7 close-out audit's verification run must build
+  `Design.sln` explicitly — CLAUDE.md's build commands mention only the main
+  solution, which is how this trap arms itself. Candidate PHASE-007 harness item.
 
 ### 2026-08-16 — PHASE-004 (the `Internal` namespace is a warning, not a wall — and the repo already said so)
 
