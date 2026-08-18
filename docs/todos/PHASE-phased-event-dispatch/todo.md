@@ -96,12 +96,35 @@ exposes drain points.
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution (another divergent call site in 006's relay-pin helper, acknowledged in its comment); documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs (006 duplicated the `ScopesWithRelay`/`WaitForAsync` harness into `FactoryEventCoalescingTests` — consolidate when fixing); `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates); Design.Server composition test — it registers 3 services while Design.Domain `[Service]`-injects `INotificationService` and `IPhaseAuditService`, and no Design.Server test exists (005 gate); `FactoryEventHandlerTests` `Assert.True(true)` trio — the Design tier's nominal `Immediate` pin asserts nothing (005 gate); explicit `Design.sln` build in any verification harness/docs — the main solution omits it (005 RP-0); coalescing runtime-inertness pin on an unqueued path (9004/9005 fall-through — the XML claims it, only emission is pinned), NF0505 location pin, 9002 collapsed drained-count pin (006 gate); NOTE: the registry-`Clear()` and `CapturingLoggerProvider`-snapshot items each gained dependents under 006 (3 more unique event types; 3 more pins on the raw `Entries` list + a widened `LogEntry`); scheduler storage shape — O(n) front-dequeue on `List` paid by the non-opted-in path on an unenforced queues-stay-small assumption (006 code review C3); production-shaped variant of the warn-merge pin — it drives `Enqueue(Immediate, …)`, which the dispatcher never produces (006 code review C5) | Draft |
+| 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
+| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan; candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-18 — PHASE-007 drafted; PHASE-009 re-split (scheduler concurrency gets its own plan)
+
+- **Finding:** Drafting the 007 row's seventeen accumulated items forced the queued
+  re-split decision early: 006's gate round 1 sent the scheduler-concurrency candidacy
+  "to the close-out re-split decision," but 007's Scope had to either contain that work
+  or exclude it, so the call could not wait. It does not belong in 007 — every 007 item
+  is a pin, a documenting test, or a consolidation of harnesses over *existing* behavior,
+  while the concurrency work needs a deterministic harness designed from scratch (both
+  006 reviewers said so explicitly, warning against a `Task.WhenAll` race), and 006 code
+  review C4 raised its stakes: the coalescing identity scan now runs consumer `Equals`
+  under `_gate`.
+- **Decision:** Re-split — new Index row 009 rather than widening 007, the same call the
+  008 re-split made for the same reason (both of that round's reviewers noted 007 already
+  carried too many unrelated items). 007 drafted with plan-review opt-out (pins and
+  harness work; the one behavior addition is a Debug log event) and code-review opt-in
+  (it touches sacred harness files broadly). Branch `PHASE-007-tech-debt` stacked on
+  `PHASE-006-coalescing` (PR #84 open at branch time) — several items pin 006's code.
+- **Follow-up:** [plans/007-tech-debt.md](./plans/007-tech-debt.md) — the routed items
+  now live in its Inherited section with per-item gate provenance. The 009 row carries
+  the concurrency provenance, including the 003 round-2 N1 timing window as a candidate
+  pin for the deterministic harness.
 
 ### 2026-08-18 — PHASE-006 (code review: the veto-adopted constraint's own branch was dead code to the suite — and the anchor list that guarded against stale docs was itself incomplete)
 
