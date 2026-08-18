@@ -534,4 +534,13 @@ internal static partial class Log
     public static partial void FactoryEventPhaseNeverDrained(
         this ILogger logger,
         string eventType);
+
+    [LoggerMessage(
+        EventId = 9008,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} coalesced into an identical pending {Phase} dispatch; the drain will run the handler once for them")]
+    public static partial void FactoryEventPhaseCoalesced(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
 }

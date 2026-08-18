@@ -4,10 +4,12 @@ using Neatoo.RemoteFactory;
 namespace RemoteFactory.UnitTests.TestContainers;
 
 /// <summary>
-/// One captured log call: the event id, level, exception, and the two structured values
-/// the phase-dispatch log methods carry (<c>Phase</c> and <c>EventType</c>).
+/// One captured log call: the event id, level, exception, the two structured values
+/// the phase-dispatch log methods carry (<c>Phase</c> and <c>EventType</c>), and the
+/// formatted message (added PHASE-006 for count-bearing pins like 9006's discarded
+/// count, which lives only in the message).
 /// </summary>
-internal sealed record LogEntry(int EventId, LogLevel Level, Exception? Exception, DispatchPhase? Phase, string? EventType);
+internal sealed record LogEntry(int EventId, LogLevel Level, Exception? Exception, DispatchPhase? Phase, string? EventType, string Message);
 
 /// <summary>
 /// Minimal capturing logger provider for unit-tier log-emission pins (9xxx phased
@@ -51,7 +53,7 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider
 
             lock (owner.Entries)
             {
-                owner.Entries.Add(new LogEntry(eventId.Id, logLevel, exception, phase, eventType));
+                owner.Entries.Add(new LogEntry(eventId.Id, logLevel, exception, phase, eventType, formatter(state, exception)));
             }
         }
     }

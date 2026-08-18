@@ -58,6 +58,25 @@ public interface IFactoryEventPhaseScheduler
     void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler);
 
     /// <summary>
+    /// Defers a handler dispatch until <paramref name="phase"/> drains, optionally
+    /// coalescing it into an identical pending dispatch.
+    /// </summary>
+    /// <remarks>
+    /// With <paramref name="coalesce"/> set, an already-pending dispatch with the same
+    /// handler delegate, an <see cref="object.Equals(object)"/>-equal event, and the same
+    /// <see cref="RaiseOptions"/> absorbs this one: the scope holds at most one pending
+    /// dispatch per such identity, the survivor keeps its (earliest) queue position, and
+    /// the counts observable through <see cref="HasPending"/>, the drain report, and the
+    /// exit discard reflect the collapsed state. The merge preserves the fail-open
+    /// obligation — the survivor warns at the post-completion sweep if <i>any</i> absorbed
+    /// raise would have. Identity looks only at pending work: a dispatch already taken by
+    /// a running drain is history, and a raise arriving after it collapses with nothing.
+    /// An overload rather than a parameter so existing callers (and their pins) stand
+    /// unchanged.
+    /// </remarks>
+    void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler, bool coalesce);
+
+    /// <summary>
     /// Runs the deferred dispatches for <paramref name="phase"/> <b>and every earlier
     /// phase</b>, earliest first, until none are left.
     /// </summary>
@@ -108,7 +127,13 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
 {
     private readonly IServiceProvider _sp;
     private readonly ILogger? _logger;
-    private readonly Dictionary<DispatchPhase, Queue<QueuedDispatch>> _deferred = new();
+
+    // List rather than Queue: the coalescing warn-merge rewrites one pending entry's
+    // EnqueuedMidDrain bit in place, which Queue<T> cannot express. Dequeue is a
+    // front-removal; pending queues live for one entry call and stay small, so the O(n)
+    // shift is cheaper than a side structure. The coalescing identity scan (opted-in
+    // enqueues only) is O(pending) under _gate for the same reason.
+    private readonly Dictionary<DispatchPhase, List<QueuedDispatch>> _deferred = new();
 
     // Guards _deferred, _entryDepth, and _activeDrains. Scopes can be shared by
     // concurrent flows (Blazor Server circuits, Logical mode, a reused test scope);
@@ -213,24 +238,73 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     }
 
     public void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler)
+        => Enqueue(phase, factoryEvent, options, handler, coalesce: false);
+
+    public void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler, bool coalesce)
     {
         ArgumentNullException.ThrowIfNull(factoryEvent);
         ArgumentNullException.ThrowIfNull(handler);
+
+        var coalesced = false;
 
         lock (_gate)
         {
             if (!_deferred.TryGetValue(phase, out var queue))
             {
-                queue = new Queue<QueuedDispatch>();
+                queue = new List<QueuedDispatch>();
                 _deferred[phase] = queue;
             }
 
-            queue.Enqueue(new QueuedDispatch(factoryEvent, options, handler, EnqueuedMidDrain: _activeDrains > 0));
+            var enqueuedMidDrain = _activeDrains > 0;
+
+            if (coalesce)
+            {
+                // Identity: same handler delegate (one delegate instance per surviving
+                // registration, so reference equality is "same registration"), an
+                // Equals-equal event, and the same options. Only PENDING work is a
+                // collapse target — a dispatch a running drain has already taken is gone
+                // from this list, so a raise after it starts a fresh pending dispatch.
+                for (var i = 0; i < queue.Count; i++)
+                {
+                    var existing = queue[i];
+                    if (ReferenceEquals(existing.Handler, handler)
+                        && existing.Options == options
+                        && existing.Event.Equals(factoryEvent))
+                    {
+                        // Warn-preserving merge: the survivor warns at the fail-open
+                        // sweep if ANY absorbed raise would have — the bit only ever
+                        // moves toward "would warn" (false). A latest-bit-wins merge
+                        // would let a mid-drain re-raise silently erase the 9007 a
+                        // consumer who never drained is owed.
+                        if (existing.EnqueuedMidDrain && !enqueuedMidDrain)
+                        {
+                            queue[i] = existing with { EnqueuedMidDrain = false };
+                        }
+
+                        coalesced = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!coalesced)
+            {
+                queue.Add(new QueuedDispatch(factoryEvent, options, handler, enqueuedMidDrain));
+            }
         }
 
         if (_logger?.IsEnabled(LogLevel.Debug) == true)
         {
-            _logger.FactoryEventPhaseQueued(factoryEvent.GetType().Name, phase);
+            if (coalesced)
+            {
+                // 9008 instead of a second 9001: the raise produced no new pending
+                // dispatch, and the queued/drained/discarded counts stay collapsed.
+                _logger.FactoryEventPhaseCoalesced(factoryEvent.GetType().Name, phase);
+            }
+            else
+            {
+                _logger.FactoryEventPhaseQueued(factoryEvent.GetType().Name, phase);
+            }
         }
     }
 
@@ -355,7 +429,8 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
                 var queue = _deferred[candidate];
                 if (queue.Count > 0)
                 {
-                    dispatch = queue.Dequeue();
+                    dispatch = queue[0];
+                    queue.RemoveAt(0);
                     phase = candidate;
                     return true;
                 }

@@ -154,6 +154,7 @@ public partial class Factory : IIncrementalGenerator
 			"NF0502" => DiagnosticDescriptors.RelayHandlerMethodAmbiguous,
 			"NF0503" => DiagnosticDescriptors.RelayHandlerInstanceMethodIgnored,
 			"NF0504" => DiagnosticDescriptors.RelayHandlerDuplicateEventType,
+			"NF0505" => DiagnosticDescriptors.RelayHandlerCoalesceOnImmediate,
 			_ => throw new ArgumentException($"Unknown diagnostic ID: {diagnosticId}")
 		};
 	}

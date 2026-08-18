@@ -143,11 +143,11 @@ internal static class RelayHandlerRenderer
     /// user declared them on the handler method.
     /// </summary>
     /// <remarks>
-    /// The phase-taking overload is emitted for every handler, including unphased ones, so
-    /// there is one shape to read and one path to test — the defaulted case pins
-    /// <c>Immediate</c> positively rather than pinning an absence. This leaves the two-argument
-    /// <c>RegisterHandler</c> overload with no generated call sites; it stays because it is
-    /// public API.
+    /// The widest overload — phase AND coalesce — is emitted for every handler, including
+    /// unphased/unflagged ones, so there is one shape to read and one path to test: the
+    /// defaulted case pins <c>Immediate</c> and <c>false</c> positively rather than pinning
+    /// an absence. This leaves the two- and three-argument <c>RegisterHandler</c> overloads
+    /// with no generated call sites; they stay because they are public API.
     /// </remarks>
     private static void RenderServerSideHandler(StringBuilder sb, EventHandlerEntry handler, string className)
     {
@@ -175,7 +175,9 @@ internal static class RelayHandlerRenderer
 
         sb.AppendLine("            if (NeatooRuntime.IsServerRuntime)");
         sb.AppendLine("            {");
-        sb.AppendLine($"                FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>(typeof({className}), {phase}, async (sp, eventObj, options, ct) =>");
+        var coalesce = handler.Coalesce ? "coalesce: true" : "coalesce: false";
+
+        sb.AppendLine($"                FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>(typeof({className}), {phase}, {coalesce}, async (sp, eventObj, options, ct) =>");
         sb.AppendLine("                {");
         sb.AppendLine($"                    var {handler.Parameters.First(p => !p.IsCancellationToken).Name} = ({eventTypeName})eventObj;");
         if (!string.IsNullOrEmpty(serviceAssignments))

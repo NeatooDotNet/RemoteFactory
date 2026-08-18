@@ -58,6 +58,28 @@ public partial class Factory
     }
 
     /// <summary>
+    /// Reads the <c>Coalesce</c> named argument off a <c>[FactoryEventHandler&lt;T&gt;]</c>
+    /// attribute. Absent means <c>false</c>.
+    /// </summary>
+    /// <remarks>
+    /// Named arguments only — <c>Coalesce</c> is a property, never a constructor parameter,
+    /// deliberately: <c>ReadDispatchPhase</c> treats any non-<c>int</c> first constructor
+    /// argument as <c>Immediate</c>, so a constructor overload starting with a <c>bool</c>
+    /// would silently register at the wrong phase with no diagnostic. Same primitives-only
+    /// rule as the phase: the <c>TypedConstant</c> stays local.
+    /// </remarks>
+    private static bool ReadCoalesce(AttributeData attr)
+    {
+        foreach (var named in attr.NamedArguments)
+        {
+            if (named.Key == "Coalesce" && named.Value.Kind != TypedConstantKind.Error && named.Value.Value is bool coalesce)
+                return coalesce;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Transforms a class decorated with [FactoryEventHandler&lt;T&gt;] into a RelayHandlerModel.
     /// Extracts event types from the generic attribute and finds matching handler methods.
     /// A matching method: non-private, returns Task, first non-[Service]/non-CT parameter is T.
@@ -284,6 +306,32 @@ public partial class Factory
                 (method.ReturnType.ToDisplayString() == "System.Threading.Tasks.Task" && method.IsAsync);
 
             var (phaseName, phaseValue) = ReadDispatchPhase(attr);
+            var coalesce = ReadCoalesce(attr);
+
+            // NF0505: Coalesce on an Immediate-declared registration. Immediate dispatches
+            // are never queued, so there is nothing to coalesce — the registration is still
+            // emitted faithfully (flag inert at runtime), the warning is the loudness.
+            // Scoped to the DECLARED Immediate phase (no argument, or the explicit member):
+            // an undefined-value cast has an empty name and never drains at all, which is
+            // its own recorded hazard, not this diagnostic's claim. Runtime fall-throughs
+            // (no scheduler / no entry call) are unreachable at compile time and are
+            // documented instead.
+            if (coalesce && phaseName == "Immediate")
+            {
+                var attrLocation = attr.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? classLocation;
+                var attrLineSpan = attrLocation.GetLineSpan();
+                diagnostics.Add(new DiagnosticInfo(
+                    "NF0505",
+                    attrLineSpan.Path ?? "",
+                    attrLineSpan.StartLinePosition.Line,
+                    attrLineSpan.StartLinePosition.Character,
+                    attrLineSpan.EndLinePosition.Line,
+                    attrLineSpan.EndLinePosition.Character,
+                    attrLocation.SourceSpan.Start,
+                    attrLocation.SourceSpan.Length,
+                    symbol.Name,
+                    eventTypeName));
+            }
 
             entries.Add(new EventHandlerEntry(
                 eventTypeName: eventTypeName,
@@ -294,10 +342,17 @@ public partial class Factory
                 serviceParameters: serviceParameters,
                 allParameters: allParameters,
                 phaseName: phaseName,
-                phaseValue: phaseValue));
+                phaseValue: phaseValue,
+                coalesce: coalesce));
 
-            registeredPhaseByEventType[eventTypeName] =
+            // The survivor string NF0504 names covers the whole registration — phase and,
+            // when set, the coalesce flag — so the diagnostic stays complete as the
+            // registration grows settings (PHASE-006 plan review A-V1).
+            var registeredPhaseToken =
                 phaseName.Length > 0 ? phaseName : phaseValue.ToString(CultureInfo.InvariantCulture);
+            registeredPhaseByEventType[eventTypeName] = coalesce
+                ? $"DispatchPhase.{registeredPhaseToken}, Coalesce = true"
+                : $"DispatchPhase.{registeredPhaseToken}";
         }
 
         if (entries.Count == 0 && diagnostics.Count == 0)
