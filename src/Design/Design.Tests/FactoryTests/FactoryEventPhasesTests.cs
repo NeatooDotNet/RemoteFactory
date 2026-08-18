@@ -172,6 +172,29 @@ public class FactoryEventPhasesTests
     }
 
     /// <summary>
+    /// Opt-in coalescing (PHASE-006): three value-identical raises of the coalescing
+    /// event produce ONE recompute, while the flagless control produces three — the
+    /// backcompat contract and the collapse, observed in one entry call.
+    /// </summary>
+    [Fact]
+    public async Task StatementClose_CoalescingHandlerRunsOnce_ControlRunsPerRaise()
+    {
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var close = client.GetRequiredService<StatementClose.Close>();
+        var id = Guid.NewGuid();
+
+        await close(id);
+
+        var audit = server.GetRequiredService<IPhaseAuditService>();
+        var entries = audit.EntriesFor(id);
+        Assert.Equal(1, entries.Count(e => e == "statement-recompute"));
+        Assert.Equal(3, entries.Count(e => e == "tally-recompute"));
+
+        server.Dispose();
+        client.Dispose();
+    }
+
+    /// <summary>
     /// The DI boundary: the coordinator is registered where handlers dispatch
     /// (Server, Logical) and absent in Remote mode — a client container has no
     /// handlers to drain, so resolving it there yields null (and `[Service]`

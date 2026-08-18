@@ -479,3 +479,95 @@ public static partial class PaymentIntake
         return paymentId;
     }
 }
+
+// =============================================================================
+// SCENARIO 5: OPT-IN COALESCING — N IDENTICAL RAISES, ONE DISPATCH (PHASE-006)
+// =============================================================================
+//
+// A save that touches N line items raises "statement changed" N times, and a
+// deferred projection recomputes N times for one visible change. The attribute's
+// Coalesce named argument opts a handler into collapsing identical QUEUED
+// dispatches: at most one pending dispatch per (handler, Equals-equal event,
+// options) at any moment, so the drain runs it once.
+//
+// THE IDENTITY CONTRACT (and its two hazards):
+//
+//   "Identical" means the queued events compare equal per Equals — the
+//   synthesized structural equality records give by default.
+//   - An event with a reference-typed member (List<T>, an entity) never
+//     compares equal across raises: coalescing is a silent no-op for it.
+//     Prefer value-only payloads on events whose handlers coalesce
+//     (StatementChangedEvent below carries only the Guid).
+//   - A custom Equals override that compares semantically distinct raises
+//     equal collapses dispatches you expected — the override owns that.
+//
+// WHAT THE FLAG NEVER TOUCHES:
+//
+//   - Handlers that don't opt in: N raises stay N dispatches (the default,
+//     demonstrated by TallyRecalculatedEvent below).
+//   - Anything unqueued: Immediate handlers (NF0505 warns — nothing to
+//     coalesce), and phased raises that fall through to immediate dispatch
+//     because no scheduler / no entry call is in scope.
+//   - The client relay: every Raise is still collected and relayed.
+//   - The fail-open warning: a collapse never erases a 9007 obligation.
+//
+// DID NOT DO THIS: cross-event coalescing ("any of these four events → one
+// recompute"). Deferred by the motivating proposal; handlers can guard
+// internally. Same-event N× duplication is what this flag removes.
+// =============================================================================
+
+/// <summary>Value-only payload on purpose — see the identity contract above.</summary>
+public record StatementChangedEvent(Guid AccountId) : FactoryEventBase;
+
+/// <summary>Opted in: three identical raises below become one recompute.</summary>
+[FactoryEventHandler<StatementChangedEvent>(DispatchPhase.AfterCommit, Coalesce = true)]
+public static partial class StatementProjection
+{
+    internal static Task Recompute(
+        StatementChangedEvent changed,
+        [Service] IPhaseAuditService audit)
+    {
+        audit.Record(changed.AccountId, "statement-recompute");
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>The control: no flag, so the same shape runs once per raise.</summary>
+public record TallyRecalculatedEvent(Guid AccountId) : FactoryEventBase;
+
+[FactoryEventHandler<TallyRecalculatedEvent>(DispatchPhase.AfterCommit)]
+public static partial class TallyProjection
+{
+    internal static Task Recompute(
+        TallyRecalculatedEvent recalculated,
+        [Service] IPhaseAuditService audit)
+    {
+        audit.Record(recalculated.AccountId, "tally-recompute");
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// One entry call, three value-identical raises of each event — the coalescing
+/// handler runs once, the control runs three times.
+/// </summary>
+[Factory]
+public static partial class StatementClose
+{
+    [Execute]
+    [Remote]
+    internal static async Task<Guid> _Close(
+        Guid accountId,
+        [Service] IFactoryEvents events,
+        CancellationToken ct)
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            // Same Guid every raise — value-identical events are the whole point.
+            await events.Raise(new StatementChangedEvent(accountId), RaiseOptions.None, ct);
+            await events.Raise(new TallyRecalculatedEvent(accountId), RaiseOptions.None, ct);
+        }
+
+        return accountId;
+    }
+}
