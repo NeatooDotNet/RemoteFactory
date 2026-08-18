@@ -3,7 +3,7 @@
 **Plan #:** 006
 **Date:** 2026-08-14
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-08-18
 **Plan-review opt-in:** Yes (public API surface on the attribute; dedup semantics are contract) — **ran 2026-08-18, CONCERNS; all 4 vetoes adopted by draft amendment, see [reviews/006-plan-review.md](../reviews/006-plan-review.md)**
 **Code-review opt-in:** Yes (behavior-changing)
@@ -250,11 +250,33 @@ as read; no pre-flight amendments needed.
 
 ## Test Evidence
 
-*(filled after implementation, before the Step 5 gate)*
+Filled 2026-08-18, after implementation, before the gate. Gate logs:
+`reviews/006-build.log` (both solutions, 0 errors), `reviews/006-test.log` with
+expected totals matching per suite — unit 726×2 (705 + 21 new), integration 590×2
+(587 + 3 new, 5 standing skips), Design 94×2 (93 + 1 new) — the RP-0 count rule
+applied per plan-review B-C10. Red-proof: `reviews/006-redproof.log` — RP-1
+(latest-bit-wins merge → exactly the predicted 1 red ×2 TFMs) and RP-2 (collapse
+disabled → exactly the predicted 4 reds ×2 TFMs, including the 9006
+collapsed-count pin, measuring B-V2's do-nothing-implementation hazard directly).
+Unit tests live in `FactoryEventPhaseCoalescingTests` unless noted.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
-| | | | |
+| Opted-in handler runs once for N identical raises, end to end | `[integration]` | `FactoryEventCoalescingTests.RemoteExecute_CoalescingHandler_ThreeIdenticalRaises_RunsOnce`, `LogicalExecute_...RunsOnce`; Design tier: `FactoryEventPhasesTests.StatementClose_CoalescingHandlerRunsOnce_ControlRunsPerRaise` | ✓ |
+| Without the flag, N raises produce N dispatches (distinct class + event type) | `[integration]` | `FactoryEventCoalescingTests.RemoteExecute_NonCoalescingHandler_ThreeIdenticalRaises_RunsThrice`; unit: `NoCoalesce_IdenticalRaises_StillRunOncePerRaise` | ✓ |
+| Distinct events / handlers / phases / options don't collapse | `[unit]` | `Coalesce_ValueDistinctEvents_DoNotCollapse`, `Coalesce_DistinctHandlerDelegates_DoNotCollapse`, `Coalesce_SameIdentityAtDistinctPhases_DoesNotCollapseAcrossQueues`, `Coalesce_DistinctRaiseOptions_DoNotCollapse` | ✓ |
+| Failure discards the collapsed count (one, not N; sibling reports N) | `[unit]` | `EntryCallFails_CoalescedRaisesWereOnePendingDispatch_9006ReportsTheCollapsedCount` + `EntryCallFails_NonCoalescingSibling_9006ReportsOnePerRaise` (RP-2-measured discriminator) | ✓ |
+| Warn-preserving merge: one 9007 survives a cross-bit collapse | `[unit]` | `Coalesce_PreDrainAndMidDrainRaisesCollapse_TheSurvivorStillWarns9007` (RP-1-measured against latest-bit-wins) | ✓ |
+| Collapse observable at Debug (9008), no double 9001 | `[unit]` | `Coalesce_IdenticalPendingRaises_RunOnceAtTheDrain` (asserts 1× 9001 + 2× 9008) | ✓ |
+| Generator: named-arg → registration; NF0505 fires/doesn't; NF0504 survivor flag + reworded message | `[unit]` | `NF0505CoalesceOnImmediateTests` (5 tests incl. faithful-emission), `AssemblyAttributeEmissionTests.RelayHandler_CoalesceTrue_EmitsTheFlagOnTheRegistration`, `RelayHandler_DuplicateEventType_CoalescingSurvivor_NamesTheFlagInTheMessage` | ✓ |
+| Docs/skill/CLAUDE-DESIGN/Design demonstrate the contract incl. the five survivor-rule strings | `[explicit-skip: prose + Design]` | — Design: Scenario 5 + `StatementClose_...` test; all five A-V1 strings updated (both docs anchors, NF0504 message format + its message-assertion tests, registry XML); skill link-grep stays internal | n/a |
+| Existing suite unmodified & green; totals match | `[explicit-skip: meta]` | — the 5 emission-shape assertions and nothing else were updated (in-scope: the plan deliberately changed the emitted registration to the widest-overload form; intent preserved — they now pin the flag default positively); gate logs green with expected totals | n/a |
+
+Additional untracked coverage: `Coalesce_SurvivorKeepsTheEarliestQueuePosition`
+(ordering position), `Coalesce_RaiseAfterTheDispatchWasTakenByADrain_StartsAFreshDispatch`
+(pending-only identity), `RegisterHandler_CoalesceFlag_RoundTripsThroughGetHandlers`,
+`RegisterHandler_ExistingOverloads_DefaultTheFlagOff`,
+`RegisterHandler_SameHandlerClassTwice_KeepsTheFirstFlag` (registry leg).
 
 ---
 
