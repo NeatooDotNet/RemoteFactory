@@ -196,7 +196,55 @@ dispatch, not event delivery).
 
 ## Current State (Pre-Flight)
 
-*(filled at Step 3, after plan review and before the first edit)*
+Walked 2026-08-18, after plan review, before any edit. Tree = PHASE-005 tip
+(`875519b`, stacked branch).
+
+**Runtime seams:**
+- `FactoryEventHandlerAttribute.cs:45-61` — `sealed`, two ctors (default →
+  `Immediate`), `Phase` get-only. The new member goes in as `public bool Coalesce
+  { get; set; }` — attribute named arguments require a read-write instance property
+  (`init` does not bind in attribute named-argument position); keyboard verifies.
+- `FactoryEventHandlerRegistry.cs` — private `HandlerEntry` struct (:15-27) holds
+  `(HandlerClassType, Phase, Invoke)`; two public `RegisterHandler` overloads
+  (:32-36 → :56-71) with first-wins dedupe under a per-list lock (:66); internal
+  `GetHandlers` returns `(Phase, Invoke)` tuples (:77-85). Flag: new field + third
+  public overload + tuple element.
+- `FactoryEventsDispatcher.cs:71-93` — `foreach (var (phase, handler) in handlers)`;
+  the enqueue site is :77; the 9004/9005 immediate fall-throughs for phased handlers
+  are :81-90 (the unqueued paths the flag must be documented inert on).
+- `Internal/FactoryEventPhaseScheduler.cs` — interface `Enqueue` :58 (new overload
+  beside it); `QueuedDispatch` :134-138 carries `(Event, Options, Handler,
+  EnqueuedMidDrain)` — everything the identity key and warn-merge need;
+  `Enqueue` :215-235 stamps `_activeDrains > 0` (:228) and logs 9001 (:231-234);
+  `DrainAsync`'s 9007 gate is :270-273; `TryDequeueThrough` :349-368 (earliest-first
+  sweep, untouched); `ClearAtExit` :318-342 counts discards into 9006 — the
+  pending-queue collapse makes that count the discard discriminator.
+- `Internal/Log.cs` — ids top out at 9007; 9008 free for the collapse Debug event.
+
+**Generator seams:**
+- `FactoryGenerator.RelayHandler.cs` — `ReadDispatchPhase` :33-58 reads
+  `ConstructorArguments` only; `NamedArguments` is unread today, so the flag read is
+  additive with no interaction with the non-`int`-first-arg fallback trap the review
+  named. Entry construction :286-297 (primitives into `EventHandlerEntry`); the
+  NF0504 survivor map `registeredPhaseByEventType` :96, :131-146, :299-300 stores the
+  surviving *phase string* — carries the surviving flag too if the reworded message
+  names it (keyboard decision on message args).
+- `Renderer/RelayHandlerRenderer.cs:152-188` — emits the three-arg
+  `RegisterHandler<{event}>(typeof({class}), {phase}, lambda)` at :178; the flag
+  becomes a fourth argument on the new overload (bool literal — no `global::`
+  concern).
+- `Model/RelayHandlerModel.cs:58-110` — `EventHandlerEntry` primitives ctor
+  (`phaseName`, `phaseValue`) gains a bool.
+- `DiagnosticDescriptors.cs:268-279` — NF0504 descriptor; message format :271 is the
+  string A-V1 rewords. NF0505 unused; descriptor map `FactoryGenerator.cs:153-157`
+  gains the case.
+
+**Pinned call-site reality (why overloads):** `Enqueue` has 53 test call sites across
+the four named unit suites plus one integration target; `RegisterHandler` ~45. All
+stay byte-identical under the overload shape.
+
+**No surprises vs. the amended draft** — the review's Pass B anchors matched the code
+as read; no pre-flight amendments needed.
 
 ---
 
