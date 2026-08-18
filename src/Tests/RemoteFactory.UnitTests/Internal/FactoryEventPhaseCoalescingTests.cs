@@ -157,6 +157,66 @@ public class FactoryEventPhaseCoalescingTests
         Assert.Equal(["first-raised", "second-raised"], log);
     }
 
+    /// <summary>
+    /// An event whose custom <c>Equals</c> compares only the Id — the documented
+    /// over-collapse hazard, used here to make the survivor observable.
+    /// </summary>
+    private sealed record IdOnlyEvent(int Id, string Payload) : FactoryEventBase
+    {
+        public bool Equals(IdOnlyEvent? other) => other is not null && other.Id == this.Id;
+        public override int GetHashCode() => this.Id;
+    }
+
+    /// <summary>
+    /// Which collapsed instance the handler receives: the FIRST-raised one. Under the
+    /// recommended value-only shape this is unobservable; under a custom-Equals
+    /// over-collapse it is exactly the payload the consumer sees, so the choice is
+    /// contract — a silent switch to latest-wins must turn this red.
+    /// </summary>
+    [Fact]
+    public async Task Coalesce_CustomEqualsCollapse_TheHandlerReceivesTheFirstRaisedInstance()
+    {
+        var scheduler = NewScheduler(out _);
+        var payloads = new List<string>();
+        Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler =
+            (_, evt, _, _) =>
+            {
+                payloads.Add(((IdOnlyEvent)evt).Payload);
+                return Task.CompletedTask;
+            };
+
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new IdOnlyEvent(1, "first"), RaiseOptions.None, handler, coalesce: true);
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new IdOnlyEvent(1, "second"), RaiseOptions.None, handler, coalesce: true);
+
+        await scheduler.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["first"], payloads);
+    }
+
+    /// <summary>
+    /// The documented no-op hazard, executable (plan review B-V3): a reference-typed
+    /// event member defeats the synthesized structural equality, so value-equal-looking
+    /// raises stay distinct and coalescing silently does nothing. Four doc surfaces
+    /// state this; a later "improvement" to a structural/deep comparer flips it and
+    /// must turn this red.
+    /// </summary>
+    private sealed record ListPayloadEvent(List<int> Items) : FactoryEventBase;
+
+    [Fact]
+    public async Task Coalesce_ReferenceTypedMember_DefeatsEqualityAndDoesNotCollapse()
+    {
+        var scheduler = NewScheduler(out _);
+        var log = new List<string>();
+        var handler = Recording(log, "run");
+
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new ListPayloadEvent([1, 2]), RaiseOptions.None, handler, coalesce: true);
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new ListPayloadEvent([1, 2]), RaiseOptions.None, handler, coalesce: true);
+
+        await scheduler.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Equal(["run", "run"], log);
+    }
+
     // ------------------------------------------------------------------
     // Pending-only identity
     // ------------------------------------------------------------------

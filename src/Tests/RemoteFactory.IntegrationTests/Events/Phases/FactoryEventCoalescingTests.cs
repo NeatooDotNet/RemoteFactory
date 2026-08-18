@@ -19,6 +19,50 @@ public class FactoryEventCoalescingTests
             .Count(e => e.EntityId == id && e.EventName == marker);
     }
 
+    // Same shape as FactoryEventRelayTests' harness, including its destructuring order.
+    private static (IServiceScope server, IServiceScope client, RecordingFactoryEventRelay relay) ScopesWithRelay()
+    {
+        var relay = new RecordingFactoryEventRelay();
+        var (client, server, _) = ClientServerContainers.Scopes(
+            configureClient: services => services.AddSingleton<Neatoo.RemoteFactory.IFactoryEventRelay>(relay));
+        return (server, client, relay);
+    }
+
+    private static async Task WaitForAsync(Func<bool> predicate, TimeSpan? timeout = null)
+    {
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(2));
+        while (DateTime.UtcNow < deadline)
+        {
+            if (predicate())
+            {
+                return;
+            }
+            await Task.Delay(5);
+        }
+    }
+
+    /// <summary>
+    /// The relay batch is untouched by coalescing (todo AC clause, pinned rather than
+    /// inherited from structure): three identical raises reach the client relay as
+    /// three events even though the coalescing handler ran once. Collection happens at
+    /// Raise, before any queueing — a future move of dedupe earlier (e.g. toward
+    /// cross-event coalescing) that starts dropping relayed events turns this red.
+    /// </summary>
+    [Fact]
+    public async Task RemoteExecute_CoalescingHandler_RelayStillReceivesEveryRaise()
+    {
+        var (server, client, relay) = ScopesWithRelay();
+        var run = client.ServiceProvider.GetRequiredService<CoalescingCommands.RunCoalesced>();
+        var id = Guid.NewGuid();
+
+        await run(id);
+
+        await WaitForAsync(() => relay.ReceivedOfType<CoalescedRecomputeEvent>().Count >= 3);
+
+        Assert.Equal(3, relay.ReceivedOfType<CoalescedRecomputeEvent>().Count(e => e.Id == id));
+        Assert.Equal(1, RunsFor(server, "coalesced-run", id));
+    }
+
     [Fact]
     public async Task RemoteExecute_CoalescingHandler_ThreeIdenticalRaises_RunsOnce()
     {

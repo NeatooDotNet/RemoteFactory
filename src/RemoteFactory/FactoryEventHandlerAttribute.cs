@@ -71,7 +71,9 @@ public sealed class FactoryEventHandlerAttribute<T> : Attribute
 	/// raises, so coalescing is a silent no-op for it — prefer value-only payloads on events
 	/// whose handlers coalesce. And a custom <c>Equals</c> override that compares semantically
 	/// distinct raises equal collapses dispatches the consumer may have expected; the override
-	/// owns that outcome. Identity is evaluated when the dispatch becomes pending.
+	/// owns that outcome. Identity is evaluated when the dispatch becomes pending, and the
+	/// handler receives the <b>first</b>-raised instance of a collapsed set — observable only
+	/// when an <c>Equals</c> override lets instances with differing payloads compare equal.
 	/// </para>
 	/// <para>
 	/// The flag affects only dispatches that are actually queued. It has no effect on

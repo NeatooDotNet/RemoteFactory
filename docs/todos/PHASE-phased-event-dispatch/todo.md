@@ -96,12 +96,35 @@ exposes drain points.
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | In Progress |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates); Design.Server composition test — it registers 3 services while Design.Domain `[Service]`-injects `INotificationService` and `IPhaseAuditService`, and no Design.Server test exists (005 gate); `FactoryEventHandlerTests` `Assert.True(true)` trio — the Design tier's nominal `Immediate` pin asserts nothing (005 gate); explicit `Design.sln` build in any verification harness/docs — the main solution omits it (005 RP-0) | Draft |
+| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates); Design.Server composition test — it registers 3 services while Design.Domain `[Service]`-injects `INotificationService` and `IPhaseAuditService`, and no Design.Server test exists (005 gate); `FactoryEventHandlerTests` `Assert.True(true)` trio — the Design tier's nominal `Immediate` pin asserts nothing (005 gate); explicit `Design.sln` build in any verification harness/docs — the main solution omits it (005 RP-0); coalescing runtime-inertness pin on an unqueued path (9004/9005 fall-through — the XML claims it, only emission is pinned), NF0505 location pin, 9002 collapsed drained-count pin (006 gate); NOTE: the registry-`Clear()` and `CapturingLoggerProvider`-snapshot items each gained dependents under 006 (3 more unique event types; 3 more pins on the raw `Entries` list + a widened `LogEntry`) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-18 — PHASE-006 (gate round 1: clean at must-cover; the survivor's payload was contract nobody had stated)
+
+- **Finding:** The test-review gate returned **zero must-cover findings** and verified
+  the logs by count and both red-proofs as genuine positive controls. Its sharpest
+  should-cover: *which collapsed instance the handler receives* is consumer-visible
+  contract under the documented custom-`Equals` over-collapse hazard — and it was
+  neither stated in any doc nor pinned by any test; a latest-wins refactor would have
+  changed delivered payloads with the whole suite green. Siblings: B-V3's
+  reference-typed-member no-op had four doc surfaces and zero executable evidence, and
+  the todo-AC relay-unaffected clause was structurally true but unpinned against the
+  cross-event future that would break it. Tech debt surfaced: the scheduler has zero
+  concurrency coverage against its own shared-scope contract (predates the arc;
+  candidate for its own plan, deterministic harness).
+- **Decision:** Amend — all three should-covers closed with tests (first-raised
+  survivor pinned via an Id-only-`Equals` event + the contract sentence added to the
+  attribute XML; the no-op hazard made executable; relay-unaffected pinned end to end:
+  3 relayed events, 1 handler run). Evidence row 9's "and nothing else" understatement
+  corrected. Unit 726 → 728, integration 590 → 591.
+- **Follow-up:** [reviews/006-test-review.md](./reviews/006-test-review.md) — full
+  disposition; nice-to-haves and the tech-debt items routed to the PHASE-007 row
+  (which now also records its `Clear()`/snapshot items gaining dependents). The
+  scheduler-concurrency plan candidacy goes to the close-out re-split decision.
 
 ### 2026-08-18 — PHASE-006 (plan review: the collapse can delete a promised warning, and a ninth "can't go red" caught at draft)
 

@@ -250,15 +250,17 @@ as read; no pre-flight amendments needed.
 
 ## Test Evidence
 
-Filled 2026-08-18, after implementation, before the gate. Gate logs:
-`reviews/006-build.log` (both solutions, 0 errors), `reviews/006-test.log` with
-expected totals matching per suite — unit 726×2 (705 + 21 new), integration 590×2
-(587 + 3 new, 5 standing skips), Design 94×2 (93 + 1 new) — the RP-0 count rule
-applied per plan-review B-C10. Red-proof: `reviews/006-redproof.log` — RP-1
-(latest-bit-wins merge → exactly the predicted 1 red ×2 TFMs) and RP-2 (collapse
-disabled → exactly the predicted 4 reds ×2 TFMs, including the 9006
-collapsed-count pin, measuring B-V2's do-nothing-implementation hazard directly).
-Unit tests live in `FactoryEventPhaseCoalescingTests` unless noted.
+Filled 2026-08-18, after implementation, before the gate; amended after gate round 1
+(three should-cover closures added 3 tests). Gate logs: `reviews/006-build.log`
+(both solutions, 0 errors), `reviews/006-test.log` (round 2) with expected totals
+matching per suite — unit 728×2 (705 + 23 new), integration 591×2 (587 + 4 new,
+5 standing skips), Design 94×2 (93 + 1 new) — the RP-0 count rule applied per
+plan-review B-C10. Red-proof: `reviews/006-redproof.log` — RP-1 (latest-bit-wins
+merge → exactly the predicted 1 red ×2 TFMs) and RP-2 (collapse disabled →
+exactly the predicted 4 reds ×2 TFMs, including the 9006 collapsed-count pin,
+measuring B-V2's do-nothing-implementation hazard directly). Gate record:
+`reviews/006-test-review.md`. Unit tests live in `FactoryEventPhaseCoalescingTests`
+unless noted.
 
 | Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|
@@ -270,7 +272,9 @@ Unit tests live in `FactoryEventPhaseCoalescingTests` unless noted.
 | Collapse observable at Debug (9008), no double 9001 | `[unit]` | `Coalesce_IdenticalPendingRaises_RunOnceAtTheDrain` (asserts 1× 9001 + 2× 9008) | ✓ |
 | Generator: named-arg → registration; NF0505 fires/doesn't; NF0504 survivor flag + reworded message | `[unit]` | `NF0505CoalesceOnImmediateTests` (5 tests incl. faithful-emission), `AssemblyAttributeEmissionTests.RelayHandler_CoalesceTrue_EmitsTheFlagOnTheRegistration`, `RelayHandler_DuplicateEventType_CoalescingSurvivor_NamesTheFlagInTheMessage` | ✓ |
 | Docs/skill/CLAUDE-DESIGN/Design demonstrate the contract incl. the five survivor-rule strings | `[explicit-skip: prose + Design]` | — Design: Scenario 5 + `StatementClose_...` test; all five A-V1 strings updated (both docs anchors, NF0504 message format + its message-assertion tests, registry XML); skill link-grep stays internal | n/a |
-| Existing suite unmodified & green; totals match | `[explicit-skip: meta]` | — the 5 emission-shape assertions and nothing else were updated (in-scope: the plan deliberately changed the emitted registration to the widest-overload form; intent preserved — they now pin the flag default positively); gate logs green with expected totals | n/a |
+| Relay batch unaffected (todo-AC clause, pinned at gate round 1's direction) | `[integration]` | `FactoryEventCoalescingTests.RemoteExecute_CoalescingHandler_RelayStillReceivesEveryRaise` (3 relayed events, 1 handler run) | ✓ |
+| Survivor payload contract: first-raised instance; reference-typed-member no-op executable | `[unit]` | `Coalesce_CustomEqualsCollapse_TheHandlerReceivesTheFirstRaisedInstance` (+ XML sentence added), `Coalesce_ReferenceTypedMember_DefeatsEqualityAndDoesNotCollapse` (gate round 1) | ✓ |
+| Existing suite unmodified & green; totals match | `[explicit-skip: meta]` | — modified test surface: the 5 emission-shape assertions (in-scope: the plan deliberately changed the emitted registration to the widest-overload form; intent preserved — they now pin the flag default positively) AND the additive `Message` field on the shared `CapturingLoggerProvider`/`LogEntry` helper (gate round 1 corrected this row's "and nothing else" understatement); gate logs green with expected totals | n/a |
 
 Additional untracked coverage: `Coalesce_SurvivorKeepsTheEarliestQueuePosition`
 (ordering position), `Coalesce_RaiseAfterTheDispatchWasTakenByADrain_StartsAFreshDispatch`
