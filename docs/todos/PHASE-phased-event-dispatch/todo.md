@@ -122,6 +122,10 @@ exposes drain points.
   `reviews/*.log` evidence out of the repo — the todo docs cite files that exist on
   one machine, and the Step 7 close-out audit will cite them again. Fix is an ignore
   exception for `docs/todos/**/reviews/*.log` (or `.md` extensions); arc-level call.
+  **Ruled 2026-08-17: leave as local-only evidence** — the `.log` files stay
+  gitignored; the committed gate records (`reviews/*-test-review.md` etc.) carry the
+  numbers and verdicts, and the logs back them up on the machine that ran them. The
+  close-out audit cites the logs as local artifacts, not repo files.
   **Round 2 (2026-08-17): all six closures confirmed, nothing reopened — gate closed
   at must- and should-cover.** The reviewer traced the no-leak discriminator
   mechanically (event-id attribution means the second assertion catches a leak and
