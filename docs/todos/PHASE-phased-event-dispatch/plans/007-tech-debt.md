@@ -3,7 +3,7 @@
 **Plan #:** 007
 **Date:** 2026-08-18
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Implemented — gate pending
+**Status:** Done
 **Last Updated:** 2026-08-18
 **Plan-review opt-in:** No (test infrastructure and pins; the one behavior addition is a Debug log event; blast radius bounded by the sacred-tests rule)
 **Code-review opt-in:** Yes (touches sacred harness files broadly; one runtime addition; a possible scheduler storage tweak)
@@ -62,8 +62,12 @@ contract beyond the one new Debug log id.
 - Accepted behaviors stop being oral tradition: each "we decided not to change this"
   from the arc's gates gets a documenting pin that fails if the behavior drifts silently.
 - A consumer whose transaction abstraction wraps the factory call from outside gets a
-  Debug breadcrumb at the moment their drain did nothing, instead of only a 9007 later
-  telling them to do what they just did.
+  Debug breadcrumb at the moment their drain did nothing, instead of only a 9007 that
+  appears to have ignored the drain they did call. *(Corrected at code review V1: the
+  original wording said their drain "runs before the work is queued," which is false
+  after the call — the entry-call exit has already swept the queue and emitted that
+  9007 moments earlier. The breadcrumb's value is unchanged; the causal story was
+  wrong in the shipped message and in the CLAUDE-DESIGN row, both fixed.)*
 - Design.Server stops being the one project with zero tests while its container silently
   cannot serve the domain it hosts.
 - The test harnesses this arc leaned on (and duplicated under deadline) become single,
@@ -266,11 +270,12 @@ rule is no reflection without approval. The two non-reflective options were a
 hand-maintained mirror of `Program.cs` (green no matter what the server does — the
 arc's own recurring defect, deliberately built) and a shared compiled seam. Measured
 that Design.Tests can reference Design.Server despite the Blazor WASM chain, so the
-seam won: `Design.Server/ServerServices.cs` holds `AddDesignServerServices`, `Program.cs`
-calls it, and the test calls the same method. **Residual, stated rather than papered
-over:** the test covers the services it names and the operations it runs. A new
-`[Service]` type used by no covered operation would still slip. RP-3 measures what it
-does catch.
+seam won: `Design.Server/ServerServices.cs` holds `AddDesignServer` — widened at the
+gate to own the `AddNeatooAspNetCore` call too, so the test restates nothing — and
+`Program.cs` and the test both call exactly that one method. **Residual, stated rather
+than papered over:** the test covers the services it names and the operations it runs.
+A new `[Service]` type used by no covered operation would still slip. RP-3 measures
+what it does catch.
 
 **A2 — The Constraint "no production restructuring of the sample server" was relaxed,
 deliberately.** Extracting seven inline `AddScoped` lines into a named method is a

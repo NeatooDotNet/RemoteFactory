@@ -147,7 +147,14 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     // handlers are invoked outside the lock. One consumer call IS made under it: the
     // coalescing identity scan invokes the event's Equals (custom overrides included)
     // per pending entry — keep event Equals cheap and non-re-entrant; a re-entrant
-    // Equals that touches this scheduler mutates the queue mid-scan.
+    // Equals that touches this scheduler mutates the queue mid-scan. Note that lock
+    // is re-entrant on the same thread, so _gate does not stop this. Two specifics
+    // worth naming, both pathological and neither guarded: the scan captures its span
+    // and length up front, so an entry a re-entrant Equals APPENDS is not scanned; and
+    // PhaseQueue.Replace resolves its index against the CURRENT head, so a re-entrant
+    // DEQUEUE between the read and the merge would land the write on the wrong entry.
+    // Cross-thread interleaving cannot reach either — every PhaseQueue member runs
+    // under this lock. Routed to PHASE-009, which owns the concurrency harness.
     private readonly object _gate = new();
     private int _entryDepth;
 

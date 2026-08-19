@@ -9,10 +9,12 @@
 // DESIGN DECISION: Minimal server setup
 //
 // The server only needs:
-// 1. AddNeatooAspNetCore() - registers factory services and endpoints
+// 1. Service registration -- AddNeatooAspNetCore() for the factory services and
+//    endpoints, plus the server-only dependencies factory methods resolve by
+//    [Service] injection. Both live in ServerServices.cs (see the comment at the
+//    call below for why they are behind one method rather than inline here).
 // 2. UseNeatoo() - adds the middleware for handling factory requests
-// 3. Service registrations for server-only dependencies
-// 4. Hosted WASM middleware to serve the Blazor client
+// 3. Hosted WASM middleware to serve the Blazor client
 //
 // =============================================================================
 

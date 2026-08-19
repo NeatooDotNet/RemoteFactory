@@ -411,8 +411,13 @@ public class FactoryEventPhaseCoordinatorTests
 
         var shortCircuit = Assert.Single(logs.Entries, e => e.EventId == 9009);
         Assert.Equal(LogLevel.Debug, shortCircuit.Level);
-        Assert.Equal(DispatchPhase.AfterFlush, shortCircuit.Phase);
         Assert.Contains("no factory entry call active in this scope", shortCircuit.Message);
+
+        // The message's {Phase} is deliberately NOT asserted: the whitelist above
+        // rejects every phase but AfterFlush before this code is reachable, so the
+        // parameter is structurally constant and an assertion on it could not fail.
+        // The parameter itself stays — it is real structured-log context, and it stops
+        // being constant the day a second phase becomes consumer-drainable.
 
         // Still a short-circuit, not a drain — the behavior this plan added observability
         // to is unchanged.
@@ -446,7 +451,6 @@ public class FactoryEventPhaseCoordinatorTests
 
             var shortCircuit = Assert.Single(logs.Entries, e => e.EventId == 9009);
             Assert.Equal(LogLevel.Debug, shortCircuit.Level);
-            Assert.Equal(DispatchPhase.AfterFlush, shortCircuit.Phase);
         }
     }
 

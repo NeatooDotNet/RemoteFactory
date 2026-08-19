@@ -96,13 +96,43 @@ exposes drain points.
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
-| 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Draft |
+| 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
+| 010 | *(not yet drafted)* | 9007's Warning should carry the drain-*placement* qualifier. Today it says "Call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit" — which the consumer who wrapped the factory call from *outside* did do; the missing words are "from inside the factory method body." PHASE-007 put that guidance in 9009, but 9009 is Debug and therefore invisible under a default Information minimum, so the consumer who most needs it still sees only the misleading Warning. Its own plan because it edits an existing pinned message (007 code review C2) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
-| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan, and raised again by 007's storage change: `PhaseQueue.Pending` now hands out a `Span<QueuedDispatch>` over the live backing array, so a re-entrant `Equals` that enqueues mutates an array a span is open over, not just a `List` (007 gate); candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear); also carries the accepted-not-closed registry isolation risk — `FactoryEventHandlerRegistry.Clear()` stays internal and uncalled, and 007's discipline notes live in two files a new test author may not open (007 gate) | Draft |
+| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan, and raised again by 007's storage change: `PhaseQueue.Pending` now hands out a `Span<QueuedDispatch>` over the live backing array, so a re-entrant `Equals` that enqueues mutates an array a span is open over, not just a `List` (007 gate); candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear); also carries the accepted-not-closed registry isolation risk — `FactoryEventHandlerRegistry.Clear()` stays internal and uncalled, and 007's discipline notes live in two files a new test author may not open (007 gate); plus two allocation notes on the same class, neither a correctness issue: `HasPending` builds a LINQ enumerator per call under `_gate` (007 gate), and `TryDequeueThrough` builds a `Where`+`OrderBy` chain **per dequeued dispatch**, so the bulk-save scenario the storage comment names still pays a per-dispatch allocation even after the O(1) dequeue fix (007 code review C6) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-18 — PHASE-007 (code review: the new log event's explanation was wrong about the code it was explaining — and a trace stopped me changing code I had already decided to change)
+
+- **Finding:** Code review returned **1 veto** and 9 callouts. V1: 9009's shipped
+  message and its CLAUDE-DESIGN row explained the short-circuit by saying a drain
+  wrapping the factory call from outside "runs before the work it means to flush has
+  been queued." That is false for the after-the-call case, which is the one the
+  sentence describes: the dispatcher queues only while an entry call is active, and
+  `EndEntryCallAsync(true)` always drains at the outermost exit — so the work was
+  queued and had already been swept, and the 9007 fired *earlier*, not later. The
+  event is still worth having and its actionable half was right; the causal story
+  shipped wrong, in the one consumer-facing contract this plan adds. C3 was the
+  familiar sibling: moving the composition out of `Program.cs` orphaned that file's
+  own "the server only needs…" list and CLAUDE-DESIGN's Key Files row — the third
+  incidental-doc-invalidation catch in this arc.
+- **Decision:** Amend — V1 closed in all three places after verifying the trace
+  myself; C1 (a can't-go-red `{Phase}` assertion inside the plan's own headline
+  pins), C3, C4, C5, C7, C8, C9 closed; C6 routed to PHASE-009; C2 became new Index
+  row **010** (9007's Warning needs the drain-*placement* qualifier, because 9009
+  carries it only at Debug and the consumer who needs it most runs at Information).
+- **Follow-up:** [reviews/007-code-review.md](./reviews/007-code-review.md). Worth
+  keeping, and the opposite of this arc's usual lesson: I had independently decided
+  the `ReadOnlySpan` over the live backing array was a regression and was holding a
+  fix for it. The reviewer's trace showed it is safe — a re-entrant grow leaves the
+  span on a live GC-tracked array, `Clear()` zeroes rather than shrinks, and a
+  blanked slot short-circuits on `ReferenceEquals` — so **the change was not made**
+  and the two real deltas were documented instead. "Verify, don't inherit" cuts both
+  ways: my own confident diagnosis needed a trace before it justified touching the
+  arc's most safety-critical class.
 
 ### 2026-08-18 — PHASE-007 (gate round 1: the correction of a reasoning-dressed-as-evidence finding was itself reasoning dressed as evidence)
 

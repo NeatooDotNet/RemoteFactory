@@ -70,10 +70,13 @@ public static class ServerServices
     }
 
     /// <summary>
-    /// Registers every server-only service Design.Domain needs, in the composition
-    /// order a real server would use.
+    /// The server-only half of the composition. Private on purpose: this registers the
+    /// services but NOT RemoteFactory itself, so a caller who picked it over
+    /// <see cref="AddDesignServer"/> would get a container that resolves every domain
+    /// dependency and no factories — the half-composition failure this seam exists to
+    /// make impossible. There is exactly one entry point.
     /// </summary>
-    public static IServiceCollection AddDesignServerServices(this IServiceCollection services)
+    private static IServiceCollection AddDesignServerServices(this IServiceCollection services)
     {
         // ---------------------------------------------------------------------
         // DESIGN DECISION: Explicit AddScoped for anything that holds state
