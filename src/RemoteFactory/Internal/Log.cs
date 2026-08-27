@@ -530,7 +530,7 @@ internal static partial class Log
     [LoggerMessage(
         EventId = 9007,
         Level = LogLevel.Warning,
-        Message = "An AfterFlush handler dispatch for factory event {EventType} was never drained by the consumer; it ran at the AfterCommit point instead (fail-open), after the transaction it expected to run inside. Call IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush) between your flush and your commit, or register the handler at a different phase.")]
+        Message = "An AfterFlush handler dispatch for factory event {EventType} was never drained by the consumer; it ran at the AfterCommit point instead (fail-open), after the transaction it expected to run inside. Call IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush) from inside the factory method body, between your flush and your commit — a drain called from outside the factory call never reaches this work, because the queue only exists while the entry call is active. Otherwise register the handler at a different phase.")]
     public static partial void FactoryEventPhaseNeverDrained(
         this ILogger logger,
         string eventType);

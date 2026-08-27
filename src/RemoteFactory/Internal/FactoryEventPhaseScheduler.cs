@@ -154,7 +154,7 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     // PhaseQueue.Replace resolves its index against the CURRENT head, so a re-entrant
     // DEQUEUE between the read and the merge would land the write on the wrong entry.
     // Cross-thread interleaving cannot reach either — every PhaseQueue member runs
-    // under this lock. Routed to PHASE-009, which owns the concurrency harness.
+    // under this lock. Routed to PHASE-008, which owns the concurrency harness.
     private readonly object _gate = new();
     private int _entryDepth;
 

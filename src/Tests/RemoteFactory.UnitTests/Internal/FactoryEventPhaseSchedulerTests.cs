@@ -363,6 +363,49 @@ public class FactoryEventPhaseSchedulerTests
     }
 
     /// <summary>
+    /// 9007's message must name drain <b>placement</b>, not just drain timing.
+    /// </summary>
+    /// <remarks>
+    /// The failure this closes (PHASE-007 code review C2): the shipped wording told the
+    /// consumer to drain "between your flush and your commit," which the consumer whose
+    /// transaction abstraction wraps the factory call from <i>outside</i> had already done.
+    /// The words that would have helped them — that the call belongs inside the factory
+    /// method body — existed only in 9009, which is Debug and therefore invisible under the
+    /// default Information minimum. So the one consumer who most needs the guidance saw only
+    /// the misleading half.
+    /// <para>
+    /// Discriminating because it asserts the added clause and, negatively, that the old
+    /// standalone phrasing is gone. Every other 9007 pin in this suite matches on the event
+    /// id alone (the integration pin adds only the event <i>type</i> name), so before this
+    /// test the entire guidance sentence could be deleted or rewritten with all three suites
+    /// green — the shape this arc has caught eleven times.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task DrainAsync_NeverDrainedWarning_TellsTheConsumerWhereToPutTheDrain()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, (_, _, _, _) => Task.CompletedTask);
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        var warning = Assert.Single(logs.Entries, e => e.EventId == 9007);
+
+        // The actionable half: placement, in the words 9009 uses, so the two agree.
+        Assert.Contains("from inside the factory method body", warning.Message, StringComparison.Ordinal);
+
+        // And the reason, so the guidance is not a bare instruction.
+        Assert.Contains("outside the factory call", warning.Message, StringComparison.Ordinal);
+
+        // Negative half: the old sentence stood alone and sent the outside-wrapping consumer
+        // back to what they had already done. It may survive only as a subordinate clause.
+        Assert.DoesNotContain(
+            "DrainAsync(DispatchPhase.AfterFlush) between your flush and your commit",
+            warning.Message,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The happy path is silent end to end: work the consumer actually drains produces
     /// no fail-open warning at either drain.
     /// </summary>

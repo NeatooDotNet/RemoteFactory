@@ -235,7 +235,65 @@ folded into this plan, so retiring those rows loses no routing history.
 
 ## Current State (Pre-Flight)
 
-*(pending — filled at Step 3, before the first edit)*
+Walked 2026-08-27 before the first edit. Covers the deterministic legs (Steps 1–6) plus the
+scheduler and registry surfaces for Steps 7–10; the partial-declaration probe is an experiment
+and is deliberately left to implementation.
+
+**The `global::` strip is deliberate, and the naive fix breaks a pinned diagnostic.**
+`FactoryGenerator.RelayHandler.cs:149-151` takes `SymbolDisplayFormat.FullyQualifiedFormat` —
+which *includes* `global::`, as `FactoryGenerator.Events.cs:47` confirms by comparing against
+`"global::Neatoo.RemoteFactory.FactoryEventBase"` — and then explicitly strips the prefix. The
+same strip repeats at `:205-206` for the handler method's event parameter. So the row's premise
+("the token is not qualified") is correct, but its implied cause ("someone forgot") is not.
+That stripped value has **three** consumers, not one:
+
+1. the `registeredPhaseByEventType` dictionary key for NF0504 duplicate detection (`:153`),
+2. the `paramTypeName` comparison that matches handler methods to the attribute (`:208`), and
+3. the value carried into the model and emitted at `RelayHandlerRenderer.cs:180` and `:182`.
+
+It also flows into the **NF0504 diagnostic message** at `:165` — a message PHASE-002 pinned
+deliberately, including the source-order-wins case. Deleting the strip would change that
+message to a `global::`-prefixed type name and take a sacred assertion with it. The fix
+therefore has to separate the normalized comparison key from the emitted form, not remove the
+normalization.
+
+**Two emission tokens need qualifying; two others are structurally immune.**
+`RelayHandlerRenderer.cs:180` (`RegisterHandler<{eventTypeName}>`) and `:182`
+(`({eventTypeName})eventObj`) both carry the hazard. By contrast `typeof({className})` (`:180`)
+and `{className}.{MethodName}` (`:174`) are emitted *inside the user's own namespace and inside
+the user's own partial class body* (`Render` at `:50-52`), where a type shadowing the enclosing
+class's own name is CS0542 — immune by construction, and to be recorded as such rather than
+qualified reflexively. Service-parameter types are already qualified: `RelayHandler.cs:293`
+uses `FullyQualifiedFormat` with **no** strip.
+
+**Same hazard class, undecided:** the bare framework tokens the generated body leans on the
+file's `using` for — `FactoryEventHandlerRegistry`, `NeatooRuntime.IsServerRuntime`. Not named
+by the routed item; cheap and consistent to qualify. Keyboard decision, recorded either way.
+
+**9007's guidance sentence has zero test coverage.** Every pin matches on `EventId == 9007`
+alone (`FactoryEventPhaseSchedulerTests.cs:305,361`, `FactoryEventPhaseCoalescingTests.cs:376,416`,
+`FactoryEventPhaseCoordinatorTests.cs:311`, integration `:120,137`); the single message
+assertion (integration `:120`) checks only that the *event type name* appears. So the sentence
+this plan rewrites is unpinned today — which is why the acceptance bullet demands a pin on the
+emitted text and not on the id.
+
+**The ratchet is bigger than PHASE-002 predicted.** Seven assertion sites hardcode the bare
+emitted form, not five: `AssemblyAttributeEmissionTests.cs:821, 840, 854, 857, 865, 1060, 1083`.
+All are the chartered edit under Constraints.
+
+**Confirmed as recorded:** `NF04xxFactoryEventHandlerTests.cs:14` declares
+`public class NF05xxFactoryEventHandlerTests`. `RunGeneratorTracked` is
+`DiagnosticTestHelper.cs:187` and inspects nothing about the input compilation;
+`IncrementalCacheTests.cs:234-235` already documents that gap in a remark.
+
+**Scheduler / registry surfaces for Steps 7–10.** The `_gate` comment
+(`FactoryEventPhaseScheduler.cs:145-157`) names both unguarded re-entrancy specifics and routes
+them to PHASE-009 — that comment is the stale in-source pointer Step 1 repairs. The registry
+itself is **not** a defect: `RegisterHandler` and `GetHandlers` both `lock (list)` and the read
+snapshots to an array (`FactoryEventHandlerRegistry.cs:86-95, 101-109`). One narrow
+observation for the harness: `Clear()` (`:114`) drops the `ConcurrentDictionary` entries without
+taking the per-list locks, so a `Clear()` racing a `RegisterHandler` between its `GetOrAdd` and
+its `lock` can strand a registration in a detached list. Test-only method; note, don't redesign.
 
 ---
 
