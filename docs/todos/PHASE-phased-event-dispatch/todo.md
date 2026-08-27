@@ -105,6 +105,28 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-27 — PHASE-008 (the inferred collision was real, and it takes the whole assembly with it)
+
+- **Finding:** PHASE-002 inferred that attributes split across partial declarations "should
+  collide on hint name" and recorded it unmeasured. Measured: they do. Two partials each
+  carrying a `[FactoryEventHandler<T>]` yield two syntax nodes, two identical models (the
+  transform reads the *symbol*), one hint name, and an `ArgumentException` on the second
+  `AddSource` → **CS8785**. The severity is the part the row understated: CS8785 means the
+  generator "will not contribute to the output," so every factory in the assembly vanishes and
+  the consumer sees missing-type errors pointing nowhere near the split partial.
+- **Decision:** Amend — one model per symbol from a canonically-chosen declaration (plan
+  amendment A1). Two adjacent corrections in the same pass: the emission fix covers three token
+  classes rather than the one routed (A2), and this plan's own pre-flight got the
+  service-parameter case backwards, claiming a strip that exists one line below the line it
+  cited.
+- **Follow-up:** [reviews/008-redproof.log](./reviews/008-redproof.log) — RP-3 is unusual in
+  being a *probe* whose "before" run is the positive control, which is stronger than a
+  sabotage because nothing about it was built to fail. RP-4 is the arc's twelfth can't-go-red
+  instance and the second one authored by the plan hunting for them: a single test claimed to
+  pin the helper's base-fixture guard while the appended-edit compilation *contains* the base
+  fixture, so deleting the first guard left the assertion satisfied by the second. Split into
+  two tests that each name which input failed.
+
 ### 2026-08-27 — PHASE-008 (the arc tail merges: three rows, one plan, one branch — ceremony was the cost being cut)
 
 - **Finding:** The three remaining rows are the whole arc tail and carry no ordering

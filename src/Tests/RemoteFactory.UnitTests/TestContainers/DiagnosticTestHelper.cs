@@ -197,6 +197,8 @@ public static class DiagnosticTestHelper
             references: BuildReferences(),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
+        AssertInputCompiles(compilation, "the fixture");
+
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: [GeneratorInstance.Value.AsSourceGenerator()],
             additionalTexts: null,
@@ -210,10 +212,49 @@ public static class DiagnosticTestHelper
         var first = driver.GetRunResult();
 
         var secondTree = CSharpSyntaxTree.ParseText(source + appendedSource, parseOptions, path: "Fixture.cs");
-        driver = driver.RunGenerators(compilation.ReplaceSyntaxTree(firstTree, secondTree));
+        var secondCompilation = compilation.ReplaceSyntaxTree(firstTree, secondTree);
+
+        AssertInputCompiles(secondCompilation, "the fixture plus the appended edit");
+
+        driver = driver.RunGenerators(secondCompilation);
         var second = driver.GetRunResult();
 
         return (first, second);
+    }
+
+    /// <summary>
+    /// Fails loudly if a generator fixture does not compile before the generator runs.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RunGeneratorTracked"/> inspected nothing about its input, so a fixture that
+    /// stopped compiling degraded silently instead of failing: the transform's own fallbacks
+    /// absorb what a broken fixture produces — a dropped <c>using</c> makes the phase argument
+    /// unbindable and <c>ReadDispatchPhase</c> returns <c>Immediate</c> — and the caching
+    /// assertions compare transform outputs across two runs, which a degraded fixture satisfies
+    /// just as well as a healthy one. <c>IncrementalCacheTests</c> carried three separate
+    /// "fixture health" guards written to cover for exactly this, and its own remarks named the
+    /// gap. The guard belongs here, once, ahead of them.
+    /// <para>
+    /// Errors only. Generator fixtures are terse by design and trip warnings (unused usings,
+    /// missing XML docs) that say nothing about whether the fixture exercises what it claims.
+    /// </para>
+    /// </remarks>
+    /// <param name="compilation">The input compilation, before the generator runs.</param>
+    /// <param name="what">Names which input failed, since the tracked run checks two.</param>
+    private static void AssertInputCompiles(Compilation compilation, string what)
+    {
+        var errors = compilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
+
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Generator test input did not compile ({what}). The generator was never run, so any "
+                + "assertion downstream of this would have reported on a degraded fixture rather than on "
+                + $"the generator. Fix the fixture.{Environment.NewLine}"
+                + string.Join(Environment.NewLine, errors.Select(e => e.ToString())));
+        }
     }
 
     /// <summary>

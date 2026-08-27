@@ -263,8 +263,14 @@ normalization.
 and `{className}.{MethodName}` (`:174`) are emitted *inside the user's own namespace and inside
 the user's own partial class body* (`Render` at `:50-52`), where a type shadowing the enclosing
 class's own name is CS0542 — immune by construction, and to be recorded as such rather than
-qualified reflexively. Service-parameter types are already qualified: `RelayHandler.cs:293`
-uses `FullyQualifiedFormat` with **no** strip.
+qualified reflexively.
+
+> **Correction, made during implementation.** This paragraph first ended "Service-parameter
+> types are already qualified: `RelayHandler.cs:293` uses `FullyQualifiedFormat` with **no**
+> strip." That is wrong — `:294-295` strips them exactly as `:150-151` does, so
+> `sp.GetRequiredService<{p.Type}>()` was a **third** bare emission site, not zero. Left visible
+> rather than quietly overwritten: it is the read-one-line-too-few error this arc keeps logging,
+> committed here by the pre-flight whose whole purpose was to prevent it.
 
 **Same hazard class, undecided:** the bare framework tokens the generated body leans on the
 file's `using` for — `FactoryEventHandlerRegistry`, `NeatooRuntime.IsServerRuntime`. Not named
@@ -305,7 +311,38 @@ its `lock` can strand a registration in a detached list. Test-only method; note,
 
 ## Plan Amendments
 
-*(none yet)*
+### 2026-08-27 — A1: the partial-split probe found a defect, so Step 4's conditional fix fired
+
+- **Section affected:** Step 4, and the Acceptance bullet on the partial-declaration behavior.
+- **Original said:** measure the behavior and pin whatever it is, "and a fix only if the answer
+  is a defect."
+- **What changed:** the answer was a defect, so a fix landed. A handler class whose
+  `[FactoryEventHandler<T>]` attributes are split across two partial declarations produced two
+  identical models sharing one hint name, and the second `AddSource` threw `ArgumentException`
+  → **CS8785**. The transform now emits one model per symbol, from a canonically-chosen
+  declaration (file path, then span start, so the choice is stable for the incremental cache).
+- **Why:** CS8785 is not scoped to the offending class. The generator "will not contribute to
+  the output," so **every factory in the assembly disappears** and the consumer gets a cascade
+  of missing-type errors pointing nowhere near the split partial. PHASE-002 inferred the
+  collision and recorded it as unmeasured; the measurement made it a severity question rather
+  than a curiosity. The fix also stops such a class reporting its diagnostics once per partial.
+- **Discovery Log link:** 2026-08-27 — PHASE-008 (the inferred collision was real).
+
+### 2026-08-27 — A2: the emission fix covers three token classes, not one
+
+- **Section affected:** Step 3.
+- **Original said:** qualify the event type in the relay registration and audit the other legs.
+- **What changed:** three token classes were qualified — the event type (generic argument and
+  the cast), the `[Service]` parameter types, and the framework tokens the generated body took
+  from the file's `using` (`NeatooRuntime`, `FactoryEventHandlerRegistry`, `IServiceCollection`,
+  `NeatooFactory`). `typeof({className})` and the handler invocation stay bare and are
+  documented as structurally immune.
+- **Why:** the audit found the service-parameter types stripped on the same lines as the event
+  type (see the correction in Current State), and the framework tokens carry the identical
+  defect. Fixing only the routed token would have left the same bug behind a comment claiming
+  it was fixed. The normalization itself had to stay: the stripped string is also the NF0504
+  dedupe key and the type name printed in five diagnostics, several pinned — so the prefix is
+  re-applied at the emission site, which is already how the assembly attribute does it.
 
 ---
 

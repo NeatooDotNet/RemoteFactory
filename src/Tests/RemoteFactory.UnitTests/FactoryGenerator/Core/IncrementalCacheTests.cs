@@ -203,6 +203,84 @@ namespace UnrelatedNamespace
     }
 
     /// <summary>
+    /// A fixture that does not compile fails loudly instead of being generated against.
+    /// </summary>
+    /// <remarks>
+    /// The three fixture-health guards in this file all exist because a degraded fixture
+    /// satisfies the caching assertions as happily as a healthy one — they compare transform
+    /// outputs across two runs, and a fixture producing nothing produces it deterministically.
+    /// Until PHASE-008 the helper inspected nothing about its input, so the guards were
+    /// covering for a hole one level below them.
+    /// <para>
+    /// <b>Two tests, one per checked input, and that split is not tidiness.</b> The first
+    /// version of this was a single test breaking the base fixture, and the red-proof
+    /// (PHASE-008 RP-4) came back GREEN when the first guard was deleted: the appended-edit
+    /// compilation contains the same broken source, so the second guard threw and the
+    /// assertion was satisfied by the wrong call. It pinned "at least one guard fires,"
+    /// which is not what it claimed. Each test now asserts WHICH input was named, so
+    /// deleting either guard turns exactly one of them red.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void RunGeneratorTracked_BaseFixtureDoesNotCompile_ThrowsNamingTheFixture()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => DiagnosticTestHelper.RunGeneratorTracked(BrokenFixture, UnrelatedAppendix));
+
+        // Parenthesised: "the fixture" is a prefix of "the fixture plus the appended edit",
+        // so the bare substring would be satisfied by the second guard firing instead —
+        // which is exactly how the single-test version failed to discriminate.
+        Assert.Contains("(the fixture)", ex.Message, StringComparison.Ordinal);
+
+        // The message has to carry the compiler's own diagnostic, or the next person sees
+        // "fix the fixture" with no indication of what is wrong with it.
+        Assert.Contains("CS0246", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A healthy fixture broken only by the APPENDED edit is caught by the second guard.
+    /// </summary>
+    /// <remarks>
+    /// The appendix is the half a reader is least likely to suspect: it exists to be
+    /// unrelated, so a bad one looks like noise. Its compilation is the one every caching
+    /// assertion in this file actually reads.
+    /// </remarks>
+    [Fact]
+    public void RunGeneratorTracked_AppendedEditDoesNotCompile_ThrowsNamingTheEdit()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => DiagnosticTestHelper.RunGeneratorTracked(Fixture, BrokenAppendix));
+
+        Assert.Contains("(the fixture plus the appended edit)", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("CS0246", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A fixture that parses cleanly but does not bind: CS0246 only at semantic analysis,
+    /// so nothing before the compile check would notice it.
+    /// </summary>
+    private const string BrokenFixture = @"
+namespace TestNamespace
+{
+    public class Broken
+    {
+        public NoSuchType Member { get; set; }
+    }
+}
+";
+
+    /// <summary>The same defect in the appended half — see <see cref="BrokenFixture"/>.</summary>
+    private const string BrokenAppendix = @"
+namespace TestNamespace
+{
+    public class BrokenAppendage
+    {
+        public NoSuchAppendedType Member { get; set; }
+    }
+}
+";
+
+    /// <summary>
     /// Pins that the relay-handler branch actually reached emission. Complements
     /// <see cref="Fixture_ProducesNoDiagnostics"/>: the relay output stage returns early
     /// when <c>Entries.Count == 0</c>, so an empty-entry fixture produces no file here.
@@ -230,9 +308,16 @@ namespace UnrelatedNamespace
     /// If the phase argument ever stopped binding — a <c>using</c> dropped, a fixture edit —
     /// the transform's malformed-argument fallback returns <c>Immediate</c> silently, the
     /// fixture degrades to two defaulted attributes, and every test here stays green while
-    /// covering less than its comment claims. Nothing else would notice:
-    /// <c>RunGeneratorTracked</c> never inspects the input compilation for CS errors, and
-    /// <see cref="Fixture_ProducesNoDiagnostics"/> filters on <c>NF</c> ids only.
+    /// covering less than its comment claims.
+    /// <para>
+    /// This remark used to end "Nothing else would notice: <c>RunGeneratorTracked</c> never
+    /// inspects the input compilation for CS errors, and <see cref="Fixture_ProducesNoDiagnostics"/>
+    /// filters on <c>NF</c> ids only." Half of that is now false — PHASE-008 gave the helper an
+    /// input-compiles guard, so a dropped <c>using</c> throws before the generator runs rather
+    /// than degrading in silence. This test still earns its place: the guard catches a fixture
+    /// that stopped COMPILING, not one that still compiles while binding the phase argument to
+    /// something benign.
+    /// </para>
     /// </remarks>
     [Fact]
     public void Fixture_PopulatesThePhaseArgument()
