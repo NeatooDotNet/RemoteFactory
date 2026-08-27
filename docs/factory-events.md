@@ -190,6 +190,23 @@ Only `AfterFlush` is consumer-drainable: `Immediate` handlers are never queued, 
 - **Synchronous factory bodies and phased events don't mix on context-bound scopes.** A synchronous factory body that raised phased work forces the completion drain to block (the no-silent-loss invariant outranks staying non-blocking), and blocking under a captured `SynchronizationContext` — e.g. Logical mode inside a Blazor Server circuit — deadlocks if a drained handler awaits without `ConfigureAwait(false)`. Prefer async factory bodies wherever phased handlers are in play.
 - **An event raised outside any factory call** (no entry call active in the scope) dispatches its phased handlers immediately, with a Debug log ([9005](#runtime-log-events)) — no throw, no silent drop.
 
+### Coalescing Identical Dispatches (Opt-In)
+
+A save that touches N items often raises the same event N times, and a deferred projection then recomputes N times for one visible change. The attribute's `Coalesce` named argument collapses identical **queued** dispatches so the drain runs the handler once:
+
+```csharp
+[FactoryEventHandler<StatementChanged>(DispatchPhase.AfterCommit, Coalesce = true)]
+public static partial class StatementProjection { /* ... */ }
+```
+
+- **Identity is `Equals`.** Two queued dispatches collapse when they carry the same handler registration, `Equals`-equal events, and the same `RaiseOptions`. Records give structural equality by default — with two hazards that follow. An event with a **reference-typed member** (a `List<T>`, an entity) never compares equal across raises, so coalescing is a silent no-op for it: prefer value-only payloads on events whose handlers coalesce. And a **custom `Equals` override** that compares semantically distinct raises equal collapses dispatches you may have expected — the override owns that outcome.
+- **Pending work only.** At any moment the scope holds at most one pending dispatch per identity; a dispatch a running drain has already taken is history, and a raise arriving after it starts a fresh pending dispatch. The observable counts — [9002](#runtime-log-events) drained, [9006](#runtime-log-events) discarded — reflect the collapsed queue, and each collapse logs Debug [9008](#runtime-log-events) instead of a second 9001.
+- **The fail-open warning survives the collapse.** If any absorbed raise would have produced the [9007](#runtime-log-events) never-drained warning, the surviving dispatch produces it.
+- **Inert wherever nothing queues.** `Immediate` handlers are never queued — declaring the flag there emits **NF0505** (Warning). Phased raises that fall through to immediate dispatch (no scheduler in scope, or no entry factory call active) also run once per raise regardless of the flag.
+- **The relay is untouched.** Every `Raise` is still collected and relayed to the client; coalescing is about handler dispatch, not event delivery.
+- **Same-event only.** Cross-event coalescing ("any of these four events → one recompute") is not provided — guard inside the handler if you need it.
+- Handlers that don't opt in are unaffected: N raises remain N dispatches, in order.
+
 ### Choosing a Phase
 
 | Your handler... | Phase |
@@ -197,6 +214,7 @@ Only `AfterFlush` is consumer-drainable: `Immediate` handlers are never queued, 
 | Must be atomic with the save — its failure should roll the operation back at `Raise` time | `Immediate` (default) |
 | Needs database-generated state (identity keys, computed columns) while the transaction can still abort | `AfterFlush` + a coordinator drain between flush and commit |
 | Is a read-only projection / cache refresh that must never fail the save | `AfterCommit` |
+| Recomputes identically for every raise of the same value-identical event | A deferred phase + `Coalesce = true` (see [Coalescing](#coalescing-identical-dispatches-opt-in)) |
 
 ---
 
@@ -446,7 +464,8 @@ public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
 | NF0501 | Error | No matching handler method found for `[FactoryEventHandler<T>]`. The class must declare exactly one method returning `Task` whose first non-`[Service]`/non-`CancellationToken` parameter is of type `T`. |
 | NF0502 | Error | Multiple matching handler methods found for `[FactoryEventHandler<T>]`. Remove the extras or split into separate handler classes. |
 | NF0503 | Warning | A `[FactoryEventHandler<T>]` class declares an **instance**-method handler. This was the former client-relay pattern and is no longer wired up. The method is silently ignored at runtime. Make the method `static` for server-side dispatch, or implement `IFactoryEventRelay` on the class (and register it in DI) for client-side reception. |
-| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once. Attribute stacking is for several event *types*; a repeated event type resolves to the same handler method, so only the first declaration registers — including its `DispatchPhase`. The message names the surviving phase. Remove the duplicate. |
+| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once. Attribute stacking is for several event *types*; a repeated event type resolves to the same handler method, so only the first declaration registers — its `DispatchPhase` and its `Coalesce` flag. The message names the surviving registration. Remove the duplicate. |
+| NF0505 | Warning | `Coalesce = true` on an `Immediate`-declared registration. Immediate dispatches run at `Raise` and are never queued, so there is nothing to coalesce — the flag has no effect (the registration is still emitted faithfully). Remove the flag, or defer the handler to `AfterFlush`/`AfterCommit`. |
 
 ### Runtime Log Events
 
@@ -462,7 +481,9 @@ public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
 | 9004 | `FactoryEventPhaseNoQueueInScope` | Debug | An event with a phased handler was raised in a scope with no phase scheduler registered; dispatched immediately rather than dropped |
 | 9005 | `FactoryEventPhaseRaisedOutsideEntryCall` | Debug | An event with a phased handler was raised while no entry factory call was active in the scope; dispatched immediately rather than queued into a drain nobody owns |
 | 9006 | `FactoryEventPhaseDiscardedAtExit` | Debug | A failed entry call discarded its deferred dispatches without running them |
-| 9007 | `FactoryEventPhaseNeverDrained` | Warning | The post-completion sweep picked up an `AfterFlush` dispatch the consumer never drained — it ran at the `AfterCommit` point instead (fail-open). One warning per dispatch, naming the event type. Call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit, or register the handler at a different phase. |
+| 9007 | `FactoryEventPhaseNeverDrained` | Warning | The post-completion sweep picked up an `AfterFlush` dispatch the consumer never drained — it ran at the `AfterCommit` point instead (fail-open). One warning per dispatch, naming the event type. Call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit, or register the handler at a different phase. A coalesced survivor warns if any absorbed raise would have. |
+| 9008 | `FactoryEventPhaseCoalesced` | Debug | A raise for a `Coalesce = true` handler collapsed into an identical pending dispatch — logged instead of a second 9001; the 9002/9006 counts reflect the collapsed queue |
+| 9009 | `FactoryEventPhaseDrainWithoutEntryCall` | Debug | `IFactoryEventPhaseCoordinator.DrainAsync` was called with no entry factory call active in the scope, so nothing was drained. Usually means the drain wraps the factory call from outside instead of running inside the factory method body — see [Draining AfterFlush](#draining-afterflush--ifactoryeventphasecoordinator). Debug rather than Warning because draining a scope with no factory work in flight is also a correct steady state. |
 
 `UnknownFactoryEventTypeException` is public and carries `UnresolvedTypeFullName` plus `BatchTypeFullNames` for diagnostics — consumers may inspect it via log context.
 

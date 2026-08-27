@@ -192,12 +192,13 @@ public class FactoryEventPhaseEntryTests
 
         await run(id);
 
-        // The relay fires on a background task (production parity) — poll briefly.
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (DateTime.UtcNow < deadline && !relayed.OfType<PhasedRelayOutEvent>().Any(e => e.Id == id))
-        {
-            await Task.Delay(25);
-        }
+        // The relay fires on a background task (production parity), so this has to wait.
+        // Through the shared helper: a hand-rolled poll here would keep the short
+        // deadline and the silent fall-through that PHASE-007 removed from the other
+        // relay waits.
+        await RelayTestHarness.WaitForAsync(
+            () => relayed.OfType<PhasedRelayOutEvent>().Any(e => e.Id == id),
+            "the AfterCommit handler's event to reach the relay");
 
         Assert.Contains(relayed.OfType<PhasedRelayOutEvent>(), e => e.Id == id);
         // The chain event itself was also raised (by the factory method) and relays too.

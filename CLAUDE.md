@@ -97,12 +97,21 @@ The skill uses MarkdownSnippets to embed compiled, tested code from the referenc
 
 ## Key Build Commands
 
-```bash
-# Restore and build
-dotnet build src/Neatoo.RemoteFactory.sln
+**The main solution does not contain the Design projects.** `src/Neatoo.RemoteFactory.sln`
+omits `Design.Domain`, `Design.Tests`, `Design.Server`, and `Design.Client.Blazor`; they
+live in `src/Design/Design.sln`. Building or testing only the main solution after
+changing Design code compiles nothing and runs the previous build's binaries — a green
+run with your work absent from it. **Build and test both solutions.** If a run's test
+count did not go up after you added tests, that is the symptom.
 
-# Run all tests
+```bash
+# Restore and build — BOTH solutions
+dotnet build src/Neatoo.RemoteFactory.sln
+dotnet build src/Design/Design.sln
+
+# Run all tests — BOTH solutions
 dotnet test src/Neatoo.RemoteFactory.sln
+dotnet test src/Design/Design.sln
 
 # Build in Release mode
 dotnet build src/Neatoo.RemoteFactory.sln --configuration Release

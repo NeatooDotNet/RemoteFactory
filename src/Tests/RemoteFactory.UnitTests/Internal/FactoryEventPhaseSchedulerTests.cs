@@ -491,6 +491,161 @@ public class FactoryEventPhaseSchedulerTests
             () => dispatcher.Enqueue(DispatchPhase.AfterCommit, null!, RaiseOptions.None, (_, _, _, _) => Task.CompletedTask));
     }
 
+    /// <summary>
+    /// The sibling guard, previously unpinned: a null handler is rejected at Enqueue
+    /// rather than at drain time. The distinction matters because the drain runs after
+    /// the factory call has already succeeded, where a NullReferenceException would be
+    /// logged and swallowed as a "handler failure" (9003) and the queued work would
+    /// vanish with the caller long gone.
+    /// </summary>
+    [Fact]
+    public void Enqueue_NullHandler_ThrowsAtEnqueueNotAtDrain()
+    {
+        var dispatcher = NewDispatcher();
+
+        Assert.Throws<ArgumentNullException>(
+            () => dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("a"), RaiseOptions.None, null!));
+
+        Assert.False(dispatcher.HasPending);
+    }
+
+    /// <summary>
+    /// 9002's positive emission pin: the drain announces how many dispatches it ran and
+    /// through which phase. The count is the discriminating part — it is the only
+    /// observable that separates "drained everything" from "drained the requested phase
+    /// and silently left the earlier one," which is the defect PHASE-001's gate found.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_LogsTheDrainedCountAndPhase()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, Recording(log, "flush"));
+        dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "commit-1"));
+        dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("c"), RaiseOptions.None, Recording(log, "commit-2"));
+
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        var drained = Assert.Single(logs.Entries, e => e.EventId == 9002);
+        Assert.Equal(LogLevel.Debug, drained.Level);
+        Assert.Equal(DispatchPhase.AfterCommit, drained.Phase);
+        // Three, not two: the sweep of the earlier AfterFlush phase counts.
+        Assert.Contains("Drained 3 queued handler dispatch(es) through phase AfterCommit", drained.Message);
+    }
+
+    /// <summary>
+    /// The other half of 9002's contract: a drain that ran nothing says nothing. Without
+    /// this, "Drained 0" lines would fire at every entry-call exit in every scope that
+    /// never queued anything — the common case.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_NothingDrained_LogsNo9002()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.DoesNotContain(logs.Entries, e => e.EventId == 9002);
+    }
+
+    /// <summary>
+    /// 9006's level and shape (PHASE-006 pinned its count through the coalescing tests;
+    /// the level and the phase-agnostic total across queues were unasserted). A failed
+    /// entry call discards every phase's pending work in one announcement.
+    /// </summary>
+    [Fact]
+    public async Task EndEntryCallAsync_Failed_LogsTheDiscardedTotalAcrossAllPhases()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.BeginEntryCall();
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, Recording(log, "flush"));
+        dispatcher.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "commit"));
+
+        await dispatcher.EndEntryCallAsync(success: false);
+
+        Assert.Empty(log);
+        var discarded = Assert.Single(logs.Entries, e => e.EventId == 9006);
+        Assert.Equal(LogLevel.Debug, discarded.Level);
+        Assert.Contains("Discarded 2 deferred handler dispatch(es) at entry-call exit without running them.", discarded.Message);
+    }
+
+    /// <summary>
+    /// 9006 counts what is still pending, not what was ever queued — asserted after a
+    /// drain has already taken part of the queue.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The queue has to be left <b>partially</b> drained, which needs a drain that stops
+    /// early — here an in-transaction handler exception, the same abort the coordinator's
+    /// drain point exposes. A drain that runs to completion empties its queue and
+    /// <c>PhaseQueue</c> resets the cursor, so the arithmetic below is invisible: the
+    /// first version of this test drained a whole phase and passed under the sabotage
+    /// (measured, RP-7).
+    /// </para>
+    /// <para>
+    /// PHASE-007 replaced the front-removal dequeue with a head cursor, making
+    /// <c>Count</c> a subtraction. Drop it and this reports the two already-run
+    /// dispatches as discarded too — inflating the number PHASE-006 built the discard
+    /// leg's falsifiability on, in the one state where it can be wrong.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task EndEntryCallAsync_Failed_AfterAnAbortedDrain_DiscardCountExcludesWhatAlreadyRan()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.BeginEntryCall();
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("a"), RaiseOptions.None, Recording(log, "flush-1"));
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("b"), RaiseOptions.None,
+            Throwing(new InvalidOperationException("flush handler blew up")));
+        dispatcher.Enqueue(DispatchPhase.AfterFlush, new PhaseTestEvent("c"), RaiseOptions.None, Recording(log, "flush-3"));
+
+        // In-transaction: the exception propagates and abandons the rest, leaving one
+        // dispatch pending behind a cursor that has advanced past two.
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => dispatcher.DrainAsync(DispatchPhase.AfterFlush, inTransaction: true));
+
+        Assert.Equal(["flush-1"], log);
+        Assert.True(dispatcher.HasPending);
+
+        await dispatcher.EndEntryCallAsync(success: false);
+
+        var discarded = Assert.Single(logs.Entries, e => e.EventId == 9006);
+        Assert.Contains("Discarded 1 deferred handler dispatch(es)", discarded.Message);
+        Assert.Equal(["flush-1"], log);
+    }
+
+    /// <summary>
+    /// A documenting pin for the behavior PHASE-002 accepted rather than diagnosed
+    /// (Discovery Log, 2026-08-15): <c>(DispatchPhase)99</c> is expressible, the
+    /// generator renders the cast faithfully, and the registration is then a silent
+    /// no-op because the drain sweeps only phases at or before the requested one. This
+    /// records the accepted cost — work queued at an undefined phase is never run and
+    /// never discarded-with-a-count either; it simply sits until the exit clear.
+    /// Turning that into a diagnostic or a throw is a decision, not a bug fix, and this
+    /// test is what makes the decision visible when someone makes it.
+    /// </summary>
+    [Fact]
+    public async Task DrainAsync_UndefinedPhaseRegistration_IsASilentNoOp()
+    {
+        var dispatcher = NewDispatcher(out var logs);
+        var log = new List<string>();
+
+        dispatcher.Enqueue((DispatchPhase)99, new PhaseTestEvent("a"), RaiseOptions.None, Recording(log, "undefined"));
+
+        // The framework's own drain point sweeps through AfterCommit, the latest DEFINED
+        // phase — 99 sorts after it and is left behind.
+        await dispatcher.DrainAsync(DispatchPhase.AfterCommit, inTransaction: false);
+
+        Assert.Empty(log);
+        Assert.True(dispatcher.HasPending);
+        Assert.DoesNotContain(logs.Entries, e => e.EventId == 9002);
+    }
+
     [Fact]
     public void ScopeDisposedWithoutDraining_RunsNothing()
     {

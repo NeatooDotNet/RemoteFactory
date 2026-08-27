@@ -68,13 +68,13 @@ internal sealed class FactoryEventsDispatcher : IFactoryEvents
         // here and joins the current drain. Raised outside any factory call (or in a
         // scope with no scheduler at all), phased handlers dispatch immediately rather
         // than vanishing, each case with its own debug log.
-        foreach (var (phase, handler) in handlers)
+        foreach (var (phase, coalesce, handler) in handlers)
         {
             if (phase != DispatchPhase.Immediate)
             {
                 if (_phaseQueue != null && _phaseQueue.IsEntryCallActive)
                 {
-                    _phaseQueue.Enqueue(phase, (FactoryEventBase)factoryEvent, options, handler);
+                    _phaseQueue.Enqueue(phase, (FactoryEventBase)factoryEvent, options, handler, coalesce);
                     continue;
                 }
 

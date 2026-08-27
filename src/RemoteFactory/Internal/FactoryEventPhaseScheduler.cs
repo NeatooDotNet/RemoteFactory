@@ -58,6 +58,26 @@ public interface IFactoryEventPhaseScheduler
     void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler);
 
     /// <summary>
+    /// Defers a handler dispatch until <paramref name="phase"/> drains, optionally
+    /// coalescing it into an identical pending dispatch.
+    /// </summary>
+    /// <remarks>
+    /// With <paramref name="coalesce"/> set, an already-pending dispatch with the same
+    /// handler delegate, an <see cref="object.Equals(object)"/>-equal event, and the same
+    /// <see cref="RaiseOptions"/> absorbs this one: the scope holds at most one pending
+    /// dispatch per such identity, the survivor keeps its (earliest) queue position, and
+    /// the collapsed state is what <see cref="HasPending"/> and the drain/discard counts
+    /// observe. The merge preserves the fail-open obligation — the survivor warns at the
+    /// post-completion sweep if <i>any</i> absorbed raise would have. Identity looks only
+    /// at pending work: a dispatch already taken by a running drain is history, and a
+    /// raise arriving after it collapses with nothing. An overload rather than a
+    /// parameter so existing callers (and their pins) stand unchanged — noting that a
+    /// new interface member is still a break for third-party implementors, which the
+    /// <c>Internal</c> namespace's may-change-in-any-release contract covers.
+    /// </remarks>
+    void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler, bool coalesce);
+
+    /// <summary>
     /// Runs the deferred dispatches for <paramref name="phase"/> <b>and every earlier
     /// phase</b>, earliest first, until none are left.
     /// </summary>
@@ -108,11 +128,33 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
 {
     private readonly IServiceProvider _sp;
     private readonly ILogger? _logger;
-    private readonly Dictionary<DispatchPhase, Queue<QueuedDispatch>> _deferred = new();
+
+    // Not Queue<T>: the coalescing warn-merge rewrites one pending entry's
+    // EnqueuedMidDrain bit in place, which a readonly record struct element cannot
+    // express inside a Queue<T> (a mutable reference-typed element could; the struct
+    // was kept). PhaseQueue is a list plus a head cursor, which keeps that in-place
+    // rewrite and the identity scan while making dequeue amortized O(1).
+    //
+    // The cursor replaces a front-removal (PHASE-006 code review C3): RemoveAt(0) is
+    // O(n) and every path paid it, including the non-opted-in default that has no use
+    // for coalescing at all, on an ASSUMPTION that pending queues stay small which
+    // nothing enforced. A bulk save raising thousands of deferred events made the drain
+    // quadratic.
+    private readonly Dictionary<DispatchPhase, PhaseQueue> _deferred = new();
 
     // Guards _deferred, _entryDepth, and _activeDrains. Scopes can be shared by
     // concurrent flows (Blazor Server circuits, Logical mode, a reused test scope);
-    // handlers are invoked outside the lock.
+    // handlers are invoked outside the lock. One consumer call IS made under it: the
+    // coalescing identity scan invokes the event's Equals (custom overrides included)
+    // per pending entry — keep event Equals cheap and non-re-entrant; a re-entrant
+    // Equals that touches this scheduler mutates the queue mid-scan. Note that lock
+    // is re-entrant on the same thread, so _gate does not stop this. Two specifics
+    // worth naming, both pathological and neither guarded: the scan captures its span
+    // and length up front, so an entry a re-entrant Equals APPENDS is not scanned; and
+    // PhaseQueue.Replace resolves its index against the CURRENT head, so a re-entrant
+    // DEQUEUE between the read and the merge would land the write on the wrong entry.
+    // Cross-thread interleaving cannot reach either — every PhaseQueue member runs
+    // under this lock. Routed to PHASE-009, which owns the concurrency harness.
     private readonly object _gate = new();
     private int _entryDepth;
 
@@ -136,6 +178,65 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
         RaiseOptions Options,
         Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Handler,
         bool EnqueuedMidDrain);
+
+    /// <summary>
+    /// One phase's pending dispatches: append at the tail, take from a head cursor,
+    /// rewrite in place. Every member runs under the scheduler's <c>_gate</c>.
+    /// </summary>
+    private sealed class PhaseQueue
+    {
+        private readonly List<QueuedDispatch> _items = [];
+        private int _head;
+
+        public int Count => _items.Count - _head;
+
+        /// <summary>The pending entries, oldest first — what the identity scan walks.</summary>
+        public ReadOnlySpan<QueuedDispatch> Pending
+            => System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_items)[_head..];
+
+        public void Add(QueuedDispatch dispatch) => _items.Add(dispatch);
+
+        /// <summary>Rewrites a pending entry, indexed as <see cref="Pending"/> indexes it.</summary>
+        public void Replace(int pendingIndex, QueuedDispatch dispatch) => _items[_head + pendingIndex] = dispatch;
+
+        public QueuedDispatch Dequeue()
+        {
+            var dispatch = _items[_head];
+
+            // Release the reference so a drained dispatch's event and handler are not
+            // held alive by the backing array until the next Clear. It doubles as the
+            // second of two guards keeping a taken dispatch out of the coalescing
+            // identity scan (the Pending slice is the first): a cleared slot has a null
+            // Handler, which no live handler is reference-equal to.
+            _items[_head] = default;
+            _head++;
+
+            if (_head == _items.Count)
+            {
+                // The queue drained empty, which is the common end state of every
+                // drain: reset rather than let the backing list grow across an
+                // entry call's worth of enqueues.
+                //
+                // NO TEST CAN OBSERVE THIS. Delete it and behavior is identical —
+                // only the backing array keeps growing. It is memory hygiene, not
+                // semantics, and it is recorded as unpinnable rather than left
+                // looking like the pinned members around it. Worth knowing when
+                // writing tests for anything cursor-dependent: this reset, and the
+                // slot blanking above, are what make _head-dependent code invisible
+                // outside the window 0 < _head < _items.Count. Two of PHASE-007's
+                // red-proof predictions were wrong because of exactly that.
+                Clear();
+            }
+
+            return dispatch;
+        }
+
+        public void Clear()
+        {
+            _items.Clear();
+            _head = 0;
+        }
+    }
 
     public bool HasPending
     {
@@ -213,24 +314,75 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     }
 
     public void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler)
+        => Enqueue(phase, factoryEvent, options, handler, coalesce: false);
+
+    public void Enqueue(DispatchPhase phase, FactoryEventBase factoryEvent, RaiseOptions options, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handler, bool coalesce)
     {
         ArgumentNullException.ThrowIfNull(factoryEvent);
         ArgumentNullException.ThrowIfNull(handler);
+
+        var coalesced = false;
 
         lock (_gate)
         {
             if (!_deferred.TryGetValue(phase, out var queue))
             {
-                queue = new Queue<QueuedDispatch>();
+                queue = new PhaseQueue();
                 _deferred[phase] = queue;
             }
 
-            queue.Enqueue(new QueuedDispatch(factoryEvent, options, handler, EnqueuedMidDrain: _activeDrains > 0));
+            var enqueuedMidDrain = _activeDrains > 0;
+
+            if (coalesce)
+            {
+                // Identity: same handler delegate (one delegate instance per surviving
+                // registration, so reference equality is "same registration"), an
+                // Equals-equal event, and the same options. Only PENDING work is a
+                // collapse target — a dispatch a running drain has already taken is
+                // behind the head cursor, so a raise after it starts a fresh pending
+                // dispatch.
+                var pending = queue.Pending;
+                for (var i = 0; i < pending.Length; i++)
+                {
+                    var existing = pending[i];
+                    if (ReferenceEquals(existing.Handler, handler)
+                        && existing.Options == options
+                        && existing.Event.Equals(factoryEvent))
+                    {
+                        // Warn-preserving merge: the survivor warns at the fail-open
+                        // sweep if ANY absorbed raise would have — the bit only ever
+                        // moves toward "would warn" (false). A latest-bit-wins merge
+                        // would let a mid-drain re-raise silently erase the 9007 a
+                        // consumer who never drained is owed.
+                        if (existing.EnqueuedMidDrain && !enqueuedMidDrain)
+                        {
+                            queue.Replace(i, existing with { EnqueuedMidDrain = false });
+                        }
+
+                        coalesced = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!coalesced)
+            {
+                queue.Add(new QueuedDispatch(factoryEvent, options, handler, enqueuedMidDrain));
+            }
         }
 
         if (_logger?.IsEnabled(LogLevel.Debug) == true)
         {
-            _logger.FactoryEventPhaseQueued(factoryEvent.GetType().Name, phase);
+            if (coalesced)
+            {
+                // 9008 instead of a second 9001: the raise produced no new pending
+                // dispatch, and the queued/drained/discarded counts stay collapsed.
+                _logger.FactoryEventPhaseCoalesced(factoryEvent.GetType().Name, phase);
+            }
+            else
+            {
+                _logger.FactoryEventPhaseQueued(factoryEvent.GetType().Name, phase);
+            }
         }
     }
 

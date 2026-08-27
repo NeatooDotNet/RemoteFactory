@@ -66,7 +66,8 @@ internal sealed record EventHandlerEntry
         IReadOnlyList<ParameterModel> serviceParameters,
         IReadOnlyList<ParameterModel> allParameters,
         string phaseName,
-        int phaseValue)
+        int phaseValue,
+        bool coalesce)
     {
         EventTypeName = eventTypeName;
         MethodName = methodName;
@@ -77,6 +78,7 @@ internal sealed record EventHandlerEntry
         AllParameters = new EquatableArray<ParameterModel>([.. allParameters]);
         PhaseName = phaseName;
         PhaseValue = phaseValue;
+        Coalesce = coalesce;
     }
 
     public string EventTypeName { get; }
@@ -108,6 +110,12 @@ internal sealed record EventHandlerEntry
     /// empty; otherwise the name is what gets rendered.
     /// </summary>
     public int PhaseValue { get; }
+
+    /// <summary>
+    /// The attribute's <c>Coalesce</c> named argument (default <c>false</c>). A primitive for
+    /// the same cache-safety reason as the phase — see <see cref="PhaseName"/>.
+    /// </summary>
+    public bool Coalesce { get; }
 
     /// <summary>
     /// Always <c>true</c> — the generator only emits registrations for static handlers now.

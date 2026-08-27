@@ -534,4 +534,21 @@ internal static partial class Log
     public static partial void FactoryEventPhaseNeverDrained(
         this ILogger logger,
         string eventType);
+
+    [LoggerMessage(
+        EventId = 9008,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} coalesced into an identical pending {Phase} dispatch; the drain will run the handler once for them")]
+    public static partial void FactoryEventPhaseCoalesced(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9009,
+        Level = LogLevel.Debug,
+        Message = "IFactoryEventPhaseCoordinator.DrainAsync({Phase}) was called with no factory entry call active in this scope; nothing was drained. Call it from inside the factory method body — a drain placed outside the factory call can only run when the scheduler is provably empty: before the call, nothing has been queued yet, and after it the entry-call exit has already swept the queue (warning about any AfterFlush work it had to run there).")]
+    public static partial void FactoryEventPhaseDrainWithoutEntryCall(
+        this ILogger logger,
+        DispatchPhase phase);
 }

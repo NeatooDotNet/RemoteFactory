@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace Neatoo.RemoteFactory.Internal;
 
 /// <summary>
@@ -28,10 +30,19 @@ public class FactoryEventPhaseCoordinator : IFactoryEventPhaseCoordinator
     /// </summary>
     protected IFactoryEventPhaseScheduler Scheduler { get; }
 
+    private readonly ILogger? _logger;
+
     /// <summary>Creates a coordinator over the scope's existing scheduler.</summary>
-    public FactoryEventPhaseCoordinator(IFactoryEventPhaseScheduler scheduler)
+    /// <param name="scheduler">The scope's queue and drain primitive.</param>
+    /// <param name="loggerFactory">
+    /// Optional, and optional in the same shape as
+    /// <see cref="FactoryEventPhaseScheduler"/>'s: without it the coordinator still
+    /// drains correctly and only loses the 9009 breadcrumb below.
+    /// </param>
+    public FactoryEventPhaseCoordinator(IFactoryEventPhaseScheduler scheduler, ILoggerFactory? loggerFactory = null)
     {
         this.Scheduler = scheduler;
+        _logger = loggerFactory?.CreateLogger(NeatooLoggerCategories.Server);
     }
 
     /// <inheritdoc />
@@ -60,6 +71,13 @@ public class FactoryEventPhaseCoordinator : IFactoryEventPhaseCoordinator
         // the documented contract and the drain proceeds.
         if (!this.Scheduler.IsEntryCallActive)
         {
+            // The short-circuit used to be silent, which left the consumer whose
+            // transaction abstraction wraps the factory call from OUTSIDE with no
+            // signal at all — their drain did nothing, and the only thing they ever
+            // heard was a 9007 afterwards telling them to do what they had just done.
+            // Debug, not Warning: a drain outside an entry call is also the correct
+            // steady state for a scope with no factory work in flight.
+            _logger?.FactoryEventPhaseDrainWithoutEntryCall(phase);
             return Task.CompletedTask;
         }
 

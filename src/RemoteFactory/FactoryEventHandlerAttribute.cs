@@ -57,5 +57,39 @@ public sealed class FactoryEventHandlerAttribute<T> : Attribute
 
 	/// <summary>When the handler runs relative to the factory operation that raised the event.</summary>
 	public DispatchPhase Phase { get; }
+
+	/// <summary>
+	/// Opt-in: collapse identical queued dispatches for this handler so a drain runs it
+	/// once where it would otherwise run once per raise.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// "Identical" means the queued events compare equal per <see cref="object.Equals(object)"/>
+	/// — for records, the synthesized structural equality — with the same
+	/// <see cref="RaiseOptions"/>. Two hazards follow from that definition. An event with a
+	/// reference-typed member (a <c>List&lt;T&gt;</c>, an entity) never compares equal across
+	/// raises, so coalescing is a silent no-op for it — prefer value-only payloads on events
+	/// whose handlers coalesce. And a custom <c>Equals</c> override that compares semantically
+	/// distinct raises equal collapses dispatches the consumer may have expected; the override
+	/// owns that outcome. Identity is evaluated when the dispatch becomes pending, and the
+	/// handler receives the <b>first</b>-raised instance of a collapsed set — observable only
+	/// when an <c>Equals</c> override lets instances with differing payloads compare equal.
+	/// </para>
+	/// <para>
+	/// The flag affects only dispatches that are actually queued. It has no effect on
+	/// <see cref="DispatchPhase.Immediate"/> handlers (never queued — declaring the flag there
+	/// is diagnosed NF0505), and no effect when a phased raise falls through to immediate
+	/// dispatch because the scope has no scheduler or no entry factory call is active: those
+	/// dispatches run once per raise regardless. The client relay is also unaffected — every
+	/// <see cref="IFactoryEvents.Raise{T}"/> is still collected and relayed; coalescing is
+	/// about handler dispatch, not event delivery.
+	/// </para>
+	/// <para>
+	/// A collapse never erases the fail-open warning: if any collapsed raise would have
+	/// produced the 9007 never-drained warning at the post-completion sweep, the surviving
+	/// dispatch produces it.
+	/// </para>
+	/// </remarks>
+	public bool Coalesce { get; set; }
 }
 #pragma warning restore CA1813

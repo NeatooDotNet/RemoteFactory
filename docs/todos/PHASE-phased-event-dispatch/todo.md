@@ -58,6 +58,11 @@ exposes drain points.
       immediately with a debug-level log (no throw, no silent drop).
 - [ ] Backward compatibility: handlers without a phase argument behave exactly as today —
       the full existing test suite passes unmodified.
+- [ ] Opt-in same-event coalescing (added 2026-08-18, tracing the 2026-08-14 user
+      decision that queued PHASE-006): a handler that opts in on its attribute runs
+      once per drain when the same `Equals`-identical event was raised N times during
+      the entry call; without the flag, N raises still produce N dispatches; no
+      collapse erases a fail-open 9007 obligation; the relay batch is unaffected.
 - [ ] Trimming safety preserved: phase registrations flow through the v1.7.0
       forwarding-holder pattern; nothing new ships handler bodies to trimmed clients.
 - [ ] Design projects demonstrate phased handlers (source of truth updated); published
@@ -67,7 +72,9 @@ exposes drain points.
 ## Out of Scope
 
 - Cross-event coalescing ("any of these four events → one recompute") — proposal
-  explicitly defers it; handlers can guard internally.
+  explicitly defers it; handlers can guard internally. *Same-event* coalescing is NOT
+  out of scope: the user carved it in as PHASE-006 (2026-08-14, "implement only if
+  001–005 land smoothly" — condition met 2026-08-17).
 - Fresh-scope execution for `AfterCommit` handlers — v1 runs them in the originating
   scope (proposal open question 1, resolved: same scope).
 - Any persistence concept in the framework: no flush, no commit, no transaction
@@ -88,13 +95,221 @@ exposes drain points.
 | 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
 | 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
-| 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Draft |
-| 007 | *(not yet drafted)* | Tech debt: registry test-isolation hook (`Clear()` is internal and uncalled; every test invents unique event types); 9002/9004/9006 positive emission pins (unit harness now exists: `CapturingLoggerProvider` extracted by 004); `ClientServerContainers` tuple-order divergence + `ScopesWithLogging` duplication and cross-container log attribution; documenting pin for the accepted undefined-phase silent no-op; `SingleEventRelay` hard 2s poll flaking under full-parallel runs; `IEventTestService` shared-singleton Guid-filter discipline; `Enqueue` null-handler guard pin; snapshot accessor on `CapturingLoggerProvider.Entries` before more pins build on it; observability for the coordinator's silent short-circuit (a Debug event id for "drain requested with no entry call active" — today a consumer whose transaction abstraction wraps the factory call from *outside* drains into nothing and is told by 9007 to do what they just did) (all routed from 004's gates); Design.Server composition test — it registers 3 services while Design.Domain `[Service]`-injects `INotificationService` and `IPhaseAuditService`, and no Design.Server test exists (005 gate); `FactoryEventHandlerTests` `Assert.True(true)` trio — the Design tier's nominal `Immediate` pin asserts nothing (005 gate); explicit `Design.sln` build in any verification harness/docs — the main solution omits it (005 RP-0) | Draft |
+| 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
+| 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
+| 010 | *(not yet drafted)* | 9007's Warning should carry the drain-*placement* qualifier. Today it says "Call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit" — which the consumer who wrapped the factory call from *outside* did do; the missing words are "from inside the factory method body." PHASE-007 put that guidance in 9009, but 9009 is Debug and therefore invisible under a default Information minimum, so the consumer who most needs it still sees only the misleading Warning. Its own plan because it edits an existing pinned message (007 code review C2) | Draft |
 | 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
+| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan, and raised again by 007's storage change: `PhaseQueue.Pending` now hands out a `Span<QueuedDispatch>` over the live backing array, so a re-entrant `Equals` that enqueues mutates an array a span is open over, not just a `List` (007 gate); candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear); also carries the accepted-not-closed registry isolation risk — `FactoryEventHandlerRegistry.Clear()` stays internal and uncalled, and 007's discipline notes live in two files a new test author may not open (007 gate); plus two allocation notes on the same class, neither a correctness issue: `HasPending` builds a LINQ enumerator per call under `_gate` (007 gate), and `TryDequeueThrough` builds a `Where`+`OrderBy` chain **per dequeued dispatch**, so the bulk-save scenario the storage comment names still pays a per-dispatch allocation even after the O(1) dequeue fix (007 code review C6) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-18 — PHASE-007 (code review: the new log event's explanation was wrong about the code it was explaining — and a trace stopped me changing code I had already decided to change)
+
+- **Finding:** Code review returned **1 veto** and 9 callouts. V1: 9009's shipped
+  message and its CLAUDE-DESIGN row explained the short-circuit by saying a drain
+  wrapping the factory call from outside "runs before the work it means to flush has
+  been queued." That is false for the after-the-call case, which is the one the
+  sentence describes: the dispatcher queues only while an entry call is active, and
+  `EndEntryCallAsync(true)` always drains at the outermost exit — so the work was
+  queued and had already been swept, and the 9007 fired *earlier*, not later. The
+  event is still worth having and its actionable half was right; the causal story
+  shipped wrong, in the one consumer-facing contract this plan adds. C3 was the
+  familiar sibling: moving the composition out of `Program.cs` orphaned that file's
+  own "the server only needs…" list and CLAUDE-DESIGN's Key Files row — the third
+  incidental-doc-invalidation catch in this arc.
+- **Decision:** Amend — V1 closed in all three places after verifying the trace
+  myself; C1 (a can't-go-red `{Phase}` assertion inside the plan's own headline
+  pins), C3, C4, C5, C7, C8, C9 closed; C6 routed to PHASE-009; C2 became new Index
+  row **010** (9007's Warning needs the drain-*placement* qualifier, because 9009
+  carries it only at Debug and the consumer who needs it most runs at Information).
+- **Follow-up:** [reviews/007-code-review.md](./reviews/007-code-review.md). Worth
+  keeping, and the opposite of this arc's usual lesson: I had independently decided
+  the `ReadOnlySpan` over the live backing array was a regression and was holding a
+  fix for it. The reviewer's trace showed it is safe — a re-entrant grow leaves the
+  span on a live GC-tracked array, `Clear()` zeroes rather than shrinks, and a
+  blanked slot short-circuits on `ReferenceEquals` — so **the change was not made**
+  and the two real deltas were documented instead. "Verify, don't inherit" cuts both
+  ways: my own confident diagnosis needed a trace before it justified touching the
+  arc's most safety-critical class.
+
+### 2026-08-18 — PHASE-007 (gate round 1: the correction of a reasoning-dressed-as-evidence finding was itself reasoning dressed as evidence)
+
+- **Finding:** The gate returned **2 must-cover**, both in code this plan itself
+  introduced — 9009's DI wiring (both pins built the coordinator by hand, so
+  dropping the logger factory from the registration silenced the feature in every
+  real application with the suite green) and `PhaseQueue.Replace`'s head offset (the
+  warn-merge's only write path, exercised by every merge test at cursor zero where
+  the offset is a no-op). The sharpest, though, was a should-cover: **Plan Amendment
+  A4 was false.** PHASE-006's code review C5 said the warn-merge pins drive states
+  the dispatcher never produces; A4 answered by arguing the state is *unreachable*,
+  resting on "every drain sweeps earliest-phase-first and runs until empty." The
+  in-transaction branch of `DrainAsync` has no catch — a handler exception abandons
+  the queue, as a test pinned since PHASE-001 says — so the merge is reachable
+  through the drain point that ships today, and C5's complaint stood.
+- **Decision:** Amend — all 2 must-cover and all 5 should-cover closed; 4 of 6
+  nice-to-haves taken. A4 **retracted** in the plan and the in-file reachability
+  block rewritten; `Coalesce_AbortedConsumerDrain_…StillWarns9007` is the
+  production-shaped variant C5 asked for and closes the `Replace` finding too. The
+  Design.Server seam widened to include the framework registration call, because the
+  test had been restating it (a drifting assembly argument would have gone unnoticed).
+  Three sabotages measured (RP-5/6/7), one of which — RP-7 — **came back green** on
+  its first attempt because a fully-drained queue resets the cursor, so the discard
+  test was rebuilt around an aborted drain. Unit 740 → 743.
+- **Follow-up:** [reviews/007-test-review.md](./reviews/007-test-review.md). Worth
+  keeping: this is the arc's reasoning-dressed-as-evidence failure mode appearing
+  *inside a correction of that same failure mode* — the first attempt replaced C5's
+  wrong remedy with a wrong claim instead of with a test. PHASE-004's round 2 hit the
+  identical recursion. The tell is unchanged and now has a third instance behind it:
+  a confident sentence about what code does, with no run behind it.
+  **Round 2 (2026-08-18): gate closed at must- and should-cover** — every closure
+  verified by re-tracing rather than by citation, and each sabotage log checked by
+  failing-test *name*, not count. It caught the retracted A4 claim still standing
+  verbatim in the red-proof log's round-1 section, ~35 lines below its own
+  retraction (the stale-sentence species PHASE-004's RP-3 and PHASE-005's RP-0 both
+  hit; corrected in place), and it sharpened this entry's own lesson. **Three
+  predictions in this plan were wrong** (RP-2 twice, RP-7 once), and the first
+  diagnosis — "a cursor change needs a test that leaves the structure partially
+  consumed" — is true as a slogan but wrong as a procedure: RP-2 round 2 *did* leave
+  the queue partially consumed and still came back green, because `Dequeue` blanks
+  the slot it vacates. The invariant that covers all three: **every `_head`-dependent
+  member is observable only inside the window `0 < _head < _items.Count`, and two
+  independent housekeeping actions attack it — `Clear()` collapses the window,
+  blanking neuters its contents — so a cursor test must leave the queue partially
+  consumed *and* assert something the blanking cannot also satisfy.** The audit of
+  every `PhaseQueue` member found one thing nothing can fail on (the `Clear()` call
+  inside `Dequeue`, pure memory hygiene); by the reviewer's own recommendation that
+  is recorded in the comment as unpinnable rather than given a brittle white-box
+  test.
+
+### 2026-08-18 — PHASE-007 (pre-flight and implementation: the sample server could not serve the domain it hosts, and the convention that would have fixed it registers transient)
+
+- **Finding:** Design.Server had **no tests at all** and was missing four server-only
+  registrations, not the two the row recorded. Closing the gap with
+  `RegisterMatchingName` — the convention `Person.Server` uses and the docs teach —
+  produced a *second*, quieter defect: it registers **transient**, so the factory
+  method, each handler, and the assertion each held a different `IPhaseAuditService`;
+  every phase ran and the audit read back empty. The resolution-only test passed in
+  both states. Separately, pre-flight found that two log ids the row called unpinned
+  were not: 9005 was already pinned, and 9004's only reference matched `9005 || 9004`
+  and so could not discriminate between the two fallbacks at all.
+- **Decision:** Implement — the registrations moved to a seam
+  (`ServerServices.AddDesignServer`) that `Program.cs` and the new composition test
+  both call, so the check runs against the server's own list rather than a copy;
+  stateful services registered explicitly as scoped with the failure mode written
+  where the next person adds one. The reflective `[Service]`-enumeration drift
+  detector the plan's Acceptance implied was **rejected under the no-reflection
+  rule** and its residual stated rather than papered over.
+- **Follow-up:** [reviews/007-redproof.log](./reviews/007-redproof.log) (local-only
+  evidence per the 2026-08-17 ruling). Worth keeping: `RegisterMatchingName` is a
+  transient convention, and the repo teaches it in several places without saying so —
+  a candidate doc fix beyond this arc. Also: RP-4 measured that swapping
+  `ClientServerContainers`' tuple order silently sends **35** integration tests the
+  wrong container with no compiler complaint, which is why 007 pinned the three
+  orders instead of aligning them.
+
+### 2026-08-18 — PHASE-007 drafted; PHASE-009 re-split (scheduler concurrency gets its own plan)
+
+- **Finding:** Drafting the 007 row's seventeen accumulated items forced the queued
+  re-split decision early: 006's gate round 1 sent the scheduler-concurrency candidacy
+  "to the close-out re-split decision," but 007's Scope had to either contain that work
+  or exclude it, so the call could not wait. It does not belong in 007 — every 007 item
+  is a pin, a documenting test, or a consolidation of harnesses over *existing* behavior,
+  while the concurrency work needs a deterministic harness designed from scratch (both
+  006 reviewers said so explicitly, warning against a `Task.WhenAll` race), and 006 code
+  review C4 raised its stakes: the coalescing identity scan now runs consumer `Equals`
+  under `_gate`.
+- **Decision:** Re-split — new Index row 009 rather than widening 007, the same call the
+  008 re-split made for the same reason (both of that round's reviewers noted 007 already
+  carried too many unrelated items). 007 drafted with plan-review opt-out (pins and
+  harness work; the one behavior addition is a Debug log event) and code-review opt-in
+  (it touches sacred harness files broadly). Branch `PHASE-007-tech-debt` stacked on
+  `PHASE-006-coalescing` (PR #84 open at branch time) — several items pin 006's code.
+- **Follow-up:** [plans/007-tech-debt.md](./plans/007-tech-debt.md) — the routed items
+  now live in its Inherited section with per-item gate provenance. The 009 row carries
+  the concurrency provenance, including the 003 round-2 N1 timing window as a candidate
+  pin for the deterministic harness.
+
+### 2026-08-18 — PHASE-006 (code review: the veto-adopted constraint's own branch was dead code to the suite — and the anchor list that guarded against stale docs was itself incomplete)
+
+- **Finding:** Code review returned zero vetoes and seven callouts. C1, the sharpest:
+  the warn-preserving merge's true→false branch — the mechanism behind the plan's #1
+  veto-adopted constraint — was **dead code as far as the suite was concerned**.
+  RP-1 had measured the flip direction (a latest-bit-wins merge erasing a warning),
+  but no test ordered the mid-drain raise *first*, so deleting the merge assignment
+  outright left all 728/591/94 green. Eleventh "can't go red" instance in the arc,
+  and the first found sitting directly on a constraint a red-proof had already
+  "covered" from the other side. C2, the transferable one: CLAUDE-DESIGN's narrative
+  diagnostics bullet and pass-through bullet were a sixth and seventh
+  survivor-species string that plan review A-V1's five-string enumeration missed —
+  the enumeration that exists to prevent incidental doc invalidation is itself a
+  claim that can be incomplete. C4: the coalescing identity scan runs consumer
+  `Equals` under `_gate`, contradicting the class's own "handlers are invoked outside
+  the lock" comment.
+- **Decision:** Amend — C1 closed with the mirror-ordering pin and the omission
+  sabotage **measured as RP-3** (exactly the predicted 1 red ×2 TFMs); C2's two
+  bullets fixed; C3/C4/C6/C7 comment and XML corrections in place; C3's
+  storage-shape question (O(n) front-dequeue paid by the non-opted-in path on an
+  unenforced smallness assumption) and C5's synthetic-state note (the warn pin
+  drives `Enqueue(Immediate, …)`, which the dispatcher never produces) routed to
+  PHASE-007. Unit 728 → 729.
+- **Follow-up:** [reviews/006-code-review.md](./reviews/006-code-review.md). Worth
+  keeping: a red-proof that measures one direction of a two-directional mechanism
+  reads as full coverage — RP-1's "signature exact" was true and still left the
+  deletion sabotage green. The tell is a guard whose *taken* branch no test drives,
+  which is checkable mechanically (branch coverage would have shown it).
+
+### 2026-08-18 — PHASE-006 (gate round 1: clean at must-cover; the survivor's payload was contract nobody had stated)
+
+- **Finding:** The test-review gate returned **zero must-cover findings** and verified
+  the logs by count and both red-proofs as genuine positive controls. Its sharpest
+  should-cover: *which collapsed instance the handler receives* is consumer-visible
+  contract under the documented custom-`Equals` over-collapse hazard — and it was
+  neither stated in any doc nor pinned by any test; a latest-wins refactor would have
+  changed delivered payloads with the whole suite green. Siblings: B-V3's
+  reference-typed-member no-op had four doc surfaces and zero executable evidence, and
+  the todo-AC relay-unaffected clause was structurally true but unpinned against the
+  cross-event future that would break it. Tech debt surfaced: the scheduler has zero
+  concurrency coverage against its own shared-scope contract (predates the arc;
+  candidate for its own plan, deterministic harness).
+- **Decision:** Amend — all three should-covers closed with tests (first-raised
+  survivor pinned via an Id-only-`Equals` event + the contract sentence added to the
+  attribute XML; the no-op hazard made executable; relay-unaffected pinned end to end:
+  3 relayed events, 1 handler run). Evidence row 9's "and nothing else" understatement
+  corrected. Unit 726 → 728, integration 590 → 591.
+- **Follow-up:** [reviews/006-test-review.md](./reviews/006-test-review.md) — full
+  disposition; nice-to-haves and the tech-debt items routed to the PHASE-007 row
+  (which now also records its `Clear()`/snapshot items gaining dependents). The
+  scheduler-concurrency plan candidacy goes to the close-out re-split decision.
+
+### 2026-08-18 — PHASE-006 (plan review: the collapse can delete a promised warning, and a ninth "can't go red" caught at draft)
+
+- **Finding:** Plan review returned CONCERNS — 4 vetoes. The sharpest: `QueuedDispatch`
+  is not just (handler, event) — the `EnqueuedMidDrain` bit is load-bearing for 9007,
+  and a collapse keyed without it silently picks one warn-bit; latest-wins erases the
+  warning todo AC-5 promises, with no trace. Also: the draft's composition bullet
+  bundled three claims of which the discard leg was green against a do-nothing
+  implementation (the discriminating 9006 count depended on an undecided design
+  question — the ninth "can't go red" instance, caught at draft like the sixth);
+  "events are records → value equality" is a false universal (reference-typed payloads
+  silently defeat coalescing for exactly the motivating shape; custom `Equals` can
+  over-collapse); and the NF0504 survivor rule is published in five strings the doc
+  step hadn't named — the incidental-invalidation species from PHASE-004's code
+  review, nearly repeated.
+- **Decision:** Amend — all 4 vetoes adopted by draft amendment before implementation:
+  warn-preserving merge as a Constraint with a red-proof-required pin; the bullet
+  split, which forced settling the collapse point to pending-queue semantics (counts
+  reflect the collapsed state — the reviewer showed falsifiability and that design
+  choice were coupled, not independent); identity restated as the `Equals` contract
+  with both hazards; Step 7 widened to the five survivor-rule strings. All 10
+  callouts folded in — including that two of the draft's five "open questions" were
+  already answered elsewhere in the draft itself, and that `Enqueue`'s 53 pinned call
+  sites force the overload shape.
+- **Follow-up:** [reviews/006-plan-review.md](./reviews/006-plan-review.md) — full
+  disposition. Todo edits in this entry's commit: coalescing AC bullet added (tracing
+  the 2026-08-14 user decision that queued 006), Out of Scope bullet now
+  distinguishes cross-event (out) from same-event (carved in).
 
 ### 2026-08-17 — PHASE-005 (gate round 1: clean at must-cover; the demonstration's own handlers had never been observed running)
 

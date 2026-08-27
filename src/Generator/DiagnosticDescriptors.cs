@@ -268,9 +268,30 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor RelayHandlerDuplicateEventType = new(
         id: "NF0504",
         title: "Duplicate [FactoryEventHandler<T>] for the same event type",
-        messageFormat: "Class '{0}' declares [FactoryEventHandler<{1}>] more than once. The duplicate is ignored and the handler is registered at DispatchPhase.{2}. Stack [FactoryEventHandler<T>] for different event types, not for different phases on one event.",
+        messageFormat: "Class '{0}' declares [FactoryEventHandler<{1}>] more than once. The duplicate is ignored; the first declaration's registration ({2}) stands. Stack [FactoryEventHandler<T>] for different event types, not to re-declare one event.",
         category: CategoryUsage,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "A handler class can stack [FactoryEventHandler<T>] attributes for several different event types, but declaring the same event type more than once registers the same handler method twice. Only the first declaration takes effect; the rest are ignored, including any phase they specify.");
+        description: "A handler class can stack [FactoryEventHandler<T>] attributes for several different event types, but declaring the same event type more than once registers the same handler method twice. Only the first declaration takes effect; the rest are ignored, including any phase or Coalesce flag they specify.");
+
+    /// <summary>
+    /// NF0505: Coalesce declared on an Immediate-phase registration.
+    /// </summary>
+    /// <remarks>
+    /// Warning per the NF0503/NF0504 precedent: the declaration compiles and produces a
+    /// working registration — the flag is simply inert, because Immediate dispatches are
+    /// never queued and only queued dispatches coalesce. The registration is still emitted
+    /// faithfully (flag and all); the diagnostic is the loudness. Scoped to the declared
+    /// Immediate phase: the runtime paths where a DEFERRED phase also dispatches
+    /// immediately (no scheduler in scope — 9004; no entry call active — 9005) are
+    /// unreachable at compile time and are documented in the attribute's XML instead.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor RelayHandlerCoalesceOnImmediate = new(
+        id: "NF0505",
+        title: "Coalesce has no effect at DispatchPhase.Immediate",
+        messageFormat: "Class '{0}' declares [FactoryEventHandler<{1}>] with Coalesce = true at DispatchPhase.Immediate. Immediate dispatches run at Raise and are never queued, so there is nothing to coalesce — the flag has no effect. Remove the flag, or defer the handler to AfterFlush or AfterCommit.",
+        category: CategoryUsage,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Coalescing collapses identical queued dispatches, and only AfterFlush/AfterCommit handlers are queued. A Coalesce flag on an Immediate registration compiles and registers but never changes behavior.");
 }

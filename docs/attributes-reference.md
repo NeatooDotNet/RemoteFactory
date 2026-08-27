@@ -196,7 +196,11 @@ Class-level attribute that marks a class as a **server-side** static handler for
 [FactoryEventHandler<OrderShipped>]                            // Immediate — the default
 [FactoryEventHandler<OrderShipped>(DispatchPhase.AfterFlush)]  // deferred, consumer-drained
 [FactoryEventHandler<OrderShipped>(DispatchPhase.AfterCommit)] // deferred, framework-drained
+[FactoryEventHandler<OrderShipped>(DispatchPhase.AfterCommit,
+                                   Coalesce = true)]           // identical queued dispatches collapse
 ```
+
+The optional `Coalesce` named argument collapses identical **queued** dispatches (same handler, `Equals`-equal event, same `RaiseOptions`) to one per drain — see [Coalescing](factory-events.md#coalescing-identical-dispatches-opt-in) for the identity contract and its hazards. The flag is inert on anything that isn't queued (`Immediate` emits `NF0505`).
 
 **Inherited:** No | **Multiple:** Yes (stack one per event type)
 
@@ -206,7 +210,7 @@ Class-level attribute that marks a class as a **server-side** static handler for
 - First non-`[Service]`/non-`CancellationToken` parameter must be of type `T`
 - Any accessibility allowed
 - Exactly one match required — `NF0501` if none, `NF0502` if multiple
-- One attribute per event type — a repeated event type on the same class emits `NF0504` (Warning) and only the first declaration registers, including its phase
+- One attribute per event type — a repeated event type on the same class emits `NF0504` (Warning) and only the first declaration registers: its phase and its `Coalesce` flag
 
 ```csharp
 [FactoryEventHandler<OrderCheckoutCompleted>]
@@ -226,7 +230,7 @@ Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `I
 
 > **Instance-method handlers are not supported.** Declaring a non-`static` matching method inside a `[FactoryEventHandler<T>]` class emits **NF0503 (Warning)** and is silently skipped at runtime. Client-side reception is handled by implementing `IFactoryEventRelay` on your own class and registering it in DI — see [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay) and the [`IFactoryEventRelay`](interfaces-reference.md#ifactoryeventrelay) interface reference.
 
-A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle **several event types** — the generator matches one `static` method per attribute, and each attribute carries its own phase. That is the documented basis of stacking, and the generator enforces it: repeating the *same* event type on one class emits `NF0504` (Warning), and only the first declaration — including its phase — registers.
+A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle **several event types** — the generator matches one `static` method per attribute, and each attribute carries its own phase and `Coalesce` flag. That is the documented basis of stacking, and the generator enforces it: repeating the *same* event type on one class emits `NF0504` (Warning), and only the first declaration's registration — phase and flag — stands.
 
 ### [FactoryEvent]
 

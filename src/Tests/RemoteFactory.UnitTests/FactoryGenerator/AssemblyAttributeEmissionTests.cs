@@ -818,7 +818,7 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(RelayHandlerSource, "MyHandlers");
 
         Assert.Contains(
-            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.MyEvent>(typeof(MyHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate, async (sp, eventObj, options, ct) =>",
+            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.MyEvent>(typeof(MyHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate, coalesce: false, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -837,7 +837,7 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
 
         Assert.Contains(
-            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, async (sp, eventObj, options, ct) =>",
+            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, coalesce: false, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -862,7 +862,7 @@ namespace TestNamespace
         // anywhere. Its handler also carries [Service] + CancellationToken alongside a phase,
         // so the phase token and the parameter list are pinned interacting.
         Assert.Contains(
-            "RegisterHandler<TestNamespace.StagedEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterFlush, async (sp, eventObj, options, ct) =>",
+            "RegisterHandler<TestNamespace.StagedEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterFlush, coalesce: false, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -940,7 +940,7 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(source, "MixedHandlers");
 
         Assert.Contains(
-            $"typeof(MixedHandlers), (global::Neatoo.RemoteFactory.DispatchPhase){expected}, async (sp, eventObj, options, ct) =>",
+            $"typeof(MixedHandlers), (global::Neatoo.RemoteFactory.DispatchPhase){expected}, coalesce: false, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -1061,6 +1061,54 @@ namespace TestNamespace
 
         Assert.Equal(1, registrations);
         Assert.DoesNotContain("DispatchPhase.AfterCommit", generatedSource);
+    }
+
+    /// <summary>
+    /// The attribute's <c>Coalesce</c> named argument reaches the emitted registration
+    /// (PHASE-006). The default is pinned positively as <c>coalesce: false</c> by the
+    /// phase-emission tests above; this is the <c>true</c> half.
+    /// </summary>
+    [Fact]
+    public void RelayHandler_CoalesceTrue_EmitsTheFlagOnTheRegistration()
+    {
+        var source = PhasedRelayHandlerSource.Replace(
+            "[FactoryEventHandler<ProjectionEvent>(DispatchPhase.AfterCommit)]",
+            "[FactoryEventHandler<ProjectionEvent>(DispatchPhase.AfterCommit, Coalesce = true)]");
+
+        Assert.NotEqual(PhasedRelayHandlerSource, source);
+
+        var generatedSource = GeneratedSourceFor(source, "MixedHandlers");
+
+        Assert.Contains(
+            "RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, coalesce: true, async (sp, eventObj, options, ct) =>",
+            generatedSource);
+    }
+
+    /// <summary>
+    /// NF0504's survivor sentence covers the whole registration: with a coalescing
+    /// declaration first, the message names the surviving phase AND flag, and the emitted
+    /// registration carries them (PHASE-006, plan review A-V1).
+    /// </summary>
+    [Fact]
+    public void RelayHandler_DuplicateEventType_CoalescingSurvivor_NamesTheFlagInTheMessage()
+    {
+        var source = RelayHandlerSource.Replace(
+            "[FactoryEventHandler<MyEvent>]",
+            "[FactoryEventHandler<MyEvent>(DispatchPhase.AfterFlush, Coalesce = true)]\n    [FactoryEventHandler<MyEvent>]");
+
+        Assert.NotEqual(RelayHandlerSource, source);
+
+        var (diagnostics, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var duplicate = Assert.Single(diagnostics.Where(d => d.Id == "NF0504"));
+        Assert.Contains("DispatchPhase.AfterFlush, Coalesce = true", duplicate.GetMessage(CultureInfo.InvariantCulture));
+
+        var generatedSource = runResult.GeneratedTrees
+            .First(t => t.FilePath.Contains("MyHandlers"))
+            .GetText()
+            .ToString();
+
+        Assert.Contains("global::Neatoo.RemoteFactory.DispatchPhase.AfterFlush, coalesce: true,", generatedSource);
     }
 
     /// <summary>

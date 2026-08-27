@@ -14,15 +14,17 @@ public static class FactoryEventHandlerRegistry
 
     private readonly struct HandlerEntry
     {
-        public HandlerEntry(Type handlerClassType, DispatchPhase phase, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> invoke)
+        public HandlerEntry(Type handlerClassType, DispatchPhase phase, bool coalesce, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> invoke)
         {
             HandlerClassType = handlerClassType;
             Phase = phase;
+            Coalesce = coalesce;
             Invoke = invoke;
         }
 
         public Type HandlerClassType { get; }
         public DispatchPhase Phase { get; }
+        public bool Coalesce { get; }
         public Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Invoke { get; }
     }
 
@@ -33,7 +35,7 @@ public static class FactoryEventHandlerRegistry
         Type handlerClassType,
         Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handlerFactory)
         where TEvent : FactoryEventBase
-        => RegisterHandler<TEvent>(handlerClassType, DispatchPhase.Immediate, handlerFactory);
+        => RegisterHandler<TEvent>(handlerClassType, DispatchPhase.Immediate, coalesce: false, handlerFactory);
 
     /// <summary>
     /// Registers a handler factory for the given event type at <paramref name="phase"/>.
@@ -49,13 +51,35 @@ public static class FactoryEventHandlerRegistry
     /// <para>
     /// Registrations are deduplicated by the <c>(event type, handler class type)</c> pair
     /// so multiple DI container builds in a test run do not multiply registrations. One
-    /// consequence: a handler class declaring the same event type twice at different
-    /// phases keeps the phase registered first, for the life of the process.
+    /// consequence: a handler class declaring the same event type twice keeps the
+    /// registration made first — its phase and its coalesce flag — for the life of the
+    /// process.
     /// </para>
     /// </remarks>
     public static void RegisterHandler<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEvent>(
         Type handlerClassType,
         DispatchPhase phase,
+        Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handlerFactory)
+        where TEvent : FactoryEventBase
+        => RegisterHandler<TEvent>(handlerClassType, phase, coalesce: false, handlerFactory);
+
+    /// <summary>
+    /// Registers a handler factory for the given event type at <paramref name="phase"/>,
+    /// optionally coalescing identical queued dispatches (see
+    /// <see cref="FactoryEventHandlerAttribute{T}.Coalesce"/> for the identity contract).
+    /// Called by generated <c>FactoryServiceRegistrar</c> methods during DI setup.
+    /// </summary>
+    /// <remarks>
+    /// A new overload rather than an optional parameter on the existing one: an optional
+    /// parameter is source-compatible but binary-breaking for assemblies compiled against
+    /// the previous package. The dedupe remark on the three-argument overload applies here
+    /// too — the first registration for an <c>(event type, handler class)</c> pair wins,
+    /// including its phase AND its coalesce flag.
+    /// </remarks>
+    public static void RegisterHandler<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEvent>(
+        Type handlerClassType,
+        DispatchPhase phase,
+        bool coalesce,
         Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> handlerFactory)
         where TEvent : FactoryEventBase
     {
@@ -65,22 +89,22 @@ public static class FactoryEventHandlerRegistry
             // Avoid duplicate registration from multiple DI container setups in tests.
             if (!list.Any(e => e.HandlerClassType == handlerClassType))
             {
-                list.Add(new HandlerEntry(handlerClassType, phase, handlerFactory));
+                list.Add(new HandlerEntry(handlerClassType, phase, coalesce, handlerFactory));
             }
         }
     }
 
     /// <summary>
     /// Gets all registered handler factories for the given event type, paired with the
-    /// phase each was registered at.
+    /// phase and coalesce flag each was registered with.
     /// </summary>
-    internal static IReadOnlyList<(DispatchPhase Phase, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Invoke)>? GetHandlers(Type eventType)
+    internal static IReadOnlyList<(DispatchPhase Phase, bool Coalesce, Func<IServiceProvider, object, RaiseOptions, CancellationToken, Task> Invoke)>? GetHandlers(Type eventType)
     {
         if (!_handlers.TryGetValue(eventType, out var handlers))
             return null;
         lock (handlers)
         {
-            return handlers.Select(h => (h.Phase, h.Invoke)).ToArray();
+            return handlers.Select(h => (h.Phase, h.Coalesce, h.Invoke)).ToArray();
         }
     }
 

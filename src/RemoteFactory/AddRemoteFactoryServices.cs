@@ -89,7 +89,7 @@ public static partial class RemoteFactoryServices
 			// give the scope two schedulers, and the coordinator would drain an
 			// always-empty twin while the dispatcher queues into the real one.
 			services.TryAddScoped<IFactoryEventPhaseCoordinator>(sp =>
-				new FactoryEventPhaseCoordinator(sp.GetRequiredService<IFactoryEventPhaseScheduler>()));
+				new FactoryEventPhaseCoordinator(sp.GetRequiredService<IFactoryEventPhaseScheduler>(), sp.GetService<ILoggerFactory>()));
 
 			// Register the delegate handler for remote IFactoryEvents.Raise requests.
 			// When a Remote client sends a RaiseFactoryEventRemote request, the server

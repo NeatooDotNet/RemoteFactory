@@ -156,7 +156,7 @@ public static partial class OrderAuditHandler
 }
 ```
 
-One method per attribute, and each attribute carries its own `DispatchPhase`. Stacking is for several event **types** — repeating the *same* event type on one class emits `NF0504` (Warning), and only the first declaration (including its phase) registers.
+One method per attribute, and each attribute carries its own `DispatchPhase` and `Coalesce` flag. Stacking is for several event **types** — repeating the *same* event type on one class emits `NF0504` (Warning), and only the first declaration's registration (phase and flag) stands.
 
 ---
 
@@ -220,6 +220,22 @@ Only `AfterFlush` is consumer-drainable: `Immediate` handlers are never queued, 
 - **Synchronous factory bodies and phased events don't mix on context-bound scopes.** A synchronous factory body that raised phased work forces the completion drain to block, and blocking under a captured `SynchronizationContext` — e.g. Logical mode inside a Blazor Server circuit — deadlocks if a drained handler awaits without `ConfigureAwait(false)`. Prefer async factory bodies wherever phased handlers are in play.
 - **An event raised outside any factory call** (no entry call active in the scope) dispatches its phased handlers immediately, with a Debug log (9005) — no throw, no silent drop.
 
+### Coalescing Identical Dispatches (Opt-In)
+
+A save that touches N items often raises the same event N times, and a deferred projection then recomputes N times for one visible change. The attribute's `Coalesce` named argument collapses identical **queued** dispatches so the drain runs the handler once:
+
+```csharp
+[FactoryEventHandler<StatementChanged>(DispatchPhase.AfterCommit, Coalesce = true)]
+public static partial class StatementProjection { /* ... */ }
+```
+
+- **Identity is `Equals`** — same handler registration, `Equals`-equal event, same `RaiseOptions`. Records give structural equality by default, with two hazards: an event with a reference-typed member (a `List<T>`, an entity) never compares equal across raises, so coalescing is a silent no-op for it — prefer value-only payloads on events whose handlers coalesce; and a custom `Equals` override that equates semantically distinct raises collapses dispatches you expected — the override owns that.
+- **Pending work only.** At most one pending dispatch per identity at any moment; a dispatch a running drain already took is history, and a raise after it starts fresh. The drained/discarded counts (9002/9006) reflect the collapsed queue; each collapse logs Debug 9008 instead of a second 9001.
+- **The fail-open warning survives:** if any absorbed raise would have produced the 9007 never-drained warning, the surviving dispatch produces it.
+- **Inert wherever nothing queues:** `Immediate` handlers (NF0505 warns — nothing to coalesce), and phased raises that fall through to immediate dispatch (no scheduler in scope / no entry call active) run once per raise regardless.
+- **The relay is untouched** — every `Raise` is still collected and relayed; coalescing is about handler dispatch, not event delivery.
+- **Same-event only.** Cross-event coalescing is not provided — guard inside the handler if you need it. Handlers that don't opt in keep one run per raise.
+
 ### Choosing a Phase
 
 | Your handler... | Phase |
@@ -227,6 +243,7 @@ Only `AfterFlush` is consumer-drainable: `Immediate` handlers are never queued, 
 | Must be atomic with the save — its failure should roll the operation back at `Raise` time | `Immediate` (default) |
 | Needs database-generated state (identity keys, computed columns) while the transaction can still abort | `AfterFlush` + a coordinator drain between flush and commit |
 | Is a read-only projection / cache refresh that must never fail the save | `AfterCommit` |
+| Recomputes identically for every raise of the same value-identical event | A deferred phase + `Coalesce = true` (see [Coalescing](#coalescing-identical-dispatches-opt-in)) |
 
 ---
 
@@ -616,7 +633,8 @@ public static partial class HandlerB
 | NF0501 | Error | No matching `static` handler method found for `[FactoryEventHandler<T>]`. The class declares at least one static method but none returns `Task` with `T` as the first non-`[Service]`/non-`CancellationToken` parameter. Fixed by either correcting the signature or removing the static candidate. |
 | NF0502 | Error | Multiple matching `static` handler methods found for `[FactoryEventHandler<T>]`. Remove the extras or split into separate handler classes. |
 | NF0503 | Warning | Instance-method handler in a `[FactoryEventHandler<T>]` class is ignored at runtime. Make the method `static` (server) or implement `IFactoryEventRelay` on the class (client). |
-| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once. Stacking is for several event *types*; only the first declaration registers, including its `DispatchPhase`. The message names the surviving phase. Remove the duplicate. |
+| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once. Stacking is for several event *types*; only the first declaration registers — its `DispatchPhase` and its `Coalesce` flag. The message names the surviving registration. Remove the duplicate. |
+| NF0505 | Warning | `Coalesce = true` on an `Immediate`-declared registration. Immediate dispatches are never queued — nothing to coalesce; the flag is inert (the registration is still emitted). Remove the flag or defer the handler to `AfterFlush`/`AfterCommit`. |
 
 ---
 
@@ -634,7 +652,9 @@ public static partial class HandlerB
 | 9004 | Debug | Phase dispatcher | An event with a phased handler was raised in a scope with no phase scheduler; dispatched immediately rather than dropped. |
 | 9005 | Debug | Phase dispatcher | An event with a phased handler was raised while no entry factory call was active in the scope; dispatched immediately rather than queued into a drain nobody owns. |
 | 9006 | Debug | Phase scheduler | A failed entry call discarded its deferred dispatches without running them. |
-| 9007 | Warning | Phase scheduler | An `AfterFlush` dispatch the consumer never drained ran at the `AfterCommit` point instead (fail-open). One warning per dispatch, naming the event type — call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit, or register the handler at a different phase. |
+| 9007 | Warning | Phase scheduler | An `AfterFlush` dispatch the consumer never drained ran at the `AfterCommit` point instead (fail-open). One warning per dispatch, naming the event type — call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit, or register the handler at a different phase. A coalesced survivor warns if any absorbed raise would have. |
+| 9008 | Debug | Phase scheduler | A raise for a `Coalesce = true` handler collapsed into an identical pending dispatch — logged instead of a second 9001; the 9002/9006 counts reflect the collapsed queue. |
+| 9009 | Debug | Phase coordinator | `IFactoryEventPhaseCoordinator.DrainAsync` was called with no entry factory call active, so nothing was drained. Usually means the drain wraps the factory call from outside rather than running inside the factory method body. Debug, not Warning — draining a scope with no factory work in flight is also correct. |
 
 ---
 
@@ -663,6 +683,7 @@ Server-side static handler classes register themselves into `FactoryEventHandler
 | Handler failure should roll back the factory operation | `[FactoryEventHandler<T>]` static method (`Immediate`, or `AfterFlush` drained before the commit) |
 | Handler needs database-generated state (identity keys) but must still be able to roll the save back | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` between the factory body's flush and commit |
 | Read-only projection / cache refresh that must never fail the save | `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` — framework-drained after the entry call succeeds, exceptions logged and swallowed |
+| One save raises the same event N times and the projection recomputes N times | Add `Coalesce = true` to the deferred handler's attribute — identical queued dispatches collapse to one per drain |
 | Client UI needs to update in response to a server-side event | `IFactoryEventRelay` implementation that fans events to your UI / aggregator |
 | Server-internal transactional event the UI doesn't care about | `[FactoryEventHandler<T>]` static + `RaiseOptions.ServerOnly` |
 | Fire-and-forget external IO (email, webhook, queue publish) | `Task.Run` inside the factory method with a fresh scope from `IServiceScopeFactory.CreateScope()` — RemoteFactory does not own this abstraction |
