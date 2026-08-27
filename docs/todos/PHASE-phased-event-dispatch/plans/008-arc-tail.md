@@ -3,7 +3,7 @@
 **Plan #:** 008
 **Date:** 2026-08-27
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** In Progress (implementation complete; Step 5 gate pending)
 **Last Updated:** 2026-08-27
 **Plan-review opt-in:** No (user direction 2026-08-27: the arc's plan-and-review ceremony is the cost being cut. The harness would have been the strongest candidate in the arc, so the mitigation is explicit — cheap work lands first, the harness is the last thing implemented, and the mandatory Step 5 gate still runs)
 **Code-review opt-in:** Yes (generator emission, the scheduler's lock discipline, and one pinned consumer-facing log message)
@@ -305,7 +305,31 @@ its `lock` can strand a registration in a detached list. Test-only method; note,
 
 ## Test Evidence
 
-*(pending — filled after implementation, before the Step 5 gate)*
+All cited tests are in `RemoteFactory.UnitTests`. Suites at close: **unit 755×2 TFMs**
+(743 → 755, +12), **integration 595×2 (+5 standing skips)**, **Design 98×2** — both
+solutions built explicitly, per the PHASE-005 RP-0 trap. Logs: `reviews/008-build.log`,
+`reviews/008-test.log`.
+
+| Acceptance bullet (short) | Tier declared | Test method | Tier confirmed |
+|---|---|---|---|
+| 9007's Warning names drain placement | `[unit]` | `Internal.FactoryEventPhaseSchedulerTests.DrainAsync_NeverDrainedWarning_TellsTheConsumerWhereToPutTheDrain` | ✓ |
+| 9007 and 9009 agree; three log tables revised | `[explicit-skip]` | Not a test. `Log.cs` 9007 + 9009 read together; tables in `CLAUDE-DESIGN.md`, `docs/factory-events.md`, `skills/RemoteFactory/references/factory-events.md`. The message itself is pinned by the row above | n/a |
+| Shadowing consumer namespace still binds correctly | `[unit]` | `FactoryGenerator.AssemblyAttributeEmissionTests.RelayHandler_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` | ✓ |
+| Every emitted type token qualified (negative pin) | `[unit]` | `FactoryGenerator.AssemblyAttributeEmissionTests.RelayHandler_EveryEmittedTypeToken_IsGlobalQualified` | ✓ |
+| Other legs qualified or recorded immune | `[unit]` | Same test — its `typeof(className)` exception is asserted by omission and the reason is stated in `RelayHandlerRenderer` | ✓ |
+| Partial-declaration behavior pinned to what the generator does | `[unit]` | `FactoryGenerator.AssemblyAttributeEmissionTests.RelayHandler_AttributesSplitAcrossPartials_EmitOneFileWithEachRegistrationOnce` | ✓ |
+| Generator test with a CS error fails loudly | `[unit]` | `FactoryGenerator.Core.IncrementalCacheTests.RunGeneratorTracked_BaseFixtureDoesNotCompile_ThrowsNamingTheFixture` and `…RunGeneratorTracked_AppendedEditDoesNotCompile_ThrowsNamingTheEdit` | ✓ |
+| Two concurrent flows, deterministic interleaving | `[unit]` | `Internal.FactoryEventPhaseSchedulerConcurrencyTests.MidDrainEnqueueFromAnotherFlow_JoinsTheRunningDrain` and `…ConsumerDrainNestedInsideTheEntryDrain_DoesNotClearTheMidDrainMarkEarly` | ✓ |
+| The mid-drain enqueue window resolves to one pinned outcome | `[unit]` | `…MidDrainEnqueueFromAnotherFlow_JoinsTheRunningDrain` and `…MidDrainEnqueueIntoAnAlreadyPassedPhase_StillJoinsTheRunningDrain`. **Partial by design:** the discard branch needs a seam between the drain loop and `ClearAtExit` that does not exist from outside the class; recorded in the test's remarks, not silently dropped | ✓ (reachable branch) |
+| Re-entrant `Equals` has a defined, pinned outcome | `[unit]` | `…ReentrantEqualsThatAppendsMidScan_MissesTheCollapseButKeepsTheQueueIntact` and `…ReentrantEqualsThatEnqueuesAnIdenticalEntry_StillCollapsesToOnePendingDispatch` | ✓ |
+| Registry isolation enforceable, or accepted with the reason at the seam | `[unit]` | `…RegistryEntriesAreKeyedByEventType_SoPerTestEventTypesAreSufficientIsolation`, plus the correction written onto `FactoryEventHandlerRegistry.Clear()`'s XML. **The routed remedy was rejected on measured evidence** — see RP-6 | ✓ |
+| Draining N dispatches allocates no per-dispatch LINQ chain | `[explicit-skip]` | Fixed rather than accepted: `HasPending` and `TryDequeueThrough` are hand-rolled scans. No behavior to assert; the existing FIFO/sweep/collapse pins prove semantics are unchanged, and RP-8 confirms the sweep is still discriminating after the rewrite | n/a |
+| Misfiled diagnostic test class | `[explicit-skip]` | `NF04xxFactoryEventHandlerTests.cs` → `NF05xxFactoryEventHandlerTests.cs` (git mv, class unchanged) | n/a |
+| Both solutions build; all suites green, totals only grow | `[explicit-skip]` | `reviews/008-build.log` (0 errors), `reviews/008-test.log` (six green summaries) | n/a |
+
+**No `MISSING` rows.** One row is explicitly partial (the discard branch) with the
+unreachability reason recorded rather than a coverage claim; one row records a routed
+remedy rejected on measurement rather than delivered as asked.
 
 ---
 
@@ -343,6 +367,36 @@ its `lock` can strand a registration in a detached list. Test-only method; note,
   it was fixed. The normalization itself had to stay: the stripped string is also the NF0504
   dedupe key and the type name printed in five diagnostics, several pinned — so the prefix is
   re-applied at the emission site, which is already how the assembly attribute does it.
+
+### 2026-08-27 — A3: the registry-isolation remedy was rejected on measurement
+
+- **Section affected:** Step 10, and its Acceptance bullet.
+- **Original said:** make the registry test-isolation discipline "enforceable from the test
+  infrastructure rather than resident only in prose," the routed reading of which was to pin
+  the `Clear()` escape hatch the discipline notes point at.
+- **What changed:** no `Clear()` pin. The test that called it turned an existing
+  `FactoryEntryCallTests` case red — that test passes alone and fails only beside the new one.
+  What shipped instead: a pin on the property the discipline actually rests on (entries keyed
+  by `(event type, handler class)`, so a test that invents its own event type needs no
+  teardown), and the correction written onto `Clear()`'s own XML doc.
+- **Why:** the registry is process-wide static and xUnit runs test classes in parallel, so
+  `Clear()` strips registrations out from under whatever is mid-run. The routed item pointed at
+  an escape hatch that breaks the suite. Delivering it as written would have meant weakening a
+  sacred test to accommodate a new one — the inversion the standing rule forbids.
+- **Discovery Log link:** 2026-08-27 — PHASE-008 (three routed remedies, two of them wrong).
+
+### 2026-08-27 — A4: the allocation items were fixed rather than accepted
+
+- **Section affected:** Step 10's second half, and its `[explicit-skip]` Acceptance bullet.
+- **Original said:** each allocation note "either fixed or accepted with its reason recorded."
+- **What changed:** both fixed. `HasPending` and `TryDequeueThrough` are hand-rolled scans over
+  the dictionary's struct enumerator, allocating nothing.
+- **Why:** `TryDequeueThrough` ran its `Where` + `OrderBy` **per dequeued dispatch**, so the
+  bulk-save scenario the storage comment names paid it thousands of times — the cost PHASE-007's
+  O(1) dequeue fix did not touch. The replacement selects the minimum non-empty phase at or
+  before `through` directly, which is the same answer the sort-then-first-non-empty form
+  produced. Semantics are held down by the existing FIFO, sweep, and collapse pins, and RP-8
+  re-confirms the sweep still discriminates after the rewrite.
 
 ---
 

@@ -109,8 +109,22 @@ public static class FactoryEventHandlerRegistry
     }
 
     /// <summary>
-    /// Clears all registrations. Used for testing only.
+    /// Clears all registrations.
     /// </summary>
+    /// <remarks>
+    /// <b>Not a test-isolation escape hatch — do not call it from a test.</b> This registry is
+    /// process-wide static and xUnit runs test classes in parallel, so clearing it strips
+    /// registrations out from under whatever else is mid-run. Measured, not theorised
+    /// (PHASE-008): a single test calling this turned
+    /// <c>FactoryEntryCallTests.DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress</c>
+    /// red, a test that passes on its own.
+    /// <para>
+    /// The isolation the suite actually relies on needs no teardown: entries are keyed by
+    /// <c>(event type, handler class type)</c>, so a test that declares its own event type
+    /// cannot collide with another's. Do that instead. The method stays for a single-threaded
+    /// host that genuinely needs to reset the process, and is uncalled in this repo.
+    /// </para>
+    /// </remarks>
     internal static void Clear()
     {
         _handlers.Clear();

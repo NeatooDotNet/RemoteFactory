@@ -105,6 +105,28 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-27 — PHASE-008 (three routed remedies, two of them wrong — the routing said what to do, the measurement said what was true)
+
+- **Finding:** Of the concurrency-half items this plan inherited, two named a remedy that
+  measurement rejected. The registry-isolation item asked for `Clear()` to become the
+  enforceable escape hatch; a test calling it turned an existing `FactoryEntryCallTests`
+  case red (passes alone, fails beside the new one) — the registry is process-wide static
+  and xUnit runs classes in parallel, so the routed hatch actively breaks the suite. And
+  the re-entrant-`Equals` item's sharpest predicted consequence — one coalescing identity
+  holding two pending dispatches — **does not happen**: the re-entrant `Enqueue` runs its
+  own identity scan against the live queue and collapses, so the contract survives.
+- **Decision:** Amend — A3 pins the property the discipline actually rests on (entries
+  keyed by `(event type, handler class)`) and writes the correction onto `Clear()`'s own
+  XML doc; the re-entrancy test is kept and **inverted**, carrying the disproved reasoning
+  in its remarks. A4 fixed both allocation items rather than accepting them —
+  `TryDequeueThrough`'s `Where`+`OrderBy` ran per dequeued dispatch, the cost PHASE-007's
+  O(1) fix did not touch.
+- **Follow-up:** [reviews/008-redproof.log](./reviews/008-redproof.log), RP-5 through RP-8.
+  Worth keeping: this arc has spent eleven entries on tests that could not go red, and this
+  is the mirror image — a *routed remedy* that could not be right, surviving three gates as
+  a plausible sentence because nobody had run it. The tell is the same one, pointed at
+  planning rather than at tests: a confident instruction with no measurement behind it.
+
 ### 2026-08-27 — PHASE-008 (the inferred collision was real, and it takes the whole assembly with it)
 
 - **Finding:** PHASE-002 inferred that attributes split across partial declarations "should

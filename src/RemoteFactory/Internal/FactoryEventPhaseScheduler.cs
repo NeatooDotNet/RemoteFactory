@@ -244,7 +244,19 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
         {
             lock (_gate)
             {
-                return _deferred.Any(q => q.Value.Count > 0);
+                // Hand-rolled rather than _deferred.Any(...): the LINQ form allocated an
+                // enumerator and a closure per call, under the lock, on a property the
+                // dispatcher consults on ordinary paths. Dictionary's enumerator is a
+                // struct, so this allocates nothing.
+                foreach (var queue in _deferred)
+                {
+                    if (queue.Value.Count > 0)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
             }
         }
     }
@@ -502,15 +514,32 @@ public class FactoryEventPhaseScheduler : IFactoryEventPhaseScheduler
     {
         lock (_gate)
         {
-            foreach (var candidate in _deferred.Keys.Where(p => p <= through).OrderBy(p => p))
+            // Single min-scan rather than Where(...).OrderBy(...): this runs once PER
+            // DEQUEUED DISPATCH, so the LINQ form built a filter, a sort, and their
+            // enumerators for every handler drained — the bulk-save scenario the storage
+            // comment names paid it thousands of times, which PHASE-007's O(1) dequeue fix
+            // did not touch (its code review C6). Selecting the minimum directly is the
+            // same answer: the old form ordered every candidate key and took the first
+            // non-empty, which is the earliest non-empty phase at or before `through`.
+            var found = false;
+            DispatchPhase earliest = default;
+
+            foreach (var candidate in _deferred)
             {
-                var queue = _deferred[candidate];
-                if (queue.Count > 0)
+                if (candidate.Key <= through
+                    && candidate.Value.Count > 0
+                    && (!found || candidate.Key < earliest))
                 {
-                    dispatch = queue.Dequeue();
-                    phase = candidate;
-                    return true;
+                    earliest = candidate.Key;
+                    found = true;
                 }
+            }
+
+            if (found)
+            {
+                dispatch = _deferred[earliest].Dequeue();
+                phase = earliest;
+                return true;
             }
 
             dispatch = default;
