@@ -97,13 +97,35 @@ exposes drain points.
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
 | 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
-| 010 | *(not yet drafted)* | 9007's Warning should carry the drain-*placement* qualifier. Today it says "Call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit" — which the consumer who wrapped the factory call from *outside* did do; the missing words are "from inside the factory method body." PHASE-007 put that guidance in 9009, but 9009 is Debug and therefore invisible under a default Information minimum, so the consumer who most needs it still sees only the misleading Warning. Its own plan because it edits an existing pinned message (007 code review C2) | Draft |
-| 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
-| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan, and raised again by 007's storage change: `PhaseQueue.Pending` now hands out a `Span<QueuedDispatch>` over the live backing array, so a re-entrant `Equals` that enqueues mutates an array a span is open over, not just a `List` (007 gate); candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear); also carries the accepted-not-closed registry isolation risk — `FactoryEventHandlerRegistry.Clear()` stays internal and uncalled, and 007's discipline notes live in two files a new test author may not open (007 gate); plus two allocation notes on the same class, neither a correctness issue: `HasPending` builds a LINQ enumerator per call under `_gate` (007 gate), and `TryDequeueThrough` builds a `Where`+`OrderBy` chain **per dequeued dispatch**, so the bulk-save scenario the storage comment names still pays a per-dispatch allocation even after the O(1) dequeue fix (007 code review C6) | Draft |
+| 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Draft |
+| 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired |
+| 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-27 — PHASE-008 (the arc tail merges: three rows, one plan, one branch — ceremony was the cost being cut)
+
+- **Finding:** The three remaining rows are the whole arc tail and carry no ordering
+  dependency on each other, but the workflow's per-plan gate meant three of everything —
+  three Test Evidence maps, three mandatory gates, three review files, three log entries —
+  for what is one trivial message edit, one mostly-mechanical generator sweep, and one
+  genuine harness design. Merging the plans is the only move that cuts the ceremony, since
+  the gate is per plan and not per branch.
+- **Decision:** Re-split — rows 009 and 010 fold into 008, which widens to the full tail;
+  their per-item provenance transplants into the new plan's Inherited section so retiring the
+  rows loses no routing history. Plan review declined **by user direction, not by risk
+  assessment** — this arc's plan reviews returned 4–6 vetoes on nearly every plan that ran
+  one, and 008 carries thirteen acceptance bullets; the mandatory Step 5 gate is the backstop.
+  Mitigation for the merge: implement cheap-and-deterministic first (message, emission,
+  helper, rename), harness last, so it can still split back out without stranding anything.
+- **Index changes:** 008 rewritten as the merged arc-tail plan (`Draft`); 009 and 010 kept as
+  `Retired` tombstones pointing at it, because committed review files cite both by name.
+- **Follow-up:** [plans/008-arc-tail.md](./plans/008-arc-tail.md). One in-source pointer —
+  the scheduler's `_gate` comment routing to PHASE-009 — goes stale on this merge and is
+  Step 1 of the plan; it is the fourth instance of this arc's incidental-doc-invalidation
+  species, and the first one caught *before* it shipped rather than at review.
 
 ### 2026-08-18 — PHASE-007 (code review: the new log event's explanation was wrong about the code it was explaining — and a trace stopped me changing code I had already decided to change)
 
