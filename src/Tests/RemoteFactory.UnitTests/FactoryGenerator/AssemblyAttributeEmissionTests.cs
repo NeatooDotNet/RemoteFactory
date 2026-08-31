@@ -635,7 +635,7 @@ namespace TestNamespace
         // would still pass with the holder's method renamed — and that rename fails silently
         // at runtime (method?.Invoke).
         Assert.Matches(
-            @"internal static class NeatooEventHandlerRegistrar_MyHandlers\s*\{\s*internal static void FactoryServiceRegistrar\(IServiceCollection services, NeatooFactory remoteLocal\)",
+            @"internal static class NeatooEventHandlerRegistrar_MyHandlers\s*\{\s*internal static void FactoryServiceRegistrar\(global::Microsoft\.Extensions\.DependencyInjection\.IServiceCollection services, global::Neatoo\.RemoteFactory\.NeatooFactory remoteLocal\)",
             generatedSource);
         Assert.Contains("global::TestNamespace.MyHandlers.FactoryServiceRegistrar(services, remoteLocal);", generatedSource);
 
@@ -818,7 +818,7 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(RelayHandlerSource, "MyHandlers");
 
         Assert.Contains(
-            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.MyEvent>(typeof(MyHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate, coalesce: false, async (sp, eventObj, options, ct) =>",
+            "global::Neatoo.RemoteFactory.FactoryEventHandlerRegistry.RegisterHandler<global::TestNamespace.MyEvent>(typeof(MyHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate, coalesce: false, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -837,7 +837,7 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
 
         Assert.Contains(
-            "FactoryEventHandlerRegistry.RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, coalesce: false, async (sp, eventObj, options, ct) =>",
+            "global::Neatoo.RemoteFactory.FactoryEventHandlerRegistry.RegisterHandler<global::TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, coalesce: false, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -851,10 +851,10 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
 
         Assert.Contains(
-            "RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit,",
+            "RegisterHandler<global::TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit,",
             generatedSource);
         Assert.Contains(
-            "RegisterHandler<TestNamespace.AtomicEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate,",
+            "RegisterHandler<global::TestNamespace.AtomicEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.Immediate,",
             generatedSource);
 
         // AfterFlush has no drain point of its own until PHASE-004, but the member-name lookup
@@ -862,7 +862,7 @@ namespace TestNamespace
         // anywhere. Its handler also carries [Service] + CancellationToken alongside a phase,
         // so the phase token and the parameter list are pinned interacting.
         Assert.Contains(
-            "RegisterHandler<TestNamespace.StagedEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterFlush, coalesce: false, async (sp, eventObj, options, ct) =>",
+            "RegisterHandler<global::TestNamespace.StagedEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterFlush, coalesce: false, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 
@@ -883,9 +883,276 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(PhasedRelayHandlerSource, "MixedHandlers");
 
         Assert.Matches(
-            @"if \(NeatooRuntime\.IsServerRuntime\)\s*\{\s*FactoryEventHandlerRegistry\.RegisterHandler<",
+            @"if \(global::Neatoo\.RemoteFactory\.NeatooRuntime\.IsServerRuntime\)\s*\{\s*global::Neatoo\.RemoteFactory\.FactoryEventHandlerRegistry\.RegisterHandler<",
             generatedSource);
     }
+
+    /// <summary>
+    /// A consumer whose own namespace shadows every name the generated body would otherwise
+    /// resolve through a <c>using</c> — including the segment their event type hangs off.
+    /// </summary>
+    /// <remarks>
+    /// Every decoy here is reachable by C#'s innermost-first namespace lookup from inside
+    /// <c>namespace TestNamespace</c>, which is where the registration body is emitted:
+    /// <c>TestNamespace.TestNamespace</c> captures a bare <c>TestNamespace.MyEvent</c>, and
+    /// <c>TestNamespace.Neatoo</c> captures a bare <c>Neatoo.RemoteFactory.*</c>. The decoys
+    /// are deliberately the WRONG SHAPE — <c>MyEvent</c> does not derive
+    /// <c>FactoryEventBase</c>, the runtime decoy has no <c>IsServerRuntime</c>, the registry
+    /// decoy has no <c>RegisterHandler</c> — so binding to one is a compile error rather than
+    /// a silently wrong registration. That is what makes the compile check discriminating.
+    /// </remarks>
+    private const string ShadowingRelayHandlerSource = @"
+using Neatoo.RemoteFactory;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record MyEvent(int Id) : FactoryEventBase;
+
+    public interface IMyPort
+    {
+        Task Send(string message);
+    }
+
+    [FactoryEventHandler<MyEvent>]
+    public static partial class MyHandlers
+    {
+        internal static Task Handle(MyEvent evt, [Service] IMyPort port)
+        {
+            return port.Send(""handled"");
+        }
+    }
+
+    public static class NeatooRuntime { }
+    public static class FactoryEventHandlerRegistry { }
+    public sealed class IServiceCollection { }
+    public sealed class NeatooFactory { }
+}
+
+namespace TestNamespace.TestNamespace
+{
+    public sealed class MyEvent { }
+    public interface IMyPort { }
+}
+
+namespace TestNamespace.Neatoo
+{
+    public sealed class Decoy { }
+}
+";
+
+    /// <summary>
+    /// The generated registration binds to the consumer's real types even when the consumer's
+    /// own namespace shadows every unqualified route to them.
+    /// </summary>
+    /// <remarks>
+    /// This is the behavioral half of the qualification work, and the reason it is a compile
+    /// check rather than a string assertion: a <c>Contains</c> on the qualified form is
+    /// satisfied by the bare token as a substring, the false green PHASE-002 documented and
+    /// the reason its phase-argument pin is written negatively.
+    /// <para>
+    /// Before PHASE-008 the event type, the <c>[Service]</c> parameter type, and the framework
+    /// tokens were all emitted bare, so this fixture produced a compilation with errors while
+    /// every string assertion in this class stayed green.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
+    {
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(ShadowingRelayHandlerSource);
+
+        // Same zero-trees guard as RelayHandler_GeneratedOutputCompilesWithoutErrors: a
+        // transform early-out would leave a clean compilation and satisfy Assert.Empty
+        // while emitting nothing at all.
+        Assert.NotNull(runResult.GeneratedTrees.FirstOrDefault(t => t.FilePath.Contains("MyHandlers")));
+
+        var errors = outputCompilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
+
+        Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// Every type-bearing token the registration emits is <c>global::</c>-qualified — asserted
+    /// negatively, because the positive form contains the bare form as a substring.
+    /// </summary>
+    /// <remarks>
+    /// Two deliberate exceptions, both recorded in the renderer rather than qualified
+    /// reflexively. <c>typeof({className})</c> stays bare because the body is emitted inside
+    /// the user's own namespace AND inside their own partial class, where the only name that
+    /// could shadow the enclosing class is a member of the same name — CS0542. And the
+    /// assembly attribute's own NAME stays bare because assembly-level attributes bind at
+    /// compilation-unit scope, outside any namespace, where nothing consumer-declared is in
+    /// scope to shadow it. This test's scope is therefore the registration BODY, which is the
+    /// only part emitted inside the consumer's namespace. (Both exceptions named by the
+    /// PHASE-008 gate; the second was previously unstated.)
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_EveryEmittedTypeToken_IsGlobalQualified()
+    {
+        var generatedSource = GeneratedSourceFor(RelayHandlerSource, "MyHandlers");
+
+        // Consumer-derived tokens: the generic argument and the cast that follows it.
+        Assert.DoesNotContain("RegisterHandler<TestNamespace.", generatedSource);
+        Assert.DoesNotContain("(TestNamespace.MyEvent)eventObj", generatedSource);
+
+        // The [Service] parameter's type, resolved from the consumer's namespace too.
+        Assert.DoesNotContain("GetRequiredService<TestNamespace.", generatedSource);
+
+        // Framework tokens the generated body would otherwise take from the file's using.
+        Assert.DoesNotContain("if (NeatooRuntime.", generatedSource);
+        Assert.DoesNotContain(" FactoryEventHandlerRegistry.", generatedSource);
+        Assert.DoesNotContain("FactoryServiceRegistrar(IServiceCollection", generatedSource);
+
+        // And the positives, so this cannot pass by emitting nothing at all.
+        Assert.Contains("RegisterHandler<global::TestNamespace.MyEvent>", generatedSource);
+        Assert.Contains("GetRequiredService<global::TestNamespace.IMyPort>", generatedSource);
+        Assert.Contains("global::Neatoo.RemoteFactory.NeatooRuntime.IsServerRuntime", generatedSource);
+    }
+
+    /// <summary>
+    /// One handler class whose two <c>[FactoryEventHandler&lt;T&gt;]</c> attributes are split
+    /// across two partial declarations.
+    /// </summary>
+    /// <remarks>
+    /// <c>ForAttributeWithMetadataName</c> yields one value per attributed SYNTAX NODE, while
+    /// the transform reads <c>symbol.GetAttributes()</c> and derives its hint name from the
+    /// SYMBOL — so this shape puts two nodes, two identical models, and one hint name into the
+    /// same pipeline. PHASE-002 inferred a collision here and never measured it; PHASE-008
+    /// does.
+    /// </remarks>
+    private const string SplitPartialRelayHandlerSource = @"
+using Neatoo.RemoteFactory;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record FirstEvent(int Id) : FactoryEventBase;
+    public record SecondEvent(int Id) : FactoryEventBase;
+
+    [FactoryEventHandler<FirstEvent>]
+    public static partial class SplitHandlers
+    {
+        internal static Task HandleFirst(FirstEvent evt)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    [FactoryEventHandler<SecondEvent>]
+    public static partial class SplitHandlers
+    {
+        internal static Task HandleSecond(SecondEvent evt)
+        {
+            return Task.CompletedTask;
+        }
+    }
+}
+";
+
+    /// <summary>
+    /// A partial handler class where only the LATER-declared partial carries the attribute.
+    /// </summary>
+    /// <remarks>
+    /// The shape that separates "one model per symbol" from "one model per attributed
+    /// declaration": <c>ForAttributeWithMetadataName</c> only ever yields the attributed
+    /// node, so a canonical choice made across <i>all</i> declarations can select one the
+    /// transform is never handed.
+    /// </remarks>
+    private const string LateAttributedPartialRelayHandlerSource = @"
+using Neatoo.RemoteFactory;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record LateEvent(int Id) : FactoryEventBase;
+
+    public static partial class LateHandlers
+    {
+        internal static Task Unrelated()
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    [FactoryEventHandler<LateEvent>]
+    public static partial class LateHandlers
+    {
+        internal static Task HandleLate(LateEvent evt)
+        {
+            return Task.CompletedTask;
+        }
+    }
+}
+";
+
+    /// <summary>
+    /// A handler class whose attribute sits on a partial declared after an unattributed one
+    /// still registers.
+    /// </summary>
+    /// <remarks>
+    /// Guards the failure mode the split-partial fix could introduce, and which would be
+    /// strictly worse than the CS8785 it replaced: CS8785 is loud, whereas selecting an
+    /// unattributed declaration as canonical emits nothing and reports nothing, so the
+    /// handler simply never runs at runtime. The canonical choice must therefore range over
+    /// the ATTRIBUTED declarations only — the ones the pipeline actually yields.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_AttributeOnALaterPartialOnly_StillRegistersTheHandler()
+    {
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(LateAttributedPartialRelayHandlerSource);
+
+        var handlerFiles = runResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("LateHandlers"))
+            .ToList();
+
+        Assert.Single(handlerFiles);
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+        var generatedSource = handlerFiles[0].GetText().ToString();
+        Assert.Equal(1, CountOf(generatedSource, "RegisterHandler<global::TestNamespace.LateEvent>"));
+    }
+
+    /// <summary>
+    /// Attributes split across partial declarations generate valid output exactly once.
+    /// </summary>
+    /// <remarks>
+    /// The measurement PHASE-002's Discovery Log recorded as inferred. Whatever the generator
+    /// does with this shape is consumer-visible — a duplicate hint name is a hard generator
+    /// failure (CS8785 / duplicate-source), and a doubled registration would double-dispatch
+    /// every handler on the class. Both are load-bearing enough to pin rather than reason about.
+    /// <para>
+    /// Asserts the outcome three ways because the failure modes are distinct: no generator
+    /// crash, exactly one emitted file for the class, and each event registered exactly once.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_AttributesSplitAcrossPartials_EmitOneFileWithEachRegistrationOnce()
+    {
+        var (diagnostics, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(SplitPartialRelayHandlerSource);
+
+        // A generator that throws surfaces as CS8785 rather than as an exception here.
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS8785");
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+        var handlerFiles = runResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("SplitHandlers"))
+            .ToList();
+
+        Assert.Single(handlerFiles);
+
+        var generatedSource = handlerFiles[0].GetText().ToString();
+
+        Assert.Equal(1, CountOf(generatedSource, "RegisterHandler<global::TestNamespace.FirstEvent>"));
+        Assert.Equal(1, CountOf(generatedSource, "RegisterHandler<global::TestNamespace.SecondEvent>"));
+    }
+
+    private static int CountOf(string haystack, string needle)
+        => haystack.Split([needle], StringSplitOptions.None).Length - 1;
 
     /// <summary>
     /// The emitted phase argument is <c>global::</c>-qualified.
@@ -1057,7 +1324,7 @@ namespace TestNamespace
 
         var generatedSource = GeneratedSourceFor(source, "MyHandlers");
 
-        var registrations = generatedSource.Split(["RegisterHandler<TestNamespace.MyEvent>"], StringSplitOptions.None).Length - 1;
+        var registrations = generatedSource.Split(["RegisterHandler<global::TestNamespace.MyEvent>"], StringSplitOptions.None).Length - 1;
 
         Assert.Equal(1, registrations);
         Assert.DoesNotContain("DispatchPhase.AfterCommit", generatedSource);
@@ -1080,7 +1347,7 @@ namespace TestNamespace
         var generatedSource = GeneratedSourceFor(source, "MixedHandlers");
 
         Assert.Contains(
-            "RegisterHandler<TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, coalesce: true, async (sp, eventObj, options, ct) =>",
+            "RegisterHandler<global::TestNamespace.ProjectionEvent>(typeof(MixedHandlers), global::Neatoo.RemoteFactory.DispatchPhase.AfterCommit, coalesce: true, async (sp, eventObj, options, ct) =>",
             generatedSource);
     }
 

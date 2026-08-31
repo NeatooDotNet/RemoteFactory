@@ -97,13 +97,107 @@ exposes drain points.
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
 | 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
-| 010 | *(not yet drafted)* | 9007's Warning should carry the drain-*placement* qualifier. Today it says "Call `IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush)` between your flush and your commit" — which the consumer who wrapped the factory call from *outside* did do; the missing words are "from inside the factory method body." PHASE-007 put that guidance in 9009, but 9009 is Debug and therefore invisible under a default Information minimum, so the consumer who most needs it still sees only the misleading Warning. Its own plan because it edits an existing pinned message (007 code review C2) | Draft |
-| 008 | *(not yet drafted)* | Generator emission hygiene: `global::`-qualify the remaining emitted type tokens (event type in relay registration, and audit the other legs); probe the partial-declaration attribute-split hint-name collision; `RunGeneratorTracked` never checks the input compilation for CS errors; `NF04xx…Tests.cs` holds `class NF05xx…Tests`. *(The `DiagnosticTestHelper` double-count was pulled forward and fixed in PHASE-002.)* | Draft |
-| 009 | *(not yet drafted)* | Scheduler concurrency harness: the scheduler has zero concurrency coverage against its own shared-scope contract (predates the arc; surfaced at 006's gate round 1, candidacy queued to the re-split decision — executed at 007's drafting); both 006 reviewers recommended a dedicated deterministic harness, not a `Task.WhenAll` race; stakes raised by 006 code review C4 — the coalescing identity scan runs consumer `Equals` under `_gate`, where a re-entrant `Equals` mutates the queue mid-scan, and raised again by 007's storage change: `PhaseQueue.Pending` now hands out a `Span<QueuedDispatch>` over the live backing array, so a re-entrant `Equals` that enqueues mutates an array a span is open over, not just a `List` (007 gate); candidate to pin the 003 round-2 N1 timing window (work a concurrent flow enqueues while the survivor's outermost drain runs either joins that drain or is discarded by the post-drain clear); also carries the accepted-not-closed registry isolation risk — `FactoryEventHandlerRegistry.Clear()` stays internal and uncalled, and 007's discipline notes live in two files a new test author may not open (007 gate); plus two allocation notes on the same class, neither a correctness issue: `HasPending` builds a LINQ enumerator per call under `_gate` (007 gate), and `TryDequeueThrough` builds a `Where`+`OrderBy` chain **per dequeued dispatch**, so the bulk-save scenario the storage comment names still pays a per-dispatch allocation even after the O(1) dequeue fix (007 code review C6) | Draft |
+| 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done |
+| 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired |
+| 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired |
+| 011 | *(not yet drafted)* | Mechanical guard against `FactoryEventHandlerRegistry.Clear()` reaching the test suite. PHASE-008 measured that one test calling it turns `FactoryEntryCallTests.DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress` red — the registry is process-wide static and xUnit runs classes in parallel. The XML-doc correction on `Clear()` was the right disposition for 008 (pinning it would have meant weakening a sacred test), but documentation is the accepted-risk position and nothing stops the next author repeating it. Candidate remedies: an xUnit test-collection attribute, or an analyzer-style guard (008 gate T1) | Draft |
+| 012 | *(not yet drafted)* | Namespace-shadowing compile tests for the other four renderers. `ClassFactoryRenderer:58`, `InterfaceFactoryRenderer:53`, `StaticFactoryRenderer:45`, and `EventPreservationRenderer:71` all emit the same bare assembly-attribute token the relay leg carried, and none has a shadowing test. The 008 gate called `RelayHandler_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` "the single best artifact this plan produced" and worth cloning per renderer. Also carries the absurd-tier note that `sp.GetRequiredService<T>()` is emitted unqualified and relies on the injected `using`, so a consumer's own extension method in their namespace would win on lookup (008 gate T2) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-27 — PHASE-008 (gate round 1: the plan's own fix had introduced a silent-drop regression, and only a code read caught it)
+
+- **Finding:** The gate returned **2 must-cover**, both in code this plan introduced. M1 is
+  the one that justifies the step: `IsCanonicalDeclaration` — the fix for the split-partial
+  CS8785 — chose its canonical declaration from *all* of `symbol.DeclaringSyntaxReferences`,
+  while `ForAttributeWithMetadataName` only ever yields **attributed** nodes. A partial class
+  carrying its attribute on a later declaration therefore matched nothing and emitted
+  **nothing, with no diagnostic** — strictly worse than the loud CS8785 it replaced. Found by
+  reading code, with nothing run, in the plan that had declined plan review. M2: no test drove
+  two overlapping *entry calls*, though the Acceptance bullet claimed entry-state semantics
+  and the evidence row was ticked.
+- **Decision:** Amend — both must-cover fixed and all 5 should-cover plus the nice-to-have
+  closed; the two tech-debt items queued as new rows **011** and **012** rather than absorbed.
+  Unit 755 → 758.
+- **Follow-up:** [reviews/008-test-review.md](./reviews/008-test-review.md);
+  [reviews/008-redproof.log](./reviews/008-redproof.log) RP-8-rerun and RP-9…RP-11. Two
+  lessons, both about how evidence was *scoped* rather than whether it existed. **RP-8 had
+  been run filtered to the class under test**, which answers "does my test go red" while
+  declining to answer "was it already covered" — re-run at full scope it turned 16 red,
+  including two pre-existing pins the reviewer had named from a code read, so the new test is
+  a second witness. And **RP-10 disproved the rationale the M2 closures were written with**:
+  flow A's drain is total, so the queue is already empty when its exit clear runs and the
+  deferred clear is unobservable on the success path. RP-11 then established what the pair
+  actually pins — depth accounting across an in-flight drain. Tests kept, remarks rewritten to
+  the measured answer, disproved claims left visible.
+
+### 2026-08-27 — PHASE-008 (three routed remedies, two of them wrong — the routing said what to do, the measurement said what was true)
+
+- **Finding:** Of the concurrency-half items this plan inherited, two named a remedy that
+  measurement rejected. The registry-isolation item asked for `Clear()` to become the
+  enforceable escape hatch; a test calling it turned an existing `FactoryEntryCallTests`
+  case red (passes alone, fails beside the new one) — the registry is process-wide static
+  and xUnit runs classes in parallel, so the routed hatch actively breaks the suite. And
+  the re-entrant-`Equals` item's sharpest predicted consequence — one coalescing identity
+  holding two pending dispatches — **does not happen**: the re-entrant `Enqueue` runs its
+  own identity scan against the live queue and collapses, so the contract survives.
+- **Decision:** Amend — A3 pins the property the discipline actually rests on (entries
+  keyed by `(event type, handler class)`) and writes the correction onto `Clear()`'s own
+  XML doc; the re-entrancy test is kept and **inverted**, carrying the disproved reasoning
+  in its remarks. A4 fixed both allocation items rather than accepting them —
+  `TryDequeueThrough`'s `Where`+`OrderBy` ran per dequeued dispatch, the cost PHASE-007's
+  O(1) fix did not touch.
+- **Follow-up:** [reviews/008-redproof.log](./reviews/008-redproof.log), RP-5 through RP-8.
+  Worth keeping: this arc has spent eleven entries on tests that could not go red, and this
+  is the mirror image — a *routed remedy* that could not be right, surviving three gates as
+  a plausible sentence because nobody had run it. The tell is the same one, pointed at
+  planning rather than at tests: a confident instruction with no measurement behind it.
+
+### 2026-08-27 — PHASE-008 (the inferred collision was real, and it takes the whole assembly with it)
+
+- **Finding:** PHASE-002 inferred that attributes split across partial declarations "should
+  collide on hint name" and recorded it unmeasured. Measured: they do. Two partials each
+  carrying a `[FactoryEventHandler<T>]` yield two syntax nodes, two identical models (the
+  transform reads the *symbol*), one hint name, and an `ArgumentException` on the second
+  `AddSource` → **CS8785**. The severity is the part the row understated: CS8785 means the
+  generator "will not contribute to the output," so every factory in the assembly vanishes and
+  the consumer sees missing-type errors pointing nowhere near the split partial.
+- **Decision:** Amend — one model per symbol from a canonically-chosen declaration (plan
+  amendment A1). Two adjacent corrections in the same pass: the emission fix covers three token
+  classes rather than the one routed (A2), and this plan's own pre-flight got the
+  service-parameter case backwards, claiming a strip that exists one line below the line it
+  cited.
+- **Follow-up:** [reviews/008-redproof.log](./reviews/008-redproof.log) — RP-3 is unusual in
+  being a *probe* whose "before" run is the positive control, which is stronger than a
+  sabotage because nothing about it was built to fail. RP-4 is the arc's twelfth can't-go-red
+  instance and the second one authored by the plan hunting for them: a single test claimed to
+  pin the helper's base-fixture guard while the appended-edit compilation *contains* the base
+  fixture, so deleting the first guard left the assertion satisfied by the second. Split into
+  two tests that each name which input failed.
+
+### 2026-08-27 — PHASE-008 (the arc tail merges: three rows, one plan, one branch — ceremony was the cost being cut)
+
+- **Finding:** The three remaining rows are the whole arc tail and carry no ordering
+  dependency on each other, but the workflow's per-plan gate meant three of everything —
+  three Test Evidence maps, three mandatory gates, three review files, three log entries —
+  for what is one trivial message edit, one mostly-mechanical generator sweep, and one
+  genuine harness design. Merging the plans is the only move that cuts the ceremony, since
+  the gate is per plan and not per branch.
+- **Decision:** Re-split — rows 009 and 010 fold into 008, which widens to the full tail;
+  their per-item provenance transplants into the new plan's Inherited section so retiring the
+  rows loses no routing history. Plan review declined **by user direction, not by risk
+  assessment** — this arc's plan reviews returned 4–6 vetoes on nearly every plan that ran
+  one, and 008 carries thirteen acceptance bullets; the mandatory Step 5 gate is the backstop.
+  Mitigation for the merge: implement cheap-and-deterministic first (message, emission,
+  helper, rename), harness last, so it can still split back out without stranding anything.
+- **Index changes:** 008 rewritten as the merged arc-tail plan (`Draft`); 009 and 010 kept as
+  `Retired` tombstones pointing at it, because committed review files cite both by name.
+- **Follow-up:** [plans/008-arc-tail.md](./plans/008-arc-tail.md). One in-source pointer —
+  the scheduler's `_gate` comment routing to PHASE-009 — goes stale on this merge and is
+  Step 1 of the plan; it is the fourth instance of this arc's incidental-doc-invalidation
+  species, and the first one caught *before* it shipped rather than at review.
 
 ### 2026-08-18 — PHASE-007 (code review: the new log event's explanation was wrong about the code it was explaining — and a trace stopped me changing code I had already decided to change)
 

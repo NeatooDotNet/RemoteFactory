@@ -80,6 +80,115 @@ public partial class Factory
     }
 
     /// <summary>
+    /// True for a matching <c>[FactoryEventHandler&lt;T&gt;]</c>, by metadata shape rather
+    /// than by type reference — the attribute cannot be referenced from this
+    /// netstandard2.0 project without duplicating a public runtime type.
+    /// </summary>
+    private static bool IsFactoryEventHandlerAttribute(AttributeData attr)
+    {
+        if (attr.AttributeClass == null || !attr.AttributeClass.IsGenericType)
+            return false;
+
+        var originalDef = attr.AttributeClass.OriginalDefinition;
+        return originalDef.Name == "FactoryEventHandlerAttribute"
+            && originalDef.TypeParameters.Length == 1
+            && originalDef.ContainingNamespace?.ToDisplayString() == "Neatoo.RemoteFactory";
+    }
+
+    /// <summary>
+    /// True when <paramref name="classDecl"/> is the declaration chosen to represent
+    /// <paramref name="symbol"/> — the first ATTRIBUTED one by file path, then by position.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Ranges over the attributed declarations, never over
+    /// <c>symbol.DeclaringSyntaxReferences</c>. That distinction is the whole correctness
+    /// of this method: <c>ForAttributeWithMetadataName</c> only ever hands the transform an
+    /// ATTRIBUTED node, so a canonical choice drawn from all declarations can land on one
+    /// the pipeline never yields — and then nothing matches it, nothing is emitted, and no
+    /// diagnostic says so. A partial class carrying the attribute on its second declaration
+    /// is the ordinary shape that hits it.
+    /// </para>
+    /// <para>
+    /// That failure would be strictly worse than the CS8785 this guard exists to prevent:
+    /// CS8785 is loud and immediate, whereas a silently dropped registration surfaces only
+    /// as a handler that never runs. Caught by the PHASE-008 test-review gate as a
+    /// code-read finding and confirmed red before this fix.
+    /// </para>
+    /// <para>
+    /// Compares by file path and span rather than by node reference: node identity holds
+    /// within one compilation but is not something to lean on across the incremental
+    /// pipeline's re-parses, and the ordinal comparison is what makes the choice stable
+    /// between runs.
+    /// </para>
+    /// <para>
+    /// <b>Two claims here are unpinned, and are recorded as such rather than left implicit.</b>
+    /// The suite's split-partial fixtures live in one syntax tree, so only the span leg of the
+    /// ordering runs — the file-path leg, which is the ordinary shape for real partials, is
+    /// untested. And the stability claim above is not observable from
+    /// <c>IncrementalCacheTests</c>, whose fixture has no split partial. Both noted at the
+    /// PHASE-008 gate.
+    /// </para>
+    /// <para>
+    /// One consequence of choosing a single declaration IS worth stating, because it is not
+    /// obvious: <c>usings</c>, <c>classSignatureText</c>, and the namespace are all read from
+    /// the canonical declaration's syntax tree, so a partial in another file contributes none
+    /// of its <c>using</c> directives to the emitted output. That is benign as of PHASE-008 —
+    /// the renderer injects the three usings the generated body needs, and every
+    /// consumer-derived token it emits is now <c>global::</c>-qualified, so the emitted code
+    /// depends on no consumer <c>using</c> at all. It would stop being benign if an
+    /// unqualified consumer-derived token were ever reintroduced.
+    /// </para>
+    /// </remarks>
+    private static bool IsCanonicalDeclaration(INamedTypeSymbol symbol, ClassDeclarationSyntax classDecl)
+    {
+        if (symbol.DeclaringSyntaxReferences.Length <= 1)
+            return true;
+
+        string? canonicalPath = null;
+        var canonicalStart = 0;
+
+        foreach (var attr in symbol.GetAttributes())
+        {
+            if (!IsFactoryEventHandlerAttribute(attr))
+                continue;
+
+            var declaration = attr.ApplicationSyntaxReference?.GetSyntax()
+                .Ancestors()
+                .OfType<ClassDeclarationSyntax>()
+                .FirstOrDefault();
+
+            if (declaration == null)
+                continue;
+
+            var path = declaration.SyntaxTree.FilePath;
+            var start = declaration.Span.Start;
+
+            if (canonicalPath == null)
+            {
+                canonicalPath = path;
+                canonicalStart = start;
+                continue;
+            }
+
+            var pathOrder = System.StringComparer.Ordinal.Compare(path, canonicalPath);
+            if (pathOrder < 0 || (pathOrder == 0 && start < canonicalStart))
+            {
+                canonicalPath = path;
+                canonicalStart = start;
+            }
+        }
+
+        // No attributed declaration resolved to a syntax node — nothing to deduplicate
+        // against, so let this one through rather than dropping the class silently.
+        if (canonicalPath == null)
+            return true;
+
+        return canonicalPath == classDecl.SyntaxTree.FilePath
+            && canonicalStart == classDecl.Span.Start;
+    }
+
+    /// <summary>
     /// Transforms a class decorated with [FactoryEventHandler&lt;T&gt;] into a RelayHandlerModel.
     /// Extracts event types from the generic attribute and finds matching handler methods.
     /// A matching method: non-private, returns Task, first non-[Service]/non-CT parameter is T.
@@ -89,6 +198,29 @@ public partial class Factory
     {
         var symbol = semanticModel.GetDeclaredSymbol(classDecl);
         if (symbol == null)
+            return null;
+
+        // One model per SYMBOL, not per attributed declaration.
+        //
+        // ForAttributeWithMetadataName yields a value per attributed syntax NODE, while this
+        // transform reads symbol.GetAttributes() — every attribute on every partial — and the
+        // hint name is derived from the symbol. So a class whose attributes are split across
+        // two partial declarations produced two identical models with one hint name, and the
+        // second AddSource threw ArgumentException. That surfaces as CS8785, which does not
+        // fail just this class: the generator "will not contribute to the output," so EVERY
+        // factory in the assembly silently disappears and the consumer sees a cascade of
+        // missing-type errors pointing nowhere near the cause.
+        //
+        // PHASE-002 inferred this collision and left it unmeasured; PHASE-008 measured it and
+        // it was real. Skipping the non-canonical declarations also stops the diagnostics on
+        // such a class being reported once per partial, since the surviving model already
+        // carries all of them.
+        //
+        // Ordered rather than taking DeclaringSyntaxReferences[0] as given: the emitted output
+        // is identical from any declaration (the model reads the symbol), but the incremental
+        // cache compares transform outputs, so the CHOICE has to be stable across runs or the
+        // pipeline churns. File path then span start is a total order over partials.
+        if (!IsCanonicalDeclaration(symbol, classDecl))
             return null;
 
         var diagnostics = new List<DiagnosticInfo>();
