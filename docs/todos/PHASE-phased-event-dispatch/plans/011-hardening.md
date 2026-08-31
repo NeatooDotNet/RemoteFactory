@@ -3,7 +3,7 @@
 **Plan #:** 011
 **Date:** 2026-08-31
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** Draft
+**Status:** Done
 **Last Updated:** 2026-08-31
 **Plan-review opt-in:** No (both items are guards over behavior PHASE-008 already measured; no new contract, and the blast radius is bounded by the sacred-tests rule)
 **Code-review opt-in:** **Yes** — *changed during implementation, 2026-08-31.* Originally "No
@@ -80,8 +80,14 @@ what a shadowing fixture actually reddens.
 - **Compile-checked over string-checked.** The guard is `outputCompilation.GetDiagnostics()`
   with decoys of the wrong shape, not `Contains` on a qualified string — the false green
   PHASE-002 documented.
-- **`Internal` namespace policy:** removing an `internal` member is within the
-  may-change-in-any-release contract that namespace carries.
+- ~~**`Internal` namespace policy:** removing an `internal` member is within the
+  may-change-in-any-release contract that namespace carries.~~ **Wrong rule — struck at the
+  code review (C5).** `FactoryEventHandlerRegistry` lives in `Neatoo.RemoteFactory`, not
+  `Neatoo.RemoteFactory.Internal`, so that policy does not reach it. The removal is still
+  correct, on the independent ground the Constraints section states and the reviewer verified:
+  the member was `internal`, `InternalsVisibleTo` names six repo-controlled assemblies, and
+  nothing calls it — so no consumer, external or internal, can observe the change. Only the
+  cited authority was wrong; left visible rather than swapped silently.
 - **Red-proof discipline:** any claim that a new guard discriminates is measured, or labeled
   derived. A guard that passes on first run against unmodified code is a *regression* guard
   and must say so.

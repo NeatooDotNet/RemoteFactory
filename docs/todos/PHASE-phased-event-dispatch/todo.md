@@ -99,14 +99,42 @@ exposes drain points.
 | 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
 | 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done |
 | 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired |
+
 | 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired |
-| 011 | [011-hardening](./plans/011-hardening.md) | Hardening (folds former row 012): remove `FactoryEventHandlerRegistry.Clear()` rather than document it; namespace-shadowing compile guards for the class, interface, static and event-preservation legs — which found a live wrong-type binding, not just a regression guard | In Progress |
+| 011 | [011-hardening](./plans/011-hardening.md) | Hardening (folds former row 012): remove `FactoryEventHandlerRegistry.Clear()` rather than document it; namespace-shadowing compile guards for the class, interface, static and event-preservation legs — which found a live wrong-type binding, not just a regression guard | Done |
 | 012 | *(folded)* | Namespace-shadowing guards for the other renderers — **Retired**, folded into PHASE-011 | Retired |
 | 013 | *(not yet drafted)* | Bare BCL tokens in generated output. PHASE-011 measured **128** unqualified occurrences of `Task`, `CancellationToken`, `Type`, `IServiceCollection`, `IServiceProvider`, `Exception` and `System.Diagnostics` across the four renderer files; a `namespace X.System` decoy reddens all four legs on CS0246/CS0234. Less severe than the consumer-type case 011 fixed — a shadowed BCL token fails loudly in the consumer's build rather than binding to the wrong type — but real, and too wide (assertion ratchet far beyond 008's nine sites) to sweep in at arc-end. **Carries a second finding:** no renderer injects `using System;` (only `RelayHandlerRenderer` injects any usings at all), so the class, interface and event-preservation legs depend on the *consumer's* file having it — omit it and the generated factory does not compile. Measurement in [reviews/011-redproof.log](./reviews/011-redproof.log) (011 A2/A3) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-31 — PHASE-011 (code review: the red-proof log carried a confident, unmeasured mechanism — the exact thing it exists to prevent)
+
+- **Finding:** Code review returned **CLEAN**, no vetoes, five callouts. C1 is the one worth
+  keeping: RP-2 recorded the sync `[Execute]` as green because the static renderer "wraps
+  both shapes in `Task<>` so they converge." **They never converge** — a non-`Task`
+  `[Execute]` is an NF0102 *error* and is skipped before any delegate is built, so the method
+  never reached the renderer. The fixture didn't notice either, because the shared assert
+  helper discards the generator-diagnostic element and checks only the output compilation.
+  C2 was a live consumer-visible regression this plan introduced: `MethodInfo.ReturnType` is
+  NF0102's message argument, so `[Execute] public static Payload Run(…)` began reporting
+  ``not 'global::MyApp.Payload'`` — unpinned, because the existing fixture returns `string`,
+  which renders identically under both formats.
+- **Decision:** Amend — C2 fixed and pinned (RP-7, sole coverage); `_DoWorkSync` removed and
+  its false mechanism deleted rather than reworded, since the true statement is *narrower*
+  (the non-`Task` line is dead on the `[Execute]` path; reachability via non-`Task` interface
+  methods is an **open question**). C3's terminology corrected in four places — `ToString()`
+  is namespace-qualified *without* `global::`, not "minimally qualified," and the difference
+  is load-bearing: a bare `Payload` would have bound *correctly*. C4 doc fixed; C5's wrong
+  authority struck through rather than swapped. Unit 762 → 763. **Plan Done.**
+- **Follow-up:** [reviews/011-code-review.md](./reviews/011-code-review.md). Worth keeping:
+  this is the arc's signature failure mode — a confident sentence with no run behind it —
+  found *inside the red-proof log*, whose entire purpose is to stop that. Fifth instance in
+  the arc, first located in a log rather than a test. The tell is unchanged and now sharper:
+  a **causal explanation of a measurement, written without measuring the explanation**. Also
+  carried to Step 7: the reviewer asked the close-out to *confirm* rather than inherit the
+  judgement that this emission change needs no Design-project update.
 
 ### 2026-08-31 — PHASE-011 (gate round 1: a guard that could not fail, and four green sabotages that were each the finding)
 

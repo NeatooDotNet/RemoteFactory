@@ -1286,22 +1286,6 @@ namespace TestNamespace
         {
             return Task.FromResult(input);
         }
-
-        // Synchronous on purpose, and it did NOT achieve what it was added for -- kept with
-        // that result recorded rather than removed. The Task<T> overload above exercises only
-        // the GENERIC branch of MethodInfo's return-type capture, which overwrites the
-        // non-Task assignment before it, so the gate (S1) asked for a sync operation to make
-        // that earlier line load-bearing. Measured as PHASE-011 RP-2: sabotaging the non-Task
-        // line ALONE leaves all 762 green even with this method present. The static leg wraps
-        // every delegate in Task<> at emission (StaticFactoryRenderer:99), so an [Execute]
-        // returning T and one returning Task<T> converge before the shadowable position.
-        // The non-Task line is therefore recorded as UNMEASURED in the red-proof log, not
-        // claimed as covered.
-        [Execute]
-        private static Payload _DoWorkSync(Payload input)
-        {
-            return input;
-        }
     }
 }
 

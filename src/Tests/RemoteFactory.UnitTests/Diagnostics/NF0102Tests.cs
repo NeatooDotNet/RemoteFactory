@@ -33,6 +33,50 @@ namespace TestNamespace
         Assert.Contains("Task", diagnostic.GetMessage());
     }
 
+    /// <summary>
+    /// The offending return type is named in readable form, without the <c>global::</c>
+    /// prefix the model carries for emission.
+    /// </summary>
+    /// <remarks>
+    /// PHASE-011 made model return types <c>global::</c>-qualified so generated code binds
+    /// correctly inside a consumer's namespace. That string is also NF0102's second message
+    /// argument, so the change leaked into consumer-facing build output as
+    /// <c>not 'global::TestNamespace.Payload'</c> — caught by that plan's code review (C2).
+    /// <para>
+    /// Uses a CONSUMER type deliberately. The sibling test above returns <c>string</c>, which
+    /// renders identically under both formats and therefore could not have caught this; only
+    /// a type in the consumer's own namespace distinguishes them.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void NF0102_NamesTheReturnTypeWithoutTheGlobalPrefix()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public sealed class Payload { }
+
+    [Factory]
+    public static partial class ExecuteWithConsumerTypeReturn
+    {
+        [Execute]
+        public static Payload RunOnServer(Payload input)
+        {
+            return input;
+        }
+    }
+}
+";
+
+        var diagnostic = DiagnosticTestHelper.AssertHasDiagnostic(source, "NF0102", DiagnosticSeverity.Error);
+        var message = diagnostic.GetMessage();
+
+        Assert.Contains("TestNamespace.Payload", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("global::", message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void NF0102_ExecuteMethod_ReturnsTask_NoDiagnostic()
     {
