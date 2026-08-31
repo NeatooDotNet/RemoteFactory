@@ -100,12 +100,42 @@ exposes drain points.
 | 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done |
 | 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired |
 | 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired |
-| 011 | *(not yet drafted)* | Mechanical guard against `FactoryEventHandlerRegistry.Clear()` reaching the test suite. PHASE-008 measured that one test calling it turns `FactoryEntryCallTests.DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress` red — the registry is process-wide static and xUnit runs classes in parallel. The XML-doc correction on `Clear()` was the right disposition for 008 (pinning it would have meant weakening a sacred test), but documentation is the accepted-risk position and nothing stops the next author repeating it. Candidate remedies: an xUnit test-collection attribute, or an analyzer-style guard (008 gate T1) | Draft |
-| 012 | *(not yet drafted)* | Namespace-shadowing compile tests for the other four renderers. `ClassFactoryRenderer:58`, `InterfaceFactoryRenderer:53`, `StaticFactoryRenderer:45`, and `EventPreservationRenderer:71` all emit the same bare assembly-attribute token the relay leg carried, and none has a shadowing test. The 008 gate called `RelayHandler_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` "the single best artifact this plan produced" and worth cloning per renderer. Also carries the absurd-tier note that `sp.GetRequiredService<T>()` is emitted unqualified and relies on the injected `using`, so a consumer's own extension method in their namespace would win on lookup (008 gate T2) | Draft |
+| 011 | [011-hardening](./plans/011-hardening.md) | Hardening (folds former row 012): remove `FactoryEventHandlerRegistry.Clear()` rather than document it; namespace-shadowing compile guards for the class, interface, static and event-preservation legs — which found a live wrong-type binding, not just a regression guard | In Progress |
+| 012 | *(folded)* | Namespace-shadowing guards for the other renderers — **Retired**, folded into PHASE-011 | Retired |
+| 013 | *(not yet drafted)* | Bare BCL tokens in generated output. PHASE-011 measured **128** unqualified occurrences of `Task`, `CancellationToken`, `Type`, `IServiceCollection`, `IServiceProvider`, `Exception` and `System.Diagnostics` across the four renderer files; a `namespace X.System` decoy reddens all four legs on CS0246/CS0234. Less severe than the consumer-type case 011 fixed — a shadowed BCL token fails loudly in the consumer's build rather than binding to the wrong type — but real, and too wide (assertion ratchet far beyond 008's nine sites) to sweep in at arc-end. **Carries a second finding:** no renderer injects `using System;` (only `RelayHandlerRenderer` injects any usings at all), so the class, interface and event-preservation legs depend on the *consumer's* file having it — omit it and the generated factory does not compile. Measurement in [reviews/011-redproof.log](./reviews/011-redproof.log) (011 A2/A3) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-31 — PHASE-011 (the "regression guard" row was hiding a live wrong-type binding, and the prediction that it wouldn't was mine)
+
+- **Finding:** Row 012 was queued as cloning a guard across four legs that pre-flight
+  predicted were already correct — the `global::` strip that caused the relay bug is
+  relay-only. **All four reddened.** The premise was right and the conclusion wrong: the
+  other legs never *asked* for qualification. `FactoryGenerator.Types.cs:696` and `:706`
+  took delegate and method return types via `ITypeSymbol.ToString()`, which renders a
+  **minimally qualified** name, while `:736` three lines below already used
+  `FullyQualifiedFormat`. A consumer type therefore bound to a shadowing decoy — CS0029 on
+  the static leg, CS0738 on the interface leg. Same defect class PHASE-008 fixed on the
+  relay leg, reached by the opposite route: there a strip removed qualification, here it was
+  never requested.
+- **Decision:** Amend — both return-type assignments qualified (A1). Row 011's own item
+  resolved by **deleting** `FactoryEventHandlerRegistry.Clear()` rather than documenting it:
+  it was `internal`, uncalled, and its stated rationale (a single-threaded host) describes a
+  caller that cannot exist, since `internal` limits reach to this repo's test projects plus
+  AspNetCore. The BCL-token half of the fixture — 128 bare occurrences across four renderers,
+  plus the discovery that no renderer injects `using System;` — was **removed and queued as
+  row 013** (A2/A3) rather than swept in at arc-end.
+- **Index changes:** 011 now points at the plan; 012 `Retired` into it; 013 added as Draft.
+- **Follow-up:** [plans/011-hardening.md](./plans/011-hardening.md),
+  [reviews/011-redproof.log](./reviews/011-redproof.log). Sixth wrong prediction in this arc
+  and the most valuable: it was written into the plan's Notes *specifically so the run could
+  kill it*, and it did. Worth keeping — the failure mode here is not "I didn't check" but "I
+  checked one mechanism and generalised from it." Pre-flight verified the strip was
+  relay-only and stopped, without asking whether the other legs qualified by some *other*
+  route. Reading one line further in the same method would have shown `:736` doing it
+  correctly next to `:696` doing it wrong.
 
 ### 2026-08-27 — PHASE-008 (gate round 1: the plan's own fix had introduced a silent-drop regression, and only a code read caught it)
 

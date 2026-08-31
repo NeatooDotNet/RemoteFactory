@@ -1154,6 +1154,245 @@ namespace TestNamespace
     private static int CountOf(string haystack, string needle)
         => haystack.Split([needle], StringSplitOptions.None).Length - 1;
 
+    // =====================================================================================
+    // Namespace-shadowing guards for the other four renderers (PHASE-011, from the
+    // PHASE-008 gate's tech-debt item T2).
+    //
+    // The relay leg got its guard when PHASE-008 fixed a real defect there. These four are
+    // REGRESSION guards: pre-flight established that the global:: strip which caused the
+    // relay bug lives only in FactoryGenerator.RelayHandler.cs, so these legs take their
+    // type names from FullyQualifiedFormatWithNullable and keep their qualification. Each
+    // test below records whether it passed unmodified or caught something — an honest label
+    // matters more here than an impressive one, because a guard that never could have failed
+    // is the shape this arc has caught eleven times.
+    //
+    // Every fixture shadows two ways, both reachable by C# name lookup from inside
+    // `namespace TestNamespace` where the generated members are emitted:
+    //   - TestNamespace.TestNamespace  captures a bare `TestNamespace.Foo`
+    //   - TestNamespace.Neatoo         captures a bare `Neatoo.RemoteFactory.Foo`
+    // Decoys are deliberately the WRONG SHAPE, so binding to one is a compile error rather
+    // than a silently wrong emission — which is what makes the compile check discriminating.
+    //
+    // A THIRD decoy (`TestNamespace.System`, capturing bare BCL tokens) was written, run, and
+    // deliberately REMOVED. It reddened all four legs on CS0246/CS0234 — the renderers emit
+    // Task, CancellationToken, IServiceProvider, Exception and System.Diagnostics unqualified,
+    // 128 occurrences across the four files. That is a real hazard but a DIFFERENT one, and
+    // materially less severe: a shadowed BCL token fails loudly in the consumer's own build,
+    // whereas a shadowed consumer type binds to the WRONG TYPE, which is what this fixture
+    // catches and what PHASE-011 fixed. Queued as its own row rather than swept in at arc-end
+    // behind a 128-token diff. See the plan's Amendment A1.
+    // =====================================================================================
+
+    private const string ShadowingClassFactorySource = @"
+using Neatoo.RemoteFactory;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public sealed class Payload
+    {
+        public string Value { get; set; } = string.Empty;
+    }
+
+    [Factory]
+    public partial class ShadowedTarget
+    {
+        [Create]
+        public ShadowedTarget() { }
+
+        [Fetch]
+        public void Fetch(Payload payload) { }
+    }
+}
+
+namespace TestNamespace.TestNamespace
+{
+    public sealed class Payload { }
+    public sealed class ShadowedTarget { }
+}
+
+namespace TestNamespace.Neatoo
+{
+    public sealed class Decoy { }
+}
+";
+
+    private const string ShadowingInterfaceFactorySource = @"
+using Neatoo.RemoteFactory;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public sealed class Payload
+    {
+        public string Value { get; set; } = string.Empty;
+    }
+
+    [Factory]
+    public interface IShadowedService
+    {
+        Task<Payload> Load(Payload request);
+    }
+
+    public class ShadowedService : IShadowedService
+    {
+        public Task<Payload> Load(Payload request) => Task.FromResult(request);
+    }
+}
+
+namespace TestNamespace.TestNamespace
+{
+    public sealed class Payload { }
+    public interface IShadowedService { }
+}
+
+namespace TestNamespace.Neatoo
+{
+    public sealed class Decoy { }
+}
+";
+
+    private const string ShadowingStaticFactorySource = @"
+using Neatoo.RemoteFactory;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public sealed class Payload
+    {
+        public string Value { get; set; } = string.Empty;
+    }
+
+    [Factory]
+    public static partial class ShadowedCommands
+    {
+        [Execute]
+        private static Task<Payload> _DoWork(Payload input)
+        {
+            return Task.FromResult(input);
+        }
+    }
+}
+
+namespace TestNamespace.TestNamespace
+{
+    public sealed class Payload { }
+    public sealed class ShadowedCommands { }
+}
+
+namespace TestNamespace.Neatoo
+{
+    public sealed class Decoy { }
+}
+";
+
+    private const string ShadowingEventPreservationSource = @"
+using Neatoo.RemoteFactory;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record PreservedEvent(int Id) : FactoryEventBase;
+
+    [Factory]
+    public partial class PreservationTarget
+    {
+        [Create]
+        public PreservationTarget() { }
+    }
+}
+
+namespace TestNamespace.TestNamespace
+{
+    public sealed class PreservedEvent { }
+}
+
+namespace TestNamespace.Neatoo
+{
+    public sealed class Decoy { }
+}
+";
+
+    /// <summary>
+    /// Class-factory output compiles when the consumer's namespace shadows every unqualified
+    /// route out of it.
+    /// </summary>
+    /// <remarks>
+    /// Regression guard — passed unmodified on first run (PHASE-011 RP-1), because this leg
+    /// never had the relay transform's <c>global::</c> strip. Kept precisely because that is
+    /// an easy property to lose: the relay leg had it too, until it did not.
+    /// </remarks>
+    [Fact]
+    public void ClassFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
+        => AssertShadowedOutputCompiles(ShadowingClassFactorySource, "ShadowedTarget");
+
+    /// <summary>
+    /// Interface-factory output compiles under the same hostile namespace layout.
+    /// </summary>
+    /// <remarks>
+    /// Regression guard — see <see cref="ClassFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles"/>.
+    /// This leg emits a proxy whose method signatures carry consumer types, so it has the most
+    /// surface of the four.
+    /// </remarks>
+    [Fact]
+    public void InterfaceFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
+        => AssertShadowedOutputCompiles(ShadowingInterfaceFactorySource, "ShadowedService");
+
+    /// <summary>
+    /// Static-factory output compiles under the same hostile namespace layout.
+    /// </summary>
+    /// <remarks>
+    /// Regression guard. This leg emits <c>typeof({typeName}.{DelegateName})</c>, where the
+    /// delegate is nested in the generated type in the consumer's own namespace — the shape
+    /// worth having a compile check over rather than reasoning about.
+    /// </remarks>
+    [Fact]
+    public void StaticFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
+        => AssertShadowedOutputCompiles(ShadowingStaticFactorySource, "ShadowedCommands");
+
+    /// <summary>
+    /// Event-preservation output compiles under the same hostile namespace layout.
+    /// </summary>
+    /// <remarks>
+    /// Regression guard. The preservation registrar is emitted per assembly rather than per
+    /// consumer type, so its hint name is namespace-derived and it is the one leg whose
+    /// emitted type is entirely generator-authored.
+    /// </remarks>
+    [Fact]
+    public void EventPreservation_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
+        => AssertShadowedOutputCompiles(ShadowingEventPreservationSource, "PreservationTarget");
+
+    /// <summary>
+    /// Shared body for the four shadowing guards: the generator ran, emitted something for
+    /// this consumer type, and what it emitted compiles.
+    /// </summary>
+    /// <remarks>
+    /// The emitted-file assertion is not decoration. Without it the test passes on ZERO
+    /// generated trees — a transform early-out leaves the input compilation clean and
+    /// <c>Assert.Empty(errors)</c> is trivially satisfied, which is the vacuity mode
+    /// <c>RelayHandler_GeneratedOutputCompilesWithoutErrors</c> documents.
+    /// </remarks>
+    private static void AssertShadowedOutputCompiles(string source, string hintFragment)
+    {
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        Assert.NotNull(runResult.GeneratedTrees.FirstOrDefault(t => t.FilePath.Contains(hintFragment)));
+
+        var errors = outputCompilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
+
+        Assert.Empty(errors);
+    }
+
     /// <summary>
     /// The emitted phase argument is <c>global::</c>-qualified.
     /// </summary>

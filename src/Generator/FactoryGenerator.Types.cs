@@ -693,7 +693,16 @@ public partial class Factory
 			this.IsRemote = otherAttributes.Any(a => a == "Remote");
 			this.IsInternal = methodSymbol.DeclaredAccessibility != Accessibility.Public;
 
-			this.ReturnType = methodSymbol.ReturnType.ToString();
+			// FullyQualifiedFormatWithNullable, not ToString(). ITypeSymbol.ToString() renders a
+			// MINIMALLY qualified name, and this value is emitted straight into generated code
+			// that lives in the consumer's own namespace — so a consumer nested namespace
+			// shadowing the first segment bound it to the wrong type. Measured (PHASE-011): a
+			// return type of TestNamespace.Payload bound to TestNamespace.TestNamespace.Payload
+			// and the generated file failed with CS0029 on the static leg and CS0738 on the
+			// interface leg. Same defect class the relay leg carried until PHASE-008, reached
+			// by a different route — there the transform stripped global::, here it was never
+			// asked for. The constructor case three lines below already did this correctly.
+			this.ReturnType = methodSymbol.ReturnType.ToDisplayString(FullyQualifiedFormatWithNullable);
 			this.IsNullable = methodSymbol.ReturnType.NullableAnnotation == NullableAnnotation.Annotated;
 
 
@@ -703,7 +712,7 @@ public partial class Factory
 				if (returnTypeSymbol.IsGenericType)
 				{
 					this.IsNullable = returnTypeSymbol.TypeArguments.Any(t => t.NullableAnnotation == NullableAnnotation.Annotated);
-					this.ReturnType = returnTypeSymbol.TypeArguments.First().ToString();
+					this.ReturnType = returnTypeSymbol.TypeArguments.First().ToDisplayString(FullyQualifiedFormatWithNullable);
 				}
 			}
 
