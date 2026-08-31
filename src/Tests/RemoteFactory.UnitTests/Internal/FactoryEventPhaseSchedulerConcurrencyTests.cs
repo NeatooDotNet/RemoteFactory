@@ -552,13 +552,18 @@ public class FactoryEventPhaseSchedulerConcurrencyTests
     /// red — that test passes alone and fails beside this one, because the registry is
     /// process-wide static and xUnit runs test classes in parallel.
     /// <para>
-    /// So <c>Clear()</c> is not an escape hatch any test in this suite may use: calling it
-    /// strips registrations out from under whatever else is mid-run. The discipline that
-    /// works is the one the suite already follows — every test invents event types nobody
-    /// else uses — and the dedupe key <c>(event type, handler class)</c> is what makes that
-    /// sufficient. That is what this pins, and the correction is written onto
-    /// <c>Clear()</c>'s own XML doc so the next author meets it at the method rather than in
-    /// a todo file.
+    /// <b>There is no longer a <c>Clear()</c> to misuse.</b> PHASE-008 mitigated it with a
+    /// doc comment; PHASE-011 deleted the method outright, on the grounds that its only
+    /// reachable callers — an <c>internal</c> member is visible to this repo's test projects
+    /// and <c>Neatoo.RemoteFactory.AspNetCore</c>, nothing else — were exactly the callers
+    /// the doc comment forbade. The reasoning now lives in a comment block where the method
+    /// used to be, in <c>FactoryEventHandlerRegistry</c>.
+    /// </para>
+    /// <para>
+    /// The discipline that works needs no teardown and is what this test pins: every test
+    /// invents event types nobody else uses, and the dedupe key
+    /// <c>(event type, handler class)</c> is what makes that sufficient. Both halves of the
+    /// key are exercised below.
     /// </para>
     /// </remarks>
     [Fact]

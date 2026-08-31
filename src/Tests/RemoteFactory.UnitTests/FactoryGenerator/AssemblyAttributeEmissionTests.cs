@@ -1158,13 +1158,21 @@ namespace TestNamespace
     // Namespace-shadowing guards for the other four renderers (PHASE-011, from the
     // PHASE-008 gate's tech-debt item T2).
     //
-    // The relay leg got its guard when PHASE-008 fixed a real defect there. These four are
-    // REGRESSION guards: pre-flight established that the global:: strip which caused the
-    // relay bug lives only in FactoryGenerator.RelayHandler.cs, so these legs take their
-    // type names from FullyQualifiedFormatWithNullable and keep their qualification. Each
-    // test below records whether it passed unmodified or caught something — an honest label
-    // matters more here than an impressive one, because a guard that never could have failed
-    // is the shape this arc has caught eleven times.
+    // The relay leg got its guard when PHASE-008 fixed a real defect there.
+    //
+    // These four were EXPECTED to be regression guards, on the reasoning that the global::
+    // strip which caused the relay bug lives only in FactoryGenerator.RelayHandler.cs. That
+    // reasoning was measured and KILLED (PHASE-011 RP-0): all four reddened, because these
+    // legs never asked for qualification in the first place -- FactoryGenerator.Types.cs took
+    // return types via ITypeSymbol.ToString(), a MINIMALLY qualified name. Two of the four
+    // caught live defects and two are genuine regression guards, and each test below says
+    // which it is. Do not restore the old blanket claim: the sentence "these legs keep their
+    // qualification" is true only BECAUSE this plan changed them to, which makes it circular
+    // as a justification for the tests that forced the change.
+    //
+    // An honest label matters more here than an impressive one -- a guard that never could
+    // have failed is the shape this arc has caught twelve times, and a guard mislabeled as
+    // one is how the record stops being trustworthy.
     //
     // Every fixture shadows two ways, both reachable by C# name lookup from inside
     // `namespace TestNamespace` where the generated members are emitted:
@@ -1180,7 +1188,8 @@ namespace TestNamespace
     // materially less severe: a shadowed BCL token fails loudly in the consumer's own build,
     // whereas a shadowed consumer type binds to the WRONG TYPE, which is what this fixture
     // catches and what PHASE-011 fixed. Queued as its own row rather than swept in at arc-end
-    // behind a 128-token diff. See the plan's Amendment A1.
+    // behind a 128-token diff. See the plan's Amendments A2 and A3 (A1 is the return-type
+    // qualification, a different finding).
     // =====================================================================================
 
     private const string ShadowingClassFactorySource = @"
@@ -1277,6 +1286,22 @@ namespace TestNamespace
         {
             return Task.FromResult(input);
         }
+
+        // Synchronous on purpose, and it did NOT achieve what it was added for -- kept with
+        // that result recorded rather than removed. The Task<T> overload above exercises only
+        // the GENERIC branch of MethodInfo's return-type capture, which overwrites the
+        // non-Task assignment before it, so the gate (S1) asked for a sync operation to make
+        // that earlier line load-bearing. Measured as PHASE-011 RP-2: sabotaging the non-Task
+        // line ALONE leaves all 762 green even with this method present. The static leg wraps
+        // every delegate in Task<> at emission (StaticFactoryRenderer:99), so an [Execute]
+        // returning T and one returning Task<T> converge before the shadowable position.
+        // The non-Task line is therefore recorded as UNMEASURED in the red-proof log, not
+        // claimed as covered.
+        [Execute]
+        private static Payload _DoWorkSync(Payload input)
+        {
+            return input;
+        }
     }
 }
 
@@ -1302,6 +1327,18 @@ namespace TestNamespace
 {
     public record PreservedEvent(int Id) : FactoryEventBase;
 
+    // The handler is what makes the event DISCOVERED. Without a subscriber the preservation
+    // walker never reaches PreservedEvent, the registrar is emitted without it, and the guard
+    // proves only that an empty registrar compiles. (PHASE-011 RP-5.)
+    [FactoryEventHandler<PreservedEvent>]
+    public static partial class PreservationHandlers
+    {
+        internal static Task Handle(PreservedEvent evt)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     [Factory]
     public partial class PreservationTarget
     {
@@ -1310,12 +1347,12 @@ namespace TestNamespace
     }
 }
 
-namespace TestNamespace.TestNamespace
+namespace TestAssembly.TestNamespace
 {
     public sealed class PreservedEvent { }
 }
 
-namespace TestNamespace.Neatoo
+namespace TestAssembly.Neatoo
 {
     public sealed class Decoy { }
 }
@@ -1326,9 +1363,15 @@ namespace TestNamespace.Neatoo
     /// route out of it.
     /// </summary>
     /// <remarks>
-    /// Regression guard — passed unmodified on first run (PHASE-011 RP-1), because this leg
-    /// never had the relay transform's <c>global::</c> strip. Kept precisely because that is
-    /// an easy property to lose: the relay leg had it too, until it did not.
+    /// <b>Regression guard</b> — it stays green under RP-1's sabotage, so nothing in this plan
+    /// measured it catching anything. Precisely stated, because the first version of this
+    /// remark said "passed unmodified on first run" and that was false twice over: RP-0 records
+    /// all four legs red on first run (this one went green only once the fixture gained
+    /// <c>using System;</c>), and RP-1 is a sabotage run rather than a first run.
+    /// <para>
+    /// Kept because the property is an easy one to lose — the relay leg had it too, until it
+    /// did not.
+    /// </para>
     /// </remarks>
     [Fact]
     public void ClassFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
@@ -1338,9 +1381,13 @@ namespace TestNamespace.Neatoo
     /// Interface-factory output compiles under the same hostile namespace layout.
     /// </summary>
     /// <remarks>
-    /// Regression guard — see <see cref="ClassFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles"/>.
-    /// This leg emits a proxy whose method signatures carry consumer types, so it has the most
-    /// surface of the four.
+    /// <b>This guard caught a live defect</b> — not a regression guard, whatever the row that
+    /// queued it assumed. The proxy's method signatures carry consumer types, and those types
+    /// arrived minimally qualified, so the emitted implementation failed to satisfy its own
+    /// interface: <c>CS0738 — 'ShadowedServiceFactory.Load(Payload)' cannot implement
+    /// 'IShadowedService.Load(Payload)' because it does not have the matching return type</c>.
+    /// RP-1 measures it as <i>sole</i> coverage: no pre-existing test reddens under the same
+    /// sabotage.
     /// </remarks>
     [Fact]
     public void InterfaceFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
@@ -1350,25 +1397,55 @@ namespace TestNamespace.Neatoo
     /// Static-factory output compiles under the same hostile namespace layout.
     /// </summary>
     /// <remarks>
-    /// Regression guard. This leg emits <c>typeof({typeName}.{DelegateName})</c>, where the
-    /// delegate is nested in the generated type in the consumer's own namespace — the shape
-    /// worth having a compile check over rather than reasoning about.
+    /// <b>This guard caught a live defect</b> — not a regression guard. The delegate's return
+    /// type arrived minimally qualified and bound to the decoy:
+    /// <c>CS0029 — cannot implicitly convert Task&lt;TestNamespace.Payload&gt; to
+    /// Task&lt;TestNamespace.TestNamespace.Payload&gt;</c>. That is a WRONG-TYPE binding, which
+    /// is the severe half of what these fixtures can find — it is the shape that could compile
+    /// and be wrong rather than fail loudly. RP-1 measures it as sole coverage.
     /// </remarks>
     [Fact]
     public void StaticFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
         => AssertShadowedOutputCompiles(ShadowingStaticFactorySource, "ShadowedCommands");
 
     /// <summary>
-    /// Event-preservation output compiles under the same hostile namespace layout.
+    /// Event-preservation output compiles when the namespace it is emitted into is shadowed.
     /// </summary>
     /// <remarks>
-    /// Regression guard. The preservation registrar is emitted per assembly rather than per
-    /// consumer type, so its hint name is namespace-derived and it is the one leg whose
-    /// emitted type is entirely generator-authored.
+    /// <b>A smoke test, and deliberately labeled as the weakest of the four.</b> It proves the
+    /// preservation registrar is emitted and compiles when the namespace it is emitted into is
+    /// shadowed. It does <b>not</b> pin consumer-type qualification, and it cannot — see below.
+    /// <para>
+    /// <b>Its decoys sit under <c>TestAssembly</c>, not <c>TestNamespace</c>.</b> Unlike the
+    /// other three legs, this renderer does not emit into the consumer's namespace: it emits
+    /// into <c>namespace {SanitizeNamespace(assemblyName)}</c>
+    /// (<c>EventPreservationRenderer:62,77</c>), which under the harness is
+    /// <c>TestAssembly</c> (<c>DiagnosticTestHelper.cs:79</c>). A decoy under
+    /// <c>TestNamespace</c> is unreachable from the emitted body and constrains nothing — the
+    /// mistake the first version of this test made, along with an existence assertion pointed
+    /// at <c>PreservationTarget</c> (the CLASS-FACTORY output) rather than at
+    /// <c>NeatooEventPreservation</c>. Caught by the PHASE-011 gate as M1; it is the same
+    /// unreachable-decoy error the PHASE-008 gate had already flagged once.
+    /// </para>
+    /// <para>
+    /// <b>Why the corrected version still cannot catch a mis-binding, measured across four
+    /// sabotages (PHASE-011 RP-3 … RP-6).</b> Stripping <c>global::</c> from the registrar's
+    /// emitted type arguments reddens six <c>EventPreservationDiscoveryTests</c> and leaves
+    /// this test green — even with the fixture's event given a handler so it is genuinely
+    /// discovered and emitted. The reason is that <c>DtoConstructorRegistry.Register&lt;T&gt;</c>
+    /// and <c>PreserveType&lt;T&gt;</c> declare <b>no type constraint</b>, so a type argument
+    /// that binds to the wrong type compiles perfectly well. A compile check is structurally
+    /// blind here.
+    /// </para>
+    /// <para>
+    /// The leg is therefore covered — by <c>EventPreservationDiscoveryTests</c>, which assert
+    /// on the emitted text and do redden — and this test sits on top of them as a compile
+    /// smoke test. Kept for that, and for the emission-position property no other test states.
+    /// </para>
     /// </remarks>
     [Fact]
-    public void EventPreservation_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles()
-        => AssertShadowedOutputCompiles(ShadowingEventPreservationSource, "PreservationTarget");
+    public void EventPreservation_EmittedNamespaceIsShadowed_OutputStillCompiles()
+        => AssertShadowedOutputCompiles(ShadowingEventPreservationSource, "NeatooEventPreservation");
 
     /// <summary>
     /// Shared body for the four shadowing guards: the generator ran, emitted something for

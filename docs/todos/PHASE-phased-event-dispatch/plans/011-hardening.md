@@ -6,9 +6,22 @@
 **Status:** Draft
 **Last Updated:** 2026-08-31
 **Plan-review opt-in:** No (both items are guards over behavior PHASE-008 already measured; no new contract, and the blast radius is bounded by the sacred-tests rule)
-**Code-review opt-in:** No (one deletion of an uncalled internal method, and generator tests that add no production code — the gate is the right and sufficient eye)
+**Code-review opt-in:** **Yes** — *changed during implementation, 2026-08-31.* Originally "No
+(one deletion of an uncalled internal method, and generator tests that add no production
+code — the gate is the right and sufficient eye)." That reason went stale the moment
+Amendment A1 landed: the plan ended up altering source-generator **emission for every
+`[Factory]` type in every consumer assembly**, which is the widest blast radius in the arc.
+The original assessment was honest when written and wrong by the end; left visible rather
+than quietly flipped.
 
 ---
+
+> **Scope note added 2026-08-31, after implementation.** The paragraph below says this plan
+> "adds **no production behavior**." That is no longer true, and the sentence is kept rather
+> than rewritten so the drift is visible: Amendment A1 changed how the generator qualifies
+> delegate and method return types, which alters emitted code for every `[Factory]` type in
+> every consumer assembly. The Constraints section's "no new public API, no new log event, no
+> new diagnostic" still holds; "no new production behavior" does not.
 
 ## Scope
 
@@ -196,14 +209,20 @@ standing skips)**, **Design 98×2** — both solutions built explicitly. Logs:
 | Class-factory output compiles under shadowing | `[unit]` | `ClassFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` — **regression guard**, no sabotage in this plan reddens it | ✓ |
 | Interface-factory output compiles under shadowing | `[unit]` | `InterfaceFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` — **caught a live defect** (CS0738); RP-1 confirms sole coverage | ✓ |
 | Static-factory output compiles under shadowing | `[unit]` | `StaticFactory_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` — **caught a live defect** (CS0029); RP-1 confirms sole coverage | ✓ |
-| Event-preservation output compiles under shadowing | `[unit]` | `EventPreservation_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` — **regression guard**, as above | ✓ |
-| Each guard labeled by what it is | `[explicit-skip]` | Two labeled *regression guard* and two labeled as having caught a defect, in their XML and in the red-proof log's UNMEASURED section. RP-1 is the evidence for the split | n/a |
+| Event-preservation output compiles under shadowing | `[unit]` | `EventPreservation_EmittedNamespaceIsShadowed_OutputStillCompiles` — **smoke test**, the weakest of the four and now labeled so. Gate M1 found the original version vacuous (decoys under the wrong namespace; existence assertion pointed at the class-factory output). RP-3…RP-6 then established it *cannot* catch a consumer-type mis-binding at all: `DtoConstructorRegistry.Register<T>`/`PreserveType<T>` have **no type constraint**, so a wrong binding compiles. The leg's real coverage is `EventPreservationDiscoveryTests` | ✓ (as a smoke test) |
+| Each guard labeled by what it is | `[explicit-skip]` | **Was false when first claimed — gate M2.** All four XML remarks said *regression guard*, including the two that caught CS0738 and CS0029, while this row asserted the split had been made in the XML. Only the red-proof log was correct. Now: two labeled as having caught a defect, one regression guard, one smoke test; the section header no longer states the killed prediction as fact | n/a |
 | `GetRequiredService<T>` route settled | `[explicit-skip]` | **Not settled — superseded.** The fixture found the surrounding family (128 bare BCL tokens, plus the missing `using System;` injection) to be far wider than the single route the row named. Queued as row **013** with the measurement. See Amendments A2 and A3 | n/a |
 | Both solutions build; three suites green, totals only grow | `[explicit-skip]` | `reviews/011-build.log`, `reviews/011-test.log` — six green summaries | n/a |
 
 **No `MISSING` rows.** One bullet is explicitly superseded rather than met, with the reason
-and its replacement row recorded. **Three tests ship unmeasured** and are declared in the
-red-proof log: the two regression guards and the inherited registry-keying pin.
+and its replacement row recorded.
+
+**Four items ship unmeasured**, declared in full in the red-proof log — the earlier claim of
+three was incomplete: the class-leg regression guard, the event-preservation smoke test, the
+**non-`Task` return-type assignment** in `FactoryGenerator.Types.cs` (gate S1 — it rides on
+the generic line's measurement; the two converge at emission because
+`StaticFactoryRenderer:99` wraps every delegate in `Task<>`, so RP-2's attempted fix did not
+discriminate and is kept with that result recorded), and the inherited registry-keying pin.
 
 ---
 

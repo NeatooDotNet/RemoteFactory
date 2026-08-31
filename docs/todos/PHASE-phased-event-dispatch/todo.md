@@ -108,6 +108,30 @@ exposes drain points.
 
 ## Discovery Log
 
+### 2026-08-31 — PHASE-011 (gate round 1: a guard that could not fail, and four green sabotages that were each the finding)
+
+- **Finding:** The gate returned **2 must-cover**, no vetoes. M1: the event-preservation
+  guard was **vacuous and a duplicate of the class-factory guard** — that renderer emits
+  into `namespace {SanitizeNamespace(assemblyName)}`, not the consumer's namespace, so both
+  decoys were unreachable; and its anti-vacuity assertion matched the *class-factory* output
+  for the same type, so it would have stayed green if the preservation renderer stopped
+  emitting entirely. M2: all four tests carried `Regression guard` in their XML, including
+  the two measured as catching CS0738 and CS0029, while the plan's Test Evidence claimed the
+  split had been made there — the record was wrong on the one bullet whose entire content is
+  accuracy of the record.
+- **Decision:** Amend — both must-cover closed, S1 attempted and declared unmeasured, four
+  tech-debt accuracy defects fixed in place. The preservation guard is now labeled a **smoke
+  test**: RP-3…RP-6 established it cannot catch a consumer-type mis-binding at all, because
+  `DtoConstructorRegistry.Register<T>`/`PreserveType<T>` carry **no type constraint**, so a
+  wrong binding compiles. That leg's real coverage is `EventPreservationDiscoveryTests`.
+- **Follow-up:** [reviews/011-test-review.md](./reviews/011-test-review.md);
+  [reviews/011-redproof.log](./reviews/011-redproof.log) RP-2…RP-6. Worth keeping: **five
+  sabotages this round, four green against prediction, and none of them a bad sabotage.**
+  Each green was the finding — the wrong bucket, the undiscovered event, the missing
+  constraint. Stopping at the first green would have shipped a fourth "guard" whose label
+  implied coverage it could never provide. The parallel code review **failed** (stalled with
+  no output) and is being relaunched against the corrected state.
+
 ### 2026-08-31 — PHASE-011 (the "regression guard" row was hiding a live wrong-type binding, and the prediction that it wouldn't was mine)
 
 - **Finding:** Row 012 was queued as cloning a guard across four legs that pre-flight
