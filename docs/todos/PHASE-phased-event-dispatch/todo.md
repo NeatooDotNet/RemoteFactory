@@ -99,13 +99,95 @@ exposes drain points.
 | 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
 | 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done |
 | 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired |
+
 | 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired |
-| 011 | *(not yet drafted)* | Mechanical guard against `FactoryEventHandlerRegistry.Clear()` reaching the test suite. PHASE-008 measured that one test calling it turns `FactoryEntryCallTests.DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress` red — the registry is process-wide static and xUnit runs classes in parallel. The XML-doc correction on `Clear()` was the right disposition for 008 (pinning it would have meant weakening a sacred test), but documentation is the accepted-risk position and nothing stops the next author repeating it. Candidate remedies: an xUnit test-collection attribute, or an analyzer-style guard (008 gate T1) | Draft |
-| 012 | *(not yet drafted)* | Namespace-shadowing compile tests for the other four renderers. `ClassFactoryRenderer:58`, `InterfaceFactoryRenderer:53`, `StaticFactoryRenderer:45`, and `EventPreservationRenderer:71` all emit the same bare assembly-attribute token the relay leg carried, and none has a shadowing test. The 008 gate called `RelayHandler_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` "the single best artifact this plan produced" and worth cloning per renderer. Also carries the absurd-tier note that `sp.GetRequiredService<T>()` is emitted unqualified and relies on the injected `using`, so a consumer's own extension method in their namespace would win on lookup (008 gate T2) | Draft |
+| 011 | [011-hardening](./plans/011-hardening.md) | Hardening (folds former row 012): remove `FactoryEventHandlerRegistry.Clear()` rather than document it; namespace-shadowing compile guards for the class, interface, static and event-preservation legs — which found a live wrong-type binding, not just a regression guard | Done |
+| 012 | *(folded)* | Namespace-shadowing guards for the other renderers — **Retired**, folded into PHASE-011 | Retired |
+| 013 | *(not yet drafted)* | Bare BCL tokens in generated output. PHASE-011 measured **128** unqualified occurrences of `Task`, `CancellationToken`, `Type`, `IServiceCollection`, `IServiceProvider`, `Exception` and `System.Diagnostics` across the four renderer files; a `namespace X.System` decoy reddens all four legs on CS0246/CS0234. Less severe than the consumer-type case 011 fixed — a shadowed BCL token fails loudly in the consumer's build rather than binding to the wrong type — but real, and too wide (assertion ratchet far beyond 008's nine sites) to sweep in at arc-end. **Carries a second finding:** no renderer injects `using System;` (only `RelayHandlerRenderer` injects any usings at all), so the class, interface and event-preservation legs depend on the *consumer's* file having it — omit it and the generated factory does not compile. Measurement in [reviews/011-redproof.log](./reviews/011-redproof.log) (011 A2/A3) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-31 — PHASE-011 (code review: the red-proof log carried a confident, unmeasured mechanism — the exact thing it exists to prevent)
+
+- **Finding:** Code review returned **CLEAN**, no vetoes, five callouts. C1 is the one worth
+  keeping: RP-2 recorded the sync `[Execute]` as green because the static renderer "wraps
+  both shapes in `Task<>` so they converge." **They never converge** — a non-`Task`
+  `[Execute]` is an NF0102 *error* and is skipped before any delegate is built, so the method
+  never reached the renderer. The fixture didn't notice either, because the shared assert
+  helper discards the generator-diagnostic element and checks only the output compilation.
+  C2 was a live consumer-visible regression this plan introduced: `MethodInfo.ReturnType` is
+  NF0102's message argument, so `[Execute] public static Payload Run(…)` began reporting
+  ``not 'global::MyApp.Payload'`` — unpinned, because the existing fixture returns `string`,
+  which renders identically under both formats.
+- **Decision:** Amend — C2 fixed and pinned (RP-7, sole coverage); `_DoWorkSync` removed and
+  its false mechanism deleted rather than reworded, since the true statement is *narrower*
+  (the non-`Task` line is dead on the `[Execute]` path; reachability via non-`Task` interface
+  methods is an **open question**). C3's terminology corrected in four places — `ToString()`
+  is namespace-qualified *without* `global::`, not "minimally qualified," and the difference
+  is load-bearing: a bare `Payload` would have bound *correctly*. C4 doc fixed; C5's wrong
+  authority struck through rather than swapped. Unit 762 → 763. **Plan Done.**
+- **Follow-up:** [reviews/011-code-review.md](./reviews/011-code-review.md). Worth keeping:
+  this is the arc's signature failure mode — a confident sentence with no run behind it —
+  found *inside the red-proof log*, whose entire purpose is to stop that. Fifth instance in
+  the arc, first located in a log rather than a test. The tell is unchanged and now sharper:
+  a **causal explanation of a measurement, written without measuring the explanation**. Also
+  carried to Step 7: the reviewer asked the close-out to *confirm* rather than inherit the
+  judgement that this emission change needs no Design-project update.
+
+### 2026-08-31 — PHASE-011 (gate round 1: a guard that could not fail, and four green sabotages that were each the finding)
+
+- **Finding:** The gate returned **2 must-cover**, no vetoes. M1: the event-preservation
+  guard was **vacuous and a duplicate of the class-factory guard** — that renderer emits
+  into `namespace {SanitizeNamespace(assemblyName)}`, not the consumer's namespace, so both
+  decoys were unreachable; and its anti-vacuity assertion matched the *class-factory* output
+  for the same type, so it would have stayed green if the preservation renderer stopped
+  emitting entirely. M2: all four tests carried `Regression guard` in their XML, including
+  the two measured as catching CS0738 and CS0029, while the plan's Test Evidence claimed the
+  split had been made there — the record was wrong on the one bullet whose entire content is
+  accuracy of the record.
+- **Decision:** Amend — both must-cover closed, S1 attempted and declared unmeasured, four
+  tech-debt accuracy defects fixed in place. The preservation guard is now labeled a **smoke
+  test**: RP-3…RP-6 established it cannot catch a consumer-type mis-binding at all, because
+  `DtoConstructorRegistry.Register<T>`/`PreserveType<T>` carry **no type constraint**, so a
+  wrong binding compiles. That leg's real coverage is `EventPreservationDiscoveryTests`.
+- **Follow-up:** [reviews/011-test-review.md](./reviews/011-test-review.md);
+  [reviews/011-redproof.log](./reviews/011-redproof.log) RP-2…RP-6. Worth keeping: **five
+  sabotages this round, four green against prediction, and none of them a bad sabotage.**
+  Each green was the finding — the wrong bucket, the undiscovered event, the missing
+  constraint. Stopping at the first green would have shipped a fourth "guard" whose label
+  implied coverage it could never provide. The parallel code review **failed** (stalled with
+  no output) and is being relaunched against the corrected state.
+
+### 2026-08-31 — PHASE-011 (the "regression guard" row was hiding a live wrong-type binding, and the prediction that it wouldn't was mine)
+
+- **Finding:** Row 012 was queued as cloning a guard across four legs that pre-flight
+  predicted were already correct — the `global::` strip that caused the relay bug is
+  relay-only. **All four reddened.** The premise was right and the conclusion wrong: the
+  other legs never *asked* for qualification. `FactoryGenerator.Types.cs:696` and `:706`
+  took delegate and method return types via `ITypeSymbol.ToString()`, which renders a
+  **minimally qualified** name, while `:736` three lines below already used
+  `FullyQualifiedFormat`. A consumer type therefore bound to a shadowing decoy — CS0029 on
+  the static leg, CS0738 on the interface leg. Same defect class PHASE-008 fixed on the
+  relay leg, reached by the opposite route: there a strip removed qualification, here it was
+  never requested.
+- **Decision:** Amend — both return-type assignments qualified (A1). Row 011's own item
+  resolved by **deleting** `FactoryEventHandlerRegistry.Clear()` rather than documenting it:
+  it was `internal`, uncalled, and its stated rationale (a single-threaded host) describes a
+  caller that cannot exist, since `internal` limits reach to this repo's test projects plus
+  AspNetCore. The BCL-token half of the fixture — 128 bare occurrences across four renderers,
+  plus the discovery that no renderer injects `using System;` — was **removed and queued as
+  row 013** (A2/A3) rather than swept in at arc-end.
+- **Index changes:** 011 now points at the plan; 012 `Retired` into it; 013 added as Draft.
+- **Follow-up:** [plans/011-hardening.md](./plans/011-hardening.md),
+  [reviews/011-redproof.log](./reviews/011-redproof.log). Sixth wrong prediction in this arc
+  and the most valuable: it was written into the plan's Notes *specifically so the run could
+  kill it*, and it did. Worth keeping — the failure mode here is not "I didn't check" but "I
+  checked one mechanism and generalised from it." Pre-flight verified the strip was
+  relay-only and stopped, without asking whether the other legs qualified by some *other*
+  route. Reading one line further in the same method would have shown `:736` doing it
+  correctly next to `:696` doing it wrong.
 
 ### 2026-08-27 — PHASE-008 (gate round 1: the plan's own fix had introduced a silent-drop regression, and only a code read caught it)
 

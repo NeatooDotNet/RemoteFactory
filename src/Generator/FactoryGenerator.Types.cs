@@ -20,7 +20,17 @@ public partial class Factory
 	/// FullyQualifiedFormat with nullable reference type annotations preserved.
 	/// FullyQualifiedFormat alone strips inner nullable annotations (e.g., List&lt;string?&gt; becomes List&lt;string&gt;).
 	/// This format adds IncludeNullableReferenceTypeModifier so inner nullable annotations are retained.
-	/// Used for property type extraction where nullable generic type arguments must survive round-trip.
+	/// Used for property type extraction where nullable generic type arguments must survive
+	/// round-trip, AND — since PHASE-011 — for method and delegate <b>return</b> types, which
+	/// are emitted into generated code in a consumer's namespace and so must carry
+	/// <c>global::</c>. Widening or narrowing this format therefore affects emission for every
+	/// <c>[Factory]</c> type, not just ordinal property extraction.
+	/// <para>
+	/// Note it must stay the <c>WithNullable</c> variant rather than plain
+	/// <c>FullyQualifiedFormat</c>: <c>ITypeSymbol.ToString()</c>, which the return-type path
+	/// used before, already carried nullable annotations, so the plain format would silently
+	/// drop them.
+	/// </para>
 	/// </summary>
 	private static readonly SymbolDisplayFormat FullyQualifiedFormatWithNullable =
 		SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
@@ -693,7 +703,25 @@ public partial class Factory
 			this.IsRemote = otherAttributes.Any(a => a == "Remote");
 			this.IsInternal = methodSymbol.DeclaredAccessibility != Accessibility.Public;
 
-			this.ReturnType = methodSymbol.ReturnType.ToString();
+			// FullyQualifiedFormatWithNullable, not ToString(). ITypeSymbol.ToString() renders a
+			// NAMESPACE-QUALIFIED name WITHOUT the global:: prefix -- "TestNamespace.Payload",
+			// not bare "Payload" (that would be SymbolDisplayFormat.MinimallyQualifiedFormat,
+			// which is NOT what this was). The distinction is load-bearing for the very defect
+			// below: a bare "Payload" emitted inside namespace TestNamespace would bind to the
+			// CORRECT type and no CS0029 could occur. It is the namespace-qualified-but-
+			// unrooted form that binds to TestNamespace.TestNamespace.Payload. Corrected at the
+			// PHASE-011 code review (C3), which noted this comment is exactly what the next
+			// author will use to judge whether some other ToString() site is safe.
+			//
+			// This value is emitted straight into generated code
+			// that lives in the consumer's own namespace — so a consumer nested namespace
+			// shadowing the first segment bound it to the wrong type. Measured (PHASE-011): a
+			// return type of TestNamespace.Payload bound to TestNamespace.TestNamespace.Payload
+			// and the generated file failed with CS0029 on the static leg and CS0738 on the
+			// interface leg. Same defect class the relay leg carried until PHASE-008, reached
+			// by a different route — there the transform stripped global::, here it was never
+			// asked for. The constructor case three lines below already did this correctly.
+			this.ReturnType = methodSymbol.ReturnType.ToDisplayString(FullyQualifiedFormatWithNullable);
 			this.IsNullable = methodSymbol.ReturnType.NullableAnnotation == NullableAnnotation.Annotated;
 
 
@@ -703,7 +731,7 @@ public partial class Factory
 				if (returnTypeSymbol.IsGenericType)
 				{
 					this.IsNullable = returnTypeSymbol.TypeArguments.Any(t => t.NullableAnnotation == NullableAnnotation.Annotated);
-					this.ReturnType = returnTypeSymbol.TypeArguments.First().ToString();
+					this.ReturnType = returnTypeSymbol.TypeArguments.First().ToDisplayString(FullyQualifiedFormatWithNullable);
 				}
 			}
 

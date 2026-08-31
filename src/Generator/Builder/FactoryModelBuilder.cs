@@ -18,6 +18,26 @@ namespace Neatoo.RemoteFactory.Generator.Builder;
 internal static class FactoryModelBuilder
 {
     /// <summary>
+    /// Renders a model type name for a DIAGNOSTIC MESSAGE — consumer-facing prose, not
+    /// emitted code.
+    /// </summary>
+    /// <remarks>
+    /// Model type names are <c>global::</c>-qualified because their primary job is to be
+    /// emitted into generated source in a consumer's namespace, where an unqualified token
+    /// can bind to the wrong type (PHASE-011 A1). A build-output message wants the readable
+    /// form. This is the same split <c>FactoryGenerator.RelayHandler.cs</c> already makes,
+    /// from the other direction: it normalises for keys and messages and re-qualifies at the
+    /// emission site.
+    /// <para>
+    /// Replaces every occurrence rather than only a leading prefix, so a constructed generic
+    /// reads as <c>Task&lt;MyApp.Payload&gt;</c> rather than
+    /// <c>Task&lt;global::MyApp.Payload&gt;</c>.
+    /// </para>
+    /// </remarks>
+    private static string ForDiagnosticMessage(string? returnType)
+        => returnType?.Replace("global::", "") ?? "void";
+
+    /// <summary>
     /// Builds a FactoryGenerationUnit from TypeInfo.
     /// </summary>
     public static FactoryGenerationUnit Build(TypeInfo typeInfo)
@@ -76,7 +96,14 @@ internal static class FactoryModelBuilder
                         method.MethodTextSpanStart,
                         method.MethodTextSpanLength,
                         method.Name,
-                        method.ReturnType ?? "void"));
+                        // Stripped for the MESSAGE only. ReturnType is global::-qualified
+                        // because it is emitted into generated code (PHASE-011 A1), but this
+                        // string is shown to a consumer in their build output, where
+                        // "not 'global::MyApp.Payload'" is noise. The repo's precedent is the
+                        // same split: FactoryGenerator.RelayHandler.cs strips the prefix for
+                        // its dedupe key and diagnostic arguments and re-applies it at the
+                        // emission site. Caught by the PHASE-011 code review (C2).
+                        ForDiagnosticMessage(method.ReturnType)));
                     continue; // Skip this method - don't generate code for it
                 }
 
@@ -195,7 +222,14 @@ internal static class FactoryModelBuilder
                         method.MethodTextSpanStart,
                         method.MethodTextSpanLength,
                         method.Name,
-                        method.ReturnType ?? "void"));
+                        // Stripped for the MESSAGE only. ReturnType is global::-qualified
+                        // because it is emitted into generated code (PHASE-011 A1), but this
+                        // string is shown to a consumer in their build output, where
+                        // "not 'global::MyApp.Payload'" is noise. The repo's precedent is the
+                        // same split: FactoryGenerator.RelayHandler.cs strips the prefix for
+                        // its dedupe key and diagnostic arguments and re-applies it at the
+                        // emission site. Caught by the PHASE-011 code review (C2).
+                        ForDiagnosticMessage(method.ReturnType)));
                     continue; // Skip this method - don't generate code for it
                 }
 

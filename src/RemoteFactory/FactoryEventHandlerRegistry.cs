@@ -108,25 +108,25 @@ public static class FactoryEventHandlerRegistry
         }
     }
 
-    /// <summary>
-    /// Clears all registrations.
-    /// </summary>
-    /// <remarks>
-    /// <b>Not a test-isolation escape hatch — do not call it from a test.</b> This registry is
-    /// process-wide static and xUnit runs test classes in parallel, so clearing it strips
-    /// registrations out from under whatever else is mid-run. Measured, not theorised
-    /// (PHASE-008): a single test calling this turned
-    /// <c>FactoryEntryCallTests.DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress</c>
-    /// red, a test that passes on its own.
-    /// <para>
-    /// The isolation the suite actually relies on needs no teardown: entries are keyed by
-    /// <c>(event type, handler class type)</c>, so a test that declares its own event type
-    /// cannot collide with another's. Do that instead. The method stays for a single-threaded
-    /// host that genuinely needs to reset the process, and is uncalled in this repo.
-    /// </para>
-    /// </remarks>
-    internal static void Clear()
-    {
-        _handlers.Clear();
-    }
+    // THERE IS NO Clear(). That is deliberate, and removing it was the fix.
+    //
+    // A Clear() existed here until PHASE-011. It was internal, uncalled, and documented as
+    // "not a test-isolation escape hatch — do not call it from a test," because this registry
+    // is process-wide static and xUnit runs test classes in parallel: clearing it strips
+    // registrations out from under whatever else is mid-run. That was measured, not theorised
+    // (PHASE-008) — one test calling it turned
+    // FactoryEntryCallTests.DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress
+    // red, a test that passes on its own.
+    //
+    // Its stated justification was a single-threaded host needing to reset the process. That
+    // caller cannot exist: the member was `internal`, so the only assemblies able to reach it
+    // were this repo's own test projects and Neatoo.RemoteFactory.AspNetCore. In other words
+    // its entire reachable audience was the audience the doc comment forbade, which is why a
+    // comment was the wrong mitigation and deletion is the right one.
+    //
+    // If you are here because you want per-test isolation: you do not need it. Entries are
+    // keyed by (event type, handler class type) — see RegisterHandler — so a test that
+    // declares its own event type cannot collide with another test's, no teardown required.
+    // That property is pinned by
+    // FactoryEventPhaseSchedulerConcurrencyTests.RegistryEntriesAreKeyedByEventType_SoPerTestEventTypesAreSufficientIsolation.
 }
