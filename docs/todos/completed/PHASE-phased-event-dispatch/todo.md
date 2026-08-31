@@ -2,7 +2,7 @@
 
 **ID:** PHASE
 **Type:** Enhancement
-**Status:** In Progress
+**Status:** Complete
 **Priority:** High
 **Created:** 2026-08-14
 **Last Updated:** 2026-08-31
@@ -955,12 +955,17 @@ inside plans 007, 008 and 011, which is a large part of why those three grew as 
   direction. Partially mitigated in substance, not in record: 008's test-review gate caught
   the canonical-declaration silent-drop, and PHASE-011's code review independently re-derived
   the emission-site consumer set. Carried to Follow-on.
+- **Step 8 retro — skipped by user direction (2026-08-31).** The numbers it would have carried
+  are already on the record: 13 plans issued against a cap of 13, and every plan after 007
+  originating in a reviewer finding rather than in the Goal. That pattern is the reason the
+  0.9.0 conversion happened mid-arc, and it is stated in the conversion commit and the Punchlist
+  note rather than restated here.
 
 ---
 
 ## Sibling Todos
 
-- [ ] [RFEF — RemoteFactory.EntityFrameworkCore, declarative factory transactions](../RFEF-factory-transactions/todo.md)
+- [ ] [RFEF — RemoteFactory.EntityFrameworkCore, declarative factory transactions](../../RFEF-factory-transactions/todo.md)
   — surfaced 2026-08-14 while discussing this todo's target consumer code (per-method
   begin/commit boilerplate); doesn't advance PHASE's goal (persistence stays out of this
   framework arc) but builds directly on PHASE-003's entry-call tracking and PHASE-004's

@@ -7,10 +7,10 @@ abandonment. Move rows to the Completed section together with the folder move.
 
 | ID | Todo | Created | Location |
 |----|------|---------|----------|
-| PHASE | Phased factory-event dispatch | 2026-08-14 | [PHASE-phased-event-dispatch](./PHASE-phased-event-dispatch/todo.md) |
 | TRIM | DTO trimming preservation gaps | 2026-07-06 | [TRIM-dto-trimming-preservation-gaps](./TRIM-dto-trimming-preservation-gaps/todo.md) |
 
 ## Completed
 
 | ID | Todo | Completed | Location |
 |----|------|-----------|----------|
+| PHASE | Phased factory-event dispatch | 2026-08-31 | [PHASE-phased-event-dispatch](./completed/PHASE-phased-event-dispatch/todo.md) |
