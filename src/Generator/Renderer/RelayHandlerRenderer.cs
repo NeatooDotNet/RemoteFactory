@@ -39,6 +39,16 @@ internal static class RelayHandlerRenderer
         // global:: added here at the same time. Its absence was a latent bug: a
         // consumer namespace that shadows the first segment of this one would bind
         // the attribute argument to the wrong type.
+        //
+        // The ATTRIBUTE NAME itself (Neatoo.RemoteFactory.NeatooFactoryRegistrar) stays
+        // unqualified, and is the one type-bearing token in this file recorded as immune
+        // rather than qualified. Assembly-level attributes bind at compilation-unit scope,
+        // outside any namespace declaration, where a global-namespace declaration beats a
+        // using-imported one and no consumer namespace is in scope to shadow it — unlike
+        // the registration body, which is emitted inside the consumer's own namespace.
+        // Noted at the PHASE-008 gate, which also observed the consequence for tests: the
+        // ShadowingRelayHandlerSource fixture's TestNamespace.Neatoo decoy cannot reach
+        // this line, so it constrains nothing here.
         sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{model.Namespace}.{RegistrarHolderPrefix}{model.ClassName}))]");
         sb.AppendLine();
 

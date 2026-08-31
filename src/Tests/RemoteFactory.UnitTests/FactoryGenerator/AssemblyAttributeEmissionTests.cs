@@ -979,11 +979,15 @@ namespace TestNamespace.Neatoo
     /// negatively, because the positive form contains the bare form as a substring.
     /// </summary>
     /// <remarks>
-    /// The one deliberate exception is <c>typeof({className})</c>, which stays bare and must:
-    /// the body is emitted inside the user's own namespace AND inside their own partial class,
-    /// where the only name that could shadow the enclosing class is a member of the same name —
-    /// CS0542. Immune by construction, and recorded in the renderer rather than qualified
-    /// reflexively.
+    /// Two deliberate exceptions, both recorded in the renderer rather than qualified
+    /// reflexively. <c>typeof({className})</c> stays bare because the body is emitted inside
+    /// the user's own namespace AND inside their own partial class, where the only name that
+    /// could shadow the enclosing class is a member of the same name — CS0542. And the
+    /// assembly attribute's own NAME stays bare because assembly-level attributes bind at
+    /// compilation-unit scope, outside any namespace, where nothing consumer-declared is in
+    /// scope to shadow it. This test's scope is therefore the registration BODY, which is the
+    /// only part emitted inside the consumer's namespace. (Both exceptions named by the
+    /// PHASE-008 gate; the second was previously unstated.)
     /// </remarks>
     [Fact]
     public void RelayHandler_EveryEmittedTypeToken_IsGlobalQualified()
@@ -1048,6 +1052,70 @@ namespace TestNamespace
     }
 }
 ";
+
+    /// <summary>
+    /// A partial handler class where only the LATER-declared partial carries the attribute.
+    /// </summary>
+    /// <remarks>
+    /// The shape that separates "one model per symbol" from "one model per attributed
+    /// declaration": <c>ForAttributeWithMetadataName</c> only ever yields the attributed
+    /// node, so a canonical choice made across <i>all</i> declarations can select one the
+    /// transform is never handed.
+    /// </remarks>
+    private const string LateAttributedPartialRelayHandlerSource = @"
+using Neatoo.RemoteFactory;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    public record LateEvent(int Id) : FactoryEventBase;
+
+    public static partial class LateHandlers
+    {
+        internal static Task Unrelated()
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    [FactoryEventHandler<LateEvent>]
+    public static partial class LateHandlers
+    {
+        internal static Task HandleLate(LateEvent evt)
+        {
+            return Task.CompletedTask;
+        }
+    }
+}
+";
+
+    /// <summary>
+    /// A handler class whose attribute sits on a partial declared after an unattributed one
+    /// still registers.
+    /// </summary>
+    /// <remarks>
+    /// Guards the failure mode the split-partial fix could introduce, and which would be
+    /// strictly worse than the CS8785 it replaced: CS8785 is loud, whereas selecting an
+    /// unattributed declaration as canonical emits nothing and reports nothing, so the
+    /// handler simply never runs at runtime. The canonical choice must therefore range over
+    /// the ATTRIBUTED declarations only — the ones the pipeline actually yields.
+    /// </remarks>
+    [Fact]
+    public void RelayHandler_AttributeOnALaterPartialOnly_StillRegistersTheHandler()
+    {
+        var (_, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(LateAttributedPartialRelayHandlerSource);
+
+        var handlerFiles = runResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("LateHandlers"))
+            .ToList();
+
+        Assert.Single(handlerFiles);
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+        var generatedSource = handlerFiles[0].GetText().ToString();
+        Assert.Equal(1, CountOf(generatedSource, "RegisterHandler<global::TestNamespace.LateEvent>"));
+    }
 
     /// <summary>
     /// Attributes split across partial declarations generate valid output exactly once.

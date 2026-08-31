@@ -238,6 +238,16 @@ public static class DiagnosticTestHelper
     /// Errors only. Generator fixtures are terse by design and trip warnings (unused usings,
     /// missing XML docs) that say nothing about whether the fixture exercises what it claims.
     /// </para>
+    /// <para>
+    /// <b>Deliberately not called from <see cref="RunGenerator"/>.</b> That overload is the
+    /// entry point behind every diagnostic test, and those feed source that is *supposed* to
+    /// carry errors — NF0101's non-partial class, NF0105's <c>[Remote] public</c>, the
+    /// undefined-phase casts. Guarding there would fail the tests whose whole subject is bad
+    /// input. <c>RunGeneratorTracked</c> is different: its callers are caching guards whose
+    /// fixtures must be healthy for the comparison to mean anything, which is why the gap
+    /// mattered there and not here. (PHASE-008 gate, should-cover — recorded rather than
+    /// closed.)
+    /// </para>
     /// </remarks>
     /// <param name="compilation">The input compilation, before the generator runs.</param>
     /// <param name="what">Names which input failed, since the tracked run checks two.</param>

@@ -152,6 +152,141 @@ public class FactoryEventPhaseSchedulerConcurrencyTests
     }
 
     /// <summary>
+    /// A second flow opening an entry call <i>while the first flow's exit drain is running</i>
+    /// takes the shared depth back above zero, so the first flow's exit neither clears nor
+    /// strands its work — the second flow's exit drains what is left.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the interleaving the harness exists for, and the one the arc could not reach
+    /// before it. The repo's only other two-flow entry-state pin
+    /// (<c>FactoryEntryCallTests.ConcurrentFlowsInOneScope_ShareEntryState_FailedFlowsWorkRidesTheSurvivingDrain</c>)
+    /// is fully sequential — both flows begin and end with no drain in flight — so the
+    /// depth transition it exercises never overlaps a drain. Here flow B's
+    /// <c>BeginEntryCall</c> lands while flow A is parked inside its own exit drain, which
+    /// is the state the per-scope granularity actually produces in a Blazor Server circuit
+    /// or a reused Logical-mode scope.
+    /// </para>
+    /// <para>
+    /// <b>What this pins, stated from measurement rather than from intent.</b> It was
+    /// drafted to pin the deferred clear — "A's exit sees depth 2 → 1 and must not clear."
+    /// RP-10 sabotaged exactly that (clear at every depth, not only at zero) and this test
+    /// stayed <i>green</i>: A's drain is total, so by the time A's exit reaches the clear
+    /// the queue is already empty and clearing it is a no-op. RP-11 found what does hold it
+    /// down — releasing the depth to zero at A's exit instead of decrementing turns it red.
+    /// So this pins the <b>depth accounting across an in-flight drain</b>: B's
+    /// <c>BeginEntryCall</c> lands during A's drain, and A's exit must return the scope to
+    /// B's level rather than to "no entry call." The deferred clear itself stays pinned
+    /// where it is observable — the failure path, in
+    /// <c>FactoryEntryCallTests.ConcurrentFlowsInOneScope_ShareEntryState_FailedFlowsWorkRidesTheSurvivingDrain</c>.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task SecondFlowOpeningAnEntryCallDuringTheFirstFlowsExitDrain_DefersTheClearToTheSecondExit()
+    {
+        var scheduler = NewScheduler();
+        var log = new List<string>();
+        var rendezvous = new Rendezvous();
+
+        scheduler.BeginEntryCall();
+
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("a"), RaiseOptions.None,
+            async (_, _, _, _) =>
+            {
+                lock (log)
+                {
+                    log.Add("flow-a");
+                }
+
+                await rendezvous.ArriveAndWaitAsync();
+            });
+
+        var exitA = scheduler.EndEntryCallAsync(true);
+        await rendezvous.Arrived;
+
+        // Flow B opens while A's drain is parked. Depth was 1 (A holds it through its own
+        // drain); this takes it to 2.
+        scheduler.BeginEntryCall();
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "flow-b"));
+
+        rendezvous.Release();
+        await exitA;
+
+        // A's exit found depth 2 → 1, so it did not clear. B's dispatch was enqueued while
+        // A's drain was still looping, so the drain-until-empty loop took it — the work is
+        // done, not stranded, and nothing is left for a later call to inherit.
+        Assert.Equal(["flow-a", "flow-b"], log);
+        Assert.False(scheduler.HasPending);
+
+        // B still owns a depth level, so the scope is not yet between entry calls.
+        Assert.True(scheduler.IsEntryCallActive);
+
+        await scheduler.EndEntryCallAsync(true);
+
+        Assert.False(scheduler.IsEntryCallActive);
+        Assert.False(scheduler.HasPending);
+    }
+
+    /// <summary>
+    /// The same overlap, but the second flow's work arrives after the first flow's drain
+    /// has finished: it survives to the second flow's own exit rather than being discarded.
+    /// </summary>
+    /// <remarks>
+    /// The complement of the test above: there B's dispatch is swept by A's still-running
+    /// drain, here nothing is queued until A's drain is complete, so B's own exit is what
+    /// has to drain it.
+    /// <para>
+    /// <b>This too was drafted with a claim RP-10 disproved</b> — "the dispatch can only
+    /// survive if A's exit left the queue alone." It cannot: A's exit runs before B
+    /// enqueues anything, so there is nothing for it to clear either way, and the
+    /// clear-at-every-depth sabotage left this green. What RP-11 showed it does pin is that
+    /// B's exit still finds a live entry level of its own to close, and drains at it.
+    /// Both halves of this pair are depth-accounting pins; neither is a clear pin. Left
+    /// stated rather than quietly reworded, because the arc's recurring failure is exactly
+    /// a confident sentence about what a test covers with no run behind it.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task SecondFlowsWorkEnqueuedAfterTheFirstFlowsDrain_SurvivesToTheSecondFlowsExit()
+    {
+        var scheduler = NewScheduler();
+        var log = new List<string>();
+        var rendezvous = new Rendezvous();
+
+        scheduler.BeginEntryCall();
+
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("a"), RaiseOptions.None,
+            async (_, _, _, _) =>
+            {
+                lock (log)
+                {
+                    log.Add("flow-a");
+                }
+
+                await rendezvous.ArriveAndWaitAsync();
+            });
+
+        var exitA = scheduler.EndEntryCallAsync(true);
+        await rendezvous.Arrived;
+
+        scheduler.BeginEntryCall();
+
+        rendezvous.Release();
+        await exitA;
+
+        // A's drain has finished and A's exit has run. Only now does flow B queue anything.
+        Assert.False(scheduler.HasPending);
+        scheduler.Enqueue(DispatchPhase.AfterCommit, new PhaseTestEvent("b"), RaiseOptions.None, Recording(log, "flow-b"));
+        Assert.True(scheduler.HasPending);
+
+        await scheduler.EndEntryCallAsync(true);
+
+        Assert.Equal(["flow-a", "flow-b"], log);
+        Assert.False(scheduler.HasPending);
+        Assert.False(scheduler.IsEntryCallActive);
+    }
+
+    /// <summary>
     /// The same window, one phase earlier: work enqueued mid-drain into a phase whose drain
     /// point has already passed still joins the running drain.
     /// </summary>
@@ -441,6 +576,15 @@ public class FactoryEventPhaseSchedulerConcurrencyTests
             DispatchPhase.AfterCommit,
             Recording(log, "b"));
 
+        // The other half of the key: same event type, DIFFERENT handler class. Without
+        // this the test varies only the event type, and a registry keyed by event type
+        // alone would satisfy it — which is precisely the implementation these remarks
+        // say would be wrong. (PHASE-008 gate, should-cover.)
+        FactoryEventHandlerRegistry.RegisterHandler<RegistryIsolationProbeEventA>(
+            typeof(RegistryIsolationSecondHandler),
+            DispatchPhase.AfterCommit,
+            Recording(log, "a-second-handler"));
+
         // Same handler class, two event types: each keyed separately, neither displacing
         // the other. A shared-key registry would have let the second registration win.
         var forA = FactoryEventHandlerRegistry.GetHandlers(typeof(RegistryIsolationProbeEventA));
@@ -448,7 +592,9 @@ public class FactoryEventPhaseSchedulerConcurrencyTests
 
         Assert.NotNull(forA);
         Assert.NotNull(forB);
-        Assert.Single(forA);
+
+        // Two handler classes under one event type, and the sibling event type unaffected.
+        Assert.Equal(2, forA.Count);
         Assert.Single(forB);
 
         // And an event type no test registered resolves to nothing rather than to a
@@ -456,6 +602,9 @@ public class FactoryEventPhaseSchedulerConcurrencyTests
         // sufficient isolation without any teardown at all.
         Assert.Null(FactoryEventHandlerRegistry.GetHandlers(typeof(RegistryIsolationProbeEventNeverRegistered)));
     }
+
+    /// <summary>A second handler class, so the dedupe key's handler half is exercised.</summary>
+    private sealed class RegistryIsolationSecondHandler;
 
     private sealed record RegistryIsolationProbeEventA : FactoryEventBase;
 

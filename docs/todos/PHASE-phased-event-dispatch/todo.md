@@ -97,13 +97,41 @@ exposes drain points.
 | 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
 | 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
 | 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
-| 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Draft |
+| 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done |
 | 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired |
 | 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired |
+| 011 | *(not yet drafted)* | Mechanical guard against `FactoryEventHandlerRegistry.Clear()` reaching the test suite. PHASE-008 measured that one test calling it turns `FactoryEntryCallTests.DrainedHandlerInvokingAFactory_NestsWithoutDrainingOrClearingTheDrainInProgress` red — the registry is process-wide static and xUnit runs classes in parallel. The XML-doc correction on `Clear()` was the right disposition for 008 (pinning it would have meant weakening a sacred test), but documentation is the accepted-risk position and nothing stops the next author repeating it. Candidate remedies: an xUnit test-collection attribute, or an analyzer-style guard (008 gate T1) | Draft |
+| 012 | *(not yet drafted)* | Namespace-shadowing compile tests for the other four renderers. `ClassFactoryRenderer:58`, `InterfaceFactoryRenderer:53`, `StaticFactoryRenderer:45`, and `EventPreservationRenderer:71` all emit the same bare assembly-attribute token the relay leg carried, and none has a shadowing test. The 008 gate called `RelayHandler_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` "the single best artifact this plan produced" and worth cloning per renderer. Also carries the absurd-tier note that `sp.GetRequiredService<T>()` is emitted unqualified and relies on the injected `using`, so a consumer's own extension method in their namespace would win on lookup (008 gate T2) | Draft |
 
 ---
 
 ## Discovery Log
+
+### 2026-08-27 — PHASE-008 (gate round 1: the plan's own fix had introduced a silent-drop regression, and only a code read caught it)
+
+- **Finding:** The gate returned **2 must-cover**, both in code this plan introduced. M1 is
+  the one that justifies the step: `IsCanonicalDeclaration` — the fix for the split-partial
+  CS8785 — chose its canonical declaration from *all* of `symbol.DeclaringSyntaxReferences`,
+  while `ForAttributeWithMetadataName` only ever yields **attributed** nodes. A partial class
+  carrying its attribute on a later declaration therefore matched nothing and emitted
+  **nothing, with no diagnostic** — strictly worse than the loud CS8785 it replaced. Found by
+  reading code, with nothing run, in the plan that had declined plan review. M2: no test drove
+  two overlapping *entry calls*, though the Acceptance bullet claimed entry-state semantics
+  and the evidence row was ticked.
+- **Decision:** Amend — both must-cover fixed and all 5 should-cover plus the nice-to-have
+  closed; the two tech-debt items queued as new rows **011** and **012** rather than absorbed.
+  Unit 755 → 758.
+- **Follow-up:** [reviews/008-test-review.md](./reviews/008-test-review.md);
+  [reviews/008-redproof.log](./reviews/008-redproof.log) RP-8-rerun and RP-9…RP-11. Two
+  lessons, both about how evidence was *scoped* rather than whether it existed. **RP-8 had
+  been run filtered to the class under test**, which answers "does my test go red" while
+  declining to answer "was it already covered" — re-run at full scope it turned 16 red,
+  including two pre-existing pins the reviewer had named from a code read, so the new test is
+  a second witness. And **RP-10 disproved the rationale the M2 closures were written with**:
+  flow A's drain is total, so the queue is already empty when its exit clear runs and the
+  deferred clear is unobservable on the success path. RP-11 then established what the pair
+  actually pins — depth accounting across an in-flight drain. Tests kept, remarks rewritten to
+  the measured answer, disproved claims left visible.
 
 ### 2026-08-27 — PHASE-008 (three routed remedies, two of them wrong — the routing said what to do, the measurement said what was true)
 

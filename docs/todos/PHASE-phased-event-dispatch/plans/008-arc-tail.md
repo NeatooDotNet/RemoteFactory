@@ -3,7 +3,7 @@
 **Plan #:** 008
 **Date:** 2026-08-27
 **Related Todo:** [../todo.md](../todo.md)
-**Status:** In Progress (implementation complete; Step 5 gate pending)
+**Status:** Done
 **Last Updated:** 2026-08-27
 **Plan-review opt-in:** No (user direction 2026-08-27: the arc's plan-and-review ceremony is the cost being cut. The harness would have been the strongest candidate in the arc, so the mitigation is explicit — cheap work lands first, the harness is the last thing implemented, and the mandatory Step 5 gate still runs)
 **Code-review opt-in:** Yes (generator emission, the scheduler's lock discipline, and one pinned consumer-facing log message)
@@ -317,12 +317,14 @@ solutions built explicitly, per the PHASE-005 RP-0 trap. Logs: `reviews/008-buil
 | Shadowing consumer namespace still binds correctly | `[unit]` | `FactoryGenerator.AssemblyAttributeEmissionTests.RelayHandler_ConsumerNamespaceShadowsEveryUnqualifiedRoute_OutputStillCompiles` | ✓ |
 | Every emitted type token qualified (negative pin) | `[unit]` | `FactoryGenerator.AssemblyAttributeEmissionTests.RelayHandler_EveryEmittedTypeToken_IsGlobalQualified` | ✓ |
 | Other legs qualified or recorded immune | `[unit]` | Same test — its `typeof(className)` exception is asserted by omission and the reason is stated in `RelayHandlerRenderer` | ✓ |
-| Partial-declaration behavior pinned to what the generator does | `[unit]` | `FactoryGenerator.AssemblyAttributeEmissionTests.RelayHandler_AttributesSplitAcrossPartials_EmitOneFileWithEachRegistrationOnce` | ✓ |
+| Partial-declaration behavior pinned to what the generator does | `[unit]` | `FactoryGenerator.AssemblyAttributeEmissionTests.RelayHandler_AttributesSplitAcrossPartials_EmitOneFileWithEachRegistrationOnce` and `…RelayHandler_AttributeOnALaterPartialOnly_StillRegistersTheHandler`. The second was added at the gate and is the load-bearing one — the fix for the first shape had introduced a silent-drop regression in this one (RP-9) | ✓ |
 | Generator test with a CS error fails loudly | `[unit]` | `FactoryGenerator.Core.IncrementalCacheTests.RunGeneratorTracked_BaseFixtureDoesNotCompile_ThrowsNamingTheFixture` and `…RunGeneratorTracked_AppendedEditDoesNotCompile_ThrowsNamingTheEdit` | ✓ |
-| Two concurrent flows, deterministic interleaving | `[unit]` | `Internal.FactoryEventPhaseSchedulerConcurrencyTests.MidDrainEnqueueFromAnotherFlow_JoinsTheRunningDrain` and `…ConsumerDrainNestedInsideTheEntryDrain_DoesNotClearTheMidDrainMarkEarly` | ✓ |
-| The mid-drain enqueue window resolves to one pinned outcome | `[unit]` | `…MidDrainEnqueueFromAnotherFlow_JoinsTheRunningDrain` and `…MidDrainEnqueueIntoAnAlreadyPassedPhase_StillJoinsTheRunningDrain`. **Partial by design:** the discard branch needs a seam between the drain loop and `ClearAtExit` that does not exist from outside the class; recorded in the test's remarks, not silently dropped | ✓ (reachable branch) |
+| Two concurrent flows, deterministic interleaving | `[unit]` | `…SecondFlowOpeningAnEntryCallDuringTheFirstFlowsExitDrain_DefersTheClearToTheSecondExit` and `…SecondFlowsWorkEnqueuedAfterTheFirstFlowsDrain_SurvivesToTheSecondFlowsExit`, both added at the gate — the originally-cited tests never called `BeginEntryCall` twice (gate M2). **What they pin is not what they were drafted to pin:** RP-10 disproved the deferred-clear rationale, RP-11 established depth accounting across an in-flight drain. Second witnesses to the sequential `FactoryEntryCallTests` pins | ✓ |
+| The mid-drain enqueue window resolves to one pinned outcome | `[unit]` | `…MidDrainEnqueueFromAnotherFlow_JoinsTheRunningDrain` and `…MidDrainEnqueueIntoAnAlreadyPassedPhase_StillJoinsTheRunningDrain`. **Second witnesses, not sole coverage** — RP-8 re-run at full-suite scope reddened `DrainAsync_ReentrantEnqueueIntoAnAlreadyPassedPhase_StillRunsInThisDrain` and `DrainAsync_SweepsAnEarlierPhaseTheConsumerNeverDrained` too; the first of the pair is unmeasured. **Partial by design:** the discard branch needs a seam between the drain loop and `ClearAtExit` that does not exist from outside the class | ✓ (reachable branch) |
 | Re-entrant `Equals` has a defined, pinned outcome | `[unit]` | `…ReentrantEqualsThatAppendsMidScan_MissesTheCollapseButKeepsTheQueueIntact` and `…ReentrantEqualsThatEnqueuesAnIdenticalEntry_StillCollapsesToOnePendingDispatch` | ✓ |
-| Registry isolation enforceable, or accepted with the reason at the seam | `[unit]` | `…RegistryEntriesAreKeyedByEventType_SoPerTestEventTypesAreSufficientIsolation`, plus the correction written onto `FactoryEventHandlerRegistry.Clear()`'s XML. **The routed remedy was rejected on measured evidence** — see RP-6 | ✓ |
+| Registry isolation enforceable, or accepted with the reason at the seam | `[unit]` | `…RegistryEntriesAreKeyedByEventType_SoPerTestEventTypesAreSufficientIsolation` (both halves of the key exercised after gate S3), plus the correction on `FactoryEventHandlerRegistry.Clear()`'s XML. **The routed remedy was rejected on measured evidence** (RP-6); the residual risk is queued as row **011**. Test itself unmeasured — declared in the red-proof log | ✓ |
+| Generator test with a CS error fails loudly — scope | `[explicit-skip]` | Deliberately **not** extended to `RunGenerator`: diagnostic tests feed erroring source on purpose, so guarding there would fail the tests whose subject is bad input. Reason recorded on `AssertInputCompiles` rather than the bullet ticked against the broader wording (gate S4) | n/a |
+| `IsCanonicalDeclaration`'s ordering and cache-stability claims | `[explicit-skip]` | **Unpinned and stated as such** in the method's XML: every fixture is single-tree so only the span leg runs, and `IncrementalCacheTests`' fixture has no split partial. The cross-file usings-loss consequence is documented as benign *conditional on* every consumer-derived token staying `global::`-qualified (gate S5) | n/a |
 | Draining N dispatches allocates no per-dispatch LINQ chain | `[explicit-skip]` | Fixed rather than accepted: `HasPending` and `TryDequeueThrough` are hand-rolled scans. No behavior to assert; the existing FIFO/sweep/collapse pins prove semantics are unchanged, and RP-8 confirms the sweep is still discriminating after the rewrite | n/a |
 | Misfiled diagnostic test class | `[explicit-skip]` | `NF04xxFactoryEventHandlerTests.cs` → `NF05xxFactoryEventHandlerTests.cs` (git mv, class unchanged) | n/a |
 | Both solutions build; all suites green, totals only grow | `[explicit-skip]` | `reviews/008-build.log` (0 errors), `reviews/008-test.log` (six green summaries) | n/a |
@@ -330,6 +332,18 @@ solutions built explicitly, per the PHASE-005 RP-0 trap. Logs: `reviews/008-buil
 **No `MISSING` rows.** One row is explicitly partial (the discard branch) with the
 unreachability reason recorded rather than a coverage claim; one row records a routed
 remedy rejected on measurement rather than delivered as asked.
+
+**Three tests in this plan are unmeasured**, declared in full in the red-proof log rather
+than left to look proven: `MidDrainEnqueueFromAnotherFlow_JoinsTheRunningDrain`,
+`ReentrantEqualsThatAppendsMidScan_MissesTheCollapseButKeepsTheQueueIntact`, and
+`RegistryEntriesAreKeyedByEventType_SoPerTestEventTypesAreSufficientIsolation`. RP-5 is a
+disproof of a prediction, not a red-proof of what shipped.
+
+**Chartered-edit count correction:** the Constraints note and Current State say seven
+assertion sites. **Nine** were edited — the two extra are the framework-token sites
+amendment A2 added, which the pre-flight had not yet identified as a token class. Both are
+within the charter and the gate confirmed neither weakens its assertion (both were
+*strengthened*), but the enumeration was stale and is corrected here.
 
 ---
 
