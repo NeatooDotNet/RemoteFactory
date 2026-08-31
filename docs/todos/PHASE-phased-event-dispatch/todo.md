@@ -5,7 +5,10 @@
 **Status:** In Progress
 **Priority:** High
 **Created:** 2026-08-14
-**Last Updated:** 2026-08-14
+**Last Updated:** 2026-08-31
+**Arc branch:** `PHASE` — predates the `{id}-arc` default; the header wins.
+**Plan cap:** 13 issued / cap declared retroactively at 13 during the 0.9.0 conversion.
+Not a budget this todo was held to — see the Retro.
 
 **Origin:** External proposal from zTreatment LAND-002 —
 `zNeuropathy/zTreatmentLandingScreen/docs/proposals/2026-08-11-remotefactory-phased-event-dispatch.md`
@@ -28,7 +31,7 @@ exposes drain points.
 
 ## Acceptance Criteria
 
-- [ ] A handler registered `AfterCommit` runs after the entry factory call completes (works
+- [x] A handler registered `AfterCommit` runs after the entry factory call completes (works
       for both HTTP-dispatched `[Remote]` calls and direct server-side/local invocation),
       and cross-phase ordering is anchored **per drain point**: for work raised before a
       given drain point, all `Immediate` handlers complete before any `AfterFlush` handler,
@@ -39,9 +42,9 @@ exposes drain points.
       the interleave reachable; the original wording was "all `Immediate` handlers for the
       same save complete before any `AfterFlush` handler, which complete before any
       `AfterCommit` handler.")*
-- [ ] If the entry factory call throws, queued `AfterFlush`/`AfterCommit` handlers never
+- [x] If the entry factory call throws, queued `AfterFlush`/`AfterCommit` handlers never
       run — the queues are discarded.
-- [ ] An `AfterCommit` handler exception is logged (dedicated event id) and swallowed;
+- [x] An `AfterCommit` handler exception is logged (dedicated event id) and swallowed;
       remaining queued handlers still run. A handler-internal `OperationCanceledException`
       is swallowed the same way — the entry drain passes no token, so nothing may abort a
       succeeded call's post-completion work; only genuine cooperative cancellation (the
@@ -49,25 +52,49 @@ exposes drain points.
       *(Restated by PHASE-004, exercising the decision PHASE-003's code review C2
       delegated to it; the original wording was "`OperationCanceledException` still
       propagates.")*
-- [ ] Events raised *by* `AfterCommit` handlers still reach the client in the same HTTP
+- [x] Events raised *by* `AfterCommit` handlers still reach the client in the same HTTP
       response's relay batch.
-- [ ] `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` drains the AfterFlush queue at
+- [x] `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` drains the AfterFlush queue at
       the consumer's chosen point; AfterFlush handlers never drained by the consumer run at
       the AfterCommit point with a logged warning (fail-open).
-- [ ] An event raised outside any factory call with phase-registered handlers dispatches
+- [x] An event raised outside any factory call with phase-registered handlers dispatches
       immediately with a debug-level log (no throw, no silent drop).
-- [ ] Backward compatibility: handlers without a phase argument behave exactly as today —
+- [x] Backward compatibility: handlers without a phase argument behave exactly as today —
       the full existing test suite passes unmodified.
-- [ ] Opt-in same-event coalescing (added 2026-08-18, tracing the 2026-08-14 user
+- [x] Opt-in same-event coalescing (added 2026-08-18, tracing the 2026-08-14 user
       decision that queued PHASE-006): a handler that opts in on its attribute runs
       once per drain when the same `Equals`-identical event was raised N times during
       the entry call; without the flag, N raises still produce N dispatches; no
       collapse erases a fail-open 9007 obligation; the relay batch is unaffected.
-- [ ] Trimming safety preserved: phase registrations flow through the v1.7.0
+- [x] Trimming safety preserved: phase registrations flow through the v1.7.0
       forwarding-holder pattern; nothing new ships handler bodies to trimmed clients.
-- [ ] Design projects demonstrate phased handlers (source of truth updated); published
+- [x] Design projects demonstrate phased handlers (source of truth updated); published
       docs and the RemoteFactory skill document the phase contract, including that
       `Immediate` handlers observe staged (unflushed) state.
+
+*All ten checked 2026-08-31 during the 0.9.0 conversion, each traced to a named test before
+ticking — the criteria had gone unticked since 2026-08-14 while the arc ran on "queue empty."
+Evidence: AC-1 `RemoteCreate_AfterCommitHandlerRunsAfterTheEntryCallCompletes` +
+`EntryDrain_SweepsAfterFlushBeforeAfterCommit`; AC-2 `RemoteEntryFails_QueuedHandlersNeverRun`
++ `FailedCall_ThenSuccessfulCall_InTheSameServerScope_RunsOnlyTheSecond`; AC-3
+`ThrowingAfterCommitHandler_IsSwallowed_…` + `TokenCancelledAfterTheEntryCallSucceeds_DrainStillRuns`;
+AC-4 `EventsRaisedByAfterCommitHandlers_JoinTheSameResponsesRelayBatch`; AC-5
+`FactoryEventPhaseCoordinatorTests` incl. `DrainAsync_NeverDrainedWarning_TellsTheConsumerWhereToPutTheDrain`;
+AC-6 `FactoryEventsDispatcherPhaseTests` (`OutsideEntryEvent`) + the 9009 pins; AC-7 the full
+suite green with existing assertions unmodified; AC-8 `FactoryEventPhaseCoalescingTests`;
+AC-9 the registrar-holder pins + `RemoteFactory.TrimmingTests`; AC-10 PHASE-005, kept current
+through 007/008/011. The close-out audit traces these independently.*
+
+## Punchlist
+
+*(none — this todo predates the tier. Items that would have been punchlist rows were worked
+inside plans 007, 008 and 011, which is a large part of why those three grew as they did.)*
+
+## Dismissed
+
+- PHASE-011 · Bare BCL tokens + missing `using System;` injection in generated output (former row 013) · Serves no AC; not reachable — needs a consumer namespace literally named `System`, and `ImplicitUsings` (on by default) masks the injection gap.
+- PHASE-011 · `Types.cs:860` takes parameter types from source text (`ToFullString()`) · Serves no AC; no observed failure or live caller — works today because the generator copies the consumer's usings. Fragile, not broken.
+- PHASE-008 · Mechanical guard against `FactoryEventHandlerRegistry.Clear()` reaching the suite (former row 011 T1) · Superseded — PHASE-011 deleted the method, so there is nothing left to guard.
 
 ## Out of Scope
 
@@ -88,22 +115,21 @@ exposes drain points.
 
 ## Plan Index
 
-| # | File | Title | Status |
-|---|------|-------|--------|
-| 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Done |
-| 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Done |
-| 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done |
-| 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done |
-| 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done |
-| 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done |
-| 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done |
-| 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done |
-| 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired |
+| # | File | Title | Status | PR |
+|---|------|-------|--------|----|
+| 001 | [001-phase-model-and-queueing](./plans/001-phase-model-and-queueing.md) | DispatchPhase enum, registry phase, dispatcher queueing | Done | #79 |
+| 002 | [002-generator-phase-passthrough](./plans/002-generator-phase-passthrough.md) | Generator reads phase from attribute, threads to registration | Done | #81 |
+| 003 | [003-aftercommit-entry-call-drain](./plans/003-aftercommit-entry-call-drain.md) | Entry-call tracking in generated factories; AfterCommit drain | Done | #80 |
+| 004 | [004-afterflush-coordinator](./plans/004-afterflush-coordinator.md) | IFactoryEventPhaseCoordinator public API + fallback drain | Done | #82 |
+| 005 | [005-design-docs-skill](./plans/005-design-docs-skill.md) | Design projects, published docs, skill reference | Done | #83 |
+| 006 | [006-coalescing](./plans/006-coalescing.md) | Opt-in same-event coalescing (v2, queued per user) | Done | #84 |
+| 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done | #85 |
+| 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done | #86 |
+| 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired | — |
 
-| 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired |
-| 011 | [011-hardening](./plans/011-hardening.md) | Hardening (folds former row 012): remove `FactoryEventHandlerRegistry.Clear()` rather than document it; namespace-shadowing compile guards for the class, interface, static and event-preservation legs — which found a live wrong-type binding, not just a regression guard | Done |
-| 012 | *(folded)* | Namespace-shadowing guards for the other renderers — **Retired**, folded into PHASE-011 | Retired |
-| 013 | *(not yet drafted)* | Bare BCL tokens in generated output. PHASE-011 measured **128** unqualified occurrences of `Task`, `CancellationToken`, `Type`, `IServiceCollection`, `IServiceProvider`, `Exception` and `System.Diagnostics` across the four renderer files; a `namespace X.System` decoy reddens all four legs on CS0246/CS0234. Less severe than the consumer-type case 011 fixed — a shadowed BCL token fails loudly in the consumer's build rather than binding to the wrong type — but real, and too wide (assertion ratchet far beyond 008's nine sites) to sweep in at arc-end. **Carries a second finding:** no renderer injects `using System;` (only `RelayHandlerRenderer` injects any usings at all), so the class, interface and event-preservation legs depend on the *consumer's* file having it — omit it and the generated factory does not compile. Measurement in [reviews/011-redproof.log](./reviews/011-redproof.log) (011 A2/A3) | Draft |
+| 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired | — |
+| 011 | [011-hardening](./plans/011-hardening.md) | Hardening (folds former row 012): remove `FactoryEventHandlerRegistry.Clear()` rather than document it; namespace-shadowing compile guards for the class, interface, static and event-preservation legs — which found a live wrong-type binding, not just a regression guard | Done | #87 |
+| 012 | *(folded)* | Namespace-shadowing guards for the other renderers — **Retired**, folded into PHASE-011 | Retired | — |
 
 ---
 
