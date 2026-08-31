@@ -142,8 +142,11 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 /// </para>
 /// <para>
 /// 1. <see cref="Neatoo.RemoteFactory.FactoryEventHandlerRegistry"/> is process-global
-/// with (event type, handler class) first-registration-wins dedupe, and its
-/// <c>Clear()</c> is internal and called by nothing. A test that hand-registers a
+/// with (event type, handler class) first-registration-wins dedupe, and it has
+/// <b>no reset method at all</b> — PHASE-011 deleted the internal <c>Clear()</c>,
+/// because the registry is process-wide static and xUnit runs test classes in
+/// parallel, so calling it strips registrations out from under whatever else is
+/// mid-run. A test that hand-registers a
 /// handler for an event type another test also uses gets whichever registration
 /// happened to run first — usually the other test's. The convention throughout this
 /// suite is therefore one freshly-declared event type per test; PHASE-006 added five

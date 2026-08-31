@@ -79,8 +79,10 @@ Evidence: AC-1 `RemoteCreate_AfterCommitHandlerRunsAfterTheEntryCallCompletes` +
 + `FailedCall_ThenSuccessfulCall_InTheSameServerScope_RunsOnlyTheSecond`; AC-3
 `ThrowingAfterCommitHandler_IsSwallowed_…` + `TokenCancelledAfterTheEntryCallSucceeds_DrainStillRuns`;
 AC-4 `EventsRaisedByAfterCommitHandlers_JoinTheSameResponsesRelayBatch`; AC-5
-`FactoryEventPhaseCoordinatorTests` incl. `DrainAsync_NeverDrainedWarning_TellsTheConsumerWhereToPutTheDrain`;
-AC-6 `FactoryEventsDispatcherPhaseTests` (`OutsideEntryEvent`) + the 9009 pins; AC-7 the full
+`FactoryEventPhaseCoordinatorTests`, plus `FactoryEventPhaseSchedulerTests.DrainAsync_NeverDrainedWarning_TellsTheConsumerWhereToPutTheDrain`;
+AC-6 `FactoryEventsDispatcherPhaseTests.Raise_PhasedHandlerOutsideAnyFactoryCall_DispatchesImmediately`
+(the **9005** fallback pin — *not* 9009, which is the coordinator short-circuit and a different
+scenario); AC-7 the full
 suite green with existing assertions unmodified; AC-8 `FactoryEventPhaseCoalescingTests`;
 AC-9 the registrar-holder pins + `RemoteFactory.TrimmingTests`; AC-10 PHASE-005, kept current
 through 007/008/011. The close-out audit traces these independently.*
@@ -126,7 +128,6 @@ inside plans 007, 008 and 011, which is a large part of why those three grew as 
 | 007 | [007-tech-debt](./plans/007-tech-debt.md) | Tech debt: emission + documenting pins, coordinator short-circuit observability, Design.Server test, harness consolidation | Done | #85 |
 | 008 | [008-arc-tail](./plans/008-arc-tail.md) | Arc tail (folds former rows 009 + 010): 9007's drain-*placement* qualifier; generator emission qualification + partial-attribute probe + test-helper CS-error check + misfiled test class; deterministic scheduler concurrency harness and the routed items on that class | Done | #86 |
 | 009 | *(folded)* | Scheduler concurrency harness — **Retired**, folded into PHASE-008 | Retired | — |
-
 | 010 | *(folded)* | 9007 drain-placement qualifier — **Retired**, folded into PHASE-008 | Retired | — |
 | 011 | [011-hardening](./plans/011-hardening.md) | Hardening (folds former row 012): remove `FactoryEventHandlerRegistry.Clear()` rather than document it; namespace-shadowing compile guards for the class, interface, static and event-preservation legs — which found a live wrong-type binding, not just a regression guard | Done | #87 |
 | 012 | *(folded)* | Namespace-shadowing guards for the other renderers — **Retired**, folded into PHASE-011 | Retired | — |
@@ -945,7 +946,15 @@ inside plans 007, 008 and 011, which is a large part of why those three grew as 
 
 ## Skipped Steps
 
-*(none yet)*
+- **PHASE-008 — Step 5 code review not run, despite the plan declaring
+  `Code-review opt-in: Yes`.** An **omission, not a decision** — there was no skip reasoning
+  at the time; it was simply never invoked, and this section said "(none yet)" until the
+  close-out audit found it (C1). It matters because 008 is the arc's widest plan (13
+  acceptance bullets, three folded rows, generator emission across all legs, the concurrency
+  harness) **and** the only one with neither review, having also declined plan review by user
+  direction. Partially mitigated in substance, not in record: 008's test-review gate caught
+  the canonical-declaration silent-drop, and PHASE-011's code review independently re-derived
+  the emission-site consumer set. Carried to Follow-on.
 
 ---
 
@@ -963,7 +972,51 @@ inside plans 007, 008 and 011, which is a large part of why those three grew as 
 
 ## Close-Out Audit
 
-*(pending — filled at Step 7)*
+**2026-08-31 — Grade A.** Full record: [reviews/close-out-audit.md](./reviews/close-out-audit.md).
+
+All ten Acceptance Criteria traced to named tests the auditor **read and confirmed assert the
+criterion** — not accepted from the evidence note this container carries. No veto-tier
+findings; both solutions build with 0 errors; **2,912 tests pass, 0 fail, 10 standing skips**.
+Container clean: 13 plans issued against a cap of 13, monotonic numbering, no reuse, every
+`Retired` row carrying its folding reason, no open PRs, Out of Scope verified respected
+(same-event-only coalescing, originating-scope `AfterCommit`, zero persistence concepts in
+`src/RemoteFactory/` or `src/Generator/`).
+
+Five callouts, none blocking. Four are closed in the same commit as this entry: the stale
+`Clear()` remark at `ClientServerContainers.cs:146` (C3), **two wrong citations in this
+todo's own criteria-evidence note** (C4 — AC-6's pin is 9005, not 9009; the 9007 placement pin
+lives in `FactoryEventPhaseSchedulerTests`, not the coordinator tests), and the Plan Index
+table break (C5). C1 and C2 go to Follow-on.
+
+The auditor **confirmed rather than inherited** the judgement PHASE-011's code review deferred
+here: that plan's emission change needed no Design-project update, because demonstrating it
+would require planting a deliberate namespace decoy in `Design.Domain` — an anti-pattern in
+the project whose role is authoritative examples, and already covered where it belongs, in the
+generator's own emission fixtures.
+
+Two findings worth carrying beyond this todo: **PHASE-008's declared code review never ran**
+(now in Skipped Steps, recorded as an omission rather than a decision), and the **client-raise
+relay gap** deferred on 2026-08-14 to "PHASE-004 or todo close" — close is now, and it had no
+destination until this table.
+
+---
+
+## Follow-on
+
+*Everything this todo did not do. A list, not a commitment — a successor that adopts an item
+writes it as an acceptance bullet there.*
+
+- Client-raise relay gap: `MakeRemoteDelegateRequest.ForDelegateEvent` discards the response, so events raised by handlers of a client-initiated `Raise` never relay back · needs the echo-to-self design decision, not a fix · origin: Discovery Log 2026-08-14, audit C2
+- PHASE-008's code review, declared `Yes` and never run · origin: audit C1 / Skipped Steps
+- `StaticFactoryRenderer:99` non-`Task` line — reachable via non-`Task` interface methods? · origin: PHASE-011 code review, `reviews/011-redproof.log`
+- Bare BCL tokens in generated output + no `using System;` injection (former row 013) · dismissed here as unreachable; revisit only if a consumer hits it · origin: PHASE-011 A2/A3
+- `Types.cs:860` takes parameter types from source text · dismissed as fragile-not-broken · origin: PHASE-011 gate
+- TRIM item 20 — interface-leg trim elimination UNVERIFIED, blocked on TRIM item 19; AC-9's second clause leans on it · origin: PHASE-003 code review
+- EF1001-equivalent `Internal`-usage analyzer, plus auditing ~20 other `Neatoo.RemoteFactory.Internal` types against the policy PHASE-004 wrote · origin: Discovery Log 2026-08-16
+- `RegisterMatchingName` registers **transient** and the repo teaches it without saying so · origin: Discovery Log 2026-08-18
+- Release notes + version decision — no `docs/release-notes/v1.8.0.md`, `Directory.Build.props` still 1.7.0, and a `refactor!:` tagged commit would drive a **major** bump under CLAUDE.md's table although it only widens visibility · Step 8 work
+- Unmeasured tests shipped by design: 3 in PHASE-008, 4 in PHASE-011 · declared in full in the red-proof logs · accepted, no action
+- RFEF sibling todo now unblocked — PHASE-003/004 have landed · its own arc
 
 ---
 
