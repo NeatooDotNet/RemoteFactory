@@ -379,7 +379,8 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Which `[AuthorizeFactory]` scope applies on an interface factory? | `Execute` and `Read` only | `AuthorizedRepository.cs` | Interface methods have no CRUD operation; `Create`/`Fetch`/`Insert`/`Update`/`Delete` scopes silently never fire. Use parameter matching for per-method authorization |
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 | Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
-| How do I handle a factory event on the client? | Implement `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` and register it in DI | `FactoryEventRelayPattern.cs` (`InMemoryAggregatorRelay`) | Consumer-owned bridge to any aggregator; RemoteFactory invokes it fire-and-forget exactly once per [Remote] call (even empty batch), strictly after the caller's continuation resumes |
+| How do I handle a factory event on the client? | Implement `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` and register it in DI | `FactoryEventRelayPattern.cs` (`InMemoryAggregatorRelay`) | Consumer-owned bridge to any aggregator; RemoteFactory invokes it fire-and-forget exactly once per remote round-trip (even empty batch), strictly after the caller's continuation resumes |
+| Can the client raise an event itself? | Yes — inject `IFactoryEvents` client-side and `Raise`. It is a round-trip of its own | `FactoryEventRelayPattern.cs` (`ClientRaisedNoticeHandler`) | Server handlers run and the batch relays back, including the caller's OWN event (client-side `Raise` dispatches nothing locally, so the relay has not otherwise seen it); `ServerOnly` opts out. Awaited, not fire-and-forget |
 | How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class attribute with a `static` method | `FactoryEventHandlerPattern.cs` | Static method = server handler running in the caller's scope (shared DbContext), sequential, awaited |
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No, it's a separate generator pipeline | `FactoryEventRelayPattern.cs` | Keeps handler classes clean — not factories |
 | How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
@@ -667,16 +668,16 @@ public interface IOrderService
 
 ---
 
-### Anti-Pattern 10: Raising Factory Events Outside a Factory Method
+### Anti-Pattern 10: Raising an Operation's Event From the Client Instead of Inside the Method
 
-**WRONG:**
+**LESS GOOD:**
 ```csharp
-// Client code calling a factory, then trying to raise an event
+// Client code calling a factory, then raising the operation's event separately
 var order = await factory.Create(...);
-await factoryEvents.Raise(new OrderPlacedEvent(order.Id));  // Wrong side!
+await factoryEvents.Raise(new OrderPlacedEvent(order.Id));  // a SECOND round-trip
 ```
 
-**RIGHT:**
+**BETTER:**
 ```csharp
 [Factory]
 internal partial class Order
@@ -690,7 +691,9 @@ internal partial class Order
 }
 ```
 
-**Why it matters:** Events are captured by a request-scoped `IFactoryEventCollector` that only exists on the server during a factory operation. Events raised outside that scope on the client have no collector and cannot be relayed. Always raise events from inside a factory method via an injected `[Service] IFactoryEvents`.
+**Why it matters:** both work, but they are not equivalent. An event raised inside the factory method is captured by the same request-scoped `IFactoryEventCollector` as the operation, so its handlers share the method's DI scope — and therefore its `DbContext` and transaction — and an `Immediate` handler that throws rolls the operation back. It costs no extra round-trip and rides the operation's own response.
+
+A client-side `Raise` is a supported path (`RemoteFactoryEvents` sends it to the server, handlers run, and the batch relays back — see `FactoryEventRelayPattern.ClientRaisedNoticeHandler`), but it is a *separate* round-trip in its own request scope. It shares no transaction with the factory call that preceded it and cannot roll that call back. When the event belongs to the operation, raise it inside the operation.
 
 ---
 
@@ -1173,7 +1176,7 @@ infrastructure already exists.
 6. **Missing partial keyword** - Generator needs to extend your class
 7. **[Remote] on public methods** - `[Remote]` requires `internal` for IL trimming. `[Remote] public` emits NF0105. Change to `internal`.
 8. **Mixing Neatoo types with records in Interface Factory return types** - Records bypass reference handling entirely (`RecordBypassConverterFactory`), so embedded Neatoo types lose reference tracking. Use pure records/DTOs or pure Neatoo types, not both.
-9. **Raising factory events outside a factory method** - The request-scoped `IFactoryEventCollector` only exists server-side during a factory operation. Raise events via `[Service] IFactoryEvents` from inside a factory method.
+9. **Raising an operation's event from the client instead of inside the method** - A client-side `Raise` works, but it is a separate round-trip in its own request scope: no shared transaction with the factory call, and it cannot roll it back. Raise via `[Service] IFactoryEvents` from inside the factory method when the event belongs to that operation.
 10. **Stacking `[Factory]` on a `[FactoryEventHandler<T>]` class** - They run in separate generator pipelines. Handler classes are subscribers, not factories. Do not add `[Factory]`.
 
 ---

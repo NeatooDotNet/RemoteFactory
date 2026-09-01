@@ -7,7 +7,7 @@ RemoteFactory ships **one event-shaped abstraction**: transactional domain event
 | Trigger | `IFactoryEvents.Raise(...)` inside a factory method (injected via `[Service] IFactoryEvents`) |
 | Server DI scope per handler | **Shared with the caller** — same `DbContext`, same transaction, staged (unflushed) state visible |
 | Server dispatch | **Sequential, awaited** — `Raise` returns only after every `Immediate` handler completes |
-| Client dispatch | Fire-and-forget via `IFactoryEventRelay.Relay(...)`, invoked once per `[Remote]` factory call |
+| Client dispatch | Fire-and-forget via `IFactoryEventRelay.Relay(...)`, invoked once per remote round-trip — a `[Remote]` factory call or a [client-initiated `Raise`](#client-initiated-raise) |
 | Handler exceptions | Server: **propagate to the caller** — abort the chain, roll back the transaction. Client: caught + logged, never propagate. |
 | Cancellation token | The caller's `CancellationToken`, passed through `Raise` |
 | Deferred phases | `AfterFlush` / `AfterCommit` handlers are queued at `Raise` and run at their [drain points](#dispatch-phases) |
@@ -438,7 +438,33 @@ await factoryEvents.Raise(
     ct);
 ```
 
-Use `ServerOnly` for server-internal concerns (trigger a downstream process, record an audit row) that the UI does not need to know about. The client still receives a `Relay` invocation for every `[Remote]` call, but the `ServerOnly` event is not in the batch.
+Use `ServerOnly` for server-internal concerns (trigger a downstream process, record an audit row) that the UI does not need to know about. The client still receives a `Relay` invocation for every round-trip, but the `ServerOnly` event is not in the batch.
+
+### Client-Initiated Raise
+
+Client code can raise an event itself. In Remote mode `IFactoryEvents` sends it to the server as its own round-trip:
+
+```csharp
+// Client — IFactoryEvents injected from the client container
+await factoryEvents.Raise(new SessionEnded(sessionId));
+```
+
+Server-side it lands in the ordinary dispatch path, so the request-scoped collector captures it and every handler runs before the response is written. The batch comes back and `IFactoryEventRelay.Relay` receives it — the same machinery as a factory call.
+
+**The batch contains the caller's own event**, plus anything its handlers raised:
+
+```
+client:  await events.Raise(new SessionEnded(id));   // no local dispatch
+server:  handlers run; one of them raises AuditWritten
+         collector = [SessionEnded, AuditWritten]
+client:  Relay([SessionEnded, AuditWritten])
+```
+
+That echo is deliberate. Raising from the client dispatches **nothing locally**, so the client's relay has not otherwise seen the event — relaying it back is the only way client-side handlers observe it. `RaiseOptions.ServerOnly` suppresses the whole batch; handlers still run and the client gets one invocation with `events.Count == 0`.
+
+**Not fire-and-forget.** `Raise` returns only after every server handler completes, and a handler exception propagates back to the client (nothing relays for that call). There has been no fire-and-forget event surface since v1.5.0 removed `[Event]` — compose `Task.Run` + `IServiceScopeFactory.CreateScope()` yourself.
+
+Prefer raising inside a factory method when the event belongs to that operation — a client raise shares no transaction with the factory call that preceded it.
 
 ### Nested Operations
 
@@ -464,14 +490,14 @@ The source generator finds the server-side handler method by signature:
 
 ## Anti-Patterns
 
-### Raising a Factory Event Outside a Factory Method
+### Raising an Operation's Event From the Client Instead of Inside the Method
 
 ```csharp
-// WRONG - no collector exists outside a factory operation
+// LESS GOOD - a second round-trip, in its own request scope
 var order = await factory.Create(...);
 await factoryEvents.Raise(new OrderCheckoutCompleted(order.Id, order.Total));
 
-// RIGHT - raise inside the factory method itself
+// BETTER - raise inside the factory method itself
 [Remote, Create]
 internal async Task Create(int id, decimal total, [Service] IFactoryEvents events, CancellationToken ct)
 {
@@ -480,7 +506,9 @@ internal async Task Create(int id, decimal total, [Service] IFactoryEvents event
 }
 ```
 
-**Why:** The `IFactoryEventCollector` that captures events for client relay is request-scoped and only exists on the server during a factory operation. Events raised outside that scope cannot be relayed.
+**Why:** both work, but they are not equivalent. An event raised inside the factory method is captured by the same request-scoped `IFactoryEventCollector` as the operation, so its handlers share the method's DI scope — and therefore its `DbContext` and transaction — and an `Immediate` handler that throws rolls the operation back.
+
+A client-side `Raise` is a supported path (see [Client-Initiated Raise](#client-initiated-raise)) but a *separate* round-trip in its own request scope: no shared transaction with the factory call, and it cannot roll it back. When the event belongs to the operation, raise it inside the operation.
 
 ### Using a Factory Event for Fire-and-Forget Work
 
