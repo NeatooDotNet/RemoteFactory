@@ -12,36 +12,17 @@ namespace RemoteFactory.IntegrationTests.Events.FactoryEventRelay;
 /// </summary>
 public class FactoryEventRelayTests
 {
-    private static (IServiceScope server, IServiceScope client, IServiceScope local, RecordingFactoryEventRelay relay) ScopesWithRelay()
-    {
-        var relay = new RecordingFactoryEventRelay();
-        var (client, server, local) = ClientServerContainers.Scopes(
-            configureClient: services => services.AddSingleton<IFactoryEventRelay>(relay));
-        return (server, client, local, relay);
-    }
-
-    private static async Task WaitForAsync(Func<bool> predicate, TimeSpan? timeout = null)
-    {
-        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(2));
-        while (DateTime.UtcNow < deadline)
-        {
-            if (predicate())
-            {
-                return;
-            }
-            await Task.Delay(5);
-        }
-    }
-
     [Fact]
     public async Task SingleEventRelay_ConsumerReceivesEvent()
     {
-        var (server, client, local, relay) = ScopesWithRelay();
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
         var result = await createDel("test");
 
-        await WaitForAsync(() => relay.ReceivedOfType<TestRelayEvent>().Count > 0);
+        await RelayTestHarness.WaitForAsync(
+            () => relay.ReceivedOfType<TestRelayEvent>().Count > 0,
+            "the relay to receive a TestRelayEvent");
 
         var received = Assert.Single(relay.ReceivedOfType<TestRelayEvent>());
         Assert.Equal(result.Id, received.Id);
@@ -51,12 +32,12 @@ public class FactoryEventRelayTests
     [Fact]
     public async Task MultipleEventsRelay_ArriveInServerRaiseOrder()
     {
-        var (server, client, local, relay) = ScopesWithRelay();
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithMultipleEvents>();
         await createDel("test");
 
-        await WaitForAsync(() => relay.Received.Count >= 2);
+        await RelayTestHarness.WaitForAsync(() => relay.Received.Count >= 2, "both relayed events");
 
         var batch = relay.Received;
         Assert.Collection(batch,
@@ -69,25 +50,27 @@ public class FactoryEventRelayTests
     [Fact]
     public async Task ServerOnlyEvent_ExcludedFromRelayBatch()
     {
-        var (server, client, local, relay) = ScopesWithRelay();
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithServerOnlyEvent>();
         await createDel("test");
 
-        // One [Remote] call = one Relay invocation, even when the batch is empty.
-        await WaitForAsync(() => relay.InvocationCount == 1);
+        // One [Remote] call = one Relay invocation, even when the batch is empty. The
+        // wait carries this test: an empty Received is also what a relay that never
+        // fired looks like, so the timeout has to fail rather than fall through.
+        await RelayTestHarness.WaitForAsync(() => relay.InvocationCount == 1, "the single Relay invocation");
         Assert.Empty(relay.Received);
     }
 
     [Fact]
     public async Task NoEvents_RelayInvokedOnceWithEmptyBatch()
     {
-        var (server, client, local, relay) = ScopesWithRelay();
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateNoEvents>();
         await createDel("test");
 
-        await WaitForAsync(() => relay.InvocationCount == 1);
+        await RelayTestHarness.WaitForAsync(() => relay.InvocationCount == 1, "the single Relay invocation");
         Assert.Equal(1, relay.InvocationCount);
         Assert.Empty(relay.Received);
     }
@@ -95,7 +78,7 @@ public class FactoryEventRelayTests
     [Fact]
     public async Task RelayException_DoesNotPropagateToFactoryCaller()
     {
-        var (server, client, local, relay) = ScopesWithRelay();
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
         relay.OnRelay = _ => throw new InvalidOperationException("Relay failure must be isolated");
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>();
@@ -105,9 +88,9 @@ public class FactoryEventRelayTests
         Assert.NotNull(result);
         Assert.Equal("test", result.Name);
 
-        // Give the fire-and-forget a moment; InvocationCount should still increment even though
-        // the handler threw (Relay was called before the exception).
-        await WaitForAsync(() => relay.InvocationCount >= 1);
+        // InvocationCount should still increment even though the handler threw (Relay
+        // was called before the exception).
+        await RelayTestHarness.WaitForAsync(() => relay.InvocationCount >= 1, "Relay to be invoked despite throwing");
         Assert.Equal(1, relay.InvocationCount);
     }
 
@@ -127,12 +110,12 @@ public class FactoryEventRelayTests
     [Fact]
     public async Task ServerOnlyCombinedFlags_NotRelayed()
     {
-        var (server, client, local, relay) = ScopesWithRelay();
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
 
         var createDel = client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateWithServerOnlyCombinedFlags>();
         await createDel("test");
 
-        await WaitForAsync(() => relay.InvocationCount == 1);
+        await RelayTestHarness.WaitForAsync(() => relay.InvocationCount == 1, "the single Relay invocation");
         Assert.Empty(relay.Received);
     }
 }

@@ -87,10 +87,28 @@ public static class DiagnosticTestHelper
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
         var runResult = driver.GetRunResult();
 
-        // Get diagnostics from the generator run result as well
-        var allDiagnostics = diagnostics.AddRange(runResult.Diagnostics);
-
-        return (allDiagnostics, outputCompilation, runResult);
+        // The driver's out-param already holds every generator diagnostic from this run, and
+        // GetRunResult().Diagnostics holds the same ones — so the AddRange this used to do
+        // returned every diagnostic TWICE. Nothing consumed the count, so nothing was red, but
+        // it silently falsified any count assertion written against this array. Found while
+        // writing NF0504's tests, which asserted Single() and got two.
+        //
+        // Returning one source rather than Distinct()-ing the union, for a narrower reason than
+        // it first appears. Distinct() also works — measured, not assumed: the two collections
+        // hold the SAME Diagnostic instances, so identity dedupe removes the doubling, while
+        // two genuinely repeated diagnostics (a class stacking attributes that each fail the
+        // same way reports NF0502 once per attribute, same location, byte-identical message)
+        // are separate instances and survive. But that correctness rests entirely on the two
+        // collections sharing object identity, which is a Roslyn implementation detail no test
+        // here controls. Not concatenating needs no such assumption.
+        //
+        // Whichever way this is written, multiplicity must be preserved — a genuine repeat is
+        // signal, and DiagnosticTestHelperTests pins it.
+        //
+        // This is the compilation-filtered set — what a consumer's build actually surfaces,
+        // with severity settings and suppressions applied. Callers needing the raw, unfiltered
+        // generator output can still reach RunResult.Diagnostics on the third tuple element.
+        return (diagnostics, outputCompilation, runResult);
     }
 
     private static List<MetadataReference> BuildReferences()
@@ -179,6 +197,8 @@ public static class DiagnosticTestHelper
             references: BuildReferences(),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
+        AssertInputCompiles(compilation, "the fixture");
+
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: [GeneratorInstance.Value.AsSourceGenerator()],
             additionalTexts: null,
@@ -192,10 +212,59 @@ public static class DiagnosticTestHelper
         var first = driver.GetRunResult();
 
         var secondTree = CSharpSyntaxTree.ParseText(source + appendedSource, parseOptions, path: "Fixture.cs");
-        driver = driver.RunGenerators(compilation.ReplaceSyntaxTree(firstTree, secondTree));
+        var secondCompilation = compilation.ReplaceSyntaxTree(firstTree, secondTree);
+
+        AssertInputCompiles(secondCompilation, "the fixture plus the appended edit");
+
+        driver = driver.RunGenerators(secondCompilation);
         var second = driver.GetRunResult();
 
         return (first, second);
+    }
+
+    /// <summary>
+    /// Fails loudly if a generator fixture does not compile before the generator runs.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RunGeneratorTracked"/> inspected nothing about its input, so a fixture that
+    /// stopped compiling degraded silently instead of failing: the transform's own fallbacks
+    /// absorb what a broken fixture produces — a dropped <c>using</c> makes the phase argument
+    /// unbindable and <c>ReadDispatchPhase</c> returns <c>Immediate</c> — and the caching
+    /// assertions compare transform outputs across two runs, which a degraded fixture satisfies
+    /// just as well as a healthy one. <c>IncrementalCacheTests</c> carried three separate
+    /// "fixture health" guards written to cover for exactly this, and its own remarks named the
+    /// gap. The guard belongs here, once, ahead of them.
+    /// <para>
+    /// Errors only. Generator fixtures are terse by design and trip warnings (unused usings,
+    /// missing XML docs) that say nothing about whether the fixture exercises what it claims.
+    /// </para>
+    /// <para>
+    /// <b>Deliberately not called from <see cref="RunGenerator"/>.</b> That overload is the
+    /// entry point behind every diagnostic test, and those feed source that is *supposed* to
+    /// carry errors — NF0101's non-partial class, NF0105's <c>[Remote] public</c>, the
+    /// undefined-phase casts. Guarding there would fail the tests whose whole subject is bad
+    /// input. <c>RunGeneratorTracked</c> is different: its callers are caching guards whose
+    /// fixtures must be healthy for the comparison to mean anything, which is why the gap
+    /// mattered there and not here. (PHASE-008 gate, should-cover — recorded rather than
+    /// closed.)
+    /// </para>
+    /// </remarks>
+    /// <param name="compilation">The input compilation, before the generator runs.</param>
+    /// <param name="what">Names which input failed, since the tracked run checks two.</param>
+    private static void AssertInputCompiles(Compilation compilation, string what)
+    {
+        var errors = compilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
+
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Generator test input did not compile ({what}). The generator was never run, so any "
+                + "assertion downstream of this would have reported on a degraded fixture rather than on "
+                + $"the generator. Fix the fixture.{Environment.NewLine}"
+                + string.Join(Environment.NewLine, errors.Select(e => e.ToString())));
+        }
     }
 
     /// <summary>

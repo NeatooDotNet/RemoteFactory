@@ -10,7 +10,12 @@ namespace RemoteFactory.IntegrationTests.Events.FactoryEventHandler;
 /// </summary>
 public class FactoryEventHandlerLocalTests
 {
-    private static (IServiceScope server, IServiceScope client, IServiceScope local) CreateScopes()
+    // (client, server, local) — matching what this ClientServerContainers overload
+    // actually returns. The names used to read (server, client, ...), which the
+    // compiler happily accepts because tuple element names are erased: every test below
+    // destructures positionally and was therefore correct, while anyone reading the
+    // signature would have written the two the wrong way round.
+    private static (IServiceScope client, IServiceScope server, IServiceScope local) CreateScopes()
     {
         return ClientServerContainers.Scopes(
             configureClient: null,

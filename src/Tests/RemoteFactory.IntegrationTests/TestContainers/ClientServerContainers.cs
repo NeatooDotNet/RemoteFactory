@@ -125,6 +125,41 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 /// Creates isolated client, server, and local containers for integration testing.
 /// This simulates the full client-server round-trip with JSON serialization.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>Destructuring order is not uniform.</b> <see cref="Scopes()"/> and
+/// <see cref="ScopesWithLogging"/> return <c>(server, client, local)</c>; the
+/// configure-callback overload returns <c>(client, server, local)</c>. Every element is
+/// an <see cref="IServiceScope"/> and tuple element names are erased at runtime, so
+/// getting this wrong compiles, runs, and quietly exercises the wrong container —
+/// which has already happened once (<c>FactoryEventHandlerLocalTests.CreateScopes</c>
+/// declared the names backwards for its whole life). <c>ClientServerContainersOrderTests</c>
+/// pins all three orders; consult it rather than counting on a habit.
+/// </para>
+/// <para>
+/// <b>Test-isolation disciplines this harness depends on.</b> Neither is enforced by
+/// code, and both bite silently:
+/// </para>
+/// <para>
+/// 1. <see cref="Neatoo.RemoteFactory.FactoryEventHandlerRegistry"/> is process-global
+/// with (event type, handler class) first-registration-wins dedupe, and it has
+/// <b>no reset method at all</b> — PHASE-011 deleted the internal <c>Clear()</c>,
+/// because the registry is process-wide static and xUnit runs test classes in
+/// parallel, so calling it strips registrations out from under whatever else is
+/// mid-run. A test that hand-registers a
+/// handler for an event type another test also uses gets whichever registration
+/// happened to run first — usually the other test's. The convention throughout this
+/// suite is therefore one freshly-declared event type per test; PHASE-006 added five
+/// more following it.
+/// </para>
+/// <para>
+/// 2. <c>IEventTestService</c> is registered as a SINGLETON so a handler running in the
+/// server scope can be observed from a test holding a different scope. That makes its
+/// recorded events shared across every test in the run, so assertions must filter by an
+/// id the test itself generated (<c>Guid.NewGuid()</c>) rather than by event name alone.
+/// An unfiltered count assertion passes or fails depending on what else ran.
+/// </para>
+/// </remarks>
 public static class ClientServerContainers
 {
     private static readonly object LockContainer = new();
@@ -160,6 +195,11 @@ public static class ClientServerContainers
     /// <summary>
     /// Creates scopes with custom service configuration for client and server.
     /// </summary>
+    /// <remarks>
+    /// Returns <c>(client, server, local)</c> — the reverse of the other two factories'
+    /// first two elements. See the type-level remarks; pinned by
+    /// <c>ClientServerContainersOrderTests</c>.
+    /// </remarks>
     public static (IServiceScope client, IServiceScope server, IServiceScope local) Scopes(
         Action<IServiceCollection>? configureClient = null,
         Action<IServiceCollection>? configureServer = null,

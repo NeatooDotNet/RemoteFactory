@@ -198,21 +198,116 @@ public static partial class OrderNotifyHandlers
 }
 ```
 
-**Execution model for `[FactoryEventHandler<T>]`** — the three invariants:
+**Execution model for `[FactoryEventHandler<T>]`** — the three invariants of the
+**default (`Immediate`) phase**, i.e. an attribute with no `DispatchPhase` argument:
 
 1. **Shared scope.** Handlers resolve `[Service]` dependencies from the caller's
    `IServiceProvider`. A `DbContext` in the factory method and a `DbContext` in
-   the handler are the same instance and the same transaction.
+   the handler are the same instance and the same transaction. Flip side: an
+   `Immediate` handler observes the caller's **staged (unflushed) state** — a
+   projection that queries the database here reads the world without the
+   aggregate's pending writes.
 2. **Sequential.** Handlers run one after another in unspecified order. Callers
    must not rely on a specific ordering.
-3. **Awaited.** `Raise<T>()` returns only after every handler has completed. A
-   handler exception aborts the remaining handlers and propagates to the caller
-   so the transaction can roll back. Across the client/server boundary the HTTP
-   call stays open until all server-side handlers finish.
+3. **Awaited.** `Raise<T>()` returns only after every `Immediate` handler has
+   completed. A handler exception aborts the remaining handlers and propagates to
+   the caller so the transaction can roll back. Across the client/server boundary
+   the HTTP call stays open until all server-side handlers finish — for deferred
+   phases, that includes the entry call's completion drain.
 
-**When to use `[FactoryEventHandler<T>]`**: domain events that must participate
-in the caller's transaction — i.e. the handler touches the same `DbContext` as
-the aggregate.
+**Dispatch phases** — the attribute's `DispatchPhase` argument defers a handler
+to a later drain point (`FactoryEventPhasesPattern.cs` demonstrates all of this):
+
+| Phase | Runs at | Sees | Exceptions |
+|-------|---------|------|------------|
+| `Immediate` (default) | `Raise` | Staged (unflushed) state, mid-transaction | Propagate to the raiser — atomic with the save |
+| `AfterFlush` | The factory method's `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` call — typically between its flush and its commit | Flushed state (DB-generated keys, computed columns), transaction still open | Propagate to the drain call — can still roll back |
+| `AfterCommit` | Framework-owned drain after the entry factory call completes successfully | Committed state, no ambient transaction | Logged (9003) and swallowed — including handler-internal `OperationCanceledException`; remaining queued handlers still run |
+
+The consumer drain pattern — `[Service]`-inject the coordinator (method
+injection, server-only) and drain **inside the factory method body**:
+
+```csharp
+[Remote, Create]
+internal async Task Finalize(Guid id, [Service] AppDbContext db,
+    [Service] IFactoryEvents events,
+    [Service] IFactoryEventPhaseCoordinator coordinator, CancellationToken ct)
+{
+    // ... stage writes ...
+    await events.Raise(new InvoiceFinalizedEvent(id), RaiseOptions.None, ct); // Immediate handlers run here
+    await db.SaveChangesAsync(ct);                          // flush — keys exist, tx open
+    await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct); // AfterFlush handlers run here
+    await db.Database.CurrentTransaction!.CommitAsync(ct);  // commit
+}   // AfterCommit handlers run after this returns
+```
+
+The phase contract, compressed:
+
+- **Failure semantics belong to the drain point, not the phase.** In-transaction
+  drains (Immediate dispatch, the coordinator's AfterFlush drain) propagate; the
+  post-completion drain logs and swallows.
+- **Ordering is anchored per drain point, not a global barrier.** For events
+  raised before a given drain point, all `Immediate` handlers complete before any
+  `AfterFlush` handler, which complete before any `AfterCommit` handler; code
+  that raises again after its own drain interleaves that later `Immediate` work
+  between drain points. Order *within* a phase is unspecified.
+- **A failed entry call discards queued work** — deferred handlers never observe
+  an operation that failed (its `Immediate` handlers already ran, inside the
+  transaction the consumer's rollback unwinds).
+- **Never-drained `AfterFlush` work is fail-open:** it runs at the `AfterCommit`
+  point instead, with Warning 9007 naming the event type. Forgetting the drain
+  costs the intended transaction placement, never the handler.
+- **RemoteFactory owns no persistence concepts.** It never flushes or commits —
+  the phase names describe consumer intent at the drain points the framework
+  exposes. Events raised by deferred handlers still join the same response's
+  relay batch.
+- **One factory call per DI scope at a time.** Queues and entry-call tracking are
+  per-scope, not per-flow; concurrent factory calls in one scope share both.
+  Scopes are the framework's isolation unit (an ASP.NET Core request already is
+  one). Related: the coordinator short-circuits when no entry call is active in
+  the scope, which is why a transaction helper must drain from *inside* the
+  factory body, and why only `AfterFlush` is consumer-drainable (`DrainAsync`
+  rejects other phases).
+- **Synchronous factory bodies should not raise phased events on context-bound
+  scopes** (e.g. Logical mode inside a Blazor Server circuit): the completion
+  drain must block to avoid losing deferred work, and blocking under a captured
+  `SynchronizationContext` deadlocks if a drained handler awaits without
+  `ConfigureAwait(false)`.
+
+**When to use which phase**: must roll back with the aggregate → `Immediate`.
+Needs flushed state (DB-generated keys) while the transaction can still abort →
+`AfterFlush` + a coordinator drain. Read-only projection that must never fail
+the save → `AfterCommit`.
+
+**Coalescing (opt-in)** — a save that raises the same event N times gives a
+deferred projection N identical recomputes. The attribute's `Coalesce` named
+argument collapses identical *queued* dispatches to one per drain
+(`FactoryEventPhasesPattern.cs` Scenario 5):
+
+```csharp
+[FactoryEventHandler<StatementChanged>(DispatchPhase.AfterCommit, Coalesce = true)]
+```
+
+- **Identity is `Equals`** — same handler registration, `Equals`-equal event,
+  same `RaiseOptions`. Records give structural equality by default, with two
+  hazards: a reference-typed event member (a `List<T>`, an entity) never
+  compares equal across raises, so coalescing is a silent no-op there — prefer
+  value-only payloads on events whose handlers coalesce; a custom `Equals`
+  override that equates semantically distinct raises collapses dispatches you
+  expected, and the override owns that.
+- **Pending work only.** The scope holds at most one pending dispatch per
+  identity; a dispatch a running drain already took is history, and a raise
+  after it starts fresh. Observable counts (9002 drained, 9006 discarded)
+  reflect the collapsed queue; a collapsed raise logs Debug **9008** instead of
+  a second 9001.
+- **A collapse never erases a 9007 obligation** — if any absorbed raise would
+  have warned at the fail-open sweep, the survivor warns.
+- **Inert wherever nothing queues:** `Immediate` (NF0505 warns), and phased
+  raises falling through to immediate dispatch (9004 no-scheduler / 9005
+  no-entry-call) run once per raise regardless. The relay is untouched — every
+  `Raise` is still collected and relayed.
+- **Same-event only.** Cross-event coalescing ("any of these four events → one
+  recompute") stays a consumer guard.
 
 **For fire-and-forget work** (email, webhooks, audit sinks to external systems,
 queue publishes): compose your own fire-and-forget pattern inside a factory
@@ -260,7 +355,8 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 - `FactoryEventTypeRegistry` (internal, runtime) lazily scans `AppDomain.CurrentDomain.GetAssemblies()` on first use; rescans on miss to pick up dynamically-loaded assemblies. Logs EventId 3012 (Warning) on `FullName` collisions.
 - In Remote mode, if the consumer registers nothing, `NoOpFactoryEventRelay` is registered via `TryAddSingleton`. It logs EventId 3011 (Warning) once per process on the first non-empty batch it drops — a signal the consumer forgot to register a custom relay.
 - Logical mode registers neither the collector nor the relay (no cross-boundary communication needed). Server mode does not register `IFactoryEventRelay`.
-- NF0501 if no matching server handler method; NF0502 if multiple methods match; NF0503 (Warning) if an instance method is declared inside a `[FactoryEventHandler<T>]` class.
+- NF0501 if no matching server handler method; NF0502 if multiple methods match; NF0503 (Warning) if an instance method is declared inside a `[FactoryEventHandler<T>]` class; NF0504 (Warning) if one class declares the same event type more than once; NF0505 (Warning) if `Coalesce = true` is declared at `Immediate`.
+- The attribute's `DispatchPhase` argument and `Coalesce` named argument reach registration: `[FactoryEventHandler<T>(DispatchPhase.AfterCommit, Coalesce = true)]` registers at that phase with coalescing on; no arguments register at `Immediate` without it. Both are per-attribute, so one class can hold several event types at different phases and flags.
 
 ---
 
@@ -287,8 +383,13 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class attribute with a `static` method | `FactoryEventHandlerPattern.cs` | Static method = server handler running in the caller's scope (shared DbContext), sequential, awaited |
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No, it's a separate generator pipeline | `FactoryEventRelayPattern.cs` | Keeps handler classes clean — not factories |
 | How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
-| I want a handler to participate in the factory's DB transaction. | Use `[FactoryEventHandler<T>]` — it runs in the caller's scope | `FactoryEventHandlerPattern.cs` | Shared scope → shared `DbContext` → same transaction; a throwing handler rolls the whole thing back |
+| I want a handler to participate in the factory's DB transaction. | Use `[FactoryEventHandler<T>]` at the default `Immediate` phase (or `AfterFlush`, drained before the commit) — it runs in the caller's scope | `FactoryEventHandlerPattern.cs` | Shared scope → shared `DbContext` → same transaction; a throwing in-transaction handler rolls the whole thing back |
 | I want a handler to fire-and-forget (email, webhook). | Compose your own `Task.Run` + `IServiceScopeFactory.CreateScope()` inside the factory method; copy any ambient state explicitly before entering the background task. | v1.5.0 release notes | No framework-supplied fire-and-forget surface after v1.5.0 — explicit copy is required |
+| My handler needs database-generated state (identity keys) but must still be able to roll the save back. | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` between the factory body's flush and commit | `FactoryEventPhasesPattern.cs` (`Invoice.Finalize`) | Queued at `Raise`, drained in-transaction at the consumer's chosen point; exceptions propagate to the drain call |
+| I want a read-only projection that must never fail the save. | `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` | `FactoryEventPhasesPattern.cs` (`InvoiceSearchIndexRefresh`) | Framework drains after the entry call succeeds; no ambient transaction; exceptions logged (9003) and swallowed |
+| What happens if I declare `AfterFlush` but never drain? | The handler still runs — at the `AfterCommit` point, with Warning 9007 | `FactoryEventPhasesPattern.cs` (`InvoiceArchiver`) | Fail-open: forgetting the drain costs transaction placement, never the handler |
+| One save raises the same event N times and my deferred projection recomputes N times. | `Coalesce = true` on the attribute — identical queued dispatches collapse to one per drain | `FactoryEventPhasesPattern.cs` (`StatementProjection`) | Identity is `Equals` + same options + same registration; value-only event payloads coalesce reliably; flagless handlers keep one-run-per-raise |
+| Do phased handlers run if the factory call throws? | No — queued work is discarded (9006); only the `Immediate` handlers already ran, inside the rolled-back transaction | `FactoryEventPhasesPattern.cs` (`PaymentIntake`) | Deferred handlers never observe a failed operation |
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
 | How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
 | Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
@@ -996,6 +1097,36 @@ These are known limitations or open questions. They are documented here to preve
 
 ---
 
+## The `Neatoo.RemoteFactory.Internal` Namespace
+
+**Types in `Neatoo.RemoteFactory.Internal` are `public`. The namespace is the warning, not a wall.**
+
+The framework is fully extensible: nothing a consumer might legitimately need is cut off by
+an access modifier. What `Internal` conveys is *"extend at your own risk"* — these types
+support the runtime and are not subject to the same compatibility standards as the rest of
+the public API. They may change or be removed in any release.
+
+This follows Entity Framework Core, which does the same thing at scale — EF Core 10 ships
+~4,500 documented members in `*.Internal` namespaces, all public, each carrying the same
+kind of warning. `DbContextServices`, for example, is `public class`, not sealed.
+
+**Rules for types in this namespace:**
+
+| Rule | Why |
+|------|-----|
+| Declare `public`, not `internal` | A guess that no consumer will ever need it is a guess that is sometimes wrong; when it is, their only recourse is to fork |
+| Do not `seal` without a stated reason | `sealed` re-imposes the wall the namespace exists to avoid |
+| Carry the risk paragraph in the type's XML `<remarks>` | Today the doc comment is the only place the warning reaches a consumer |
+| State explicitly when members are non-virtual by design | Interlocking contracts (e.g. the scheduler's queue/depth/drain semantics) can be legitimately closed to piecemeal override — say so, don't leave it implied |
+
+**Known gap:** EF Core's version of this policy has a third leg — an analyzer (EF1001,
+`Usage`, Warning by default) that flags consumer code touching `*.Internal` namespaces at
+the point of use. RemoteFactory has no equivalent, so the warning currently reaches only
+readers of the XML docs. Worth building; the generator's NF-prefixed diagnostic
+infrastructure already exists.
+
+---
+
 ## Diagnostics and Log Events (Factory Events Relay)
 
 ### Compile-Time Diagnostics
@@ -1005,6 +1136,8 @@ These are known limitations or open questions. They are documented here to preve
 | NF0501 | Error | `[FactoryEventHandler<T>]` class has no matching method | Declare exactly one method returning `Task` whose first non-`[Service]`/non-`CancellationToken` parameter is of type `T` |
 | NF0502 | Error | `[FactoryEventHandler<T>]` class has multiple matching methods | Remove the extras or split into separate handler classes |
 | NF0503 | Warning | `[FactoryEventHandler<T>]` class has an **instance**-method handler (former client-relay pattern) | Make the method `static` (server-side handler) **or** implement `IFactoryEventRelay` on the class and register it in DI (client-side reception). Instance methods are silently skipped at runtime. |
+| NF0504 | Warning | One class declares `[FactoryEventHandler<T>]` for the **same** event type more than once | Remove the duplicate. Stacking is for several event *types*; a repeat resolves to the same handler method, so only the first declaration registers — its phase and its `Coalesce` flag. The message names the surviving registration. |
+| NF0505 | Warning | `Coalesce = true` on an `Immediate`-declared registration | Immediate dispatches are never queued — nothing to coalesce; the flag is inert. Remove it or defer the handler to `AfterFlush`/`AfterCommit`. The registration is still emitted faithfully. |
 
 ### Runtime Log Events
 
@@ -1014,6 +1147,15 @@ These are known limitations or open questions. They are documented here to preve
 | 3009 | `FactoryEventDeserializationFailed` | Error | Wire-format event deserialization fails (e.g. `UnknownFactoryEventTypeException`) | Swallowed; `Relay` is NOT invoked for that call (the one legitimate case of zero `Relay` invocations for a [Remote] call) |
 | 3011 | `NoOpFactoryEventRelayFirstEvent` | Warning | `NoOpFactoryEventRelay` receives its first non-empty batch (consumer forgot to register a relay) | Informational; fires once per process |
 | 3012 | `FactoryEventTypeRegistryCollision` | Warning | `FactoryEventTypeRegistry` assembly scan finds two distinct `Type`s sharing the same `FullName` | Documents kept/dropped assembly; wire messages resolve to the kept type |
+| 9001 | `FactoryEventPhaseQueued` | Debug | A handler registered at a non-`Immediate` `DispatchPhase` is deferred instead of dispatched at `Raise` time | Informational |
+| 9002 | `FactoryEventPhaseDrained` | Debug | A phase drain completes, reporting how many dispatches ran through the requested phase (earlier phases included) | Informational |
+| 9003 | `FactoryEventPhaseHandlerFailed` | Error | A deferred handler throws during a **post-completion** drain (no ambient transaction) | Swallowed — the exception can no longer roll anything back; remaining queued handlers still run. A handler-internal `OperationCanceledException` is swallowed the same way; only genuine cooperative cancellation (the drain's own token is cancelled) propagates, and the framework's entry drain passes no token, so nothing aborts a succeeded call's post-completion work. In-transaction drains propagate instead, so this never fires for them. |
+| 9004 | `FactoryEventPhaseNoQueueInScope` | Debug | An event with a phased handler is raised in a scope with no `IFactoryEventPhaseScheduler` registered | Dispatched immediately rather than dropped |
+| 9005 | `FactoryEventPhaseRaisedOutsideEntryCall` | Debug | An event with a phased handler is raised while no entry factory call is active in the scope | Dispatched immediately rather than queued into a drain nobody owns |
+| 9006 | `FactoryEventPhaseDiscardedAtExit` | Debug | An entry-call exit discards deferred dispatches without running them — a failed call's clear, including dispatches a cancelled consumer drain abandoned when that cancellation fails the call (if the consumer swallows it and the call still succeeds, those dispatches are swept at the `AfterCommit` point instead, with 9007) | The clear (never a drain) that keeps discarded work from riding a later call's drain in long-lived scopes |
+| 9007 | `FactoryEventPhaseNeverDrained` | Warning | The post-completion sweep picks up an `AfterFlush` dispatch the consumer never drained — no `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` covered it (work enqueued *while any drain is in flight in the scope* is exempt: its drain points had already passed — which, under the documented per-scope granularity, also exempts a concurrent flow's work enqueued during another flow's drain) | Fail-open: the dispatch still runs, at the `AfterCommit` point, under post-completion swallow semantics it did not ask for. One warning per dispatch, naming the event type. A coalesced survivor warns if *any* absorbed raise would have — the merge preserves the obligation. The message names drain **placement** (PHASE-008): the drain belongs inside the factory method body, because a drain called from outside the call never reaches this work — the consumer who wrapped the factory call from outside did do the "between flush and commit" part, and 9009 alone told them so only at Debug. |
+| 9008 | `FactoryEventPhaseCoalesced` | Debug | A raise for a `Coalesce = true` handler collapsed into an identical pending dispatch (logged *instead of* a second 9001; the 9002/9006 counts reflect the collapsed queue) | Informational — the drain runs the handler once for the collapsed set |
+| 9009 | `FactoryEventPhaseDrainWithoutEntryCall` | Debug | `IFactoryEventPhaseCoordinator.DrainAsync` was called while no entry factory call was active in the scope — the short-circuit case | The drain returns having done nothing. The consumer this is for wraps the factory call from *outside*, where the scheduler is provably empty at both available moments: before the call nothing has been queued (the dispatcher queues only while an entry call is active), and after it the entry-call exit has already swept the queue — emitting 9007 for any `AfterFlush` work it had to run there, which is why that warning arrives having apparently ignored a drain the consumer did call. Move the drain inside the factory method body. Debug, not Warning: draining a scope with no factory work in flight is also a correct steady state. |
 
 ### Public Exception
 
@@ -1052,13 +1194,17 @@ These are known limitations or open questions. They are documented here to preve
 | `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
 | `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler running in the caller's DI scope (shared DbContext/transaction), sequential, awaited |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | Consumer-implemented `IFactoryEventRelay.Relay` — bridges relayed events to an aggregator (demonstrates the `InMemoryAggregatorRelay` reference impl) |
+| `Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs` | `DispatchPhase` on the handler attribute — consumer `AfterFlush` drain via `IFactoryEventPhaseCoordinator`, per-drain-point ordering, fail-open never-drained path, discard on failure, opt-in `Coalesce` collapse vs. per-raise control |
 | `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | `Relay(IReadOnlyList<FactoryEventBase>)` invocation, batch contents, `RaiseOptions.ServerOnly` exclusion, empty-batch still invokes Relay once |
+| `Design.Tests/FactoryTests/FactoryEventPhasesTests.cs` | Observed marker sequences for the four phase scenarios: each phase at its drain point, phase order vs. raise order, fail-open sweep, failed-call discard |
 | `Design.Tests/FactoryTests/ParamAuthorizationTests.cs` | Parameterized auth: type-matched params, target params, CanXxx suppression |
 | `Design.Tests/FactoryTests/InterfaceFactoryAuthorizationTests.cs` | Interface-factory auth: Execute/Read scopes, parameter matching, Can{Method}, NotAuthorizedException across client/server |
 | `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |
-| `Design.Server/Program.cs` | Server configuration |
+| `Design.Tests/FactoryTests/DesignServerCompositionTests.cs` | Verifies `Design.Server` can actually serve `Design.Domain` — resolves each server-only dependency and runs domain operations against the server's own composition |
+| `Design.Server/Program.cs` | Server pipeline: middleware order and the hosted-WASM fallback |
+| `Design.Server/ServerServices.cs` | Server composition — `AddNeatooAspNetCore` plus the server-only registrations, behind one seam so a test can call exactly what `Program.cs` calls. Also where the "`RegisterMatchingName` registers **transient**, so register stateful services explicitly as scoped" rule is stated |
 | `Design.Client.Blazor/Program.cs` | Client configuration |

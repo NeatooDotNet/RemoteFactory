@@ -190,7 +190,17 @@ Note that `[Remote]` is **decorative** on `[Execute]` methods — static factori
 
 ### [FactoryEventHandler\<T\>]
 
-Class-level attribute that marks a class as a **server-side** static handler for factory events of type `T` (where `T : FactoryEventBase`). The source generator finds one matching `static` method by signature and registers it with `FactoryEventHandlerRegistry`. See [Factory Events](factory-events.md) for the full pattern.
+Class-level attribute that marks a class as a **server-side** static handler for factory events of type `T` (where `T : FactoryEventBase`). The source generator finds one matching `static` method by signature and registers it with `FactoryEventHandlerRegistry`. An optional `DispatchPhase` argument declares *when* the handler runs — `Immediate` (the default, at `Raise`), `AfterFlush` (queued, drained by the factory body's `IFactoryEventPhaseCoordinator.DrainAsync` call), or `AfterCommit` (queued, drained by the framework after the entry call succeeds). See [Factory Events](factory-events.md) for the full pattern and [Dispatch Phases](factory-events.md#dispatch-phases) for the phase contract.
+
+```csharp
+[FactoryEventHandler<OrderShipped>]                            // Immediate — the default
+[FactoryEventHandler<OrderShipped>(DispatchPhase.AfterFlush)]  // deferred, consumer-drained
+[FactoryEventHandler<OrderShipped>(DispatchPhase.AfterCommit)] // deferred, framework-drained
+[FactoryEventHandler<OrderShipped>(DispatchPhase.AfterCommit,
+                                   Coalesce = true)]           // identical queued dispatches collapse
+```
+
+The optional `Coalesce` named argument collapses identical **queued** dispatches (same handler, `Equals`-equal event, same `RaiseOptions`) to one per drain — see [Coalescing](factory-events.md#coalescing-identical-dispatches-opt-in) for the identity contract and its hazards. The flag is inert on anything that isn't queued (`Immediate` emits `NF0505`).
 
 **Inherited:** No | **Multiple:** Yes (stack one per event type)
 
@@ -200,6 +210,7 @@ Class-level attribute that marks a class as a **server-side** static handler for
 - First non-`[Service]`/non-`CancellationToken` parameter must be of type `T`
 - Any accessibility allowed
 - Exactly one match required — `NF0501` if none, `NF0502` if multiple
+- One attribute per event type — a repeated event type on the same class emits `NF0504` (Warning) and only the first declaration registers: its phase and its `Coalesce` flag
 
 ```csharp
 [FactoryEventHandler<OrderCheckoutCompleted>]
@@ -215,11 +226,11 @@ public static partial class OrderAuditHandler
 
 **Trimming:** handler registrations are wrapped in `NeatooRuntime.IsServerRuntime`, so a client published with the feature switch set to `false` drops the handler bodies and their `[Service]` dependencies. Because those registrations are entirely server-guarded, there is nothing left on a trimmed client to resolve — handler registration cannot be verified from a client-side test, only from server-side or untrimmed ones. See [IL Trimming](trimming.md).
 
-Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. All handlers for the event type run sequentially, awaited, sharing the caller's `DbContext` and transaction. A throwing handler aborts the chain and propagates to the caller. For fire-and-forget work that should not participate in the caller's transaction, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)).
+Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. Handlers run sequentially, awaited, at the drain point their phase declares. `Immediate` handlers (the default) run at `Raise`, sharing the caller's `DbContext` and transaction with staged (unflushed) state visible; a throwing `Immediate` handler aborts the chain and propagates to the caller. Deferred handlers (`AfterFlush`, `AfterCommit`) are queued at `Raise` and run at their drain point — in-transaction drains propagate exceptions, the post-completion drain logs and swallows them, and a failed factory call discards queued work entirely. See [Dispatch Phases](factory-events.md#dispatch-phases). For fire-and-forget work that should not participate in the factory operation at all, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)).
 
 > **Instance-method handlers are not supported.** Declaring a non-`static` matching method inside a `[FactoryEventHandler<T>]` class emits **NF0503 (Warning)** and is silently skipped at runtime. Client-side reception is handled by implementing `IFactoryEventRelay` on your own class and registering it in DI — see [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay) and the [`IFactoryEventRelay`](interfaces-reference.md#ifactoryeventrelay) interface reference.
 
-A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle several event types — the generator matches one `static` method per attribute.
+A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle **several event types** — the generator matches one `static` method per attribute, and each attribute carries its own phase and `Coalesce` flag. That is the documented basis of stacking, and the generator enforces it: repeating the *same* event type on one class emits `NF0504` (Warning), and only the first declaration's registration — phase and flag — stands.
 
 ### [FactoryEvent]
 

@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Neatoo.RemoteFactory.Generator.Model;
@@ -38,6 +39,16 @@ internal static class RelayHandlerRenderer
         // global:: added here at the same time. Its absence was a latent bug: a
         // consumer namespace that shadows the first segment of this one would bind
         // the attribute argument to the wrong type.
+        //
+        // The ATTRIBUTE NAME itself (Neatoo.RemoteFactory.NeatooFactoryRegistrar) stays
+        // unqualified, and is the one type-bearing token in this file recorded as immune
+        // rather than qualified. Assembly-level attributes bind at compilation-unit scope,
+        // outside any namespace declaration, where a global-namespace declaration beats a
+        // using-imported one and no consumer namespace is in scope to shadow it — unlike
+        // the registration body, which is emitted inside the consumer's own namespace.
+        // Noted at the PHASE-008 gate, which also observed the consequence for tests: the
+        // ShadowingRelayHandlerSource fixture's TestNamespace.Neatoo decoy cannot reach
+        // this line, so it constrains nothing here.
         sb.AppendLine($"[assembly: Neatoo.RemoteFactory.NeatooFactoryRegistrar(typeof(global::{model.Namespace}.{RegistrarHolderPrefix}{model.ClassName}))]");
         sb.AppendLine();
 
@@ -51,7 +62,7 @@ internal static class RelayHandlerRenderer
         sb.AppendLine($"    {model.ClassSignatureText} {{");
         sb.AppendLine();
 
-        sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
+        sb.AppendLine($"        internal static void FactoryServiceRegistrar({ServiceCollectionType} services, {NeatooFactoryType} remoteLocal)");
         sb.AppendLine("        {");
 
         foreach (var entry in model.Entries)
@@ -109,7 +120,7 @@ internal static class RelayHandlerRenderer
     {
         sb.AppendLine($"    internal static class {RegistrarHolderPrefix}{model.ClassName}");
         sb.AppendLine("    {");
-        sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
+        sb.AppendLine($"        internal static void FactoryServiceRegistrar({ServiceCollectionType} services, {NeatooFactoryType} remoteLocal)");
         sb.AppendLine("        {");
         sb.AppendLine($"            global::{model.Namespace}.{model.ClassName}.FactoryServiceRegistrar(services, remoteLocal);");
         sb.AppendLine("        }");
@@ -117,15 +128,83 @@ internal static class RelayHandlerRenderer
     }
 
     /// <summary>
-    /// Server-side: register into FactoryEventHandlerRegistry. Handlers run in the
-    /// caller's DI scope (shared DbContext/transaction), sequentially, awaited.
-    /// [Service] parameters resolve from the caller's sp. CancellationToken flows
-    /// through from IFactoryEvents.Raise. Invocation arguments are emitted in the
-    /// order the user declared them on the handler method.
+    /// Fully-qualified name of the runtime dispatch-phase enum, as literal text.
     /// </summary>
+    /// <remarks>
+    /// Text, not a type reference: the enum cannot be referenced from this netstandard2.0
+    /// project without duplicating a public runtime type (see the warning on
+    /// <c>FactoryEventHandlerAttribute&lt;T&gt;</c>).
+    /// <para>
+    /// <c>global::</c>-qualified for the same reason as the assembly attribute above, and it
+    /// is load-bearing for the same reason: a consumer namespace shadowing the first segment
+    /// of this one would otherwise bind the argument to the wrong type. The generated file's
+    /// <c>using Neatoo.RemoteFactory;</c> is not enough — that bug shipped for four releases
+    /// on the attribute before v1.7.0, and this is a new type-bearing token in the same file.
+    /// </para>
+    /// </remarks>
+    private const string DispatchPhaseType = "global::Neatoo.RemoteFactory.DispatchPhase";
+
+    /// <summary>Framework tokens the generated body would otherwise resolve through a <c>using</c>.</summary>
+    /// <remarks>
+    /// Same hazard as <see cref="DispatchPhaseType"/> and the assembly attribute: the generated
+    /// members live in the CONSUMER's namespace, so a consumer type or nested namespace named
+    /// <c>NeatooRuntime</c>, <c>FactoryEventHandlerRegistry</c>, etc. binds ahead of ours and the
+    /// file's <c>using Neatoo.RemoteFactory;</c> does not save it.
+    /// </remarks>
+    private const string RegistryType = "global::Neatoo.RemoteFactory.FactoryEventHandlerRegistry";
+    private const string RuntimeType = "global::Neatoo.RemoteFactory.NeatooRuntime";
+    private const string ServiceCollectionType = "global::Microsoft.Extensions.DependencyInjection.IServiceCollection";
+    private const string NeatooFactoryType = "global::Neatoo.RemoteFactory.NeatooFactory";
+
+    /// <summary>
+    /// Re-qualifies a type name the transform carries in stripped form.
+    /// </summary>
+    /// <remarks>
+    /// <c>FactoryGenerator.RelayHandler.cs</c> takes
+    /// <c>SymbolDisplayFormat.FullyQualifiedFormat</c> — which includes <c>global::</c> — and
+    /// then removes the prefix. That normalization is load-bearing and must stay: the stripped
+    /// string is the <c>registeredPhaseByEventType</c> dedupe key, the comparison target for
+    /// matching a handler method's event parameter, and the type name printed in the messages
+    /// of NF0501, NF0502, NF0503, NF0504, and NF0505 — several of them pinned. Deleting the
+    /// strip would silently rewrite five diagnostic messages.
+    /// <para>
+    /// So the prefix comes back here, at the emission site, which is also how the assembly
+    /// attribute and the registrar holder already do it. Only the leading prefix was removed,
+    /// so inner qualifications inside a constructed generic are untouched and re-prefixing is
+    /// exact. The guard makes this idempotent if the transform ever stops stripping.
+    /// </para>
+    /// </remarks>
+    private static string Qualified(string typeName)
+        => typeName.StartsWith("global::") ? typeName : $"global::{typeName}";
+
+    /// <summary>
+    /// Server-side: register into FactoryEventHandlerRegistry at the phase the attribute
+    /// declared. Handlers run in the caller's DI scope; <c>Immediate</c> handlers dispatch at
+    /// raise time (shared DbContext/transaction), later phases are queued and drained at their
+    /// drain point. [Service] parameters resolve from the caller's sp. CancellationToken flows
+    /// through from IFactoryEvents.Raise. Invocation arguments are emitted in the order the
+    /// user declared them on the handler method.
+    /// </summary>
+    /// <remarks>
+    /// The widest overload — phase AND coalesce — is emitted for every handler, including
+    /// unphased/unflagged ones, so there is one shape to read and one path to test: the
+    /// defaulted case pins <c>Immediate</c> and <c>false</c> positively rather than pinning
+    /// an absence. This leaves the two- and three-argument <c>RegisterHandler</c> overloads
+    /// with no generated call sites; they stay because they are public API.
+    /// </remarks>
     private static void RenderServerSideHandler(StringBuilder sb, EventHandlerEntry handler, string className)
     {
         var eventTypeName = handler.EventTypeName;
+
+        // An empty name means the consumer cast an undefined value onto the enum; render it
+        // faithfully rather than coercing it to a phase they did not ask for.
+        // InvariantCulture on the numeric fallback: interpolation would format with the
+        // build machine's CurrentCulture, and a negative value on a culture whose negative
+        // sign is not ASCII '-' (sv-SE resolves to U+2212 under ICU) emits a CS1056 into the
+        // consumer's build. `(DispatchPhase)(-1)` compiles, so the path is reachable.
+        var phase = handler.PhaseName.Length > 0
+            ? $"{DispatchPhaseType}.{handler.PhaseName}"
+            : $"({DispatchPhaseType}){handler.PhaseValue.ToString(CultureInfo.InvariantCulture)}";
 
         // Emit arguments in declaration order so a handler like
         // `(TestEvent evt, CancellationToken ct, [Service] IFoo svc)` binds correctly.
@@ -133,15 +212,21 @@ internal static class RelayHandlerRenderer
             handler.AllParameters.Select(p => p.IsCancellationToken ? "ct" : p.Name));
 
         var serviceAssignments = string.Join("\n                    ",
-            handler.ServiceParameters.Select(p => $"var {p.Name} = sp.GetRequiredService<{p.Type}>();"));
+            handler.ServiceParameters.Select(p => $"var {p.Name} = sp.GetRequiredService<{Qualified(p.Type)}>();"));
 
+        // className is NOT qualified, and must not be: this body is emitted inside the user's
+        // own namespace AND inside their own partial class (see Render), where the only name
+        // that could shadow the enclosing class is a member of the same name — CS0542. Immune
+        // by construction, unlike every consumer-derived type token around it.
         var methodInvocation = $"await {className}.{handler.MethodName}({allParamIdentifiers}).ConfigureAwait(false);";
 
-        sb.AppendLine("            if (NeatooRuntime.IsServerRuntime)");
+        sb.AppendLine($"            if ({RuntimeType}.IsServerRuntime)");
         sb.AppendLine("            {");
-        sb.AppendLine($"                FactoryEventHandlerRegistry.RegisterHandler<{eventTypeName}>(typeof({className}), async (sp, eventObj, options, ct) =>");
+        var coalesce = handler.Coalesce ? "coalesce: true" : "coalesce: false";
+
+        sb.AppendLine($"                {RegistryType}.RegisterHandler<{Qualified(eventTypeName)}>(typeof({className}), {phase}, {coalesce}, async (sp, eventObj, options, ct) =>");
         sb.AppendLine("                {");
-        sb.AppendLine($"                    var {handler.Parameters.First(p => !p.IsCancellationToken).Name} = ({eventTypeName})eventObj;");
+        sb.AppendLine($"                    var {handler.Parameters.First(p => !p.IsCancellationToken).Name} = ({Qualified(eventTypeName)})eventObj;");
         if (!string.IsNullOrEmpty(serviceAssignments))
         {
             sb.AppendLine($"                    {serviceAssignments}");

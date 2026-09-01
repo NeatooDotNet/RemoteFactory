@@ -117,18 +117,24 @@ See [Factory Operations](factory-operations.md) for details.
 
 ## How Do I Handle Domain Events?
 
-RemoteFactory's event surface is the `[FactoryEventHandler<T>]` mediator: raise a strongly-typed event via `IFactoryEvents.Raise<T>` inside a factory method; server-side `static` handlers process it sequentially in the caller's DI scope (shared `DbContext`, shared transaction); the batch is also relayed to the client via a consumer-implemented `IFactoryEventRelay`.
+RemoteFactory's event surface is the `[FactoryEventHandler<T>]` mediator: raise a strongly-typed event via `IFactoryEvents.Raise<T>` inside a factory method; server-side `static` handlers process it sequentially in the caller's DI scope, at the drain point their `DispatchPhase` declares (the default, `Immediate`, means shared `DbContext` and shared transaction at `Raise`); the batch is also relayed to the client via a consumer-implemented `IFactoryEventRelay`.
 
 ```
 Does the handler need to participate in the caller's DB transaction?
-├── YES → [FactoryEventHandler<T>] with a static method
+├── YES, atomic with the save (staged state is fine)
+│   └── [FactoryEventHandler<T>] with a static method — Immediate, the default
+├── YES, but it needs flushed state (DB-generated keys) first
+│   └── [FactoryEventHandler<T>(DispatchPhase.AfterFlush)] + a coordinator drain
+│       between the factory body's flush and commit
+├── NO — read-only projection that must never fail the save
+│   └── [FactoryEventHandler<T>(DispatchPhase.AfterCommit)]
 └── NO (external system — email, webhook, queue publish)
     └── Manual Task.Run + IServiceScopeFactory.CreateScope() inside the factory method;
         explicitly snapshot ambient state (tenant, correlation) before entering the
         background task. See v1.5.0 release notes for the full pattern.
 ```
 
-See [Factory Events](factory-events.md) for the mediator/relay surface and the [v1.5.0 release notes](release-notes/v1.5.0.md) for the fire-and-forget migration pattern.
+See [Factory Events](factory-events.md) for the mediator/relay surface, [Dispatch Phases](factory-events.md#dispatch-phases) for the phase contract, and the [v1.5.0 release notes](release-notes/v1.5.0.md) for the fire-and-forget migration pattern.
 
 ---
 

@@ -13,3 +13,4 @@ abandonment. Move rows to the Completed section together with the folder move.
 
 | ID | Todo | Completed | Location |
 |----|------|-----------|----------|
+| PHASE | Phased factory-event dispatch | 2026-08-31 | [PHASE-phased-event-dispatch](./completed/PHASE-phased-event-dispatch/todo.md) |

@@ -470,4 +470,85 @@ internal static partial class Log
         string typeName,
         long elapsedMs,
         int jsonLength);
+
+    // ===== Phased Event Dispatch (9xxx) =====
+
+    [LoggerMessage(
+        EventId = 9001,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} queued for {Phase} dispatch")]
+    public static partial void FactoryEventPhaseQueued(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9002,
+        Level = LogLevel.Debug,
+        Message = "Drained {HandlerCount} queued handler dispatch(es) through phase {Phase}")]
+    public static partial void FactoryEventPhaseDrained(
+        this ILogger logger,
+        int handlerCount,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9003,
+        Level = LogLevel.Error,
+        Message = "A {Phase} handler for factory event {EventType} threw after the factory operation completed; the exception was logged and swallowed because it can no longer roll anything back. Remaining queued handlers still run.")]
+    public static partial void FactoryEventPhaseHandlerFailed(
+        this ILogger logger,
+        DispatchPhase phase,
+        string eventType,
+        Exception? exception);
+
+    [LoggerMessage(
+        EventId = 9004,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} has a {Phase} handler but no phase queue exists in this scope; dispatching it immediately instead.")]
+    public static partial void FactoryEventPhaseNoQueueInScope(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9005,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} has a {Phase} handler but was raised outside any factory call; dispatching it immediately instead.")]
+    public static partial void FactoryEventPhaseRaisedOutsideEntryCall(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9006,
+        Level = LogLevel.Debug,
+        Message = "Discarded {DiscardedCount} deferred handler dispatch(es) at entry-call exit without running them.")]
+    public static partial void FactoryEventPhaseDiscardedAtExit(
+        this ILogger logger,
+        int discardedCount);
+
+    [LoggerMessage(
+        EventId = 9007,
+        Level = LogLevel.Warning,
+        Message = "An AfterFlush handler dispatch for factory event {EventType} was never drained by the consumer; it ran at the AfterCommit point instead (fail-open), after the transaction it expected to run inside. Call IFactoryEventPhaseCoordinator.DrainAsync(DispatchPhase.AfterFlush) from inside the factory method body, between your flush and your commit — a drain called from outside the factory call never reaches this work, because the queue only exists while the entry call is active. Otherwise register the handler at a different phase.")]
+    public static partial void FactoryEventPhaseNeverDrained(
+        this ILogger logger,
+        string eventType);
+
+    [LoggerMessage(
+        EventId = 9008,
+        Level = LogLevel.Debug,
+        Message = "Factory event {EventType} coalesced into an identical pending {Phase} dispatch; the drain will run the handler once for them")]
+    public static partial void FactoryEventPhaseCoalesced(
+        this ILogger logger,
+        string eventType,
+        DispatchPhase phase);
+
+    [LoggerMessage(
+        EventId = 9009,
+        Level = LogLevel.Debug,
+        Message = "IFactoryEventPhaseCoordinator.DrainAsync({Phase}) was called with no factory entry call active in this scope; nothing was drained. Call it from inside the factory method body — a drain placed outside the factory call can only run when the scheduler is provably empty: before the call, nothing has been queued yet, and after it the entry-call exit has already swept the queue (warning about any AfterFlush work it had to run there).")]
+    public static partial void FactoryEventPhaseDrainWithoutEntryCall(
+        this ILogger logger,
+        DispatchPhase phase);
 }

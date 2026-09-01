@@ -1,7 +1,7 @@
 ---
 name: RemoteFactory
 description: |
-  This skill should be used when the user mentions "RemoteFactory", "Neatoo.RemoteFactory", "[Factory] attribute", "[Remote] attribute", "[Execute] attribute", "[FactoryEventHandler<T>]", "FactoryEventBase", "IFactoryEvents", "IFactoryEventRelay", "factory event relay", "ServerOnly", "RaiseOptions", "IFactorySaveMeta", "[AspAuthorize]", "[AuthorizeFactory]", "Save routing", "domain events", "client-server factory", "IL trimming", "bundle size", "PublishTrimmed", "NeatooRuntime", "ViewModel factory", "LazyLoad", "ILazyLoadFactory", "deferred loading", "lazy loading", or asks about factory patterns for 3-tier .NET applications. RemoteFactory works with any .NET class — Neatoo entities, ViewModels, POCOs, or static commands. It does NOT require Neatoo base classes. Provides guidance for building enterprise line-of-business applications using RemoteFactory's source-generated factory patterns.
+  This skill should be used when the user mentions "RemoteFactory", "Neatoo.RemoteFactory", "[Factory] attribute", "[Remote] attribute", "[Execute] attribute", "[FactoryEventHandler<T>]", "FactoryEventBase", "IFactoryEvents", "IFactoryEventRelay", "factory event relay", "ServerOnly", "RaiseOptions", "DispatchPhase", "AfterFlush", "AfterCommit", "dispatch phases", "IFactoryEventPhaseCoordinator", "Coalesce", "coalescing", "IFactorySaveMeta", "[AspAuthorize]", "[AuthorizeFactory]", "Save routing", "domain events", "client-server factory", "IL trimming", "bundle size", "PublishTrimmed", "NeatooRuntime", "ViewModel factory", "LazyLoad", "ILazyLoadFactory", "deferred loading", "lazy loading", or asks about factory patterns for 3-tier .NET applications. RemoteFactory works with any .NET class — Neatoo entities, ViewModels, POCOs, or static commands. It does NOT require Neatoo base classes. Provides guidance for building enterprise line-of-business applications using RemoteFactory's source-generated factory patterns.
 version: 1.0.0
 ---
 
@@ -71,10 +71,14 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Should child entity methods be `internal`? | Yes - server-only, trimmable, invisible to client |
 | Can [Execute] return void? | No, must return Task<T> |
 | Can [Execute] go on a class factory? | Yes, if `public static` and returns containing type |
-| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope (shared DbContext/transaction), sequentially, awaited |
+| How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope, sequentially; at the default `Immediate` phase that means shared DbContext/transaction, awaited at `Raise` |
 | How do I handle a factory event on the client? | Implement `IFactoryEventRelay` and register it in DI — RemoteFactory invokes `Relay(IReadOnlyList<FactoryEventBase>)` once per `[Remote]` call |
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No — separate generator pipeline |
-| I want a handler that participates in the factory's DB transaction | Use `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` — shared scope, sequential, exceptions propagate and roll back |
+| I want a handler that participates in the factory's DB transaction | Use `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` — shared scope, sequential; at the default `Immediate` phase, exceptions propagate and roll back |
+| When does a `[FactoryEventHandler<T>]` handler run? | Its `DispatchPhase`: `Immediate` (default, at `Raise`, staged state), `AfterFlush` (at the factory body's `IFactoryEventPhaseCoordinator.DrainAsync` call, flushed state, tx open), `AfterCommit` (framework-drained after the entry call succeeds, exceptions swallowed). See `references/factory-events.md`. |
+| My handler needs DB-generated keys but must still roll back on failure | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + drain between flush and commit |
+| I want a read-only projection that never fails the save | `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` |
+| One save raises the same event N times and my projection recomputes N times | Add `Coalesce = true` to the deferred handler's attribute — identical queued dispatches collapse to one per drain (identity is `Equals` + same options; prefer value-only event payloads) |
 | I want to fire-and-forget external IO (email, webhook, queue) inside a factory method | Call `Task.Run` + `IServiceScopeFactory.CreateScope()` directly. RemoteFactory does not own this — snapshot any ambient context (correlation ID, tenant) before the `Task.Run` body and re-assign inside the child scope. |
 | How do I stop an event from relaying to the client? | Pass `RaiseOptions.ServerOnly` to `IFactoryEvents.Raise` |
 | Where must factory events be raised? | Inside a factory method via `[Service] IFactoryEvents` |
@@ -92,7 +96,7 @@ Consult these files for detailed patterns and examples:
 - **`references/class-factory.md`** - Aggregate roots, IFactorySaveMeta, lifecycle hooks
 - **`references/interface-factory.md`** - Remote service proxies
 - **`references/static-factory.md`** - Execute commands on static factory classes
-- **`references/factory-events.md`** - `[FactoryEventHandler<T>]` mediator + server-to-client relay, `IFactoryEvents.Raise`, `RaiseOptions.ServerOnly`, `IFactoryEventRelay`
+- **`references/factory-events.md`** - `[FactoryEventHandler<T>]` mediator + server-to-client relay, `IFactoryEvents.Raise`, `RaiseOptions.ServerOnly`, `IFactoryEventRelay`, dispatch phases (`Immediate`/`AfterFlush`/`AfterCommit`, `IFactoryEventPhaseCoordinator`), opt-in `Coalesce` collapse of identical queued dispatches
 
 ### Implementation Details
 - **`references/lazyload.md`** - Deferred async loading with LazyLoad&lt;T&gt;, ILazyLoadFactory

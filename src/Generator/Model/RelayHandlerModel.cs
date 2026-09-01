@@ -64,7 +64,10 @@ internal sealed record EventHandlerEntry
         bool isAsync,
         IReadOnlyList<ParameterModel> parameters,
         IReadOnlyList<ParameterModel> serviceParameters,
-        IReadOnlyList<ParameterModel> allParameters)
+        IReadOnlyList<ParameterModel> allParameters,
+        string phaseName,
+        int phaseValue,
+        bool coalesce)
     {
         EventTypeName = eventTypeName;
         MethodName = methodName;
@@ -73,10 +76,46 @@ internal sealed record EventHandlerEntry
         Parameters = new EquatableArray<ParameterModel>([.. parameters]);
         ServiceParameters = new EquatableArray<ParameterModel>([.. serviceParameters]);
         AllParameters = new EquatableArray<ParameterModel>([.. allParameters]);
+        PhaseName = phaseName;
+        PhaseValue = phaseValue;
+        Coalesce = coalesce;
     }
 
     public string EventTypeName { get; }
     public string MethodName { get; }
+
+    /// <summary>
+    /// Name of the <c>DispatchPhase</c> member the attribute declared — <c>"Immediate"</c> when
+    /// the consumer wrote no argument. Empty when the declared value matches no member of the
+    /// runtime enum, i.e. an explicit cast to an undefined value; the renderer then falls back
+    /// to <see cref="PhaseValue"/>.
+    /// </summary>
+    /// <remarks>
+    /// The phase is carried as primitives — never a <c>TypedConstant</c>, never an
+    /// <c>ISymbol</c>. Both of those drag a <c>Compilation</c> into the incremental cache
+    /// through this record's equality, and the caching test cannot see it: it compares
+    /// transform outputs across two runs that share a reference manager, so symbol-bearing
+    /// fields compare equal and the leak stays green. Enforced by review, not by a test.
+    /// <para>
+    /// <c>DispatchPhase</c> itself is deliberately unavailable here — see the type-duplication
+    /// warning on <c>FactoryEventHandlerAttribute&lt;T&gt;</c>. The member name is looked up on
+    /// the enum symbol rather than hardcoded, so a phase added to the runtime enum needs no
+    /// generator change.
+    /// </para>
+    /// </remarks>
+    public string PhaseName { get; }
+
+    /// <summary>
+    /// Numeric value of the declared phase. Only load-bearing when <see cref="PhaseName"/> is
+    /// empty; otherwise the name is what gets rendered.
+    /// </summary>
+    public int PhaseValue { get; }
+
+    /// <summary>
+    /// The attribute's <c>Coalesce</c> named argument (default <c>false</c>). A primitive for
+    /// the same cache-safety reason as the phase — see <see cref="PhaseName"/>.
+    /// </summary>
+    public bool Coalesce { get; }
 
     /// <summary>
     /// Always <c>true</c> — the generator only emits registrations for static handlers now.

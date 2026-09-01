@@ -620,7 +620,7 @@ public interface IFactoryEvents
 }
 ```
 
-**When to use:** Publishing domain events from within a factory method. `Raise<T>` dispatches to every matching `[FactoryEventHandler<T>]` static-method handler **in the caller's DI scope, sequentially, awaited** — handlers share the caller's `DbContext` and transaction, and an exception in any handler aborts the chain and propagates to the caller. Unless `RaiseOptions.ServerOnly` is set, the event is also captured for relay back to the client. For fire-and-forget work that should not participate in the caller's transaction, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)). See [Factory Events](factory-events.md).
+**When to use:** Publishing domain events from within a factory method. `Raise<T>` dispatches every matching `[FactoryEventHandler<T>]` static-method handler **in the caller's DI scope, sequentially, awaited** — `Immediate` handlers (the default) run at `Raise` itself, sharing the caller's `DbContext` and transaction, and an exception in an `Immediate` handler aborts the chain and propagates to the caller. Handlers registered at `AfterFlush` or `AfterCommit` are queued at `Raise` and run at their [drain point](factory-events.md#dispatch-phases) instead. Unless `RaiseOptions.ServerOnly` is set, the event is also captured for relay back to the client. For fire-and-forget work that should not participate in the factory operation, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)). See [Factory Events](factory-events.md).
 
 ### IFactoryEventRelay
 
@@ -643,6 +643,26 @@ public interface IFactoryEventRelay
 - The consumer owns SyncContext marshaling for UI work.
 
 > **Migration note.** The former surface (`Register(object handler)` / `Unregister(object handler)`, instance-method `[FactoryEventHandler<T>]` on client classes, `WeakReference`-based handler tracking) has been removed. Classes that still declare instance-method handlers inside `[FactoryEventHandler<T>]` emit **NF0503 (Warning)** and are silently skipped at runtime. See [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay).
+
+### IFactoryEventPhaseCoordinator
+
+Consumer-facing drain trigger for handlers registered at `DispatchPhase.AfterFlush`. Injected as `[Service] IFactoryEventPhaseCoordinator` into factory methods (method injection — server-only, registered in Server and Logical modes).
+
+```csharp
+public interface IFactoryEventPhaseCoordinator
+{
+    Task DrainAsync(DispatchPhase phase, CancellationToken cancellationToken = default);
+}
+```
+
+**When to use:** Call `DrainAsync(DispatchPhase.AfterFlush)` inside a factory method body, between your flush and your commit, to run the queued `AfterFlush` handlers in-transaction against flushed state. See [Dispatch Phases](factory-events.md#dispatch-phases).
+
+**Contract:**
+
+- `AfterFlush` is the only accepted phase — `Immediate` handlers are never queued, and the `AfterCommit` drain point belongs to the framework. Other values throw `ArgumentOutOfRangeException`.
+- Drains the **scope's** queue, sweeping the requested phase and any earlier undrained work; a handler exception propagates to the drain call so the transaction can roll back.
+- Returns without draining when no entry factory call is active in the scope — the drain must run inside the factory body, not from a wrapper around the factory call.
+- `AfterFlush` work never drained by the consumer runs at the `AfterCommit` point instead, fail-open, with Warning 9007.
 
 ## Factory Core
 
@@ -684,6 +704,7 @@ public interface IFactoryCore<T>
 | `ILazyLoadFactory` | Deferred loading factory | Framework (inject via `[Service]`) |
 | `IFactoryEvents` | Mediator for publishing factory events | Factory methods (inject) |
 | `IFactoryEventRelay` | Client-side single-method integration hook for relayed events | Application (implement + register in DI) |
+| `IFactoryEventPhaseCoordinator` | Consumer drain trigger for `AfterFlush` handlers | Factory methods (inject via `[Service]`) |
 | `IFactoryCore<T>` | Factory execution pipeline | Framework (rarely customized) |
 
 ## Next Steps

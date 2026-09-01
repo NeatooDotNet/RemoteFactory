@@ -28,8 +28,16 @@ docs/todos/
   land there.
 - Each plan's implementation gets its own branch `{ID}-{NNN}-{short-name}` off the
   todo branch.
-- PRs target `main` (CI's `pull_request` trigger only watches `main`); after merge,
-  pull `main` back into the todo branch and continue.
+- **Plan PRs target their arc branch `{ID}`; the arc PRs to `main` at close-out.**
+- **CI does not run on plan PRs, deliberately.** `build.yml`'s `pull_request` trigger
+  watches `main` only, so the arc → `main` PR is the single CI gate for the whole arc.
+  Do not widen the trigger to arc branches. Per-plan verification is the Step 5 gate's
+  local full-suite run, whose logs live in the todo's `reviews/{NNN}-build.log` and
+  `reviews/{NNN}-test.log` — a plan does not reach Done without them.
+- After the arc merges, pull `main` back into any live arc branch and continue.
+- A plan branch that must build on an unmerged predecessor stacks on it
+  (`{ID}-{NNN}` off `{ID}-{MMM}`) rather than off the arc branch; record the stack in
+  the plan's Notes and merge in order.
 
 ## Commits
 
