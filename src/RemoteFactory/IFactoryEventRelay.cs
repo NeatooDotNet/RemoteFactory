@@ -10,18 +10,25 @@ namespace Neatoo.RemoteFactory;
 /// marshaling inside <see cref="Relay"/>.
 ///
 /// RemoteFactory guarantees <see cref="Relay"/> is invoked fire-and-forget strictly
-/// <b>after</b> the factory method returns to its caller and the caller's continuation
+/// <b>after</b> the call returns to its caller and the caller's continuation
 /// has resumed. Exceptions thrown by <see cref="Relay"/> are isolated — they are caught
-/// and logged, and never propagate to the factory caller.
+/// and logged, and never propagate to the caller.
 ///
-/// One <c>[Remote]</c> factory call produces exactly one <see cref="Relay"/> invocation
-/// (the batch may be empty). When deserialization of a relayed event fails, the batch
-/// is aborted and <see cref="Relay"/> is not invoked for that call.
+/// One remote round-trip produces exactly one <see cref="Relay"/> invocation (the batch
+/// may be empty). There are two kinds of round-trip: a <c>[Remote]</c> factory call, and
+/// a client-initiated <see cref="IFactoryEvents.Raise{T}"/>. When deserialization of a
+/// relayed event fails, the batch is aborted and <see cref="Relay"/> is not invoked for
+/// that call.
+///
+/// A client-initiated <c>Raise</c> receives its own event back in the batch, because
+/// raising from the client dispatches nothing locally — the relay has not otherwise seen
+/// it. Pass <see cref="RaiseOptions.ServerOnly"/> to suppress that.
 /// </summary>
 public interface IFactoryEventRelay
 {
     /// <summary>
-    /// Receive the batch of events captured during the preceding <c>[Remote]</c> factory call.
+    /// Receive the batch of events captured during the preceding remote round-trip —
+    /// a <c>[Remote]</c> factory call or a client-initiated <see cref="IFactoryEvents.Raise{T}"/>.
     /// Invoked fire-and-forget after the caller's continuation has resumed.
     /// </summary>
     /// <param name="events">Fully deserialized events in the order they were raised on the server.</param>

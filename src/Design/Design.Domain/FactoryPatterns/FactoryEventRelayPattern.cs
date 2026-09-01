@@ -86,13 +86,20 @@ public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventB
 /// 2. The same IFactoryEvents handles both server-side [FactoryEventHandler]
 ///    dispatch and client-relay capture — one API, two effects.
 ///
-/// COMMON MISTAKE: Trying to raise events after the factory method returns
+/// PREFER THIS OVER a separate client-side raise
 ///
-/// WRONG:
+/// LESS GOOD:
 ///     var result = await factory.Create(...);
-///     factoryEvents.Raise(new MyEvent(...));  // Too late — no scope
+///     await factoryEvents.Raise(new MyEvent(...));  // a SECOND round-trip
 ///
-/// RIGHT: Raise inside the factory method itself, while still on the server.
+/// BETTER: Raise inside the factory method itself, while still on the server.
+///
+/// The client-side raise is supported and does work (see ClientRaisedNotice below)
+/// — it is a round-trip of its own, and the event is dispatched and relayed
+/// normally. What it cannot do is join THIS operation: it runs in a different
+/// request scope, so it shares no DbContext or transaction with the factory call,
+/// and it costs a second round-trip. Raise inside the method when the event
+/// belongs to the operation.
 /// </remarks>
 public interface ICheckoutOrder
 {
@@ -144,6 +151,62 @@ internal partial class CheckoutOrder : ICheckoutOrder
         // ServerOnly: server handlers run, client does NOT receive the event
         await factoryEvents.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.ServerOnly);
     }
+}
+
+// -----------------------------------------------------------------------------
+// CLIENT-INITIATED RAISE — the client raises; the server dispatches and relays
+// -----------------------------------------------------------------------------
+
+/// <summary>
+/// Raised by CLIENT code through an injected <see cref="IFactoryEvents"/>, not by a
+/// factory method.
+/// </summary>
+public record ClientRaisedNotice(int OrderId) : FactoryEventBase;
+
+/// <summary>
+/// Raised server-side by <see cref="ClientRaisedNoticeHandler"/> while handling
+/// <see cref="ClientRaisedNotice"/>.
+/// </summary>
+public record NoticeAcknowledged(int OrderId) : FactoryEventBase;
+
+/// <summary>
+/// Demonstrates: a server handler that raises its own event in response to a
+/// client-initiated raise. Both events reach the client in the same response.
+/// </summary>
+/// <remarks>
+/// DESIGN DECISION: A client-initiated Raise relays exactly like a factory call
+///
+/// In Remote mode, IFactoryEvents resolves to RemoteFactoryEvents, which ships the
+/// event to the server as its own round-trip. Server-side it lands in the ordinary
+/// dispatch path, so the request-scoped collector captures it and every handler
+/// runs before the response is written. The response carries the batch back, and
+/// the client's IFactoryEventRelay receives it.
+///
+/// The batch contains BOTH events:
+///
+///   1. ClientRaisedNotice — the caller's OWN event. This is deliberate, not an
+///      echo artifact. Raising from the client dispatches nothing locally, so the
+///      client's relay has not otherwise seen it; relaying it back is the only way
+///      client-side handlers observe it at all.
+///   2. NoticeAcknowledged — raised by the handler below.
+///
+/// Pass RaiseOptions.ServerOnly to suppress the relay entirely: handlers still run
+/// server-side, and the client receives an empty batch.
+///
+/// The await covers the whole chain. Raise returns only after every server handler
+/// has completed, and a handler exception propagates back to the client — a client
+/// raise is NOT fire-and-forget. RemoteFactory has had no fire-and-forget event
+/// surface since v1.5.0 removed [Event]; compose Task.Run + IServiceScopeFactory
+/// yourself if that is what you need.
+/// </remarks>
+[FactoryEventHandler<ClientRaisedNotice>]
+public static partial class ClientRaisedNoticeHandler
+{
+    internal static Task Handle(
+        ClientRaisedNotice notice,
+        [Service] IFactoryEvents factoryEvents,
+        CancellationToken ct)
+        => factoryEvents.Raise(new NoticeAcknowledged(notice.OrderId), RaiseOptions.None, ct);
 }
 
 // -----------------------------------------------------------------------------

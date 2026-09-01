@@ -17,6 +17,8 @@ public interface IMakeRemoteDelegateRequest
 	/// Sends an event to the server and awaits until every server-side
 	/// <c>[FactoryEventHandler&lt;T&gt;]</c> handler has completed. The HTTP connection stays
 	/// open for the full handler chain so a server handler exception surfaces to the client.
+	/// The response's relay batch is delivered to <see cref="IFactoryEventRelay"/>
+	/// fire-and-forget, exactly as for a <c>[Remote]</c> factory call.
 	/// </summary>
 	Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 
@@ -106,46 +108,7 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 
 			var deserialized = this.NeatooJsonSerializer.DeserializeRemoteResponse<T>(result);
 
-			// Fire-and-forget relay. One [Remote] call = one Relay call (may be empty batch)
-			// unless deserialization fails, in which case the batch is aborted and logged.
-			// Task.Run + Task.Yield pushes execution to a separate continuation so the
-			// caller's `await` resumes first and assignments like `_x = await factory(...)`
-			// are observable to the relay's handler.
-			if (_relay != null)
-			{
-				var rawEvents = result.RelayedEvents;
-				var relay = _relay;
-				var serializer = this.NeatooJsonSerializer;
-				var relayLogger = this.logger;
-				var relayCorrelationId = correlationId;
-#pragma warning disable CA1031 // Relay / deserialization exceptions must never propagate to the factory caller.
-				_ = Task.Run(async () =>
-				{
-					await Task.Yield();
-					IReadOnlyList<FactoryEventBase> events;
-					try
-					{
-						events = rawEvents is { Count: > 0 }
-							? FactoryEventDeserializer.Deserialize(rawEvents, serializer)
-							: Array.Empty<FactoryEventBase>();
-					}
-					catch (Exception ex)
-					{
-						relayLogger.FactoryEventDeserializationFailed(relayCorrelationId, ex);
-						return;
-					}
-
-					try
-					{
-						await relay.Relay(events).ConfigureAwait(false);
-					}
-					catch (Exception ex)
-					{
-						relayLogger.FactoryEventRelayFailed(relayCorrelationId, ex);
-					}
-				}, CancellationToken.None);
-#pragma warning restore CA1031
-			}
+			DispatchRelay(result, correlationId);
 
 			return deserialized;
 		}
@@ -181,10 +144,22 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 			// Await the full HTTP round-trip: the server awaits every [FactoryEventHandler<T>]
 			// in the caller's scope, so this call returns only after all handlers complete.
 			// A server handler exception propagates back as an HTTP error and rethrows here.
-			await this.MakeRemoteDelegateRequestCall(remoteDelegateRequest, cancellationToken);
+			var result = await this.MakeRemoteDelegateRequestCall(remoteDelegateRequest, cancellationToken);
 
 			sw.Stop();
 			logger.RemoteCallCompleted(correlationId, delegateTypeName, sw.ElapsedMilliseconds);
+
+			// The response carries a relay batch here exactly as it does for a factory
+			// call — HandleRemoteDelegateRequest attaches the collector's contents without
+			// branching on which delegate ran. That batch holds the caller's own event
+			// (RaiseOptions.None captures it server-side; RaiseOptions.ServerOnly is the
+			// opt-out) plus anything its handlers raised. Relaying it is the only way
+			// client-side handlers observe either: RemoteFactoryEvents.Raise does no local
+			// dispatch, so the relay has never seen the event.
+			//
+			// This return value used to be discarded, which dropped the whole batch
+			// silently. Inside the try on purpose — a failed round-trip relays nothing.
+			DispatchRelay(result, correlationId);
 		}
 		catch (OperationCanceledException)
 		{
@@ -198,6 +173,69 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 			logger.RemoteCallError(correlationId, delegateTypeName, ex.Message, ex);
 			throw;
 		}
+	}
+
+	/// <summary>
+	/// Hands the response's relayed events to the consumer's <see cref="IFactoryEventRelay"/>,
+	/// fire-and-forget. One remote round-trip produces exactly one <c>Relay</c> invocation,
+	/// with an empty batch when nothing was captured.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// Shared by both call paths deliberately. This lived inline in
+	/// <see cref="ForDelegateNullable{T}"/> and nowhere else, so a client-initiated
+	/// <see cref="IFactoryEvents.Raise{T}"/> silently dropped every event the server
+	/// collected for it. One implementation is what keeps the two paths from drifting again.
+	/// </para>
+	/// <para>
+	/// <c>Task.Run</c> + <c>Task.Yield</c> pushes execution onto a separate continuation so
+	/// the caller's <c>await</c> resumes first — assignments like
+	/// <c>_x = await factory(...)</c> are observable to the relay's handler. The relay runs
+	/// under <see cref="CancellationToken.None"/>: the round-trip already completed, so the
+	/// caller's token must not abort delivery.
+	/// </para>
+	/// </remarks>
+	private void DispatchRelay(RemoteResponseDto? response, string correlationId)
+	{
+		// A null response relays nothing, matching the caller's own null short-circuit.
+		if (_relay == null || response == null)
+		{
+			return;
+		}
+
+		var rawEvents = response.RelayedEvents;
+		var relay = _relay;
+		var serializer = this.NeatooJsonSerializer;
+		var relayLogger = this.logger;
+		var relayCorrelationId = correlationId;
+#pragma warning disable CA1031 // Relay / deserialization exceptions must never propagate to the factory caller.
+		_ = Task.Run(async () =>
+		{
+			await Task.Yield();
+			IReadOnlyList<FactoryEventBase> events;
+			try
+			{
+				events = rawEvents is { Count: > 0 }
+					? FactoryEventDeserializer.Deserialize(rawEvents, serializer)
+					: Array.Empty<FactoryEventBase>();
+			}
+			catch (Exception ex)
+			{
+				// Batch aborted: Relay is not invoked at all for this call.
+				relayLogger.FactoryEventDeserializationFailed(relayCorrelationId, ex);
+				return;
+			}
+
+			try
+			{
+				await relay.Relay(events).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				relayLogger.FactoryEventRelayFailed(relayCorrelationId, ex);
+			}
+		}, CancellationToken.None);
+#pragma warning restore CA1031
 	}
 
 	/// <summary>

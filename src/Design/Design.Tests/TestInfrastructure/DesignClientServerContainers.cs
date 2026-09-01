@@ -104,40 +104,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
         var deserialized = _neatooJsonSerializer.DeserializeRemoteResponse<T>(result);
 
-        // Fire-and-forget relay using the same Task.Run + Task.Yield pattern as production
-        // MakeRemoteDelegateRequest so timing tests observe production-equivalent ordering.
-        var relay = _serviceProvider.GetService<IFactoryEventRelay>();
-        if (relay != null)
-        {
-            var rawEvents = result.RelayedEvents;
-            var serializer = _neatooJsonSerializer;
-#pragma warning disable CA1031 // Relay exceptions must never propagate to the factory caller.
-            _ = Task.Run(async () =>
-            {
-                await Task.Yield();
-                IReadOnlyList<FactoryEventBase> events;
-                try
-                {
-                    events = rawEvents is { Count: > 0 }
-                        ? FactoryEventDeserializer.Deserialize(rawEvents, serializer)
-                        : Array.Empty<FactoryEventBase>();
-                }
-                catch (Exception)
-                {
-                    return;
-                }
-
-                try
-                {
-                    await relay.Relay(events).ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // Relay exceptions must not propagate to the factory caller.
-                }
-            }, CancellationToken.None);
-#pragma warning restore CA1031
-        }
+        DispatchRelay(result);
 
         return deserialized;
     }
@@ -148,10 +115,65 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
         var json = JsonSerializer.Serialize(remoteRequest);
         var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!;
 
-        await _serviceProvider
+        var remoteResponseOnServer = await _serviceProvider
             .GetRequiredService<ServerServiceProvider>()
             .ServerProvider
             .GetRequiredService<HandleRemoteDelegateRequest>()(remoteRequestOnServer, cancellationToken);
+
+        // A client-initiated Raise relays exactly like a [Remote] factory call — the server
+        // builds the batch either way. Round-trip through JSON first so the relayed events
+        // cross the same serialization boundary the factory path puts them through.
+        json = JsonSerializer.Serialize(remoteResponseOnServer);
+        var result = JsonSerializer.Deserialize<RemoteResponseDto>(json)!;
+
+        DispatchRelay(result);
+    }
+
+    /// <summary>
+    /// Fire-and-forget relay using the same Task.Run + Task.Yield pattern as production
+    /// <see cref="MakeRemoteDelegateRequest"/> so timing tests observe production-equivalent
+    /// ordering.
+    /// </summary>
+    /// <remarks>
+    /// Shared by both call paths deliberately, mirroring production. The defect this shim
+    /// used to reproduce was a divergence between them.
+    /// </remarks>
+    private void DispatchRelay(RemoteResponseDto? response)
+    {
+        var relay = _serviceProvider.GetService<IFactoryEventRelay>();
+        if (relay == null || response == null)
+        {
+            return;
+        }
+
+        var rawEvents = response.RelayedEvents;
+        var serializer = _neatooJsonSerializer;
+#pragma warning disable CA1031 // Relay exceptions must never propagate to the factory caller.
+        _ = Task.Run(async () =>
+        {
+            await Task.Yield();
+            IReadOnlyList<FactoryEventBase> events;
+            try
+            {
+                events = rawEvents is { Count: > 0 }
+                    ? FactoryEventDeserializer.Deserialize(rawEvents, serializer)
+                    : Array.Empty<FactoryEventBase>();
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            try
+            {
+                await relay.Relay(events).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Relay exceptions must not propagate to the factory caller.
+            }
+        }, CancellationToken.None);
+#pragma warning restore CA1031
     }
 }
 

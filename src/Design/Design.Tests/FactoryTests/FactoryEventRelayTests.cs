@@ -93,6 +93,41 @@ public class FactoryEventRelayTests
     }
 
     /// <summary>
+    /// A client-initiated Raise relays like a factory call: the caller's own event and
+    /// everything its server handlers raise both come back in the response's batch.
+    /// </summary>
+    /// <remarks>
+    /// The client's own event is in the batch deliberately — raising from the client
+    /// dispatches nothing locally, so relaying it back is the only way client-side
+    /// handlers see it. See FactoryEventRelayPattern.ClientRaisedNoticeHandler.
+    /// <para>
+    /// Both assertions are positive, so a quiet <see cref="WaitForRelayAsync"/> timeout
+    /// still fails the test rather than passing vacuously.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task Relay_ClientRaisedEvent_DeliversOwnEventAndHandlerRaisedEvent()
+    {
+        var (server, client, relay) = ScopesWithRelay();
+
+        try
+        {
+            var events = client.ServiceProvider.GetRequiredService<IFactoryEvents>();
+            await events.Raise(new ClientRaisedNotice(88));
+
+            await WaitForRelayAsync(() => relay.ReceivedOfType<NoticeAcknowledged>().Any());
+
+            Assert.Equal(88, relay.ReceivedOfType<ClientRaisedNotice>().Single().OrderId);
+            Assert.Equal(88, relay.ReceivedOfType<NoticeAcknowledged>().Single().OrderId);
+        }
+        finally
+        {
+            server.Dispose();
+            client.Dispose();
+        }
+    }
+
+    /// <summary>
     /// NoOp default: when the consumer registers no IFactoryEventRelay, RemoteFactory
     /// registers NoOpFactoryEventRelay (via TryAdd). Factory calls still succeed; no
     /// events are delivered.
