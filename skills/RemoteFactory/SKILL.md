@@ -72,7 +72,8 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Can [Execute] return void? | No, must return Task<T> |
 | Can [Execute] go on a class factory? | Yes, if `public static` and returns containing type |
 | How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope, sequentially; at the default `Immediate` phase that means shared DbContext/transaction, awaited at `Raise` |
-| How do I handle a factory event on the client? | Implement `IFactoryEventRelay` and register it in DI — RemoteFactory invokes `Relay(IReadOnlyList<FactoryEventBase>)` once per `[Remote]` call |
+| How do I handle a factory event on the client? | Implement `IFactoryEventRelay` and register it in DI — RemoteFactory invokes `Relay(IReadOnlyList<FactoryEventBase>)` once per remote round-trip |
+| Can the client raise an event itself? | Yes — inject `IFactoryEvents` client-side and `Raise`. It is its own round-trip: server handlers run, and the batch relays back including the caller's own event (`ServerOnly` opts out). Awaited, not fire-and-forget. See `references/factory-events.md`. |
 | Does `[FactoryEventHandler<T>]` need `[Factory]`? | No — separate generator pipeline |
 | I want a handler that participates in the factory's DB transaction | Use `[FactoryEventHandler<T>]` + `IFactoryEvents.Raise` — shared scope, sequential; at the default `Immediate` phase, exceptions propagate and roll back |
 | When does a `[FactoryEventHandler<T>]` handler run? | Its `DispatchPhase`: `Immediate` (default, at `Raise`, staged state), `AfterFlush` (at the factory body's `IFactoryEventPhaseCoordinator.DrainAsync` call, flushed state, tx open), `AfterCommit` (framework-drained after the entry call succeeds, exceptions swallowed). See `references/factory-events.md`. |
