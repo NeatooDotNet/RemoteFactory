@@ -173,6 +173,13 @@ internal static class RelayHandlerRenderer
     /// so inner qualifications inside a constructed generic are untouched and re-prefixing is
     /// exact. The guard makes this idempotent if the transform ever stops stripping.
     /// </para>
+    /// <para>
+    /// <b>Event-type names only.</b> <c>[Service]</c> parameter types do NOT come through here:
+    /// the transform emits them final, because one that resolves to an error type (a factory
+    /// interface this same run generates) has no namespace to prefix — <c>global::</c> on a
+    /// bare identifier was the v1.8.0 CS0400 regression. See the parameter loop in
+    /// <c>FactoryGenerator.RelayHandler.cs</c>.
+    /// </para>
     /// </remarks>
     private static string Qualified(string typeName)
         => typeName.StartsWith("global::") ? typeName : $"global::{typeName}";
@@ -211,8 +218,13 @@ internal static class RelayHandlerRenderer
         var allParamIdentifiers = string.Join(", ",
             handler.AllParameters.Select(p => p.IsCancellationToken ? "ct" : p.Name));
 
+        // p.Type is emitted VERBATIM — the transform already decided its shape. A resolved
+        // type arrives global::-qualified; one the semantic model could not resolve (a factory
+        // interface this same run generates) arrives as the consumer wrote it, because there
+        // is no namespace to prefix it into. Running Qualified() here would re-introduce the
+        // v1.8.0 regression: global:: on a bare identifier is CS0400.
         var serviceAssignments = string.Join("\n                    ",
-            handler.ServiceParameters.Select(p => $"var {p.Name} = sp.GetRequiredService<{Qualified(p.Type)}>();"));
+            handler.ServiceParameters.Select(p => $"var {p.Name} = sp.GetRequiredService<{p.Type}>();"));
 
         // className is NOT qualified, and must not be: this body is emitted inside the user's
         // own namespace AND inside their own partial class (see Render), where the only name

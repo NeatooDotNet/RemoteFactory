@@ -422,9 +422,36 @@ public partial class Factory
             {
                 var isService = p.GetAttributes().Any(a => a.AttributeClass?.Name == "ServiceAttribute");
                 var isCT = p.Type.ToDisplayString() == "System.Threading.CancellationToken";
-                var pType = p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                if (pType.StartsWith("global::"))
-                    pType = pType.Substring("global::".Length);
+
+                // The type token is FINAL here — the renderer emits it verbatim. Two cases:
+                //
+                // Resolved: global::-qualified, so the generated file binds to the consumer's
+                // real type even when their namespace shadows every unqualified route to it
+                // (PHASE-011; pinned by the shadowing fixtures).
+                //
+                // Error type: a name the semantic model cannot resolve at generation time. In
+                // practice that is a factory interface THIS run is about to generate — the
+                // consumer's handler takes [Service] IPlanFactory, and IPlanFactory does not
+                // exist in the input compilation. The symbol carries only the bare identifier,
+                // so qualifying it puts it in the global namespace: CS0400 in the consumer's
+                // build (v1.8.0 regression, reported against zTreatment). Emit it exactly as
+                // the consumer wrote it — qualifier and all, which the symbol has already
+                // lost — and let the usings copied into the generated file resolve it once
+                // the interface exists. That is how every other renderer's [Service]
+                // parameters have always been emitted; the class-factory path captures from
+                // syntax and never asks the symbol, which is why it never regressed.
+                string pType;
+                if (p.Type.TypeKind == TypeKind.Error)
+                {
+                    pType = p.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax paramSyntax
+                        && paramSyntax.Type is not null
+                        ? paramSyntax.Type.ToString()
+                        : p.Type.ToDisplayString();
+                }
+                else
+                {
+                    pType = p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                }
 
                 var pm = new ParameterModel(p.Name, pType, isService, false, isCT, false);
                 allParameters.Add(pm);
