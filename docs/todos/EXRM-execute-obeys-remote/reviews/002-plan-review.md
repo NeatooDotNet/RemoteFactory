@@ -27,7 +27,7 @@
 
 **Theoretical (not triaged).** A throwing `IMakeRemoteDelegateRequest` via Design's `configureClient` (`DesignClientServerContainers.cs:259` then `:263`) disables the wire for every call in that test, and throwing in its constructor would fail factory resolution rather than the assertion. Noted for pre-flight: the stand-in throws from `ForDelegate*`, never the constructor, and the test calls only the bare sample.
 
-**Read report:** _(pending — truncated in the first return; follow-up requested)_
+**Read report.** Beyond the brief: `Authorized.cs`, `ClassFactoryRenderer.cs` (:100-330, :1400-1540), `ClassFactoryModel.cs`, `FactoryGenerator.Types.cs:575-615`, `FactoryModelBuilder.cs:1025-1050`, `CombinationInfo.cs`, `ExecuteBehaviorTests.cs`, `CLAUDE-DESIGN.md` (grep). Named but unused: `ClassExecuteRoundTripTests`, `ShowcaseReadTests.cs`, `001-*-review.md`, reference-app `ExecuteSamples.cs`.
 
 ## Triage (proposed 2026-09-08; user decisions recorded below)
 

@@ -21,6 +21,8 @@ namespace Design.Domain.FactoryPatterns;
 /// - [Service] parameters are injected by the generated factory
 /// - The generated factory interface includes the Execute method
 /// - Callers use the factory method, not the static method directly
+/// - [Remote] decides where it runs: RunCommand crosses to the server,
+///   ScoreLocally runs on whichever tier resolves the factory
 /// </summary>
 /// <remarks>
 /// DESIGN DECISION: Execute on class factory generates factory interface methods
@@ -109,5 +111,35 @@ public partial class ClassExecuteDemo
         instance.Id = service.GenerateId();
         instance.Name = $"Executed: {input}";
         return instance;
+    }
+
+    /// <summary>
+    /// Execute method WITHOUT [Remote]: runs on whichever tier resolves the factory.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: [Execute] obeys [Remote] on class factories too
+    ///
+    /// GENERATOR BEHAVIOR: For this method, the generator creates:
+    /// - Interface method: IClassExecuteDemoFactory.ScoreLocally(string input)
+    /// - A Local method only -- unguarded; no remote delegate, no endpoint
+    /// - [Service] parameters resolved from the factory's own container, so on the
+    ///   client that is client DI (ITextScorer is registered there)
+    ///
+    /// Two things are unchanged from RunCommand: the method is public static, and it
+    /// returns the containing type. Everything about WHERE it runs comes from the
+    /// absence of [Remote]. Authorization follows the same placement rule: an
+    /// [AuthorizeFactory] auth method without [Remote] runs alongside it, while
+    /// [AspAuthorize] or a [Remote] auth method forces the call to the server.
+    ///
+    /// TRIMMING: no guard, so the body ships to the client -- that is the point.
+    /// The trimming harness, not Design.Tests, is where that is observed.
+    /// </remarks>
+    [Execute]
+    public static Task<ClassExecuteDemo> ScoreLocally(string input, [Service] ITextScorer scorer)
+    {
+        var instance = new ClassExecuteDemo();
+        instance.Id = scorer.Score(input);
+        instance.Name = $"Scored: {input}";
+        return Task.FromResult(instance);
     }
 }

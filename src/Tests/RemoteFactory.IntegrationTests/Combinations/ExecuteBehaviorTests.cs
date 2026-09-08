@@ -8,11 +8,13 @@ namespace RemoteFactory.IntegrationTests.Combinations;
 /// Behavioral tests for Execute operations across all valid combinations.
 /// Execute obeys [Remote] like every other operation (EXRM-001): the Remote-mode combination
 /// targets carry [Remote], so a client-scope call crosses the wire, while a Logical-scope call
-/// runs locally. Validates that:
+/// runs locally. The Local-mode targets (EXRM-002) carry no [Remote] and run on the client
+/// itself. Validates that:
 /// - Operation is invoked correctly via delegate resolution
 /// - Parameters are received correctly
 /// - Service injection works
-/// - A client-scope call makes exactly one remote request; a local-scope call makes none
+/// - A [Remote] target called from the client scope makes exactly one remote request; the same
+///   target from the Logical scope makes none; a bare target from the client scope makes none
 /// </summary>
 public class ExecuteBehaviorTests
 {
@@ -170,6 +172,81 @@ public class ExecuteBehaviorTests
         Assert.Equal(42, result.ReceivedIntParam);
         Assert.True(result.ServiceWasInjected);
         Assert.Equal(0, LocalRemoteCalls);
+    }
+
+    #endregion
+
+    #region Bare [Execute] targets (no [Remote]) from the client scope run locally, no wire
+
+    // These are the discriminating legs: the client scope has a live wire and a counter, so a
+    // bare target that resolves and runs there with the counter still at zero proves the
+    // delegate never left the client. [Service] parameters come from client DI (IService is
+    // mapped there by RegisterMatchingName).
+
+    [Fact]
+    public async Task BareExecute_TaskTResult_None_ClientScope_RunsLocally_NoRemoteRequest()
+    {
+        var op = _clientScope.ServiceProvider.GetRequiredService<Comb_Execute_Static_TaskTResult_None_Local.Op>();
+
+        var result = await op();
+
+        Assert.NotNull(result);
+        Assert.True(result.OperationCalled);
+        Assert.Equal(0, ClientRemoteCalls);
+    }
+
+    [Fact]
+    public async Task BareExecute_TaskTResult_Single_ClientScope_ReceivesParameter_NoRemoteRequest()
+    {
+        var op = _clientScope.ServiceProvider.GetRequiredService<Comb_Execute_Static_TaskTResult_Single_Local.Op>();
+
+        var result = await op(42);
+
+        Assert.NotNull(result);
+        Assert.True(result.OperationCalled);
+        Assert.Equal(42, result.ReceivedIntParam);
+        Assert.Equal(0, ClientRemoteCalls);
+    }
+
+    [Fact]
+    public async Task BareExecute_TaskTResult_Multiple_ClientScope_ReceivesAllParameters_NoRemoteRequest()
+    {
+        var op = _clientScope.ServiceProvider.GetRequiredService<Comb_Execute_Static_TaskTResult_Multiple_Local.Op>();
+
+        var result = await op(42, "test");
+
+        Assert.NotNull(result);
+        Assert.True(result.OperationCalled);
+        Assert.Equal(42, result.ReceivedIntParam);
+        Assert.Equal("test", result.ReceivedStringParam);
+        Assert.Equal(0, ClientRemoteCalls);
+    }
+
+    [Fact]
+    public async Task BareExecute_TaskTResult_Service_ClientScope_ServiceInjectedFromClientDI_NoRemoteRequest()
+    {
+        var op = _clientScope.ServiceProvider.GetRequiredService<Comb_Execute_Static_TaskTResult_Service_Local.Op>();
+
+        var result = await op();
+
+        Assert.NotNull(result);
+        Assert.True(result.OperationCalled);
+        Assert.True(result.ServiceWasInjected);
+        Assert.Equal(0, ClientRemoteCalls);
+    }
+
+    [Fact]
+    public async Task BareExecute_TaskTResult_Mixed_ClientScope_ReceivesParamAndClientService_NoRemoteRequest()
+    {
+        var op = _clientScope.ServiceProvider.GetRequiredService<Comb_Execute_Static_TaskTResult_Mixed_Local.Op>();
+
+        var result = await op(42);
+
+        Assert.NotNull(result);
+        Assert.True(result.OperationCalled);
+        Assert.Equal(42, result.ReceivedIntParam);
+        Assert.True(result.ServiceWasInjected);
+        Assert.Equal(0, ClientRemoteCalls);
     }
 
     #endregion

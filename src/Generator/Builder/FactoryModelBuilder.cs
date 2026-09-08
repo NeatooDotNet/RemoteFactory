@@ -465,6 +465,14 @@ internal static class FactoryModelBuilder
                       method.AuthMethodInfos.Any(m => m.IsTask) ||
                       method.AspAuthorizeCalls.Any();
 
+        // Same rule as BuildReadMethod: an authorized method's public factory method returns
+        // Authorized<T>.Result, which is default when the check denies, so the signature must be
+        // nullable. Without this the generated method is declared Task<T> and returns T? --
+        // CS8603, fatal under TreatWarningsAsErrors. Execute has no IsBool term: it always
+        // returns Task<T> of the containing type (NF0102).
+        var isNullable = method.IsNullable ||
+                         (authorization != null && authorization.HasAuth);
+
         var hasCancellationToken = method.Parameters.Any(p => p.IsCancellationToken);
 
         // No name stripping needed -- method is public static, name is used as-is
@@ -478,7 +486,7 @@ internal static class FactoryModelBuilder
             isRemote: isRemote,
             isTask: true,   // Execute always returns Task<T>
             isAsync: isAsync,
-            isNullable: method.IsNullable,
+            isNullable: isNullable,
             parameters: parameters,
             authorization: authorization,
             serviceParameters: serviceParameters,

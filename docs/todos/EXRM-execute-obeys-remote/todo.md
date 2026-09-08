@@ -84,6 +84,11 @@
 - **Decision:** Amend — `BareExecute_` prefix; bullet 7 → EXRM-004 with Punchlist row 3; decorative claim only; "returns null". B6 dismissed.
 - **Follow-up:** n/a
 
+### 2026-09-08 — EXRM-002 · serves AC-4
+- **Finding:** Step 4's targets exposed a generator bug: a class-level `[Execute]` under `[AuthorizeFactory]`/`[AspAuthorize]` declares a non-nullable factory method but returns `Authorized<T>.Result` — CS8603 in generated code, fatal under TreatWarningsAsErrors. Bare and `[Remote]` alike; never compiled in-repo before.
+- **Decision:** Amend — the plan's no-generator-change constraint gains this one exception; `BuildClassExecuteMethod` mirrors the Read path; new Should bullet pins both shapes; 005 notes the fix.
+- **Follow-up:** n/a
+
 ---
 
 ## Skipped Steps
