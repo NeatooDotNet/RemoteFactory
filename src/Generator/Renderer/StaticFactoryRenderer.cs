@@ -138,28 +138,52 @@ internal static class StaticFactoryRenderer
         sb.AppendLine("        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)");
         sb.AppendLine("        {");
 
-        // Remote registrations
-        sb.AppendLine("            if(remoteLocal == NeatooFactory.Remote)");
-        sb.AppendLine("            {");
+        var remoteDelegates = model.Delegates.Where(d => d.IsRemote).ToList();
+        var localOnlyDelegates = model.Delegates.Where(d => !d.IsRemote).ToList();
 
-        foreach (var del in model.Delegates)
+        // Local-only delegates: [Execute] without [Remote]. One unguarded registration in EVERY
+        // factory mode -- the delegate runs wherever it is called and resolves its [Service]
+        // parameters from that container, exactly like a bare [Create] on a class factory. No
+        // remote registration exists, so the client never sends a request for it; the registry
+        // declaration lets the server's delegate handler refuse a crafted request that names it.
+        if (localOnlyDelegates.Count > 0)
         {
-            RenderRemoteDelegateRegistration(sb, del, model.TypeName);
+            sb.AppendLine("            // Local-only delegates ([Execute] without [Remote]): registered in every mode, unguarded.");
+            foreach (var del in localOnlyDelegates)
+            {
+                RenderLocalDelegateRegistration(sb, del, model.TypeName, guarded: false);
+                sb.AppendLine($"            global::Neatoo.RemoteFactory.Internal.LocalOnlyDelegateRegistry.Register(typeof({model.TypeName}.{del.DelegateName}));");
+            }
+            sb.AppendLine();
         }
 
-        sb.AppendLine("            }");
-        sb.AppendLine();
-
-        // Local registrations
-        sb.AppendLine("            if(remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)");
-        sb.AppendLine("            {");
-
-        foreach (var del in model.Delegates)
+        // Remote delegates keep the v1.8.1 shape: a remote registration on the client and a
+        // server-runtime-guarded local registration on the server.
+        if (remoteDelegates.Count > 0)
         {
-            RenderLocalDelegateRegistration(sb, del, model.TypeName);
-        }
+            // Remote registrations
+            sb.AppendLine("            if(remoteLocal == NeatooFactory.Remote)");
+            sb.AppendLine("            {");
 
-        sb.AppendLine("            }");
+            foreach (var del in remoteDelegates)
+            {
+                RenderRemoteDelegateRegistration(sb, del, model.TypeName);
+            }
+
+            sb.AppendLine("            }");
+            sb.AppendLine();
+
+            // Local registrations
+            sb.AppendLine("            if(remoteLocal == NeatooFactory.Logical || remoteLocal == NeatooFactory.Server)");
+            sb.AppendLine("            {");
+
+            foreach (var del in remoteDelegates)
+            {
+                RenderLocalDelegateRegistration(sb, del, model.TypeName, guarded: true);
+            }
+
+            sb.AppendLine("            }");
+        }
 
         // DTO constructor registrations (IL trimming support)
         if (model.DtoReturnTypes.Count > 0 || model.DtoPreserveTypes.Count > 0)
@@ -209,7 +233,12 @@ internal static class StaticFactoryRenderer
         sb.AppendLine("                });");
     }
 
-    private static void RenderLocalDelegateRegistration(StringBuilder sb, ExecuteDelegateModel del, string typeName)
+    /// <param name="guarded">
+    /// True for a remote delegate: the registration is wrapped in the server-runtime feature switch so
+    /// the trimmer removes it, and the method body behind it, from a client publish. False for a
+    /// local-only delegate: the body is meant to run on the client, so nothing guards it.
+    /// </param>
+    private static void RenderLocalDelegateRegistration(StringBuilder sb, ExecuteDelegateModel del, string typeName, bool guarded)
     {
         // Build parameter declarations (with optional CancellationToken at end)
         var paramDecl = string.Join(", ", del.Parameters.Select(p => $"{p.Type} {p.Name}"));
@@ -219,35 +248,48 @@ internal static class StaticFactoryRenderer
         }
         paramDecl += "CancellationToken cancellationToken = default";
 
+        // Indentation: a guarded registration sits inside the feature-switch block (one level deeper).
+        var indent = guarded ? "                    " : "                ";
+
         // Service assignments
-        var serviceAssignments = string.Join("\n                        ",
+        var serviceAssignments = string.Join("\n" + indent + "    ",
             del.ServiceParameters.Select(p => $"var {p.Name} = cc.GetRequiredService<{p.Type}>();"));
 
         // All parameter identifiers for the domain method call (including services and CancellationToken if domain method has it)
         var allParamIdentifiers = BuildDomainMethodInvocationParams(del);
 
-        // Feature switch guard -- when IsServerRuntime=false, the trimmer removes the entire registration
+        // Feature switch guard (remote delegates only) -- when IsServerRuntime=false, the trimmer
+        // removes the entire registration. A local-only delegate is registered without the guard:
+        // its body is meant to ship to and run on the client.
         // The delegate body routes through FactoryEntryCall (PHASE-003): the delegate IS the
         // static pattern's local execution seam — its entry marks the factory call, drains
         // AfterCommit at the outermost successful completion, and discards deferred work on
         // failure. Service resolution sits inside the entry, so a missing server-only service
         // counts as entry failure (clear, no drain). The guard wraps the registration itself,
         // so no async state machine ever hosts it.
-        sb.AppendLine("                if (NeatooRuntime.IsServerRuntime)");
-        sb.AppendLine("                {");
-        sb.AppendLine($"                    services.AddTransient<{typeName}.{del.DelegateName}>(cc =>");
-        sb.AppendLine("                    {");
-        sb.AppendLine($"                        return ({paramDecl}) => global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(cc, () => {{");
+        if (guarded)
+        {
+            sb.AppendLine("                if (NeatooRuntime.IsServerRuntime)");
+            sb.AppendLine("                {");
+        }
+
+        sb.AppendLine($"{indent}services.AddTransient<{typeName}.{del.DelegateName}>(cc =>");
+        sb.AppendLine($"{indent}{{");
+        sb.AppendLine($"{indent}    return ({paramDecl}) => global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(cc, () => {{");
 
         if (!string.IsNullOrEmpty(serviceAssignments))
         {
-            sb.AppendLine($"                        {serviceAssignments}");
+            sb.AppendLine($"{indent}    {serviceAssignments}");
         }
 
-        sb.AppendLine($"                        return {typeName}.{del.Name}({allParamIdentifiers});");
-        sb.AppendLine("                        });");
-        sb.AppendLine("                    });");
-        sb.AppendLine("                }");
+        sb.AppendLine($"{indent}    return {typeName}.{del.Name}({allParamIdentifiers});");
+        sb.AppendLine($"{indent}    }});");
+        sb.AppendLine($"{indent}}});");
+
+        if (guarded)
+        {
+            sb.AppendLine("                }");
+        }
     }
 
     private static string BuildDomainMethodInvocationParams(ExecuteDelegateModel del)

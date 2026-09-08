@@ -62,3 +62,5 @@ _(append-only)_
 ## Notes
 
 The zTreatment session (ztreatmentneatoo-9c) is waiting on a message that 1.9.0 is tagged before UCG-001 starts.
+
+Release-notes conventions on record (docs recon, 2026-09-08): front matter `layout: default`, `title: "v1.9.0"`, `description`, `parent: Release Notes`, `nav_order: 1` with older pages incremented; header lines `**Released:** YYYY-MM-DD` then `**Breaking changes:**` (v1.8.1 idiom: "No — but see [Behaviour Notes]"; v1.5.0 idiom: "Yes — … See [Migration Guide]"). Behavior-change section is a bold one-line claim followed by bullets naming who is unaffected and what moved; spelled "Behaviour Changes" (v1.7.0) or "Behaviour Notes" (v1.8.x); v1.7.0 adds "What this release does not claim". `index.md`: Highlights table (newest first, one dense **Feat**/**Fix**/**Breaking**-prefixed paragraph) and the All Releases list, plus a `## Documentation` section listing changed doc, Design, and skill files. The version lives in `src/Directory.Build.props` as `PackageVersion` (`FileVersion` has drifted; punchlist row on the todo).

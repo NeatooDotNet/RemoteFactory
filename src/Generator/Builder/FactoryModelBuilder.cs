@@ -513,10 +513,18 @@ internal static class FactoryModelBuilder
 
         var hasCancellationToken = method.Parameters.Any(p => p.IsCancellationToken);
 
+        // Same three-way rule as BuildReadMethod / BuildClassExecuteMethod: [Remote] on the method,
+        // a [Remote] authorization method, or an [AspAuthorize] attribute. Static factories render
+        // no authorization enforcement today (see issue #91); the auth terms only decide placement.
+        var isRemote = method.IsRemote ||
+                       method.AuthMethodInfos.Any(m => m.IsRemote) ||
+                       method.AspAuthorizeCalls.Any();
+
         return new ExecuteDelegateModel(
             name: method.Name,
             delegateName: delegateName,  // No "Delegate" suffix - tests expect just the method name
             returnType: returnType,
+            isRemote: isRemote,
             isNullable: method.IsNullable,
             parameters: parameters,
             serviceParameters: serviceParameters,
