@@ -83,3 +83,5 @@ New-contract homes:
 - Leave alone: interface-factory "always remote" text and `AuthorizeFactoryOperation.Execute` scope text (different concept).
 
 NF0105 rationale on record (`docs/plans/completed/remote-requires-internal.md:232`): class-factory `[Execute]` must be `public static`, so `[Execute]` is excluded from NF0105; the static-class shape is separately exempt because `BuildStaticFactory` runs no NF0105 check.
+
+Pulled in from the EXRM-002 plan review (B4/B3, 2026-09-08): the visibility pin moves here with Punchlist row 3 — pin at `[unit]` tier that a bare `internal static [Execute]` on a class factory is not promoted to public (a single-method target renders the whole interface internal, `ClassFactoryModel.cs:62`; otherwise the member carries the `internal` prefix) while `[Remote] internal static [Execute]` is promoted. Inventory note: EXRM-002 rewrites the decorative claim at `AllPatterns.cs:368-371` and EXRM-003 its trimming sentence; 004 verifies that site rather than editing it.

@@ -53,7 +53,7 @@
 
 - [ ] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · done when both read 1.9.0 · AC-5 · Must
 - [ ] NF0102 description justifies the `Task` rule by remoteness · `src/Generator/DiagnosticDescriptors.cs:35` · done when the text no longer says "designed for remote execution" · AC-5 · Must
-- [ ] Bare `[Execute] internal static` on a class factory now yields an internal factory interface, the same visibility rule every other internal operation follows · the visibility rule's home in `docs/attributes-reference.md` and the Design comments · done when stated in one sentence · AC-5 · Must
+- [ ] Bare `[Execute] internal static` on a class factory now yields an internal factory interface, the same visibility rule every other internal operation follows · the visibility rule's home in `docs/attributes-reference.md` and the Design comments · done when stated in one sentence and pinned at `[unit]` tier (moved from EXRM-002's bullet 7 at its plan review; a single-method target renders the whole interface internal, `ClassFactoryModel.cs:62`) · AC-5 · Must
 - [ ] Reference app's only bare `[Execute]` takes a server-only `[Service]` and flips to a client failure · `src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/ExecuteSamples.cs:13-20` · done when it is either `[Remote]` or a genuine client-runnable local sample · AC-5 · Must
 - [ ] CLAUDE.md release step says bump `<VersionPrefix>`, which does not exist; the props carry `<PackageVersion>` · `CLAUDE.md:242` · done when the step names the real property · AC-5 · Must
 - [→ EXRM-001] Region header "Execute is always remote" · `ExecuteBehaviorTests.cs:9,27` · pulled down at 001's Step 2 triage
@@ -66,6 +66,7 @@
 - EXRM · Stray `remotefactory-execute-on-class-factory.md` at the repo root (March, commit 3768f4f) duplicates a completed plan · unpublished, serves no criterion; user may pull it into the sweep for deletion
 - EXRM-001 · Registry unit tests leave probe delegate types in the process-global `LocalOnlyDelegateRegistry` · harmless; no test asserts registry contents (test-review tech-debt 2)
 - EXRM-001 · `[AspAuthorize]` on a static-factory Execute is collected but never enforced · pre-existing, undocumented; serves no criterion — captured as [#91](https://github.com/NeatooDotNet/RemoteFactory/issues/91); 001 folds its presence into the remote flag only
+- EXRM-002 · Design's static bare-`[Execute]` sample must be `private static _Name`, not the combination targets' `public static` · the Design convention (`AllPatterns.cs:380-388`) already binds the sample; noted for pre-flight (plan-review B6)
 
 ---
 
@@ -76,6 +77,11 @@
 ### 2026-09-08 — EXRM-001 · serves AC-1
 - **Finding:** The wire refusal as drafted was an allow-list scoped to the static registrar, which would refuse every class- and interface-factory remote call (plan-review veto V1).
 - **Decision:** Amend — refuse-list of bare static delegates; callouts B2–B4 and a tier correction amended in the same entry; B1 punched to EXRM-004's path.
+- **Follow-up:** n/a
+
+### 2026-09-08 — EXRM-002 · serves AC-1
+- **Finding:** Plan review APPROVED. Callouts: bare-target test names would collide with the existing `_Local_` tests; bullet 7 served no 002 criterion; Step 6 rewrote a trimming sentence 003 has not measured; bullet 4 misnamed null-on-denial.
+- **Decision:** Amend — `BareExecute_` prefix; bullet 7 → EXRM-004 with Punchlist row 3; decorative claim only; "returns null". B6 dismissed.
 - **Follow-up:** n/a
 
 ---

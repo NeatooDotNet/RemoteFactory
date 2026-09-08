@@ -62,3 +62,5 @@ _(append-only)_
 ## Notes
 
 Recon (2026-09-08): `verify-trimmed.sh` defines only `check_absent`; the one body-literal PRESENT control is the "Trimming verification app completed" string, searched by the shared `present()` helper in both encodings. TRIM-008 once asserted markers present as a deliberate tripwire, so the shape has precedent. Every harness port is registered inside `if (NeatooRuntime.IsServerRuntime)` in `Program.cs`, so a bare leg needs a service registered outside that guard or none at all. `ValidateOnBuild = true` in the harness: confirm an unguarded delegate registration does not trip it on a client publish.
+
+Pointer from the EXRM-002 plan review (B5, 2026-09-08): the last sentence of the note at `src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs:368-371` ("The guard is what makes the body trimmable, not the attribute") is the finding this plan measures. EXRM-002 rewrites only the decorative claim beside it; 003 rewrites the trimming sentence once the pair is measured.
