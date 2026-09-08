@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes — the release page is the arc's public face and restates a contract four plans established, so a page that contradicts the docs it links is a reachable defect. `business-requirements-reviewer` only — user decision 2026-09-08 (the stub had expected No; the orchestrator changed the recommendation at Step 2)
 **Code-review opt-in:** No — user decision 2026-09-08: no code changes; docs, two version properties, and the release-process block in `CLAUDE.md`
 **Branch:** exrm-005-release-1-9-0 — cut from the arc at Step 2
-**PR:** —
+**PR:** [#99](https://github.com/NeatooDotNet/RemoteFactory/pull/99)
 
 ---
 
