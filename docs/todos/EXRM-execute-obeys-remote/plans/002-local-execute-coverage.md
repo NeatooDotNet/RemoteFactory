@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes — the Design samples this plan adds are the requirements source of truth that EXRM-004 will document; `plan-reviewer` (Pass A carries the business-requirements check)
 **Code-review opt-in:** Yes — user decision 2026-09-08 (orchestrator proposed No: no generator or library change); runs at Step 5 beside the test review
 **Branch:** exrm-002-local-execute-coverage — cut from the arc at Step 2
-**PR:** —
+**PR:** [#93](https://github.com/NeatooDotNet/RemoteFactory/pull/93)
 
 ---
 
