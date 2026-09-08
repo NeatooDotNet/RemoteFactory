@@ -175,5 +175,5 @@ Gates: 13 review files — 4 plan reviews, 5 test reviews, 3 code reviews, 1 clo
        Every per-plan gate closed in one round; no plan needed a second.
 Issues filed rather than fixed: #91, #94, #97, #100.
 Close-Out Audit: Grade A (acknowledged 2026-09-08).
-Arc: EXRM → main, PR #TBD (filled when opened).
+Arc: EXRM → main, PR #101.
 ```
