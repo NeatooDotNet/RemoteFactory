@@ -11,8 +11,10 @@ namespace RemoteFactory.UnitTests.FactoryGenerator.Execute;
 /// <remarks>
 /// The generated factory method is declared nullable because a denied check returns
 /// <c>Authorized&lt;T&gt;.Result</c>, which is default — the same rule Create and Fetch follow.
-/// The signature itself is pinned by <see cref="ClassExecuteWithAuth_FactoryMethod_IsNullable"/>,
-/// which would not compile if the generator declared it non-nullable.
+/// The signature is pinned by the build, not by a test method: declaring it non-nullable raises
+/// CS8603 in the generated file, and this repo compiles with TreatWarningsAsErrors and no NoWarn
+/// for it, so <see cref="ClassExecWithAuth"/> would not build. These tests cover the behavior on
+/// either side of the check.
 /// </remarks>
 public class ClassExecuteAuthTests : IDisposable
 {
@@ -56,20 +58,27 @@ public class ClassExecuteAuthTests : IDisposable
     }
 
     /// <summary>
-    /// Pins the generated signature as nullable. The assignment to a nullable local is the
-    /// assertion: were the factory method declared Task&lt;ClassExecWithAuth&gt;, the generated
-    /// file would not compile (CS8603) and this test could not run at all.
+    /// Exercises both authorization outcomes through one resolved factory.
     /// </summary>
+    /// <remarks>
+    /// What actually pins the nullable signature is the build itself: the generated public
+    /// method returns Authorized&lt;T&gt;.Result, so declaring it Task&lt;T&gt; raises CS8603 in
+    /// the generated file, and this repo compiles with TreatWarningsAsErrors and no NoWarn for
+    /// it -- the target below would not build at all. This test cannot add to that (assigning a
+    /// non-nullable result to a nullable local is legal either way); it covers the allowed and
+    /// denied paths against a single factory instance instead.
+    /// </remarks>
     [Fact]
-    public async Task ClassExecuteWithAuth_FactoryMethod_IsNullable()
+    public async Task ClassExecuteWithAuth_BothOutcomes_ThroughOneFactory()
     {
         var factory = _provider.GetRequiredService<IClassExecWithAuthFactory>();
 
-        ClassExecWithAuth? allowed = await factory.Run("hello");
+        var allowed = await factory.Run("hello");
         ClassExecAuth.ShouldAllow = false;
-        ClassExecWithAuth? denied = await factory.Run("hello");
+        var denied = await factory.Run("hello");
 
         Assert.NotNull(allowed);
+        Assert.Equal("Executed: hello", allowed.Name);
         Assert.Null(denied);
     }
 

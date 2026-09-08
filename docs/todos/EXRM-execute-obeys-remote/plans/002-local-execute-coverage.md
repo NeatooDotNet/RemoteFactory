@@ -4,7 +4,7 @@
 **Date:** 2026-09-08
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-1, AC-2, AC-4
-**Status:** Draft
+**Status:** Done
 **Last Updated:** 2026-09-08
 **Plan-review opt-in:** Yes — the Design samples this plan adds are the requirements source of truth that EXRM-004 will document; `plan-reviewer` (Pass A carries the business-requirements check)
 **Code-review opt-in:** Yes — user decision 2026-09-08 (orchestrator proposed No: no generator or library change); runs at Step 5 beside the test review
@@ -66,14 +66,14 @@ Prove the new contract from the client side for both shapes: the combination gen
 
 ## Acceptance
 
-- [ ] Each bare Execute combination target, resolved from the client scope, runs there with its parameters and service and makes zero remote calls `[integration]` · Must
-- [ ] A bare class-level `[Execute]` called through the client's factory runs on the client with client-resolved `[Service]` and no remote call; the same shape taking a server-only service fails at call time on the client (no remote call) and succeeds on the server `[integration]` · Must
-- [ ] `[Remote, Execute]` on a class factory, called from the client, crosses the wire exactly once and returns the v1.8.1 result `[integration]` · Must
-- [ ] A client-side `[AuthorizeFactory]` check on a bare class Execute runs locally: allowed executes with no remote call; denied returns null, as a denied Create does, still with no remote call `[integration]` · Should
-- [ ] `[AspAuthorize]` on a bare class Execute forces exactly one wire crossing and the server's `IAspAuthorize` is consulted `[integration]` · Should
-- [ ] A class-level `[Execute]` under authorization compiles under TreatWarningsAsErrors with a nullable factory method, and a denial returns null on both the bare and the `[Remote]` shape `[integration]` · Should
-- [ ] The Design bare-`[Execute]` samples on both shapes run from the Design client scope with no remote request, and the Design `[Remote, Execute]` samples still round-trip `[integration]` · Must
-- [ ] Both solutions build and test green with test counts up `[explicit-skip: meta-bullet]` · Must
+- [x] Each bare Execute combination target, resolved from the client scope, runs there with its parameters and service and makes zero remote calls `[integration]` · Must
+- [x] A bare class-level `[Execute]` called through the client's factory runs on the client with client-resolved `[Service]` and no remote call; the same shape taking a server-only service fails at call time on the client (no remote call) and succeeds on the server `[integration]` · Must
+- [x] `[Remote, Execute]` on a class factory, called from the client, crosses the wire exactly once and returns the v1.8.1 result `[integration]` · Must
+- [x] A client-side `[AuthorizeFactory]` check on a bare class Execute runs locally: allowed executes with no remote call; denied returns null, as a denied Create does, still with no remote call `[integration]` · Should
+- [x] `[AspAuthorize]` on a bare class Execute forces exactly one wire crossing and the server's `IAspAuthorize` is consulted `[integration]` · Should
+- [x] A class-level `[Execute]` under authorization compiles under TreatWarningsAsErrors with a nullable factory method, and a denial returns null on both the bare and the `[Remote]` shape `[integration]` · Should
+- [x] The Design bare-`[Execute]` samples on both shapes run from the Design client scope with no remote request, and the Design `[Remote, Execute]` samples still round-trip `[integration]` · Must
+- [x] Both solutions build and test green with test counts up `[explicit-skip: meta-bullet]` · Must
 
 ---
 
@@ -112,17 +112,19 @@ Namespaces: `IT` = `RemoteFactory.IntegrationTests`, `UT` = `RemoteFactory.UnitT
 | 3 — `[Remote, Execute]` crosses the wire once | Must | `[integration]` | `IT.…LocalClassExecuteTests.RemoteExecute_ClientScope_CrossesTheWireOnce`, `.RemoteExecute_LogicalScope_RunsLocally_NoWire` | ✓ |
 | 4 — client-side `[AuthorizeFactory]` stays local, allowed and denied | Should | `[integration]` | `IT.…LocalClassExecuteTests.BareExecute_ClientSideAuth_Allowed_RunsLocally_NoRemoteRequest`, `.BareExecute_ClientSideAuth_Denied_ReturnsNull_NoRemoteRequest` | ✓ |
 | 5 — `[AspAuthorize]` forces one crossing, `IAspAuthorize` consulted | Should | `[integration]` | `IT.…LocalClassExecuteTests.BareExecute_AspAuthorize_Allowed_CrossesTheWireOnce_AndIsConsulted`, `.BareExecute_AspAuthorize_Denied_ReturnsNull_StillCrossesTheWireOnce` | ✓ |
-| 6 — authorized class Execute compiles nullable; denial returns null on both shapes | Should | `[integration]` | `IT.…LocalClassExecuteTests.RemoteExecute_WithAuth_Allowed_CrossesTheWireOnce`, `.RemoteExecute_WithAuth_Denied_ReturnsNull_StillCrossesTheWireOnce` (bare shape by bullet 4); signature pinned at `[unit]` by `UT.FactoryGenerator.Execute.ClassExecuteAuthTests.ClassExecuteWithAuth_FactoryMethod_IsNullable`, `.ClassExecuteWithAuth_Denied_ReturnsNull`, `.ClassExecuteWithAuth_Allowed_ReturnsInstance`, `.ClassExecuteWithAuth_CanRun_ReflectsAuthState` | ✓ |
+| 6 — authorized class Execute compiles nullable; denial returns null on both shapes | Should | `[integration]` | `IT.…LocalClassExecuteTests.RemoteExecute_WithAuth_Allowed_CrossesTheWireOnce`, `.RemoteExecute_WithAuth_Denied_ReturnsNull_StillCrossesTheWireOnce` (bare shape by bullet 4); at `[unit]` by `UT.FactoryGenerator.Execute.ClassExecuteAuthTests.ClassExecuteWithAuth_Denied_ReturnsNull`, `.ClassExecuteWithAuth_Allowed_ReturnsInstance`, `.ClassExecuteWithAuth_BothOutcomes_ThroughOneFactory`, `.ClassExecuteWithAuth_CanRun_ReflectsAuthState` | ✓ |
 | 7 — Design bare samples run on the client; `[Remote]` samples still round-trip | Must | `[integration]` | `DT.FactoryTests.LocalExecuteTests.Execute_StaticFactory_WithoutRemote_RunsOnClient`, `.Execute_ClassFactory_WithoutRemote_RunsOnClient`, `.Execute_WithRemote_StillTriesTheWire`; round-trip control unchanged in `DT.FactoryTests.StaticFactoryTests` and `.ClassFactoryExecuteTests` | ✓ |
 | 8 — both solutions build and test green, counts up | Must | `[explicit-skip: meta-bullet]` | `reviews/002-build-main.log`, `002-build-design.log`, `002-test-main.log`, `002-test-design.log`: UnitTests 773→777, IntegrationTests 613→631, Design.Tests 99→102, all per TFM, 0 failed | ✓ |
 
-Bullet 6's compile clause is structural: the generated file failing CS8603 under `TreatWarningsAsErrors` means no test in the solution can run, so a green build with the auth targets present *is* the assertion; `ClassExecuteWithAuth_FactoryMethod_IsNullable` assigns the result to a nullable local, which would not compile against a non-nullable signature.
+Bullet 6's compile clause is structural, and only structural: the generated file failing CS8603 under `TreatWarningsAsErrors` (CS8603 is in no `NoWarn`) means the target does not build and no test in the solution runs, so a green build with the auth targets present *is* the assertion. No test method can add to it — an earlier note here claimed one did, by assigning the result to a nullable local; that assignment is legal either way and proves nothing (test-review round 1). The behavior half of the bullet — denial returns null on both shapes — is pinned by the tests cited above.
 
 ---
 
 ## Gate Record
 
-_(Step 5)_
+- Round 1 (2026-09-08): test-review **CLEAN** — all 8 bullets pinned at tier, sacred test additive, no vacuous pin. One weak claim corrected in response (a test comment asserted a nullable-local assignment would not compile against `Task<T>`; it would — the test was renamed to what it does and the false claim removed from the Test Evidence note). Two tech-debt items dismissed: Design `LocalExecuteTests` disposes without `try/finally`; `constraints` in `CombinationDimensions.json` remains parsed and unconsumed. — [`reviews/002-test-review.md`](../reviews/002-test-review.md)
+- Round 1 (2026-09-08): code-review **CLEAN** — generator fix verified at all four render sites, no change to non-authorized Execute or any other operation, wire path sound. Three callouts, all stale references to the test renamed mid-review: two already corrected, the third (a dangling `cref` in the class remarks) fixed and the solution rebuilt green. — [`reviews/002-code-review.md`](../reviews/002-code-review.md)
+- Both gates CLEAN in one round; no leftovers, no demotions. Done.
 
 ---
 
