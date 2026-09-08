@@ -96,9 +96,15 @@ public partial class TrimExecTarget
     /// <c>BareClassBody_MARKER</c> is expected PRESENT in the trimmed client while
     /// <c>ClassExecBody_MARKER</c> above is expected ABSENT.
     /// <para>
-    /// Both halves share this class, its factory, its registrar holder, and its
-    /// <c>public static</c> shape, so <c>[Remote]</c> is the only variable — the
-    /// controlled-pair method TRIM-009 used for sync-vs-async, applied to the attribute.
+    /// WHAT IS CONTROLLED. Both halves share this class, its factory, its registrar
+    /// holder, its <c>public static</c> shape, and — since this is the axis TRIM-009
+    /// found broke the class leg — their <c>async</c>-ness: both await a port call.
+    /// The one remaining difference besides <c>[Remote]</c> is the <c>[Service]</c>
+    /// type, which is forced (the sibling's port is server-only by construction, this
+    /// one must be client-resolvable) and is neutralised by the known-bad run: with
+    /// <see cref="IClientTallyPort"/> still registered unconditionally there, adding
+    /// <c>[Remote]</c> alone took this marker to absent, so the body survives here
+    /// because no guard is emitted — not because its port is rooted.
     /// </para>
     /// <para>
     /// The <c>[Service]</c> is <see cref="IClientTallyPort"/>, registered outside the
@@ -108,13 +114,13 @@ public partial class TrimExecTarget
     /// </para>
     /// </remarks>
     [Execute]
-    public static Task<TrimExecTarget> RunBareCommand(
+    public static async Task<TrimExecTarget> RunBareCommand(
         string input,
         [Service] IClientTallyPort tallyPort)
     {
         var instance = new TrimExecTarget();
         instance.Label = input;
-        instance.ExecResult = tallyPort.ClientTallyCompute("BareClassBody_MARKER: " + input);
-        return Task.FromResult(instance);
+        instance.ExecResult = await tallyPort.ClientTallyComputeAsync("BareClassBody_MARKER: " + input);
+        return instance;
     }
 }

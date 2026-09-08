@@ -375,10 +375,10 @@ public static partial class ExampleCommands
     /// So [Remote] is what makes the body trimmable, by deciding whether a guard is
     /// emitted at all. The guard is the mechanism; the attribute is the cause. That
     /// is measured rather than reasoned: RemoteFactory.TrimmingTests carries both
-    /// halves of this pair on this same shape -- differing in the attribute and
-    /// nothing else -- and the CI gate asserts _DoWork's body ABSENT from a
-    /// publish-trimmed client while the bare sibling's body is PRESENT and still
-    /// runs there. An earlier version of this note had it the other way round
+    /// halves of this pair on this same shape -- same class, registrar and holder,
+    /// controlled for async-ness, with the attribute the difference under test --
+    /// and the CI gate asserts _DoWork's body ABSENT from a publish-trimmed client
+    /// while the bare sibling's body is PRESENT and still runs there. An earlier version of this note had it the other way round
     /// ("the guard, not the attribute"), which was true only while [Execute] was
     /// welded to remote and every delegate got a guard regardless.
     ///

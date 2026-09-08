@@ -101,6 +101,11 @@
 - **Decision:** Amend — marker literals live only in the `[Execute]` bodies; the harness matches the caller's token plus the client-safe port's stamp. Identical variant then went red as required.
 - **Follow-up:** n/a
 
+### 2026-09-08 — EXRM-003 · serves AC-3
+- **Finding:** Code review CLEAN with two callouts: the B3 correction left the same stale claim on the `[Remote]` sibling's own summary; and "differs only in `[Remote]`" overclaimed — the class pair also varied in async-ness, TRIM-009's failure axis.
+- **Decision:** Amend — stale sentence punched; the bare class half made async so both halves await a port call; the forced `[Service]` difference stated and shown neutralised by the known-bad run. Full evidence re-run.
+- **Follow-up:** a bare async *static* `[Execute]` is still unmeasured — Punchlist.
+
 ---
 
 ## Skipped Steps

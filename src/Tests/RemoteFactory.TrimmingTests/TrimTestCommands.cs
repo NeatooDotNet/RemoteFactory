@@ -64,9 +64,13 @@ public static partial class TrimTestCommands
 
     // THE BARE HALF OF THE STATIC PAIR (EXRM-003).
     //
-    // Identical to the [Remote] methods above in every respect the trimmer can see
-    // -- same class, same generated registrar, same holder, same [Service] injection
-    // -- except that it carries no [Remote]. Since EXRM-001 that single difference
+    // Controlled against _DoWork above: same class, same generated registrar, same
+    // holder, same [Service] injection style, and both synchronous. (Its own [Service]
+    // TYPE differs of necessity -- _DoWork's port is server-only, this one must resolve
+    // on the client -- which the known-bad run neutralises.) The async case has its own
+    // pair below, so this shape is covered sync AND async.
+    //
+    // The one thing that differs by choice is that it carries no [Remote]. Since EXRM-001 that difference
     // decides the emission: a bare delegate gets ONE unguarded local registration in
     // every factory mode and no remote registration, so no IsServerRuntime guard is
     // emitted, nothing folds, and this body is expected to SURVIVE trimming.
@@ -84,5 +88,24 @@ public static partial class TrimTestCommands
     private static Task<string> _ComputeTally(string input, [Service] IClientTallyPort port)
     {
         return Task.FromResult(port.ClientTallyCompute("BareStaticBody_MARKER: " + input));
+    }
+
+    // THE ASYNC BARE HALF, paired with _DoAsyncWork (EXRM-003, code-review callout 2).
+    //
+    // Without this the static shape was measured sync-only, and "a bare [Execute] body
+    // ships to the client" would have generalized from sync to async by inference --
+    // across exactly the boundary TRIM-009 found broke the class leg. The class pair is
+    // async on both halves; this makes the static pair symmetric, so neither shape
+    // relies on the other for its async result.
+    //
+    // NAMING, and it is not incidental here: the obvious `BareStaticAsyncBody_MARKER`
+    // CONTAINS `StaticAsyncBody_MARKER`, which is _DoAsyncWork's marker and is asserted
+    // ABSENT. Since the gate's present() is a substring grep, that name would satisfy
+    // the absence check and turn this pair's own [Remote] half red for entirely the
+    // wrong reason. Distinct stem, never an existing marker with an affix.
+    [Execute]
+    private static async Task<string> _ComputeTallyAsync(string input, [Service] IClientTallyPort port)
+    {
+        return await port.ClientTallyComputeAsync("BareTallyAsyncBody_MARKER: " + input).ConfigureAwait(false);
     }
 }

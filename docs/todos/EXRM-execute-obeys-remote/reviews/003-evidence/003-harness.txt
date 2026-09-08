@@ -1,5 +1,6 @@
 ServiceProvider built successfully with ValidateOnBuild=true.
 Bare static [Execute] ran on the trimmed client, through the client-safe port.
+Bare async static [Execute] ran on the trimmed client, through the client-safe port.
 Bare class [Execute] ran on the trimmed client, through the client-safe port.
 Client mode - server-only code trimmed.
 Event relay smoke PASSED: FactoryEventBase descendant survived trimming and round-tripped through registry+deserializer+relay.

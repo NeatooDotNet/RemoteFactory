@@ -71,16 +71,18 @@
    ok      <LocalRunExecCommand>d__
 -- bare [Execute] bodies (present by design, both shapes)
    ok      BareStaticBody_MARKER
+   ok      BareTallyAsyncBody_MARKER
    ok      BareClassBody_MARKER
 
 Trimming verification passed.
   Absent:  static factory ([Execute], sync and async), relay handler (sync and async),
            interface factory implementations, class-level [Execute], and BOTH halves of
            the class-factory body — sync and async, read and write.
-  Present: the two BARE [Execute] bodies, one per shape — by design, not as a tolerated
-           leak. They carry no [Remote], so no guard is emitted and nothing folds;
-           shipping them to the client is the feature. Their [Remote] siblings sit in
-           the absence list above, so each shape is measured as a pair.
+  Present: the three BARE [Execute] bodies — static sync, static async, class async —
+           by design, not as a tolerated leak. They carry no [Remote], so no guard is
+           emitted and nothing folds; shipping them to the client is the feature.
+           Their [Remote] siblings sit in the absence list above, so every shape is
+           measured as a pair, matched on async-ness within each pair.
   No shape is asserted PRESENT as a known leak. TRIM-008 and TRIM-009 closed the last two;
   if a leak is found in a shape this gate does not name, add the marker rather than
   widening an existing one, so the failure keeps naming its leg.

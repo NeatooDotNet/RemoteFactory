@@ -39,6 +39,14 @@ namespace RemoteFactory.TrimmingTests;
 public interface IClientTallyPort
 {
     string ClientTallyCompute(string input);
+
+    /// <summary>
+    /// Awaitable form, so the class-shape bare target can be <c>async</c> and match its
+    /// <c>[Remote]</c> sibling on that axis. TRIM-009 established async-ness as the
+    /// variable that broke the class leg, so a pair that varied in it would not be
+    /// controlled where it matters most.
+    /// </summary>
+    Task<string> ClientTallyComputeAsync(string input);
 }
 
 /// <summary>
@@ -54,4 +62,7 @@ public sealed class ClientTallyEngine : IClientTallyPort
 {
     public string ClientTallyCompute(string input) =>
         input + "|tallied:" + input.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public Task<string> ClientTallyComputeAsync(string input) =>
+        Task.FromResult(ClientTallyCompute(input));
 }

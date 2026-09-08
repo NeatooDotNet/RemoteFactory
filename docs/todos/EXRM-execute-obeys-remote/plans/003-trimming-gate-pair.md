@@ -4,12 +4,12 @@
 **Date:** 2026-09-08
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-1
-**Status:** Draft
+**Status:** Done
 **Last Updated:** 2026-09-08
 **Plan-review opt-in:** Yes — the gate is the IP-exposure safety seam and has a recorded history of checks that could not go red; a mis-shaped present control makes it lie in the direction that matters. `plan-reviewer`
 **Code-review opt-in:** Yes — user decision 2026-09-08 (orchestrator proposed No: no generator or library change); runs at Step 5 beside the test review
 **Branch:** exrm-003-trimming-gate-pair — cut from the arc at Step 2
-**PR:** —
+**PR:** — (opening)
 
 ---
 
@@ -108,10 +108,10 @@ Step 2 triage (2026-09-08): the five open todo-level rows are all AC-5 docs/vers
 
 | Acceptance bullet (short) | Priority | Tier declared | Evidence | Tier confirmed |
 |---|---|---|---|---|
-| 1 — bare static body present, and it runs on the trimmed client | Must | `[trimmed-harness]` | `003-gate.txt`: `check_present "BareStaticBody_MARKER"` ok. `003-harness.txt`: "Bare static [Execute] ran on the trimmed client, through the client-safe port" — `Program.cs` resolves `TrimTestCommands.ComputeTally` and invokes it, matching the caller's token and the port's `\|tallied:` stamp. Falsified in `knownbad-gate.txt` / `knownbad-harness.txt` | ✓ |
-| 2 — bare class body present, and it runs on the trimmed client | Must | `[trimmed-harness]` | `003-gate.txt`: `check_present "BareClassBody_MARKER"` ok. `003-harness.txt`: same for `ITrimExecTargetFactory.RunBareCommand`. Falsified in the same known-bad run | ✓ |
-| 3 — `[Remote, Execute]` siblings stay absent; nothing incumbent moved | Must | `[trimmed-harness]` | `003-gate.txt` exit 0 with **62** ok — the baseline's 60 (11 positive controls + every absence marker + the 6 per-site discriminators) plus the 2 new present checks. `baseline-gate.txt` is the 60-check comparison point; no incumbent check was edited, widened, or renamed | ✓ |
-| 4 — the present checks were observed red against the re-guarded variant | Must | `[explicit-skip: one-off falsification run]` | `knownbad-gate.txt`: exit 1, exactly the two `is MISSING` errors, the other 60 checks ok. `knownbad-harness.txt`: exit 1, both invocations failing with `NotSupportedException` from `NoOpHttpHandler` — the `[Remote]` variant routing to the wire. Method and the first attempt's defect recorded in `003-evidence/README.md` | ✓ |
+| 1 — bare static body present, and it runs on the trimmed client | Must | `[trimmed-harness]` | `003-gate.txt`: `check_present` ok for **both** static markers — `BareStaticBody_MARKER` (sync, paired with `_DoWork`) and `BareTallyAsyncBody_MARKER` (async, paired with `_DoAsyncWork`). `003-harness.txt`: "Bare static [Execute] ran…" and "Bare async static [Execute] ran…" — `Program.cs` resolves `TrimTestCommands.ComputeTally` / `.ComputeTallyAsync` and invokes each, matching the caller's token and the port's `\|tallied:` stamp. Falsified in `knownbad-gate.txt` / `knownbad-harness.txt` | ✓ |
+| 2 — bare class body present, and it runs on the trimmed client | Must | `[trimmed-harness]` | `003-gate.txt`: `check_present "BareClassBody_MARKER"` ok. `003-harness.txt`: same for `ITrimExecTargetFactory.RunBareCommand`, now `async` so the pair matches its `[Remote]` sibling on that axis. Falsified in the same known-bad run | ✓ |
+| 3 — `[Remote, Execute]` siblings stay absent; nothing incumbent moved | Must | `[trimmed-harness]` | `003-gate.txt` exit 0 with **63** ok — the baseline's 60 (11 positive controls + every absence marker + the 6 per-site discriminators) plus the 3 new present checks. `baseline-gate.txt` is the 60-check comparison point; no incumbent check was edited, widened, or renamed | ✓ |
+| 4 — the present checks were observed red against the re-guarded variant | Must | `[explicit-skip: one-off falsification run]` | `knownbad-gate.txt`: exit 1, exactly **3** `is MISSING` errors, the other 60 checks ok. `knownbad-harness.txt`: exit 1, all three invocations failing with `NotSupportedException` from `NoOpHttpHandler` — the `[Remote]` variant routing to the wire. Method and the first attempt's defect recorded in `003-evidence/README.md` | ✓ |
 | 5 — the gate's legend and summary name the present-by-design kind | Should | `[explicit-skip: gate prose]` | `verify-trimmed.sh`: `[P] present-by-design` in the legend; the pair block's header; the summary's new "Present:" paragraph, visible in `003-gate.txt` | ✓ |
 | 6 — the Design trimming sentences state the measured pair | Should | `[explicit-skip: comment prose]` | `AllPatterns.cs` (the `[Remote]` note's closing paragraph, replacing "The guard is what makes the body trimmable, not the attribute") and `ClassFactoryWithExecute.cs` (`ScoreLocally`'s TRIMMING note). Both cite the harness; the claim they state is bullets 1–3 | ✓ |
 | 7 — both solutions build and test green; publish, gate, harness exit 0 | Must | `[explicit-skip: meta-bullet]` | `reviews/003-build-main.log`, `003-build-design.log` (both "Build succeeded"); `003-test-main.log`: UnitTests 777, IntegrationTests 631 (626 passed, 5 skipped); `003-test-design.log`: Design.Tests 102 — all per TFM (net9.0 + net10.0), 0 failed. Counts flat as predicted. `003-publish.log` exit 0, `003-gate.txt` exit 0, `003-harness.txt` exit 0 | ✓ |
@@ -122,7 +122,9 @@ Bullet 3's "unchanged" is a diff claim as well as a run claim: the script's incu
 
 ## Gate Record
 
-_(Step 5)_
+- Round 1 (2026-09-08): test-review **CLEAN** — all 7 bullets pinned at tier; sacred gate verified additive by diff (66 insertions / 0 deletions; `ok`-line diff exactly `60a61,62` at the time of review); the vacuity fix confirmed complete in both directions, including that the replacement assertions cannot pass on a body that did not run. Two items dismissed: marker names appearing in *comments* (they reach no user-string heap, and they are what warn the next editor off repeating the literal in `Program.cs`), and a "rewrite" vs "add beside" wording divergence in Step 4. — [`reviews/003-test-review.md`](../reviews/003-test-review.md)
+- Round 1 (2026-09-08): code-review **CLEAN** — gate additive, the full 47-marker substring scan clean against every new name, the B2 correction load-bearing, and the `AllPatterns.cs` reversal confirmed against `isServerOnly` *and* against the known-bad run, which rules out the port-rooting confound. Two callouts, both addressed rather than carried: the B3 correction was incomplete on the `[Remote]` sibling's own summary (fixed, `7d3d537`), and "differs only in `[Remote]`" overclaimed — the class pair varied in async-ness, TRIM-009's failure axis. — [`reviews/003-code-review.md`](../reviews/003-code-review.md)
+- Both gates CLEAN in one round. The async asymmetry was **fixed rather than qualified**, and the user directed the remaining static async gap be closed here too, so the gate now measures three pairs (static sync, static async, class async), each matched on async-ness. Full evidence set re-run against the changed targets, falsification included. No leftovers, no demotions. Done.
 
 ---
 
@@ -145,6 +147,14 @@ _(append-only)_
 - **What changed:** the harness matches the caller's own input token plus a stamp the client-safe port adds (`|tallied:`), and mentions no marker literal at all; the bullets say "returning a result stamped by a client-registered service". The first known-bad run **passed the gate** while failing the harness — not a property of the variant but a defect in the check: `Program.cs` is the entry point and is never trimmed, so its `Contains("BareStaticBody_MARKER")` assertions rooted the very literals the gate greps for, and both present checks could never have gone red. With the literals confined to the `[Execute]` bodies, the identical variant produced the required red.
 - **Why:** Step 6 exists to catch exactly this before the checks are trusted, and it did. Both runs and the correction are recorded in `reviews/003-evidence/README.md` rather than only the final result, because "the check was fixed" and "the check was always sound" are different claims.
 - **Discovery Log:** 2026-09-08 / EXRM-003 (second entry)
+
+### 2026-09-08 — The class pair is controlled for async-ness, and the uncontrolled axes are named
+
+- **Section affected:** Step 2's "a bare `public static` sibling … differs only in `[Remote]`"; the harness targets and the gate's pair block
+- **Original said:** each pair differs in `[Remote]` and nothing else.
+- **What changed:** that was two claims too strong. `RunExecCommand` is `async` and awaits its port while `RunBareCommand` returned `Task.FromResult`, so the class pair varied on exactly the axis TRIM-009 identified as the class leg's failure mechanism — fixed rather than qualified: `IClientTallyPort` gained an awaitable form and the bare half now awaits it, so both halves of the class pair are async and both halves of the static pair are sync. The `[Service]` type also differs on both pairs; that one is forced (the `[Remote]` half's port is server-only by construction) and is neutralised by the known-bad run, which is now said out loud in the target, the gate and the evidence index. A bare **async static** `[Execute]` was then closed as well, at the user's direction (2026-09-08): `_ComputeTallyAsync` pairs with `_DoAsyncWork`, so the static shape is measured sync *and* async and neither shape leans on the other for its async result. Three pairs now, each matched on async-ness within itself. The async bare marker deliberately avoids the obvious `BareStaticAsyncBody_MARKER`, which contains the absent `StaticAsyncBody_MARKER` and would have satisfied that check under the substring grep.
+- **Why:** `reviews/003-code-review.md` callout 2, plus the user's choice to close the static gap here rather than carry it. The full evidence set was re-run against the changed targets, falsification included, so the archived runs describe what is committed.
+- **Discovery Log:** 2026-09-08 / EXRM-003 (third entry)
 
 ---
 

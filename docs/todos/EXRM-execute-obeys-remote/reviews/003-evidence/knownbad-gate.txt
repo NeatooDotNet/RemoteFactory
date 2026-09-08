@@ -70,7 +70,8 @@
    ok      <LocalSave>d__
    ok      <LocalRunExecCommand>d__
 -- bare [Execute] bodies (present by design, both shapes)
-::error::[static factory (bare half of the [Execute] pair)] 'BareStaticBody_MARKER' is MISSING from the trimmed assembly. A bare [Execute] body was trimmed — it carries no [Remote], so no guard should exist to fold it. Client-local execution is broken.
+::error::[static factory (bare half of the sync [Execute] pair)] 'BareStaticBody_MARKER' is MISSING from the trimmed assembly. A bare [Execute] body was trimmed — it carries no [Remote], so no guard should exist to fold it. Client-local execution is broken.
+::error::[static factory (bare half of the async [Execute] pair)] 'BareTallyAsyncBody_MARKER' is MISSING from the trimmed assembly. A bare [Execute] body was trimmed — it carries no [Remote], so no guard should exist to fold it. Client-local execution is broken.
 ::error::[class [Execute] (bare half of the [Execute] pair)] 'BareClassBody_MARKER' is MISSING from the trimmed assembly. A bare [Execute] body was trimmed — it carries no [Remote], so no guard should exist to fold it. Client-local execution is broken.
 
-::error::Trimming verification FAILED (2 check(s)).
+::error::Trimming verification FAILED (3 check(s)).

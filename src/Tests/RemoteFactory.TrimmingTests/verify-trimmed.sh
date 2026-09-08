@@ -348,10 +348,26 @@ done
 #   [Execute]          -> ONE unguarded local registration, no remote delegate,
 #                         no guard to fold. Body PRESENT — deliberately.
 #
-# Each pair differs by the attribute alone: same class, same generated registrar,
-# same holder, same [Service] injection style. So the two halves cannot both be
-# satisfied by an accident. A guard creeping onto bare [Execute] reddens the
-# PRESENT half; a guard lost from [Remote, Execute] reddens the ABSENT half above.
+# Each pair is controlled: same class, same generated registrar, same holder, same
+# [Service] injection style, and the same async-ness (the static pair is sync on both
+# halves; the class pair awaits a port call on both, TRIM-009's axis). So the two
+# halves cannot both be satisfied by an accident. A guard creeping onto bare
+# [Execute] reddens the PRESENT half; a guard lost from [Remote, Execute] reddens
+# the ABSENT half above.
+#
+# NOT CONTROLLED, and it cannot be: the [Service] TYPE differs, because the [Remote]
+# half's port is server-only by construction and the bare half's must be resolvable
+# on the client. The known-bad run neutralises it — the client-safe port stays
+# registered unconditionally there, so adding [Remote] alone took both markers to
+# MISSING. The bodies survive because no guard is emitted, not because their port is
+# rooted from DI.
+#
+# ASYNC IS COVERED ON BOTH SHAPES, and deliberately so: TRIM-009 located the class
+# leg's defect in async emission, so a gate that measured only synchronous bare
+# bodies would generalize across the one boundary this arc has already been burned
+# by. Three pairs: static sync (_DoWork / _ComputeTally), static async
+# (_DoAsyncWork / _ComputeTallyAsync), and class async (RunExecCommand /
+# RunBareCommand). Each is matched on async-ness within itself.
 #
 # WHAT IS ASSERTED HERE, AND WHAT IS NOT. Only the two BODY LITERALS. The bare
 # targets' [Service] is IClientTallyPort, registered outside the harness's
@@ -373,10 +389,11 @@ done
 # controls at the top of this file already stop the run over.
 # ---------------------------------------------------------------------------
 echo "-- bare [Execute] bodies (present by design, both shapes)"
-# [P] Both. Their [Remote] siblings' markers — _DoWork/_ProcessRecord/_DoAsyncWork
-#     above, and ClassExecBody_MARKER in the class-[Execute] block — are the
-#     absent halves of these same two pairs.
-check_present "BareStaticBody_MARKER" "static factory (bare half of the [Execute] pair)"
+# [P] All three. Their [Remote] siblings' markers — _DoWork and _ProcessRecord,
+#     _DoAsyncWork/StaticAsyncBody_MARKER, and ClassExecBody_MARKER in the
+#     class-[Execute] block — are the absent halves of these same three pairs.
+check_present "BareStaticBody_MARKER" "static factory (bare half of the sync [Execute] pair)"
+check_present "BareTallyAsyncBody_MARKER" "static factory (bare half of the async [Execute] pair)"
 check_present "BareClassBody_MARKER" "class [Execute] (bare half of the [Execute] pair)"
 
 echo
@@ -389,10 +406,11 @@ echo "Trimming verification passed."
 echo "  Absent:  static factory ([Execute], sync and async), relay handler (sync and async),"
 echo "           interface factory implementations, class-level [Execute], and BOTH halves of"
 echo "           the class-factory body — sync and async, read and write."
-echo "  Present: the two BARE [Execute] bodies, one per shape — by design, not as a tolerated"
-echo "           leak. They carry no [Remote], so no guard is emitted and nothing folds;"
-echo "           shipping them to the client is the feature. Their [Remote] siblings sit in"
-echo "           the absence list above, so each shape is measured as a pair."
+echo "  Present: the three BARE [Execute] bodies — static sync, static async, class async —"
+echo "           by design, not as a tolerated leak. They carry no [Remote], so no guard is"
+echo "           emitted and nothing folds; shipping them to the client is the feature."
+echo "           Their [Remote] siblings sit in the absence list above, so every shape is"
+echo "           measured as a pair, matched on async-ness within each pair."
 echo "  No shape is asserted PRESENT as a known leak. TRIM-008 and TRIM-009 closed the last two;"
 echo "  if a leak is found in a shape this gate does not name, add the marker rather than"
 echo "  widening an existing one, so the failure keeps naming its leg."

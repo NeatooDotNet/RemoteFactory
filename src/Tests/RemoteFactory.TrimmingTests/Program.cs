@@ -264,6 +264,36 @@ catch (Exception ex)
     failedChecks.Add("bare static [Execute] invocation");
 }
 
+// Static shape, async: the bare sibling of _DoAsyncWork.
+try
+{
+    var computeTallyAsync = checkScope.ServiceProvider.GetService<TrimTestCommands.ComputeTallyAsync>();
+    if (computeTallyAsync == null)
+    {
+        failedChecks.Add("bare async static [Execute] delegate resolution");
+    }
+    else
+    {
+        var asyncTallyResult = computeTallyAsync("bare-static-async").GetAwaiter().GetResult();
+        if (asyncTallyResult == null
+            || !asyncTallyResult.Contains("bare-static-async", StringComparison.Ordinal)
+            || !asyncTallyResult.Contains("|tallied:", StringComparison.Ordinal))
+        {
+            Console.WriteLine($"Bare async static [Execute] invocation FAILED: expected the caller's token and the client-safe port's stamp in the result, got \"{asyncTallyResult}\".");
+            failedChecks.Add("bare async static [Execute] invocation");
+        }
+        else
+        {
+            Console.WriteLine("Bare async static [Execute] ran on the trimmed client, through the client-safe port.");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Bare async static [Execute] FAILED: {ex.GetType().Name}: {ex.Message}");
+    failedChecks.Add("bare async static [Execute] invocation");
+}
+
 // Class shape: a bare [Execute] factory method, resolved and invoked.
 try
 {
