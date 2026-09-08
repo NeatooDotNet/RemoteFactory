@@ -58,4 +58,4 @@ Round 1 carried no must-cover, so the gate closes here. The three should-cover i
 | td-1 | Both sentences now say the scan finds one of the two commits the notes list, and none of the documentation work |
 | td-2 | Not actioned — `*.log` being gitignored is the repo's standing convention (EXRM-002 onward); the tracked `003-evidence/*.txt` files are what AC-3's evidence rests on, and the release page points at the container, not at the logs. No change warranted |
 
-Fixes committed in `2f04e00`. No re-run needed: no code changed, and the build/test/pack evidence for bullets 6 and 8 is untouched by prose edits.
+Fixes committed in `cf0a0fd`. No re-run needed: no code changed, and the build/test/pack evidence for bullets 6 and 8 is untouched by prose edits.

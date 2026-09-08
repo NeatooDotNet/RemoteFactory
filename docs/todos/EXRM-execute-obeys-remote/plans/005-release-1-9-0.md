@@ -130,7 +130,7 @@ Line-ending note: a blanket CRLF normalisation was applied to `src/Directory.Bui
 
 - Round 1 (2026-09-08): test-review **CONCERNS** — no veto-tier and **no must-cover**; every Acceptance bullet's evidence exists and says what the map claims, the five-row placement table is correct row-for-row against the generator, and the eleven older release-note pages differ by exactly one `nav_order` line each. Three should-cover items, all **worked inline rather than deferred**, because none was a real candidate for deferral: the Migration Guide missed the `[AuthorizeFactory]` method's own `[Service]` parameters (a non-`[Remote]` auth method does not force the server and now runs client-side with the call it guards — a gap a consumer following the guide falls into); the Overview contradicted the Bug Fixes section on whether `[Remote]` changed; and this plan's own line-ending evidence statement was false, the first CRLF revert having missed a final line with no newline after it. One tech-debt item fixed (the release counted its own shipment two ways), one dismissed with reason. — [`reviews/005-test-review.md`](../reviews/005-test-review.md)
 - Code review: not opted in (user decision at Step 2) — no code in this plan.
-- Gate closed in one round, no leftovers and no demotions. Fixes in `2f04e00`; no re-run needed, since the build, test and pack evidence is untouched by prose edits. Done.
+- Gate closed in one round, no leftovers and no demotions. Fixes in `cf0a0fd`; no re-run needed, since the build, test and pack evidence is untouched by prose edits. Done.
 
 ---
 
