@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes — the gate is the IP-exposure safety seam and has a recorded history of checks that could not go red; a mis-shaped present control makes it lie in the direction that matters. `plan-reviewer`
 **Code-review opt-in:** Yes — user decision 2026-09-08 (orchestrator proposed No: no generator or library change); runs at Step 5 beside the test review
 **Branch:** exrm-003-trimming-gate-pair — cut from the arc at Step 2
-**PR:** — (opening)
+**PR:** [#95](https://github.com/NeatooDotNet/RemoteFactory/pull/95)
 
 ---
 
