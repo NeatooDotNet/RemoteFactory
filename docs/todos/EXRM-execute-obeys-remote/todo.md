@@ -19,10 +19,10 @@
 
 ## Acceptance Criteria
 
-- [ ] **AC-1** · Must — A bare `[Execute]` on a static factory or a class factory runs on the client with client-container service resolution and makes no remote call.
-- [ ] **AC-2** · Must — `[Remote, Execute]` on both shapes generates and behaves exactly as v1.8.1, including the non-async wrapper guard.
+- [x] **AC-1** · Must — A bare `[Execute]` on a static factory or a class factory runs on the client with client-container service resolution and makes no remote call.
+- [x] **AC-2** · Must — `[Remote, Execute]` on both shapes generates and behaves exactly as v1.8.1, including the non-async wrapper guard.
 - [x] **AC-3** · Must — The trimmed-client gate measures a `[Remote, Execute]` body absent and a bare `[Execute]` body present, for both shapes.
-- [ ] **AC-4** · Should — `[AspAuthorize]` on a bare `[Execute]` still forces remote, and `[AuthorizeFactory]` on a bare `[Execute]` runs locally.
+- [x] **AC-4** · Should — `[AspAuthorize]` on a bare `[Execute]` still forces remote, and `[AuthorizeFactory]` on a bare `[Execute]` runs locally.
 - [x] **AC-5** · Must — Design projects, published docs, and the skill state the new contract with the decorative claim gone, and release notes ship per CI standards.
 - [x] **AC-6** · Could — The NF0105 static-factory exemption is re-examined and either kept with a stated reason or narrowed.
 
