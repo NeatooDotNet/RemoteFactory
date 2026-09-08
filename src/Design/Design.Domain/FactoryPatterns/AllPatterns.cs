@@ -320,6 +320,8 @@ public class ExampleRepository : IExampleRepository
 /// - [Execute] methods are request-response (await the result)
 /// - Inject services via [Service] parameters
 /// - No instance state - pure functions with side effects via services
+/// - [Remote] decides where a command runs: _SendNotification crosses to the
+///   server, _ScoreText runs on whichever tier resolves it
 /// </summary>
 /// <remarks>
 /// COMMON MISTAKE: Forgetting 'partial' on static factory classes
@@ -365,9 +367,10 @@ public static partial class ExampleCommands
     /// Blazor WASM clients, decompilable. The holder gives the attribute a
     /// single-method type to preserve instead.
     ///
-    /// Note [Remote] is decorative on [Execute]: static factories are exempt from
-    /// the NF0105 [Remote] public check, and both remote and local registrations
-    /// are emitted regardless, with only the local one guarded by IsServerRuntime.
+    /// [Remote] decides where this runs, as on every operation: with it, the client
+    /// gets a remote delegate and the server a local one guarded by IsServerRuntime;
+    /// without it (see _ScoreText below) one unguarded local delegate is registered
+    /// in every mode. Static factories stay exempt from the NF0105 [Remote] public check.
     /// The guard is what makes the body trimmable, not the attribute.
     ///
     /// Not demonstrated by a Design test: preservation and over-preservation are
@@ -401,6 +404,52 @@ public static partial class ExampleCommands
     {
         await service.SendAsync(recipient, message);
         return true; // Return value required for Execute methods
+    }
+
+    /// <summary>
+    /// Scores text on the caller's tier. Returns the word count.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: [Execute] without [Remote] is a local command
+    ///
+    /// [Remote] decides where an [Execute] runs, exactly as it does for every other
+    /// operation. Without it the generator emits ONE unguarded local registration in
+    /// every factory mode and no remote delegate, no endpoint: the delegate runs on
+    /// whichever tier resolves it, and its [Service] parameters come from that tier's
+    /// container. On a Blazor WASM client that means the body ships to the browser
+    /// and runs there -- the shape for client-side engines that must not round-trip.
+    ///
+    /// GENERATOR BEHAVIOR: For this method, the generator creates:
+    ///   - Delegate: ExampleCommands.ScoreText(string)
+    ///   - One local registration per mode (Server, Remote, Logical), none guarded
+    ///   - No remote registration; the server refuses a crafted request naming it
+    ///     exactly as it refuses an unknown delegate
+    ///
+    /// The service must exist where the call runs. ITextScorer is pure computation
+    /// and is registered on every tier: RegisterMatchingName maps it in Design.Tests
+    /// and Design.Server, and Design.Client.Blazor registers it explicitly. A bare
+    /// [Execute] taking a service the client does not register compiles, then fails
+    /// at call time on the client with a DI resolution error -- see LocalExecuteTests.
+    ///
+    /// COMMON MISTAKE: Omitting [Remote] on a command that needs the server
+    ///
+    /// WRONG:
+    /// [Execute]
+    /// private static Task&lt;bool&gt; _SendNotification(..., [Service] INotificationService service)
+    /// // Runs on the client; a client that does not register INotificationService
+    /// // (Design.Client.Blazor registers no server-side services) throws at call time
+    ///
+    /// RIGHT:
+    /// [Remote, Execute]
+    /// private static Task&lt;bool&gt; _SendNotification(...)
+    ///
+    /// The rule: [Remote] when the command needs the server; bare when it must run
+    /// where it is called.
+    /// </remarks>
+    [Execute]
+    private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
+    {
+        return Task.FromResult(scorer.Score(text));
     }
 
     // -------------------------------------------------------------------------
@@ -437,6 +486,28 @@ public class ExampleService : IExampleService
 
     public int GenerateId() => _nextId++;
     public (int Id, string Name) LoadData(int id) => (id, $"Loaded_{id}");
+}
+
+/// <summary>
+/// Client-safe service for the local [Execute] samples: pure computation, no I/O.
+/// </summary>
+/// <remarks>
+/// DESIGN DECISION: A service a bare [Execute] takes must be registered on every
+/// tier that calls the command. This one is, on purpose. IExampleService and
+/// INotificationService are server-side and stay out of Design.Client.Blazor.
+/// </remarks>
+public interface ITextScorer
+{
+    int Score(string text);
+}
+
+/// <summary>
+/// Word count. Registered explicitly on the Blazor client
+/// (Design.Client.Blazor/Program.cs) and mapped by RegisterMatchingName elsewhere.
+/// </summary>
+public class TextScorer : ITextScorer
+{
+    public int Score(string text) => text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
 }
 
 /// <summary>

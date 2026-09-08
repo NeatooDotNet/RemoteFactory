@@ -10,11 +10,13 @@
 // The client only needs:
 // 1. AddNeatooRemoteFactory() - registers factory proxies
 // 2. HttpClient using HostEnvironment.BaseAddress - for making remote calls
+// 3. Client-safe services for [Execute] commands that run on the client
 //
 // =============================================================================
 
 using Design.Client.Blazor;
 using Design.Domain.Aggregates;
+using Design.Domain.FactoryPatterns;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Neatoo.RemoteFactory;
@@ -45,6 +47,17 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, ...);
 // -------------------------------------------------------------------------
 builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
+
+// -------------------------------------------------------------------------
+// DESIGN DECISION: Register the client-safe services the client actually runs
+//
+// An [Execute] without [Remote] runs on the client and resolves its [Service]
+// parameters from THIS container. ITextScorer backs ExampleCommands.ScoreText
+// and ClassExecuteDemo.ScoreLocally; it is pure computation, so it belongs
+// here. Server-side services (IExampleService, INotificationService) stay out
+// -- a bare [Execute] that took one would fail at call time on the client.
+// -------------------------------------------------------------------------
+builder.Services.AddScoped<ITextScorer, TextScorer>();
 
 // -------------------------------------------------------------------------
 // DESIGN DECISION: Keyed HttpClient for RemoteFactory
