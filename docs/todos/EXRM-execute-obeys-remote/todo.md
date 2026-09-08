@@ -24,7 +24,7 @@
 - [x] **AC-3** · Must — The trimmed-client gate measures a `[Remote, Execute]` body absent and a bare `[Execute]` body present, for both shapes.
 - [ ] **AC-4** · Should — `[AspAuthorize]` on a bare `[Execute]` still forces remote, and `[AuthorizeFactory]` on a bare `[Execute]` runs locally.
 - [ ] **AC-5** · Must — Design projects, published docs, and the skill state the new contract with the decorative claim gone, and release notes ship per CI standards.
-- [ ] **AC-6** · Could — The NF0105 static-factory exemption is re-examined and either kept with a stated reason or narrowed.
+- [x] **AC-6** · Could — The NF0105 static-factory exemption is re-examined and either kept with a stated reason or narrowed.
 
 ## Out of Scope
 
@@ -44,7 +44,7 @@
 | 001 | [001-static-delegates-obey-remote](./plans/001-static-delegates-obey-remote.md) | Static-factory delegates obey [Remote]; weld removed | AC-1, AC-2 | Done | [#92](https://github.com/NeatooDotNet/RemoteFactory/pull/92) |
 | 002 | [002-local-execute-coverage](./plans/002-local-execute-coverage.md) | Local Execute proven on both shapes, plus auth | AC-1, AC-2, AC-4 | Done | [#93](https://github.com/NeatooDotNet/RemoteFactory/pull/93) |
 | 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3, AC-1 | Done | [#95](https://github.com/NeatooDotNet/RemoteFactory/pull/95) |
-| 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | Draft | — |
+| 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | Done | [#96](https://github.com/NeatooDotNet/RemoteFactory/pull/96) |
 | 005 | [005-release-1-9-0](./plans/005-release-1-9-0.md) | Release notes and version for v1.9.0 | AC-5 | Draft | — |
 
 ---
@@ -52,9 +52,9 @@
 ## Punchlist
 
 - [ ] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · done when both read 1.9.0 · AC-5 · Must
-- [ ] NF0102 description justifies the `Task` rule by remoteness · `src/Generator/DiagnosticDescriptors.cs:35` · done when the text no longer says "designed for remote execution" · AC-5 · Must
-- [ ] Bare `[Execute] internal static` on a class factory now yields an internal factory interface, the same visibility rule every other internal operation follows · the visibility rule's home in `docs/attributes-reference.md` and the Design comments · done when stated in one sentence and pinned at `[unit]` tier (moved from EXRM-002's bullet 7 at its plan review; a single-method target renders the whole interface internal, `ClassFactoryModel.cs:62`) · AC-5 · Must
-- [ ] Reference app's only bare `[Execute]` takes a server-only `[Service]` and flips to a client failure · `src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/ExecuteSamples.cs:13-20` · done when it is either `[Remote]` or a genuine client-runnable local sample · AC-5 · Must
+- [→ EXRM-004] NF0102 description justifies the `Task` rule by remoteness · `src/Generator/DiagnosticDescriptors.cs:35` · pulled down at 004's Step 2 triage
+- [→ EXRM-004] Bare `[Execute] internal static` on a class factory yields an internal factory interface · `docs/attributes-reference.md` and the Design comments, pinned `[unit]` · pulled down at 004's Step 2 triage (moved from EXRM-002's bullet 7 at its plan review)
+- [→ EXRM-004] Reference app's only bare `[Execute]` takes a server-only `[Service]` · `EmployeeManagement.Application/Samples/Attributes/ExecuteSamples.cs:13-20` · pulled down at 004's Step 2 triage
 - [ ] CLAUDE.md release step says bump `<VersionPrefix>`, which does not exist; the props carry `<PackageVersion>` · `CLAUDE.md:242` · done when the step names the real property · AC-5 · Must
 - [→ EXRM-001] Region header "Execute is always remote" · `ExecuteBehaviorTests.cs:9,27` · pulled down at 001's Step 2 triage
 - [→ EXRM-001] Dead Execute clause in the record-primary-constructor ctor · `FactoryGenerator.Types.cs:629` · pulled down at 001's Step 2 triage
@@ -69,6 +69,9 @@
 - EXRM-002 · Design's static bare-`[Execute]` sample must be `private static _Name`, not the combination targets' `public static` · the Design convention (`AllPatterns.cs:380-388`) already binds the sample; noted for pre-flight (plan-review B6)
 - EXRM-002 · Intermittent `MSB3552: Resource file "**/*.resx" cannot be found` on a multi-target build · pre-existing race between the `PreBuild` `RemoveDir` and the parallel inner build's glob enumeration, in six projects; serves no criterion — captured as [#94](https://github.com/NeatooDotNet/RemoteFactory/issues/94)
 - EXRM-003 · `FactoryAttributes.cs:102-108` XML doc still calls `[Remote]` decorative on `[Execute]` · already in EXRM-004's Scope ("the attribute XML docs") and its Notes inventory; not a second row (plan-review A1)
+- EXRM-004 · `docs/plans/combination-testing-generator.md:168` says "(always remote)" · historical archive of a completed plan, excluded from mdsnippets; archives are not edited
+- EXRM-004 · `docs/attributes-reference.md:416` says derived methods inherit remote execution · a `[Remote]`-inheritance claim, not the `[Execute]` contract; the generator reads declared attributes only, so the row is inert (plan-review M1)
+- EXRM-004 · Generated factories name `Task` and `CancellationToken` unqualified and rely on the consumer's `ImplicitUsings` (surfaced by the gate's crash-proofing assertion) · pre-existing, every consumer in the repo enables implicit usings, fixture convention already documented in `AssemblyAttributeEmissionTests`; serves no criterion
 
 ---
 
@@ -104,7 +107,12 @@
 ### 2026-09-08 — EXRM-003 · serves AC-3
 - **Finding:** Code review CLEAN with two callouts: the B3 correction left the same stale claim on the `[Remote]` sibling's own summary; and "differs only in `[Remote]`" overclaimed — the class pair also varied in async-ness, TRIM-009's failure axis.
 - **Decision:** Amend — stale sentence punched; the bare class half made async so both halves await a port call; the forced `[Service]` difference stated and shown neutralised by the known-bad run. Full evidence re-run.
-- **Follow-up:** a bare async *static* `[Execute]` is still unmeasured — Punchlist.
+- **Follow-up:** n/a — the bare async *static* gap was closed in EXRM-003 itself at the user's direction (its third amendment); no Punchlist row.
+
+### 2026-09-08 — EXRM-004 · serves AC-5
+- **Finding:** Plan review CONCERNS, five Must callouts: an inherited-`[Remote]`-over-`[Execute]` sentence that cannot occur; bare `internal static [Execute]` on a class factory is guarded, contradicting the rule sentence; the skill self-containment bullet already red; a `skill-*` region cannot be shared; auth enforcement is class-shape only.
+- **Decision:** Amend — all ten callouts amended; the internal case gets its own row and a Design sample; M1's inheritance row dismissed.
+- **Follow-up:** n/a
 
 ---
 

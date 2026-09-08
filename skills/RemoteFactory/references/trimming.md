@@ -135,10 +135,12 @@ The guarantee is not uniform across factory shapes. What follows is measured aga
 
 | Shape | `[Remote]`/handler bodies removed? |
 |---|---|
-| Static factory (`[Execute]`) | Yes, from v1.7.0 |
+| Static factory, `[Remote, Execute]` | Yes, from v1.7.0 |
+| Static factory, bare `[Execute]` | **No, by design** — no `[Remote]`, no guard; the body ships to the client and runs there (v1.9.0) |
 | `[FactoryEventHandler<T>]` | Yes, from v1.7.0 |
 | Class factory | Yes, from v1.7.0 — synchronous operations were always removed; `async` ones needed the same release |
-| Class-level `[Execute]` | Yes, from v1.7.0 — emitted `async` always, so it needed the same fix |
+| Class-level `[Remote, Execute]` | Yes, from v1.7.0 — emitted `async` always, so it needed the same fix |
+| Class-level bare `[Execute]` | `public static`: **No, by design** — runs where the factory resolves. `internal static`: Yes — server-only, guarded like any `internal` method (v1.9.0) |
 | Interface factory | **Not established.** No leak has been observed, but the leg reaches its implementation through interfaces, so a client-side test reads "absent" whether or not the body survives. Treat it as unverified rather than proven. |
 
 ### Why the fix was needed
@@ -158,9 +160,11 @@ No action needed on your side; it is automatic. If you are on an earlier version
 
 One behaviour change to be aware of: the server-only guard now throws **synchronously** from the factory entry point rather than surfacing as a faulted `Task`. Code that awaited the call and caught the exception still works; code that called without awaiting and inspected the returned `Task` will now see the throw at the call site.
 
-### `[Remote]` is decorative on `[Execute]`
+### `[Execute]` obeys `[Remote]`
 
-Static factories are exempt from the NF0105 `[Remote] public` check, and the generator emits both remote and local registrations regardless, guarding only the local one with `IsServerRuntime`. Trimming of an `[Execute]` body follows from that guard, not from `[Remote]`. Keep `[Remote]` for intent — it reads consistently with class factories — but do not rely on it as the thing that makes the body trimmable.
+`[Remote]` is what makes an `[Execute]` body trimmable, by deciding whether a guard is emitted at all. With `[Remote]` the local path is guarded by `IsServerRuntime` and the trimmer removes the body. Without it there is no guard and no remote delegate — the body ships to the client and runs there, with the client's services, which is the point of a bare `[Execute]`. On a class factory, `internal static` without `[Remote]` is guarded too (server-only), while `public static` runs wherever the factory resolves. Static methods are exempt from the NF0105 `[Remote] public` check because `[Remote]` alone drives their guard.
+
+Both halves are measured in the trimming gate rather than inferred: a `[Remote, Execute]` body absent from a publish-trimmed client, a bare body present and running there, on both shapes (v1.9.0). Do not add `[Remote]` to an `[Execute]` "for intent" — it changes where the method runs.
 
 ## Verifying Results
 

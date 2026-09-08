@@ -335,6 +335,7 @@ internal partial class PersonPhoneList
 | [Factory] on implementation | Duplicate registration | Only on interface |
 | [Execute] returning Task | No confirmation | Return Task<T> |
 | Class [Execute] wrong return type | Won't compile | Must return containing type |
-| [Remote] on public methods | NF0105 diagnostic | Change method to `internal` |
+| [Remote] on public instance methods | NF0105 diagnostic | Change method to `internal` (static methods are exempt) |
+| [Remote] on an [Execute] that must run on the client | Round-trips; server-only services fail | Leave [Remote] off — [Execute] obeys it |
 | Optional parameters | Defaults silently dropped | Don't use defaults; pass all args explicitly |
 | CS0051 fear on internal classes | Avoids `internal` unnecessarily | Internal classes can take internal services even in public methods |

@@ -37,7 +37,7 @@ Follow this workflow when working with RemoteFactory patterns:
 |---------|----------|---------|---------------------|
 | **Class Factory** | Aggregate roots with lifecycle, entities needing Create/Fetch/Save | `Order`, `Customer`, `Invoice` | Instance state, serializable, IFactorySaveMeta support |
 | **Interface Factory** | Remote services without entity identity | `IOrderRepository`, `IPaymentService` | Server implementation, client proxy, no operation attributes |
-| **Static Factory** | Stateless commands and side effects | `EmailCommands.SendNotification` | No instance state, [Execute] operation |
+| **Static Factory** | Stateless commands and side effects | `EmailCommands.SendNotification` | No instance state, [Execute] operation; `[Remote]` decides whether it crosses to the server |
 
 ### Detailed Guidance
 
@@ -365,13 +365,14 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Question | Answer | Reference | Reason |
 |----------|--------|-----------|--------|
 | Should this method be [Remote]? | Only aggregate root entry points | `Order.cs` vs `OrderLine.cs` | Once on server, stay on server |
-| Should a [Remote] method be `internal`? | Yes, always -- `[Remote]` requires `internal` (NF0105 error if `public`) | `Order.cs` | Enables IL trimming; `[Remote]` promotes to `public` on factory interface |
+| Should a [Remote] method be `internal`? | On instance methods, yes -- `[Remote]` requires `internal` (NF0105 error if `public`). Static methods are exempt: a static-factory [Execute] is `private static` behind a generated wrapper, a class-level [Execute] `public static` | `Order.cs`; `ClassFactoryWithExecute.cs` | Enables IL trimming; `[Remote]` promotes to `public` on factory interface; on static methods `[Remote]` alone drives the guard |
+| Does [Execute] need [Remote]? | Only when it needs the server -- [Execute] obeys [Remote]. Bare: one unguarded local path, runs where resolved with that tier's services. With [Remote]: the client crosses. On a class factory, `internal static` without [Remote] is server-only | `AllPatterns.cs` (`_SendNotification` / `_ScoreText`), `ClassFactoryWithExecute.cs` (`RunCommand` / `ScoreLocally` / `ArchiveOnServer`) | Client-side engines must not round-trip; both halves measured in RemoteFactory.TrimmingTests |
 | Should non-[Remote] methods be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
 | Can I use private setters? | No | `AllPatterns.cs:73` | IL trimming + source generation |
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
 | Should child entities have [Remote]? | No | `OrderLine.cs:27-41` | Would cause N+1 remote calls |
-| Can [Execute] return void? | No, must return Task<T> | `AllPatterns.cs:340-347` | Client needs result to confirm |
+| Can [Execute] return void? | No, must return Task<T> | `AllPatterns.cs:402-409` | Request-response: the caller awaits a result whether the call is local or remote |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Does constructor injection affect ordinal serialization? | Yes -- a class with no parameterless or all-default-parameter ctor causes the generator to skip `IOrdinalSerializable`; the type then deserializes via the named/DI path (`GetRequiredService`), which resolves the ctor parameters from the DI container on each side of the wire | `CtorInjectionExample.cs`, `SerializationTests.cs` (`CtorInjectedEntity_*` tests) | Ordinal `FromOrdinalArray` uses object-initializer / positional construction and does not resolve DI. The generator's `RequiresServiceInstantiationCheck` looks only at ctor shape (parameter count, default values) -- not at `[Service]` attribute presence |
@@ -1072,6 +1073,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] At least one Class Factory with lifecycle hooks (`Order.cs`)
 - [ ] At least one Interface Factory (`IExampleRepository` in `AllPatterns.cs`)
 - [ ] At least one Static Factory with [Execute] (`ExampleCommands`)
+- [ ] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
 - [ ] Child entities without [Remote] (`OrderLine.cs`)
 - [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
 - [ ] Value objects that serialize correctly (`Money` in `ValueObjects/`)

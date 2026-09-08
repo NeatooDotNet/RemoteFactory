@@ -302,7 +302,9 @@ Execute works in two contexts with different conventions:
 | Context | Method Visibility | Naming | Generates |
 |---------|------------------|--------|-----------|
 | **Static factory** class | `private static` | Underscore prefix (`_MethodName`) | Delegate type |
-| **Class factory** | `public static` | No prefix (`MethodName`) | Factory interface method |
+| **Class factory** | `public static` to run where the factory resolves; `internal static` for server-only | No prefix (`MethodName`) | Factory interface method |
+
+In both contexts **`[Execute]` obeys `[Remote]`**, like every other operation. With `[Remote]` the call is a client-to-server entry point: the client gets a remote delegate and the server a local path guarded by `NeatooRuntime.IsServerRuntime`. Without it there is no remote delegate and no endpoint: the method runs on whichever tier resolves it, and its `[Service]` parameters come from that tier's container — so a bare `[Execute]` that takes a server-only service compiles, then fails on the client at call time. Use `[Remote]` when the command needs the server; leave it off for computation that must run where it is called, such as a client-side engine in Blazor WASM. The examples below carry `[Remote]` because they take repositories; see the [attributes reference](attributes-reference.md#execute) for the bare shape.
 
 ### Static Factory Execute
 
@@ -342,7 +344,7 @@ public static partial class EmployeePromotionCommand
 }
 ```
 
-Execute operations on static classes generate delegates registered in DI. The delegate name is derived from the method name with underscore prefix removed. They can return any type and accept any parameters.
+Execute operations on static classes generate delegates registered in DI. The delegate name is derived from the method name with underscore prefix removed. They can return any type and accept any parameters. With `[Remote]` the client's delegate serializes the call to the server; without it the delegate runs locally on whichever tier resolved it.
 
 ### Command Pattern
 
@@ -436,12 +438,12 @@ public interface IConsultationFactory
 ```
 
 Key differences from static factory Execute:
-- Method is **`public static`** (no underscore prefix)
+- Method is **`static`** with no underscore prefix — `public static` to run where the factory resolves, or `internal static` without `[Remote]` for a server-only operation, which is guarded like any other `internal` method and carried on the factory interface with the `internal` modifier
 - Must return the **containing type** (or its matching interface) — keeps the factory interface cohesive
 - Generates a **factory interface method**, not a delegate type
 - `[Service]` parameters are injected by the factory, not included in the caller's signature
 
-Use class factory Execute when the orchestration logic is tightly coupled to the aggregate (calls its own factory methods, uses internal helpers). If the operation returns a different type, use a static factory Execute instead.
+Class factory Execute obeys `[Remote]` exactly as static factory Execute does: with it the client crosses to the server; without it the method runs on whichever tier resolves the factory, with that tier's services. Use class factory Execute when the orchestration logic is tightly coupled to the aggregate (calls its own factory methods, uses internal helpers). If the operation returns a different type, use a static factory Execute instead.
 
 ## Events
 

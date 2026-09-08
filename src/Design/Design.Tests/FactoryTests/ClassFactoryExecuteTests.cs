@@ -77,4 +77,37 @@ public class ClassFactoryExecuteTests
 
         local.Dispose();
     }
+
+    /// <summary>
+    /// Verifies an internal static [Execute] without [Remote] resolves and runs through the
+    /// server container, via the interface member the generator carries as internal.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: For [Execute] internal static ArchiveOnServer (no [Remote]):
+    /// - Interface member: internal Task&lt;ClassExecuteDemo&gt; ArchiveOnServer(string input)
+    ///   on the public IClassExecuteDemoFactory -- reachable here through InternalsVisibleTo
+    /// - Local method only, IsServerRuntime-guarded like every internal operation;
+    ///   no remote delegate, no endpoint
+    ///
+    /// The client-side throw is not observable in-process: IsServerRuntime is a
+    /// process-wide feature switch. The generated guard and the `internal` member are
+    /// pinned in RemoteFactory.UnitTests.InternalVisibilityTests.
+    /// </remarks>
+    [Fact]
+    public async Task Execute_InternalStaticWithoutRemote_RunsOnServer()
+    {
+        // Arrange
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var factory = server.GetRequiredService<IClassExecuteDemoFactory>();
+
+        // Act
+        var result = await factory.ArchiveOnServer("ledger 2026");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Archived: ledger 2026", result.Name);
+
+        server.Dispose();
+        client.Dispose();
+    }
 }

@@ -1,5 +1,6 @@
 using EmployeeManagement.Domain.Interfaces;
 using EmployeeManagement.Domain.Samples.Authorization;
+using EmployeeManagement.Domain.Samples.Services;
 using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Attributes.Minimal;
@@ -92,6 +93,16 @@ public static partial class PromoteCommand
     [Remote, Execute]  // Business operation - underscore prefix removed in delegate name
     private static Task<bool> _Execute(Guid employeeId, [Service] IEmployeeRepository repo, CancellationToken ct)
         => Task.FromResult(true);
+}
+#endregion
+
+#region attributes-execute-local
+[Factory]
+public static partial class TallyCommand
+{
+    [Execute]  // No [Remote] - runs on whichever tier resolves the delegate, with that tier's services
+    private static Task<decimal> _Total(decimal baseSalary, decimal bonus, [Service] ISalaryCalculator calculator)
+        => Task.FromResult(calculator.Calculate(baseSalary, bonus));
 }
 #endregion
 

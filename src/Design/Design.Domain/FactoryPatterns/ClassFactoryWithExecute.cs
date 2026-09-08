@@ -23,6 +23,8 @@ namespace Design.Domain.FactoryPatterns;
 /// - Callers use the factory method, not the static method directly
 /// - [Remote] decides where it runs: RunCommand crosses to the server,
 ///   ScoreLocally runs on whichever tier resolves the factory
+/// - Visibility follows the ordinary rule: ArchiveOnServer is internal static without
+///   [Remote], so it is server-only -- guarded and not promoted
 /// </summary>
 /// <remarks>
 /// DESIGN DECISION: Execute on class factory generates factory interface methods
@@ -145,6 +147,43 @@ public partial class ClassExecuteDemo
         var instance = new ClassExecuteDemo();
         instance.Id = scorer.Score(input);
         instance.Name = $"Scored: {input}";
+        return Task.FromResult(instance);
+    }
+
+    /// <summary>
+    /// Execute method that is internal static WITHOUT [Remote]: server-only.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: internal without [Remote] means server-only, on [Execute] as on every operation
+    ///
+    /// The three placements on this class read as one table:
+    ///   RunCommand       [Remote] public static  -- the client crosses to the server
+    ///   ScoreLocally     public static           -- runs on whichever tier resolves the factory
+    ///   ArchiveOnServer  internal static         -- server-only; reachable once the boundary is crossed
+    ///
+    /// GENERATOR BEHAVIOR: For this method, the generator creates:
+    /// - Interface member carried with the `internal` modifier on the public
+    ///   IClassExecuteDemoFactory (the interface itself is internal only when every member
+    ///   is) -- not promoted, because there is no [Remote] to promote it
+    /// - A Local method only, whose non-async wrapper carries the IsServerRuntime guard,
+    ///   exactly as an internal Create or Fetch does; no remote delegate, no endpoint
+    ///
+    /// TRIMMING: guarded, so a client published with the feature switch false drops the
+    /// body -- the same mechanism [Remote] uses, driven here by `internal`. The renderer's
+    /// server-only test is `internal` OR [Remote].
+    ///
+    /// Not demonstrated by a Design test: the client-side throw. IsServerRuntime is a
+    /// process-wide feature switch, so an in-process client container cannot observe the
+    /// guard. The generated guard and the `internal` member are pinned in
+    /// RemoteFactory.UnitTests (InternalVisibilityTests); ClassFactoryExecuteTests shows
+    /// the method resolving and running through the server container.
+    /// </remarks>
+    [Execute]
+    internal static Task<ClassExecuteDemo> ArchiveOnServer(string input, [Service] IExampleService service)
+    {
+        var instance = new ClassExecuteDemo();
+        instance.Id = service.GenerateId();
+        instance.Name = $"Archived: {input}";
         return Task.FromResult(instance);
     }
 }
