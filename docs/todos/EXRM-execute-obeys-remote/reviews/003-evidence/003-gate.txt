@@ -1,0 +1,93 @@
+-- positive controls
+   ok      NeatooFactoryRegistrar_TrimTestCommands
+   ok      NeatooEventHandlerRegistrar_TrimRelayHandlers
+   ok      NeatooEventHandlerRegistrar_TrimAsyncRelayHandlers
+   ok      TrimTestCommands
+   ok      ITrimIfaceQueryFactory
+   ok      ITrimAsyncIfaceQueryFactory
+   ok      ITrimSaveTargetFactory
+   ok      NeatooClassFactoryRegistrar_TrimTestEntity
+   ok      NeatooClassFactoryRegistrar_TrimSaveTarget
+   ok      NeatooClassFactoryRegistrar_TrimExecTarget
+   ok      <utf16 extraction>
+-- static factory ([Execute])
+   ok      _DoWork
+   ok      _ProcessRecord
+   ok      DoServerWork
+   ok      IServerOnlyRepository
+   ok      ServerOnlyRepository_MARKER
+   ok      ServerOnlyDirect
+   ok      ServerOnlyHelper
+   ok      ServerOnlyHelper_MARKER
+-- static factory, async body
+   ok      _DoAsyncWork
+   ok      StaticAsyncBody_MARKER
+-- relay handler ([FactoryEventHandler<T>])
+   ok      RelayLegHandlerBody
+   ok      IRelayLegPort
+   ok      RelayLegInvoke
+   ok      RelayLegHandlerBody_MARKER
+   ok      RelayLegBackend
+   ok      AsyncRelayHandlerBody
+   ok      RelayAsyncBody_MARKER
+-- interface factory
+   ok      TrimIfaceServerSide
+   ok      IIfaceLegPort
+   ok      IfaceLegInvoke
+   ok      IfaceLegBackend
+   ok      IfaceLegServerBody_MARKER
+   ok      TrimAsyncIfaceServerSide
+   ok      IfaceAsyncBody_MARKER
+-- class factory port
+   ok      IClassLegPort
+   ok      ClassLegInvoke
+   ok      ClassLegBackend
+   ok      ClassLegBackend_MARKER
+-- class-level [Execute] leg (TRIM-009)
+   ok      IExecLegPort
+   ok      ExecLegInvoke
+   ok      ExecLegBackend
+   ok      ExecLegBackend_MARKER
+   ok      ClassExecBody_MARKER
+-- async-only port (shared by the three async targets above)
+   ok      IAsyncLegPort
+   ok      AsyncLegInvoke
+   ok      AsyncLegBackend
+-- controlled sync/async pair (class factory)
+   ok      ClassSyncBody_MARKER
+   ok      ClassAsyncBody_MARKER
+-- save/can* write path
+   ok      ISaveLegPort
+   ok      SaveLegInvoke
+   ok      SaveLegInsertBody_MARKER
+   ok      SaveLegUpdateBody_MARKER
+   ok      SaveLegDeleteBody_MARKER
+-- per-site wrapper discriminators (async state machines)
+   ok      <LocalFetchAsync>d__
+   ok      <LocalInsert>d__
+   ok      <LocalUpdate>d__
+   ok      <LocalDelete>d__
+   ok      <LocalSave>d__
+   ok      <LocalRunExecCommand>d__
+-- bare [Execute] bodies (present by design, both shapes)
+   ok      BareStaticBody_MARKER
+   ok      BareTallyAsyncBody_MARKER
+   ok      BareClassBody_MARKER
+
+Trimming verification passed.
+  Absent:  static factory ([Execute], sync and async), relay handler (sync and async),
+           interface factory implementations, class-level [Execute], and BOTH halves of
+           the class-factory body — sync and async, read and write.
+  Present: the three BARE [Execute] bodies — static sync, static async, class async —
+           by design, not as a tolerated leak. They carry no [Remote], so no guard is
+           emitted and nothing folds; shipping them to the client is the feature.
+           Their [Remote] siblings sit in the absence list above, so every shape is
+           measured as a pair, matched on async-ness within each pair.
+  No shape is asserted PRESENT as a known leak. TRIM-008 and TRIM-009 closed the last two;
+  if a leak is found in a shape this gate does not name, add the marker rather than
+  widening an existing one, so the failure keeps naming its leg.
+
+  NOT proven here: the interface-factory leg's method BODIES. It reaches everything
+  through interfaces, so its markers read absent either way (Deferred Work item 20;
+  item 19 blocks the fix that would give it a reachable marker). Absence above is a
+  no-regression signal for that leg, not a body-elimination proof.

@@ -131,8 +131,13 @@ public partial class ClassExecuteDemo
     /// [AuthorizeFactory] auth method without [Remote] runs alongside it, while
     /// [AspAuthorize] or a [Remote] auth method forces the call to the server.
     ///
-    /// TRIMMING: no guard, so the body ships to the client -- that is the point.
-    /// The trimming harness, not Design.Tests, is where that is observed.
+    /// TRIMMING: no [Remote], so no guard is emitted, so nothing folds and the body
+    /// ships to the client -- that is the point. Measured, not inferred: the trimming
+    /// harness carries this exact pair on one class (RunBareCommand beside a [Remote]
+    /// sibling, differing in the attribute alone), and its CI gate asserts the bare
+    /// body PRESENT in a publish-trimmed client and the [Remote] one ABSENT, then
+    /// calls the bare method there to prove it still runs. Design.Tests run untrimmed
+    /// and cannot observe any of that.
     /// </remarks>
     [Execute]
     public static Task<ClassExecuteDemo> ScoreLocally(string input, [Service] ITextScorer scorer)

@@ -21,7 +21,7 @@
 
 - [ ] **AC-1** · Must — A bare `[Execute]` on a static factory or a class factory runs on the client with client-container service resolution and makes no remote call.
 - [ ] **AC-2** · Must — `[Remote, Execute]` on both shapes generates and behaves exactly as v1.8.1, including the non-async wrapper guard.
-- [ ] **AC-3** · Must — The trimmed-client gate measures a `[Remote, Execute]` body absent and a bare `[Execute]` body present, for both shapes.
+- [x] **AC-3** · Must — The trimmed-client gate measures a `[Remote, Execute]` body absent and a bare `[Execute]` body present, for both shapes.
 - [ ] **AC-4** · Should — `[AspAuthorize]` on a bare `[Execute]` still forces remote, and `[AuthorizeFactory]` on a bare `[Execute]` runs locally.
 - [ ] **AC-5** · Must — Design projects, published docs, and the skill state the new contract with the decorative claim gone, and release notes ship per CI standards.
 - [ ] **AC-6** · Could — The NF0105 static-factory exemption is re-examined and either kept with a stated reason or narrowed.
@@ -43,7 +43,7 @@
 |---|------|-------|--------|--------|----|
 | 001 | [001-static-delegates-obey-remote](./plans/001-static-delegates-obey-remote.md) | Static-factory delegates obey [Remote]; weld removed | AC-1, AC-2 | Done | [#92](https://github.com/NeatooDotNet/RemoteFactory/pull/92) |
 | 002 | [002-local-execute-coverage](./plans/002-local-execute-coverage.md) | Local Execute proven on both shapes, plus auth | AC-1, AC-2, AC-4 | Done | [#93](https://github.com/NeatooDotNet/RemoteFactory/pull/93) |
-| 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3 | Draft | — |
+| 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3, AC-1 | Done | [#95](https://github.com/NeatooDotNet/RemoteFactory/pull/95) |
 | 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | Draft | — |
 | 005 | [005-release-1-9-0](./plans/005-release-1-9-0.md) | Release notes and version for v1.9.0 | AC-5 | Draft | — |
 
@@ -68,6 +68,7 @@
 - EXRM-001 · `[AspAuthorize]` on a static-factory Execute is collected but never enforced · pre-existing, undocumented; serves no criterion — captured as [#91](https://github.com/NeatooDotNet/RemoteFactory/issues/91); 001 folds its presence into the remote flag only
 - EXRM-002 · Design's static bare-`[Execute]` sample must be `private static _Name`, not the combination targets' `public static` · the Design convention (`AllPatterns.cs:380-388`) already binds the sample; noted for pre-flight (plan-review B6)
 - EXRM-002 · Intermittent `MSB3552: Resource file "**/*.resx" cannot be found` on a multi-target build · pre-existing race between the `PreBuild` `RemoveDir` and the parallel inner build's glob enumeration, in six projects; serves no criterion — captured as [#94](https://github.com/NeatooDotNet/RemoteFactory/issues/94)
+- EXRM-003 · `FactoryAttributes.cs:102-108` XML doc still calls `[Remote]` decorative on `[Execute]` · already in EXRM-004's Scope ("the attribute XML docs") and its Notes inventory; not a second row (plan-review A1)
 
 ---
 
@@ -89,6 +90,21 @@
 - **Finding:** Step 4's targets exposed a generator bug: a class-level `[Execute]` under `[AuthorizeFactory]`/`[AspAuthorize]` declares a non-nullable factory method but returns `Authorized<T>.Result` — CS8603 in generated code, fatal under TreatWarningsAsErrors. Bare and `[Remote]` alike; never compiled in-repo before.
 - **Decision:** Amend — the plan's no-generator-change constraint gains this one exception; `BuildClassExecuteMethod` mirrors the Read path; new Should bullet pins both shapes; 005 notes the fix.
 - **Follow-up:** n/a
+
+### 2026-09-08 — EXRM-003 · serves AC-3
+- **Finding:** Plan review APPROVED. Callouts: a present check on an unconditionally registered port name can never go red; a `Bare` prefix on port names keeps absent markers as substrings; a stale guard sentence in the class-Execute target; `Serves` omitted AC-1.
+- **Decision:** Amend — gate asserts body literals only; distinct-stem naming; `Serves: AC-3, AC-1`; B3 punched on the plan. A1 dismissed (already in 004's inventory).
+- **Follow-up:** n/a
+
+### 2026-09-08 — EXRM-003 · serves AC-3
+- **Finding:** The red-before-green run exposed the new present checks as vacuous: `Program.cs` is never trimmed, so its `Contains("…_MARKER")` assertions rooted the literals the gate greps for, and the known-bad variant passed the gate while failing the harness.
+- **Decision:** Amend — marker literals live only in the `[Execute]` bodies; the harness matches the caller's token plus the client-safe port's stamp. Identical variant then went red as required.
+- **Follow-up:** n/a
+
+### 2026-09-08 — EXRM-003 · serves AC-3
+- **Finding:** Code review CLEAN with two callouts: the B3 correction left the same stale claim on the `[Remote]` sibling's own summary; and "differs only in `[Remote]`" overclaimed — the class pair also varied in async-ness, TRIM-009's failure axis.
+- **Decision:** Amend — stale sentence punched; the bare class half made async so both halves await a port call; the forced `[Service]` difference stated and shown neutralised by the known-bad run. Full evidence re-run.
+- **Follow-up:** a bare async *static* `[Execute]` is still unmeasured — Punchlist.
 
 ---
 
