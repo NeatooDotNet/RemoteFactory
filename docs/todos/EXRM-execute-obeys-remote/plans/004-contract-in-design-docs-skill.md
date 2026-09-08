@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes — the plan rewrites a documented contract at every home it has (Design, CLAUDE-DESIGN, published docs, skill, XML docs), which is exactly the contradiction surface `business-requirements-reviewer` holds a veto over. `business-requirements-reviewer` only — user decision 2026-09-08
 **Code-review opt-in:** No — user decision 2026-09-08 (orchestrator proposed No): prose and comment edits, one descriptor description, one test; the only candidate behavior change is an NF0105 narrowing under AC-6, which is a stop-and-ask and would flip this to Yes by amendment
 **Branch:** exrm-004-contract-in-design-docs-skill — cut from the arc at Step 2
-**PR:** —
+**PR:** [#96](https://github.com/NeatooDotNet/RemoteFactory/pull/96)
 
 ---
 
