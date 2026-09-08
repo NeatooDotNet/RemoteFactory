@@ -50,9 +50,9 @@
       "attribute": "[Execute]",
       "validReturnTypes": ["TaskTResult"],
       "validParameters": ["None", "Single", "Multiple", "Service", "Mixed"],
-      "validExecutionModes": ["Remote"],
+      "validExecutionModes": ["Local", "Remote"],
       "signatureTypes": ["Static"],
-      "constraints": ["requires_static_class", "always_remote"],
+      "constraints": ["requires_static_class"],
       "generateTestTargets": true
     }
   ],

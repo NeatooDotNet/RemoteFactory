@@ -79,6 +79,10 @@ The skill uses MarkdownSnippets to embed compiled, tested code from the referenc
 4. Commit the updated skill files (they now contain embedded code)
 5. Push changes
 
+**Adding a new embed — write both markers, not just the opening one.** A placeholder is an opening `snippet: my-region` comment *and* a matching `endSnippet` comment on the line after it. An opening marker alone is not an empty placeholder: under the `InPlaceOverwrite` convention mdsnippets reads it as the start of an existing embed and replaces everything up to the next `endSnippet` in the file — silently deleting whole sections when a later one exists, and failing the run outright when none does. Copy a live pair from `docs/attributes-reference.md`. The literal markers are deliberately not reproduced in this file, because mdsnippets scans it too and would treat them as a real (and missing) embed — which is the same hazard from the other side.
+
+After any `mdsnippets` run, check `git diff --stat` for a file whose deletion count exceeds the edit you made; that is the signature of a swallowed section. Attribution-line drift in files you did not touch is expected and correct whenever a sample source file gained lines. Point the run's log outside the repository (`mdsnippets > /tmp/mdsnippets.log 2>&1`) — mdsnippets reads files under `docs/todos` despite the `mdsnippets.json` exclude list and will crash on its own open log.
+
 **Code block categories in skill files:**
 | Category | Source | How to Update |
 |----------|--------|---------------|
@@ -213,13 +217,12 @@ Use conventional commits for automatic categorization:
 
 #### Creating a New Release
 
-1. **Analyze commits since last release**:
+1. **Assemble what actually shipped.** Start from the todo container(s) closed since the last release — their plan files, Gate Records and Discovery Log — not from the commit log:
    ```bash
    git describe --tags --abbrev=0  # Find last tag
    git log <last-tag>..HEAD --oneline
-   git log <last-tag>..HEAD --format="%s" | findstr "^feat:"
-   git log <last-tag>..HEAD --format="%s" | findstr "^fix:"
    ```
+   **A `feat:`/`fix:` scan under-reports the release.** Work lands under whatever prefix its commit carried: v1.9.0's generator fix shipped inside a `test(execute):` commit and a whole documentation rewrite under `docs:`, so a prefix scan found only one of the two commits its notes list, and none of its documentation work. Use the log to *confirm* the assembled list and to fill the `Commits` section, never to derive it.
 
 2. **Determine version bump**:
    - `BREAKING CHANGE:` or `!` suffix → Major (e.g., 0.14.0 → 1.0.0)
@@ -235,11 +238,12 @@ Use conventional commits for automatic categorization:
    - **Highlights table**: Add if release has new features, breaking changes, or notable fixes
    - **All Releases list**: Always add (newest at top)
 
-5. **Adjust nav_order**: Increment existing release page nav_orders, new release gets `nav_order: 1`
+5. **Adjust nav_order**: new release gets `nav_order: 1`; increment the **1.x pages** behind it. The v0.x tail is frozen — 33 of those pages already share `nav_order: 3`, so renumbering them is neither possible as a sequence nor useful to a reader.
 
-6. **Update version** in `src/Directory.Build.props`:
+6. **Update version** in `src/Directory.Build.props` — both properties, which have drifted apart before:
    ```xml
-   <VersionPrefix>X.Y.Z</VersionPrefix>
+   <FileVersion>X.Y.Z</FileVersion>
+   <PackageVersion>X.Y.Z</PackageVersion>
    ```
 
 7. **Commit and tag**:

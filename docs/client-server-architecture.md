@@ -39,7 +39,7 @@ This is the most important thing to understand: `[Remote]` is not "this method r
 Use `[Remote]` for methods the **client calls directly**:
 - Aggregate root Create/Fetch operations
 - Top-level Save (Insert/Update/Delete) operations
-- Execute operations initiated by the UI
+- Execute operations that need the server — `[Execute]` obeys `[Remote]`; a bare `[Execute]` runs on whichever tier resolves it, with that tier's services
 
 **Rule of thumb**: If your client code (Blazor component, MAUI page, etc.) calls the factory method directly, add `[Remote]`. If the method is only called from server-side code after already crossing the boundary, skip it.
 
@@ -71,8 +71,11 @@ Method visibility (`public` vs `internal`) and the `[Remote]` attribute together
 | `[Remote] internal` | Yes | Yes — serializes to server | Promoted to `public` on interface |
 | `public` (no Remote) | Yes | No — runs locally | Included in public interface |
 | `internal` (no Remote) | No | N/A — server-only | Included with `internal` modifier (or `internal` interface if all methods are internal) |
+| `[Remote] public static` `[Execute]` | Yes | Yes — serializes to server | Included in public interface; static methods are exempt from NF0105 |
+| `public static` `[Execute]` (no Remote) | Yes | No — runs locally | Included in public interface |
+| `internal static` `[Execute]` (no Remote) | No | N/A — server-only | Included with `internal` modifier |
 
-`[Remote]` requires `internal` — `[Remote] public` is a compile-time error (NF0105). The `[Remote] internal` combination means the method body is trimmable on the client, but the generated factory interface exposes it as `public` so clients can call it through the factory.
+`[Remote]` requires `internal` on instance methods — `[Remote] public` is a compile-time error (NF0105). The `[Remote] internal` combination means the method body is trimmable on the client, but the generated factory interface exposes it as `public` so clients can call it through the factory. Static methods are exempt from NF0105: a static-factory `[Execute]` is `private static` behind a generated public wrapper and a class-level one is `public static` by convention, so `[Remote]` alone decides placement there — and `[Execute]` obeys it like every other operation.
 
 Use `internal` on child entity factory methods. The generator produces an `internal` factory interface when all methods on a class are `internal` (and none have `[Remote]`). An `internal` factory interface is not injectable from the client's DI container — the client cannot even see it. This prevents accidental client-side calls to server-only operations and enables IL trimming of those method bodies.
 

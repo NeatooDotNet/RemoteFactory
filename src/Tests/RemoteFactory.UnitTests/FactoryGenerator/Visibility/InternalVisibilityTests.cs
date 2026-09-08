@@ -285,6 +285,84 @@ namespace TestNamespace
 
     #endregion
 
+    #region Class-Level [Execute] Visibility
+
+    /// <summary>
+    /// Class-level [Execute] follows the ordinary visibility rule. On one class: a bare
+    /// `public static` gets no guard and a plain interface member; a bare `internal static`
+    /// is server-only -- its non-async Local wrapper carries the IsServerRuntime guard and
+    /// the interface carries the member with the `internal` modifier, not promoted; a
+    /// `[Remote] internal static` is guarded AND promoted to public on the interface.
+    /// The renderer's server-only test is `internal` OR [Remote] (ClassFactoryRenderer,
+    /// RenderClassExecuteLocalMethod). Pinned at EXRM-004; no target carried the
+    /// `internal static` shape before this test.
+    /// </summary>
+    [Fact]
+    public void ClassExecute_InternalStaticWithoutRemote_IsGuardedAndNotPromoted()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    [Factory]
+    public partial class ExecVis
+    {
+        [Create]
+        public ExecVis() { }
+
+        [Execute]
+        public static Task<ExecVis> RunAnywhere(string input) { return Task.FromResult(new ExecVis()); }
+
+        [Execute]
+        internal static Task<ExecVis> RunOnServer(string input) { return Task.FromResult(new ExecVis()); }
+
+        [Remote, Execute]
+        internal static Task<ExecVis> RunRemote(string input) { return Task.FromResult(new ExecVis()); }
+    }
+}
+";
+        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+
+        var generatedSource = runResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("ExecVisFactory"))
+            ?.GetText()
+            ?.ToString();
+
+        Assert.NotNull(generatedSource);
+
+        // Interface: public (the class has a public Create), the bare internal static member
+        // carried with the `internal` modifier, the [Remote] one promoted (no modifier).
+        var interfaceStart = generatedSource.IndexOf("public interface IExecVisFactory");
+        Assert.True(interfaceStart >= 0, "expected a public factory interface");
+        var interfaceEnd = generatedSource.IndexOf("}", interfaceStart);
+        var interfaceBlock = generatedSource.Substring(interfaceStart, interfaceEnd - interfaceStart);
+        Assert.Contains("internal Task<ExecVis> RunOnServer(", interfaceBlock);
+        Assert.Contains("Task<ExecVis> RunRemote(", interfaceBlock);
+        Assert.DoesNotContain("internal Task<ExecVis> RunRemote(", interfaceBlock);
+        Assert.Contains("Task<ExecVis> RunAnywhere(", interfaceBlock);
+        Assert.DoesNotContain("internal Task<ExecVis> RunAnywhere(", interfaceBlock);
+
+        // Guards live in the non-async Local{X} wrapper, before the call into Local{X}Core.
+        // The wrapper's declaration (with its return type) is the anchor, not the first
+        // occurrence of the name, which is the public method's call into it.
+        static string WrapperBlock(string text, string name)
+        {
+            var start = text.IndexOf($"public Task<ExecVis> Local{name}(");
+            Assert.True(start >= 0, $"expected a Local{name} wrapper");
+            var end = text.IndexOf($"Local{name}Core(", start);
+            Assert.True(end > start, $"expected Local{name}Core after the wrapper");
+            return text.Substring(start, end - start);
+        }
+
+        Assert.DoesNotContain("NeatooRuntime.IsServerRuntime", WrapperBlock(generatedSource, "RunAnywhere"));
+        Assert.Contains("NeatooRuntime.IsServerRuntime", WrapperBlock(generatedSource, "RunOnServer"));
+        Assert.Contains("NeatooRuntime.IsServerRuntime", WrapperBlock(generatedSource, "RunRemote"));
+    }
+
+    #endregion
+
     #region All-Internal Guard Verification
 
     /// <summary>

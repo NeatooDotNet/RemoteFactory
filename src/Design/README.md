@@ -87,6 +87,8 @@ public static partial class ExampleCommands
 
 **Generated**: `ExampleCommands.SendNotification` delegate type.
 
+`[Execute]` obeys `[Remote]` like every other operation: `_SendNotification` crosses to the server; a bare `[Execute]` (`_ScoreText`) runs on whichever tier resolves it, with that tier's services.
+
 ## Key Design Decisions
 
 ### [Remote] Marks Client Entry Points

@@ -191,7 +191,20 @@ internal static class FactoryModelBuilder
 
         foreach (var method in typeInfo.FactoryMethods)
         {
-            // NF0105: [Remote] requires internal methods (public is an error, static factories exempt)
+            // NF0105: [Remote] requires internal methods; public is an error.
+            //
+            // Static methods are exempt. IsStaticFactory is methodSymbol.IsStatic, so the exemption
+            // covers every static method -- a static-factory [Execute], a class-level [Execute], and
+            // a static [Create]/[Fetch] on a class factory -- not [Execute] alone. Re-examined and
+            // kept (EXRM-004, AC-6): on an instance method, visibility is the local/server-only axis
+            // the renderer reads, so [Remote] public contradicts itself. A static method has no such
+            // reading -- a static-factory [Execute] is private behind a generated public wrapper, and
+            // a class-level [Execute] is public static by documented convention (Design: RunCommand)
+            // -- and [Remote] alone drives its guard, with the body measured trimmable regardless of
+            // visibility (RemoteFactory.TrimmingTests). Narrowing the exemption to [Execute] would
+            // emit a new compile error for the static [Create]/[Fetch] shape, and narrowing it further
+            // would break the documented [Remote, Execute] public static shape; neither is warranted.
+            // Pinned by NF0105Tests (Execute and Create static cases).
             if (method.IsRemote && !method.IsInternal && !method.IsStaticFactory)
             {
                 diagnostics.Add(new DiagnosticInfo(
@@ -465,6 +478,14 @@ internal static class FactoryModelBuilder
                       method.AuthMethodInfos.Any(m => m.IsTask) ||
                       method.AspAuthorizeCalls.Any();
 
+        // Same rule as BuildReadMethod: an authorized method's public factory method returns
+        // Authorized<T>.Result, which is default when the check denies, so the signature must be
+        // nullable. Without this the generated method is declared Task<T> and returns T? --
+        // CS8603, fatal under TreatWarningsAsErrors. Execute has no IsBool term: it always
+        // returns Task<T> of the containing type (NF0102).
+        var isNullable = method.IsNullable ||
+                         (authorization != null && authorization.HasAuth);
+
         var hasCancellationToken = method.Parameters.Any(p => p.IsCancellationToken);
 
         // No name stripping needed -- method is public static, name is used as-is
@@ -478,7 +499,7 @@ internal static class FactoryModelBuilder
             isRemote: isRemote,
             isTask: true,   // Execute always returns Task<T>
             isAsync: isAsync,
-            isNullable: method.IsNullable,
+            isNullable: isNullable,
             parameters: parameters,
             authorization: authorization,
             serviceParameters: serviceParameters,
@@ -513,10 +534,18 @@ internal static class FactoryModelBuilder
 
         var hasCancellationToken = method.Parameters.Any(p => p.IsCancellationToken);
 
+        // Same three-way rule as BuildReadMethod / BuildClassExecuteMethod: [Remote] on the method,
+        // a [Remote] authorization method, or an [AspAuthorize] attribute. Static factories render
+        // no authorization enforcement today (see issue #91); the auth terms only decide placement.
+        var isRemote = method.IsRemote ||
+                       method.AuthMethodInfos.Any(m => m.IsRemote) ||
+                       method.AspAuthorizeCalls.Any();
+
         return new ExecuteDelegateModel(
             name: method.Name,
             delegateName: delegateName,  // No "Delegate" suffix - tests expect just the method name
             returnType: returnType,
+            isRemote: isRemote,
             isNullable: method.IsNullable,
             parameters: parameters,
             serviceParameters: serviceParameters,

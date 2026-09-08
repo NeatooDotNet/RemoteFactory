@@ -88,7 +88,9 @@
    PATTERN 3: STATIC FACTORY
 
    Static factories generate delegates for request-response commands.
-   [Execute] = request-response
+   [Execute] = request-response; [Remote] decides where it runs. SendNotification
+   crosses to the server; a bare [Execute] such as ScoreText runs here, in the
+   browser, with this container's services.
    -------------------------------------------------------------------------- *@
 <h2>3. Static Factory Pattern</h2>
 <p>Execute commands using generated delegates.</p>

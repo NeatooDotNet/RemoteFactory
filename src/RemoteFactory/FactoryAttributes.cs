@@ -23,6 +23,27 @@ public sealed class SuppressFactoryAttribute : Attribute
 	}
 }
 
+/// <summary>
+/// Marks a factory method as a client-to-server entry point. <c>[Remote]</c> decides where
+/// an operation runs, on every operation: with it, the client routes the call to the server
+/// and the server-side path is guarded by <c>NeatooRuntime.IsServerRuntime</c>; without it,
+/// the method runs on whichever tier resolves the factory.
+/// </summary>
+/// <remarks>
+/// <para>
+/// On class factories <c>[Remote]</c> requires <c>internal</c> (NF0105): the generator
+/// promotes the member to <c>public</c> on the factory interface, and the guarded body is
+/// what a trimmed client drops. Static methods are exempt from NF0105 — a static-factory
+/// <c>[Execute]</c> is <c>private static</c> behind a generated public wrapper, and a
+/// class-level <c>[Execute]</c> is <c>public static</c> by documented convention — because on
+/// those shapes <c>[Remote]</c> alone drives the guard and the body is measured trimmable
+/// regardless of visibility.
+/// </para>
+/// <para>
+/// <c>[Execute]</c> obeys <c>[Remote]</c> like every other operation; see
+/// <see cref="ExecuteAttribute"/>.
+/// </para>
+/// </remarks>
 [System.AttributeUsage(AttributeTargets.Method, Inherited = true, AllowMultiple = false)]
 public sealed class RemoteAttribute : Attribute
 {
@@ -87,25 +108,33 @@ public sealed class DeleteAttribute : FactoryOperationAttribute
 }
 
 /// <summary>
-/// Marks a static method on a <c>[Factory]</c> static class as a request-response command.
-/// The generator emits a delegate type and its DI registration.
+/// Marks a static method as a request-response operation. On a <c>[Factory]</c> static class
+/// the generator emits a delegate type and its DI registration; on a class factory it emits
+/// a factory-interface method returning the containing type.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Trimming:</b> mark the method <c>private static</c> (the convention used throughout
-/// the Design projects) and the generated local registration is guarded by
-/// <c>NeatooRuntime.IsServerRuntime</c>, so on a client published with the feature switch
-/// set to <c>false</c> the method body, its <c>[Service]</c> dependencies, and their
-/// transitive references are removed from the output.
+/// <b><c>[Execute]</c> obeys <c>[Remote]</c>, like every other operation.</b> Without
+/// <c>[Remote]</c> there is no remote delegate and no endpoint: the local path is unguarded,
+/// the method runs on whichever tier resolves it, its <c>[Service]</c> parameters come from
+/// that tier's container, and on a trimmed client the body ships and runs there. With
+/// <c>[Remote]</c> the client routes to the server and the local path is guarded by
+/// <c>NeatooRuntime.IsServerRuntime</c>, so a client published with the feature switch set
+/// to <c>false</c> drops the method body, its <c>[Service]</c> dependencies, and their
+/// transitive references.
 /// </para>
 /// <para>
-/// <b><c>[Remote]</c> is decorative on <c>[Execute]</c> methods.</b> Static factories are
-/// exempt from the NF0105 <c>[Remote] public</c> check, and the renderer emits both a remote
-/// and a local registration for every delegate regardless of whether <c>[Remote]</c> is
-/// present — only the local one is feature-switch guarded. Trimming of the body therefore
-/// depends on the guard, not on <c>[Remote]</c>. This differs from class factories, where
-/// <c>[Remote] internal</c> is what drives the guard, and several documentation pages
-/// present <c>[Remote]</c> as the trimming-enabling marker generally.
+/// <b>Shapes.</b> Static factory: <c>private static</c> with an underscore prefix (the
+/// convention used throughout the Design projects) behind a generated public wrapper. Class
+/// factory: <c>public static</c> to run where the factory resolves; <c>internal static</c>
+/// without <c>[Remote]</c> is server-only like every other internal operation — guarded,
+/// trimmable, and carried on the factory interface with the <c>internal</c> modifier rather
+/// than promoted. Static methods are exempt from NF0105 (see <see cref="RemoteAttribute"/>).
+/// </para>
+/// <para>
+/// Both halves are measured rather than inferred: <c>RemoteFactory.TrimmingTests</c> asserts
+/// a <c>[Remote, Execute]</c> body absent from a publish-trimmed client and a bare
+/// <c>[Execute]</c> body present and running there, on both shapes.
 /// </para>
 /// </remarks>
 public sealed class ExecuteAttribute : FactoryOperationAttribute

@@ -22,8 +22,16 @@
 		<CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
 
 		<!-- Suppress code analysis noise. CA1031: the harness deliberately catches all
-		     exceptions — any exception means the check failed; report it and keep going. -->
-		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA1050, CA1822, CA1031</NoWarn>
+		     exceptions — any exception means the check failed; report it and keep going.
+		     CA1849: IClientTallyPort exposes both a sync and an async form on purpose, so
+		     each bare [Execute] can match its [Remote] sibling's async-ness. The static
+		     pair is synchronous on both halves by design, so calling the sync form there
+		     is the control, not a missed await.
+		     CA1062: the "externally visible" methods here are [Execute] targets and a
+		     relay hook, all invoked by generated code or the harness itself with values
+		     it just constructed. Null-guarding them would add branches to the very method
+		     bodies the trimming gate greps for, for arguments that cannot be null. -->
+		<NoWarn>CA1861, CA1865, CA1510, IDE0021, IDE0022, IDE0023, IDE1006, CA1050, CA1822, CA1031, CA1849, CA1062</NoWarn>
 	</PropertyGroup>
 
 	<!-- Feature switch: set IsServerRuntime to false for client/trimming scenario -->

@@ -4,13 +4,18 @@ using Neatoo.RemoteFactory;
 namespace EmployeeManagement.Application.Samples.Attributes;
 
 // Full implementations for Execute - see MinimalAttributesSamples.cs for doc snippets
+//
+// Both commands take a server-only repository, so both carry [Remote]. [Execute] obeys
+// [Remote]: a bare [Execute] runs on whichever tier resolves it and takes its [Service]
+// parameters from that tier's container, which a repository cannot satisfy on the client.
+// The bare, client-runnable shape is MinimalAttributesSamples.TallyCommand.
 
 public record TransferResult(Guid EmployeeId, Guid NewDepartmentId, bool Success);
 
 [Factory]
 public static partial class TransferEmployeeCommand
 {
-    [Execute]
+    [Remote, Execute]
     private static Task<TransferResult> _TransferEmployee(
         Guid employeeId,
         Guid newDepartmentId,
