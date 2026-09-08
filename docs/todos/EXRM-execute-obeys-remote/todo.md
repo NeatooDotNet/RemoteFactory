@@ -43,7 +43,7 @@
 |---|------|-------|--------|--------|----|
 | 001 | [001-static-delegates-obey-remote](./plans/001-static-delegates-obey-remote.md) | Static-factory delegates obey [Remote]; weld removed | AC-1, AC-2 | Done | [#92](https://github.com/NeatooDotNet/RemoteFactory/pull/92) |
 | 002 | [002-local-execute-coverage](./plans/002-local-execute-coverage.md) | Local Execute proven on both shapes, plus auth | AC-1, AC-2, AC-4 | Done | [#93](https://github.com/NeatooDotNet/RemoteFactory/pull/93) |
-| 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3 | Draft | — |
+| 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3, AC-1 | Draft | — |
 | 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | Draft | — |
 | 005 | [005-release-1-9-0](./plans/005-release-1-9-0.md) | Release notes and version for v1.9.0 | AC-5 | Draft | — |
 
@@ -68,6 +68,7 @@
 - EXRM-001 · `[AspAuthorize]` on a static-factory Execute is collected but never enforced · pre-existing, undocumented; serves no criterion — captured as [#91](https://github.com/NeatooDotNet/RemoteFactory/issues/91); 001 folds its presence into the remote flag only
 - EXRM-002 · Design's static bare-`[Execute]` sample must be `private static _Name`, not the combination targets' `public static` · the Design convention (`AllPatterns.cs:380-388`) already binds the sample; noted for pre-flight (plan-review B6)
 - EXRM-002 · Intermittent `MSB3552: Resource file "**/*.resx" cannot be found` on a multi-target build · pre-existing race between the `PreBuild` `RemoveDir` and the parallel inner build's glob enumeration, in six projects; serves no criterion — captured as [#94](https://github.com/NeatooDotNet/RemoteFactory/issues/94)
+- EXRM-003 · `FactoryAttributes.cs:102-108` XML doc still calls `[Remote]` decorative on `[Execute]` · already in EXRM-004's Scope ("the attribute XML docs") and its Notes inventory; not a second row (plan-review A1)
 
 ---
 
@@ -88,6 +89,11 @@
 ### 2026-09-08 — EXRM-002 · serves AC-4
 - **Finding:** Step 4's targets exposed a generator bug: a class-level `[Execute]` under `[AuthorizeFactory]`/`[AspAuthorize]` declares a non-nullable factory method but returns `Authorized<T>.Result` — CS8603 in generated code, fatal under TreatWarningsAsErrors. Bare and `[Remote]` alike; never compiled in-repo before.
 - **Decision:** Amend — the plan's no-generator-change constraint gains this one exception; `BuildClassExecuteMethod` mirrors the Read path; new Should bullet pins both shapes; 005 notes the fix.
+- **Follow-up:** n/a
+
+### 2026-09-08 — EXRM-003 · serves AC-3
+- **Finding:** Plan review APPROVED. Callouts: a present check on an unconditionally registered port name can never go red; a `Bare` prefix on port names keeps absent markers as substrings; a stale guard sentence in the class-Execute target; `Serves` omitted AC-1.
+- **Decision:** Amend — gate asserts body literals only; distinct-stem naming; `Serves: AC-3, AC-1`; B3 punched on the plan. A1 dismissed (already in 004's inventory).
 - **Follow-up:** n/a
 
 ---
