@@ -99,10 +99,10 @@ Walked 2026-09-08 on `exrm-005-release-1-9-0` @ `052128e`. One surprise, handled
 
 Step 2 triage / **Step 6 sweep** (2026-09-08): this is the todo's last plan, so the sweep runs here. Both remaining open rows lie in this plan's path and are pulled down; nothing else is open, so the sweep needs no branch of its own and closes with this plan.
 
-- [ ] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · done when both read 1.9.0 · AC-5 · Must (from the todo)
-- [ ] `CLAUDE.md` release step says bump `<VersionPrefix>`, which does not exist; the props carry `<PackageVersion>` · `CLAUDE.md:242` · done when the step names the real property · AC-5 · Must (from the todo)
-- [ ] `CLAUDE.md`'s commit-scan step misses work landed under a non-`feat`/`fix` prefix · same release-process section · done when the step says to source from the arc's plans, citing this release as the case · AC-5 · Should (found at this plan's Step 2; rides the row above since it edits the same block)
-- [ ] The nav_order step cannot be followed as written and is stated twice · `CLAUDE.md:242` and `docs/release-notes/index.md:138` · done when both say to maintain the 1.x sequence and treat the v0.x tail as frozen · AC-5 · Should (plan-review S3)
+- [x] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · both read `1.9.0`, `e356aa6` · AC-5 · Must (from the todo)
+- [x] `CLAUDE.md` release step says bump `<VersionPrefix>`, which does not exist; the props carry `<PackageVersion>` · `CLAUDE.md:242` · step 6 now names `<FileVersion>` and `<PackageVersion>`, `e356aa6` · AC-5 · Must (from the todo)
+- [x] `CLAUDE.md`'s commit-scan step misses work landed under a non-`feat`/`fix` prefix · same release-process section · step 1 now assembles from the todo container and cites this release, `e356aa6` · AC-5 · Should (found at this plan's Step 2; rides the row above since it edits the same block)
+- [x] The nav_order step cannot be followed as written and is stated twice · `CLAUDE.md:242` and `docs/release-notes/index.md:138` · both corrected, `e356aa6` · AC-5 · Should (plan-review S3)
 - [x → outside this PR] `net8.0;net9.0;net10.0` TFM claim · **not in the repo's `CLAUDE.md`** — it is the user's global `~/.claude/CLAUDE.md` · dropped from this plan at Step 3 pre-flight (the Step 2 question had described it as living in the block this plan already corrects, which the pre-flight disproved, so the authorization rested on a false premise), reported, and then **done as a standalone edit at the user's re-direction with the correct file named** — `net9.0;net10.0`. Not in this branch or PR; recorded here so the close-out audit does not read it as dropped work · AC-5 · Should
 
 ---

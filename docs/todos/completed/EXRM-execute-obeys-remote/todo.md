@@ -2,7 +2,7 @@
 
 **ID:** EXRM
 **Type:** Enhancement (behavior change)
-**Status:** In Progress
+**Status:** Complete
 **Priority:** High (blocks zTreatment UCG-001, which pins the RemoteFactory version carrying this)
 **Created:** 2026-09-08
 **Last Updated:** 2026-09-08
@@ -51,11 +51,11 @@
 
 ## Punchlist
 
-- [→ EXRM-005] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · pulled down at 005's Step 2 triage (Step 6 sweep)
+- [x] `FileVersion` and `PackageVersion` had drifted apart (1.7.0 / 1.8.1) · `src/Directory.Build.props:18-19` · both read 1.9.0 · [#99](https://github.com/NeatooDotNet/RemoteFactory/pull/99) · AC-5 · Must
 - [→ EXRM-004] NF0102 description justifies the `Task` rule by remoteness · `src/Generator/DiagnosticDescriptors.cs:35` · pulled down at 004's Step 2 triage
 - [→ EXRM-004] Bare `[Execute] internal static` on a class factory yields an internal factory interface · `docs/attributes-reference.md` and the Design comments, pinned `[unit]` · pulled down at 004's Step 2 triage (moved from EXRM-002's bullet 7 at its plan review)
 - [→ EXRM-004] Reference app's only bare `[Execute]` takes a server-only `[Service]` · `EmployeeManagement.Application/Samples/Attributes/ExecuteSamples.cs:13-20` · pulled down at 004's Step 2 triage
-- [→ EXRM-005] CLAUDE.md release step names `<VersionPrefix>`, which does not exist · `CLAUDE.md:242` · pulled down at 005's Step 2 triage (Step 6 sweep)
+- [x] CLAUDE.md release process named a `<VersionPrefix>` that does not exist, scanned commits for content, and stated an unfollowable nav_order rule · `CLAUDE.md` release block · all three corrected · [#99](https://github.com/NeatooDotNet/RemoteFactory/pull/99) · AC-5 · Must
 - [x] mdsnippets placeholder trap: a bare `<!-- snippet: x -->` is read as the start of an existing embed and swallows content to the next `endSnippet` · `CLAUDE.md` "Skill Code Samples" workflow · [#98](https://github.com/NeatooDotNet/RemoteFactory/pull/98) · user-directed 2026-09-08 — serves no AC; a repo-workflow note surfaced by EXRM-004
 - [→ EXRM-001] Region header "Execute is always remote" · `ExecuteBehaviorTests.cs:9,27` · pulled down at 001's Step 2 triage
 - [→ EXRM-001] Dead Execute clause in the record-primary-constructor ctor · `FactoryGenerator.Types.cs:629` · pulled down at 001's Step 2 triage
@@ -137,35 +137,43 @@
 
 ## Close-Out Audit
 
-### YYYY-MM-DD — Grade: [A | B | C]
+### 2026-09-08 — Grade: A
 
-**Veto-tier findings:**
-**Callouts:**
-**Accepted gaps (B only):**
-**User acknowledgment:**
+**Veto-tier findings:** None open. One test failure in `final-test.log` — `CanMethodCodePathTests+CanLocalMethodTests.CanLocalMethod_IsPublic` — was examined and root-caused to a static auth flag shared across parallel xUnit classes in a file this arc never touched; green on an unchanged re-run. Filed as [#100](https://github.com/NeatooDotNet/RemoteFactory/issues/100), dismissed here, and routed to Follow-on rather than the grade.
+**Callouts:** 3, all bookkeeping-tier. 005's Punchlist rows unchecked on a Done plan (fixed); Discovery Log over budget (accepted, see retro); two new CA1062 warnings on harness code (fixed — `NoWarn` with a reason; rebuild reports 0 warnings, 0 errors).
+**Accepted gaps (B only):** n/a — grade A, every criterion traced to code.
+**User acknowledgment:** 2026-09-08 — acknowledged, proceed to Step 8.
 **Full audit:** [`reviews/close-out-audit.md`](./reviews/close-out-audit.md)
 
 ---
 
 ## Follow-on
 
--
+- Flaky `CanLocalMethod_IsPublic`: a static auth flag shared across parallel xUnit classes · [#100](https://github.com/NeatooDotNet/RemoteFactory/issues/100) · close-out audit · Should
+- `[AspAuthorize]` on a static-factory `[Execute]` is collected but never enforced · [#91](https://github.com/NeatooDotNet/RemoteFactory/issues/91) · EXRM-001 · Should
+- Generated code relies on the consumer's `ImplicitUsings` for `System` / `System.Threading` types · [#97](https://github.com/NeatooDotNet/RemoteFactory/issues/97) · EXRM-004 · Could
+- Intermittent `MSB3552` from a `PreBuild` `RemoveDir` race on multi-target builds · [#94](https://github.com/NeatooDotNet/RemoteFactory/issues/94) · EXRM-002 · Could
+- Interface-factory body removal under trimming remains unestablished — carried forward from v1.7.0, not this arc's to settle · `docs/trimming.md`, `v1.9.0.md` · Could
+- Tag `v1.9.0`, let the workflow publish and cut the GitHub release, then notify the waiting `ztreatmentneatoo-9c` session · after the arc merges · user's
 
 ---
 
 ## Docs & Retro
 
-**Documentation:**
+**Documentation:** shipped with the behaviour it describes, in EXRM-004 and EXRM-005 rather than as a trailing pass. Published docs — `attributes-reference.md` (the rule's single home, plus the `[Remote]` entry and the NF0105 reason), `trimming.md` (three `[Execute]` guard rows), `factory-operations.md`, `decision-guide.md`, `authorization.md` (the placement rule scoped by shape), `client-server-architecture.md` (three new visibility rows). Skill — `SKILL.md` Quick Decisions and the `static-factory`, `class-factory`, `trimming` and `anti-patterns` references, the "decorative" section replaced. Library — `ExecuteAttribute`'s XML doc rewritten and `RemoteAttribute` given one it never had; NF0102's description rejustified; NF0105's exemption reasoned at the check. Design — `AllPatterns.cs`, `ClassFactoryWithExecute.cs` (three placements, including the new `ArchiveOnServer`), `CLAUDE-DESIGN.md`, the README, the Blazor home page, one test comment. Reference app — a compiled bare sample the docs and skill share. Release — `v1.9.0.md`, the index, twelve `nav_order`s. Repo `CLAUDE.md` gained the mdsnippets placeholder-pair rule and three release-process corrections. No doc debt carried forward; the one internal-contradiction callout a reviewer parked (the gate summary's skimmable "no shape asserted PRESENT" line) is recorded as Theoretical in the audit, not deferred work.
 
-**Retro (one paragraph):**
+**Retro (one paragraph):** Five plans issued of a cap of 8, all Done, none abandoned or retired — the first arc in a while where the cap was never felt, because the initial split was drawn from the Goal rather than from findings. The mechanic that repeatedly paid was the **opt-in plan review**: it ran four times and returned CONCERNS four times, and in three of those it caught a claim the orchestrator had already put in front of the user as settled — the trimming gate's present-check that could never go red (003), a rule sentence false for `internal static` (004), and a release header saying "no signature changed" when a generated signature had changed (005). Reviews cost four review files and bought four defects that would otherwise have shipped in a public document. The second lesson is narrower and sharper: **evidence has to be falsified, not just produced.** EXRM-003's red-before-green run exposed the orchestrator's own new assertions as vacuous — `Program.cs` is never trimmed, so the harness's marker literals rooted the very strings the gate greps for — and only the deliberate known-bad build revealed it. That discipline then caught its own smaller echo at 005, where a claimed CRLF revert was verified by `od -c` and found incomplete by one byte. Numbers: 12 findings dismissed, 8 punchlist rows worked (5 pulled down into plans, 3 closed inline), 0 queued as new plans — the discovery protocol's bias against new plans held completely, and the todo exited on its Goal with an empty queue rather than despite one. Four defects were filed rather than absorbed (#91, #94, #97, #100), which is the number this arc is proudest of: each is a real problem found, recorded with its mechanism, and left for a decision rather than quietly folded into work that had not asked for it. One accepted deviation: six of eight Discovery Log entries exceed the 60-word budget (worst 98). Accepted on the user's decision rather than trimmed — the entries are dense decision records whose specifics the plan reviews repeatedly turned on, and cutting them to a word count would have cost a successor more than the scannability was worth. Worth watching next time: the budget is right for journal-ish entries and wrong for entries that carry a generator's behaviour in them, so the fix is probably a longer allowance for `Amend` entries rather than shorter entries.
 
 ---
 
 ## Results / Conclusions
 
 ```
-Plans: {issued} issued of 8 cap — {done} Done, {abandoned} Abandoned, {retired} Retired.
-Punchlist: {closed} closed. Dismissed: {n}. Follow-on: {n}.
-Close-Out Audit: Grade {A|B} (acknowledged YYYY-MM-DD).
-Arc: EXRM → main, PR #{n}.
+Plans: 5 issued of 8 cap — 5 Done, 0 Abandoned, 0 Retired.
+Punchlist: 8 closed (5 pulled down into plans, 3 worked inline). Dismissed: 12. Follow-on: 6.
+Gates: 13 review files — 4 plan reviews, 5 test reviews, 3 code reviews, 1 close-out audit.
+       Every per-plan gate closed in one round; no plan needed a second.
+Issues filed rather than fixed: #91, #94, #97, #100.
+Close-Out Audit: Grade A (acknowledged 2026-09-08).
+Arc: EXRM → main, PR #TBD (filled when opened).
 ```
