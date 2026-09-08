@@ -73,6 +73,7 @@
 - EXRM-004 · `docs/plans/combination-testing-generator.md:168` says "(always remote)" · historical archive of a completed plan, excluded from mdsnippets; archives are not edited
 - EXRM-004 · `docs/attributes-reference.md:416` says derived methods inherit remote execution · a `[Remote]`-inheritance claim, not the `[Execute]` contract; the generator reads declared attributes only, so the row is inert (plan-review M1)
 - EXRM-004 · Generated factories name `Task`, `CancellationToken`, `IServiceProvider` and `InvalidOperationException` unqualified and rely on the consumer's `ImplicitUsings` (surfaced by the gate's crash-proofing assertion) · pre-existing, every consumer in the repo enables implicit usings, fixture convention already documented in `AssemblyAttributeEmissionTests`; serves no criterion — captured as [#97](https://github.com/NeatooDotNet/RemoteFactory/issues/97)
+- EXRM · `CanMethodCodePathTests` shares a static auth flag across five xUnit classes that run in parallel, so `CanLocalMethod_IsPublic` fails intermittently · pre-existing, untouched by this arc (`git log main..EXRM -- .../Can/` is empty), green on an unchanged re-run; serves no criterion — captured as [#100](https://github.com/NeatooDotNet/RemoteFactory/issues/100)
 
 ---
 
