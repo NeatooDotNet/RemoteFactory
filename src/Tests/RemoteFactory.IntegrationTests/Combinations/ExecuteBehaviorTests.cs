@@ -6,11 +6,13 @@ namespace RemoteFactory.IntegrationTests.Combinations;
 
 /// <summary>
 /// Behavioral tests for Execute operations across all valid combinations.
-/// Execute operations are always remote and use static classes with delegate resolution.
-/// Validates that:
+/// Execute obeys [Remote] like every other operation (EXRM-001): the Remote-mode combination
+/// targets carry [Remote], so a client-scope call crosses the wire, while a Logical-scope call
+/// runs locally. Validates that:
 /// - Operation is invoked correctly via delegate resolution
 /// - Parameters are received correctly
 /// - Service injection works
+/// - A client-scope call makes exactly one remote request; a local-scope call makes none
 /// </summary>
 public class ExecuteBehaviorTests
 {
@@ -24,7 +26,10 @@ public class ExecuteBehaviorTests
         _localScope = scopes.local;
     }
 
-    #region Remote Mode (Execute is always remote)
+    private int ClientRemoteCalls => _clientScope.ServiceProvider.GetRequiredService<RemoteCallCounter>().Count;
+    private int LocalRemoteCalls => _localScope.ServiceProvider.GetRequiredService<RemoteCallCounter>().Count;
+
+    #region Remote Mode ([Remote, Execute] from the client scope crosses the wire)
 
     [Fact]
     public async Task Execute_TaskTResult_None_Remote_OperationIsCalled()
@@ -35,6 +40,7 @@ public class ExecuteBehaviorTests
 
         Assert.NotNull(result);
         Assert.True(result.OperationCalled);
+        Assert.Equal(1, ClientRemoteCalls);
     }
 
     [Fact]
@@ -47,6 +53,7 @@ public class ExecuteBehaviorTests
         Assert.NotNull(result);
         Assert.True(result.OperationCalled);
         Assert.Equal(42, result.ReceivedIntParam);
+        Assert.Equal(1, ClientRemoteCalls);
     }
 
     [Fact]
@@ -60,6 +67,7 @@ public class ExecuteBehaviorTests
         Assert.True(result.OperationCalled);
         Assert.Equal(42, result.ReceivedIntParam);
         Assert.Equal("test", result.ReceivedStringParam);
+        Assert.Equal(1, ClientRemoteCalls);
     }
 
     [Fact]
@@ -72,6 +80,7 @@ public class ExecuteBehaviorTests
         Assert.NotNull(result);
         Assert.True(result.OperationCalled);
         Assert.True(result.ServiceWasInjected);
+        Assert.Equal(1, ClientRemoteCalls);
     }
 
     [Fact]
@@ -85,11 +94,17 @@ public class ExecuteBehaviorTests
         Assert.True(result.OperationCalled);
         Assert.Equal(42, result.ReceivedIntParam);
         Assert.True(result.ServiceWasInjected);
+        Assert.Equal(1, ClientRemoteCalls);
     }
 
     #endregion
 
-    #region Local/Server Mode (Execute works in logical mode too)
+    #region Local/Server Mode ([Remote, Execute] from the Logical scope runs locally, no wire)
+
+    // The Logical container registers no wire implementation at all, so LocalRemoteCalls is
+    // structurally zero here. What proves local execution in this region is that the delegate
+    // resolves and runs in a container that has nothing to send a request through; the counter
+    // assertion documents the expectation rather than discriminating it.
 
     [Fact]
     public async Task Execute_TaskTResult_None_Local_OperationIsCalled()
@@ -100,6 +115,7 @@ public class ExecuteBehaviorTests
 
         Assert.NotNull(result);
         Assert.True(result.OperationCalled);
+        Assert.Equal(0, LocalRemoteCalls);
     }
 
     [Fact]
@@ -112,6 +128,7 @@ public class ExecuteBehaviorTests
         Assert.NotNull(result);
         Assert.True(result.OperationCalled);
         Assert.Equal(42, result.ReceivedIntParam);
+        Assert.Equal(0, LocalRemoteCalls);
     }
 
     [Fact]
@@ -125,6 +142,7 @@ public class ExecuteBehaviorTests
         Assert.True(result.OperationCalled);
         Assert.Equal(42, result.ReceivedIntParam);
         Assert.Equal("test", result.ReceivedStringParam);
+        Assert.Equal(0, LocalRemoteCalls);
     }
 
     [Fact]
@@ -137,6 +155,7 @@ public class ExecuteBehaviorTests
         Assert.NotNull(result);
         Assert.True(result.OperationCalled);
         Assert.True(result.ServiceWasInjected);
+        Assert.Equal(0, LocalRemoteCalls);
     }
 
     [Fact]
@@ -150,6 +169,7 @@ public class ExecuteBehaviorTests
         Assert.True(result.OperationCalled);
         Assert.Equal(42, result.ReceivedIntParam);
         Assert.True(result.ServiceWasInjected);
+        Assert.Equal(0, LocalRemoteCalls);
     }
 
     #endregion

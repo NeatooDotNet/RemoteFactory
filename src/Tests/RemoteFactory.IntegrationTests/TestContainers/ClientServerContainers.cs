@@ -53,6 +53,8 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        _serviceProvider.GetRequiredService<RemoteCallCounter>().Increment();
+
         // Serialize the request (client side)
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
         var json = JsonSerializer.Serialize(remoteRequest);
@@ -77,6 +79,8 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
     public async Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
     {
+        _serviceProvider.GetRequiredService<RemoteCallCounter>().Increment();
+
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
         var json = JsonSerializer.Serialize(remoteRequest);
         var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!;
@@ -435,6 +439,10 @@ public static class ClientServerContainers
     /// </summary>
     private static void RegisterFactoryTypes(IServiceCollection services)
     {
+        // Every container path calls this for every collection, so it is the one place to give
+        // each scope its wire-crossing counter (see RemoteCallCounter).
+        services.AddScoped<RemoteCallCounter>();
+
         foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
         {
             if (type.GenericTypeArguments.Length > 0 || type.IsAbstract)

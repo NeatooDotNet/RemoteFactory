@@ -341,6 +341,15 @@ internal static partial class Log
         string correlationId,
         string delegateType);
 
+    [LoggerMessage(
+        EventId = 7008,
+        Level = LogLevel.Warning,
+        Message = "[{CorrelationId}] Remote request refused: delegate {DelegateType} is local-only ([Execute] without [Remote]) and is not served to remote callers")]
+    public static partial void RemoteRequestRefusedLocalOnly(
+        this ILogger logger,
+        string correlationId,
+        string delegateType);
+
     // ===== Pipeline Trace (8xxx) =====
 
     [LoggerMessage(

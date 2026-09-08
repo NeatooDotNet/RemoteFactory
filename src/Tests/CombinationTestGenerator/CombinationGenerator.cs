@@ -362,7 +362,7 @@ public class CombinationGenerator : IIncrementalGenerator
 
         if (combination.Operation == "Execute")
         {
-            GenerateExecuteClassBody(sb, combination, returnTypeInfo, parameters);
+            GenerateExecuteClassBody(sb, combination, returnTypeInfo, parameters, isRemote);
         }
         else if (IsWriteOperation(combination.Operation))
         {
@@ -553,13 +553,14 @@ public class CombinationGenerator : IIncrementalGenerator
         StringBuilder sb,
         CombinationInfo combination,
         ReturnTypeInfo returnType,
-        List<ParameterDefinition> parameters)
+        List<ParameterDefinition> parameters,
+        bool isRemote)
     {
         var className = combination.ClassName;
         var resultClassName = $"{className}_Result";
 
         sb.AppendLine($"/// <summary>");
-        sb.AppendLine($"/// Test target: Execute, {combination.ReturnType}, {combination.Parameters}");
+        sb.AppendLine($"/// Test target: Execute, {combination.ReturnType}, {combination.Parameters}, {combination.ExecutionMode}");
         sb.AppendLine($"/// </summary>");
         sb.AppendLine($"[Factory]");
         sb.AppendLine($"public static partial class {className}");
@@ -570,6 +571,14 @@ public class CombinationGenerator : IIncrementalGenerator
             ? $"Task<{resultClassName}>"
             : "Task";
 
+        // [Execute] obeys [Remote] like every other operation (EXRM-001). A Remote-mode target
+        // must carry the attribute or it silently becomes a local delegate and the client-scope
+        // behavior tests stop measuring a wire crossing. Static factories are exempt from NF0105,
+        // so the method stays public static in both modes.
+        if (isRemote)
+        {
+            sb.AppendLine("    [Remote]");
+        }
         sb.AppendLine("    [Execute]");
         sb.AppendLine($"    public static {methodReturnType} ExecuteOp({paramList})");
         sb.AppendLine("    {");

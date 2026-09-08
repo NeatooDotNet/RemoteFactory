@@ -41,7 +41,7 @@
 
 | # | File | Title (≤ 8 words) | Serves | Status | PR |
 |---|------|-------|--------|--------|----|
-| 001 | [001-static-delegates-obey-remote](./plans/001-static-delegates-obey-remote.md) | Static-factory delegates obey [Remote]; weld removed | AC-1, AC-2 | Draft | — |
+| 001 | [001-static-delegates-obey-remote](./plans/001-static-delegates-obey-remote.md) | Static-factory delegates obey [Remote]; weld removed | AC-1, AC-2 | Done | [#92](https://github.com/NeatooDotNet/RemoteFactory/pull/92) |
 | 002 | [002-local-execute-coverage](./plans/002-local-execute-coverage.md) | Local Execute proven on both shapes, plus auth | AC-1, AC-2, AC-4 | Draft | — |
 | 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3 | Draft | — |
 | 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | Draft | — |
@@ -52,20 +52,31 @@
 ## Punchlist
 
 - [ ] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · done when both read 1.9.0 · AC-5 · Must
-- [ ] Region header "Execute is always remote" · `src/Tests/RemoteFactory.IntegrationTests/Combinations/ExecuteBehaviorTests.cs:9,27` · done when the header states the [Remote]-follows rule · AC-2 · Must
 - [ ] NF0102 description justifies the `Task` rule by remoteness · `src/Generator/DiagnosticDescriptors.cs:35` · done when the text no longer says "designed for remote execution" · AC-5 · Must
-- [ ] Dead Execute clause in the record-primary-constructor ctor · `src/Generator/FactoryGenerator.Types.cs:629` · done when removed with the weld · AC-2 · Must
+- [ ] Bare `[Execute] internal static` on a class factory now yields an internal factory interface, the same visibility rule every other internal operation follows · the visibility rule's home in `docs/attributes-reference.md` and the Design comments · done when stated in one sentence · AC-5 · Must
+- [ ] Reference app's only bare `[Execute]` takes a server-only `[Service]` and flips to a client failure · `src/docs/reference-app/EmployeeManagement.Application/Samples/Attributes/ExecuteSamples.cs:13-20` · done when it is either `[Remote]` or a genuine client-runnable local sample · AC-5 · Must
+- [ ] CLAUDE.md release step says bump `<VersionPrefix>`, which does not exist; the props carry `<PackageVersion>` · `CLAUDE.md:242` · done when the step names the real property · AC-5 · Must
+- [→ EXRM-001] Region header "Execute is always remote" · `ExecuteBehaviorTests.cs:9,27` · pulled down at 001's Step 2 triage
+- [→ EXRM-001] Dead Execute clause in the record-primary-constructor ctor · `FactoryGenerator.Types.cs:629` · pulled down at 001's Step 2 triage
 
 ## Dismissed
 
 - EXRM · `TargetClassGenerator.cs` (367 lines, referenced by nothing) hardcodes bare `[Execute]` · dead code; serves no criterion — edit `CombinationGenerator.cs`, not it
 - EXRM · Rename the five `Comb_Execute_*_Remote` targets · unnecessary once the combination generator emits `[Remote]` for Remote mode
+- EXRM · Stray `remotefactory-execute-on-class-factory.md` at the repo root (March, commit 3768f4f) duplicates a completed plan · unpublished, serves no criterion; user may pull it into the sweep for deletion
+- EXRM-001 · Registry unit tests leave probe delegate types in the process-global `LocalOnlyDelegateRegistry` · harmless; no test asserts registry contents (test-review tech-debt 2)
+- EXRM-001 · `[AspAuthorize]` on a static-factory Execute is collected but never enforced · pre-existing, undocumented; serves no criterion — captured as [#91](https://github.com/NeatooDotNet/RemoteFactory/issues/91); 001 folds its presence into the remote flag only
 
 ---
 
 ## Discovery Log
 
 (Append-only. ≤ 60 words per entry. Only Amend / Queue / Abandon / Re-split / Reprioritize.)
+
+### 2026-09-08 — EXRM-001 · serves AC-1
+- **Finding:** The wire refusal as drafted was an allow-list scoped to the static registrar, which would refuse every class- and interface-factory remote call (plan-review veto V1).
+- **Decision:** Amend — refuse-list of bare static delegates; callouts B2–B4 and a tier correction amended in the same entry; B1 punched to EXRM-004's path.
+- **Follow-up:** n/a
 
 ---
 

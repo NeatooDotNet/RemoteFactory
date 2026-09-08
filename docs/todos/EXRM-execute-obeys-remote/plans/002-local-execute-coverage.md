@@ -62,3 +62,5 @@ _(append-only)_
 ## Notes
 
 Recon (2026-09-08): the pattern for "ran locally on the client" is `Showcase/ShowcaseReadTests.cs`: a bare `[Create]` taking `[Service] IServerOnlyService` whose body is `Assert.Fail()`, asserted to throw `InvalidOperationException` from the client (negative form), and a bare `[Create]` taking `[Service] IService` resolved on the client through `RegisterMatchingName` (positive form). `ClassExecuteRoundTripTests` and `Design.Tests/ClassFactoryExecuteTests` are all `[Remote, Execute]` and become AC-2 evidence. Static factories carry no authorization path in the builder today, so AC-4 is class-level; `[AspAuthorize]` has no Execute precedent in any test (`AspAuthorizeTestObj.cs` covers Create/Insert only) and the AspNetCore test library is consumed by no test project.
+
+Could-tier candidate from the 001 plan review (B1): pin that a bare `[Execute] internal static` on a class factory yields an internal factory interface and `[Remote, Execute] internal static` is promoted to public, the same rule every other operation follows.

@@ -579,7 +579,6 @@ public partial class Factory
 			}
 			this.IsSave = factorySaveOperationAttributes.Contains(factoryOperation);
 			this.IsStaticFactory = methodSymbol.IsStatic;
-			this.IsRemote = this.IsRemote || factoryOperation == FactoryOperation.Execute;
 
 			// Store method location for diagnostics (NF0102)
 			var methodLocation = methodSyntax switch
@@ -626,7 +625,6 @@ public partial class Factory
 			this.Name = factoryOperation.ToString();
 			this.IsSave = factorySaveOperationAttributes.Contains(factoryOperation);
 			this.IsStaticFactory = false; // Primary constructors are not static
-			this.IsRemote = this.IsRemote || factoryOperation == FactoryOperation.Execute;
 
 			// Store location for diagnostics - use the record's identifier
 			var methodLocation = recordSyntax.Identifier.GetLocation();

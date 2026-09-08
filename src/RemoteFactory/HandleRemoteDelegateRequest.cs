@@ -78,6 +78,21 @@ public static class LocalServer
 				// Check for cancellation before processing
 				cancellationToken.ThrowIfCancellationRequested();
 
+				// Wire refusal (EXRM-001): a static-factory [Execute] without [Remote] is local-only.
+				// It is registered in server DI (it runs locally on the server too), so without this
+				// check a crafted request naming its delegate type would execute it with server
+				// services. Refuse BEFORE deserializing parameters, and surface it exactly as an
+				// unknown delegate so a caller cannot tell a local-only delegate from a missing one;
+				// the real reason goes to the server log only. Class-factory, interface-factory, and
+				// client-raise delegates are never in the registry and are served as before.
+				var requestedDelegateType = serviceProvider.GetRequiredService<IServiceAssemblies>()
+					.FindType(portalRequest.DelegateFullName ?? string.Empty);
+				if (requestedDelegateType != null && LocalOnlyDelegateRegistry.IsLocalOnly(requestedDelegateType))
+				{
+					log.RemoteRequestRefusedLocalOnly(correlationId, delegateTypeName);
+					throw new MissingDelegateException($"Cannot find delegate type {portalRequest.DelegateFullName} in the registered assemblies");
+				}
+
 				trace.TraceDeserializingRequest(correlationId, delegateTypeName);
 				var deserializeSw = Stopwatch.StartNew();
 				var remoteRequest = serializer.DeserializeRemoteDelegateRequest(portalRequest);
