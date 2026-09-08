@@ -51,11 +51,11 @@
 
 ## Punchlist
 
-- [ ] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · done when both read 1.9.0 · AC-5 · Must
+- [→ EXRM-005] `FileVersion` reads 1.7.0 while `PackageVersion` reads 1.8.1 · `src/Directory.Build.props:18-19` · pulled down at 005's Step 2 triage (Step 6 sweep)
 - [→ EXRM-004] NF0102 description justifies the `Task` rule by remoteness · `src/Generator/DiagnosticDescriptors.cs:35` · pulled down at 004's Step 2 triage
 - [→ EXRM-004] Bare `[Execute] internal static` on a class factory yields an internal factory interface · `docs/attributes-reference.md` and the Design comments, pinned `[unit]` · pulled down at 004's Step 2 triage (moved from EXRM-002's bullet 7 at its plan review)
 - [→ EXRM-004] Reference app's only bare `[Execute]` takes a server-only `[Service]` · `EmployeeManagement.Application/Samples/Attributes/ExecuteSamples.cs:13-20` · pulled down at 004's Step 2 triage
-- [ ] CLAUDE.md release step says bump `<VersionPrefix>`, which does not exist; the props carry `<PackageVersion>` · `CLAUDE.md:242` · done when the step names the real property · AC-5 · Must
+- [→ EXRM-005] CLAUDE.md release step names `<VersionPrefix>`, which does not exist · `CLAUDE.md:242` · pulled down at 005's Step 2 triage (Step 6 sweep)
 - [x] mdsnippets placeholder trap: a bare `<!-- snippet: x -->` is read as the start of an existing embed and swallows content to the next `endSnippet` · `CLAUDE.md` "Skill Code Samples" workflow · [#98](https://github.com/NeatooDotNet/RemoteFactory/pull/98) · user-directed 2026-09-08 — serves no AC; a repo-workflow note surfaced by EXRM-004
 - [→ EXRM-001] Region header "Execute is always remote" · `ExecuteBehaviorTests.cs:9,27` · pulled down at 001's Step 2 triage
 - [→ EXRM-001] Dead Execute clause in the record-primary-constructor ctor · `FactoryGenerator.Types.cs:629` · pulled down at 001's Step 2 triage
@@ -113,6 +113,11 @@
 ### 2026-09-08 — EXRM-004 · serves AC-5
 - **Finding:** Plan review CONCERNS, five Must callouts: an inherited-`[Remote]`-over-`[Execute]` sentence that cannot occur; bare `internal static [Execute]` on a class factory is guarded, contradicting the rule sentence; the skill self-containment bullet already red; a `skill-*` region cannot be shared; auth enforcement is class-shape only.
 - **Decision:** Amend — all ten callouts amended; the internal case gets its own row and a Design sample; M1's inheritance row dismissed.
+- **Follow-up:** n/a
+
+### 2026-09-08 — EXRM-005 · serves AC-5
+- **Finding:** Plan review CONCERNS, four Must callouts: the page cites only CLAUDE.md's CI/CD standard and never v1.0.0's published API Stability Commitment; the "runs where it is called" headline is false for class-level `internal static` and omits that authorization still forces the server; and "no signature changed" is false — the auth'd class `[Execute]` now generates `Task<T?>`.
+- **Decision:** Amend — all nine callouts amended; the header line becomes "Yes — behaviour, and one generated signature"; the blockquote carves out v1.0.0; a blob URL replaces a docs-site URL that would 404 (Pages is disabled).
 - **Follow-up:** n/a
 
 ---
