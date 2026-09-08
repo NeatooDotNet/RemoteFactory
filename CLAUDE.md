@@ -79,6 +79,10 @@ The skill uses MarkdownSnippets to embed compiled, tested code from the referenc
 4. Commit the updated skill files (they now contain embedded code)
 5. Push changes
 
+**Adding a new embed — write both markers, not just the opening one.** A placeholder is an opening `snippet: my-region` comment *and* a matching `endSnippet` comment on the line after it. An opening marker alone is not an empty placeholder: under the `InPlaceOverwrite` convention mdsnippets reads it as the start of an existing embed and replaces everything up to the next `endSnippet` in the file — silently deleting whole sections when a later one exists, and failing the run outright when none does. Copy a live pair from `docs/attributes-reference.md`. The literal markers are deliberately not reproduced in this file, because mdsnippets scans it too and would treat them as a real (and missing) embed — which is the same hazard from the other side.
+
+After any `mdsnippets` run, check `git diff --stat` for a file whose deletion count exceeds the edit you made; that is the signature of a swallowed section. Attribution-line drift in files you did not touch is expected and correct whenever a sample source file gained lines. Point the run's log outside the repository (`mdsnippets > /tmp/mdsnippets.log 2>&1`) — mdsnippets reads files under `docs/todos` despite the `mdsnippets.json` exclude list and will crash on its own open log.
+
 **Code block categories in skill files:**
 | Category | Source | How to Update |
 |----------|--------|---------------|
