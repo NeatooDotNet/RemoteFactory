@@ -15,8 +15,8 @@
 		<Nullable>enable</Nullable>
 		<TargetFrameworks>net9.0;net10.0</TargetFrameworks>
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-		<FileVersion>1.7.0</FileVersion>
-		<PackageVersion>1.8.1</PackageVersion>
+		<FileVersion>1.9.0</FileVersion>
+		<PackageVersion>1.9.0</PackageVersion>
 		<PackageIcon>neatoo_icon.png</PackageIcon>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageTags>OO Domain Modeling C# .NET Blazor WPF ASP.NET CSLA</PackageTags>
@@ -25,7 +25,10 @@
 		<RepositoryUrl>https://github.com/NeatooDotNet/RemoteFactory</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/NeatooDotNet/RemoteFactory</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>None yet</PackageReleaseNotes>
+		<!-- Points at the release-notes index, not a per-version page: one URL that never goes
+		     stale, so no step is added to the release process. GitHub blob URL because the docs
+		     are not published as a site (GitHub Pages is not enabled for this repository). -->
+		<PackageReleaseNotes>https://github.com/NeatooDotNet/RemoteFactory/blob/main/docs/release-notes/index.md</PackageReleaseNotes>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
-</Project>
+</Project>

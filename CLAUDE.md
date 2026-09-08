@@ -217,13 +217,12 @@ Use conventional commits for automatic categorization:
 
 #### Creating a New Release
 
-1. **Analyze commits since last release**:
+1. **Assemble what actually shipped.** Start from the todo container(s) closed since the last release — their plan files, Gate Records and Discovery Log — not from the commit log:
    ```bash
    git describe --tags --abbrev=0  # Find last tag
    git log <last-tag>..HEAD --oneline
-   git log <last-tag>..HEAD --format="%s" | findstr "^feat:"
-   git log <last-tag>..HEAD --format="%s" | findstr "^fix:"
    ```
+   **A `feat:`/`fix:` scan under-reports the release.** Work lands under whatever prefix its commit carried: v1.9.0's generator fix shipped inside a `test(execute):` commit and a whole documentation rewrite under `docs:`, so a prefix scan found one of its three shippable items. Use the log to *confirm* the assembled list and to fill the `Commits` section, never to derive it.
 
 2. **Determine version bump**:
    - `BREAKING CHANGE:` or `!` suffix → Major (e.g., 0.14.0 → 1.0.0)
@@ -239,11 +238,12 @@ Use conventional commits for automatic categorization:
    - **Highlights table**: Add if release has new features, breaking changes, or notable fixes
    - **All Releases list**: Always add (newest at top)
 
-5. **Adjust nav_order**: Increment existing release page nav_orders, new release gets `nav_order: 1`
+5. **Adjust nav_order**: new release gets `nav_order: 1`; increment the **1.x pages** behind it. The v0.x tail is frozen — 33 of those pages already share `nav_order: 3`, so renumbering them is neither possible as a sequence nor useful to a reader.
 
-6. **Update version** in `src/Directory.Build.props`:
+6. **Update version** in `src/Directory.Build.props` — both properties, which have drifted apart before:
    ```xml
-   <VersionPrefix>X.Y.Z</VersionPrefix>
+   <FileVersion>X.Y.Z</FileVersion>
+   <PackageVersion>X.Y.Z</PackageVersion>
    ```
 
 7. **Commit and tag**:
