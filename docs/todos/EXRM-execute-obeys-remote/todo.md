@@ -24,7 +24,7 @@
 - [x] **AC-3** · Must — The trimmed-client gate measures a `[Remote, Execute]` body absent and a bare `[Execute]` body present, for both shapes.
 - [ ] **AC-4** · Should — `[AspAuthorize]` on a bare `[Execute]` still forces remote, and `[AuthorizeFactory]` on a bare `[Execute]` runs locally.
 - [ ] **AC-5** · Must — Design projects, published docs, and the skill state the new contract with the decorative claim gone, and release notes ship per CI standards.
-- [ ] **AC-6** · Could — The NF0105 static-factory exemption is re-examined and either kept with a stated reason or narrowed.
+- [x] **AC-6** · Could — The NF0105 static-factory exemption is re-examined and either kept with a stated reason or narrowed.
 
 ## Out of Scope
 
@@ -44,7 +44,7 @@
 | 001 | [001-static-delegates-obey-remote](./plans/001-static-delegates-obey-remote.md) | Static-factory delegates obey [Remote]; weld removed | AC-1, AC-2 | Done | [#92](https://github.com/NeatooDotNet/RemoteFactory/pull/92) |
 | 002 | [002-local-execute-coverage](./plans/002-local-execute-coverage.md) | Local Execute proven on both shapes, plus auth | AC-1, AC-2, AC-4 | Done | [#93](https://github.com/NeatooDotNet/RemoteFactory/pull/93) |
 | 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3, AC-1 | Done | [#95](https://github.com/NeatooDotNet/RemoteFactory/pull/95) |
-| 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | In Progress | — |
+| 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | Done | — |
 | 005 | [005-release-1-9-0](./plans/005-release-1-9-0.md) | Release notes and version for v1.9.0 | AC-5 | Draft | — |
 
 ---
@@ -71,6 +71,7 @@
 - EXRM-003 · `FactoryAttributes.cs:102-108` XML doc still calls `[Remote]` decorative on `[Execute]` · already in EXRM-004's Scope ("the attribute XML docs") and its Notes inventory; not a second row (plan-review A1)
 - EXRM-004 · `docs/plans/combination-testing-generator.md:168` says "(always remote)" · historical archive of a completed plan, excluded from mdsnippets; archives are not edited
 - EXRM-004 · `docs/attributes-reference.md:416` says derived methods inherit remote execution · a `[Remote]`-inheritance claim, not the `[Execute]` contract; the generator reads declared attributes only, so the row is inert (plan-review M1)
+- EXRM-004 · Generated factories name `Task` and `CancellationToken` unqualified and rely on the consumer's `ImplicitUsings` (surfaced by the gate's crash-proofing assertion) · pre-existing, every consumer in the repo enables implicit usings, fixture convention already documented in `AssemblyAttributeEmissionTests`; serves no criterion
 
 ---
 

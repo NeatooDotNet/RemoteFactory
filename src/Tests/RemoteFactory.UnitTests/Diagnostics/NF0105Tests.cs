@@ -162,6 +162,8 @@ namespace TestNamespace
     {
         var source = @"
 using Neatoo.RemoteFactory;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TestNamespace
@@ -179,8 +181,18 @@ namespace TestNamespace
         // EXRM-004 (AC-6): a class-level [Execute] is public static by documented convention and
         // [Remote] alone drives its guard, so there is no visibility contradiction to report.
         // Reason recorded at the check in FactoryModelBuilder.
-        var diagnostics = DiagnosticTestHelper.GetDiagnosticsById(source, "NF0105").ToList();
-        Assert.Empty(diagnostics);
+        var (diagnostics, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "NF0105");
+
+        // Silence must come from a factory that generated and compiles -- not from a generator
+        // that crashed (CS8785) or emitted a /* Error: */ comment: FactoryRenderer swallows render
+        // exceptions, so a mangled emission surfaces as output-compilation errors, not a throw.
+        // The fixture's System / System.Threading usings are load-bearing for this check:
+        // generated factories name IServiceProvider, InvalidOperationException, Task and
+        // CancellationToken unqualified and rely on the consumer's ImplicitUsings (see
+        // AssemblyAttributeEmissionTests, "The usings are required").
+        Assert.NotEmpty(runResult.GeneratedTrees);
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
     }
 
     /// <summary>
@@ -193,6 +205,8 @@ namespace TestNamespace
     {
         var source = @"
 using Neatoo.RemoteFactory;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TestNamespace
@@ -206,8 +220,12 @@ namespace TestNamespace
 }
 ";
 
-        var diagnostics = DiagnosticTestHelper.GetDiagnosticsById(source, "NF0105").ToList();
-        Assert.Empty(diagnostics);
+        var (diagnostics, outputCompilation, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "NF0105");
+
+        // Same crash-proofing as the Execute case: the shape must actually generate and compile.
+        Assert.NotEmpty(runResult.GeneratedTrees);
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
     }
 
     [Fact]
