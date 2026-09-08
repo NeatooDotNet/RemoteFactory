@@ -31,4 +31,4 @@
 		<PackageReleaseNotes>https://github.com/NeatooDotNet/RemoteFactory/blob/main/docs/release-notes/index.md</PackageReleaseNotes>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
-</Project>
+</Project>

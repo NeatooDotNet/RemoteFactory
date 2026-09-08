@@ -222,7 +222,7 @@ Use conventional commits for automatic categorization:
    git describe --tags --abbrev=0  # Find last tag
    git log <last-tag>..HEAD --oneline
    ```
-   **A `feat:`/`fix:` scan under-reports the release.** Work lands under whatever prefix its commit carried: v1.9.0's generator fix shipped inside a `test(execute):` commit and a whole documentation rewrite under `docs:`, so a prefix scan found one of its three shippable items. Use the log to *confirm* the assembled list and to fill the `Commits` section, never to derive it.
+   **A `feat:`/`fix:` scan under-reports the release.** Work lands under whatever prefix its commit carried: v1.9.0's generator fix shipped inside a `test(execute):` commit and a whole documentation rewrite under `docs:`, so a prefix scan found only one of the two commits its notes list, and none of its documentation work. Use the log to *confirm* the assembled list and to fill the `Commits` section, never to derive it.
 
 2. **Determine version bump**:
    - `BREAKING CHANGE:` or `!` suffix → Major (e.g., 0.14.0 → 1.0.0)
