@@ -32,9 +32,29 @@ None. Every Acceptance bullet's declared evidence exists and says what the map c
 ## Tech-debt
 
 - `CLAUDE.md` said the prefix scan "found one of its three shippable items"; `v1.9.0.md` said it "finds just the first of the two entries above" — the same release counting its own shipment two ways.
-- `reviews/003-evidence/*publish.log` are caught by `.gitignore` (`*.log`), so the container the release page points at carries the gate and harness outputs but not the publish logs behind them.
+- `reviews/003-evidence/*publish.log` are caught by `.gitignore:94` (`*.log`) — `003-publish.log`, `baseline-publish.log`, `knownbad-publish.log` — so the container the release page links carries the gate and harness outputs only.
+- The Migration Guide was headed "**One audit, one attribute.**" and then carried a second, unrelated migration item (`Task<T?>`) — and, after should-cover 1, a third.
+- The page names four unqualified BCL types under #97 while the todo's Dismissed row named two; the two extra are real (`ClassFactoryRenderer.cs:396-397`) and match the issue text, so the Dismissed row was the stale one.
 
-*(The reviewer's report truncated mid-second tech-debt item; the remainder was requested. Nothing outstanding affects the dispositions below — the verdict, all three should-cover items and the first tech-debt item arrived complete.)*
+## Answers
+
+**Q1.** All five placement rows correct: `ClassFactoryRenderer.cs:844` passes `isServerOnly: method.IsInternal || method.IsRemote` and `:395-397` emits the guard only when true; `StaticFactoryRenderer.cs:150-156` registers a bare delegate unguarded in every mode with no remote registration, `:182` registers `[Remote]` guarded. Class rows also match `docs/trimming.md:28-30`.
+
+**Q2.** Both qualifications hold — `ClassFactoryRenderer.cs:844` for the `internal static` case (interface-modifier half pinned by `InternalVisibilityTests.cs:301`), and `FactoryModelBuilder.cs:540-542` (static) / `:471-473` (class) for auth-forces-remote. The three "leave alone" cases list nothing that actually needs changing.
+
+**Q3.** Accurate: `FactoryModelBuilder.cs:485-487` is the cited fix and its comment names CS8603 as fatal under TWAE, matching the Bug Fixes text; the `Task<T>` → `Task<T?>` consequence is actionable in three places (header line, Breaking Changes, Migration Guide).
+
+**Q4.** Not overstated: `reviews/003-evidence/README.md`'s pair table gives exactly three async-matched pairs, and `knownbad-gate.txt` shows exit 1 with 3 `is MISSING` against 60 incumbents still ok. "CI gate" is literal — `.github/workflows/build.yml:101-126`. Integration maps to `plans/002-local-execute-coverage.md` bullets 1–5; Unit to `InternalVisibilityTests.cs:301` and `NF0105Tests.cs:161,204`.
+
+**Q5.** Bullets 5, 6, 7 all hold: 1.x `nav_order` now 1…12 with no gap and no v0.x file touched; `Directory.Build.props` both properties 1.9.0 with the blob URL; `005-pack.log` names both packages; `grep -n "VersionPrefix\|findstr \"^feat" CLAUDE.md` exits 1.
+
+**Q6.** The eleven older pages changed by twenty-two lines pooled, all `nav_order` — no historical content altered.
+
+**Q7.** **No false statement found.** `attributes-reference.md:203-207`, `trimming.md:28-30,38`, `DiagnosticDescriptors.cs:34`, `v1.0.0.md:198` and both commit SHAs all check out, and all nine plan-review callouts are implemented.
+
+## Read report
+
+Beyond the brief: `plans/002-local-execute-coverage.md`, `InternalVisibilityTests.cs`, `build.yml`, `NF0105Tests.cs`, `DiagnosticDescriptors.cs` — each for a specific claim on the page. Distillations verified only where a finding turned on them: the props revert (`od -c`) and the eleven-page diff (pooled, not sampled). Named but unused: `005-plan-review.md`'s triage section, the todo Punchlist; Dismissed section checked.
 
 ---
 
@@ -57,5 +77,9 @@ Round 1 carried no must-cover, so the gate closes here. The three should-cover i
 | 3 | Stray `\r` removed with `perl -0777 -pi -e 's/\r\z//'`; the diff against `e356aa6~1` re-verified as exactly the three property changes. The Test Evidence note now records that the first revert was incomplete and the statement false, rather than quietly correcting it |
 | td-1 | Both sentences now say the scan finds one of the two commits the notes list, and none of the documentation work |
 | td-2 | Not actioned — `*.log` being gitignored is the repo's standing convention (EXRM-002 onward); the tracked `003-evidence/*.txt` files are what AC-3's evidence rests on, and the release page points at the container, not at the logs. No change warranted |
+| td-3 | The Migration Guide heading now reads "One audit for placement, plus two things to check afterwards" — accurate for the three items it actually carries, one of which should-cover 1 added |
+| td-4 | The todo's Dismissed row now names all four unqualified types, matching issue #97 and the release page. The row was the stale text, not the page |
 
-Fixes committed in `cf0a0fd`. No re-run needed: no code changed, and the build/test/pack evidence for bullets 6 and 8 is untouched by prose edits.
+Should-cover fixes committed in `cf0a0fd`; the two tech-debt fixes from the report's tail followed. No re-run needed: no code changed, and the build/test/pack evidence for bullets 6 and 8 is untouched by prose edits.
+
+**Gate closed CLEAN in one round on the substance** — no must-cover, no veto, every factual claim on the release page verified true, and all nine plan-review callouts confirmed implemented. The reviewer's Q7 pass, which read the page end to end as a consumer would, found nothing wrong.
