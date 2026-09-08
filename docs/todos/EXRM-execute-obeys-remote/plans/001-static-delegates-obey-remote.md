@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes — the generated public surface changes shape (registration per factory mode) and the wire-refusal step is a security seam. The plan contradicts the documented "decorative" rule by design; that contradiction is the todo's Goal, user-authorized, so it is not veto-tier here.
 **Code-review opt-in:** Yes — behavior-changing generator and runtime work.
 **Branch:** exrm-001-static-delegates-obey-remote — cut from the arc 2026-09-08
-**PR:** —
+**PR:** [#92](https://github.com/NeatooDotNet/RemoteFactory/pull/92) — opened 2026-09-08 into `EXRM`
 
 ---
 
@@ -68,13 +68,13 @@ Remove the generator's forced-remote treatment of `[Execute]` and give the stati
 
 ## Acceptance
 
-- [ ] A bare static `[Execute]` invoked from a Remote-mode client container runs there, resolves its `[Service]` parameters from that container, and makes no remote request. `[integration]` · Must
-- [ ] A `[Remote, Execute]` static delegate invoked from a Remote-mode client container goes through the remote request path and executes on the server, unchanged from v1.8.1. `[integration]` · Must
-- [ ] A bare delegate resolves in Remote, Logical, and Server containers, and a remote delegate's remote registration exists only in the Remote container. `[integration]` · Must
-- [ ] The server handler refuses a remote request naming a bare static delegate as an unknown delegate, and still serves class, interface, and static remote delegates and client-raised events. `[integration]` · Should
-- [ ] Every existing client-scope Execute behavior test observes exactly one remote request per call, and every local-scope one observes none. `[integration]` · Must
-- [ ] A bare static `[Execute]` that takes a server-only service fails on the client at call time with a service-resolution error and no remote request. `[integration]` · Must
-- [ ] Both solutions build and test green. `[explicit-skip: meta-bullet]` · Must
+- [x] A bare static `[Execute]` invoked from a Remote-mode client container runs there, resolves its `[Service]` parameters from that container, and makes no remote request. `[integration]` · Must
+- [x] A `[Remote, Execute]` static delegate invoked from a Remote-mode client container goes through the remote request path and executes on the server, unchanged from v1.8.1. `[integration]` · Must
+- [x] A bare delegate resolves in Remote, Logical, and Server containers, and a remote delegate's remote registration exists only in the Remote container. `[integration]` · Must
+- [x] The server handler refuses a remote request naming a bare static delegate as an unknown delegate, and still serves class, interface, and static remote delegates and client-raised events. `[integration]` · Should
+- [x] Every existing client-scope Execute behavior test observes exactly one remote request per call, and every local-scope one observes none. `[integration]` · Must
+- [x] A bare static `[Execute]` that takes a server-only service fails on the client at call time with a service-resolution error and no remote request. `[integration]` · Must
+- [x] Both solutions build and test green. `[explicit-skip: meta-bullet]` · Must
 
 _(Bullets 3, 4, 5 amended and bullet 6 added 2026-09-08 at plan-review triage; see Plan Amendments.)_
 
