@@ -61,13 +61,16 @@ public partial class TrimExecTarget
     }
 
     /// <summary>
-    /// Class-level <c>[Execute]</c> — emitted <c>async</c> unconditionally by
-    /// <c>RenderClassExecuteLocalMethod</c>, with the feature-switch guard inside.
+    /// Class-level <c>[Execute]</c>, the <c>[Remote]</c> half of the pair — its body is
+    /// emitted async by <c>RenderClassExecuteLocalMethod</c>, behind the feature-switch
+    /// guard the non-async <c>Local{X}</c> wrapper carries since TRIM-009.
     /// </summary>
     /// <remarks>
     /// <c>public static</c> matches the Design pattern. <c>[Remote]</c> is what makes the
-    /// generator emit the guard; without it the method would run on both sides and the
-    /// body would legitimately survive.
+    /// generator emit the guard at all; without it the method runs on whichever tier
+    /// resolves the factory and the body legitimately survives trimming — which is no
+    /// longer a prediction: <see cref="RunBareCommand"/> below is that half, and the CI
+    /// gate measures both.
     /// </remarks>
     [Remote]
     [Execute]
