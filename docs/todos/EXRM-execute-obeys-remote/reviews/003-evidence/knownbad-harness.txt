@@ -1,0 +1,16 @@
+ServiceProvider built successfully with ValidateOnBuild=true.
+Bare static [Execute] FAILED: NotSupportedException: The trimming harness never sends HTTP requests.
+Bare class [Execute] FAILED: NotSupportedException: The trimming harness never sends HTTP requests.
+Client mode - server-only code trimmed.
+Event relay smoke PASSED: FactoryEventBase descendant survived trimming and round-tripped through registry+deserializer+relay.
+Record DTO smoke PASSED: positional records survived trimming via generator-emitted PreserveType (return, parameter, and nested shapes).
+Entity property DTO smoke PASSED: entity-carried DTO and record survived trimming via the entity property-graph walk.
+Subscribe-only event smoke PASSED: generator-emitted event preservation carried a subscribe-only event record (and its nested record) through trimming.
+IsServerRuntime: False
+Class factory resolved: True
+Static factory delegate resolved: True
+Interface factory resolved: True
+Async interface factory resolved: True
+Save target factory resolved: True
+Class [Execute] factory resolved: True
+Trimming verification FAILED (2 check(s)): bare static [Execute] invocation, bare class [Execute] invocation

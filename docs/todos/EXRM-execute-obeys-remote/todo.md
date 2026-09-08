@@ -96,6 +96,11 @@
 - **Decision:** Amend — gate asserts body literals only; distinct-stem naming; `Serves: AC-3, AC-1`; B3 punched on the plan. A1 dismissed (already in 004's inventory).
 - **Follow-up:** n/a
 
+### 2026-09-08 — EXRM-003 · serves AC-3
+- **Finding:** The red-before-green run exposed the new present checks as vacuous: `Program.cs` is never trimmed, so its `Contains("…_MARKER")` assertions rooted the literals the gate greps for, and the known-bad variant passed the gate while failing the harness.
+- **Decision:** Amend — marker literals live only in the `[Execute]` bodies; the harness matches the caller's token plus the client-safe port's stamp. Identical variant then went red as required.
+- **Follow-up:** n/a
+
 ---
 
 ## Skipped Steps

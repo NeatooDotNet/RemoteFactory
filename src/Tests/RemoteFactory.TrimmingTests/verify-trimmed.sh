@@ -123,6 +123,11 @@ fi
 #                        fix worked.
 #   [N] new baseline   — the target did not exist before the fix, so there is no pre-fix
 #                        measurement. First trimmed measurement is the baseline.
+#   [P] present-by-design — asserted PRESENT, and NOT a tolerated leak. A bare `[Execute]`
+#                        carries no [Remote], so the generator emits no guard, nothing
+#                        folds, and the body is SUPPOSED to ship to the client: that is
+#                        the feature. Going red means a guard has appeared where the
+#                        contract says there is none. See the pair block at the bottom.
 #
 # Every BODY marker here has been measured PRESENT in the UNTRIMMED build, which proves the
 # PROBE can see it — see reviews/009-evidence/probe-selfcheck-final-all-legs.txt, which covers
@@ -147,6 +152,17 @@ check_absent() {
         fail "[$leg] '$marker' found in the trimmed assembly. Server-only code is shipping to clients."
     else
         echo "   ok      $marker"
+    fi
+}
+
+# The counterpart to check_absent, for [P] markers. Failing means the OPPOSITE
+# problem: a body the contract says runs on the client has been trimmed away.
+check_present() {
+    local marker="$1" leg="$2"
+    if present "$marker"; then
+        echo "   ok      $marker"
+    else
+        fail "[$leg] '$marker' is MISSING from the trimmed assembly. A bare [Execute] body was trimmed — it carries no [Remote], so no guard should exist to fold it. Client-local execution is broken."
     fi
 }
 
@@ -317,6 +333,52 @@ for m in '<LocalFetchAsync>d__' '<LocalInsert>d__' '<LocalUpdate>d__' '<LocalDel
     check_absent "$m" "guarded async site lost its sync wrapper"
 done
 
+# ---------------------------------------------------------------------------
+# THE BARE / [Remote] PAIR — [Execute] obeys [Remote] (EXRM-003).
+#
+# Everything above is an absence check, and absence alone cannot distinguish
+# "the guard folded" from "the feature is dead". Every leg in this gate has been
+# measured one-sided for that reason, and the arc that built it kept rediscovering
+# the same hazard: a check that passes more easily when nothing works.
+#
+# These two close it for [Execute]. Since EXRM-001/002 the attribute decides the
+# emission on both shapes:
+#
+#   [Remote, Execute]  -> guarded local registration (+ a remote one). Body ABSENT.
+#   [Execute]          -> ONE unguarded local registration, no remote delegate,
+#                         no guard to fold. Body PRESENT — deliberately.
+#
+# Each pair differs by the attribute alone: same class, same generated registrar,
+# same holder, same [Service] injection style. So the two halves cannot both be
+# satisfied by an accident. A guard creeping onto bare [Execute] reddens the
+# PRESENT half; a guard lost from [Remote, Execute] reddens the ABSENT half above.
+#
+# WHAT IS ASSERTED HERE, AND WHAT IS NOT. Only the two BODY LITERALS. The bare
+# targets' [Service] is IClientTallyPort, registered outside the harness's
+# IsServerRuntime guard so the client can resolve it — which means it is rooted
+# from the DI graph whether or not the bodies survive, and a present check on that
+# name could never go red. Asserting it would have re-created this gate's oldest
+# defect in the one block written to retire it.
+#
+# NOT PROVEN BY A GREP: that the bodies still EXECUTE. A retained-but-unreachable
+# body would satisfy both checks below. Program.cs therefore resolves and CALLS
+# both bare members on the trimmed client and matches these same markers in the
+# returned values; the harness exits non-zero if either does not run.
+#
+# RED-BEFORE-GREEN. Both checks were observed FAILING against a variant of this
+# harness in which the two bare targets carry [Remote], with every absence check
+# above still green in the same run. See reviews/003-evidence/ in the EXRM todo.
+# The archived pre-EXRM-003 artifact is NOT the right known-bad build for them:
+# there the targets do not exist, so they would go red for the reason the positive
+# controls at the top of this file already stop the run over.
+# ---------------------------------------------------------------------------
+echo "-- bare [Execute] bodies (present by design, both shapes)"
+# [P] Both. Their [Remote] siblings' markers — _DoWork/_ProcessRecord/_DoAsyncWork
+#     above, and ClassExecBody_MARKER in the class-[Execute] block — are the
+#     absent halves of these same two pairs.
+check_present "BareStaticBody_MARKER" "static factory (bare half of the [Execute] pair)"
+check_present "BareClassBody_MARKER" "class [Execute] (bare half of the [Execute] pair)"
+
 echo
 if [ "$failures" -gt 0 ]; then
     echo "::error::Trimming verification FAILED ($failures check(s))."
@@ -327,6 +389,10 @@ echo "Trimming verification passed."
 echo "  Absent:  static factory ([Execute], sync and async), relay handler (sync and async),"
 echo "           interface factory implementations, class-level [Execute], and BOTH halves of"
 echo "           the class-factory body — sync and async, read and write."
+echo "  Present: the two BARE [Execute] bodies, one per shape — by design, not as a tolerated"
+echo "           leak. They carry no [Remote], so no guard is emitted and nothing folds;"
+echo "           shipping them to the client is the feature. Their [Remote] siblings sit in"
+echo "           the absence list above, so each shape is measured as a pair."
 echo "  No shape is asserted PRESENT as a known leak. TRIM-008 and TRIM-009 closed the last two;"
 echo "  if a leak is found in a shape this gate does not name, add the marker rather than"
 echo "  widening an existing one, so the failure keeps naming its leg."

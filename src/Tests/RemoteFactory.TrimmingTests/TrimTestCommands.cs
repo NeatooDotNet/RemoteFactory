@@ -61,4 +61,28 @@ public static partial class TrimTestCommands
     {
         return await port.AsyncLegInvoke("StaticAsyncBody_MARKER: " + input).ConfigureAwait(false);
     }
+
+    // THE BARE HALF OF THE STATIC PAIR (EXRM-003).
+    //
+    // Identical to the [Remote] methods above in every respect the trimmer can see
+    // -- same class, same generated registrar, same holder, same [Service] injection
+    // -- except that it carries no [Remote]. Since EXRM-001 that single difference
+    // decides the emission: a bare delegate gets ONE unguarded local registration in
+    // every factory mode and no remote registration, so no IsServerRuntime guard is
+    // emitted, nothing folds, and this body is expected to SURVIVE trimming.
+    //
+    // That expectation is the point. The gate asserts BareStaticBody_MARKER PRESENT
+    // beside _DoWork's marker ABSENT, so the two halves cannot both be satisfied by
+    // a dead feature: if the guard ever returned to bare [Execute] this goes red,
+    // and if it were ever lost from [Remote, Execute] the other half goes red.
+    //
+    // The [Service] is IClientTallyPort, registered OUTSIDE Program.cs's feature
+    // switch guard -- a bare [Execute] resolves its services from whichever
+    // container runs it, and on a client that is the client's. Concatenated, not
+    // interpolated, so the literal survives intact in the user-string heap.
+    [Execute]
+    private static Task<string> _ComputeTally(string input, [Service] IClientTallyPort port)
+    {
+        return Task.FromResult(port.ClientTallyCompute("BareStaticBody_MARKER: " + input));
+    }
 }

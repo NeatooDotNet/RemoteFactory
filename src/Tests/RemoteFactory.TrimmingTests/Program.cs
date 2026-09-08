@@ -22,6 +22,16 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(TrimTestEntity).Ass
 services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient(new NoOpHttpHandler()) { BaseAddress = new Uri("https://localhost/") });
 
+// Client-safe dependency of the bare [Execute] pair (EXRM-003). Registered
+// OUTSIDE the guard below on purpose: a bare [Execute] carries no [Remote], so its
+// registration is unguarded and it resolves its [Service] parameters from whichever
+// container runs the call — on a client publish, the client's. A bare target
+// depending on a server-only port would fail at call time instead, which is a
+// different property. See ClientSafePorts.cs for why this type's NAME is not a gate
+// assertion: being rooted from DI unconditionally, a "present" check on it could
+// never go red.
+services.AddScoped<IClientTallyPort, ClientTallyEngine>();
+
 // Guard server-only DI registrations behind the feature switch.
 // If these were registered unconditionally, the types would be kept alive
 // by the DI container regardless of the feature switch in generated code.
@@ -197,6 +207,91 @@ catch (Exception ex)
 if (doAsyncWorkDelegate == null)
 {
     failedChecks.Add("async static factory delegate resolution");
+}
+
+// THE BARE HALF OF THE [Execute] PAIR (EXRM-003), on both shapes.
+//
+// Every check above this point asks whether a name SURVIVED. These two ask whether
+// a bare [Execute] still RUNS on a trimmed client — resolve it, call it, and read
+// the marker back out of the result. That distinction is the reason they exist:
+// the gate's absence checks cannot tell "the guard folded" from "the feature is
+// dead", and neither can a present-only grep. A returned marker can.
+//
+// If either body were guarded (the regression this pair watches for), the guard
+// folds to a throw on a client publish and these fail here as well as in the gate.
+// Nothing crosses the wire: bare [Execute] registers no remote delegate, and the
+// harness's NoOpHttpHandler throws on any send, so a mis-routed call fails loudly
+// rather than silently passing.
+//
+// THESE CHECKS MUST NEVER NAME A GATE MARKER, and the first draft of them did.
+// Program.cs is the entry point and is never trimmed, so a "BareStaticBody_MARKER"
+// literal HERE roots that string in the published assembly all by itself — and
+// verify-trimmed.sh's PRESENT check for it then passes no matter what happened to
+// the [Execute] body. Measured, not theorised: with the marker literals in this
+// file, the known-bad variant (both bare targets carrying [Remote], bodies guarded
+// and folded away) still passed the gate while failing the two checks below.
+// So the bodies stamp their result through the client-safe port, and what is
+// matched here is that stamp plus the caller's own input token — neither of which
+// is a marker. The markers live in the [Execute] bodies and nowhere else.
+
+// Static shape: a bare [Execute] delegate, resolved and invoked.
+try
+{
+    var computeTally = checkScope.ServiceProvider.GetService<TrimTestCommands.ComputeTally>();
+    if (computeTally == null)
+    {
+        failedChecks.Add("bare static [Execute] delegate resolution");
+    }
+    else
+    {
+        var tallyResult = computeTally("bare-static").GetAwaiter().GetResult();
+        if (tallyResult == null
+            || !tallyResult.Contains("bare-static", StringComparison.Ordinal)
+            || !tallyResult.Contains("|tallied:", StringComparison.Ordinal))
+        {
+            Console.WriteLine($"Bare static [Execute] invocation FAILED: expected the caller's token and the client-safe port's stamp in the result, got \"{tallyResult}\".");
+            failedChecks.Add("bare static [Execute] invocation");
+        }
+        else
+        {
+            Console.WriteLine("Bare static [Execute] ran on the trimmed client, through the client-safe port.");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Bare static [Execute] FAILED: {ex.GetType().Name}: {ex.Message}");
+    failedChecks.Add("bare static [Execute] invocation");
+}
+
+// Class shape: a bare [Execute] factory method, resolved and invoked.
+try
+{
+    var bareExecFactory = checkScope.ServiceProvider.GetService<ITrimExecTargetFactory>();
+    if (bareExecFactory == null)
+    {
+        failedChecks.Add("bare class [Execute] factory resolution");
+    }
+    else
+    {
+        var bareResult = bareExecFactory.RunBareCommand("bare-class").GetAwaiter().GetResult();
+        if (bareResult?.ExecResult == null
+            || !bareResult.ExecResult.Contains("bare-class", StringComparison.Ordinal)
+            || !bareResult.ExecResult.Contains("|tallied:", StringComparison.Ordinal))
+        {
+            Console.WriteLine($"Bare class [Execute] invocation FAILED: expected the caller's token and the client-safe port's stamp in the result, got \"{bareResult?.ExecResult}\".");
+            failedChecks.Add("bare class [Execute] invocation");
+        }
+        else
+        {
+            Console.WriteLine("Bare class [Execute] ran on the trimmed client, through the client-safe port.");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Bare class [Execute] FAILED: {ex.GetType().Name}: {ex.Message}");
+    failedChecks.Add("bare class [Execute] invocation");
 }
 
 // Direct feature switch test: verifies that the trimmer constant-folds
