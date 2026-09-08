@@ -214,7 +214,7 @@ public partial class SkillEmployeeWithLifecycle : IFactorySaveMeta, IFactoryOnSt
 
 ## Execute Methods on Class Factories
 
-Use `[Execute]` on `public static` methods within a class factory to co-locate orchestration logic with the aggregate it operates on.
+Use `[Execute]` on `static` methods within a class factory to co-locate orchestration logic with the aggregate it operates on. `[Execute]` obeys `[Remote]`: with it the client crosses to the server; without it the method runs on whichever tier resolves the factory, with that tier's services. Use `public static` for a method that runs where the factory resolves, and `internal static` without `[Remote]` for a server-only one — guarded like any `internal` method, and carried on the factory interface with the `internal` modifier.
 
 ### When to Use
 
@@ -278,7 +278,7 @@ public partial class SkillConsultation : ISkillConsultation
 <!-- endSnippet -->
 
 Key differences from static factory `[Execute]`:
-- Method is **`public static`** (no underscore prefix, no `private`)
+- Method is **`static`** — `public static` to run where the factory resolves, `internal static` for server-only (no underscore prefix, no `private`)
 - Must return the **containing type** (or its matching interface)
 - Generates a **factory interface method**, not a delegate type
 
@@ -394,9 +394,9 @@ For aggregate roots, use `[Remote] internal` for operations that cross to the se
 
 1. **Classes must be `partial`** - Generator adds serialization code
 2. **Properties need public setters** - Required for deserialization
-3. **[Remote] requires `internal`** - `[Remote] public` is a compile-time error (NF0105); `[Remote] internal` is promoted to `public` on the factory interface
+3. **[Remote] requires `internal`** - on instance methods, `[Remote] public` is a compile-time error (NF0105); `[Remote] internal` is promoted to `public` on the factory interface. Static methods are exempt: `[Remote]` alone decides their placement
 4. **Business logic belongs in the entity** - Not in the factory
-5. **Execute methods must be `public static`** - No underscore prefix (unlike static factory Execute)
+5. **Execute methods must be `static`** - `public static` to run where the factory resolves, `internal static` for server-only; no underscore prefix (unlike static factory Execute). `[Remote]` decides whether the client crosses
 6. **Execute must return the containing type** (or concrete type if no matching interface) - Keeps the factory interface cohesive
 7. **Use `internal` for child entity factory methods** - Server-only, trimmable, invisible to client
 
@@ -415,7 +415,7 @@ public partial class BaseEntity { }
 [SuppressFactory]  // Prevents factory generation on derived class
 public partial class InternalEntity : BaseEntity { }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L19-L25' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L20-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Use when:**

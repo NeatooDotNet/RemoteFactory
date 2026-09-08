@@ -42,7 +42,7 @@ public partial class MinimalEmployee
     public MinimalEmployee() { }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L10-L17' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L11-L18' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 On an interface, `[Factory]` generates a remote proxy. All interface methods become remote entry points — no operation attributes needed. The server provides the implementation class (without `[Factory]`). See [Interface Factory](interface-factory.md) for the full pattern.
@@ -74,7 +74,7 @@ public partial class BaseEntity { }
 [SuppressFactory]  // Prevents factory generation on derived class
 public partial class InternalEntity : BaseEntity { }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L19-L25' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L20-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Operation Attributes
@@ -101,7 +101,7 @@ public partial class EmployeeCreate
     public decimal Salary { get; private set; }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L27-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-create' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L28-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-create' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Fetch]
@@ -121,7 +121,7 @@ public partial class EmployeeFetch
         => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L42-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-fetch' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L43-L51' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-fetch' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Insert], [Update], [Delete]
@@ -143,7 +143,7 @@ public partial class EmployeeInsert : IFactorySaveMeta
     internal Task Insert([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L52-L62' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L53-L63' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Combining operations on one method:
@@ -161,12 +161,12 @@ public partial class UpsertSetting : IFactorySaveMeta
     internal Task Upsert(CancellationToken ct) => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L173-L183' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L184-L194' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Execute]
 
-Marks methods for business operations. Typically on static classes for a command pattern. Underscore prefix on method names is removed in the generated delegate name.
+Marks static methods for business operations — request-response commands on a static `[Factory]` class (the delegate name is the method name with its underscore prefix removed), or orchestration on a class factory (a factory-interface method returning the containing type). Like every operation, **`[Execute]` obeys `[Remote]`**: with it the call is a client-to-server entry point; without it the method runs on whichever tier resolves it, with that tier's services.
 
 **Inherited:** No | **Auth flags:** `Execute | Read`
 
@@ -181,12 +181,30 @@ public static partial class PromoteCommand
         => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L88-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L89-L97' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Trimming:** the generated local registration is guarded by `NeatooRuntime.IsServerRuntime`, so a client published with the feature switch set to `false` drops the method body, its `[Service]` dependencies, and their transitive references. See [IL Trimming](trimming.md).
+Without `[Remote]`, the same shape runs locally — on the client with the client's services, on the server with the server's:
 
-Note that `[Remote]` is **decorative** on `[Execute]` methods — static factories are exempt from the NF0105 `[Remote] public` check, and the generator emits both remote and local registrations regardless, guarding only the local one. What makes the body trimmable is the guard, not `[Remote]`. Keeping `[Remote]` on the method is still worthwhile as intent, and matches how the same marker behaves on class factories.
+<!-- snippet: attributes-execute-local -->
+<a id='snippet-attributes-execute-local'></a>
+```cs
+[Factory]
+public static partial class TallyCommand
+{
+    [Execute]  // No [Remote] - runs on whichever tier resolves the delegate, with that tier's services
+    private static Task<decimal> _Total(decimal baseSalary, decimal bonus, [Service] ISalaryCalculator calculator)
+        => Task.FromResult(calculator.Calculate(baseSalary, bonus));
+}
+```
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L99-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+**Where it runs.** A bare `[Execute]` gets one unguarded local path in every factory mode and no remote delegate or endpoint: it runs on whichever tier resolves it, and its `[Service]` parameters are resolved from that tier's container — so a bare command that takes a server-only repository compiles, then fails on the client at call time with a DI resolution error. `[Remote, Execute]` gives the client a remote delegate and the server a guarded local path. On a class factory, visibility follows the ordinary rule: `public static` runs where the factory resolves; `internal static` without `[Remote]` is server-only, guarded, and carried on the factory interface with the `internal` modifier; `[Remote] internal static` is promoted to `public` on the interface. See [Factory Operations](factory-operations.md#execute-operation) for the two shapes.
+
+**Trimming:** `[Remote]` is what makes an `[Execute]` body trimmable, by deciding whether a guard is emitted at all. With `[Remote]` — or `internal` on a class factory — the local path is guarded by `NeatooRuntime.IsServerRuntime`, so a client published with the feature switch set to `false` drops the method body, its `[Service]` dependencies, and their transitive references. Without it the body ships to the client and runs there; that is the point. Both halves are measured in the trimming gate rather than inferred. See [IL Trimming](trimming.md).
+
+**NF0105 and static methods.** `[Remote] public` is an error on instance methods (NF0105) because on a class factory visibility is the local/server-only axis. Static methods are exempt: a static-factory `[Execute]` is `private static` behind a generated public wrapper, and a class-level `[Execute]` is `public static` by convention — on those shapes `[Remote]` alone drives the guard, and the body trims regardless of visibility.
 
 ### [FactoryEventHandler\<T\>]
 
@@ -255,7 +273,7 @@ Consumers **do not** apply `[FactoryEvent]` directly — inheriting `FactoryEven
 
 ### [Remote]
 
-Marks methods as client-to-server entry points. Without `[Remote]`, methods execute locally. See [Client-Server Architecture](client-server-architecture.md) for when to use it.
+Marks methods as client-to-server entry points. Without `[Remote]`, methods execute locally — on every operation, `[Execute]` included. On class factories `[Remote]` requires `internal` (NF0105) and the generator promotes the member to `public` on the factory interface; static methods are exempt from NF0105 — see [[Execute]](#execute) for why. See [Client-Server Architecture](client-server-architecture.md) for when to use it.
 
 **Inherited:** Yes
 
@@ -273,7 +291,7 @@ public partial class EmployeeRemote
         => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L98-L109' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L109-L120' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [Service]
@@ -295,7 +313,7 @@ public partial class EmployeeWithService
         CancellationToken ct) => Task.FromResult(true);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L111-L121' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L122-L132' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization
@@ -313,7 +331,7 @@ Applies a custom authorization interface to the factory. The type parameter must
 [AuthorizeFactory<IEmployeeAuthorization>]  // Class-level authorization
 public partial class AuthEmployee { }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L123-L127' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L134-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [AuthorizeFactory]
@@ -334,7 +352,7 @@ public interface IMinimalDocAuth
     bool CanWrite();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L129-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L140-L149' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Combine flags with bitwise OR:
@@ -351,7 +369,7 @@ public interface IOpAuth
     bool CanDelete();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L200-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L211-L220' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [AspAuthorize]
@@ -382,7 +400,7 @@ public partial class PolicyEmployee : IFactorySaveMeta
         => Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L154-L171' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L165-L182' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Assembly-Level Attributes
@@ -440,7 +458,7 @@ public partial class DerivedEntity : BaseWithFactory
     public DerivedEntity() : base() { }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L211-L229' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L222-L240' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Next Steps

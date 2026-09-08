@@ -44,7 +44,7 @@
 | 001 | [001-static-delegates-obey-remote](./plans/001-static-delegates-obey-remote.md) | Static-factory delegates obey [Remote]; weld removed | AC-1, AC-2 | Done | [#92](https://github.com/NeatooDotNet/RemoteFactory/pull/92) |
 | 002 | [002-local-execute-coverage](./plans/002-local-execute-coverage.md) | Local Execute proven on both shapes, plus auth | AC-1, AC-2, AC-4 | Done | [#93](https://github.com/NeatooDotNet/RemoteFactory/pull/93) |
 | 003 | [003-trimming-gate-pair](./plans/003-trimming-gate-pair.md) | Trimming gate measures absent and present pair | AC-3, AC-1 | Done | [#95](https://github.com/NeatooDotNet/RemoteFactory/pull/95) |
-| 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | Draft | — |
+| 004 | [004-contract-in-design-docs-skill](./plans/004-contract-in-design-docs-skill.md) | New contract in Design, docs, skill, diagnostics | AC-5, AC-6 | In Progress | — |
 | 005 | [005-release-1-9-0](./plans/005-release-1-9-0.md) | Release notes and version for v1.9.0 | AC-5 | Draft | — |
 
 ---

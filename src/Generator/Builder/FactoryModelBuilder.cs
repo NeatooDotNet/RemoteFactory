@@ -191,7 +191,20 @@ internal static class FactoryModelBuilder
 
         foreach (var method in typeInfo.FactoryMethods)
         {
-            // NF0105: [Remote] requires internal methods (public is an error, static factories exempt)
+            // NF0105: [Remote] requires internal methods; public is an error.
+            //
+            // Static methods are exempt. IsStaticFactory is methodSymbol.IsStatic, so the exemption
+            // covers every static method -- a static-factory [Execute], a class-level [Execute], and
+            // a static [Create]/[Fetch] on a class factory -- not [Execute] alone. Re-examined and
+            // kept (EXRM-004, AC-6): on an instance method, visibility is the local/server-only axis
+            // the renderer reads, so [Remote] public contradicts itself. A static method has no such
+            // reading -- a static-factory [Execute] is private behind a generated public wrapper, and
+            // a class-level [Execute] is public static by documented convention (Design: RunCommand)
+            // -- and [Remote] alone drives its guard, with the body measured trimmable regardless of
+            // visibility (RemoteFactory.TrimmingTests). Narrowing the exemption to [Execute] would
+            // emit a new compile error for the static [Create]/[Fetch] shape, and narrowing it further
+            // would break the documented [Remote, Execute] public static shape; neither is warranted.
+            // Pinned by NF0105Tests (Execute and Create static cases).
             if (method.IsRemote && !method.IsInternal && !method.IsStaticFactory)
             {
                 diagnostics.Add(new DiagnosticInfo(

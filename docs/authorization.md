@@ -183,6 +183,10 @@ internal Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L400-L409' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+### Placement on [Execute]
+
+`[Execute]` obeys `[Remote]`, so a bare `[Execute]` normally runs on whichever tier resolves it. Authorization changes that in one direction only: **`[AspAuthorize]` on a bare `[Execute]` forces the call to the server** on both shapes, because a policy can only be evaluated there. On a class factory the policy is then enforced before the method runs, exactly as for a `[Remote]` method. On a static factory, `[AspAuthorize]` decides placement but is not itself enforced (see issue #91) — the samples above are static-factory commands and carry `[Remote]` explicitly, which is the shape to copy. `[AuthorizeFactory]` does not move the call: an auth method without `[Remote]` runs alongside a bare `[Execute]` on the tier that resolved it, while a `[Remote]` auth method forces the call to the server.
+
 ## Combining Both Approaches
 
 Use both for defense in depth — AuthorizeFactory for domain-level checks, AspAuthorize for infrastructure-level checks. Both must pass:

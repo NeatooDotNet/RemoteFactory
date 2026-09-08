@@ -32,7 +32,7 @@ internal static class DiagnosticDescriptors
         category: CategoryUsage,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Execute operations are designed for remote execution and must be asynchronous. Change the return type to Task or Task<TResult>.");
+        description: "Execute operations are request-response: the caller awaits a result whether the call runs locally or crosses to the server, so every [Execute] returns Task or Task<TResult>, with or without [Remote]. Change the return type to Task or Task<TResult>.");
 
     /// <summary>
     /// NF0103: Execute method must be a static method.

@@ -62,7 +62,7 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Question | Answer |
 |----------|--------|
 | Should this method be [Remote]? | Only aggregate root entry points |
-| Must [Remote] methods be `internal`? | Yes - `[Remote] public` is error NF0105; `[Remote] internal` promotes to `public` on factory interface |
+| Must [Remote] methods be `internal`? | On instance methods, yes - `[Remote] public` is error NF0105; `[Remote] internal` promotes to `public` on factory interface. Static methods are exempt: `[Remote]` alone decides placement there |
 | Can I use private setters? | No - breaks serialization |
 | Should interface methods have attributes? | No - interface IS the boundary; op attributes emit NF0106 |
 | Which `[AuthorizeFactory]` scopes apply on an interface factory? | `Execute` / `Read` only. CRUD scopes silently never fire. Use parameter matching on the auth class for per-method auth. See `references/interface-factory.md`. |
@@ -70,7 +70,8 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Should child entities have [Remote]? | No - causes N+1 remote calls |
 | Should child entity methods be `internal`? | Yes - server-only, trimmable, invisible to client |
 | Can [Execute] return void? | No, must return Task<T> |
-| Can [Execute] go on a class factory? | Yes, if `public static` and returns containing type |
+| Does [Execute] need [Remote]? | Only if it needs the server. `[Execute]` obeys `[Remote]`: bare, it runs on whichever tier resolves it with that tier's services (client-side engines); with `[Remote]`, the client crosses to the server. See `references/static-factory.md` |
+| Can [Execute] go on a class factory? | Yes - `static`, returning the containing type. `public static` runs where the factory resolves; `internal static` without `[Remote]` is server-only; `[Remote]` decides whether the client crosses |
 | How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope, sequentially; at the default `Immediate` phase that means shared DbContext/transaction, awaited at `Raise` |
 | How do I handle a factory event on the client? | Implement `IFactoryEventRelay` and register it in DI — RemoteFactory invokes `Relay(IReadOnlyList<FactoryEventBase>)` once per remote round-trip |
 | Can the client raise an event itself? | Yes — inject `IFactoryEvents` client-side and `Raise`. It is its own round-trip: server handlers run, and the batch relays back including the caller's own event (`ServerOnly` opts out). Awaited, not fire-and-forget. See `references/factory-events.md`. |

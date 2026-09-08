@@ -33,8 +33,10 @@ public class StaticFactoryTests
     ///
     /// GENERATOR BEHAVIOR: For [Remote, Execute] on _SendNotification:
     /// - Creates delegate type: ExampleCommands.SendNotification
-    /// - Registers delegate in DI for both client and server
-    /// - Client delegate serializes to server; server invokes the method
+    /// - Registers the delegate in DI on both tiers: the client's serializes to the
+    ///   server, the server's runs the method behind an IsServerRuntime guard
+    /// - Without [Remote] (see _ScoreText and LocalExecuteTests) there is one
+    ///   unguarded local delegate and no remote one
     /// </remarks>
     [Fact]
     public async Task Execute_SendNotification_ReturnsResult()

@@ -175,7 +175,37 @@ namespace TestNamespace
 }
 ";
 
-        // Static factory methods are exempt from NF0105 -- [Remote] public static is allowed
+        // Static methods are exempt from NF0105 -- [Remote] public static is allowed. Kept at
+        // EXRM-004 (AC-6): a class-level [Execute] is public static by documented convention and
+        // [Remote] alone drives its guard, so there is no visibility contradiction to report.
+        // Reason recorded at the check in FactoryModelBuilder.
+        var diagnostics = DiagnosticTestHelper.GetDiagnosticsById(source, "NF0105").ToList();
+        Assert.Empty(diagnostics);
+    }
+
+    /// <summary>
+    /// The exemption keys on the method being static, not on [Execute]: a static [Create] on a
+    /// class factory is exempt too. Pinned at EXRM-004 (AC-6) so that narrowing the exemption
+    /// is a deliberate change with a red test, never a side effect.
+    /// </summary>
+    [Fact]
+    public void NF0105_RemotePublicStaticCreate_NoDiagnostic()
+    {
+        var source = @"
+using Neatoo.RemoteFactory;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    [Factory]
+    public partial class StaticCreateTarget
+    {
+        [Remote, Create]
+        public static StaticCreateTarget CreateOnServer(int id) { return new StaticCreateTarget(); }
+    }
+}
+";
+
         var diagnostics = DiagnosticTestHelper.GetDiagnosticsById(source, "NF0105").ToList();
         Assert.Empty(diagnostics);
     }

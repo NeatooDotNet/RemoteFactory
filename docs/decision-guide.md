@@ -105,11 +105,18 @@ Does this operation follow the entity lifecycle (Create/Fetch/Save)?
 └── NO
     ├── One-shot command → Static class with [Execute]
     └── Pre-instantiation decision → Static method with [Execute] on the entity
+
+Does it need the server (a repository, a server-only service)?
+├── YES → add [Remote] — the client crosses to the server
+└── NO  → leave [Remote] off — it runs where it is called, with that tier's services
 ```
 
+`[Execute]` obeys `[Remote]` like every other operation. A bare `[Execute]` has no remote delegate and no endpoint; it runs on whichever tier resolves it, so it is the shape for client-side computation that must not round-trip.
+
 **Examples**:
-- Generate monthly report → Static command with `[Execute]`
-- Check if employee exists, then Create or Fetch → Static method on Employee with `[Execute]`
+- Generate monthly report → Static command with `[Remote, Execute]`
+- Check if employee exists, then Create or Fetch → Static method on Employee with `[Remote, Execute]`
+- Score text in the browser with a pure-computation service → Static command with `[Execute]`, no `[Remote]`
 
 See [Factory Operations](factory-operations.md) for details.
 
