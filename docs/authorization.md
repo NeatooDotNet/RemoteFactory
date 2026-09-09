@@ -376,6 +376,28 @@ internal class SecureEntityAuth(IPermissionRepository repo) : ISecureEntityAuth
 - Remote calls translate to 401/403 HTTP responses
 - Events bypass authorization — they always execute (use for notifications, audit logging, etc.)
 
+### What a denial says
+
+`NotAuthorizedException.Message` is never empty, and what it contains depends on what your authorization method returned:
+
+| Auth method returns | `Message` |
+|---|---|
+| `string?` / `Task<string?>` — a non-empty string | **Your string, verbatim.** Never prefixed or decorated |
+| `bool` / `Task<bool>` — `false` | A framework message naming what was refused: `Authorization denied for operation Save on IOrder; no reason was supplied.` |
+
+A `bool` method has no way to carry a reason, so the framework supplies one rather than leaving the message blank — an exception with an empty message is silently dropped by some telemetry pipelines, which turns a correct refusal into an invisible failure.
+
+`Context` carries the operation and type as a separate property whichever shape you used, so structured logging can capture what was refused without parsing the message:
+
+```csharp
+catch (NotAuthorizedException ex)
+{
+    logger.LogWarning(ex, "Refused: {Context}", ex.Context);  // "operation Save on IOrder"
+}
+```
+
+On an interface factory, where one method can run several authorization methods, the context also names the one that refused — `operation GetItem on IRepository (IRepositoryAuth.CanAccessItem)`. Return a `string?` from the auth method whenever the caller would benefit from knowing *why*.
+
 ## Testing
 
 AuthorizeFactory classes are testable without HTTP — inject a mock user context and call the `Can*` methods directly:

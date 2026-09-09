@@ -133,7 +133,7 @@ Using `Create` / `Fetch` / `Insert` / `Update` / `Delete` scopes on an interface
 
 ### Per-method authorization via parameter matching
 
-Fine-grained per-method auth comes from **parameter matching by type**, not per-operation scopes. An auth method declaring parameters typed to match an interface-method's parameters receives the forwarded values from the call site. Auth methods can return `bool`, `Task<bool>`, `string?`, or `Task<string?>`. String returns surface denial messages in `NotAuthorizedException.Message`.
+Fine-grained per-method auth comes from **parameter matching by type**, not per-operation scopes. An auth method declaring parameters typed to match an interface-method's parameters receives the forwarded values from the call site. Auth methods can return `bool`, `Task<bool>`, `string?`, or `Task<string?>`. String returns surface denial messages in `NotAuthorizedException.Message`, verbatim; a `bool` return carries no reason, so the framework supplies one naming the operation, the interface, and which auth method refused — `Authorization denied for operation GetItem on IRepository (IRepositoryAuth.CanAccessItem); no reason was supplied.` Either way `NotAuthorizedException.Context` exposes that same detail as a property for structured logging. Prefer `string?` whenever the caller benefits from knowing why.
 
 ### Complete example
 
