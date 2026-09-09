@@ -103,6 +103,31 @@ public class ClassFactoryAuthParamTests : IDisposable
         await Assert.ThrowsAsync<NotAuthorizedException>(() => _factory.Save(obj));
     }
 
+    /// <summary>
+    /// A bool-returning auth method carries no reason, so the framework supplies one naming
+    /// the operation and type. Previously this produced an EMPTY exception message, which
+    /// some telemetry pipelines drop outright -- the refusal then left no record at all.
+    /// </summary>
+    /// <remarks>
+    /// Fetch-then-deny, not Create-then-delete: a target that is both IsNew and IsDeleted
+    /// short-circuits to a denial before any auth method runs, so that arrangement would pass
+    /// this test without exercising the path it claims to.
+    /// </remarks>
+    [Fact]
+    public async Task Save_Update_WriteDenied_MessageNamesOperationAndType()
+    {
+        var obj = await _factory.Fetch(Guid.NewGuid());
+        Assert.NotNull(obj);
+        ClassAuthWithParams.AllowWrite = false;
+
+        var ex = await Assert.ThrowsAsync<NotAuthorizedException>(() => _factory.Save(obj));
+
+        Assert.False(string.IsNullOrWhiteSpace(ex.Message));
+        Assert.Contains("Save", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("AuthParamClassTarget", ex.Message, StringComparison.Ordinal);
+        Assert.Equal("operation Save on AuthParamClassTarget", ex.Context);
+    }
+
     [Fact]
     public async Task Save_Delete_WriteAllowed_Passes()
     {

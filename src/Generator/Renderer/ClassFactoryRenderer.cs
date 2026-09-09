@@ -1084,7 +1084,11 @@ internal static class ClassFactoryRenderer
             sb.AppendLine($"            var authorized = ({awaitKeyword} {methodTarget}({paramIdentifiers}));");
             sb.AppendLine("            if (!authorized.HasAccess)");
             sb.AppendLine("            {");
-            sb.AppendLine("                throw new NotAuthorizedException(authorized);");
+            // The Save wrapper cannot name the auth method: the Authorized<T> bubbles up from
+            // LocalInsert/Update/Delete, so which branch (and which check) refused is not known
+            // here. Operation and type are, and they match the {Operation} on {TypeName} wording
+            // of the 5002 AuthorizationDenied log so the two correlate in a search.
+            sb.AppendLine($"                throw new NotAuthorizedException(authorized, \"operation {method.Name} on {model.ServiceTypeName}\");");
             sb.AppendLine("            }");
             sb.AppendLine("            return authorized.Result;");
             sb.AppendLine("        }");
@@ -1530,7 +1534,11 @@ internal static class ClassFactoryRenderer
         }
         else
         {
-            sb.AppendLine("                throw new NotAuthorizedException(authorized);");
+            // AspForbid branch. Unreachable for class factories today -- every class-factory
+            // call site passes aspForbid: false (FactoryModelBuilder; only interface methods
+            // pass true), so no test can reach this. Kept in step with the interface renderer
+            // so the two do not drift if that ever changes.
+            sb.AppendLine($"                throw new NotAuthorizedException(authorized, \"operation {factoryMethod.Name} on {factoryMethod.ServiceType} ({authMethod.ClassName}.{authMethod.MethodName})\");");
         }
 
         sb.AppendLine("            }");

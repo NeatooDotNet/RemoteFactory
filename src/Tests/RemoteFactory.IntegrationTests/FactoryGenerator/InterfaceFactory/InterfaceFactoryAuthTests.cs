@@ -255,6 +255,28 @@ public class InterfaceFactoryAuthTests
         });
     }
 
+    /// <summary>
+    /// A bool-returning auth method supplies no reason of its own, so the message must still
+    /// say what was refused -- and, because an interface method can run several auth methods,
+    /// WHICH one refused it.
+    /// </summary>
+    [Fact]
+    public async Task InterfaceAuth_GetData_AuthorizationFailsBool_MessageNamesTheAuthMethod()
+    {
+        var id = Guid.Parse("00000000-0000-0000-0000-000000000010");
+
+        var ex = await Assert.ThrowsAsync<NotAuthorizedException>(async () =>
+        {
+            await _factory.GetData(id);
+        });
+
+        Assert.False(string.IsNullOrWhiteSpace(ex.Message));
+        Assert.Contains("GetData", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("IAuthorizedService", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("CanExecuteBoolFail", ex.Message, StringComparison.Ordinal);
+        Assert.Equal("operation GetData on IAuthorizedService (InterfaceAuth.CanExecuteBoolFail)", ex.Context);
+    }
+
     [Fact]
     public async Task InterfaceAuth_ProcessData_AuthorizationFailsBool_ThrowsException()
     {

@@ -255,7 +255,19 @@ public class AuthorizationTests
         AuthorizedOrderAuth.AllowDelete = false;
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.Save(order));
+        var ex = await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.Save(order));
+
+        // DESIGN DECISION: a denial always carries a message
+        //
+        // AuthorizedOrderAuth.CanDelete returns bool, so it supplies no reason of its own.
+        // The framework then names the operation and type rather than leaving the message
+        // empty -- an empty exception message is dropped by some telemetry pipelines, which
+        // turns a correct refusal into an invisible one. An auth method that DOES return a
+        // string keeps its message verbatim; see InterfaceFactoryAuthorizationTests.
+        Assert.False(string.IsNullOrWhiteSpace(ex.Message));
+        Assert.Contains("Save", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("IAuthorizedOrder", ex.Message, StringComparison.Ordinal);
+        Assert.Equal("operation Save on IAuthorizedOrder", ex.Context);
 
         local.Dispose();
     }

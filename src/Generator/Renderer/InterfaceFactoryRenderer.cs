@@ -452,8 +452,13 @@ internal static class InterfaceFactoryRenderer
 
         if (throwOnFailure)
         {
-            // Regular methods throw NotAuthorizedException on auth failure
-            sb.AppendLine("                throw new NotAuthorizedException(authorized);");
+            // Regular methods throw NotAuthorizedException on auth failure.
+            // The context names which check refused: an interface method can run several auth
+            // methods, and this throw is emitted once per method, so each site can say which
+            // one it was. It is only used when the auth method returned bool (no message) --
+            // a string return supplies its own message and this is ignored. All three names
+            // are bare identifiers (symbol.Name), so a plain literal needs no escaping.
+            sb.AppendLine($"                throw new NotAuthorizedException(authorized, \"operation {factoryMethod.Name} on {factoryMethod.ServiceType} ({authMethod.ClassName}.{authMethod.MethodName})\");");
         }
         else
         {
