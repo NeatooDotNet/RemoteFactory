@@ -1,0 +1,57 @@
+DICT-002 unit tests against the UNCHANGED generator (red-first)
+Recorded 2026-10-05. Tree: commit 9d6fae2 plus DictionaryAndFieldDtoDiscoveryTests.cs only; src/Generator untouched.
+Command: dotnet build <UnitTests.csproj>; dotnet test <UnitTests.csproj> --no-build --filter FullyQualifiedName~DictionaryAndFieldDtoDiscoveryTests
+
+== Per-TFM totals (net9.0, net10.0) ==
+Total tests: 18
+     Passed: 3
+     Failed: 15
+Total tests: 18
+     Passed: 3
+     Failed: 15
+
+== Passed (the three safety tests, expected green before and after) ==
+Passed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SelfEnumerableGeneric_TerminatesWithPreChangeRegistration [23 ms]
+Passed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SystemOnlyDictionary_RegistersNothing [15 ms]
+Passed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.NonPublicStaticAndConstFields_NotWalked [15 ms]
+Passed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SelfEnumerableGeneric_TerminatesWithPreChangeRegistration [30 ms]
+Passed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.NonPublicStaticAndConstFields_NotWalked [22 ms]
+Passed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SystemOnlyDictionary_RegistersNothing [16 ms]
+
+== Failed (every shape test) ==
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.NestedListOfLists_InnerElementRegistered [710 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.PublicFieldOnEntity_FieldTypeRegistered [15 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.PublicFieldOnDto_FieldTypeRegistered [14 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryKeyDto_Registered [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryValueDto_ItsOwnGraphStillWalked [15 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SignatureReturn_DictionaryValueDto_Registered [16 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.PublicFieldRecord_PreservedNotRegistered [14 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryValueRecord_PreservedNotRegistered [16 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.EventRecordProperty_DictionaryValueDto_RegisteredInEventRegistrar [26 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryValueWrappedInList_ElementRegistered [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryShapes_ValueDtoRegistered(propertyType: "Dictionary<string, ValueDto>") [15 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryShapes_ValueDtoRegistered(propertyType: "IReadOnlyDictionary<string, ValueDto>") [18 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryShapes_ValueDtoRegistered(propertyType: "IDictionary<string, ValueDto>") [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.EntityProperty_DictionaryValueDto_RegisteredInEntityRegistrar [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SignatureParameter_DictionaryValueDto_Registered [15 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryShapes_ValueDtoRegistered(propertyType: "IReadOnlyDictionary<string, ValueDto>") [879 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryShapes_ValueDtoRegistered(propertyType: "IDictionary<string, ValueDto>") [14 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryShapes_ValueDtoRegistered(propertyType: "Dictionary<string, ValueDto>") [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.PublicFieldOnDto_FieldTypeRegistered [15 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.EntityProperty_DictionaryValueDto_RegisteredInEntityRegistrar [19 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SignatureReturn_DictionaryValueDto_Registered [20 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.PublicFieldRecord_PreservedNotRegistered [14 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryValueDto_ItsOwnGraphStillWalked [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.PublicFieldOnEntity_FieldTypeRegistered [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.NestedListOfLists_InnerElementRegistered [16 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryValueRecord_PreservedNotRegistered [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryValueWrappedInList_ElementRegistered [16 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.EventRecordProperty_DictionaryValueDto_RegisteredInEventRegistrar [29 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.DictionaryKeyDto_Registered [13 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.SignatureParameter_DictionaryValueDto_Registered [15 ms]
+
+== Failure kinds: all 30 are assertion misses, no exception or compile error ==
+     30 Assert.Contains() Failure: Item not found in set
+
+EventRecordProperty_DictionaryValueDto_RegisteredInEventRegistrar failed at line 182, the PayloadDto assertion.
+Line 181, the event record's own PreserveType, passed: the event registrar exists and only the dictionary value is missing.
