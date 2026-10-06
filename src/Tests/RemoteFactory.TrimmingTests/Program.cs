@@ -361,6 +361,24 @@ if (!EventSubscribeOnlySmokeTest.Run())
     failedChecks.Add("subscribe-only event preservation");
 }
 
+// Dictionary-value DTO smoke test (DICT-001): a DTO reachable only as a dictionary
+// value type, whose only construction site is an async [Remote] body trimmed from
+// this client. It survives only through the walk's dictionary-entry unwrapping, and
+// was observed red against the generator before the walk had it.
+if (!DictionaryAndFieldDtoSmokeTest.RunDictionaryValue())
+{
+    failedChecks.Add("dictionary-value DTO preservation");
+}
+
+// Public-field DTO smoke test (DICT-001): a DTO reachable only through a public
+// field of a walked DTO. It survives only through the walk's field visit, and was
+// observed red against the generator before the walk had it. Separate from the
+// dictionary check so one red cannot hide the other.
+if (!DictionaryAndFieldDtoSmokeTest.RunPublicField())
+{
+    failedChecks.Add("public-field DTO preservation");
+}
+
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");

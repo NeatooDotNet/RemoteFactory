@@ -143,11 +143,13 @@ public static partial class OrderAuditHdlrs
 // Nested records with parameterless ctors (plain DTOs) instead get
 // DtoConstructorRegistry.Register<N>(() => new N()) — same trimming effect.
 //
-// Known gap: Dictionary<K,V> value types are not walked (the walk unwraps the
-// KeyValuePair enumerable, which is a System type). If your event exposes
-// Dictionary<string, Payload>, preserve Payload explicitly in DI setup
-// (DtoConstructorRegistry.PreserveType<Payload>()) or expose it through a
-// walked property.
+// Dictionary<K,V> keys and values are walked too, and so are public fields
+// (v1.10.1): an event exposing Dictionary<string, Payload> gets Payload
+// preserved with no action. The walk cannot reach a member typed as an
+// interface or abstract class whose concrete type is a plain DTO, a tuple
+// element, the element of a non-generic collection subclass, or an object
+// value. Preserve those explicitly in client DI setup, with
+// DtoConstructorRegistry.PreserveType<T>() or Register<T>(() => new T()).
 // =============================================================================
 
 /// <summary>

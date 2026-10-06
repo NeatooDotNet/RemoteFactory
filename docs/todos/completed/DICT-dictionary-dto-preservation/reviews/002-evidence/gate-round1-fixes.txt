@@ -1,0 +1,44 @@
+DICT-002 gate round 1 fixes: red against the first-cut walker (c381e77), then green
+Recorded 2026-10-06.
+
+Test changes (DictionaryAndFieldDtoDiscoveryTests.cs):
+  - Run() fails if the generator threw; FactoryTree/EventRegistrarTree fail if no tree matched.
+  - SystemOnly test renamed SystemOnlyDictionaries_RegisterNothingOfTheirOwn and anchored by AnchorDto.
+  - NullableDictionaryValue_ValueDtoRegistered added (pin).
+  - ConsumerGenericCollection_CollectionAndElementBothRegistered x3 added (code-review callout 1).
+
+== Against the first-cut walker c381e77 ==
+Total tests: 23
+     Passed: 20
+     Failed: 3
+Total tests: 23
+     Passed: 20
+     Failed: 3
+Failed, each on the PagedList<ValueDto> assertion:
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.ConsumerGenericCollection_CollectionAndElementBothRegistered(propertyType: "PagedList<ValueDto>") [728 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.ConsumerGenericCollection_CollectionAndElementBothRegistered(propertyType: "Dictionary<string, PagedList<ValueDto>>") [17 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.ConsumerGenericCollection_CollectionAndElementBothRegistered(propertyType: "List<PagedList<ValueDto>>") [16 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.ConsumerGenericCollection_CollectionAndElementBothRegistered(propertyType: "List<PagedList<ValueDto>>") [39 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.ConsumerGenericCollection_CollectionAndElementBothRegistered(propertyType: "PagedList<ValueDto>") [24 ms]
+Failed RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests.ConsumerGenericCollection_CollectionAndElementBothRegistered(propertyType: "Dictionary<string, PagedList<ValueDto>>") [18 ms]
+
+== After keeping a consumer generic collection as a candidate ==
+Total tests: 23
+     Passed: 23
+Total tests: 23
+     Passed: 23
+
+== Full suites, round 2 ==
+Main build: first attempt hit MSB3552 (issue #94, PreBuild RemoveDir race; log kept as 001-002-round2-build-msb3552-flake.log); immediate rebuild of the same tree: 0 errors.
+001-002-round2-test.log:Passed!  - Failed:     0, Passed:   816, Skipped:     0, Total:   816, Duration: 3 s - RemoteFactory.UnitTests.dll (net9.0)
+001-002-round2-test.log:Passed!  - Failed:     0, Passed:   816, Skipped:     0, Total:   816, Duration: 4 s - RemoteFactory.UnitTests.dll (net10.0)
+001-002-round2-test.log:Passed!  - Failed:     0, Passed:   628, Skipped:     5, Total:   633, Duration: 4 s - RemoteFactory.IntegrationTests.dll (net9.0)
+001-002-round2-test.log:Passed!  - Failed:     0, Passed:   628, Skipped:     5, Total:   633, Duration: 3 s - RemoteFactory.IntegrationTests.dll (net10.0)
+001-002-round2-design-test.log:Passed!  - Failed:     0, Passed:   103, Skipped:     0, Total:   103, Duration: 458 ms - Design.Tests.dll (net9.0)
+001-002-round2-design-test.log:Passed!  - Failed:     0, Passed:   103, Skipped:     0, Total:   103, Duration: 523 ms - Design.Tests.dll (net10.0)
+
+== Trimmed, round 2 ==
+Dictionary-value DTO smoke PASSED: a dictionary value type constructed only inside an async [Remote] body survived trimming.
+Public-field DTO smoke PASSED: a DTO reachable only through a public field survived trimming.
+Trimming verification app completed. All checks passed.
+Trimming verification passed.

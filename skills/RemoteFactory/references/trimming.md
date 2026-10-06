@@ -203,21 +203,52 @@ The concrete type is resolved at compile time using the naming convention (`IPer
 
 ## DTO and Event Record Preservation
 
-When a domain assembly is marked `IsTrimmable=true`, the IL trimmer strips constructor and property metadata from types that are not directly referenced in compiled code. This breaks `System.Text.Json` deserialization because `DefaultJsonTypeInfoResolver` discovers constructors and properties through reflection — reflection that fails once the metadata has been trimmed. Two categories of types cross the client/server boundary via JSON and therefore need preservation:
+When a domain assembly is marked `IsTrimmable=true`, the IL trimmer strips constructor and property metadata from types that are not directly referenced in compiled code. This breaks `System.Text.Json` deserialization because `DefaultJsonTypeInfoResolver` discovers constructors and properties through reflection — reflection that fails once the metadata has been trimmed. The generator preserves the DTOs it can reach from three entry points:
 
-1. **Plain DTOs returned by factory methods** — e.g., the `EmployeeDto` from `Task<EmployeeDto>` on an interface factory method.
-2. **Event records raised via `IFactoryEvents.Raise<T>()`** — both server-raised events relayed to the client (`RemoteResponseDto.RelayedEvents`) and client-raised events sent to the server.
+1. **Factory method signatures** — return types and non-service parameters, e.g., the `EmployeeDto` from `Task<EmployeeDto>` on an interface factory method.
+2. **`[Factory]` entity members** — DTOs and records carried on an aggregate that never appear in a signature themselves.
+3. **Event records** — every concrete `FactoryEventBase` descendant, whether server-raised and relayed to the client (`RemoteResponseDto.RelayedEvents`) or client-raised and sent to the server.
 
-Both are handled automatically by the generator. Two primitives do the work:
+Two primitives do the work:
 
 | Primitive | Emitted when | Behavior |
 |-----------|--------------|----------|
 | `DtoConstructorRegistry.Register<T>(() => new T())` | `T` has a public parameterless constructor | `[DynamicallyAccessedMembers(All)]` preserves every member; `NeatooJsonTypeInfoResolver.CreateObject` uses the lambda instead of `Activator.CreateInstance` |
 | `DtoConstructorRegistry.PreserveType<T>()` | `T` has only parameterized constructors (typical of records) | `[DynamicallyAccessedMembers(All)]` preserves every member; no constructor factory is recorded — STJ flows through the parameterized-ctor pipeline (`RecordBypassConverterFactory`) |
 
-### DTO return-type discovery
+### What the DTO walk reaches
 
-The generator walks factory method return types, unwrapping `Task<T>`, nullable `T?`, arrays, and single-argument collection types (`IReadOnlyList<T>`, `List<T>`, `IEnumerable<T>`), and emits a `Register` or `PreserveType` call for each discovered DTO. Nested reference-type properties on each discovered DTO are walked recursively, with cycle detection.
+From each entry point the generator walks public instance members — properties with a getter **and public fields**, because `NeatooJsonSerializer` runs with `IncludeFields = true` — recursively, with cycle detection, and emits a `Register` or `PreserveType` call for each DTO it finds. Every member type is unwrapped to what the serializer constructs:
+
+- `Task<T>` on a return type, and nullable `T?` at any level.
+- Arrays and every generic collection, recursively — `List<List<T>>` and `Dictionary<string, List<T>>` both reach `T`.
+- Both the key and the value of every generic dictionary — `Dictionary`, `IDictionary`, `IReadOnlyDictionary`, and the sorted, concurrent, immutable, and custom generic dictionaries.
+- A generic collection of your own, such as `PagedList<T> : List<T>`, **and** its element. The serializer constructs both.
+
+An entity's public fields are walked as well as its properties. In `Named` format, and always for an entity whose constructor takes required parameters, an entity goes through the reflection serializer and its public fields cross the wire; only the default ordinal path carries properties alone. Dictionary entries and public fields are reached from v1.10.1; earlier versions missed them.
+
+### What the DTO walk does not reach
+
+A DTO reachable **only** through one of these shapes needs explicit preservation:
+
+| Shape | Why the walk stops |
+|-------|--------------------|
+| A member typed as an interface or abstract class, when the concrete type is a plain DTO rather than a `[Factory]` type | The `$type` discriminator picks the concrete type at runtime |
+| A tuple element, such as `(LocationDto Location, int Rank)` | Tuples are `System` types |
+| A non-generic collection subclass, such as `class Locations : List<LocationDto>` | The subclass is preserved; its element type is not reached |
+| A value typed `object` | There is no static type to follow |
+| A DTO that reaches the client only through your own HTTP or JSON code | It never flows through a factory, an entity, or an event |
+
+Preserve such a type in the client's `LinkerConfig.xml` with `<type fullname="YourApp.Domain.LocationDto" preserve="all" />`, or in client DI setup with the same call the generator would have emitted:
+
+```csharp
+using Neatoo.RemoteFactory.Internal;
+
+DtoConstructorRegistry.Register<LocationDto>(() => new LocationDto()); // public parameterless constructor
+DtoConstructorRegistry.PreserveType<PriceBreakdown>();               // positional record
+```
+
+**Upgrading across v1.7.0.** Before v1.7.0, async `[Remote]` bodies shipped to trimmed clients, so a `new T()` inside one rooted `T`'s constructor by accident. v1.7.0 removed those bodies, and the accidental root went with them. A DTO constructed only inside an async `[Remote]` body, and not reached by the walk, can work on v1.6.x and fail after upgrading, reported as `DeserializeNoConstructor` in Blazor WebAssembly. Check such types against the table above before publishing an upgraded client.
 
 ### Factory event preservation
 
@@ -230,29 +261,21 @@ Net effect: if a record inherits `FactoryEventBase`, its constructors and proper
 
 ```csharp
 public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
-// Constructors and properties preserved automatically via base class annotation.
+// Constructors and properties preserved by the generated event-preservation registrar.
 ```
 
 `IFactoryEvents.Raise<T>` and `FactoryEventHandlerRegistry.RegisterHandler<TEvent>` carry `[DynamicallyAccessedMembers(All)]` on their generic parameter as belt-and-suspenders coverage for concrete call-sites.
 
 ### Nested DTO types reachable through event properties
 
-The base-class annotation covers the event's own ctors and properties — it does not recursively annotate property *types*. If an event property is itself a complex record or DTO, it needs its own preservation:
+Automatically preserved. The event-preservation registrar walks each event's members with the same DTO walk used for signatures and entities, so a nested record or DTO needs no action:
 
 ```csharp
-public record PriceBreakdown(decimal Base, decimal Tax);    // NOT automatically preserved
+public record PriceBreakdown(decimal Base, decimal Tax);   // preserved through the Breakdown property
 public record OrderPriced(int OrderId, PriceBreakdown Breakdown) : FactoryEventBase;
-//                                       ^^^^^^^^^^^^^^^
-//                                       Reachable through Breakdown property — needs preservation
 ```
 
-Three ways to preserve `PriceBreakdown`:
-
-- Return it from any factory method (the factory-return walker preserves it via `Register` or `PreserveType`)
-- Use it as a parameter type on a factory method (same walker)
-- Call `DtoConstructorRegistry.PreserveType<PriceBreakdown>()` (or `Register<PriceBreakdown>(() => new PriceBreakdown(...))` if it has a parameterless ctor) in DI setup
-
-In practice, types reachable through event properties are usually also returned from or passed to factory methods, so this rarely needs explicit handling.
+The only exceptions are the shapes listed in [What the DTO walk does not reach](#what-the-dto-walk-does-not-reach). (An earlier version of this section said nested event types needed manual preservation. That was true before the generator began walking event graphs, and is no longer.)
 
 ### User code that forwards `Raise<T>` through a generic wrapper
 
@@ -281,7 +304,7 @@ Direct calls with a concrete type (`_factoryEvents.Raise(new OrderCheckoutComple
 
 ### What you need to know
 
-If you return a plain DTO from a factory method, carry a DTO as a `[Factory]` entity property, or declare a `FactoryEventBase` descendant in a project with a direct `Neatoo.RemoteFactory` `PackageReference`, the type and its constructors and properties are automatically trimming-safe. Nested property types reachable from events are walked and preserved automatically too. One boundary: private/protected/file-scoped nested event records cannot be preserved (the generated registrar cannot reference them) — declare wire-crossing events as top-level or internal/public nested types.
+If you return a plain DTO from a factory method, carry a DTO as a `[Factory]` entity property, or declare a `FactoryEventBase` descendant in a project with a direct `Neatoo.RemoteFactory` `PackageReference`, the type and its constructors and properties are automatically trimming-safe. Nested types reachable from any of these are walked and preserved automatically too, except through the shapes in [What the DTO walk does not reach](#what-the-dto-walk-does-not-reach). One more boundary: private/protected/file-scoped nested event records cannot be preserved (the generated registrar cannot reference them) — declare wire-crossing events as top-level or internal/public nested types.
 
 ## IFactorySaveMeta Preservation
 

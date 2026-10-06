@@ -39,7 +39,7 @@ A class whose only constructors require non-default arguments cannot be built vi
 
 The generator does not look at `[Service]` — only at parameter count and default values. `[Service]` on a ctor parameter is documentation; it does not change which path the generator emits.
 
-**Gotcha:** Mixing required *data* parameters into the constructor (e.g., `MyEntity(int id, IRepo repo)`) also disables ordinal, but DI cannot supply `id` from the container. Either the data needs to be a public property restored from JSON, or you need a parameterless / all-defaults ctor available for DI to choose. Field state never crosses the wire on either path — only public-getter-and-setter properties do.
+**Gotcha:** Mixing required *data* parameters into the constructor (e.g., `MyEntity(int id, IRepo repo)`) also disables ordinal, but DI cannot supply `id` from the container. Either the data needs to be a public property restored from JSON, or you need a parameterless / all-defaults ctor available for DI to choose. Private field state — such as an injected service stored in a `private readonly` field — never crosses the wire on either path. Public fields differ by path: the ordinal array carries properties only, but the named JSON path goes through `System.Text.Json` with `IncludeFields` on, so a public field does cross there. Prefer public properties for state that must reach the other side.
 
 ---
 
