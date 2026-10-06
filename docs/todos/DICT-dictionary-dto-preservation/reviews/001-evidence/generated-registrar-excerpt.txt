@@ -1,0 +1,4 @@
+121:        public static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+127:            DtoConstructorRegistry.Register<global::RemoteFactory.TrimmingTests.TrimFieldHost>(() => new global::RemoteFactory.TrimmingTests.TrimFieldHost());
+138:        internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
+140:            global::RemoteFactory.TrimmingTests.TrimDictCarrierFactory.FactoryServiceRegistrar(services, remoteLocal);

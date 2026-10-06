@@ -5,7 +5,7 @@
 **Status:** In Progress
 **Priority:** Medium
 **Created:** 2026-09-10
-**Last Updated:** 2026-10-05
+**Last Updated:** 2026-10-06
 **Initial split:** 4 plans; DICT-004 Retired 2026-10-05.
 **Plan cap:** 6 — max(ceil(4 × 1.5), 4 + 2); counts plan numbers issued, including Abandoned and Retired. Issuing 007 is a stop-and-ask.
 **Arc branch:** DICT — cut from main at Step 1 (repo convention, `docs/todos/CONVENTIONS.md`); every plan and punchlist branch PRs into it; it PRs into main at Step 8.
@@ -20,12 +20,12 @@ The generator's DTO discovery tells the trimmer which types a trimmed client wil
 
 Priority words proposed by the orchestrator; the user confirms or changes them before DICT-001 is drafted. AC-7 and AC-8 were removed 2026-10-05 and their numbers are not reused.
 
-- [ ] **AC-1** · Must — A DTO reachable only as a dictionary value type through a factory signature, a `[Factory]` entity property, or an event record property deserializes on a publish-trimmed client with no consumer LinkerConfig entry.
-- [ ] **AC-2** · Could — A DTO reachable only as a dictionary key type is preserved the same way.
-- [ ] **AC-3** · Must — The trimming gate carries a dictionary-valued DTO whose only construction site is an async `[Remote]` body, and that case was observed red against the pre-fix generator before the fix was trusted.
+- [x] **AC-1** · Must — A DTO reachable only as a dictionary value type through a factory signature, a `[Factory]` entity property, or an event record property deserializes on a publish-trimmed client with no consumer LinkerConfig entry.
+- [x] **AC-2** · Could — A DTO reachable only as a dictionary key type is preserved the same way.
+- [x] **AC-3** · Must — The trimming gate carries a dictionary-valued DTO whose only construction site is an async `[Remote]` body, and that case was observed red against the pre-fix generator before the fix was trusted.
 - [ ] **AC-4** · Should — The v1.7.0 release notes and `docs/trimming.md` state that upgrading across v1.7.0 removes the accidental root for DTOs constructed only inside async `[Remote]` bodies.
 - [ ] **AC-5** · Should — The published docs, the skill, the Design comments, and the release notes for the shipping version describe the shapes the walk covers and the shapes it does not, per the CI/CD standards.
-- [ ] **AC-6** · Should — A DTO reachable only through a public field of a walked type is preserved the same way, with a harness case observed red first.
+- [x] **AC-6** · Should — A DTO reachable only through a public field of a walked type is preserved the same way, with a harness case observed red first.
 
 AC-2 is Could because System.Text.Json deserializes only string, primitive, enum, and a few framework key types without a custom converter, so a DTO-typed key is rare and needs consumer work regardless.
 
@@ -45,8 +45,8 @@ AC-2 is Could because System.Text.Json deserializes only string, primitive, enum
 
 | # | File | Title (≤ 8 words) | Serves | Status | PR |
 |---|------|-------|--------|--------|----|
-| 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Draft | — |
-| 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | Draft | — |
+| 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Done | #106 |
+| 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | Done | #106 |
 | 003 | [003-docs-design-skill-release](./plans/003-docs-design-skill-release.md) | Docs, Design, skill, and release notes | AC-5 | Draft | — |
 | 004 | [004-runtime-typed-member-diagnostic](./plans/004-runtime-typed-member-diagnostic.md) | Diagnostic for runtime-typed serialized members | — | Retired — removed by Goal narrowing | — |
 
@@ -60,7 +60,8 @@ Intended order: 001 → 002 → 003.
 
 ## Dismissed
 
-- (none yet)
+- DICT-001 · Evidence `.txt` files carry no exit codes · each evidence README records every exit code
+- DICT-002 · Shared `DiagnosticTestHelper` swallows generator exceptions as CS8785 · shared helper beyond DICT's criteria; DICT's own tests now guard themselves
 
 ---
 
@@ -77,6 +78,21 @@ Intended order: 001 → 002 → 003.
 - **Decision:** Re-split
 - **Index changes:** Goal narrowed. AC-7 and AC-8 removed to Out of Scope; 001, 002, 003 narrowed; 004 Retired. 4 of 6 issued.
 - **Follow-up:** DICT-001
+
+### 2026-10-05 — DICT-001 · serves AC-3, AC-6
+- **Finding:** Red-first cases shipped alone would leave a red harness that this plan's own gate must veto.
+- **Decision:** Amend
+- **Follow-up:** DICT-001 and DICT-002 share one branch and one PR; red evidence is captured at the commit before the fix.
+
+### 2026-10-05 — DICT-002 · serves AC-1
+- **Finding:** A generic type that enumerates an ever-larger version of itself never repeats, so recursive unwrapping needs a depth cap as well as a path check.
+- **Decision:** Amend
+- **Follow-up:** n/a — cap of 8, pinned by a test whose negative control overflowed the stack.
+
+### 2026-10-06 — DICT-002 · serves AC-1
+- **Finding:** The first cut swapped registrations for a consumer generic collection nested in a list or dictionary, keeping the element but dropping the collection.
+- **Decision:** Amend
+- **Follow-up:** n/a — the collection is kept as a candidate as well as unwrapped, red-first at `c381e77`.
 
 ---
 

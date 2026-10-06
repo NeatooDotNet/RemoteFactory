@@ -1,0 +1,17 @@
+DICT-002 unit tests against the FIXED walker (green), plus the depth-cap negative control
+Recorded 2026-10-05.
+
+== Green run: commit 6d5b262 plus the DtoTypeWalker.cs rewrite and the depth-cap test ==
+Command: dotnet build <UnitTests.csproj>; dotnet test <UnitTests.csproj> --no-build --filter FullyQualifiedName~DictionaryAndFieldDtoDiscoveryTests
+Total tests: 19
+     Passed: 19
+Total tests: 19
+     Passed: 19
+All 15 shape cases that were red in unit-red.txt now pass on both TFMs; the 3 safety cases still pass; the new depth-cap case passes.
+
+== Negative control: depth cap lifted ==
+MaxUnwrapDepth temporarily set to int.MaxValue, rebuilt, and ExpandingGenericEnumerable_TerminatesAtDepthCap run alone on net10.0:
+[xUnit.net 00:01:00.73] Catastrophic failure: Test process crashed with exit code -1073741571.
+Exit code -1073741571 is 0xC00000FD, STATUS_STACK_OVERFLOW.
+The cap was restored to 8 immediately afterwards; the full gate build rebuilds the generator from that source.
+Without the cap, a type whose enumeration expands without repeating overflows the stack, which fails the whole generator and removes every factory from a consumer build.

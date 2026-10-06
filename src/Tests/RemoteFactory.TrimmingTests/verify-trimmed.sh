@@ -71,6 +71,11 @@ echo "-- positive controls"
 # Named in full, not by prefix. `NeatooEventHandlerRegistrar_` alone is satisfied by the sync
 # handler class, so the async handler class could stop generating entirely — taking its markers
 # absent for the wrong reason — while the gate stayed green.
+#
+# NeatooClassFactoryRegistrar_TrimDictCarrier (DICT-001) is the registrar the entity walk emits
+# the dictionary-value and public-field preservations into. The harness's own checks catch a
+# dead registrar once the walk covers those shapes; this control says the holder was emitted at
+# all. It is a control, not a discriminator: it is present before and after DICT-002.
 for control in \
     "NeatooFactoryRegistrar_TrimTestCommands" \
     "NeatooEventHandlerRegistrar_TrimRelayHandlers" \
@@ -81,7 +86,8 @@ for control in \
     "ITrimSaveTargetFactory" \
     "NeatooClassFactoryRegistrar_TrimTestEntity" \
     "NeatooClassFactoryRegistrar_TrimSaveTarget" \
-    "NeatooClassFactoryRegistrar_TrimExecTarget"
+    "NeatooClassFactoryRegistrar_TrimExecTarget" \
+    "NeatooClassFactoryRegistrar_TrimDictCarrier"
 do
     if present "$control"; then
         echo "   ok      $control"
