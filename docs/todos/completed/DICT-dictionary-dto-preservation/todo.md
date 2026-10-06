@@ -2,7 +2,7 @@
 
 **ID:** DICT
 **Type:** Bug
-**Status:** In Progress
+**Status:** Complete
 **Priority:** Medium
 **Created:** 2026-09-10
 **Last Updated:** 2026-10-06
@@ -117,22 +117,53 @@ Intended order: 001 → 002 → 003.
 
 ## Close-Out Audit
 
-(Filled at Step 7.)
+### 2026-10-06 — Grade: A
+
+**Veto-tier findings:** None. The arc head is green after the main merge: both solutions build with 0 errors. Unit (816) and integration (628, 5 skipped) tests pass, as do Design's 103, on net9.0 and net10.0.
+**Callouts:** None that affect a criterion. The 2026-09-11 Discovery Log entry is about 64 words against a 60-word budget and is accepted. The audit marked the bare "DICT-003 commits" line in the v1.10.1 notes as theoretical and did not triage it. It now carries the SHAs.
+**Accepted gaps (B only):** n/a. The grade is A, and every criterion traces to code and evidence.
+**User acknowledgment:** 2026-10-06. Acknowledged; proceed to Step 8.
+**Full audit:** [`reviews/close-out-audit.md`](./reviews/close-out-audit.md)
 
 ---
 
 ## Follow-on
 
-(Filled at Step 8.)
+- Push the `v1.10.0` tag so it reaches NuGet. Then tag `v1.10.1` and replace its "Not yet" Released line and both "Unreleased" index dates · `docs/release-notes/` · DICT-003 · user's
+- Sorted, concurrent, and immutable dictionaries, `Dto[][]`, and `List<MyStruct?>` are reached by the walker but no test pins them. The unit-test helper references CoreLib only · `DictionaryAndFieldDtoDiscoveryTests.cs` · close-out audit · Could
+- A doc comment still says the walk covers "public properties of discovered DTOs" · `src/Generator/FactoryGenerator.Types.cs:807-808` · close-out audit · Could
+- Intermittent `MSB3552` recurred during DICT-002's round-2 build. Its log is kept as `reviews/001-002-round2-build-msb3552-flake.log` · [#94](https://github.com/NeatooDotNet/RemoteFactory/issues/94) · DICT-002 · Could
+- The shared `DiagnosticTestHelper` swallows generator exceptions as CS8785. It was dismissed here as beyond DICT's criteria, but the gap stands for every other test that uses it · `src/Tests/RemoteFactory.UnitTests` · DICT-002 test review · Could
 
 ---
 
 ## Docs & Retro
 
-(Filled at Step 8.)
+**Documentation:** shipped in DICT-003, as a plan of its own after the walker change.
+- `docs/trimming.md` gained "What the walk reaches", "What the walk does not reach" (each shape with both remedies), and "Upgrading across v1.7.0".
+- The v1.7.0 Migration Guide gained the reverse hazard, marked as added after the release.
+- The skill's trimming reference states the same rule and lost its stale nested-event section.
+- The skill's service-injection reference now says public fields cross on the named path, which the probe recorded in `reviews/003-evidence/` showed.
+- `CLAUDE-DESIGN.md` and the Design comment in `FactoryEventHandlerPattern.cs` describe the shipped walk.
+- v1.10.1's notes, index rows, `nav_order` shift, and version properties are cut but not tagged.
+
+**Retro (one paragraph):** Four plans were issued against a cap of 6. Three are Done and one was Retired. The real cost was scope, not implementation. The todo was opened for one consumer failure, widened to the serializer's whole shape set plus a diagnostic, and then narrowed back to dictionaries and public fields. Each turn came from the user asking whether the walk is a rabbit hole. The narrowed answer held: the walk reaches what can be known statically, and the docs now list the rest with the remedy beside each entry, so a consumer is never surprised again. The red-first discipline paid three times:
+- The trimmed harness reproduced the consumer's exact exception before the walker changed.
+- The depth cap was pinned by a negative control that overflowed the stack.
+- The code review's catch, that the first cut swapped which half of `List<PagedList<Dto>>` was registered, went in as a red test before the fix.
+
+The doc review paid as well. Its round-1 callouts were all claims that overstated the evidence ("observed red" over 23 tests when 15 had been, "CI" for a local run). Those slips are the ones a writer makes about their own work, and a reviewer catches them cheaply. One process miss: the stacked PR #107 merged into its base 27 seconds after that base merged, before GitHub retargeted it, and #109 had to carry it into the arc. Next time, open a stacked plan PR against the arc only after its predecessor merges, or say in the PR to merge only after retargeting. Second process miss: the priority words stayed proposed until close-out. No gate turned on them, but the confirmation belongs before the first plan.
 
 ---
 
 ## Results / Conclusions
 
-(Filled at Step 8.)
+```
+Plans: 4 issued of 6 cap — 3 Done, 0 Abandoned, 1 Retired (004, Goal narrowing).
+Punchlist: 1 closed (pulled down into DICT-003). Dismissed: 2. Follow-on: 5.
+Gates: 5 review files — 2 test reviews, 2 code reviews, 1 close-out audit.
+       DICT-001 closed in one round; DICT-002 and DICT-003 each closed at round 2.
+Issues recurred, not filed: #94.
+Close-Out Audit: Grade A (acknowledged 2026-10-06).
+Arc: DICT → main, PR (pending).
+```
