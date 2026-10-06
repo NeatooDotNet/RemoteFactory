@@ -78,6 +78,11 @@ Intended order: 001 → 002 → 003.
 - **Index changes:** Goal narrowed. AC-7 and AC-8 removed to Out of Scope; 001, 002, 003 narrowed; 004 Retired. 4 of 6 issued.
 - **Follow-up:** DICT-001
 
+### 2026-10-05 — DICT-001 · serves AC-3, AC-6
+- **Finding:** Red-first cases shipped alone would leave a red harness that this plan's own gate must veto.
+- **Decision:** Amend
+- **Follow-up:** DICT-001 and DICT-002 share one branch and one PR; red evidence is captured at the commit before the fix.
+
 ---
 
 ## Skipped Steps

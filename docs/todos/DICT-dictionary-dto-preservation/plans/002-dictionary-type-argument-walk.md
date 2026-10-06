@@ -8,7 +8,7 @@
 **Last Updated:** 2026-10-05
 **Plan-review opt-in:** No — one generator seam, additive, no public API or documented-rule change.
 **Code-review opt-in:** Yes — behavior-changing generator emission.
-**Branch:** dict-002-dictionary-type-argument-walk — cut from the arc at Step 2
+**Branch:** dict-001-gate-dictionary-carried-dto — shared with DICT-001 (one seam; Discovery Log 2026-10-05 / DICT-001)
 **PR:** —
 
 ---
