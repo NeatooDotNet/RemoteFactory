@@ -45,8 +45,8 @@ AC-2 is Could because System.Text.Json deserializes only string, primitive, enum
 
 | # | File | Title (≤ 8 words) | Serves | Status | PR |
 |---|------|-------|--------|--------|----|
-| 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Done | — |
-| 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | Done | — |
+| 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Done | #106 |
+| 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | Done | #106 |
 | 003 | [003-docs-design-skill-release](./plans/003-docs-design-skill-release.md) | Docs, Design, skill, and release notes | AC-5 | Draft | — |
 | 004 | [004-runtime-typed-member-diagnostic](./plans/004-runtime-typed-member-diagnostic.md) | Diagnostic for runtime-typed serialized members | — | Retired — removed by Goal narrowing | — |
 

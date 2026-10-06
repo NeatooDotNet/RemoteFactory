@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No — one generator seam, additive, no public API or documented-rule change.
 **Code-review opt-in:** Yes — behavior-changing generator emission.
 **Branch:** dict-001-gate-dictionary-carried-dto — shared with DICT-001 (one seam; Discovery Log 2026-10-05 / DICT-001)
-**PR:** —
+**PR:** #106 (shared by DICT-001 and DICT-002), into the arc
 
 ---
 

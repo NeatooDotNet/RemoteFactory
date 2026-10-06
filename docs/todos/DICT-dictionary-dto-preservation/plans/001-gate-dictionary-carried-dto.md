@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No — harness-only; no generator, runtime, or documented-rule change.
 **Code-review opt-in:** No — test-only.
 **Branch:** dict-001-gate-dictionary-carried-dto — cut from the arc at Step 2; shared with DICT-002 (one seam, see Amendments)
-**PR:** —
+**PR:** #106 (shared by DICT-001 and DICT-002), into the arc
 
 ---
 
