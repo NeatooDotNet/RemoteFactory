@@ -165,5 +165,5 @@ Gates: 5 review files — 2 test reviews, 2 code reviews, 1 close-out audit.
        DICT-001 closed in one round; DICT-002 and DICT-003 each closed at round 2.
 Issues recurred, not filed: #94.
 Close-Out Audit: Grade A (acknowledged 2026-10-06).
-Arc: DICT → main, PR (pending).
+Arc: DICT → main, PR #110.
 ```
