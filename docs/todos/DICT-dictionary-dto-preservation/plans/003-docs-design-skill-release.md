@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No — documentation and release bookkeeping.
 **Code-review opt-in:** Yes — every edited claim is checked against the shipped walker; published docs that contradict the code are the defect this todo exists to stop.
 **Branch:** dict-003-docs-design-skill-release — stacked on `dict-001-gate-dictionary-carried-dto` (PR #106), because the docs describe the walker that branch ships. Merge #106 first.
-**PR:** —
+**PR:** #107 (stacked on #106; merge #106 first)
 
 ---
 
