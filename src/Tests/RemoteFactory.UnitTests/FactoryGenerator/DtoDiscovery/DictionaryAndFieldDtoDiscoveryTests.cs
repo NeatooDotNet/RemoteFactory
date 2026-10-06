@@ -33,9 +33,15 @@ namespace RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery;
 /// </remarks>
 public class DictionaryAndFieldDtoDiscoveryTests
 {
+    /// <summary>
+    /// Runs the generator and fails if it threw. A generator exception surfaces only as a
+    /// CS8785 diagnostic with no trees, which would let every negative assertion in this
+    /// file pass vacuously (DICT-002 test review, 2026-10-06).
+    /// </summary>
     private static GeneratorDriverRunResult Run(string source)
     {
         var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
+        Assert.All(runResult.Results, result => Assert.Null(result.Exception));
         return runResult;
     }
 
@@ -44,17 +50,23 @@ public class DictionaryAndFieldDtoDiscoveryTests
 
     /// <summary>
     /// Generated tree(s) for exactly one factory, anchored to ".{hint}.g.cs" so a hint
-    /// cannot substring-match another factory's tree.
+    /// cannot substring-match another factory's tree. Fails when no tree matches, so a
+    /// negative assertion can never run against empty text.
     /// </summary>
     private static string FactoryTree(GeneratorDriverRunResult runResult, string factoryFileHint)
-        => string.Join("\n", runResult.GeneratedTrees
-            .Where(t => t.FilePath.EndsWith($".{factoryFileHint}.g.cs", StringComparison.Ordinal))
-            .Select(t => t.GetText()?.ToString() ?? ""));
+        => RequireTree(runResult, $".{factoryFileHint}.g.cs");
 
     private static string EventRegistrarTree(GeneratorDriverRunResult runResult)
-        => string.Join("\n", runResult.GeneratedTrees
-            .Where(t => t.FilePath.EndsWith(".NeatooEventPreservation.g.cs", StringComparison.Ordinal))
+        => RequireTree(runResult, ".NeatooEventPreservation.g.cs");
+
+    private static string RequireTree(GeneratorDriverRunResult runResult, string fileSuffix)
+    {
+        var tree = string.Join("\n", runResult.GeneratedTrees
+            .Where(t => t.FilePath.EndsWith(fileSuffix, StringComparison.Ordinal))
             .Select(t => t.GetText()?.ToString() ?? ""));
+        Assert.False(string.IsNullOrEmpty(tree), $"No generated tree ends with {fileSuffix}.");
+        return tree;
+    }
 
     /// <summary>
     /// Type arguments of every <c>DtoConstructorRegistry.Register&lt;T&gt;</c> in the text. The
@@ -579,19 +591,27 @@ namespace TestNamespace
     }
 
     [Fact]
-    public void SystemOnlyDictionary_RegistersNothing()
+    public void SystemOnlyDictionaries_RegisterNothingOfTheirOwn()
     {
         // Expanding a KeyValuePair must hand its arguments to the ordinary candidate check,
-        // never register the pair itself or any other System type.
+        // never register the pair itself or any other System type. AnchorDto proves the
+        // walk ran over this entity's members, so "nothing else registered" is a real
+        // observation rather than the result of an empty tree.
         var source = @"
 using System.Collections.Generic;
 using Neatoo.RemoteFactory;
 
 namespace TestNamespace
 {
+    public class AnchorDto
+    {
+        public int Id { get; set; }
+    }
+
     [Factory]
     public class Carrier
     {
+        public AnchorDto Anchor { get; set; }
         public Dictionary<string, int> Counts { get; set; }
         public Dictionary<string, List<string>> Tags { get; set; }
 
@@ -601,9 +621,89 @@ namespace TestNamespace
 }
 ";
         var tree = FactoryTree(Run(source), "CarrierFactory");
+        var registered = Registered(tree);
 
-        Assert.Empty(Registered(tree));
+        Assert.Single(registered);
+        Assert.Contains("global::TestNamespace.AnchorDto", registered);
         Assert.Empty(Preserved(tree));
+    }
+
+    #endregion
+
+    #region Dictionary values — nullable and consumer collections (AC-1, gate round 1)
+
+    [Fact]
+    public void NullableDictionaryValue_ValueDtoRegistered()
+    {
+        // A nullable-enabled consumer writes Dictionary<string, Dto?>. The annotation sits
+        // on the type argument, so it is stripped during the recursive unwrap, not only at
+        // the top of the property type.
+        var source = @"
+#nullable enable
+using System.Collections.Generic;
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public class ValueDto
+    {
+        public string? Text { get; set; }
+    }
+
+    [Factory]
+    public class Carrier
+    {
+        public Dictionary<string, ValueDto?>? Entries { get; set; }
+
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        Assert.Contains("global::TestNamespace.ValueDto", Registered(FactoryTree(Run(source), "CarrierFactory")));
+    }
+
+    [Theory]
+    [InlineData("PagedList<ValueDto>")]
+    [InlineData("List<PagedList<ValueDto>>")]
+    [InlineData("Dictionary<string, PagedList<ValueDto>>")]
+    public void ConsumerGenericCollection_CollectionAndElementBothRegistered(string propertyType)
+    {
+        // The serializer constructs a consumer's own generic collection as well as its
+        // elements, so both constructors need preserving. Before DICT-002 a NESTED one was
+        // registered but its element was not; the first cut of DICT-002 swapped that,
+        // registering the element and dropping the collection (code review, 2026-10-06).
+        // A top-level one never had its own constructor registered at all.
+        var source = $@"
+using System.Collections.Generic;
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{{
+    public class ValueDto
+    {{
+        public string Text {{ get; set; }}
+    }}
+
+    public class PagedList<T> : List<T>
+    {{
+        public int PageNumber {{ get; set; }}
+    }}
+
+    [Factory]
+    public class Carrier
+    {{
+        public {propertyType} Items {{ get; set; }}
+
+        [Create]
+        internal void Create() {{ }}
+    }}
+}}
+";
+        var registered = Registered(FactoryTree(Run(source), "CarrierFactory"));
+
+        Assert.Contains("global::TestNamespace.PagedList<global::TestNamespace.ValueDto>", registered);
+        Assert.Contains("global::TestNamespace.ValueDto", registered);
     }
 
     #endregion
