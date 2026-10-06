@@ -86,15 +86,25 @@ Walked 2026-10-06 on this branch at `61930d3`.
 
 ## Punchlist
 
-- [ ] v1.7.0 migration hazard · `docs/release-notes/v1.7.0.md` Migration Guide and `docs/trimming.md` · done when both say a DTO constructed only inside an async `[Remote]` body loses its accidental client-side root across v1.7.0 and names the explicit-preservation remedies · AC-4 · Should — pulled down from the todo at Step 2
-- [ ] Stale nested-event-types section · `skills/RemoteFactory/references/trimming.md` · done when it says nested event types are preserved by the event registrar and the sample comment no longer credits the base-class annotation · AC-5 · Should
-- [ ] Field-state claim · `skills/RemoteFactory/references/service-injection.md:42` · done when it says private field state never crosses and public fields do on the named path · AC-5 · Should
+- [x] v1.7.0 migration hazard · `docs/release-notes/v1.7.0.md` Migration Guide and the new "Upgrading across v1.7.0" section of `docs/trimming.md` · DICT-003 branch · AC-4 · Should — pulled down from the todo at Step 2
+- [x] Stale nested-event-types section · `skills/RemoteFactory/references/trimming.md` · DICT-003 branch · AC-5 · Should
+- [x] Field-state claim · `skills/RemoteFactory/references/service-injection.md:42` · DICT-003 branch · AC-5 · Should
 
 ---
 
 ## Test Evidence
 
-(Filled before the Step 5 gate.)
+No bullet is test-pinned. Each is documentation or release bookkeeping, checked against the walker at code review, and the closing grep records that nothing stale survives.
+
+| Acceptance bullet (short) | Priority | Tier declared | Evidence | Tier confirmed |
+|---|---|---|---|---|
+| `docs/trimming.md` states the rule and the not-covered list with remedies | Should | `[explicit-skip: doc prose]` | New sections "What the walk reaches" and "What the walk does not reach"; nested, entity, and event paragraphs reworded; Limitations bullet added | ✓ |
+| Skill trimming reference states the same rule; no manual-preservation claim for nested event types | Should | `[explicit-skip: doc prose]` | "What the DTO walk reaches", "What the DTO walk does not reach", and the rewritten nested-event-types section; sample comment corrected; summary paragraph qualified | ✓ |
+| `CLAUDE-DESIGN.md` and the Design comment state the same rule; Design green | Should | `[explicit-skip: doc prose plus build/test gate]` | FAQ row, unwrapping, nested, entity, and event paragraphs plus a new "Not reachable by the walk" paragraph; `FactoryEventHandlerPattern.cs` comment replaced; `reviews/003-design-build.log` 0/0, `003-design-test.log` 103 per TFM | ✓ |
+| Skill service-injection claim matches the probe | Should | `[explicit-skip: doc prose]` | `service-injection.md:42` rewritten; `reviews/003-evidence/field-wire-observation.txt` | ✓ |
+| v1.7.0 notes and `docs/trimming.md` state the upgrade hazard | Should | `[explicit-skip: doc prose]` | v1.7.0 Migration Guide paragraph, marked as added after the release; `docs/trimming.md` "Upgrading across v1.7.0" | ✓ |
+| v1.10.1 notes, index rows, `nav_order`, both version properties, v1.10.0 dependency | Should | `[explicit-skip: release bookkeeping]` | `docs/release-notes/v1.10.1.md` at `nav_order` 1; 1.x pages shifted to 2-14; Highlights and All Releases rows; `src/Directory.Build.props` 1.10.1 for both properties, confirmed in the built `AssemblyFileVersion`; the "Released" line states the v1.10.0 dependency | ✓ |
+| Closing grep finds nothing stale | Should | `[explicit-skip: grep]` | `reviews/003-evidence/closing-claim-grep.txt` — two hits, both correct statements, dispositions recorded | ✓ |
 
 ---
 
