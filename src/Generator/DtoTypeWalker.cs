@@ -14,9 +14,11 @@
 //   - every public instance member the serializer writes — properties with a
 //     getter AND fields (DICT-002; fields were missed before)
 //   - through every generic collection wrapper, recursively, including the
-//     KeyValuePair<K,V> element of every dictionary, whose K and V are both on the
-//     wire (DICT-002; a dictionary's entry types were missed before, because the
-//     pair is a System type and the walk rejects System types)
+//     KeyValuePair<K,V> element of every generic dictionary, whose K and V are both
+//     on the wire (DICT-002; a dictionary's entry types were missed before, because
+//     the pair is a System type and the walk rejects System types)
+//   - a consumer's own generic collection as well as its element, because the
+//     serializer constructs both
 // A type the walk cannot reach gets no preservation and is trimmed, which surfaces
 // on the client as a no-constructor deserialization failure.
 
@@ -44,8 +46,10 @@ internal static class DtoTypeWalker
 	/// <paramref name="unwrapTask"/> is set), nullable, and generic collection wrappers —
 	/// recursively, so <c>List&lt;List&lt;T&gt;&gt;</c> and
 	/// <c>Dictionary&lt;K, List&lt;V&gt;&gt;</c> reach <c>T</c>, <c>K</c>, and <c>V</c>. A
-	/// <c>KeyValuePair&lt;K,V&gt;</c> yields both <c>K</c> and <c>V</c>. Candidates are
-	/// returned without nullable annotations and without duplicates.
+	/// <c>KeyValuePair&lt;K,V&gt;</c> yields both <c>K</c> and <c>V</c>. A consumer's own
+	/// generic collection is returned as well as its element, since the serializer
+	/// constructs both. Candidates are returned without nullable annotations and without
+	/// duplicates.
 	/// </summary>
 	/// <remarks>
 	/// The collection check is gated on <see cref="INamedTypeSymbol.IsGenericType"/>, as it
@@ -86,8 +90,9 @@ internal static class DtoTypeWalker
 		var current = StripNullable(type);
 
 		// A self-referential enumerable — Node<T> : IEnumerable<Node<T>> — or a nesting past
-		// the cap. Keep the type itself as the candidate: exactly where single-level
-		// unwrapping stopped before DICT-002, so registration for these shapes is unchanged.
+		// the cap. Keep the type itself as the candidate. For the self-referential case that
+		// is exactly where single-level unwrapping stopped before DICT-002, so its
+		// registration is unchanged; past the cap, the deepest instantiation reached is kept.
 		if (onPath.Contains(current) || depth > MaxUnwrapDepth)
 		{
 			AddCandidate(candidates, current);
@@ -112,6 +117,14 @@ internal static class DtoTypeWalker
 			var element = CollectionElementType(current);
 			if (element != null)
 			{
+				// A consumer's own generic collection — PagedList<T> : List<T> — is constructed
+				// by the serializer too, so it stays a candidate as well as being unwrapped.
+				// Framework collections and interfaces fail the candidate check and add nothing.
+				if (current is INamedTypeSymbol collection && IsDtoStructureCandidate(collection))
+				{
+					AddCandidate(candidates, current);
+				}
+
 				ExpandCandidates(element, unwrapTask: false, depth + 1, candidates, onPath, expanded);
 			}
 			else
