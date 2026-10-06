@@ -18,7 +18,7 @@ The generator's DTO discovery tells the trimmer which types a trimmed client wil
 
 ## Acceptance Criteria
 
-Priority words proposed by the orchestrator; the user confirms or changes them before DICT-001 is drafted. AC-7 and AC-8 were removed 2026-10-05 and their numbers are not reused.
+Priority words proposed by the orchestrator and confirmed by the user 2026-10-06, at close-out rather than before DICT-001 was drafted (recorded under Skipped Steps). AC-7 and AC-8 were removed 2026-10-05 and their numbers are not reused.
 
 - [x] **AC-1** · Must — A DTO reachable only as a dictionary value type through a factory signature, a `[Factory]` entity property, or an event record property deserializes on a publish-trimmed client with no consumer LinkerConfig entry.
 - [x] **AC-2** · Could — A DTO reachable only as a dictionary key type is preserved the same way.
@@ -47,7 +47,7 @@ AC-2 is Could because System.Text.Json deserializes only string, primitive, enum
 |---|------|-------|--------|--------|----|
 | 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Done | #106 |
 | 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | Done | #106 |
-| 003 | [003-docs-design-skill-release](./plans/003-docs-design-skill-release.md) | Docs, Design, skill, and release notes | AC-5, AC-4 | Done | #107 |
+| 003 | [003-docs-design-skill-release](./plans/003-docs-design-skill-release.md) | Docs, Design, skill, and release notes | AC-5, AC-4 | Done | #107, #109 |
 | 004 | [004-runtime-typed-member-diagnostic](./plans/004-runtime-typed-member-diagnostic.md) | Diagnostic for runtime-typed serialized members | — | Retired — removed by Goal narrowing | — |
 
 Intended order: 001 → 002 → 003.
@@ -104,6 +104,7 @@ Intended order: 001 → 002 → 003.
 ## Skipped Steps
 
 - Step 1 recon fan-out — the seams were mapped by the framework-side investigation of 2026-09-10 that created this todo: `src/Generator/DtoTypeWalker.cs` (`UnwrapType`, `WalkDtoGraph`, `WalkEntityProperties`, `WalkProperties`), `src/RemoteFactory/Internal/NeatooJsonSerializer.cs` (`IncludeFields = true`), `src/RemoteFactory/Internal/NeatooInterfaceJsonTypeConverter.cs` (runtime `$type` resolution), `src/Tests/RemoteFactory.TrimmingTests/` (`TrimTestEntity.cs`, `EntityPropertyDtoSmokeTest.cs`, `verify-trimmed.sh`), `docs/trimming.md:311-332`, and the known-gap comment at `src/Design/Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs:146-150`. No Explore agents run.
+- Priority-word confirmation before DICT-001 — the words stayed proposed through all three plans and were confirmed unchanged by the user at close-out, 2026-10-06. No plan's scope or gate depended on a word changing.
 - DICT-003 Step 5 test-reviewer — a documentation-and-release plan whose every Acceptance bullet is `[explicit-skip]`, so nothing is test-pinned for it to check. The opted-in code review checks each edited claim against the shipped walker instead.
 
 ---
