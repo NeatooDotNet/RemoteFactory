@@ -23,8 +23,8 @@ Priority words proposed by the orchestrator; the user confirms or changes them b
 - [x] **AC-1** · Must — A DTO reachable only as a dictionary value type through a factory signature, a `[Factory]` entity property, or an event record property deserializes on a publish-trimmed client with no consumer LinkerConfig entry.
 - [x] **AC-2** · Could — A DTO reachable only as a dictionary key type is preserved the same way.
 - [x] **AC-3** · Must — The trimming gate carries a dictionary-valued DTO whose only construction site is an async `[Remote]` body, and that case was observed red against the pre-fix generator before the fix was trusted.
-- [ ] **AC-4** · Should — The v1.7.0 release notes and `docs/trimming.md` state that upgrading across v1.7.0 removes the accidental root for DTOs constructed only inside async `[Remote]` bodies.
-- [ ] **AC-5** · Should — The published docs, the skill, the Design comments, and the release notes for the shipping version describe the shapes the walk covers and the shapes it does not, per the CI/CD standards.
+- [x] **AC-4** · Should — The v1.7.0 release notes and `docs/trimming.md` state that upgrading across v1.7.0 removes the accidental root for DTOs constructed only inside async `[Remote]` bodies.
+- [x] **AC-5** · Should — The published docs, the skill, the Design comments, and the release notes for the shipping version describe the shapes the walk covers and the shapes it does not, per the CI/CD standards.
 - [x] **AC-6** · Should — A DTO reachable only through a public field of a walked type is preserved the same way, with a harness case observed red first.
 
 AC-2 is Could because System.Text.Json deserializes only string, primitive, enum, and a few framework key types without a custom converter, so a DTO-typed key is rare and needs consumer work regardless.
@@ -47,7 +47,7 @@ AC-2 is Could because System.Text.Json deserializes only string, primitive, enum
 |---|------|-------|--------|--------|----|
 | 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Done | #106 |
 | 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | Done | #106 |
-| 003 | [003-docs-design-skill-release](./plans/003-docs-design-skill-release.md) | Docs, Design, skill, and release notes | AC-5 | Draft | — |
+| 003 | [003-docs-design-skill-release](./plans/003-docs-design-skill-release.md) | Docs, Design, skill, and release notes | AC-5, AC-4 | Done | #107 |
 | 004 | [004-runtime-typed-member-diagnostic](./plans/004-runtime-typed-member-diagnostic.md) | Diagnostic for runtime-typed serialized members | — | Retired — removed by Goal narrowing | — |
 
 Intended order: 001 → 002 → 003.
@@ -56,7 +56,7 @@ Intended order: 001 → 002 → 003.
 
 ## Punchlist
 
-- [ ] v1.7.0 migration hazard · `docs/release-notes/v1.7.0.md` Migration Guide and `docs/trimming.md` · done when both say a DTO constructed only inside an async `[Remote]` body loses its accidental client-side root across v1.7.0 and names the explicit-preservation remedies · AC-4 · Should
+- (none open. The v1.7.0 migration-hazard row moved down onto DICT-003 at its Step 2, because both its files are in that plan's path.)
 
 ## Dismissed
 
@@ -94,11 +94,17 @@ Intended order: 001 → 002 → 003.
 - **Decision:** Amend
 - **Follow-up:** n/a — the collection is kept as a candidate as well as unwrapped, red-first at `c381e77`.
 
+### 2026-10-06 — DICT-003 · serves AC-4, AC-5
+- **Finding:** The migration-hazard row lies in DICT-003's path. A probe also showed the skill's "field state never crosses the wire" claim is false for public fields on the named path.
+- **Decision:** Amend
+- **Follow-up:** DICT-003 carries the row and two skill corrections; code review checks claims, test review skipped.
+
 ---
 
 ## Skipped Steps
 
 - Step 1 recon fan-out — the seams were mapped by the framework-side investigation of 2026-09-10 that created this todo: `src/Generator/DtoTypeWalker.cs` (`UnwrapType`, `WalkDtoGraph`, `WalkEntityProperties`, `WalkProperties`), `src/RemoteFactory/Internal/NeatooJsonSerializer.cs` (`IncludeFields = true`), `src/RemoteFactory/Internal/NeatooInterfaceJsonTypeConverter.cs` (runtime `$type` resolution), `src/Tests/RemoteFactory.TrimmingTests/` (`TrimTestEntity.cs`, `EntityPropertyDtoSmokeTest.cs`, `verify-trimmed.sh`), `docs/trimming.md:311-332`, and the known-gap comment at `src/Design/Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs:146-150`. No Explore agents run.
+- DICT-003 Step 5 test-reviewer — a documentation-and-release plan whose every Acceptance bullet is `[explicit-skip]`, so nothing is test-pinned for it to check. The opted-in code review checks each edited claim against the shipped walker instead.
 
 ---
 

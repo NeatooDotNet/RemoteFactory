@@ -1,0 +1,13 @@
+Closing claim grep for DICT-003, 2026-10-06, on branch dict-003-docs-design-skill-release.
+Pattern: public property graph|public instance properties|property-graph discovery|IReadOnlyList<T>`\) to find|Known gap: Dictionary|value types are not walked|never crosses the wire|NOT automatically preserved|via base class annotation|single-argument collection|return-type discovery|reachable as a property of a discovered|Collection properties \(`List<T>`
+Scope: docs/*.md docs/appendix README.md skills/RemoteFactory src/Design (md + cs), excluding release-note history other than v1.7.0, v1.10.1 and the index.
+
+== Hits ==
+skills/RemoteFactory/references/service-injection.md:42:**Gotcha:** Mixing required *data* parameters into the constructor (e.g., `MyEntity(int id, IRepo repo)`) also disables ordinal, but DI cannot supply `id` from the container. Either the data needs to be a public property restored from JSON, or you need a parameterless / all-defaults ctor available for DI to choose. Private field state — such as an injected service stored in a `private readonly` field — never crosses the wire on either path. Public fields differ by path: the ordinal array carries properties only, but the named JSON path goes through `System.Text.Json` with `IncludeFields` on, so a public field does cross there. Prefer public properties for state that must reach the other side.
+src/Design/Design.Tests/FactoryTests/LocalExecuteTests.cs:7:// and never crosses the wire.
+
+== Disposition of each hit ==
+service-injection.md:42 - the corrected sentence itself. It now says PRIVATE field state never crosses, which the probe in field-wire-observation.txt confirms, and that public fields cross on the named path. Correct.
+Design.Tests/FactoryTests/LocalExecuteTests.cs:7 - says a bare local [Execute] call never crosses the wire. A different subject, unrelated to the DTO walk. Correct.
+
+Result: no statement contradicting the shipped walker survives in the scoped artifacts.
