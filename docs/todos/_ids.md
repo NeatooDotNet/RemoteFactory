@@ -8,11 +8,11 @@ abandonment. Move rows to the Completed section together with the folder move.
 | ID | Todo | Created | Location |
 |----|------|---------|----------|
 | DICT | Dictionary and public-field DTO preservation | 2026-09-10 | [DICT-dictionary-dto-preservation](./DICT-dictionary-dto-preservation/todo.md) |
-| EXRM | [Execute] obeys [Remote] | 2026-09-08 | [EXRM-execute-obeys-remote](./completed/EXRM-execute-obeys-remote/todo.md) |
-| TRIM | DTO trimming preservation gaps | 2026-07-06 | [TRIM-dto-trimming-preservation-gaps](./TRIM-dto-trimming-preservation-gaps/todo.md) |
 
 ## Completed
 
 | ID | Todo | Completed | Location |
 |----|------|-----------|----------|
+| EXRM | [Execute] obeys [Remote] | 2026-09-08 | [EXRM-execute-obeys-remote](./completed/EXRM-execute-obeys-remote/todo.md) |
 | PHASE | Phased factory-event dispatch | 2026-08-31 | [PHASE-phased-event-dispatch](./completed/PHASE-phased-event-dispatch/todo.md) |
+| TRIM | DTO trimming preservation gaps | 2026-08-14 | [TRIM-dto-trimming-preservation-gaps](./completed/TRIM-dto-trimming-preservation-gaps/todo.md) |
