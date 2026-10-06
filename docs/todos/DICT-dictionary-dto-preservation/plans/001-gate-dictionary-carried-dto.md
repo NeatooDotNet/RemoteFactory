@@ -4,8 +4,8 @@
 **Date:** 2026-09-10
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-6
-**Status:** In Progress
-**Last Updated:** 2026-10-05
+**Status:** Done
+**Last Updated:** 2026-10-06
 **Plan-review opt-in:** No — harness-only; no generator, runtime, or documented-rule change.
 **Code-review opt-in:** No — test-only.
 **Branch:** dict-001-gate-dictionary-carried-dto — cut from the arc at Step 2; shared with DICT-002 (one seam, see Amendments)
@@ -60,10 +60,10 @@ Adds to the publish-trimmed harness one consumer-shaped case per shape this todo
 
 ## Acceptance
 
-- [ ] The dictionary check passes on the untrimmed harness and fails on the publish-trimmed harness with a no-constructor error against the pre-fix generator. `[explicit-skip: one-off keyboard verification recorded in reviews/001-evidence, per TRIM-007 precedent]` · Must
-- [ ] The public-field check passes on the untrimmed harness and fails on the publish-trimmed harness with a no-constructor error against the pre-fix generator. `[explicit-skip: one-off keyboard verification recorded in reviews/001-evidence, per TRIM-007 precedent]` · Should
-- [ ] In that trimmed run every pre-existing harness check and every gate assertion stays green, and the carrier's registrar holder is present as a positive control. `[trimmed-harness]` · Must
-- [ ] Both solutions build, and the unit and integration suites are green on net9.0 and net10.0. `[explicit-skip: build/test gates]` · Must
+- [x] The dictionary check passes on the untrimmed harness and fails on the publish-trimmed harness with a no-constructor error against the pre-fix generator. `[explicit-skip: one-off keyboard verification recorded in reviews/001-evidence, per TRIM-007 precedent]` · Must
+- [x] The public-field check passes on the untrimmed harness and fails on the publish-trimmed harness with a no-constructor error against the pre-fix generator. `[explicit-skip: one-off keyboard verification recorded in reviews/001-evidence, per TRIM-007 precedent]` · Should
+- [x] In that trimmed run every pre-existing harness check and every gate assertion stays green, and the carrier's registrar holder is present as a positive control. `[trimmed-harness]` · Must
+- [x] Both solutions build, and the unit and integration suites are green on net9.0 and net10.0. `[explicit-skip: build/test gates]` · Must
 
 ---
 
@@ -101,7 +101,7 @@ Walked 2026-10-05 against arc commit `5457120`.
 
 ## Gate Record
 
-(Filled at Step 5.)
+- Round 1 (2026-10-06): CLEAN — 0 must-cover, 0 should-cover; 2 tech-debt triaged. The Plan Index status mismatch was fixed, and missing exit codes in the evidence `.txt` files were dismissed because the READMEs record them. Done. — `reviews/001-test-review.md`
 
 ---
 

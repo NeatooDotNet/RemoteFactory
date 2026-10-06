@@ -45,8 +45,8 @@ AC-2 is Could because System.Text.Json deserializes only string, primitive, enum
 
 | # | File | Title (≤ 8 words) | Serves | Status | PR |
 |---|------|-------|--------|--------|----|
-| 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Draft | — |
-| 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | Draft | — |
+| 001 | [001-gate-dictionary-carried-dto](./plans/001-gate-dictionary-carried-dto.md) | Trimming gate: one red-first case per added shape | AC-3, AC-6 | Done | — |
+| 002 | [002-dictionary-type-argument-walk](./plans/002-dictionary-type-argument-walk.md) | Walker covers dictionary entries and public fields | AC-1, AC-2, AC-6 | In Progress — gate round 2 | — |
 | 003 | [003-docs-design-skill-release](./plans/003-docs-design-skill-release.md) | Docs, Design, skill, and release notes | AC-5 | Draft | — |
 | 004 | [004-runtime-typed-member-diagnostic](./plans/004-runtime-typed-member-diagnostic.md) | Diagnostic for runtime-typed serialized members | — | Retired — removed by Goal narrowing | — |
 
@@ -60,7 +60,8 @@ Intended order: 001 → 002 → 003.
 
 ## Dismissed
 
-- (none yet)
+- DICT-001 · Evidence `.txt` files carry no exit codes · each evidence README records every exit code
+- DICT-002 · Shared `DiagnosticTestHelper` swallows generator exceptions as CS8785 · shared helper beyond DICT's criteria; DICT's own tests now guard themselves
 
 ---
 
@@ -87,6 +88,11 @@ Intended order: 001 → 002 → 003.
 - **Finding:** A generic type that enumerates an ever-larger version of itself never repeats, so recursive unwrapping needs a depth cap as well as a path check.
 - **Decision:** Amend
 - **Follow-up:** n/a — cap of 8, pinned by a test whose negative control overflowed the stack.
+
+### 2026-10-06 — DICT-002 · serves AC-1
+- **Finding:** The first cut swapped registrations for a consumer generic collection nested in a list or dictionary, keeping the element but dropping the collection.
+- **Decision:** Amend
+- **Follow-up:** n/a — the collection is kept as a candidate as well as unwrapped, red-first at `c381e77`.
 
 ---
 

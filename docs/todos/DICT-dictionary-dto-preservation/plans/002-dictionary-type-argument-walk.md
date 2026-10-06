@@ -94,13 +94,13 @@ Every `[unit]` test below is in `RemoteFactory.UnitTests.FactoryGenerator.DtoDis
 
 | Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|---|
-| Dictionary value bucketed through each caller, including a collection value | Must | `[unit]` | Callers: `SignatureReturn_DictionaryValueDto_Registered`, `SignatureParameter_DictionaryValueDto_Registered`, `EntityProperty_DictionaryValueDto_RegisteredInEntityRegistrar`, `EventRecordProperty_DictionaryValueDto_RegisteredInEventRegistrar`. Shapes and buckets: `DictionaryShapes_ValueDtoRegistered` ×3, `DictionaryValueRecord_PreservedNotRegistered`, `DictionaryValueWrappedInList_ElementRegistered`, `DictionaryValueDto_ItsOwnGraphStillWalked` | ✓ |
+| Dictionary value bucketed through each caller, including a collection value | Must | `[unit]` | Callers: `SignatureReturn_DictionaryValueDto_Registered`, `SignatureParameter_DictionaryValueDto_Registered`, `EntityProperty_DictionaryValueDto_RegisteredInEntityRegistrar`, `EventRecordProperty_DictionaryValueDto_RegisteredInEventRegistrar`. Shapes and buckets: `DictionaryShapes_ValueDtoRegistered` ×3, `DictionaryValueRecord_PreservedNotRegistered`, `DictionaryValueWrappedInList_ElementRegistered`, `DictionaryValueDto_ItsOwnGraphStillWalked`. Gate round 1: `NullableDictionaryValue_ValueDtoRegistered`, `ConsumerGenericCollection_CollectionAndElementBothRegistered` ×3 | ✓ |
 | DICT-001 dictionary check passes trimmed | Must | `[trimmed-harness]` | `DictionaryAndFieldDtoSmokeTest.RunDictionaryValue`; `reviews/002-evidence/trimmed-run.txt` PASSED, exit 0 | ✓ |
 | Dictionary key registered | Could | `[unit]` | `DictionaryKeyDto_Registered` | ✓ |
 | Public field bucketed on DTOs and entities; private, static, const not walked | Should | `[unit]` | `PublicFieldOnDto_FieldTypeRegistered`, `PublicFieldOnEntity_FieldTypeRegistered`, `PublicFieldRecord_PreservedNotRegistered`, `NonPublicStaticAndConstFields_NotWalked` | ✓ |
 | DICT-001 public-field check passes trimmed | Should | `[trimmed-harness]` | `DictionaryAndFieldDtoSmokeTest.RunPublicField`; `reviews/002-evidence/trimmed-run.txt` PASSED | ✓ |
-| Self-referential enumerable keeps its registration; System-only dictionary registers nothing | Must | `[unit]` | `SelfEnumerableGeneric_TerminatesWithPreChangeRegistration`, `SystemOnlyDictionary_RegistersNothing`; both green before and after. Also `ExpandingGenericEnumerable_TerminatesAtDepthCap`, whose negative control crashed the host with the cap lifted | ✓ |
-| Pre-existing checks green; both solutions build on net9.0 and net10.0 | Must | `[explicit-skip: build/test gates]` | `reviews/001-002-build.log`, `001-002-design-build.log`, `001-002-test.log` — 812 unit, 628 integration, 0 failed per TFM; `001-002-design-test.log` — 103 per TFM; `reviews/002-evidence/trimmed-gate.txt` exit 0 | ✓ |
+| Self-referential enumerable keeps its registration; System-only dictionary registers nothing | Must | `[unit]` | `SelfEnumerableGeneric_TerminatesWithPreChangeRegistration`, and `SystemOnlyDictionaries_RegisterNothingOfTheirOwn`, anchored at round 1 by a sibling DTO that must be the only registration. Also `ExpandingGenericEnumerable_TerminatesAtDepthCap`, whose negative control crashed the host with the cap lifted. Every test in the class now fails if the generator threw or the asserted tree is missing | ✓ |
+| Pre-existing checks green; both solutions build on net9.0 and net10.0 | Must | `[explicit-skip: build/test gates]` | Round 2: `reviews/001-002-round2-build.log` (after one MSB3552 flake, issue #94, kept as `-msb3552-flake.log`), `001-002-round2-design-build.log`, `001-002-round2-test.log` — 816 unit, 628 integration, 0 failed per TFM; `001-002-round2-design-test.log` — 103 per TFM; `reviews/002-evidence/trimmed-gate.txt` exit 0. Round 1 logs are the `001-002-*.log` set without `round2` | ✓ |
 
 Side effect, not a bullet: `NestedListOfLists_InnerElementRegistered` pins that `List<List<Dto>>` now reaches `Dto`.
 
@@ -108,7 +108,7 @@ Side effect, not a bullet: `NestedListOfLists_InnerElementRegistered` pins that 
 
 ## Gate Record
 
-(Filled at Step 5.)
+- Round 1 (2026-10-06): test review CONCERNS — 1 must-cover addressed (System-only test anchored; every test in the class now fails on a generator exception or a missing tree), 1 should-cover addressed (nullable dictionary value pinned), 2 tech-debt triaged (helper hardening done in-file; the shared `DiagnosticTestHelper` gap dismissed as beyond DICT's criteria). Code review CLEAN with 1 callout, fixed (consumer generic collection kept as a candidate, red-first at `c381e77`). — `reviews/002-test-review.md`, `reviews/002-code-review.md`
 
 ---
 
@@ -137,6 +137,14 @@ Side effect, not a bullet: `NestedListOfLists_InnerElementRegistered` pins that 
 - **What changed:** A path set catches the repeating case, a separate expanded set keeps a type met twice from contributing twice, and a depth cap of 8 stops a type whose enumeration expands without repeating. One test pins the cap; its negative control overflowed the stack with the cap lifted.
 - **Why:** A non-repeating expansion slips past any seen-set, and a generator stack overflow removes every factory from a consumer build.
 - **Discovery Log:** 2026-10-05 / DICT-002
+
+### 2026-10-06 — A consumer's generic collection stays a candidate when unwrapped
+
+- **Section affected:** Steps 2; Constraints
+- **Original said:** Unwrapping replaces a collection with its element.
+- **What changed:** A consumer's own generic collection — one that passes the DTO candidate check, such as `PagedList<T> : List<T>` — is kept as a candidate as well as unwrapped. Framework collections and interfaces still add nothing.
+- **Why:** Code review round 1. The first cut registered the element of `List<PagedList<Dto>>` but dropped the collection, which was registered before, and so broke this plan's no-regression constraint. The serializer constructs both. This also registers a top-level consumer collection, which was never registered before.
+- **Discovery Log:** 2026-10-06 / DICT-002
 
 ---
 
