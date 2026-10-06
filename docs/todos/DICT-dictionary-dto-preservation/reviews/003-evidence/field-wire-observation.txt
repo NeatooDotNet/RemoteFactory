@@ -1,0 +1,21 @@
+Field-on-the-wire probe, recorded 2026-10-06, net10.0, on branch dict-001-gate-dictionary-carried-dto at 61930d3.
+
+Question: does a public field on a [Factory] entity reach the client?
+Prompted by skills/RemoteFactory/references/service-injection.md:42, which says field state never crosses the wire on either path.
+
+Probe: a throwaway integration test, deleted after the run and never committed. It had two entities, each with a public field 'Carried' of a plain DTO type, set inside a [Remote] Fetch on the server:
+  ProbePocoEntity - implicit parameterless constructor, so ordinal code is generated.
+  ProbeDiEntity   - constructor takes IServiceProvider, so no ordinal code is generated and it takes the named JSON + GetRequiredService path.
+Each was fetched from the client container of ClientServerContainers.Scopes(format), for format = Ordinal and Named.
+Every run first asserted the Name property round-tripped, so a broken round trip could not masquerade as a missing field.
+
+Observed:
+OBSERVED di-ctor/Named: Carried.Text = 'from-server:x'
+OBSERVED di-ctor/Ordinal: Carried.Text = 'from-server:x'
+OBSERVED poco/Named: Carried.Text = 'from-server:x'
+OBSERVED poco/Ordinal: Carried.Text = '<null>'
+
+Conclusion: public fields cross the wire on the named path. That covers a plain entity in Named format, and a constructor-injected entity in either format.
+They are dropped only on the ordinal path, which carries properties only. Private fields never cross.
+The skill line is wrong for public fields, in the very scenario its paragraph describes.
+The DICT-002 walker walks entity public fields for exactly this reason.
