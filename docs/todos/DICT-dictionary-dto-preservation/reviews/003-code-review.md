@@ -53,3 +53,12 @@
   - `NeatooOrdinalConverterFactory.cs`, because the probe answered the Ordinal-versus-Named question directly.
   - `closing-claim-grep.txt`.
   - The DICT-002 test source beyond its theory data and test count.
+
+## Round 2 — 2026-10-06 — CLEAN, no callouts
+
+- All three callouts were fixed at `d2fb050` and re-verified against the evidence cited in round 1:
+  - the reach bullet now matches the walker's generic-only unwrap;
+  - "15 shape cases red against the unchanged generator" and "3 consumer-collection cases red against the first cut" add up to the 23 tests together with the 4 gate additions;
+  - the harness wording no longer implies a CI run.
+- The new wording adds no claim that contradicts the walker or the evidence.
+- No logs were re-run, because the change is prose only. The round-1 logs stand.

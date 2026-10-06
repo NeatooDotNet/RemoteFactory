@@ -4,7 +4,7 @@
 **Date:** 2026-09-10
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-5, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-06
 **Plan-review opt-in:** No — documentation and release bookkeeping.
 **Code-review opt-in:** Yes — every edited claim is checked against the shipped walker; published docs that contradict the code are the defect this todo exists to stop.
@@ -60,13 +60,13 @@ Brings every artifact that describes DTO discovery into line with the shipped be
 
 ## Acceptance
 
-- [ ] `docs/trimming.md` states the rule — public instance properties and fields, through every generic collection recursively including dictionary keys and values, with a consumer's own generic collection kept as well — and lists what the walk does not reach, each with its remedy. `[explicit-skip: doc prose, checked at code review]` · Should
-- [ ] The skill's trimming reference states the same rule and boundary, and no longer says nested event types need manual preservation. `[explicit-skip: doc prose, checked at code review]` · Should
-- [ ] `CLAUDE-DESIGN.md` and the Design-project comment state the same rule, and Design builds and tests green. `[explicit-skip: doc prose plus build/test gate]` · Should
-- [ ] The skill's service-injection reference says public fields cross the wire on the named path and private fields never do, matching the recorded probe. `[explicit-skip: doc prose, checked at code review]` · Should
-- [ ] The v1.7.0 release notes and `docs/trimming.md` state the upgrade hazard and its remedies. `[explicit-skip: doc prose, checked at code review]` · Should
-- [ ] v1.10.1's release notes, both index rows, the `nav_order` shift, and both version properties are in place, and the notes state the dependency on v1.10.0. `[explicit-skip: release bookkeeping]` · Should
-- [ ] A closing grep of the claim phrases across docs, skill, and Design finds no statement that contradicts the shipped walker. `[explicit-skip: grep recorded in reviews/003-evidence]` · Should
+- [x] `docs/trimming.md` states the rule — public instance properties and fields, through every generic collection recursively including dictionary keys and values, with a consumer's own generic collection kept as well — and lists what the walk does not reach, each with its remedy. `[explicit-skip: doc prose, checked at code review]` · Should
+- [x] The skill's trimming reference states the same rule and boundary, and no longer says nested event types need manual preservation. `[explicit-skip: doc prose, checked at code review]` · Should
+- [x] `CLAUDE-DESIGN.md` and the Design-project comment state the same rule, and Design builds and tests green. `[explicit-skip: doc prose plus build/test gate]` · Should
+- [x] The skill's service-injection reference says public fields cross the wire on the named path and private fields never do, matching the recorded probe. `[explicit-skip: doc prose, checked at code review]` · Should
+- [x] The v1.7.0 release notes and `docs/trimming.md` state the upgrade hazard and its remedies. `[explicit-skip: doc prose, checked at code review]` · Should
+- [x] v1.10.1's release notes, both index rows, the `nav_order` shift, and both version properties are in place, and the notes state the dependency on v1.10.0. `[explicit-skip: release bookkeeping]` · Should
+- [x] A closing grep of the claim phrases across docs, skill, and Design finds no statement that contradicts the shipped walker. `[explicit-skip: grep recorded in reviews/003-evidence]` · Should
 
 ---
 
@@ -110,7 +110,8 @@ No bullet is test-pinned. Each is documentation or release bookkeeping, checked 
 
 ## Gate Record
 
-(Filled at Step 5.)
+- Round 1 (2026-10-06): test review skipped (no bullet is test-pinned; recorded in the todo's Skipped Steps). Code review CLEAN with 3 callouts, all punched at `d2fb050`: the reach bullet excludes non-generic collection subclasses, and the v1.10.1 notes and index row state what was observed red, against what, and where. Logs: build 0 errors; unit 816, integration 628, Design 103, all passing on both TFMs. — `reviews/003-code-review.md`
+- Round 2 (2026-10-06): code review CLEAN, no callouts. Done.
 
 ---
 
