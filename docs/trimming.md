@@ -334,7 +334,7 @@ For example, if a factory method returns `ParentDto` which has a `List<ChildDto>
 Every type the walk meets is unwrapped to the types the serializer will construct for it:
 
 - `Task<T>` on a factory method's return type, and nullable `T?` at any level.
-- Arrays and every generic collection — anything implementing `IEnumerable<T>` — recursively, so `List<List<T>>` and `Dictionary<string, List<T>>` both reach `T`.
+- Arrays and every generic collection type — a generic type implementing `IEnumerable<T>` — recursively, so `List<List<T>>` and `Dictionary<string, List<T>>` both reach `T`.
 - Both the key and the value type of every generic dictionary — `Dictionary`, `IDictionary`, `IReadOnlyDictionary`, and the sorted, concurrent, immutable, and custom generic dictionaries. A dictionary enumerates `KeyValuePair<TKey, TValue>`, and both halves are on the wire.
 - A generic collection type of your own, such as `PagedList<T> : List<T>`, **and** its element type. The serializer constructs both.
 
