@@ -90,7 +90,12 @@ Walked 2026-10-05 against arc commit `5457120`.
 
 ## Test Evidence
 
-(Filled before the Step 5 gate.)
+| Acceptance bullet (short) | Priority | Tier declared | Test method / evidence | Tier confirmed |
+|---|---|---|---|---|
+| Dictionary check green untrimmed, red trimmed, pre-fix | Must | `[explicit-skip: keyboard verification]` | `DictionaryAndFieldDtoSmokeTest.RunDictionaryValue` at `effedce`; `reviews/001-evidence/untrimmed-run.txt` PASSED, `trimmed-run.txt` FAILED with `NotSupportedException` for `TrimDictValue` at `$.l-f-1` | ✓ |
+| Public-field check green untrimmed, red trimmed, pre-fix | Should | `[explicit-skip: keyboard verification]` | `DictionaryAndFieldDtoSmokeTest.RunPublicField` at `effedce`; same files, `TrimFieldCarried` at `$.Carried` | ✓ |
+| Every pre-existing harness check and gate assertion green; holder control present | Must | `[trimmed-harness]` | `reviews/001-evidence/trimmed-gate.txt` exit 0 with `NeatooClassFactoryRegistrar_TrimDictCarrier` ok; `trimmed-run.txt` fails exactly the two new checks | ✓ |
+| Both solutions build; unit and integration green on net9.0 and net10.0 | Must | `[explicit-skip: build/test gates]` | `reviews/001-002-build.log`, `001-002-design-build.log`, `001-002-test.log`, `001-002-design-test.log` — one gate run for the shared branch, after DICT-002's change | ✓ |
 
 ---
 

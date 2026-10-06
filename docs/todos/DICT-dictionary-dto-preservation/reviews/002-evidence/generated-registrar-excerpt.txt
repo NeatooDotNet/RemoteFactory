@@ -1,0 +1,3 @@
+127:            DtoConstructorRegistry.Register<global::RemoteFactory.TrimmingTests.TrimDictValue>(() => new global::RemoteFactory.TrimmingTests.TrimDictValue());
+128:            DtoConstructorRegistry.Register<global::RemoteFactory.TrimmingTests.TrimFieldHost>(() => new global::RemoteFactory.TrimmingTests.TrimFieldHost());
+129:            DtoConstructorRegistry.Register<global::RemoteFactory.TrimmingTests.TrimFieldCarried>(() => new global::RemoteFactory.TrimmingTests.TrimFieldCarried());

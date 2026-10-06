@@ -90,7 +90,19 @@ Walked 2026-10-05 at commit `9d6fae2`.
 
 ## Test Evidence
 
-(Filled before the Step 5 gate.)
+Every `[unit]` test below is in `RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery.DictionaryAndFieldDtoDiscoveryTests`. The shape tests were observed red against the unchanged generator at `6d5b262` (`reviews/002-evidence/unit-red.txt`) and green after the change (`unit-green-and-negative-control.txt`).
+
+| Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
+|---|---|---|---|---|
+| Dictionary value bucketed through each caller, including a collection value | Must | `[unit]` | Callers: `SignatureReturn_DictionaryValueDto_Registered`, `SignatureParameter_DictionaryValueDto_Registered`, `EntityProperty_DictionaryValueDto_RegisteredInEntityRegistrar`, `EventRecordProperty_DictionaryValueDto_RegisteredInEventRegistrar`. Shapes and buckets: `DictionaryShapes_ValueDtoRegistered` ×3, `DictionaryValueRecord_PreservedNotRegistered`, `DictionaryValueWrappedInList_ElementRegistered`, `DictionaryValueDto_ItsOwnGraphStillWalked` | ✓ |
+| DICT-001 dictionary check passes trimmed | Must | `[trimmed-harness]` | `DictionaryAndFieldDtoSmokeTest.RunDictionaryValue`; `reviews/002-evidence/trimmed-run.txt` PASSED, exit 0 | ✓ |
+| Dictionary key registered | Could | `[unit]` | `DictionaryKeyDto_Registered` | ✓ |
+| Public field bucketed on DTOs and entities; private, static, const not walked | Should | `[unit]` | `PublicFieldOnDto_FieldTypeRegistered`, `PublicFieldOnEntity_FieldTypeRegistered`, `PublicFieldRecord_PreservedNotRegistered`, `NonPublicStaticAndConstFields_NotWalked` | ✓ |
+| DICT-001 public-field check passes trimmed | Should | `[trimmed-harness]` | `DictionaryAndFieldDtoSmokeTest.RunPublicField`; `reviews/002-evidence/trimmed-run.txt` PASSED | ✓ |
+| Self-referential enumerable keeps its registration; System-only dictionary registers nothing | Must | `[unit]` | `SelfEnumerableGeneric_TerminatesWithPreChangeRegistration`, `SystemOnlyDictionary_RegistersNothing`; both green before and after. Also `ExpandingGenericEnumerable_TerminatesAtDepthCap`, whose negative control crashed the host with the cap lifted | ✓ |
+| Pre-existing checks green; both solutions build on net9.0 and net10.0 | Must | `[explicit-skip: build/test gates]` | `reviews/001-002-build.log`, `001-002-design-build.log`, `001-002-test.log` — 812 unit, 628 integration, 0 failed per TFM; `001-002-design-test.log` — 103 per TFM; `reviews/002-evidence/trimmed-gate.txt` exit 0 | ✓ |
+
+Side effect, not a bullet: `NestedListOfLists_InnerElementRegistered` pins that `List<List<Dto>>` now reaches `Dto`.
 
 ---
 
@@ -117,6 +129,14 @@ Walked 2026-10-05 at commit `9d6fae2`.
 - **What changed:** Tuple elements dropped. Recursion stays, scoped to reaching a dictionary value that is itself a collection or nullable.
 - **Why:** User narrowed the todo 2026-10-05.
 - **Discovery Log:** 2026-10-05 / DICT
+
+### 2026-10-05 — Recursion carries a depth cap as well as a path check
+
+- **Section affected:** Steps 2; Constraints
+- **Original said:** A seen-set stops a self-referential enumerable.
+- **What changed:** A path set catches the repeating case, a separate expanded set keeps a type met twice from contributing twice, and a depth cap of 8 stops a type whose enumeration expands without repeating. One test pins the cap; its negative control overflowed the stack with the cap lifted.
+- **Why:** A non-repeating expansion slips past any seen-set, and a generator stack overflow removes every factory from a consumer build.
+- **Discovery Log:** 2026-10-05 / DICT-002
 
 ---
 

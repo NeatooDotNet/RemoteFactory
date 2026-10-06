@@ -83,6 +83,11 @@ Intended order: 001 → 002 → 003.
 - **Decision:** Amend
 - **Follow-up:** DICT-001 and DICT-002 share one branch and one PR; red evidence is captured at the commit before the fix.
 
+### 2026-10-05 — DICT-002 · serves AC-1
+- **Finding:** A generic type that enumerates an ever-larger version of itself never repeats, so recursive unwrapping needs a depth cap as well as a path check.
+- **Decision:** Amend
+- **Follow-up:** n/a — cap of 8, pinned by a test whose negative control overflowed the stack.
+
 ---
 
 ## Skipped Steps
