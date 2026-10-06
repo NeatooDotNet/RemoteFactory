@@ -535,6 +535,50 @@ namespace TestNamespace
     }
 
     [Fact]
+    public void ExpandingGenericEnumerable_TerminatesAtDepthCap()
+    {
+        // Weird<T> enumerates Weird<Weird<T>>, so every unwrap step yields a NEW type and
+        // the path check never fires; only the walker's depth cap stops the recursion.
+        // Without the cap this overflows the stack and takes the test host down — observed
+        // by lifting the cap (DICT-002 evidence). Recursion is new in DICT-002, so there is
+        // no pre-change red for this test; the negative control is its proof.
+        var source = @"
+using System.Collections;
+using System.Collections.Generic;
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public class ValueDto
+    {
+        public int Id { get; set; }
+    }
+
+    public class Weird<T> : IEnumerable<Weird<Weird<T>>>
+    {
+        public IEnumerator<Weird<Weird<T>>> GetEnumerator() => throw new System.NotImplementedException();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    [Factory]
+    public class Tree
+    {
+        public Weird<ValueDto> Root { get; set; }
+        public ValueDto Sibling { get; set; }
+
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        var registered = Registered(FactoryTree(Run(source), "TreeFactory"));
+
+        // The generator finished, and the walk carried on past Root to the next member.
+        Assert.Contains("global::TestNamespace.ValueDto", registered);
+    }
+
+    [Fact]
     public void SystemOnlyDictionary_RegistersNothing()
     {
         // Expanding a KeyValuePair must hand its arguments to the ordinary candidate check,
