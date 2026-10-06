@@ -308,7 +308,7 @@ This covers all factory patterns:
 - **Class Factory `[Execute]` methods** — DTO return types are discovered and preserved
 - **Static Factory `[Execute]` methods** — same treatment
 
-The generator unwraps `Task<T>`, nullable `T?`, and collection types (like `IReadOnlyList<T>`) to find the DTO type inside.
+The generator unwraps `Task<T>`, nullable `T?`, arrays, and every generic collection to find the DTO types inside — recursively, and taking both the key and the value type of a dictionary. [What the walk reaches](#what-the-walk-reaches) states the full rule.
 
 ### What Qualifies as a DTO
 
@@ -323,13 +323,61 @@ Not every signature type needs this treatment. The generator preserves a discove
 
 If you return or accept a plain DTO class **or a positional record** through any factory method, it is automatically trimming-safe. You do not need to take any action.
 
-**Nested DTOs are automatically discovered.** The generator recursively walks public instance properties (including inherited properties) of each discovered DTO type — classes and records alike — to find nested DTOs that also need preservation. Collection properties (`List<T>`, `IReadOnlyList<T>`, arrays) and nullable properties (`T?`) are unwrapped to find the inner type. The same eligibility criteria and bucket rule apply to nested DTOs as to direct signature types. Cycle detection prevents infinite recursion from circular references.
+**Nested DTOs are automatically discovered.** The generator recursively walks the public instance members (including inherited ones) of each discovered DTO type — classes and records alike — to find nested DTOs that also need preservation. Members means properties with a getter **and public fields**: `NeatooJsonSerializer` runs with `IncludeFields = true`, so public fields are on the wire. The same eligibility criteria and bucket rule apply to nested DTOs as to direct signature types. Cycle detection prevents infinite recursion from circular references.
 
-**DTOs carried as `[Factory]` entity properties are automatically discovered.** Every class carrying `[Factory]` directly also walks its own public property graph (inherited properties included) during generation and emits preservation for reachable DTOs in its own `FactoryServiceRegistrar` — so a DTO or record that only rides on an aggregate (never appearing in a factory method signature itself) is still trimming-safe. The entity itself is never treated as a DTO (entities are preserved via DI registration), and entity-typed properties are not walked by the *parent* — each `[Factory]` class's own registrar covers its own graph.
+**DTOs carried as `[Factory]` entity members are automatically discovered.** Every class carrying `[Factory]` directly also walks its own public members (inherited ones included) during generation and emits preservation for reachable DTOs in its own `FactoryServiceRegistrar` — so a DTO or record that only rides on an aggregate (never appearing in a factory method signature itself) is still trimming-safe. The entity itself is never treated as a DTO (entities are preserved via DI registration), and entity-typed members are not walked by the *parent* — each `[Factory]` class's own registrar covers its own graph. An entity's public fields are walked as well as its properties: in the default `Ordinal` format an entity carries properties only, but in `Named` format — and always, for an entity whose constructor takes required parameters — it goes through the reflection serializer and its public fields cross the wire.
 
-For example, if a factory method returns `ParentDto` which has a `List<ChildDto> Children` property, both `ParentDto` and `ChildDto` are automatically registered — no additional action is needed. Likewise, if an `[Execute]`-opened aggregate carries a `Banner` record property, the record is preserved through the aggregate's own registrar.
+For example, if a factory method returns `ParentDto` which has a `List<ChildDto> Children` property, both `ParentDto` and `ChildDto` are automatically registered — no additional action is needed. Likewise, if an `[Execute]`-opened aggregate carries a `Banner` record property, the record is preserved through the aggregate's own registrar, and if an entity carries a `Dictionary<string, LocationDto>`, `LocationDto` is preserved the same way.
 
-If you have a DTO that is **not** in any factory method signature, **not** reachable as a property of a discovered DTO, and **not** reachable through a `[Factory]` entity's public property graph, you need to preserve it yourself. See [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency). (One deliberate boundary: a class that merely *implements* a `[Factory]` interface — an interface-factory service implementation — gets no property walk; those are stateless services, not serialized state.)
+### What the walk reaches
+
+Every type the walk meets is unwrapped to the types the serializer will construct for it:
+
+- `Task<T>` on a factory method's return type, and nullable `T?` at any level.
+- Arrays and every generic collection — anything implementing `IEnumerable<T>` — recursively, so `List<List<T>>` and `Dictionary<string, List<T>>` both reach `T`.
+- Both the key and the value type of every generic dictionary — `Dictionary`, `IDictionary`, `IReadOnlyDictionary`, and the sorted, concurrent, immutable, and custom generic dictionaries. A dictionary enumerates `KeyValuePair<TKey, TValue>`, and both halves are on the wire.
+- A generic collection type of your own, such as `PagedList<T> : List<T>`, **and** its element type. The serializer constructs both.
+
+Each type reached this way is preserved if it qualifies as a DTO, and its own members are walked in turn. Before v1.10.1 the walk reached neither dictionary keys and values, nor public fields, nor the element of a collection nested inside another collection.
+
+### What the walk does not reach
+
+The walk follows only what the compiler can see. A DTO reachable **only** through one of these shapes is never preserved automatically:
+
+| Shape | Why the walk stops |
+|---|---|
+| A member typed as an interface or abstract class, when the concrete type is a plain DTO rather than a `[Factory]` type | The concrete type is chosen at runtime from the `$type` discriminator, so no static walk can know it |
+| A tuple element, such as `(LocationDto Location, int Rank)` | Tuples are `System` types |
+| A non-generic collection subclass, such as `class Locations : List<LocationDto>` | The subclass itself is preserved, but its element type is not reached |
+| A value typed `object` | There is no static type to follow |
+| A DTO that reaches the client only through your own HTTP or JSON code | It never flows through a factory, an entity, or an event |
+
+Preserve such a type in your client's `LinkerConfig.xml`:
+
+```xml
+<linker>
+  <assembly fullname="YourApp.Domain">
+    <type fullname="YourApp.Domain.LocationDto" preserve="all" />
+  </assembly>
+</linker>
+```
+
+or register it in client DI setup, which is exactly what the generator would have emitted:
+
+```csharp
+using Neatoo.RemoteFactory.Internal;
+
+DtoConstructorRegistry.Register<LocationDto>(() => new LocationDto()); // has a public parameterless constructor
+DtoConstructorRegistry.PreserveType<PriceBreakdown>();               // positional record
+```
+
+See also [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency). One deliberate boundary: a class that merely *implements* a `[Factory]` interface — an interface-factory service implementation — gets no member walk; those are stateless services, not serialized state.
+
+### Upgrading across v1.7.0
+
+Before v1.7.0, async `[Remote]` method bodies shipped to trimmed clients (see [Factory Type Preservation](#factory-type-preservation)), so any `new T()` inside one rooted `T`'s constructor on the client as a side effect. v1.7.0 removed those bodies, and the accidental root went with them.
+
+A DTO whose only construction site is inside an async `[Remote]` body, and which the walk does not reach, can therefore work on a client built with v1.6.x or earlier and fail after upgrading. The failure is a `NotSupportedException` — "Deserialization of types without a parameterless constructor…" — which a Blazor WebAssembly build reports as `DeserializeNoConstructor`, because it uses resource keys. Until v1.10.1 that included every DTO reachable only as a dictionary key or value, or only through a public field. Before publishing an upgraded client, check any such type against [What the walk does not reach](#what-the-walk-does-not-reach) and preserve it explicitly, or move to v1.10.1 or later for the dictionary and field shapes.
 
 ## Factory Event Type Preservation
 
@@ -358,7 +406,7 @@ Any accessible record inheriting `FactoryEventBase` is automatically trimming-sa
 
 ### Nested Reference Types in Event Records
 
-Automatically preserved. The generator walks each discovered event's public property graph with the same bucketed walk used for factory-signature and entity-property DTOs — nested records land in the `PreserveType` bucket, parameterless DTOs in the `Register` bucket, collections and nullables are unwrapped, and cycles are detected. No manual `DtoConstructorRegistry` calls are needed for types reachable from an event record's properties.
+Automatically preserved. The generator walks each discovered event's public members — properties and fields — with the same bucketed walk used for factory-signature and entity DTOs: nested records land in the `PreserveType` bucket, parameterless DTOs in the `Register` bucket, collections, dictionary keys and values, and nullables are unwrapped as described in [What the walk reaches](#what-the-walk-reaches), and cycles are detected. No manual `DtoConstructorRegistry` calls are needed for types reachable from an event record's members, outside the shapes listed in [What the walk does not reach](#what-the-walk-does-not-reach).
 
 ### User Code That Forwards `Raise<T>` Through a Generic Passthrough
 
@@ -464,6 +512,7 @@ Fully-public `public bool IsNew { get; set; }` and `public bool IsDeleted { get;
 ## Limitations
 
 - **Development builds are not trimmed.** `dotnet run` and `dotnet build` include all code. Trimming only applies to `dotnet publish` with `PublishTrimmed=true`. This is by design — you get full IntelliSense and debugging during development.
+- **Some DTO shapes are out of the generator's reach.** A DTO reachable only through an interface-typed member, a tuple, a non-generic collection subclass, or an `object` needs explicit preservation. See [What the walk does not reach](#what-the-walk-does-not-reach).
 - **Trimming warnings.** Your domain code or its dependencies may produce trimming warnings (e.g., reflection usage). These are standard .NET trimming concerns, not RemoteFactory-specific. See [Microsoft's trimming documentation](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming) for guidance.
 
 ## Next Steps
