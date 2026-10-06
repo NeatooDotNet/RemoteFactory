@@ -4,8 +4,8 @@
 **Date:** 2026-09-10
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-1, AC-2, AC-6
-**Status:** In Progress
-**Last Updated:** 2026-10-05
+**Status:** Done
+**Last Updated:** 2026-10-06
 **Plan-review opt-in:** No — one generator seam, additive, no public API or documented-rule change.
 **Code-review opt-in:** Yes — behavior-changing generator emission.
 **Branch:** dict-001-gate-dictionary-carried-dto — shared with DICT-001 (one seam; Discovery Log 2026-10-05 / DICT-001)
@@ -59,13 +59,13 @@ Brings the DTO walker up to the two shapes this todo covers. A `KeyValuePair<K,V
 
 ## Acceptance
 
-- [ ] A DTO reachable only as a dictionary value is bucketed by constructor shape through each of the three callers, including when the value is itself a collection. `[unit]` · Must
-- [ ] The DICT-001 dictionary check passes on the publish-trimmed harness. `[trimmed-harness]` · Must
-- [ ] A DTO reachable only as a dictionary key is registered. `[unit]` · Could
-- [ ] A DTO reachable only through a public instance field is bucketed by constructor shape on DTOs and on entities, and private, static, and const fields are not walked. `[unit]` · Should
-- [ ] The DICT-001 public-field check passes on the publish-trimmed harness. `[trimmed-harness]` · Should
-- [ ] A self-referential enumerable terminates with its pre-change registration, and a dictionary of only `System` types registers nothing. `[unit]` · Must
-- [ ] Every pre-existing unit, integration, and trimmed-harness check stays green, and both solutions build on net9.0 and net10.0. `[explicit-skip: build/test gates]` · Must
+- [x] A DTO reachable only as a dictionary value is bucketed by constructor shape through each of the three callers, including when the value is itself a collection. `[unit]` · Must
+- [x] The DICT-001 dictionary check passes on the publish-trimmed harness. `[trimmed-harness]` · Must
+- [x] A DTO reachable only as a dictionary key is registered. `[unit]` · Could
+- [x] A DTO reachable only through a public instance field is bucketed by constructor shape on DTOs and on entities, and private, static, and const fields are not walked. `[unit]` · Should
+- [x] The DICT-001 public-field check passes on the publish-trimmed harness. `[trimmed-harness]` · Should
+- [x] A self-referential enumerable terminates with its pre-change registration, and a dictionary of only `System` types registers nothing. `[unit]` · Must
+- [x] Every pre-existing unit, integration, and trimmed-harness check stays green, and both solutions build on net9.0 and net10.0. `[explicit-skip: build/test gates]` · Must
 
 ---
 
@@ -109,6 +109,7 @@ Side effect, not a bullet: `NestedListOfLists_InnerElementRegistered` pins that 
 ## Gate Record
 
 - Round 1 (2026-10-06): test review CONCERNS — 1 must-cover addressed (System-only test anchored; every test in the class now fails on a generator exception or a missing tree), 1 should-cover addressed (nullable dictionary value pinned), 2 tech-debt triaged (helper hardening done in-file; the shared `DiagnosticTestHelper` gap dismissed as beyond DICT's criteria). Code review CLEAN with 1 callout, fixed (consumer generic collection kept as a candidate, red-first at `c381e77`). — `reviews/002-test-review.md`, `reviews/002-code-review.md`
+- Round 2 (2026-10-06): test review CLEAN; code review CLEAN with no callouts. Done.
 
 ---
 

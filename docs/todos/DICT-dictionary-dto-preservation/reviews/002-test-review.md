@@ -46,3 +46,15 @@ The trimmed harness and the gate also pass.
   - The evidence README.
   - `unit-green-and-negative-control.txt`.
   - The publish log.
+
+## Round 2 — 2026-10-06 — CLEAN
+
+- **Both round-1 items are closed.**
+  - The System-only test asserts a single registration and requires the anchor on the same tree.
+  - `Run` and `RequireTree` guard every test in the class.
+  - The nullable value is pinned.
+- **The new collection code is covered.** `ConsumerGenericCollection_CollectionAndElementBothRegistered` ×3 pins it.
+  - The red evidence is honest: every failure line is an assertion miss.
+  - The self-referential test is still green.
+- **Logs:** green, with no new tech-debt or theoretical items.
+- **Plan status:** Done.

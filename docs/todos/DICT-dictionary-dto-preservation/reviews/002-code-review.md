@@ -39,3 +39,17 @@
 - **Named but unused:**
   - `CLAUDE.md`, `CLAUDE-DESIGN.md`, and `docs/trimming.md`. No candidate finding depended on a documented rule.
   - The two caller files.
+
+## Round 2 — 2026-10-06 — CLEAN, no callouts
+
+- **Callout 1 is fixed and verified.**
+  - Both comment points are addressed.
+  - The test edits only make DICT-002's own file stricter.
+- **Adding the wrapper as a candidate changes nothing** for self-enumerables, framework collections, interfaces, abstract bases, `[Factory]` collections, arrays, `KeyValuePair`, or non-generic subclasses.
+- **The only new registrations are concrete, non-System generic collections:**
+  - at the top level, which is new;
+  - as a list element, which restores the pre-DICT behaviour;
+  - as a dictionary value, which is new.
+- **The pathological depth-cap case** now emits about ten nested registrations instead of one. That is harmless.
+- **No new category of type** can reach a trimmed client.
+- **Theoretical, not triaged:** walking a registered collection's own members can preserve types the serializer never writes, because an `IEnumerable` is written as an array. The only cost is size, and this was already true for nested collections before DICT-002.
