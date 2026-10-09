@@ -130,4 +130,35 @@ namespace TestNamespace
 
         Assert.Empty(diagnostics.Where(d => d.Id.StartsWith("NF", StringComparison.Ordinal)));
     }
+
+    /// <summary>
+    /// A generator that throws fails the run, rather than returning an empty one.
+    /// </summary>
+    /// <remarks>
+    /// Roslyn catches a generator exception and reports it as a CS8785 warning, with no
+    /// generated trees. Every assertion that something is absent from the output then passes
+    /// against nothing, and an assertion on diagnostics sees only that warning. DICT-002's test
+    /// review found its own negative assertions exposed this way and guarded them locally.
+    /// The guard now lives here, for every caller.
+    /// </remarks>
+    [Fact]
+    public void RunGenerator_GeneratorThrows_FailsTheRun()
+    {
+        const string source = "namespace TestNamespace { public class Plain { } }";
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => DiagnosticTestHelper.RunGenerator(source, new ThrowingGenerator()));
+
+        Assert.Contains(ThrowingGenerator.Message, ex.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class ThrowingGenerator : IIncrementalGenerator
+    {
+        public const string Message = "ThrowingGenerator always throws";
+
+        public void Initialize(IncrementalGeneratorInitializationContext context)
+            => context.RegisterSourceOutput(
+                context.CompilationProvider,
+                (_, _) => throw new InvalidOperationException(Message));
+    }
 }

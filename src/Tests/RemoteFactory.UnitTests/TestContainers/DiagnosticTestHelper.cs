@@ -69,6 +69,15 @@ public static class DiagnosticTestHelper
     /// <param name="source">C# source code to analyze.</param>
     /// <returns>Tuple containing all diagnostics, the output compilation, and the generator run result.</returns>
     public static (ImmutableArray<Diagnostic> Diagnostics, Compilation OutputCompilation, GeneratorDriverRunResult RunResult) RunGenerator(string source)
+        => RunGenerator(source, GeneratorInstance.Value);
+
+    /// <summary>
+    /// Runs the given generator. The seam exists so <c>DiagnosticTestHelperTests</c> can feed
+    /// a generator that throws, which the real one cannot be made to do on demand.
+    /// </summary>
+    internal static (ImmutableArray<Diagnostic> Diagnostics, Compilation OutputCompilation, GeneratorDriverRunResult RunResult) RunGenerator(
+        string source,
+        IIncrementalGenerator generator)
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
         var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
@@ -81,11 +90,11 @@ public static class DiagnosticTestHelper
             references: references,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var generator = GeneratorInstance.Value;
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
         var runResult = driver.GetRunResult();
+        AssertGeneratorDidNotThrow(runResult);
 
         // The driver's out-param already holds every generator diagnostic from this run, and
         // GetRunResult().Diagnostics holds the same ones — so the AddRange this used to do
@@ -142,8 +151,19 @@ public static class DiagnosticTestHelper
         // is surfaced for reference purposes. Generated registrars and factories take an
         // IServiceProvider, so without it the output compilation reports CS0012 on every
         // generated tree.
+        //
+        // The three System.Collections assemblies hold the sorted, concurrent, and immutable
+        // dictionaries the DTO walk claims to reach. Without them those types bind as error
+        // types in a fixture and are never walked, so a test of them could only be red.
         var runtimeAssemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
-        foreach (var name in new[] { "System.Runtime.dll", "System.ComponentModel.dll" })
+        foreach (var name in new[]
+        {
+            "System.Runtime.dll",
+            "System.ComponentModel.dll",
+            "System.Collections.dll",
+            "System.Collections.Concurrent.dll",
+            "System.Collections.Immutable.dll"
+        })
         {
             var path = Path.Combine(runtimeAssemblyPath!, name);
             if (File.Exists(path))
@@ -210,6 +230,7 @@ public static class DiagnosticTestHelper
 
         driver = driver.RunGenerators(compilation);
         var first = driver.GetRunResult();
+        AssertGeneratorDidNotThrow(first);
 
         var secondTree = CSharpSyntaxTree.ParseText(source + appendedSource, parseOptions, path: "Fixture.cs");
         var secondCompilation = compilation.ReplaceSyntaxTree(firstTree, secondTree);
@@ -218,6 +239,7 @@ public static class DiagnosticTestHelper
 
         driver = driver.RunGenerators(secondCompilation);
         var second = driver.GetRunResult();
+        AssertGeneratorDidNotThrow(second);
 
         return (first, second);
     }
@@ -264,6 +286,34 @@ public static class DiagnosticTestHelper
                 + "assertion downstream of this would have reported on a degraded fixture rather than on "
                 + $"the generator. Fix the fixture.{Environment.NewLine}"
                 + string.Join(Environment.NewLine, errors.Select(e => e.ToString())));
+        }
+    }
+
+    /// <summary>
+    /// Fails if the generator threw during the run.
+    /// </summary>
+    /// <remarks>
+    /// Roslyn catches a generator exception, reports it as a CS8785 warning, and produces no
+    /// generated trees, so without this check a thrown generator reads as a quiet one. Every
+    /// "not emitted" assertion then passes against nothing, and a diagnostic test sees one
+    /// warning where it expected its NF diagnostic. Unlike <see cref="AssertInputCompiles"/>
+    /// this is safe on every entry point: no test feeds input that is supposed to crash the
+    /// generator, so a generator exception is always a defect in the generator.
+    /// </remarks>
+    private static void AssertGeneratorDidNotThrow(GeneratorDriverRunResult runResult)
+    {
+        var thrown = runResult.Results
+            .Where(r => r.Exception is not null)
+            .Select(r => r.Exception!)
+            .ToList();
+
+        if (thrown.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "The generator threw. Roslyn would have reported this as CS8785 with no generated trees, so "
+                + "any assertion about absent output would have passed against nothing."
+                + Environment.NewLine
+                + string.Join(Environment.NewLine, thrown.Select(e => e.ToString())));
         }
     }
 
