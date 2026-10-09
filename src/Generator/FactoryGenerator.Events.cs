@@ -14,7 +14,7 @@ namespace Neatoo;
 /// Value-equatable discovery result for one concrete <c>FactoryEventBase</c>
 /// descendant: the assembly name (for the per-assembly registrar's namespace and
 /// hint) and the two preservation buckets produced by walking the event root and
-/// its property graph with the shared bucketed walk.
+/// its member graph (public properties and public fields) with the shared bucketed walk.
 /// </summary>
 internal sealed record FactoryEventInfo
 {

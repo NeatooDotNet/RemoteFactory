@@ -259,8 +259,8 @@ public partial class Factory
 				}
 			}
 
-			// Entity property-graph discovery: [Factory] class types walk their own
-			// public property graph so DTOs reachable only as entity properties are
+			// Entity member-graph discovery: [Factory] class types walk their own
+			// public properties and fields so DTOs reachable only as entity members are
 			// preserved. The entity itself is never bucketed (DI registration preserves
 			// it), and factory-typed properties are skipped — each [Factory] class's
 			// own registrar owns its graph.
@@ -803,9 +803,10 @@ public partial class Factory
 
 		/// <summary>
 		/// Discovers plain DTO types in a method's return type and non-service parameters that need
-		/// preservation for IL trimming support. Unwraps Task, nullable, and generic collections.
+		/// preservation for IL trimming support. Unwraps Task, nullable, arrays, and generic
+		/// collections recursively, including both halves of every generic dictionary.
 		/// Excludes primitives, [Factory] types, and abstract/interface types. Recursively walks
-		/// public properties of discovered DTOs to find nested types. Delegates to
+		/// the public properties and public fields of discovered DTOs to find nested types. Delegates to
 		/// DtoTypeWalker.WalkDtoGraph, which bucket-sorts by constructor shape: parameterless →
 		/// Register bucket, parameterized-only (positional records) → PreserveType bucket.
 		/// </summary>
