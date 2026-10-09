@@ -129,7 +129,7 @@ Intended order: 001 → 002 → 003.
 
 ## Follow-on
 
-- Push the `v1.10.0` tag so it reaches NuGet. Then tag `v1.10.1` and replace its "Not yet" Released line and both "Unreleased" index dates · `docs/release-notes/` · DICT-003 · user's
+- Push the `v1.10.0` tag so it reaches NuGet. Then tag `v1.10.1` and replace its "Not yet" Released line and both "Unreleased" index dates · `docs/release-notes/` · DICT-003 · user's · **Done 2026-10-09** (both on NuGet)
 - Sorted, concurrent, and immutable dictionaries, `Dto[][]`, and `List<MyStruct?>` are reached by the walker but no test pins them. The unit-test helper references CoreLib only · `DictionaryAndFieldDtoDiscoveryTests.cs` · close-out audit · Could · **Done in #111**
 - A doc comment still says the walk covers "public properties of discovered DTOs" · `src/Generator/FactoryGenerator.Types.cs:807-808` · close-out audit · Could · **Done in #111**
 - Intermittent `MSB3552` recurred during DICT-002's round-2 build. Its log is kept as `reviews/001-002-round2-build-msb3552-flake.log` · [#94](https://github.com/NeatooDotNet/RemoteFactory/issues/94) · DICT-002 · Could
