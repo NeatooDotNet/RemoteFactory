@@ -35,16 +35,12 @@ namespace RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery;
 public class DictionaryAndFieldDtoDiscoveryTests
 {
     /// <summary>
-    /// Runs the generator and fails if it threw. A generator exception surfaces only as a
-    /// CS8785 diagnostic with no trees, which would let every negative assertion in this
-    /// file pass vacuously (DICT-002 test review, 2026-10-06).
+    /// Runs the generator. The helper fails the run if the generator threw, so no negative
+    /// assertion in this file can pass against empty output (DICT-002 test review,
+    /// 2026-10-06; the guard moved into the helper afterwards).
     /// </summary>
     private static GeneratorDriverRunResult Run(string source)
-    {
-        var (_, _, runResult) = DiagnosticTestHelper.RunGenerator(source);
-        Assert.All(runResult.Results, result => Assert.Null(result.Exception));
-        return runResult;
-    }
+        => DiagnosticTestHelper.RunGenerator(source).RunResult;
 
     private static string AllTrees(GeneratorDriverRunResult runResult)
         => string.Join("\n", runResult.GeneratedTrees.Select(t => t.GetText()?.ToString() ?? ""));
