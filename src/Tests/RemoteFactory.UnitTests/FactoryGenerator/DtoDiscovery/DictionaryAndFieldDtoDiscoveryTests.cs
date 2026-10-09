@@ -25,10 +25,11 @@ namespace RemoteFactory.UnitTests.FactoryGenerator.DtoDiscovery;
 /// green before and must stay green after.
 /// </para>
 /// <para>
-/// Tests use <c>Dictionary</c>, <c>IDictionary</c>, and <c>IReadOnlyDictionary</c> because
-/// the helper compilation references CoreLib only. Sorted, concurrent, and immutable
-/// dictionaries reach the walk through the same <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c>
-/// interface.
+/// Sorted, concurrent, immutable, and consumer-defined generic dictionaries reach the walk
+/// through the same <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c> interface and are pinned
+/// in <c>MoreDictionaryShapes_ValueDtoRegistered</c>. Those six framework cases were red
+/// before the helper compilation referenced the System.Collections assemblies, because
+/// their types bound as error types, which shows the assertion is not vacuous.
 /// </para>
 /// </remarks>
 public class DictionaryAndFieldDtoDiscoveryTests
@@ -737,6 +738,112 @@ namespace TestNamespace
 }
 ";
         Assert.Contains("global::TestNamespace.CellDto", Registered(FactoryTree(Run(source), "CarrierFactory")));
+    }
+
+    [Fact]
+    public void JaggedArray_InnerElementRegistered()
+    {
+        // An array of arrays recurses through the array branch twice.
+        var source = @"
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public class CellDto
+    {
+        public int Value { get; set; }
+    }
+
+    [Factory]
+    public class Carrier
+    {
+        public CellDto[][] Grid { get; set; }
+
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        Assert.Contains("global::TestNamespace.CellDto", Registered(FactoryTree(Run(source), "CarrierFactory")));
+    }
+
+    [Fact]
+    public void NullableStructElement_StructRegistered()
+    {
+        // List<PointDto?> enumerates Nullable<PointDto>, a System type. The nullable is
+        // stripped during the recursive unwrap, so the struct itself is reached.
+        var source = @"
+using System.Collections.Generic;
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{
+    public struct PointDto
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+    }
+
+    [Factory]
+    public class Carrier
+    {
+        public List<PointDto?> Points { get; set; }
+
+        [Create]
+        internal void Create() { }
+    }
+}
+";
+        Assert.Contains("global::TestNamespace.PointDto", Registered(FactoryTree(Run(source), "CarrierFactory")));
+    }
+
+    #endregion
+
+    #region Dictionary values — framework dictionaries outside CoreLib, and a consumer's own
+
+    [Theory]
+    [InlineData("SortedDictionary<string, ValueDto>")]
+    [InlineData("SortedList<string, ValueDto>")]
+    [InlineData("ConcurrentDictionary<string, ValueDto>")]
+    [InlineData("ImmutableDictionary<string, ValueDto>")]
+    [InlineData("ImmutableSortedDictionary<string, ValueDto>")]
+    [InlineData("IImmutableDictionary<string, ValueDto>")]
+    [InlineData("LookupMap<ValueDto>")]
+    public void MoreDictionaryShapes_ValueDtoRegistered(string propertyType)
+    {
+        // The published docs claim sorted, concurrent, immutable, and custom generic
+        // dictionaries are walked, because each enumerates KeyValuePair<K,V> through a generic
+        // IEnumerable<T>. These live in System.Collections, System.Collections.Concurrent, and
+        // System.Collections.Immutable, which the helper compilation references for that reason
+        // — without them the property type is an error type and nothing is walked.
+        var source = $@"
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using Neatoo.RemoteFactory;
+
+namespace TestNamespace
+{{
+    public class ValueDto
+    {{
+        public string Text {{ get; set; }}
+    }}
+
+    public class LookupMap<TValue> : Dictionary<string, TValue>
+    {{
+    }}
+
+    [Factory]
+    public class Carrier
+    {{
+        public {propertyType} Entries {{ get; set; }}
+
+        [Create]
+        internal void Create() {{ }}
+    }}
+}}
+";
+        Assert.Contains("global::TestNamespace.ValueDto", Registered(FactoryTree(Run(source), "CarrierFactory")));
     }
 
     #endregion

@@ -142,8 +142,19 @@ public static class DiagnosticTestHelper
         // is surfaced for reference purposes. Generated registrars and factories take an
         // IServiceProvider, so without it the output compilation reports CS0012 on every
         // generated tree.
+        //
+        // The three System.Collections assemblies hold the sorted, concurrent, and immutable
+        // dictionaries the DTO walk claims to reach. Without them those types bind as error
+        // types in a fixture and are never walked, so a test of them could only be red.
         var runtimeAssemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
-        foreach (var name in new[] { "System.Runtime.dll", "System.ComponentModel.dll" })
+        foreach (var name in new[]
+        {
+            "System.Runtime.dll",
+            "System.ComponentModel.dll",
+            "System.Collections.dll",
+            "System.Collections.Concurrent.dll",
+            "System.Collections.Immutable.dll"
+        })
         {
             var path = Path.Combine(runtimeAssemblyPath!, name);
             if (File.Exists(path))
