@@ -731,6 +731,10 @@ public partial class Factory
 					this.IsNullable = returnTypeSymbol.TypeArguments.Any(t => t.NullableAnnotation == NullableAnnotation.Annotated);
 					this.ReturnType = returnTypeSymbol.TypeArguments.First().ToDisplayString(FullyQualifiedFormatWithNullable);
 				}
+				else
+				{
+					this.IsVoidTask = true;
+				}
 			}
 
 			if (methodSyntax.ParameterList is ParameterListSyntax parameterListSyntax)
@@ -782,6 +786,12 @@ public partial class Factory
 		public bool IsNullable { get; protected set; }
 		public bool IsBool { get; private set; }
 		public bool IsTask { get; private set; }
+		/// <summary>
+		/// The method returns non-generic <c>Task</c>: awaited, with no result. <see cref="ReturnType"/>
+		/// then still holds <c>global::System.Threading.Tasks.Task</c> and must not be wrapped in
+		/// another <c>Task&lt;&gt;</c> (#113).
+		/// </summary>
+		public bool IsVoidTask { get; private set; }
 		public bool IsRemote { get; protected set; }
 		public bool IsInternal { get; protected set; }
 		public string? ReturnType { get; protected set; }

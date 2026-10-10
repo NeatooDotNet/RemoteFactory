@@ -549,7 +549,8 @@ internal static class FactoryModelBuilder
             isNullable: method.IsNullable,
             parameters: parameters,
             serviceParameters: serviceParameters,
-            hasCancellationToken: hasCancellationToken);
+            hasCancellationToken: hasCancellationToken,
+            hasResult: !method.IsVoidTask);
     }
 
     private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false, bool isSourceAuthMethodRemote = false)

@@ -104,19 +104,23 @@ public static partial class TallyCommand
 <sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L99-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-### [Execute] must return `Task<T>`, not `Task`
+### [Execute] returns `Task` or `Task<T>`, never `void`
 
 ```csharp
-// WRONG - no return value
+// WRONG - NF0102
 [Remote, Execute]
-private static Task _DoSomething(...) { }
+private static void _DoSomething(...) { }
 
-// RIGHT - returns a value
+// RIGHT - no result: the await confirms completion and rethrows a server exception
 [Remote, Execute]
-private static Task<bool> _DoSomething(...) { return Task.FromResult(true); }
+private static Task _DoSomething(...) { ... }
+
+// RIGHT - the caller needs the value
+[Remote, Execute]
+private static Task<Summary> _Summarize(...) { ... }
 ```
 
-The client needs something to await and confirm the operation completed.
+A `Task`-returning `[Execute]` generates a `Task` delegate and round-trips with no result. Until the #113 fix it generated a `Task<Task>` delegate that did not compile.
 
 ### Static classes must be `partial`
 

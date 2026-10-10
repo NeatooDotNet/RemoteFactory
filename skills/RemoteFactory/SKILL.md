@@ -69,7 +69,7 @@ Both generate an `IXxxFactory` with the appropriate methods. The factory pattern
 | Do I need `partial` keyword? | Yes, always |
 | Should child entities have [Remote]? | No - causes N+1 remote calls |
 | Should child entity methods be `internal`? | Yes - server-only, trimmable, invisible to client |
-| Can [Execute] return void? | No, must return Task<T> |
+| Can [Execute] return void? | No. `Task` when there is no result; `Task<T>` when the caller needs one (NF0102 rejects `void`) |
 | Does [Execute] need [Remote]? | Only if it needs the server. `[Execute]` obeys `[Remote]`: bare, it runs on whichever tier resolves it with that tier's services (client-side engines); with `[Remote]`, the client crosses to the server. See `references/static-factory.md` |
 | Can [Execute] go on a class factory? | Yes - `static`, returning the containing type. `public static` runs where the factory resolves; `internal static` without `[Remote]` is server-only; `[Remote]` decides whether the client crosses |
 | How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class with a `static` matching method — runs in the caller's scope, sequentially; at the default `Immediate` phase that means shared DbContext/transaction, awaited at `Raise` |

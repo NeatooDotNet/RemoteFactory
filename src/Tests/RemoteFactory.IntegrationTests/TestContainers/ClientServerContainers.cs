@@ -8,6 +8,7 @@ using RemoteFactory.IntegrationTests.Logging;
 using RemoteFactory.IntegrationTests.Shared;
 using RemoteFactory.IntegrationTests.TestTargets.Authorization;
 using RemoteFactory.IntegrationTests.TestTargets.Events;
+using RemoteFactory.IntegrationTests.TestTargets.Execute;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
@@ -319,6 +320,9 @@ public static class ClientServerContainers
         serverCollection.AddScoped<IScopeProbe, ScopeProbe>();
         localCollection.AddScoped<IScopeProbe, ScopeProbe>();
 
+        serverCollection.AddSingleton<IVoidExecuteRecorder, VoidExecuteRecorder>();
+        localCollection.AddSingleton<IVoidExecuteRecorder, VoidExecuteRecorder>();
+
         // Configure RemoteFactory for each mode
         serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, Assembly.GetExecutingAssembly());
         serverCollection.RegisterMatchingName(Assembly.GetExecutingAssembly());
@@ -363,6 +367,7 @@ public static class ClientServerContainers
             services.AddSingleton<IServerOnlyService, ServerOnly>();
             services.AddSingleton<IEventTestService, EventTestService>();
             services.AddScoped<IScopeProbe, ScopeProbe>();
+            services.AddSingleton<IVoidExecuteRecorder, VoidExecuteRecorder>();
         }
 
         services.AddNeatooRemoteFactory(mode, serializationOptions, Assembly.GetExecutingAssembly());
@@ -413,6 +418,9 @@ public static class ClientServerContainers
         // IScopeProbe the caller did.
         serverCollection.AddScoped<IScopeProbe, ScopeProbe>();
         localCollection.AddScoped<IScopeProbe, ScopeProbe>();
+
+        serverCollection.AddSingleton<IVoidExecuteRecorder, VoidExecuteRecorder>();
+        localCollection.AddSingleton<IVoidExecuteRecorder, VoidExecuteRecorder>();
 
         // Configure RemoteFactory for each mode
         serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, serializationOptions, Assembly.GetExecutingAssembly());
