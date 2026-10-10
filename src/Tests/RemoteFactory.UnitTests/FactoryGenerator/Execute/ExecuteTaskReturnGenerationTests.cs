@@ -16,7 +16,8 @@ namespace RemoteFactory.UnitTests.FactoryGenerator.Execute;
 /// <para>
 /// Each source carries <c>using System.Threading;</c> because generated files copy the source
 /// file's usings and name <c>CancellationToken</c> unqualified; without it every
-/// <c>[Execute]</c>, <c>Task&lt;T&gt;</c> included, fails CS0246 here, which is not this defect.
+/// <c>[Execute]</c>, <c>Task&lt;T&gt;</c> included, fails CS0246 here, which is not this defect
+/// (it is #97: generated code relies on the consumer's implicit usings).
 /// </para>
 /// </remarks>
 public class ExecuteTaskReturnGenerationTests
