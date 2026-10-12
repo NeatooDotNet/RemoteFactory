@@ -44,7 +44,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 | # | File | Title (≤ 8 words) | Serves | Status | PR |
 |---|------|-------|--------|--------|----|
-| 001 | [001-ci-rule-ledger](./plans/001-ci-rule-ledger.md) | Design in CI, snippet rule, findings ledger | AC-1, AC-4, AC-7 | Done | — |
+| 001 | [001-ci-rule-ledger](./plans/001-ci-rule-ledger.md) | Design in CI, snippet rule, findings ledger | AC-1, AC-4, AC-7 | Done | #118 |
 | 002 | [002-order-aggregate-cascade](./plans/002-order-aggregate-cascade.md) | Order aggregate: R-C, R-D cascade, D14, R-E | AC-2, AC-4 | Draft | — |
 | 003 | [003-service-readmodel-context](./plans/003-service-readmodel-context.md) | Domain service, read model, context | AC-2, AC-4 | Draft | — |
 | 004 | [004-create-or-fetch-value-objects](./plans/004-create-or-fetch-value-objects.md) | Create-or-fetch and value objects | AC-2, AC-4 | Draft | — |

@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No (CI configuration and bookkeeping; no API, schema or domain change)
 **Code-review opt-in:** No (mechanical; no behavior change)
 **Branch:** EXSET-001-ci-rule-ledger
-**PR:** —
+**PR:** #118
 
 ---
 
