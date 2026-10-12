@@ -372,7 +372,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
 | Should child entities have [Remote]? | No | `OrderLine.cs:27-41` | Would cause N+1 remote calls |
-| Can [Execute] return void? | No, must return Task<T> | `AllPatterns.cs:402-409` | Request-response: the caller awaits a result whether the call is local or remote |
+| Can [Execute] return void? | No; `Task` when there is no result, `Task<T>` when the caller needs one | `AllPatterns.cs` (`_SendNotification`, `_Notify`) | Request-response: the caller awaits completion whether the call is local or remote |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Does constructor injection affect ordinal serialization? | Yes -- a class with no parameterless or all-default-parameter ctor causes the generator to skip `IOrdinalSerializable`; the type then deserializes via the named/DI path (`GetRequiredService`), which resolves the ctor parameters from the DI container on each side of the wire | `CtorInjectionExample.cs`, `SerializationTests.cs` (`CtorInjectedEntity_*` tests) | Ordinal `FromOrdinalArray` uses object-initializer / positional construction and does not resolve DI. The generator's `RequiresServiceInstantiationCheck` looks only at ctor shape (parameter count, default values) -- not at `[Service]` attribute presence |

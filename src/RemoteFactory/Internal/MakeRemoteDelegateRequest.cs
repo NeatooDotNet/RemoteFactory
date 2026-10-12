@@ -22,6 +22,20 @@ public interface IMakeRemoteDelegateRequest
 	/// </summary>
 	Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken);
 
+	/// <summary>
+	/// Round-trips a static <c>[Remote, Execute]</c> whose method returns non-generic <c>Task</c>:
+	/// awaited until the server method completes, a server exception rethrown here, the relay
+	/// batch delivered, and no result read.
+	/// </summary>
+	/// <remarks>
+	/// The wire contract is the one <see cref="ForDelegateEvent(Type, object?[], CancellationToken)"/>
+	/// already carries — the server serializes no result for a non-generic <c>Task</c> — so this
+	/// forwards to it. A default member, so an implementation written before it existed (test
+	/// stand-ins included) keeps compiling.
+	/// </remarks>
+	Task ForDelegateNoResult(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
+		=> ForDelegateEvent(delegateType, parameters, cancellationToken);
+
 	// Backward-compatible overloads without CancellationToken
 	Task<T> ForDelegate<T>(Type delegateType, object?[]? parameters)
 		=> ForDelegate<T>(delegateType, parameters, default);

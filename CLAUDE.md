@@ -167,6 +167,10 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 
 **Best practice - Blazor WASM:** Exclude server-only packages (Entity Framework Core, etc.) from client projects to enforce the boundary and reduce bundle size.
 
+### LazyLoad Is Being Removed
+
+`LazyLoad<T>` and `ILazyLoadFactory` are scheduled for removal (ruled 2026-10-09; see the `techdebt` issue "Remove LazyLoad<T> and ILazyLoadFactory" and `docs/VisionAlignment.md` R-K). Do not write new guidance, examples, tests or skill content against them, and exclude them from the docs and the skill as they are revised. Deferred loading of a child list is a `[Remote]` `[Fetch]` on the child list factory, called when needed.
+
 ## Testing
 
 Tests run against both target frameworks (net9.0, net10.0).

@@ -15,7 +15,8 @@ internal sealed record ExecuteDelegateModel
         bool isNullable = false,
         IReadOnlyList<ParameterModel>? parameters = null,
         IReadOnlyList<ParameterModel>? serviceParameters = null,
-        bool hasCancellationToken = false)
+        bool hasCancellationToken = false,
+        bool hasResult = true)
     {
         Name = name;
         DelegateName = delegateName;
@@ -25,6 +26,7 @@ internal sealed record ExecuteDelegateModel
         Parameters = parameters ?? System.Array.Empty<ParameterModel>();
         ServiceParameters = serviceParameters ?? System.Array.Empty<ParameterModel>();
         HasCancellationToken = hasCancellationToken;
+        HasResult = hasResult;
     }
 
     public string Name { get; }
@@ -44,4 +46,10 @@ internal sealed record ExecuteDelegateModel
     /// Whether the domain method has a CancellationToken parameter.
     /// </summary>
     public bool HasCancellationToken { get; }
+    /// <summary>
+    /// False when the domain method returns non-generic <c>Task</c>: the delegate is declared
+    /// <c>Task</c> and the remote leg round-trips with no result. <see cref="ReturnType"/> is
+    /// not emitted in that case.
+    /// </summary>
+    public bool HasResult { get; }
 }

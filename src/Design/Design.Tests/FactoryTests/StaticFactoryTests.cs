@@ -78,4 +78,44 @@ public class StaticFactoryTests
         local.Dispose();
     }
 
+    /// <summary>
+    /// Verifies a Task-returning [Remote, Execute] runs on the server and completes.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: A command with no result returns Task
+    ///
+    /// The client awaits it; the await returns once the server method has run.
+    /// RecordingNotificationService replaces the server's INotificationService so
+    /// the test can see the call arrived there.
+    /// </remarks>
+    [Fact]
+    public async Task Execute_ReturningTask_RunsOnServer()
+    {
+        // Arrange
+        var recorder = new RecordingNotificationService();
+        var (server, client, _) = DesignClientServerContainers.Scopes(
+            configureServer: services => services.AddSingleton<INotificationService>(recorder));
+
+        var notify = client.GetRequiredService<ExampleCommands.Notify>();
+
+        // Act
+        await notify("test@example.com", "Hello!");
+
+        // Assert
+        Assert.Equal(("test@example.com", "Hello!"), Assert.Single(recorder.Sent));
+
+        server.Dispose();
+        client.Dispose();
+    }
+
+    private sealed class RecordingNotificationService : INotificationService
+    {
+        public List<(string Recipient, string Message)> Sent { get; } = [];
+
+        public Task SendAsync(string recipient, string message)
+        {
+            Sent.Add((recipient, message));
+            return Task.CompletedTask;
+        }
+    }
 }

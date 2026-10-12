@@ -402,18 +402,38 @@ public static partial class ExampleCommands
     /// DID NOT DO THIS: Allow void-returning [Execute] methods
     ///
     /// Reasons:
-    /// 1. All remote calls need a response to confirm completion
+    /// 1. A remote call needs a response to confirm completion
     /// 2. The client needs something to await
-    /// 3. Enables returning success/failure status or results
     ///
-    /// The rule: [Execute] methods must return Task&lt;T&gt;, not just Task.
+    /// The rule: [Execute] returns Task or Task&lt;T&gt;, never void. Task&lt;T&gt; when
+    /// the caller needs a value; Task when it does not (see _Notify below). Awaiting
+    /// either confirms completion and rethrows a server exception.
     /// </remarks>
     [Remote, Execute]
     private static async Task<bool> _SendNotification(string recipient, string message, [Service] INotificationService service)
     {
         await service.SendAsync(recipient, message);
-        return true; // Return value required for Execute methods
+        return true;
     }
+
+    /// <summary>
+    /// Sends a notification. A command with no result.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: A command with nothing to report returns Task
+    ///
+    /// The caller awaits it exactly as it awaits Task&lt;T&gt;: the await returns when
+    /// the server method has completed, and a server exception rethrows at the await.
+    /// No result is serialized. Do not return Task&lt;bool&gt; just to have something
+    /// to return; return Task&lt;T&gt; when the caller needs the value.
+    ///
+    /// GENERATOR BEHAVIOR: The delegate is declared Task (ExampleCommands.Notify), and
+    /// the client's remote registration round-trips with no result. Before #113 a
+    /// Task-returning [Execute] generated a Task&lt;Task&gt; delegate that did not compile.
+    /// </remarks>
+    [Remote, Execute]
+    private static Task _Notify(string recipient, string message, [Service] INotificationService service)
+        => service.SendAsync(recipient, message);
 
     /// <summary>
     /// Scores text on the caller's tier. Returns the word count.

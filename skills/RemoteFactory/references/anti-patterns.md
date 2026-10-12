@@ -183,28 +183,26 @@ public class EmployeeRepository : IEmployeeRepository { }  // No [Factory]
 
 ---
 
-## 8. [Execute] Returning Task (not Task<T>)
+## 8. Inventing a Result for a Command That Has None
 
-**Problem**: Client has nothing to await for confirmation.
+**Problem**: A `Task<bool>` that is always `true` tells the caller nothing.
 
 ```csharp
-// WRONG - no return value
-[Remote, Execute]
-private static Task _ProcessEmployee(Guid id, [Service] IEmployeeService svc)
-{
-    return svc.ProcessAsync(id);
-}
-
-// RIGHT - returns a value
+// WRONG - the bool exists only to have something to return
 [Remote, Execute]
 private static async Task<bool> _ProcessEmployee(Guid id, [Service] IEmployeeService svc)
 {
     await svc.ProcessAsync(id);
     return true;
 }
+
+// RIGHT - a command with no result returns Task
+[Remote, Execute]
+private static Task _ProcessEmployee(Guid id, [Service] IEmployeeService svc)
+    => svc.ProcessAsync(id);
 ```
 
-**Why**: Execute is request-response. The client needs a result to know the operation completed.
+**Why**: Awaiting a `Task` already confirms completion: the await returns once the server method has run, and a server exception rethrows at the await. Return `Task<T>` when the caller needs the value. `[Execute]` never returns `void` (NF0102). Until the #113 fix, a `Task`-returning `[Execute]` generated a `Task<Task>` delegate that did not compile.
 
 ---
 
@@ -333,7 +331,7 @@ internal partial class PersonPhoneList
 | Storing method services | Null after round-trip | Use immediately or constructor inject |
 | Missing partial | Won't compile | Add `partial` keyword |
 | [Factory] on implementation | Duplicate registration | Only on interface |
-| [Execute] returning Task | No confirmation | Return Task<T> |
+| Inventing a result for a command | `Task<bool>` that is always `true` | Return `Task` |
 | Class [Execute] wrong return type | Won't compile | Must return containing type |
 | [Remote] on public instance methods | NF0105 diagnostic | Change method to `internal` (static methods are exempt) |
 | [Remote] on an [Execute] that must run on the client | Round-trips; server-only services fail | Leave [Remote] off — [Execute] obeys it |

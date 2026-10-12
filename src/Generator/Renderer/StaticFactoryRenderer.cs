@@ -96,7 +96,12 @@ internal static class StaticFactoryRenderer
 
         var nullableMarker = del.IsNullable ? "Nullable" : "";
 
-        sb.AppendLine($"        public delegate Task<{del.ReturnType}> {del.DelegateName}({paramDecl});");
+        // A domain method returning non-generic Task has no result to carry: the delegate is a
+        // plain Task. Wrapping ReturnType (which is then Task itself) produced Task<Task> and
+        // CS0266 in the consumer's generated file (#113).
+        var delegateReturn = del.HasResult ? $"Task<{del.ReturnType}>" : "Task";
+
+        sb.AppendLine($"        public delegate {delegateReturn} {del.DelegateName}({paramDecl});");
     }
 
     /// <summary>
@@ -229,7 +234,11 @@ internal static class StaticFactoryRenderer
 
         sb.AppendLine($"                services.AddTransient<{typeName}.{del.DelegateName}>(cc =>");
         sb.AppendLine("                {");
-        sb.AppendLine($"                    return ({paramIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().ForDelegate{nullableText}<{del.ReturnType}>(typeof({typeName}.{del.DelegateName}), [{serializedParams}], cancellationToken);");
+        var remoteCall = del.HasResult
+            ? $"ForDelegate{nullableText}<{del.ReturnType}>"
+            : "ForDelegateNoResult";
+
+        sb.AppendLine($"                    return ({paramIdentifiers}) => cc.GetRequiredService<IMakeRemoteDelegateRequest>().{remoteCall}(typeof({typeName}.{del.DelegateName}), [{serializedParams}], cancellationToken);");
         sb.AppendLine("                });");
     }
 
