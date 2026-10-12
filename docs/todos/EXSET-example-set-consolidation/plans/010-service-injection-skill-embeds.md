@@ -15,4 +15,4 @@
 
 ## Scope
 
-Migrate the `service-injection-*`, `serialization-caveat-*`, `clientserver-container-*` and every remaining `skill-*` region into Design and re-point `service-injection.md` and the skill references, deleting the reference-app sources and the duplicate keys. Fix `service-injection.md`'s findings: "server-only" versus "that tier's container", the client-supplied query string, the side-effecting `[Create]` constructor (the R-J warning), and child operations' visibility (R-C). Skill prose around the re-pointed embeds is left for Todo 2.
+Migrate the `service-injection-*`, `serialization-caveat-*`, `clientserver-container-*` and every remaining `skill-*` region into Design and re-point `service-injection.md` and the skill references, and fix `interface-factory.md` (no embeds today), deleting the reference-app sources and the duplicate keys. Fix `service-injection.md`'s findings: "server-only" versus "that tier's container", the client-supplied query string, the side-effecting `[Create]` constructor (the R-J warning), and child operations' visibility (R-C). Skill prose around the re-pointed embeds is left for Todo 2.

@@ -24,7 +24,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 - [ ] **AC-4** · Must — Each of the 86 audit findings has one recorded outcome, and every finding outside the skill's prose is fixed against the rulings.
 - [ ] **AC-5** · Should — LazyLoad appears in no doc page, README section or skill reference.
 - [ ] **AC-6** · Must — `src/docs/samples` and `src/docs/reference-app` are deleted.
-- [ ] **AC-7** · Could — A `.claude/rules` file names Design as the snippet source and `.gitattributes` forces LF for `.md`.
+- [x] **AC-7** · Could — A `.claude/rules` file names Design as the snippet source and `.gitattributes` forces LF for `.md`.
 
 ## Out of Scope
 
@@ -44,7 +44,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 | # | File | Title (≤ 8 words) | Serves | Status | PR |
 |---|------|-------|--------|--------|----|
-| 001 | [001-ci-rule-ledger](./plans/001-ci-rule-ledger.md) | Design in CI, snippet rule, findings ledger | AC-1, AC-4, AC-7 | Draft | — |
+| 001 | [001-ci-rule-ledger](./plans/001-ci-rule-ledger.md) | Design in CI, snippet rule, findings ledger | AC-1, AC-4, AC-7 | Done | — |
 | 002 | [002-order-aggregate-cascade](./plans/002-order-aggregate-cascade.md) | Order aggregate: R-C, R-D cascade, D14, R-E | AC-2, AC-4 | Draft | — |
 | 003 | [003-service-readmodel-context](./plans/003-service-readmodel-context.md) | Domain service, read model, context | AC-2, AC-4 | Draft | — |
 | 004 | [004-create-or-fetch-value-objects](./plans/004-create-or-fetch-value-objects.md) | Create-or-fetch and value objects | AC-2, AC-4 | Draft | — |
@@ -72,6 +72,8 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 ---
 
 ## Skipped Steps
+
+- EXSET-001 test-reviewer: no test or code changed; evidence is in the plan's Test Evidence.
 
 ---
 
