@@ -7,6 +7,7 @@ abandonment. Move rows to the Completed section together with the folder move.
 
 | ID | Todo | Created | Location |
 |----|------|---------|----------|
+| EXSET | One compiled example set, and the audit against it | 2026-10-11 | [EXSET-example-set-consolidation](./EXSET-example-set-consolidation/todo.md) |
 
 ## Completed
 
