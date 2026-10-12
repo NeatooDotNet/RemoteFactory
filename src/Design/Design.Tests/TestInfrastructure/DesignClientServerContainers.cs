@@ -229,9 +229,10 @@ public static class DesignClientServerContainers
     /// </remarks>
     public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes(
         Action<IServiceCollection>? configureServer = null,
-        Action<IServiceCollection>? configureClient = null)
+        Action<IServiceCollection>? configureClient = null,
+        SerializationFormat format = SerializationFormat.Ordinal)
     {
-        var serializationOptions = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
+        var serializationOptions = new NeatooSerializationOptions { Format = format };
 
         var serverCollection = new ServiceCollection();
         var clientCollection = new ServiceCollection();

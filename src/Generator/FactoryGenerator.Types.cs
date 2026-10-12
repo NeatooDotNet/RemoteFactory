@@ -93,6 +93,7 @@ public partial class Factory
 			this.IsInterface = syntax is InterfaceDeclarationSyntax;
 			this.IsStatic = symbol.IsStatic;
 			this.IsNested = symbol.ContainingType != null;
+			this.IsCollection = symbol.AllInterfaces.Any(i => i.SpecialType == SpecialType.System_Collections_IEnumerable);
 
 			// Detect record types and primary constructors
 			this.IsRecord = syntax is RecordDeclarationSyntax;
@@ -370,6 +371,13 @@ public partial class Factory
 		/// Nested types require special handling for code generation.
 		/// </summary>
 		public bool IsNested { get; }
+
+		/// <summary>
+		/// Indicates if this type is a collection (implements <c>IEnumerable</c>), such as a
+		/// <c>[Factory]</c> class deriving from <c>List&lt;T&gt;</c>. A collection is already an
+		/// array on the wire; its public properties (<c>Capacity</c>) are not its content.
+		/// </summary>
+		public bool IsCollection { get; }
 
 		public string SafeHintName { get; }
 
