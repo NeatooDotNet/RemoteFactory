@@ -15,4 +15,4 @@
 
 ## Scope
 
-Replace the hand-written C# in `factory-events.md`, `trimming.md` and the appendix pages with Design regions or WRONG-labelled blocks, fixing their findings: events raised inside `[Create]` (C-06), instance handlers, stale registration names, "business rules" and the one required `TrimMode` (R-N), missing `partial`, CSLA vocabulary, and Neatoo-side converter names. Delete `docs/lazyload.md` and the skill's `references/lazyload.md`, and remove LazyLoad from every other doc page and the README (R-K).
+Replace the hand-written C# in `factory-events.md`, `events.md`, `trimming.md` and the appendix pages with Design regions or WRONG-labelled blocks, fixing their findings: events raised inside `[Create]` (C-06), instance handlers, stale registration names, "business rules" and the one required `TrimMode` (R-N), missing `partial`, CSLA vocabulary, and Neatoo-side converter names. Delete `docs/lazyload.md` and the skill's `references/lazyload.md`, and remove LazyLoad from every other doc page and the README (R-K).
