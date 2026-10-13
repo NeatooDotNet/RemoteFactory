@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes (three new Design shapes later plans embed; documented rules D12, D13, R-H, R-I; renames 15 pinned tests)
 **Code-review opt-in:** Yes (behavior-changing: new Design types and a renamed authorized service)
 **Branch:** EXSET-003-service-readmodel-context
-**PR:** —
+**PR:** #125
 
 ---
 
