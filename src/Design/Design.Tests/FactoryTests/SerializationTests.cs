@@ -41,7 +41,8 @@
 //   - Interface-typed collections (IEnumerable<T>, IList<T>)
 //
 // PARTIAL - Special handling required:
-//   - Collections with injected factories (work in local mode only)
+//   - Collection classes: only the items cross the wire, never the collection's
+//     own properties; state the server needs (a removed line) lives on the item
 //   - Child entity collections (see OrderLineList pattern)
 //   - Circular references: Handled for mutable types (classes with default
 //     constructors) via NeatooPreserveReferenceHandler. NOT handled for types
@@ -170,6 +171,7 @@
 // =============================================================================
 
 using Design.Domain.Aggregates;
+using Design.Domain.Entities;
 using Design.Domain.FactoryPatterns;
 using Design.Tests.TestInfrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -265,17 +267,15 @@ public class SerializationTests
     /// Records work well because they're immutable with init-only properties,
     /// which the JSON serializer handles correctly.
     ///
-    /// IMPORTANT: This test uses local mode because aggregate with children
-    /// requires local mode (factory references aren't preserved across
-    /// remote serialization). See Collection_SurvivesSerializationRoundTrip
-    /// for more details.
+    /// The order is fetched through the client, so the lines and their Money
+    /// values cross the serializing stand-in.
     /// </remarks>
     [Fact]
     public async Task ValueObject_SurvivesSerializationRoundTrip()
     {
-        // Arrange - use local mode for aggregate with children
-        var (_, _, local) = DesignClientServerContainers.Scopes();
-        var factory = local.GetRequiredService<IOrderFactory>();
+        // Arrange - fetch through the client so the aggregate is serialized
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var factory = client.GetRequiredService<IOrderFactory>();
 
         // Act - Fetch order with lines
         var order = await factory.Fetch(100);
@@ -287,41 +287,28 @@ public class SerializationTests
         Assert.Equal(45.00m, order.Total.Amount);
         Assert.Equal("USD", order.Total.Currency);
 
-        local.Dispose();
+        server.Dispose();
+        client.Dispose();
     }
 
     /// <summary>
     /// Verifies that collections work correctly in local mode.
     /// </summary>
     /// <remarks>
-    /// DESIGN DECISION: Collections require local mode for full functionality
+    /// Local (single-tier) mode loads the same aggregate with no serialization.
+    /// Collection_FetchedThroughClient_ArrivesWithItems covers the client.
     ///
-    /// The child collection (OrderLineList) has an injected _lineFactory field
-    /// that enables AddLine to create new children. This factory reference is
-    /// NOT preserved across remote serialization.
+    /// DID NOT DO THIS: Store a child factory on the list for AddLine
     ///
-    /// When using remote mode (client → server → client):
-    /// - Collection items serialize as JSON array
-    /// - Items are recreated on deserialization
-    /// - BUT the _lineFactory is null, so AddLine won't work
-    ///
-    /// COMMON MISTAKE: Expecting AddLine to work after remote Fetch
-    ///
-    /// WRONG:
-    /// var order = await clientFactory.Fetch(123);  // Remote fetch
-    /// order.AddLine("Widget", 10m, 1);  // FAILS - _lineFactory is null
-    ///
-    /// RIGHT:
-    /// var order = await localFactory.Fetch(123);  // Local mode
-    /// order.AddLine("Widget", 10m, 1);  // Works - factory preserved
-    ///
-    /// For remote scenarios, use server-side operations:
-    /// await Commands.AddOrderLine(orderId, productName, price, qty);
+    /// A method-injected service stored in a field does not survive
+    /// serialization, which once made adding a line work in Local mode only.
+    /// The client now builds a line with IOrderLineFactory.Create and hands it
+    /// to Order.AddLine (R-C), in every mode.
     /// </remarks>
     [Fact]
     public async Task Collection_WorksInLocalMode()
     {
-        // Arrange - use local mode so factory references are preserved
+        // Arrange - Local mode: one tier, no serialization
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IOrderFactory>();
 
@@ -371,6 +358,7 @@ public class SerializationTests
 
         var order = await factory.Fetch(200);
 
+        Assert.NotNull(order);
         Assert.Equal(2, order.Lines.Count);
         var widgetA = order.Lines.Single(l => l.ProductName == "Widget A");
         Assert.Equal(10.00m, widgetA.UnitPrice.Amount);
@@ -425,31 +413,35 @@ public class SerializationTests
     /// 2. Server deserializes and processes the Save (Insert/Update/Delete)
     /// 3. Result is serialized back to client
     ///
-    /// This tests the full round-trip: server → client → server → client
+    /// This tests the full round-trip: client → server → client
     ///
-    /// Note: We use local mode here because AddLine requires the factory
-    /// reference which isn't preserved across serialization.
+    /// The order and its line are built on the client (local Create, R-C);
+    /// Save carries both to the server and returns a new instance.
     /// </remarks>
     [Fact]
     public async Task ModifiedObject_SerializesToServer()
     {
-        // Arrange - use local mode so AddLine works (factory preserved)
-        var (_, _, local) = DesignClientServerContainers.Scopes();
-        var factory = local.GetRequiredService<IOrderFactory>();
-        var order = await factory.Create("Test Customer");
+        // Arrange
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var factory = client.GetRequiredService<IOrderFactory>();
+        var lineFactory = client.GetRequiredService<IOrderLineFactory>();
+        var order = factory.Create("Test Customer");
 
         // Add a line (required for Submit)
-        order.AddLine("Test Widget", 10.00m, 1);
+        order.AddLine(lineFactory.Create("Test Widget", 10.00m, 1));
 
         // Act - modify on client, then save
         order.Submit();
-        await factory.Save(order);
+        var saved = await factory.Save(order);
 
-        // Assert - order was successfully saved
-        Assert.Equal(OrderStatus.Submitted, order.Status);
-        Assert.False(order.IsNew); // FactoryComplete sets IsNew=false after Insert
+        // Assert - the saved order came back from the server
+        Assert.NotNull(saved);
+        Assert.Equal(OrderStatus.Submitted, saved.Status);
+        Assert.False(saved.IsNew); // FactoryComplete sets IsNew=false after Insert
+        Assert.Single(saved.Lines);
 
-        local.Dispose();
+        server.Dispose();
+        client.Dispose();
     }
 
     /// <summary>
@@ -469,27 +461,33 @@ public class SerializationTests
     [Fact]
     public async Task SaveMetaProperties_SurviveSerializationRoundTrip()
     {
-        // Arrange - create new order (IsNew=true)
+        // Arrange - create new order on the client (IsNew=true; Create is local)
         var (server, client, _) = DesignClientServerContainers.Scopes();
         var factory = client.GetRequiredService<IOrderFactory>();
-        var newOrder = await factory.Create("Save Meta Test");
-
-        // Assert - IsNew survived round-trip from server
+        var newOrder = factory.Create("Save Meta Test");
         Assert.True(newOrder.IsNew);
         Assert.False(newOrder.IsDeleted);
 
+        // Act - IsNew=true crosses to the server, so Save routes to Insert
+        var inserted = await factory.Save(newOrder);
+        Assert.NotNull(inserted);
+        Assert.False(inserted.IsNew);
+
         // Act - fetch existing order (IsNew=false)
         var existingOrder = await factory.Fetch(400);
+        Assert.NotNull(existingOrder);
 
         // Assert - IsNew=false survived round-trip
         Assert.False(existingOrder.IsNew);
         Assert.False(existingOrder.IsDeleted);
 
-        // Act - mark for deletion
+        // Act - mark for deletion; IsDeleted=true crosses, so Save routes to Delete
         existingOrder.MarkDeleted();
-
-        // Assert - IsDeleted is set (will serialize when we Save)
         Assert.True(existingOrder.IsDeleted);
+        await factory.Save(existingOrder);
+
+        // Assert - the order is gone
+        Assert.Null(await factory.Fetch(400));
 
         server.Dispose();
         client.Dispose();

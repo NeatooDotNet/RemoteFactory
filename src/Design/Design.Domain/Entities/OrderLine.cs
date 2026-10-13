@@ -1,39 +1,31 @@
 // =============================================================================
-// DESIGN SOURCE OF TRUTH: Child Entity (No [Remote]) with Internal Visibility
+// DESIGN SOURCE OF TRUTH: Child Entity and Child Collection
 // =============================================================================
 //
-// This file demonstrates the CLASS FACTORY pattern for a child entity
-// using INTERNAL class visibility with public interfaces.
+// OrderLine is a child entity of Order; OrderLineList is the collection Order
+// holds. Both are `internal partial` classes behind public interfaces.
 //
-// Child entities are created and managed within their aggregate root's
-// operations - they don't need [Remote] because they never cross the
-// client/server boundary independently.
+// VISIBILITY (VisionAlignment R-C):
 //
-// DESIGN PATTERN: Internal classes with public interfaces
+//   [Create]   public, no [Remote]  -> the client builds a line, then adds it
+//   [Fetch]    internal             -> server-only, guarded, trimmed on the client
+//   [Insert]   internal             -> server-only, reached through Save
+//   [Update]   internal             -> server-only, reached through Save
 //
-// Making child entity classes `internal` while exposing public interfaces
-// enables IL trimming of server-only factory code. The key insight:
+// Because Create is public, the generated IOrderLineFactory is a PUBLIC
+// interface whose Fetch and Save are `internal` interface members. The client
+// sees Create and nothing else; the server-side cascade calls the rest.
 //
-//   The generator checks only the method's DeclaredAccessibility to
-//   determine whether a factory method is internal. Methods declared
-//   `internal` produce internal factory interfaces.
+// [Remote] goes on no child operation. A child's operations run after the
+// root's [Remote] call has already crossed, so [Remote] there marks a crossing
+// that never happens: a placement and trimming error (VisionAlignment D18).
 //
-// 1. OrderLine is `internal class` with `internal` factory methods
-//    -> DeclaredAccessibility = internal -> IOrderLineFactory = internal
-//
-// 2. OrderLineList is `internal class` with `internal` factory methods
-//    -> DeclaredAccessibility = internal -> IOrderLineListFactory = internal
-//
-// 3. OrderLineList.Create([Service] IOrderLineFactory) compiles because
-//    the method is `internal` and IOrderLineFactory is `internal`. No CS0051.
-//
-// 4. Order.Create([Service] IOrderLineListFactory) - Order is an internal class
-//    with [Remote] internal methods. The [Service] parameter IOrderLineListFactory
-//    is internal, but [Service] parameters are injected by DI (not exposed
-//    in the generated interface), so no CS0051.
+// THE CASCADE (VisionAlignment R-D): see OrderPersistence.cs. The list hands
+// each line its own row; the line maps itself into it.
 //
 // =============================================================================
 
+using Design.Domain.Aggregates;
 using Design.Domain.ValueObjects;
 using Neatoo.RemoteFactory;
 
@@ -41,11 +33,14 @@ namespace Design.Domain.Entities;
 
 /// <summary>
 /// Public interface for OrderLine child entity.
-/// Exposed to callers outside the assembly (e.g., Blazor client).
 /// </summary>
-public interface IOrderLine
+/// <remarks>
+/// Extends IFactorySaveMeta so the generated IOrderLineFactory.Save can route
+/// on IsNew/IsDeleted through the interface.
+/// </remarks>
+public interface IOrderLine : IFactorySaveMeta
 {
-    int Id { get; }
+    Guid Id { get; }
     string ProductName { get; }
     Money UnitPrice { get; }
     int Quantity { get; }
@@ -56,11 +51,15 @@ public interface IOrderLine
 
 /// <summary>
 /// Public interface for the OrderLine collection.
-/// Provides read access and domain operations to callers outside the assembly.
 /// </summary>
-public interface IOrderLineList : IReadOnlyList<IOrderLine>
+/// <remarks>
+/// Enumerates live lines only: a removed line is kept, flagged IsDeleted, until
+/// the next save deletes its row, and it is hidden here and from the total.
+/// </remarks>
+public interface IOrderLineList : IReadOnlyList<IOrderLine>, IFactorySaveMeta
 {
-    void AddLine(string productName, decimal unitPrice, int quantity);
+    void AddLine(IOrderLine line);
+    void RemoveLine(IOrderLine line);
     Money CalculateTotal();
 }
 
@@ -68,42 +67,16 @@ public interface IOrderLineList : IReadOnlyList<IOrderLine>
 /// Child entity representing a line item in an Order.
 /// </summary>
 /// <remarks>
-/// DESIGN DECISION: Internal class with public interface
+/// DESIGN DECISION: The line's identity is generated when it is created
 ///
-/// The class is `internal` with `internal` factory methods, so the generator
-/// produces an `internal` factory interface (IOrderLineFactory). This enables
-/// IL trimming of factory code on the client. The public IOrderLine interface
-/// exposes domain properties and methods to external callers.
+/// A Guid assigned in Create lets the list find an existing line's row on
+/// every later save, with no wait for the store to assign an id.
 ///
-/// DESIGN DECISION: Child entities do NOT have [Remote] on factory methods
+/// DESIGN DECISION: The line maps itself into the row it is handed
 ///
-/// Once execution reaches the server via the aggregate root's [Remote] method,
-/// all subsequent operations stay server-side. Child entity factories are
-/// called from within aggregate operations.
-///
-/// COMMON MISTAKE: Adding [Remote] to child entity methods
-///
-/// WRONG:
-/// [Factory]
-/// internal partial class OrderLine : IOrderLine {
-///     [Remote, Create]  // <-- WRONG: unnecessary remote boundary for child entity
-///     internal void Create(...) { }
-/// }
-///
-/// RIGHT:
-/// [Factory]
-/// internal partial class OrderLine : IOrderLine {
-///     [Create]  // <-- No [Remote] - called from server-side Order operations
-///     internal void Create(...) { }
-/// }
-///
-/// GENERATOR BEHAVIOR: Without [Remote], the generator still creates:
-/// - Factory interface: IOrderLineFactory (internal, since class is internal)
-/// - Local Create/Fetch methods with IsServerRuntime guards
-/// - Serialization support
-///
-/// But it does NOT create remote stubs or delegates. The factory methods
-/// execute directly in-process on the server.
+/// The list makes or finds the row and passes it through the line factory's
+/// Save; Insert and Update map this line into it. The parent never maps a
+/// child's row.
 /// </remarks>
 [Factory]
 internal partial class OrderLine : IOrderLine
@@ -112,64 +85,95 @@ internal partial class OrderLine : IOrderLine
     // Properties
     // -------------------------------------------------------------------------
 
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public Money UnitPrice { get; set; } = Money.Zero;
     public int Quantity { get; set; }
     public Money LineTotal => UnitPrice.Multiply(Quantity);
 
+    public bool IsNew { get; set; } = true;
+    public bool IsDeleted { get; set; }
+
     // -------------------------------------------------------------------------
-    // Factory Operations - Notice NO [Remote]
-    //
-    // DESIGN DECISION: Child entities use local factory operations
-    //
-    // These operations are called from within the aggregate root's operations,
-    // which are already executing on the server. No remote crossing needed.
-    //
-    // The methods are declared `internal`, so the generator sets IsInternal=true
-    // and generates an internal IOrderLineFactory with IsServerRuntime guards.
+    // Factory Operations
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Creates a new OrderLine.
+    /// Creates a new OrderLine. Public and local: the client calls it.
     /// </summary>
     /// <remarks>
-    /// Called from Order.AddLine() or OrderLineList.AddLine() - both
-    /// execute server-side within an Order operation.
+    /// DESIGN DECISION: A child's Create is the one public child operation (R-C)
+    ///
+    /// The client builds the line with IOrderLineFactory.Create(...), then hands
+    /// it to Order.AddLine. No server call: creating a line needs nothing only
+    /// the server has.
+    ///
+    /// DID NOT DO THIS: Store the line factory on the list and create inside AddLine
+    ///
+    /// Reasons:
+    /// 1. A method-injected service stored in a field does not survive
+    ///    serialization; after a remote fetch the field is null on the client
+    /// 2. The caller passing what Create needs is the plainest shape
     /// </remarks>
     [Create]
-    internal void Create(string productName, decimal unitPrice, int quantity)
+    public void Create(string productName, decimal unitPrice, int quantity)
     {
+        Id = Guid.NewGuid();
         ProductName = productName;
         UnitPrice = new Money(unitPrice);
         Quantity = quantity;
+        IsNew = true;
     }
 
     /// <summary>
-    /// Fetches an existing OrderLine.
+    /// Loads an existing OrderLine from its row. Called by OrderLineList.Fetch.
     /// </summary>
     /// <remarks>
-    /// Called from OrderLineList.Fetch() when loading an Order from
-    /// the database. The Order.Fetch() method is [Remote], but this
-    /// method is called after crossing to the server.
+    /// DID NOT DO THIS: Make OrderLine.Fetch [Remote]
     ///
-    /// DID NOT DO THIS: Have OrderLine.Fetch be [Remote]
-    ///
-    /// Reasons:
-    /// 1. Order.Fetch already crossed to server - we're there
-    /// 2. Would cause N+1 remote calls for N order lines
-    /// 3. Breaks atomic aggregate loading
-    ///
-    /// The rule: [Remote] is only for the aggregate root entry point.
-    /// Everything else executes server-side within that call.
+    /// Order.Fetch has already crossed to the server and is loading this line;
+    /// there is no client call here for [Remote] to mark.
     /// </remarks>
     [Fetch]
-    internal void Fetch(int id, string productName, decimal unitPrice, int quantity)
+    internal void Fetch(OrderLineRow row)
     {
-        Id = id;
-        ProductName = productName;
-        UnitPrice = new Money(unitPrice);
-        Quantity = quantity;
+        Id = row.Id;
+        ProductName = row.ProductName;
+        UnitPrice = new Money(row.UnitPrice);
+        Quantity = row.Quantity;
+        IsNew = false;
+    }
+
+    /// <summary>
+    /// Maps a new line into the row the list made for it.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: The line factory's Save routes here when IsNew is true.
+    /// The line is not new once inserted, so the aggregate the save returns can
+    /// be saved again.
+    /// </remarks>
+    [Insert]
+    internal void Insert(OrderLineRow row)
+    {
+        row.Id = Id;
+        MapTo(row);
+        IsNew = false;
+    }
+
+    /// <summary>
+    /// Maps an existing line into the row the list found for it.
+    /// </summary>
+    [Update]
+    internal void Update(OrderLineRow row)
+    {
+        MapTo(row);
+    }
+
+    private void MapTo(OrderLineRow row)
+    {
+        row.ProductName = ProductName;
+        row.UnitPrice = UnitPrice.Amount;
+        row.Quantity = Quantity;
     }
 
     // -------------------------------------------------------------------------
@@ -195,130 +199,134 @@ internal partial class OrderLine : IOrderLine
 /// Collection of OrderLines within an Order.
 /// </summary>
 /// <remarks>
-/// DESIGN DECISION: Internal class with public interface
+/// DESIGN DECISION: A [Factory] list deriving from List&lt;T&gt;
 ///
-/// Like OrderLine, this class is `internal` with `internal` factory methods,
-/// so the generator produces an `internal` IOrderLineListFactory. The public
-/// IOrderLineList interface provides read access and domain operations to
-/// external callers.
+/// On the wire the list is an array of its items in both serialization formats,
+/// each item in that format's shape (v1.10.3, #119). Only the items cross: the
+/// list's own properties do not. State the server needs about a removed line
+/// therefore lives on the line (IsDeleted), not on the list.
 ///
-/// DESIGN DECISION: Collection types get their own [Factory]
+/// DESIGN DECISION: The list is never new or deleted
 ///
-/// This enables:
-/// 1. Type-safe collection creation via factory
-/// 2. Batch Fetch with proper child factory injection
-/// 3. Consistent serialization with parent aggregate
-///
-/// The collection's factory methods are also NOT [Remote] - they're
-/// called from within Order operations.
+/// Its IsNew and IsDeleted are always false, so the generated Save always routes
+/// to Update, which runs the cascade. List-level flags would not cross the wire
+/// anyway, and a Save branch with no operation throws NotImplementedException.
+/// They are read-only for that reason: public settable IsNew/IsDeleted (R-M) are
+/// for objects whose own state crosses the wire, which a collection's does not.
 /// </remarks>
 [Factory]
 internal partial class OrderLineList : List<OrderLine>, IOrderLineList
 {
-    private IOrderLineFactory? _lineFactory;
+    public bool IsNew => false;
+    public bool IsDeleted => false;
 
     // -------------------------------------------------------------------------
-    // IReadOnlyList<IOrderLine> implementation
+    // IOrderLineList: live lines only
     //
-    // List<OrderLine> implements IReadOnlyList<OrderLine>, but we need
-    // IReadOnlyList<IOrderLine> for the public interface. Since
-    // IReadOnlyList<T> is covariant (out T), this is satisfied implicitly.
-    // However, the explicit interface member for the indexer is needed
-    // because IReadOnlyList<IOrderLine>[int] returns IOrderLine, not OrderLine.
+    // The concrete List<OrderLine> holds removed lines too, flagged IsDeleted,
+    // until the next save; that is what carries them to the server. The public
+    // interface shows live lines only.
     // -------------------------------------------------------------------------
 
-    IOrderLine IReadOnlyList<IOrderLine>.this[int index] => this[index];
+    private IEnumerable<OrderLine> Live => ((IEnumerable<OrderLine>)this).Where(l => !l.IsDeleted);
 
-    int IReadOnlyCollection<IOrderLine>.Count => Count;
+    IOrderLine IReadOnlyList<IOrderLine>.this[int index] => Live.ElementAt(index);
 
-    IEnumerator<IOrderLine> IEnumerable<IOrderLine>.GetEnumerator()
-    {
-        for (int i = 0; i < Count; i++)
-            yield return this[i];
-    }
+    int IReadOnlyCollection<IOrderLine>.Count => Live.Count();
+
+    IEnumerator<IOrderLine> IEnumerable<IOrderLine>.GetEnumerator() => Live.GetEnumerator();
+
+    // -------------------------------------------------------------------------
+    // Factory Operations
+    // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Creates a list with injected factory for adding lines.
+    /// Creates an empty list. Public and local, so a root created on the client
+    /// can create its list there (R-C).
     /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: Inject child factory in Create when collection
-    /// needs to create children later.
-    ///
-    /// The _lineFactory is stored so AddLine can create new OrderLine
-    /// instances without needing the caller to provide the factory.
-    ///
-    /// COMMON MISTAKE: Having multiple [Create] methods with same caller signature
-    ///
-    /// WRONG:
-    /// [Create]
-    /// public void Create() { }
-    /// [Create]
-    /// public void Create([Service] IFactory f) { }  // <-- Same caller signature!
-    ///
-    /// From the caller's perspective, both are Create() - the [Service] param
-    /// is injected, not passed. This causes duplicate definition errors.
-    ///
-    /// RIGHT: Have one Create method that includes all needed services.
-    /// </remarks>
     [Create]
-    internal void Create([Service] IOrderLineFactory lineFactory)
+    public void Create()
     {
-        _lineFactory = lineFactory;
     }
 
     /// <summary>
-    /// Fetches a list of OrderLines from data.
+    /// Loads the lines from the order row's line rows, handing each line its row.
     /// </summary>
     [Fetch]
-    internal void Fetch(
-        IEnumerable<(int id, string productName, decimal unitPrice, int quantity)> items,
-        [Service] IOrderLineFactory lineFactory)
+    internal void Fetch(IEnumerable<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
     {
-        _lineFactory = lineFactory;
-
-        foreach (var item in items)
+        foreach (var row in rows)
         {
-            var line = (OrderLine)lineFactory.Fetch(item.id, item.productName, item.unitPrice, item.quantity);
-            Add(line);
+            Add((OrderLine)lineFactory.Fetch(row));
         }
+    }
+
+    /// <summary>
+    /// The cascade: makes, finds or removes each line's row and hands each live
+    /// line its row through the line factory's Save.
+    /// </summary>
+    /// <remarks>
+    /// Called by Order.Insert and Order.Update through IOrderLineListFactory.Save,
+    /// with the order row's line collection. Neither the list nor the root maps a
+    /// line's row; the line does.
+    /// </remarks>
+    [Update]
+    internal void Update(ICollection<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
+    {
+        foreach (var line in this)
+        {
+            if (line.IsDeleted)
+            {
+                rows.Remove(rows.Single(r => r.Id == line.Id));
+                continue;
+            }
+
+            OrderLineRow row;
+            if (line.IsNew)
+            {
+                row = new OrderLineRow();
+                rows.Add(row);
+            }
+            else
+            {
+                row = rows.Single(r => r.Id == line.Id);
+            }
+
+            lineFactory.Save(line, row);
+        }
+
+        // The removed lines' rows are gone; the list the save returns holds live lines only.
+        RemoveAll(l => l.IsDeleted);
     }
 
     // -------------------------------------------------------------------------
     // Domain Methods
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Adds a new line to the order.
-    /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: Collection can create children via stored factory
-    ///
-    /// The factory was injected during Create/Fetch, so domain code can
-    /// add new children without worrying about factory resolution.
-    ///
-    /// DID NOT DO THIS: Require factory parameter on every AddLine call
-    ///
-    /// Reasons:
-    /// 1. Pollutes domain API with infrastructure concerns
-    /// 2. Callers shouldn't know about factories
-    /// 3. Factory injection is a one-time setup concern
-    /// </remarks>
-    public void AddLine(string productName, decimal unitPrice, int quantity)
+    public void AddLine(IOrderLine line)
     {
-        if (_lineFactory == null)
-            throw new InvalidOperationException("OrderLineList was not properly initialized with a factory");
+        Add((OrderLine)line);
+    }
 
-        var line = (OrderLine)_lineFactory.Create(productName, unitPrice, quantity);
-        Add(line);
+    /// <summary>
+    /// Removes a line. A line that was never saved is dropped; a saved line is
+    /// flagged and kept until the next save deletes its row.
+    /// </summary>
+    public void RemoveLine(IOrderLine line)
+    {
+        var orderLine = (OrderLine)line;
+        if (orderLine.IsNew)
+        {
+            Remove(orderLine);
+        }
+        else
+        {
+            orderLine.IsDeleted = true;
+        }
     }
 
     public Money CalculateTotal()
     {
-        return ((IEnumerable<OrderLine>)this).Aggregate(Money.Zero, (total, line) => total.Add(line.LineTotal));
-    }
-
-    public void RemoveLine(OrderLine line)
-    {
-        Remove(line);
+        return Live.Aggregate(Money.Zero, (total, line) => total.Add(line.LineTotal));
     }
 }

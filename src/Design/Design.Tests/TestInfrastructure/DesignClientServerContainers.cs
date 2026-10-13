@@ -42,6 +42,12 @@ namespace Design.Tests.TestInfrastructure;
 public class ServerServiceProvider
 {
     public IServiceProvider ServerProvider { get; set; } = null!;
+
+    /// <summary>
+    /// Number of calls this client has sent to the server. Lets a test show that an
+    /// operation without [Remote] ran on the client.
+    /// </summary>
+    public int RemoteCallCount { get; set; }
 }
 
 /// <summary>
@@ -86,6 +92,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
     public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _serviceProvider.GetRequiredService<ServerServiceProvider>().RemoteCallCount++;
 
         // Serialize the request (client side)
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
@@ -111,6 +118,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
     public async Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
     {
+        _serviceProvider.GetRequiredService<ServerServiceProvider>().RemoteCallCount++;
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
         var json = JsonSerializer.Serialize(remoteRequest);
         var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!;
@@ -246,12 +254,12 @@ public static class DesignClientServerContainers
         // Server-only services
         serverCollection.AddScoped<IExampleService, ExampleService>();
         serverCollection.AddScoped<INotificationService, NotificationService>();
-        serverCollection.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        serverCollection.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         serverCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         serverCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
         localCollection.AddScoped<IExampleService, ExampleService>();
         localCollection.AddScoped<INotificationService, NotificationService>();
-        localCollection.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        localCollection.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         localCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         localCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
 

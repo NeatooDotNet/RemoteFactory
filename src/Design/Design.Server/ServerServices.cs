@@ -98,7 +98,9 @@ public static class ServerServices
         // TryAdd*, so an explicit registration made first is the one that stands.
         // ---------------------------------------------------------------------
         services.AddScoped<IPhaseAuditService, PhaseAuditService>();
-        services.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        // The in-memory order store stands in for a database, so it outlives each
+        // request's scope; a real DbContext would be scoped.
+        services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         services.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         services.AddScoped<IExampleService, ExampleService>();
 

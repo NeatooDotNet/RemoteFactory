@@ -88,7 +88,7 @@ public class DesignServerCompositionTests
         // [Service] method injection — Design.Domain factory methods.
         Assert.NotNull(sp.GetRequiredService<IExampleService>());        // AllPatterns
         Assert.NotNull(sp.GetRequiredService<IExampleRepository>());     // AllPatterns (interface factory)
-        Assert.NotNull(sp.GetRequiredService<IOrderRepository>());       // Order aggregate
+        Assert.NotNull(sp.GetRequiredService<IOrderDbContext>());        // Order aggregate
         Assert.NotNull(sp.GetRequiredService<INotificationService>());   // handler pattern + static command
         Assert.NotNull(sp.GetRequiredService<IProductReviewService>());  // lazy-load pattern
         Assert.NotNull(sp.GetRequiredService<IPhaseAuditService>());     // phase pattern
@@ -163,7 +163,7 @@ public class DesignServerCompositionTests
         var sp = scope.ServiceProvider;
 
         var factory = sp.GetRequiredService<IOrderFactory>();
-        var order = await factory.Create("composition-test");
+        var order = factory.Create("composition-test");
 
         var saved = await factory.Save(order);
 
