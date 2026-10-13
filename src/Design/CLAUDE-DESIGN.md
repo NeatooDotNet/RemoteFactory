@@ -36,7 +36,7 @@ Follow this workflow when working with RemoteFactory patterns:
 | Pattern | Use When | Example | Key Characteristics |
 |---------|----------|---------|---------------------|
 | **Class Factory** | Aggregate roots with lifecycle, entities needing Create/Fetch/Save | `Order`, `Customer`, `Invoice` | Instance state, serializable, IFactorySaveMeta support |
-| **Interface Factory** | Remote services without entity identity | `IOrderRepository`, `IPaymentService` | Server implementation, client proxy, no operation attributes |
+| **Interface Factory** | A domain service the client calls (never a repository) | `IProductCatalog`, `ICustomerDirectory` | Server implementation, client proxy, no operation attributes |
 | **Static Factory** | Stateless commands and side effects | `EmailCommands.SendNotification` | No instance state, [Execute] operation; `[Remote]` decides whether it crosses to the server |
 
 ### Detailed Guidance
@@ -101,44 +101,45 @@ internal partial class MyChild : IMyChild
 ```
 **Generates**: `public IMyChildFactory` with a public `Create()`; `Fetch()` and `Save(target, row)` are `internal` interface members the server-side cascade calls. A child's `[Create]` is its one public operation (VisionAlignment R-C). For the save and load cascade, in which each object maps its own row, see `Order.cs`, `OrderLine.cs` and `OrderPersistence.cs` (R-D).
 
-### Pattern 2: Interface Factory
+### Pattern 2: Interface Factory (a domain service the client calls)
 ```csharp
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
-    Task<List<Item>> GetAllAsync();      // No operation attributes needed
-    Task<Item?> GetByIdAsync(int id);    // All methods become remote
+    Task<IReadOnlyList<ProductListing>> SearchAsync(string text);  // No operation attributes needed
+    Task<ProductListing?> FindBySkuAsync(string sku);              // All methods become remote
 }
 ```
-**Generates**: Proxy implementation that serializes to server.
+**Generates**: Proxy implementation that serializes to server. Name the interface for what it does. A repository is never an interface factory: persistence is a `[Service]` injected into server-side operations, as `Order` injects `IOrderDbContext` (VisionAlignment D12). See `AllPatterns.cs` (`IProductCatalog`). A method with no result returns `Task` (v1.10.4; `ICustomerDirectory.CloseAccount`).
 
 ### Pattern 2a: Interface Factory with [AuthorizeFactory<T>]
 ```csharp
-public interface IRepositoryAuth
+public interface ICustomerDirectoryAuth
 {
-    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool HasAccess();           // every method
-    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool CanAccessItem(Guid id); // methods with matching Guid param
+    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool HasAccess();                       // every method
+    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool CanAccessCustomer(Guid customerId); // methods with matching Guid param
 }
 
 [Factory]
-[AuthorizeFactory<IRepositoryAuth>]
-public interface IAuthorizedRepository
+[AuthorizeFactory<ICustomerDirectoryAuth>]
+public interface ICustomerDirectory
 {
-    Task<Item?> GetItem(Guid id);                 // No attributes — Anti-Pattern 2 / Critical Rule 4
-    Task<Item>  UpdateItem(Guid id, string name);
+    Task<CustomerProfile?> GetCustomer(Guid customerId);             // No attributes — Anti-Pattern 2 / Critical Rule 4
+    Task<CustomerProfile>  RenameCustomer(Guid customerId, string name);
+    Task CloseAccount(Guid customerId);
 }
 
-public class AuthorizedRepository : IAuthorizedRepository { /* plain service class */ }
+public class CustomerDirectory : ICustomerDirectory { /* plain service class */ }
 ```
-**Generates**: `IAuthorizedRepositoryFactory : IAuthorizedRepository` with `Can{Method}(matching-params)` helpers. `Local{Method}` invokes all applicable auth methods and throws `NotAuthorizedException` on denial before calling the impl.
+**Generates**: `ICustomerDirectoryFactory : ICustomerDirectory` with `Can{Method}(matching-params)` helpers. `Local{Method}` invokes all applicable auth methods and throws `NotAuthorizedException` on denial before calling the impl.
 
 **Key rules:**
 - Scopes `Execute` and `Read` apply uniformly across all interface methods. CRUD scopes (`Create`/`Fetch`/`Insert`/`Update`/`Delete`) silently never fire because interface methods have no CRUD operation.
-- Parameter matching by type enables per-method authorization (e.g., `CanAccessItem(Guid id)` runs only on interface methods that have a `Guid` parameter).
-- The impl class is a plain service — no `[Factory]`, no operation attributes, no `[Remote]`. Register it on the server only (`services.AddScoped<IAuthorizedRepository, AuthorizedRepository>()`).
+- Parameter matching by type enables per-method authorization (e.g., `CanAccessCustomer(Guid customerId)` receives the `Guid` from each interface method). Keep every method on the auth-matched parameter type: a method that lacks it fails CS7036 (#123).
+- The impl class is a plain service — no `[Factory]`, no operation attributes, no `[Remote]`. Name it for the interface without its `I`, in the same namespace, and `RegisterMatchingName` registers it on the server.
 - Contrast with `AuthorizedOrder.cs` (class factory, CRUD scopes, `CanCreate`/`CanFetch`/`CanSave`/`CanDelete`).
 
-See `AuthorizedRepository.cs` for the fully-commented pedagogy file.
+See `Services/CustomerDirectory.cs` for the fully-commented pedagogy file.
 
 ### Pattern 3: Static Factory
 ```csharp
@@ -379,11 +380,11 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Does constructor injection affect ordinal serialization? | Yes -- a class with no parameterless or all-default-parameter ctor causes the generator to skip `IOrdinalSerializable`; the type then deserializes via the named/DI path (`GetRequiredService`), which resolves the ctor parameters from the DI container on each side of the wire | `CtorInjectionExample.cs`, `SerializationTests.cs` (`CtorInjectedEntity_*` tests) | Ordinal `FromOrdinalArray` uses object-initializer / positional construction and does not resolve DI. The generator's `RequiresServiceInstantiationCheck` looks only at ctor shape (parameter count, default values) -- not at `[Service]` attribute presence |
-| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | Class factory: `AuthorizedOrder.cs`. Interface factory: `AuthorizedRepository.cs`. ASP.NET: `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
-| Which `[AuthorizeFactory]` scope applies on an interface factory? | `Execute` and `Read` only | `AuthorizedRepository.cs` | Interface methods have no CRUD operation; `Create`/`Fetch`/`Insert`/`Update`/`Delete` scopes silently never fire. Use parameter matching for per-method authorization |
+| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | Class factory: `AuthorizedOrder.cs`. Interface factory: `CustomerDirectory.cs`. ASP.NET: `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
+| Which `[AuthorizeFactory]` scope applies on an interface factory? | `Execute` and `Read` only | `CustomerDirectory.cs` | Interface methods have no CRUD operation; `Create`/`Fetch`/`Insert`/`Update`/`Delete` scopes silently never fire. Use parameter matching for per-method authorization |
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 | What does a denied authorization throw? | `NotAuthorizedException`, never with an empty message. A `string?` auth method's message is used verbatim; a `bool` one gets a framework message naming the operation and type, plus the auth method on interface factories. `Context` carries that detail as a property either way | `AuthorizationTests.cs` (`AuthorizedOrder_Save_ThrowsNotAuthorizedException_WhenDeleteDenied`), `NotAuthorizedExceptionTests.cs` | An empty exception message is dropped outright by some telemetry pipelines, so a correct refusal became an invisible failure; `bool` returns cannot carry a reason and are the common case |
-| Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
+| Can Interface Factory return a record? | Yes | `AllPatterns.cs` (`ProductDetails`) | Records bypass reference handling (`RecordBypassConverterFactory`) for their whole subtree; a graph inside one must be a plain tree, with no back-references or shared instances (Anti-Pattern 9) |
 | How do I handle a factory event on the client? | Implement `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` and register it in DI | `FactoryEventRelayPattern.cs` (`InMemoryAggregatorRelay`) | Consumer-owned bridge to any aggregator; RemoteFactory invokes it fire-and-forget exactly once per remote round-trip (even empty batch), strictly after the caller's continuation resumes |
 | Can the client raise an event itself? | Yes — inject `IFactoryEvents` client-side and `Raise`. It is a round-trip of its own | `FactoryEventRelayPattern.cs` (`ClientRaisedNoticeHandler`) | Server handlers run and the batch relays back, including the caller's OWN event (client-side `Raise` dispatches nothing locally, so the relay has not otherwise seen it); `ServerOnly` opts out. Awaited, not fire-and-forget |
 | How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class attribute with a `static` method | `FactoryEventHandlerPattern.cs` | Static method = server handler running in the caller's scope (shared DbContext), sequential, awaited |
@@ -443,19 +444,19 @@ internal partial class OrderLine : IOrderLine
 **WRONG:**
 ```csharp
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
     [Fetch]  // WRONG: emits NF0106 — factory-operation attribute on interface method
-    Task<Item> GetByIdAsync(int id);
+    Task<ProductListing?> FindBySkuAsync(string sku);
 }
 ```
 
 **RIGHT:**
 ```csharp
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
-    Task<Item> GetByIdAsync(int id);  // No attribute - interface IS the boundary
+    Task<ProductListing?> FindBySkuAsync(string sku);  // No attribute - interface IS the boundary
 }
 ```
 
@@ -631,19 +632,19 @@ internal partial class Order : IOrder
 
 ---
 
-### Anti-Pattern 9: Mixing Neatoo Types with Records in Interface Factory Return Types
+### Anti-Pattern 9: A Graph With Shared or Back References Inside a Record
 
 **WRONG:**
 ```csharp
-// A record that contains a Neatoo domain type as a property
-public record OrderSummary(
+// A record that holds a graph whose objects point back at each other
+public record CustomerOverview(
     string CustomerName,
-    IOrder ActiveOrder);  // WRONG: Neatoo domain type inside a plain record
+    IOrder ActiveOrder);  // WRONG when the order's graph has back-references or shared instances
 
 [Factory]
 public interface IOrderService
 {
-    Task<OrderSummary> GetSummaryAsync(int customerId);
+    Task<CustomerOverview> GetOverviewAsync(int customerId);
 }
 ```
 
@@ -660,7 +661,7 @@ public interface IOrderService
 **RIGHT (Option B - Use plain DTOs/records throughout):**
 ```csharp
 // If you need a record return type, use only plain data -- no Neatoo types
-public record OrderSummary(
+public record CustomerOverview(
     string CustomerName,
     string Status,
     decimal Total);  // All plain data, no Neatoo types
@@ -668,11 +669,11 @@ public record OrderSummary(
 [Factory]
 public interface IOrderService
 {
-    Task<OrderSummary> GetSummaryAsync(int customerId);
+    Task<CustomerOverview> GetOverviewAsync(int customerId);
 }
 ```
 
-**Why it matters:** RemoteFactory uses a two-path serialization strategy for reference handling. Mutable reference types (Dictionary, List, plain classes with default constructors) participate in `$id`/`$ref` reference tracking via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`. Types with parameterized constructors (records, immutable types) are claimed by `RecordBypassConverterFactory`, which serializes them without any reference metadata -- this is correct DDD behavior because records are value objects whose identity is defined by their values, not by reference. STJ cannot deserialize `$id`/`$ref` metadata on types with parameterized constructors (`ObjectWithParameterizedCtorRefMetadataNotSupported`), so bypassing is also a technical necessity. Mixing Neatoo types into a plain record creates a serialization mismatch: the record bypasses reference handling entirely (including its subtree), but the embedded Neatoo type's converter expects the resolver to be tracking references across the graph. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
+**Why it matters:** RemoteFactory uses a two-path serialization strategy for reference handling. Mutable reference types (Dictionary, List, plain classes with default constructors) participate in `$id`/`$ref` reference tracking via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`. Types with parameterized constructors (records, immutable types) are claimed by `RecordBypassConverterFactory`, which serializes them without any reference metadata -- this is correct DDD behavior because records are value objects whose identity is defined by their values, not by reference. STJ cannot deserialize `$id`/`$ref` metadata on types with parameterized constructors (`ObjectWithParameterizedCtorRefMetadataNotSupported`), so bypassing is also a technical necessity. The bypass covers the record's whole subtree, so nothing under it tracks references: a child that points back at its parent is a cycle, which System.Text.Json rejects, and an object reachable twice arrives as two separate copies. A graph that is a plain tree crosses intact under the bypass. `OrderCheckout` (a context whose only constructor takes services, so the bypass claims it too) holds an `IOrder` whose lines do not point back at it, and `ReadModelAndContextTests` pins that the order and its lines arrive. Return a graph with back-references or shared instances directly (Option A), or flatten it to plain data (Option B).
 
 ---
 
@@ -966,17 +967,17 @@ private static Task<bool> _SendNotification(...) { }  // Private, underscore pre
 ```csharp
 // WRONG — emits NF0106
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
     [Fetch]  // NF0106: factory-operation attribute on interface factory method
-    Task<Item> GetByIdAsync(int id);
+    Task<ProductListing?> FindBySkuAsync(string sku);
 }
 
 // CORRECT
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
-    Task<Item> GetByIdAsync(int id);  // No attributes - all methods are remote
+    Task<ProductListing?> FindBySkuAsync(string sku);  // No attributes - all methods are remote
 }
 ```
 Enforced at compile time by **NF0106**. The rule applies to `[Create]`/`[Fetch]`/`[Insert]`/`[Update]`/`[Delete]`/`[Execute]` on any `[Factory]` interface method.
@@ -1084,7 +1085,9 @@ builder.Services.AddKeyedScoped(
 When reviewing or extending the Design source of truth, verify these patterns are demonstrated:
 
 - [ ] At least one Class Factory with lifecycle hooks (`Order.cs`)
-- [ ] At least one Interface Factory (`IExampleRepository` in `AllPatterns.cs`)
+- [ ] At least one Interface Factory, named as a domain service (`IProductCatalog` in `AllPatterns.cs`)
+- [ ] A read model: `[Fetch]`-only, `bool`/`false` not-found (`ReadModels/OrderSummary.cs`)
+- [ ] A context a screen binds to, verbs on the held aggregate, saved through the root (`Contexts/OrderCheckout.cs`)
 - [ ] At least one Static Factory with [Execute] (`ExampleCommands`)
 - [ ] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
 - [ ] Child entities without [Remote] (`OrderLine.cs`)
@@ -1093,7 +1096,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
-- [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
+- [x] Interface Factory returning a class and a record type (`AllPatterns.cs`: `ProductListing` class, `ProductDetails` record, `IProductCatalog`)
 - [x] Factory event handler (mediator) — server-side static handler (`FactoryEventHandlerPattern.cs`)
 - [x] Factory event relay — consumer-implemented `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` bridge with in-memory aggregator demo (`FactoryEventRelayPattern.cs`: `InMemoryAggregatorRelay`)
 - [x] Event record with a nested record property — exercises automatic IL-trimming preservation for both the event type and the nested record (`FactoryEventHandlerPattern.cs`: `OrderShippedEvent` with `ShippingAddress`, `OrderShippedHandlers`)
@@ -1203,7 +1206,9 @@ infrastructure already exists.
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle hooks and IFactorySaveMeta |
 | `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] on a CLASS FACTORY — CRUD scopes, CanCreate/CanFetch/CanSave/CanDelete |
 | `Design.Domain/Aggregates/AuthorizedOrderAuth.cs` | Auth interface and implementation for AuthorizedOrder |
-| `Design.Domain/Aggregates/AuthorizedRepository.cs` | [AuthorizeFactory<T>] on an INTERFACE FACTORY — Execute/Read scopes, parameter matching, Can{Method} per interface method |
+| `Design.Domain/Services/CustomerDirectory.cs` | [AuthorizeFactory<T>] on an INTERFACE FACTORY (a domain service) — Execute/Read scopes, parameter matching, Can{Method} per interface method, a `Task` command |
+| `Design.Domain/ReadModels/OrderSummary.cs` | Read model: `[Fetch]`-only class the client holds, `bool`/`false` not-found, line records as a property |
+| `Design.Domain/Contexts/OrderCheckout.cs` | Context (D13): loaded in one call, verbs on the held order run on the client, saved through the order's root factory; factories by constructor |
 | `Design.Domain/Aggregates/ParamAuthOrder.cs` | Parameterized [AuthorizeFactory<T>] with type-matched and target entity params |
 | `Design.Domain/Aggregates/ParamAuthOrderAuth.cs` | Auth interface and implementation with parameterized methods |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |

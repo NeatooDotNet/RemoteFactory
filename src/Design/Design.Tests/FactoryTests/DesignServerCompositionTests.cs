@@ -1,6 +1,7 @@
 using Design.Domain.Aggregates;
 using Design.Domain.Entities;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.Services;
 using Design.Domain.ValueObjects;
 using Design.Server;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,7 +88,8 @@ public class DesignServerCompositionTests
 
         // [Service] method injection — Design.Domain factory methods.
         Assert.NotNull(sp.GetRequiredService<IExampleService>());        // AllPatterns
-        Assert.NotNull(sp.GetRequiredService<IExampleRepository>());     // AllPatterns (interface factory)
+        Assert.NotNull(sp.GetRequiredService<IProductCatalog>());        // AllPatterns (interface factory)
+        Assert.NotNull(sp.GetRequiredService<ICustomerDirectory>());     // Services (authorized interface factory)
         Assert.NotNull(sp.GetRequiredService<IOrderDbContext>());        // Order aggregate
         Assert.NotNull(sp.GetRequiredService<INotificationService>());   // handler pattern + static command
         Assert.NotNull(sp.GetRequiredService<IProductReviewService>());  // lazy-load pattern
@@ -152,7 +154,7 @@ public class DesignServerCompositionTests
     /// <summary>
     /// The order aggregate's create-and-save path against the server's composition. It
     /// method-injects both a generated child factory (<c>IOrderLineListFactory</c>) and
-    /// the repository, so it fails if either the framework registration or the explicit
+    /// the order store (IOrderDbContext), so it fails if either the framework registration or the explicit
     /// non-conventional one is absent.
     /// </summary>
     [Fact]
