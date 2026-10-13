@@ -345,6 +345,43 @@ public class SerializationTests
         local.Dispose();
     }
 
+    public static IEnumerable<object[]> Formats()
+    {
+        yield return new object[] { SerializationFormat.Ordinal };
+        yield return new object[] { SerializationFormat.Named };
+    }
+
+    /// <summary>
+    /// Verifies that the child collection's items reach the client in both formats.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: A [Factory] collection (OrderLineList : List&lt;OrderLine&gt;)
+    /// serializes as a JSON array of its items in both formats; each item uses that
+    /// format's shape (an OrderLine is an ordinal array in Ordinal format).
+    ///
+    /// Before #119 a partial [Factory] list got an object-shaped ordinal converter that
+    /// wrote List&lt;T&gt;.Capacity and no items, so a Remote fetch returned an empty list.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Formats))]
+    public async Task Collection_FetchedThroughClient_ArrivesWithItems(SerializationFormat format)
+    {
+        var (server, client, local) = DesignClientServerContainers.Scopes(format: format);
+        var factory = client.GetRequiredService<IOrderFactory>();
+
+        var order = await factory.Fetch(200);
+
+        Assert.Equal(2, order.Lines.Count);
+        var widgetA = order.Lines.Single(l => l.ProductName == "Widget A");
+        Assert.Equal(10.00m, widgetA.UnitPrice.Amount);
+        Assert.Equal(2, widgetA.Quantity);
+        Assert.Contains(order.Lines, l => l.ProductName == "Widget B");
+
+        server.Dispose();
+        client.Dispose();
+        local.Dispose();
+    }
+
     /// <summary>
     /// Verifies that nullable values serialize correctly.
     /// </summary>

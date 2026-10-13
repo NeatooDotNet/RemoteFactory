@@ -300,9 +300,13 @@ internal static class FactoryModelBuilder
             factoryMethods.OfType<ReadMethodModel>().Any(f => !f.IsConstructor && !f.IsStaticFactory)
             || typeInfo.RequiresServiceInstantiation;
 
-        // Determine if ordinal converter should be registered
+        // Determine if ordinal converter should be registered.
+        // A collection is excluded: the object-as-array converter would write its public
+        // properties (List<T>.Capacity) instead of its items (#119). It serializes as a JSON
+        // array of its items in both formats, each item in that format's shape.
         var registerOrdinalConverter = typeInfo.OrdinalProperties.Any() &&
             typeInfo.IsPartial &&
+            !typeInfo.IsCollection &&
             !typeInfo.IsNested &&
             (!typeInfo.IsRecord || typeInfo.HasPrimaryConstructor) &&
             !typeInfo.RequiresServiceInstantiation;
