@@ -15,6 +15,7 @@
 //   public interface IOrderFactory {
 //       IOrder Create(string customerName, ...);       // local
 //       Task<IOrder?> Fetch(int id, ...);              // [Remote]; null when absent
+//       Task<IOrder> OpenDraft(string customerName);   // [Remote] Execute: Fetch, else Create
 //       Task<IOrder?> Save(IOrder target, ...);        // [Remote] Insert/Update/Delete
 //   }
 //
@@ -228,12 +229,59 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         if (row == null)
             return false;
 
-        Id = row.Id;
-        CustomerName = row.CustomerName;
-        Status = row.Status;
-        Lines = lineListFactory.Fetch(row.Lines);
-        IsNew = false;
+        LoadFrom(row, lineListFactory);
         return true;
+    }
+
+    /// <summary>
+    /// Loads the customer's Draft order. Server-only: <see cref="OpenDraft"/> calls it.
+    /// </summary>
+    /// <remarks>
+    /// Internal without [Remote], so the client cannot call it; the client asks for
+    /// a draft through OpenDraft, which decides between this and Create.
+    /// </remarks>
+    [Fetch]
+    internal async Task<bool> FetchDraft(
+        string customerName,
+        [Service] IOrderDbContext db,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        var row = await db.FindDraftAsync(customerName);
+        if (row == null)
+            return false;
+
+        LoadFrom(row, lineListFactory);
+        return true;
+    }
+
+    /// <summary>
+    /// The customer's Draft order: the stored one if there is one, otherwise a new one.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: Create-or-fetch is an [Execute] that calls Fetch, then Create (VisionAlignment D11)
+    ///
+    /// One round trip. On the server it fetches the customer's Draft and, when there
+    /// is none, creates one through the same factory. A new order is returned unsaved:
+    /// it reaches the store when the client saves it.
+    ///
+    /// DID NOT DO THIS: A [Create] that looks for an existing order, or a [Fetch]
+    /// that makes one when none is found
+    ///
+    /// Create is `new` and Fetch takes a key (D3). Either hybrid hides from the
+    /// caller which one it got, and puts the decision in an operation whose name
+    /// says the opposite.
+    ///
+    /// GENERATOR BEHAVIOR: a class-level [Execute] must return the class's service
+    /// type, here Task&lt;IOrder&gt;. It is public static, and [Remote] sends the
+    /// call to the server.
+    /// </remarks>
+    [Remote, Execute]
+    public static async Task<IOrder> OpenDraft(
+        string customerName,
+        [Service] IOrderFactory factory)
+    {
+        return await factory.FetchDraft(customerName)
+            ?? factory.Create(customerName);
     }
 
     /// <summary>
@@ -298,6 +346,15 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
             ?? throw new KeyNotFoundException($"Order {Id} not found");
         db.Remove(row);
         await db.SaveChangesAsync();
+    }
+
+    private void LoadFrom(OrderRow row, IOrderLineListFactory lineListFactory)
+    {
+        Id = row.Id;
+        CustomerName = row.CustomerName;
+        Status = row.Status;
+        Lines = lineListFactory.Fetch(row.Lines);
+        IsNew = false;
     }
 
     private void MapTo(OrderRow row)

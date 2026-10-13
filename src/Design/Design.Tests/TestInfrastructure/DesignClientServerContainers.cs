@@ -21,6 +21,7 @@
 
 using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.ValueObjects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -257,11 +258,13 @@ public static class DesignClientServerContainers
         serverCollection.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         serverCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         serverCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
+        serverCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
         localCollection.AddScoped<IExampleService, ExampleService>();
         localCollection.AddScoped<INotificationService, NotificationService>();
         localCollection.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         localCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         localCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
+        localCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
 
         // Client needs server provider reference for remote calls
         clientCollection.AddScoped<ServerServiceProvider>();

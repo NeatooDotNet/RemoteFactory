@@ -123,6 +123,13 @@ public static class LocalServer
 				// abort it, and events raised by drained handlers must join this response's
 				// relay batch. Failure paths (throw, forbid, cancellation during the
 				// delegate) discard the deferred work — a clear, never a drain.
+				// The relay batch is this call's alone. A scope can serve more than one call
+				// (ASP.NET gives each request its own; an in-process host may not), and the
+				// collector is scoped: without this, a response would re-send an earlier
+				// call's events, or a failed call's, which had no response to carry them.
+				var collector = serviceProvider.GetService<IFactoryEventCollector>();
+				collector?.Clear();
+
 				var phaseScheduler = serviceProvider.GetService<IFactoryEventPhaseScheduler>();
 				phaseScheduler?.BeginEntryCall();
 				try
@@ -202,7 +209,6 @@ public static class LocalServer
 
 				// Collect relayed events (if any were captured during this operation)
 				List<RelayedFactoryEvent>? relayedEvents = null;
-				var collector = serviceProvider.GetService<IFactoryEventCollector>();
 				if (collector != null)
 				{
 					var collected = collector.GetCollectedEvents();

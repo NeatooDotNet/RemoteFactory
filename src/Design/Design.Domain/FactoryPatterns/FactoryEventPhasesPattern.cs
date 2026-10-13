@@ -134,7 +134,7 @@ public class PhaseAuditService : IPhaseAuditService
 // SCENARIO 1: ONE EVENT, THREE PHASES — THE CONSUMER DRAIN PATTERN
 // =============================================================================
 //
-// InvoiceFinalizedEvent has a handler at every phase. Invoice.Finalize raises it
+// InvoiceFinalizedEvent has a handler at every phase. InvoiceFinalizer.Finalize raises it
 // ONCE; each handler runs at its own drain point:
 //
 //   await events.Raise(...)          → "invoice-immediate"   (at Raise)
@@ -223,16 +223,18 @@ public static partial class InvoiceSearchIndexRefresh
 /// 2. Only `AfterFlush` is consumer-drainable. `Immediate` is never queued, and
 ///    the `AfterCommit` drain point belongs to the framework — it runs only
 ///    after the entry call has succeeded. `DrainAsync` rejects other values.
+///
+/// DESIGN DECISION: Finalizing is a command, not a Create (VisionAlignment D3, D12)
+///
+/// It stages writes, flushes and commits: work, not `new`. A static [Execute]
+/// command is the operation for it, and its result is a plain record.
 /// </remarks>
 [Factory]
-public partial class Invoice
+public static partial class InvoiceFinalizer
 {
-    public Guid Id { get; set; }
-    public decimal Total { get; set; }
-
-    [Create]
+    [Execute]
     [Remote]
-    internal async Task Finalize(
+    internal static async Task<FinalizedInvoice> _Finalize(
         Guid id,
         decimal total,
         [Service] IFactoryEvents events,
@@ -240,9 +242,6 @@ public partial class Invoice
         [Service] IPhaseAuditService audit,
         CancellationToken ct)
     {
-        Id = id;
-        Total = total;
-
         // Immediate handlers run HERE, atomic with the staged writes.
         await events.Raise(new InvoiceFinalizedEvent(id, total), RaiseOptions.None, ct);
 
@@ -257,8 +256,12 @@ public partial class Invoice
 
         // A real consumer commits here. AfterCommit handlers run after this
         // method returns and the entry call completes.
+        return new FinalizedInvoice(id, total);
     }
 }
+
+/// <summary>What <see cref="InvoiceFinalizer"/> returns to its caller.</summary>
+public record FinalizedInvoice(Guid Id, decimal Total);
 
 // =============================================================================
 // SCENARIO 2: PER-DRAIN-POINT ORDERING, NOT A GLOBAL BARRIER
@@ -314,8 +317,8 @@ public static partial class QuarterCloseCommitHandler
 }
 
 /// <summary>
-/// Static factory command driving the ordering demonstration — phases work the
-/// same from a static <c>[Execute]</c> as from a class factory method.
+/// Static factory command driving the ordering demonstration — the phases behave
+/// here exactly as in <see cref="InvoiceFinalizer"/>.
 /// </summary>
 [Factory]
 public static partial class QuarterClose
@@ -373,22 +376,20 @@ public static partial class InvoiceArchiveProjection
 
 /// <summary>Declares AfterFlush work but never drains — the mistake 9007 warns about.</summary>
 [Factory]
-public partial class InvoiceArchiver
+public static partial class InvoiceArchiver
 {
-    public Guid Id { get; set; }
-
-    [Create]
+    [Execute]
     [Remote]
-    internal async Task Archive(
+    internal static async Task<Guid> _Archive(
         Guid id,
         [Service] IFactoryEvents events,
         [Service] IPhaseAuditService audit,
         CancellationToken ct)
     {
-        Id = id;
         await events.Raise(new InvoiceArchivedEvent(id), RaiseOptions.None, ct);
         audit.Record(id, "archive-method-done");
         // No DrainAsync: the AfterFlush handler runs at the AfterCommit point.
+        return id;
     }
 }
 

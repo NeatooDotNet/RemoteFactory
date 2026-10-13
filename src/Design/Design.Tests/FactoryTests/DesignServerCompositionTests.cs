@@ -94,6 +94,7 @@ public class DesignServerCompositionTests
         Assert.NotNull(sp.GetRequiredService<INotificationService>());   // handler pattern + static command
         Assert.NotNull(sp.GetRequiredService<IProductReviewService>());  // lazy-load pattern
         Assert.NotNull(sp.GetRequiredService<IPhaseAuditService>());     // phase pattern
+        Assert.NotNull(sp.GetRequiredService<ITaxTable>());              // TaxRate value object
 
         // Constructor injection — resolved when the factory news up the entity.
         Assert.NotNull(sp.GetRequiredService<ITenantTokenService>());
@@ -105,7 +106,8 @@ public class DesignServerCompositionTests
         Assert.NotNull(sp.GetRequiredService<ILazyLoadFactory>());
         Assert.NotNull(sp.GetRequiredService<IOrderLineFactory>());
         Assert.NotNull(sp.GetRequiredService<IOrderLineListFactory>());
-        Assert.NotNull(sp.GetRequiredService<IMoneyFactory>());
+        Assert.NotNull(sp.GetRequiredService<IOrderFactory>());          // Order.OpenDraft
+        Assert.NotNull(sp.GetRequiredService<IClassExecuteDemoFactory>()); // ClassExecuteDemo's [Execute] methods
     }
 
     /// <summary>
@@ -141,9 +143,9 @@ public class DesignServerCompositionTests
         var sp = scope.ServiceProvider;
 
         var invoiceId = Guid.NewGuid();
-        var factory = sp.GetRequiredService<IInvoiceFactory>();
+        var finalize = sp.GetRequiredService<InvoiceFinalizer.Finalize>();
 
-        await factory.Finalize(invoiceId, 250m);
+        await finalize(invoiceId, 250m);
 
         var audit = sp.GetRequiredService<IPhaseAuditService>();
         Assert.Equal(

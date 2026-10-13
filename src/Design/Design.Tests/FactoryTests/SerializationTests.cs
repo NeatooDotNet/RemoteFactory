@@ -261,11 +261,12 @@ public class SerializationTests
     /// <remarks>
     /// DESIGN DECISION: Value objects serialize as nested JSON objects
     ///
-    /// The Money value object (record type) is serialized as a nested object:
+    /// Money is a plain record with no factory (VisionAlignment R-F). It is serialized
+    /// as a nested object:
     /// { "UnitPrice": { "Amount": 10.00, "Currency": "USD" } }
     ///
-    /// Records work well because they're immutable with init-only properties,
-    /// which the JSON serializer handles correctly.
+    /// It is rebuilt through its constructor on the receiving side, so the
+    /// constructor's currency check runs there too.
     ///
     /// The order is fetched through the client, so the lines and their Money
     /// values cross the serializing stand-in.

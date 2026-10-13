@@ -2,50 +2,47 @@
 // DESIGN SOURCE OF TRUTH: Value Objects
 // =============================================================================
 //
-// Value objects use [Factory] for self-hydration. The parent passes raw data
-// (e.g., from an EF entity) and the value object is responsible for constructing
-// itself from that data.
+// A value object is a plain record (VisionAlignment R-F). It crosses the wire as
+// a parameter or a property with no factory, and anyone may construct it with
+// `new`. Its constructor throws on an invalid value: a value object has no rules
+// to report, only values it refuses to be.
 //
-// DESIGN DECISION: Value objects use [Factory] for self-hydration
+// A value object takes [Factory] only when constructing it needs a service (a
+// database, an API call) or authorization. TaxRate (TaxRate.cs) is that case:
+// its rate is read from a server-only table.
 //
-// Reasons:
-// 1. Encapsulation - parent doesn't need to know value object's internal structure
-// 2. Consistency - all domain objects use factory pattern
-// 3. If structure changes, only the value object's factory method changes
+// DID NOT DO THIS: [Factory] on every value object, built through its factory
 //
-// DID NOT DO THIS: Have parent construct value objects directly
-//
-// WRONG (parent knows too much about structure):
-// public void Fetch(EmployeeEntity entity) {
-//     Salary = new Money(entity.SalaryAmount, entity.SalaryCurrency);
+// WRONG (a factory with nothing to do):
+// [Factory]
+// public partial record Money(decimal Amount, string Currency)
+// {
+//     [Create] public static Money Create(decimal amount, string currency) => new(amount, currency);
+// }
+// public void Fetch(OrderLineRow row, [Service] IMoneyFactory moneyFactory) {
+//     UnitPrice = moneyFactory.Create(row.UnitPrice, "USD");
 // }
 //
-// RIGHT (value object hydrates itself):
-// public void Fetch(EmployeeEntity entity, [Service] IMoneyFactory moneyFactory) {
-//     Salary = moneyFactory.Create(entity.SalaryAmount, entity.SalaryCurrency);
+// RIGHT:
+// public void Fetch(OrderLineRow row) {
+//     UnitPrice = new Money(row.UnitPrice);
 // }
+//
+// The factory added an interface, a DI registration and an injected parameter at
+// every construction site, and bought nothing a constructor does not do.
 //
 // =============================================================================
-
-using Neatoo.RemoteFactory;
 
 namespace Design.Domain.ValueObjects;
 
 /// <summary>
-/// Value object representing monetary amounts with currency.
+/// Value object for a monetary amount in one currency.
 /// </summary>
 /// <remarks>
-/// DESIGN DECISION: Records with [Factory] for value object encapsulation
-///
-/// For records, the "hydration" happens via the Create factory method, which
-/// wraps the primary constructor. This provides encapsulation while keeping
-/// the immutability benefits of records.
-///
-/// GENERATOR BEHAVIOR: The generator creates IMoneyFactory with a Create
-/// method matching the factory method signature.
+/// The constructor refuses a currency that is not a three-letter uppercase code.
+/// The amount has no invariant here (a refund line may be negative).
 /// </remarks>
-[Factory]
-public partial record Money(decimal Amount, string Currency = "USD")
+public record Money(decimal Amount, string Currency = "USD")
 {
     /// <summary>
     /// Zero amount in USD.
@@ -53,24 +50,18 @@ public partial record Money(decimal Amount, string Currency = "USD")
     public static readonly Money Zero = new(0);
 
     /// <summary>
-    /// Factory method for creating Money instances.
+    /// The currency code, validated when the record is constructed.
     /// </summary>
     /// <remarks>
-    /// DESIGN DECISION: Value objects use [Create] for factory construction
-    ///
-    /// The parent injects IMoneyFactory and calls Create with raw data.
-    /// The value object encapsulates how to construct itself from that data.
-    ///
-    /// This becomes important when:
-    /// 1. Construction involves validation
-    /// 2. Multiple data sources map to the same value object
-    /// 3. The internal structure changes (only this method needs updating)
+    /// Get-only on purpose: <c>with { Currency = ... }</c> would bypass the check,
+    /// so it does not compile. <c>with { Amount = ... }</c> keeps the validated code.
     /// </remarks>
-    [Create]
-    public static Money Create(decimal amount, string currency = "USD")
-    {
-        return new Money(amount, currency);
-    }
+    public string Currency { get; } = IsCurrencyCode(Currency)
+        ? Currency
+        : throw new ArgumentException($"'{Currency}' is not a three-letter uppercase currency code.", nameof(Currency));
+
+    private static bool IsCurrencyCode(string? code) =>
+        code is { Length: 3 } && code.All(c => c is >= 'A' and <= 'Z');
 
     // -------------------------------------------------------------------------
     // DESIGN DECISION: Value objects can have behavior
@@ -116,22 +107,19 @@ public partial record Money(decimal Amount, string Currency = "USD")
 }
 
 /// <summary>
-/// Value object representing a percentage.
+/// Value object for a percentage from 0 to 100.
 /// </summary>
-[Factory]
-public partial record Percentage(decimal Value)
+public record Percentage(decimal Value)
 {
     public static readonly Percentage Zero = new(0);
     public static readonly Percentage Full = new(100);
 
     /// <summary>
-    /// Factory method for creating Percentage instances.
+    /// The percentage, validated when the record is constructed.
     /// </summary>
-    [Create]
-    public static Percentage Create(decimal value)
-    {
-        return new Percentage(value);
-    }
+    public decimal Value { get; } = Value is >= 0m and <= 100m
+        ? Value
+        : throw new ArgumentOutOfRangeException(nameof(Value), Value, "A percentage is between 0 and 100.");
 
     public Money Of(Money money)
     {
