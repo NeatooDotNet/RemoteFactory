@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-2, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-13
 **Plan-review opt-in:** Yes (two new Design shapes later plans embed; documented rules D3, D11, D14, R-F; reshapes 9 pinned tests)
 **Code-review opt-in:** Yes (behavior-changing: `Money` loses its factory, three event examples change operation)
@@ -43,7 +43,7 @@ Give Design the two AC-2 shapes it still lacks and remove its `[Create]` misuses
 - `OpenDraft` returns the existing Draft order for a customer who has one and a new, unsaved order otherwise, in one round trip; it never inserts.
 - `Money` and `Percentage` keep their operations and round-trip unchanged (the wire shape moves from a generated ordinal array to a named object, and nothing pins the array); `Order.Total` and the line arithmetic are unchanged.
 - No `new` on a `[Factory]` type outside its own factory methods; no `[Remote]` on anything but entry points; no method-injected service stored in a field.
-- `Design.Server` composition still resolves every service (`DesignServerCompositionTests`); the `IMoneyFactory` assertion goes with the factory, and `TaxRate`'s factory takes its place.
+- `Design.Server` composition still resolves every service (`DesignServerCompositionTests`); the `IMoneyFactory` assertion goes with the factory, and the services Design.Domain now method-injects are asserted (`ITaxTable`, `IOrderFactory`, `IClassExecuteDemoFactory`).
 - Both solutions green.
 
 ---
@@ -62,13 +62,13 @@ Give Design the two AC-2 shapes it still lacks and remove its `[Create]` misuses
 
 ## Acceptance
 
-- [ ] From the client, `OpenDraft` returns the seeded Draft order with its lines for a customer who has one, and a new unsaved order for one who does not, each in one remote call `[integration]` · Must
-- [ ] `Money` and `Percentage` reject an invalid value at construction, and a plain-record `Money` survives the round trip as an order line's property `[unit]` · Must
-- [ ] From the client, `TaxRate` loads for a known region, is null for an unknown one, and applies its rate to a `Money`; the table is not registered on the client `[integration]` · Must
-- [ ] `ClassExecuteDemo`'s Create runs on the client with no server call, and each `[Execute]` returns an instance built through the factory `[integration]` · Should
-- [ ] The relay and phase tests keep their intent on the new operations: saved checkout relays its event, the ServerOnly update does not, finalize and archive run each phase at its drain point `[integration]` · Must
-- [ ] No Design `[Create]` raises an event or writes, and none in this plan's files takes a service `[explicit-skip: grep of src/Design for [Create] bodies and CLAUDE-DESIGN's blocks]` · Should
-- [ ] Both solutions green `[explicit-skip: meta-bullet]` · Must
+- [x] From the client, `OpenDraft` returns the seeded Draft order with its lines for a customer who has one, and a new unsaved order for one who does not, each in one remote call `[integration]` · Must
+- [x] `Money` and `Percentage` reject an invalid value at construction, and a plain-record `Money` survives the round trip as an order line's property `[unit]` · Must
+- [x] From the client, `TaxRate` loads for a known region, is null for an unknown one, and applies its rate to a `Money`; the table is not registered on the client `[integration]` · Must
+- [x] `ClassExecuteDemo`'s Create runs on the client with no server call, and each `[Execute]` returns an instance built through the factory `[integration]` · Should
+- [x] The relay and phase tests keep their intent on the new operations: saved checkout relays its event, the ServerOnly update does not, finalize and archive run each phase at its drain point `[integration]` · Must
+- [x] No Design `[Create]` raises an event or writes, and none in this plan's files takes a service `[explicit-skip: grep of src/Design for [Create] bodies and CLAUDE-DESIGN's blocks]` · Should
+- [x] Both solutions green `[explicit-skip: meta-bullet]` · Must
 
 ---
 
@@ -98,12 +98,14 @@ Give Design the two AC-2 shapes it still lacks and remove its `[Create]` misuses
 | `TaxRate` from the client: known region, null for unknown, applies to `Money`; table not on the client | Must | `[integration]` | `ValueObjectTests.TaxRate_LoadsFromTheServer_AndAppliesToMoney` (one call; 6.5% of 200.00 is 13.00), `TaxRate_IsNull_ForAnUnknownRegion`, `TaxTable_IsRegisteredOnTheServer_AndNotOnTheClient` | ✓ |
 | `ClassExecuteDemo`'s Create runs on the client with no call; each `[Execute]` builds through the factory | Should | `[integration]` | `LocalExecuteTests.Create_ClassFactory_Local_RunsOnClient` (no-wire stand-in), `Execute_ClassFactory_WithoutRemote_RunsOnClient` (`ScoreLocally` builds through Create on the client, no wire); `ClassFactoryExecuteTests.Execute_OnClassFactory_WorksThroughClientServer`, `Execute_OnClassFactory_WorksInLocalMode`, `Execute_InternalStaticWithoutRemote_RunsOnServer`, `Create_StillWorks_AlongsideExecute`. The tests pin each result's values; that they come through Create is in the code, not observable from a test | ✓ |
 | Relay and phase tests keep their intent on the new operations | Must | `[integration]` | `FactoryEventRelayTests.Relay_EventRaisedInRemoteInsert_DeliveredToConsumer` (renamed from `…InRemoteCreate…`), `Relay_ServerOnlyFlag_EventNotRelayedToConsumer` (insert's event awaited, then the update adds none), `Relay_NoConsumerRegistration_NoOpDefaultUsed` (now saves, so a remote call reaches the relay); `FactoryEventPhasesTests.Finalize_Remote_RunsEachPhaseAtItsDrainPoint` (the command's result crosses), `Finalize_Logical_…`, `Archive_NeverDrained_AfterFlushHandlerRunsAtTheSweep`; `DesignServerCompositionTests.ServerComposition_RunsAPhasedFactoryOperationEndToEnd`. The library fix: `RemoteFactory.IntegrationTests…FactoryEventRelayTests.SequentialCalls_SameServerScope_EachBatchCarriesOnlyItsOwnEvents`, `FailedCall_SameServerScope_ItsEventsDoNotRideTheNextCall` (both red before the fix), `RemoteFactory.UnitTests…FactoryEventCollectorTests.Clear_DropsEverythingCollected_AndCollectingResumes` | ✓ |
-| No Design `[Create]` raises or writes; none in this plan's files takes a service | Should | explicit-skip | grep of `src/Design` (.cs, .md, .razor) for `[Create]` bodies with `Raise(`, `SaveChanges`, `db.Add`, `Remove(`: no code hit (the remaining matches are prose naming `[Create]`). Remaining `[Remote, Create]`: `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` (todo Punchlist, EXSET-009), `ExampleClassFactory` (a sequence, D14), `LazyLoadExample` (#114), CLAUDE-DESIGN WRONG blocks, `README.md` (EXSET-012) | ✓ |
+| No Design `[Create]` raises or writes; none in this plan's files takes a service | Should | explicit-skip | grep of `src/Design` (.cs, .md, .razor) for `[Create]` bodies with `Raise(`, `SaveChanges`, `db.Add`, `Remove(`: no code hit (the remaining matches are prose naming `[Create]`). The one `[Service]` on a Create in this plan's files is `Order.Create`'s `IOrderLineListFactory`, a child factory registered on both tiers, which D3/D14 allow. Remaining `[Remote, Create]`: `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` (todo Punchlist, EXSET-009), `ExampleClassFactory` (a sequence, D14), `LazyLoadExample` (#114), CLAUDE-DESIGN WRONG blocks, `README.md` (EXSET-012) | ✓ |
 | Both solutions green | Must | explicit-skip | `reviews/004-build.log` (0 errors; 2 warnings, the OrderEntry WASM notice), `reviews/004-test.log` (835 unit, 644 integration + 5 pre-existing skips; both TFMs), `reviews/004-design-build.log` (0 errors, 0 warnings), `reviews/004-design-test.log` (137; both TFMs) | ✓ |
 
 ---
 
 ## Gate Record
+
+- Round 1 (2026-10-13): test-reviewer CLEAN (tech-debt: two wording fixes punched; the inherited 50 ms wait and the USD-only round trip dismissed). code-reviewer CLEAN with 1 callout, punched: `ClassFactoryWithExecute.cs` cited the reference app's `StartForPatient`, now `RunCommand`. Also punched: CLAUDE-DESIGN's finalize sketch now matches Design's records. Design rebuilt and retested after the punches (137, both TFMs). `reviews/004-test-review.md`, `reviews/004-code-review.md`. Done.
 
 ---
 

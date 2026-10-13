@@ -32,7 +32,7 @@ namespace Design.Domain.FactoryPatterns;
 /// Unlike static factory [Execute] (which generates delegate types), class factory
 /// [Execute] generates proper factory methods on the IXxxFactory interface. This
 /// keeps the calling pattern consistent:
-///   var result = await factory.StartForPatient(patientId);
+///   var result = await factory.RunCommand(input);
 ///
 /// DESIGN DECISION: Return type must be the containing type
 ///

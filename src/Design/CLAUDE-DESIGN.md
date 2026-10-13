@@ -234,16 +234,16 @@ injection, server-only) and drain **inside the factory method body**:
 ```csharp
 // A command (static [Execute]), or a [Remote] Insert/Update; never a [Create] (D3)
 [Execute, Remote]
-internal static async Task<FinalizedInvoice> _Finalize(Guid id, [Service] AppDbContext db,
+internal static async Task<FinalizedInvoice> _Finalize(Guid id, decimal total, [Service] AppDbContext db,
     [Service] IFactoryEvents events,
     [Service] IFactoryEventPhaseCoordinator coordinator, CancellationToken ct)
 {
     // ... stage writes ...
-    await events.Raise(new InvoiceFinalizedEvent(id), RaiseOptions.None, ct); // Immediate handlers run here
+    await events.Raise(new InvoiceFinalizedEvent(id, total), RaiseOptions.None, ct); // Immediate handlers run here
     await db.SaveChangesAsync(ct);                          // flush — keys exist, tx open
     await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct); // AfterFlush handlers run here
     await db.Database.CurrentTransaction!.CommitAsync(ct);  // commit
-    return new FinalizedInvoice(id);
+    return new FinalizedInvoice(id, total);
 }   // AfterCommit handlers run after this returns
 ```
 

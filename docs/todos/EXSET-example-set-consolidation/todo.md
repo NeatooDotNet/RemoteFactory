@@ -66,6 +66,8 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Dismissed
 
+- EXSET-004 · `Relay_ServerOnlyFlag_EventNotRelayedToConsumer` waits a fixed 50 ms before its absence check · inherited; Design's `InMemoryAggregatorRelay` has no invocation count to wait on
+- EXSET-004 · `ValueObject_SurvivesSerializationRoundTrip` uses only USD, the default · the seed holds only USD, and `Money`'s constructor validates the currency on both sides
 - EXSET-002 · `OrderLineList.IsNew`/`IsDeleted` read-only, against R-M's `get; set;` · R-M is for objects whose own state crosses the wire; a collection's properties never cross (#119)
 
 ---
