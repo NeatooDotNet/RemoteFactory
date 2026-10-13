@@ -27,6 +27,7 @@
 
 using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.ValueObjects;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.AspNetCore;
 
@@ -103,6 +104,9 @@ public static class ServerServices
         services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         services.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         services.AddScoped<IExampleService, ExampleService>();
+        // Not named for its interface, so the convention below would miss it; and on
+        // purpose: the convention also runs on clients, and the tax table is server-only.
+        services.AddSingleton<ITaxTable, InMemoryTaxTable>();
 
         // Explicit for a different reason: the implementation takes a constructor
         // argument the convention cannot supply. In a real server this value comes

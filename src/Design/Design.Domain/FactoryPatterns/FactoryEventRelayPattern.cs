@@ -89,7 +89,7 @@ public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventB
 /// PREFER THIS OVER a separate client-side raise
 ///
 /// LESS GOOD:
-///     var result = await factory.Create(...);
+///     order = await factory.Save(order);
 ///     await factoryEvents.Raise(new MyEvent(...));  // a SECOND round-trip
 ///
 /// BETTER: Raise inside the factory method itself, while still on the server.
@@ -101,25 +101,51 @@ public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventB
 /// and it costs a second round-trip. Raise inside the method when the event
 /// belongs to the operation.
 /// </remarks>
-public interface ICheckoutOrder
+public interface ICheckoutOrder : IFactorySaveMeta
 {
     int Id { get; set; }
     decimal Total { get; set; }
 }
 
+/// <summary>
+/// A checkout created on the client and saved to the server, where its write raises the event.
+/// </summary>
+/// <remarks>
+/// DESIGN DECISION: Raise from the write, not from Create (VisionAlignment D3)
+///
+/// Create is `new` and runs locally; nothing has happened yet that anyone needs to
+/// hear about. The checkout completes when the order is stored, so the Insert
+/// raises the event, inside the same server call and scope as the write.
+///
+/// DID NOT DO THIS: [Remote, Create] that raises the event
+///
+/// It sends `new` to the server, and announces a checkout that was never stored:
+/// the client can discard the object it got back.
+/// </remarks>
 [Factory]
 internal partial class CheckoutOrder : ICheckoutOrder
 {
     public int Id { get; set; }
     public decimal Total { get; set; }
+    public bool IsNew { get; set; } = true;
+    public bool IsDeleted { get; set; }
 
     public CheckoutOrder() { }
 
-    [Remote, Create]
-    internal async Task Create(int id, decimal total, [Service] IFactoryEvents factoryEvents)
+    [Create]
+    public void Create(int id, decimal total)
     {
-        this.Id = id;
-        this.Total = total;
+        Id = id;
+        Total = total;
+    }
+
+    /// <summary>
+    /// Stores the checkout and announces it to server handlers and the client.
+    /// </summary>
+    [Remote, Insert]
+    internal async Task Insert([Service] IFactoryEvents factoryEvents)
+    {
+        // A real Insert writes the row here, then raises.
 
         // Raise the event. With default RaiseOptions.None, the event is:
         //   1. Dispatched to every server-side [FactoryEventHandler<T>] static-method
@@ -131,7 +157,10 @@ internal partial class CheckoutOrder : ICheckoutOrder
         //      client, IFactoryEventRelay.Relay(...) is invoked fire-and-forget
         //      strictly AFTER this factory method's return value has been handed
         //      back to the caller and their continuation has resumed.
-        await factoryEvents.Raise(new OrderCheckoutCompleted(id, total));
+        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total));
+
+        // Stored: the next Save routes to Update.
+        IsNew = false;
     }
 
     /// <summary>
@@ -141,15 +170,14 @@ internal partial class CheckoutOrder : ICheckoutOrder
     /// <remarks>
     /// Use ServerOnly when the event is a server-internal concern (e.g.,
     /// triggering a downstream process) that the UI doesn't need to know about.
+    /// Here a change to a stored checkout is re-announced to the server's handlers
+    /// only; the client made the change and already knows.
     /// </remarks>
-    [Remote, Create]
-    internal async Task CreateWithServerOnlyEvent(int id, decimal total, [Service] IFactoryEvents factoryEvents)
+    [Remote, Update]
+    internal async Task Update([Service] IFactoryEvents factoryEvents)
     {
-        this.Id = id;
-        this.Total = total;
-
         // ServerOnly: server handlers run, client does NOT receive the event
-        await factoryEvents.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.ServerOnly);
+        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.ServerOnly);
     }
 }
 
@@ -228,7 +256,7 @@ public static partial class ClientRaisedNoticeHandler
 ///    implementation BEFORE calling AddNeatooRemoteFactory (TryAdd keeps it) OR
 ///    AFTER (standard DI override replaces the NoOp).
 /// 3. Relay.Relay is called fire-and-forget on a separate continuation, so the
-///    caller's `_entity = await factory.Create(...)` assignment has already
+///    caller's `_entity = await factory.Save(_entity)` assignment has already
 ///    completed when Relay fires — handlers that read caller state see the new
 ///    value.
 /// 4. Exceptions thrown by Relay are caught and logged; they never propagate to

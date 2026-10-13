@@ -13,7 +13,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-03 | Decision tree: "called from client → `[Remote]`" | 005 | |
 | C-04 | "Remote mode: all operations POST to server" | 006 | |
 | C-05 | Static `[Create]` as create-or-fetch | 007 | |
-| C-06 | Events examples insert/commit inside `[Create]` | 004, 011, T2 | |
+| C-06 | Events examples insert/commit inside `[Create]` | 004, 011, T2 | 004: Design fixed (raisers moved to Insert/Update and static commands; CLAUDE-DESIGN Pattern 4, phase block and Anti-Pattern 10) |
 | C-07 | `[Factory]` child built with `new` | 006, 012 | |
 | C-08 | Hand-coded GetOrCreate service; consumer-app references | T2 | |
 | C-09 | Commands write another aggregate's row | 007, 012 | |
@@ -21,7 +21,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-11 | Hooks documented for validation; throwing in hooks | 002, 007, 008, 010, 012 | 002: Design's Order hook and CLAUDE-DESIGN Lifecycle Hooks fixed |
 | C-12 | "Manual checks in your write methods" | 008 | |
 | C-13 | Throwing validation sample regions (unpublished) | 012 | |
-| C-14 | Value-object constructors validate by throwing | 004, 010, 012 | |
+| C-14 | Value-object constructors validate by throwing | 004, 010, 012 | 004: Design fixed; R-F settled the premise (constructors throw): `Money`, `Percentage` |
 | C-15 | `bool` `[Create]`, business filter in `[Fetch]`, HR rule in `[Update]` | 007, 010 | |
 | C-16 | `[SuppressFactory]` public static `Task` command as "the shape to copy" | 009 | |
 | C-17 | Installed skill copy predates v1.9.0 | T2 | |

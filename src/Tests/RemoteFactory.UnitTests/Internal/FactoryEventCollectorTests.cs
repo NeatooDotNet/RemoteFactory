@@ -40,6 +40,19 @@ public class FactoryEventCollectorTests
     }
 
     [Fact]
+    public void Clear_DropsEverythingCollected_AndCollectingResumes()
+    {
+        var collector = new FactoryEventCollector();
+        collector.Collect(new TestEvent("earlier call"));
+
+        collector.Clear();
+        var next = new TestEvent("this call");
+        collector.Collect(next);
+
+        Assert.Same(next, Assert.Single(collector.GetCollectedEvents()));
+    }
+
+    [Fact]
     public void GetCollectedEvents_NoEvents_ReturnsEmpty()
     {
         var collector = new FactoryEventCollector();

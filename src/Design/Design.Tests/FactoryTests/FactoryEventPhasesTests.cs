@@ -29,17 +29,17 @@ public class FactoryEventPhasesTests
     public async Task Finalize_Remote_RunsEachPhaseAtItsDrainPoint()
     {
         var (server, client, _) = DesignClientServerContainers.Scopes();
-        var factory = client.GetRequiredService<IInvoiceFactory>();
+        var finalize = client.GetRequiredService<InvoiceFinalizer.Finalize>();
         var id = Guid.NewGuid();
 
-        var invoice = await factory.Finalize(id, 100m);
+        var invoice = await finalize(id, 100m);
 
         var audit = server.GetRequiredService<IPhaseAuditService>();
         Assert.Equal(
             ["invoice-immediate", "invoice-flush", "invoice-method-done", "invoice-commit"],
             audit.EntriesFor(id));
 
-        // The remote leg is real: the entity serialized back across the boundary.
+        // The remote leg is real: the command's result serialized back across the boundary.
         Assert.Equal(id, invoice.Id);
         Assert.Equal(100m, invoice.Total);
 
@@ -52,10 +52,10 @@ public class FactoryEventPhasesTests
     public async Task Finalize_Logical_RunsEachPhaseAtItsDrainPoint()
     {
         var (server, client, local) = DesignClientServerContainers.Scopes();
-        var factory = local.GetRequiredService<IInvoiceFactory>();
+        var finalize = local.GetRequiredService<InvoiceFinalizer.Finalize>();
         var id = Guid.NewGuid();
 
-        await factory.Finalize(id, 100m);
+        await finalize(id, 100m);
 
         var audit = local.GetRequiredService<IPhaseAuditService>();
         Assert.Equal(
@@ -105,10 +105,10 @@ public class FactoryEventPhasesTests
     public async Task Archive_NeverDrained_AfterFlushHandlerRunsAtTheSweep()
     {
         var (server, client, _) = DesignClientServerContainers.Scopes();
-        var factory = client.GetRequiredService<IInvoiceArchiverFactory>();
+        var archive = client.GetRequiredService<InvoiceArchiver.Archive>();
         var id = Guid.NewGuid();
 
-        await factory.Archive(id);
+        await archive(id);
 
         var audit = server.GetRequiredService<IPhaseAuditService>();
         Assert.Equal(["archive-method-done", "archive-flush"], audit.EntriesFor(id));

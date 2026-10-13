@@ -35,7 +35,7 @@ Follow this workflow when working with RemoteFactory patterns:
 
 | Pattern | Use When | Example | Key Characteristics |
 |---------|----------|---------|---------------------|
-| **Class Factory** | Aggregate roots with lifecycle, entities needing Create/Fetch/Save | `Order`, `Customer`, `Invoice` | Instance state, serializable, IFactorySaveMeta support |
+| **Class Factory** | Aggregate roots with lifecycle, entities needing Create/Fetch/Save | `Order`, `CheckoutOrder`, `ClassExecuteDemo` | Instance state, serializable, IFactorySaveMeta support |
 | **Interface Factory** | A domain service the client calls (never a repository) | `IProductCatalog`, `ICustomerDirectory` | Server implementation, client proxy, no operation attributes |
 | **Static Factory** | Stateless commands and side effects | `EmailCommands.SendNotification` | No instance state, [Execute] operation; `[Remote]` decides whether it crosses to the server |
 
@@ -169,16 +169,16 @@ Instance-method `[FactoryEventHandler<T>]` handlers compile but are silently ski
 public record OrderPlacedEvent(int OrderId, string Email) : FactoryEventBase;
 ```
 
-**Server-side raiser** (in any factory method):
+**Server-side raiser** (a write or a command; never a `[Create]`, which is `new` — D3):
 ```csharp
 [Factory]
 internal partial class Order
 {
-    [Remote, Create]
-    internal async Task Create(int id, [Service] IFactoryEvents events)
+    [Remote, Insert]
+    internal async Task Insert([Service] IOrderDbContext db, [Service] IFactoryEvents events)
     {
-        // ... do work ...
-        await events.Raise(new OrderPlacedEvent(id, "x@y.com"));
+        // ... write the row, flush ...
+        await events.Raise(new OrderPlacedEvent(Id, CustomerEmail));
     }
 }
 ```
@@ -232,16 +232,18 @@ The consumer drain pattern — `[Service]`-inject the coordinator (method
 injection, server-only) and drain **inside the factory method body**:
 
 ```csharp
-[Remote, Create]
-internal async Task Finalize(Guid id, [Service] AppDbContext db,
+// A command (static [Execute]), or a [Remote] Insert/Update; never a [Create] (D3)
+[Execute, Remote]
+internal static async Task<FinalizedInvoice> _Finalize(Guid id, decimal total, [Service] AppDbContext db,
     [Service] IFactoryEvents events,
     [Service] IFactoryEventPhaseCoordinator coordinator, CancellationToken ct)
 {
     // ... stage writes ...
-    await events.Raise(new InvoiceFinalizedEvent(id), RaiseOptions.None, ct); // Immediate handlers run here
+    await events.Raise(new InvoiceFinalizedEvent(id, total), RaiseOptions.None, ct); // Immediate handlers run here
     await db.SaveChangesAsync(ct);                          // flush — keys exist, tx open
     await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct); // AfterFlush handlers run here
     await db.Database.CurrentTransaction!.CommitAsync(ct);  // commit
+    return new FinalizedInvoice(id, total);
 }   // AfterCommit handlers run after this returns
 ```
 
@@ -377,6 +379,8 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
 | Should child entities have [Remote]? | No | `OrderLine.cs` | Their Fetch/Insert/Update run inside the root's server call and their Create runs on the client, so [Remote] marks a crossing that never happens. Not an N+1 problem: once on the server, [Remote] does nothing different (D18) |
 | Can [Execute] return void? | No; `Task` when there is no result, `Task<T>` when the caller needs one | `AllPatterns.cs` (`_SendNotification`, `_Notify`) | Request-response: the caller awaits completion whether the call is local or remote |
+| How do I load-or-create (open, start, ensure)? | A class-level `[Remote, Execute]` that calls Fetch, then Create, through its own injected factory. Never a `[Create]` that looks for an existing object or a `[Fetch]` that makes one (D3, D11) | `Order.cs` (`OpenDraft`, `FetchDraft`), `CreateOrFetchTests.cs` | One round trip; the caller gets a fetched or a new, unsaved object, and each operation does what its name says |
+| Does my value object need `[Factory]`? | Only when constructing it needs a service or authorization. Otherwise it is a plain record, built with `new`, whose constructor throws on an invalid value (R-F) | `Money.cs` (`Money`, `Percentage`), `TaxRate.cs` | A factory with no service adds an interface, a registration and an injected parameter at every construction site, and buys nothing |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Does constructor injection affect ordinal serialization? | Yes -- a class with no parameterless or all-default-parameter ctor causes the generator to skip `IOrdinalSerializable`; the type then deserializes via the named/DI path (`GetRequiredService`), which resolves the ctor parameters from the DI container on each side of the wire | `CtorInjectionExample.cs`, `SerializationTests.cs` (`CtorInjectedEntity_*` tests) | Ordinal `FromOrdinalArray` uses object-initializer / positional construction and does not resolve DI. The generator's `RequiresServiceInstantiationCheck` looks only at ctor shape (parameter count, default values) -- not at `[Service]` attribute presence |
@@ -392,7 +396,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
 | I want a handler to participate in the factory's DB transaction. | Use `[FactoryEventHandler<T>]` at the default `Immediate` phase (or `AfterFlush`, drained before the commit) — it runs in the caller's scope | `FactoryEventHandlerPattern.cs` | Shared scope → shared `DbContext` → same transaction; a throwing in-transaction handler rolls the whole thing back |
 | I want a handler to fire-and-forget (email, webhook). | Compose your own `Task.Run` + `IServiceScopeFactory.CreateScope()` inside the factory method; copy any ambient state explicitly before entering the background task. | v1.5.0 release notes | No framework-supplied fire-and-forget surface after v1.5.0 — explicit copy is required |
-| My handler needs database-generated state (identity keys) but must still be able to roll the save back. | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` between the factory body's flush and commit | `FactoryEventPhasesPattern.cs` (`Invoice.Finalize`) | Queued at `Raise`, drained in-transaction at the consumer's chosen point; exceptions propagate to the drain call |
+| My handler needs database-generated state (identity keys) but must still be able to roll the save back. | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` between the factory body's flush and commit | `FactoryEventPhasesPattern.cs` (`InvoiceFinalizer`) | Queued at `Raise`, drained in-transaction at the consumer's chosen point; exceptions propagate to the drain call |
 | I want a read-only projection that must never fail the save. | `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` | `FactoryEventPhasesPattern.cs` (`InvoiceSearchIndexRefresh`) | Framework drains after the entry call succeeds; no ambient transaction; exceptions logged (9003) and swallowed |
 | What happens if I declare `AfterFlush` but never drain? | The handler still runs — at the `AfterCommit` point, with Warning 9007 | `FactoryEventPhasesPattern.cs` (`InvoiceArchiver`) | Fail-open: forgetting the drain costs transaction placement, never the handler |
 | One save raises the same event N times and my deferred projection recomputes N times. | `Coalesce = true` on the attribute — identical queued dispatches collapse to one per drain | `FactoryEventPhasesPattern.cs` (`StatementProjection`) | Identity is `Equals` + same options + same registration; value-only event payloads coalesce reliably; flagless handlers keep one-run-per-raise |
@@ -682,7 +686,7 @@ public interface IOrderService
 **LESS GOOD:**
 ```csharp
 // Client code calling a factory, then raising the operation's event separately
-var order = await factory.Create(...);
+order = await factory.Save(order);
 await factoryEvents.Raise(new OrderPlacedEvent(order.Id));  // a SECOND round-trip
 ```
 
@@ -691,14 +695,16 @@ await factoryEvents.Raise(new OrderPlacedEvent(order.Id));  // a SECOND round-tr
 [Factory]
 internal partial class Order
 {
-    [Remote, Create]
-    internal async Task Create(int id, [Service] IFactoryEvents events)
+    [Remote, Insert]
+    internal async Task Insert([Service] IOrderDbContext db, [Service] IFactoryEvents events)
     {
-        // ... do work ...
-        await events.Raise(new OrderPlacedEvent(id));  // Raised server-side
+        // ... write the row, flush ...
+        await events.Raise(new OrderPlacedEvent(Id));  // Raised server-side, by the write
     }
 }
 ```
+
+Raise from the write (`Insert`/`Update`/`Delete`) or a command, never from a `[Create]`: Create is `new`, runs locally, and stores nothing (D3; `CheckoutOrder` in `FactoryEventRelayPattern.cs`).
 
 **Why it matters:** both work, but they are not equivalent. An event raised inside the factory method is captured by the same request-scoped `IFactoryEventCollector` as the operation, so its handlers share the method's DI scope — and therefore its `DbContext` and transaction — and an `Immediate` handler that throws rolls the operation back. It costs no extra round-trip and rides the operation's own response.
 
@@ -1092,7 +1098,8 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
 - [ ] Child entities without [Remote] (`OrderLine.cs`)
 - [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
-- [ ] Value objects that serialize correctly (`Money` in `ValueObjects/`)
+- [ ] Value objects: plain records whose constructors throw (`Money`, `Percentage`), beside one whose construction needs a server service and so carries `[Factory]` (`TaxRate`) (R-F)
+- [ ] Create-or-fetch: a class-level `[Remote, Execute]` that calls Fetch, then Create (`Order.OpenDraft`, D11)
 - [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
@@ -1214,7 +1221,8 @@ infrastructure already exists.
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
 | `Design.Domain/Entities/OrderLine.cs` | Child entity and child list: public local Create, row-mapped Fetch/Insert/Update, the list's R-D cascade |
 | `Design.Domain/Aggregates/OrderPersistence.cs` | The order's rows and `IOrderDbContext`, the store Order's operations inject; the cascade in outline |
-| `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
+| `Design.Domain/ValueObjects/Money.cs` | Plain-record value objects (`Money`, `Percentage`): no factory, constructors throw (R-F) |
+| `Design.Domain/ValueObjects/TaxRate.cs` | A value object that carries `[Factory]` because its construction needs a server-only service: static `[Remote, Fetch]`, null for an unknown key |
 | `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler running in the caller's DI scope (shared DbContext/transaction), sequential, awaited |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | Consumer-implemented `IFactoryEventRelay.Relay` — bridges relayed events to an aggregator (demonstrates the `InMemoryAggregatorRelay` reference impl) |
 | `Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs` | `DispatchPhase` on the handler attribute — consumer `AfterFlush` drain via `IFactoryEventPhaseCoordinator`, per-drain-point ordering, fail-open never-drained path, discard on failure, opt-in `Coalesce` collapse vs. per-raise control |
@@ -1226,6 +1234,8 @@ infrastructure already exists.
 | `Design.Tests/FactoryTests/InterfaceFactoryAuthorizationTests.cs` | Interface-factory auth: Execute/Read scopes, parameter matching, Can{Method}, NotAuthorizedException across client/server |
 | `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
+| `Design.Tests/FactoryTests/CreateOrFetchTests.cs` | `Order.OpenDraft` from the client: the stored Draft when there is one, a new unsaved order otherwise, one call each |
+| `Design.Tests/FactoryTests/ValueObjectTests.cs` | Value-object constructors throw; `TaxRate` loads from the server, null for an unknown region, its table absent on the client |
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |
 | `Design.Tests/FactoryTests/DesignServerCompositionTests.cs` | Verifies `Design.Server` can actually serve `Design.Domain` — resolves each server-only dependency and runs domain operations against the server's own composition |
 | `Design.Server/Program.cs` | Server pipeline: middleware order and the hosted-WASM fallback |
