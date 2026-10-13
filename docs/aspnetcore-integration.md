@@ -119,6 +119,10 @@ public static class CustomSerializationSample
 
 See [Serialization](serialization.md) for format details.
 
+### Calling it alongside another registration
+
+`AddNeatooAspNetCore` and `AddNeatooRemoteFactory` may both run on one server, in either order: a Neatoo server calls `AddNeatooServices(NeatooFactory.Server, ...)`, which reaches `AddNeatooRemoteFactory`, and `AddNeatooAspNetCore` for `IAspAuthorize`. Since v1.10.5 (#117) the second registration adds only what is new: its assemblies join the existing list and their factories are registered, and everything else the first call set up stands, including a JSON converter factory the host replaced. Serialization options passed explicitly replace the registered ones; the overloads without options keep them. A second call in a different `NeatooFactory` mode throws.
+
 ## UseNeatoo
 
 Configures the `/api/neatoo` endpoint for remote delegate requests.
