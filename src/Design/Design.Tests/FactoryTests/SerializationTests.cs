@@ -378,22 +378,18 @@ public class SerializationTests
     ///
     /// When a server method returns null, it serializes as JSON null
     /// and deserializes as null on the client. This is important for
-    /// "not found" patterns in repositories.
+    /// "not found" answers from a lookup.
     /// </remarks>
     [Fact]
     public async Task NullableValue_SurvivesSerializationRoundTrip()
     {
-        // Arrange - use NullReturningRepository to test null handling
-        var (client, server, _) = DesignClientServerContainers.Scopes(
-            configureServer: services =>
-            {
-                services.AddScoped<IExampleRepository, NullReturningRepository>();
-            });
+        // Arrange - an unknown SKU makes the server return null
+        var (server, client, _) = DesignClientServerContainers.Scopes();
 
-        var repository = client.GetRequiredService<IExampleRepository>();
+        var catalog = client.GetRequiredService<IProductCatalog>();
 
-        // Act - NullReturningRepository.GetByIdAsync always returns null
-        var nullItem = await repository.GetByIdAsync(999);
+        // Act - the call crosses to the server and the null comes back
+        var nullItem = await catalog.FindBySkuAsync("NO-SUCH-SKU");
 
         // Assert - null survived serialization round-trip
         Assert.Null(nullItem);

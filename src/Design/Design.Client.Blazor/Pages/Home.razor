@@ -5,18 +5,20 @@
 
    Demonstrates all three RemoteFactory patterns in a Blazor WASM client:
    1. Class Factory - Create/Fetch entities
-   2. Interface Factory - Call repository methods
+   2. Interface Factory - Call a domain service (the product catalog)
    3. Static Factory - Execute commands, fire events
 
    ========================================================================== *@
 
 @using Design.Domain.Aggregates
+@using Design.Domain.Contexts
 @using Design.Domain.Entities
 @using Design.Domain.FactoryPatterns
 @inject IOrderFactory OrderFactory
 @inject IOrderLineFactory LineFactory
 @inject IExampleClassFactoryFactory ClassFactory
-@inject IExampleRepository Repository
+@inject IProductCatalog Catalog
+@inject IOrderCheckoutFactory CheckoutFactory
 
 <PageTitle>Design Source of Truth</PageTitle>
 
@@ -63,30 +65,54 @@
 @* -------------------------------------------------------------------------
    PATTERN 2: INTERFACE FACTORY
 
-   Interface factories create remote proxies for service interfaces.
-   The IExampleRepository implementation runs on the server.
+   Interface factories create remote proxies for service interfaces: domain
+   services the client calls. The ProductCatalog implementation runs on the
+   server. A repository is never an interface factory (D12).
    -------------------------------------------------------------------------- *@
 <h2>2. Interface Factory Pattern</h2>
-<p>Call repository methods through generated remote proxy.</p>
+<p>Call a domain service through its generated remote proxy.</p>
 
 <div class="mb-3">
-    <button class="btn btn-primary" @onclick="FetchRepositoryData">Get All Items</button>
-    <button class="btn btn-secondary" @onclick="FetchSingleItem">Get Item #42</button>
+    <button class="btn btn-primary" @onclick="SearchProducts">Search Widgets</button>
+    <button class="btn btn-secondary" @onclick="FindProduct">Find WB-200</button>
 </div>
 
-@if (repositoryItems != null)
+@if (products != null)
 {
     <ul>
-        @foreach (var item in repositoryItems)
+        @foreach (var product in products)
         {
-            <li>@item.Id: @item.Name</li>
+            <li>@product.Sku: @product.Name (@product.UnitPrice)</li>
         }
     </ul>
 }
 
-@if (singleItem != null)
+@if (foundProduct != null)
 {
-    <p>Single item: @singleItem.Id - @singleItem.Name</p>
+    <p>Found: @foundProduct.Sku - @foundProduct.Name</p>
+}
+
+<hr />
+
+@* -------------------------------------------------------------------------
+   CONTEXT: CHECKOUT
+
+   A context is a [Factory] instance the screen binds to (D13). It loads the
+   order in one call; Add and Submit act on the held order here, on the
+   client; Save goes through the order's root factory.
+   -------------------------------------------------------------------------- *@
+<h2>Context: Checkout</h2>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="StartCheckout">Start Checkout (Draft Order)</button>
+    <button class="btn btn-secondary" @onclick="AddFoundProduct" disabled="@(checkout == null || foundProduct == null)">Add Found Product</button>
+    <button class="btn btn-secondary" @onclick="SubmitCheckout" disabled="@(checkout == null)">Submit</button>
+    <button class="btn btn-success" @onclick="SaveCheckout" disabled="@(checkout == null)">Save</button>
+</div>
+
+@if (checkout != null)
+{
+    <p>Order #@checkout.Order.Id: @checkout.Order.Status, @checkout.Order.Lines.Count lines, total @checkout.Order.Total.Amount</p>
 }
 
 <hr />
@@ -121,8 +147,9 @@
     // State
     // -------------------------------------------------------------------------
     private IOrder? currentOrder;
-    private IReadOnlyList<ExampleDto>? repositoryItems;
-    private ExampleDto? singleItem;
+    private IReadOnlyList<ProductListing>? products;
+    private ProductListing? foundProduct;
+    private IOrderCheckout? checkout;
     private bool? commandResult;
     private string messages = "";
 
@@ -132,7 +159,7 @@
     // The DI container provides:
     // - IOrderFactory (generated from [Factory] on Order class)
     // - IExampleClassFactoryFactory (generated from [Factory] on ExampleClassFactory)
-    // - IExampleRepository (interface factory - proxy to server implementation)
+    // - IProductCatalog (interface factory - proxy to the server's domain service)
     //
     // Static factory delegates are also injected:
     // - ExampleCommands.SendNotification
@@ -204,16 +231,16 @@
     }
 
     // -------------------------------------------------------------------------
-    // Pattern 2: Interface Factory - Repository calls
+    // Pattern 2: Interface Factory - domain service calls
     // -------------------------------------------------------------------------
 
-    private async Task FetchRepositoryData()
+    private async Task SearchProducts()
     {
         try
         {
-            messages += "Calling repository.GetAllAsync()...\n";
-            repositoryItems = await Repository.GetAllAsync();
-            messages += $"Retrieved {repositoryItems.Count} items\n";
+            messages += "Calling catalog.SearchAsync(\"Widget\")...\n";
+            products = await Catalog.SearchAsync("Widget");
+            messages += $"Found {products.Count} products\n";
         }
         catch (Exception ex)
         {
@@ -221,13 +248,69 @@
         }
     }
 
-    private async Task FetchSingleItem()
+    private async Task FindProduct()
     {
         try
         {
-            messages += "Calling repository.GetByIdAsync(42)...\n";
-            singleItem = await Repository.GetByIdAsync(42);
-            messages += $"Retrieved item: {singleItem?.Name ?? "null"}\n";
+            messages += "Calling catalog.FindBySkuAsync(\"WB-200\")...\n";
+            foundProduct = await Catalog.FindBySkuAsync("WB-200");
+            messages += $"Found: {foundProduct?.Name ?? "null"}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Context: Checkout
+    // -------------------------------------------------------------------------
+
+    private async Task StartCheckout()
+    {
+        try
+        {
+            checkout = await CheckoutFactory.Fetch(InMemoryOrderDbContext.DraftOrderId);
+            messages += checkout == null ? "Order not found\n" : $"Checkout started for order #{checkout.Order.Id}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private void AddFoundProduct()
+    {
+        try
+        {
+            checkout!.AddProduct(foundProduct!, 1);  // no server call
+            messages += $"Added {foundProduct!.Name}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private void SubmitCheckout()
+    {
+        try
+        {
+            checkout!.Submit();  // no server call
+            messages += "Submitted (not yet saved)\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private async Task SaveCheckout()
+    {
+        try
+        {
+            await checkout!.SaveAsync();  // the order's root Save
+            messages += $"Saved order #{checkout.Order.Id}\n";
         }
         catch (Exception ex)
         {

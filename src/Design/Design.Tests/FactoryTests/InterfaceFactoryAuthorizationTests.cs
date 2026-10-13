@@ -21,16 +21,16 @@
 // always throw — they have no equivalent "read failure is ok" semantic because
 // every method is arbitrary.
 //
-// DESIGN DECISION: Server-side impl registration is explicit
+// DESIGN DECISION: The impl is registered by naming convention
 //
-// The test configures IAuthorizedRepository → AuthorizedRepository on the
-// server container. The client uses the generated proxy (IAuthorizedRepositoryFactory);
-// the impl is server-only. Contrast with class factories where the generator
-// auto-registers everything.
+// CustomerDirectory is named for ICustomerDirectory, so RegisterMatchingName
+// registers it; these tests add no registration of their own. On the client
+// the generated proxy is registered first and wins, so every client call
+// crosses to the server, where the auth checks and the impl run.
 //
 // =============================================================================
 
-using Design.Domain.Aggregates;
+using Design.Domain.Services;
 using Design.Tests.TestInfrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Neatoo.RemoteFactory;
@@ -47,12 +47,8 @@ public class InterfaceFactoryAuthorizationTests
 
     private static (IServiceScope server, IServiceScope client, IServiceScope local) SetupScopes()
     {
-        RepositoryAuth.ResetFlags();
-        return DesignClientServerContainers.Scopes(
-            configureServer: services =>
-            {
-                services.AddScoped<IAuthorizedRepository, AuthorizedRepository>();
-            });
+        CustomerDirectoryAuth.ResetFlags();
+        return DesignClientServerContainers.Scopes();
     }
 
     // -------------------------------------------------------------------------
@@ -60,39 +56,39 @@ public class InterfaceFactoryAuthorizationTests
     //
     // GENERATOR BEHAVIOR: All three auth methods pass → impl is invoked
     //
-    // LocalGetItem calls HasAccess() → CanAccessItem(id) → CheckReadAccess()
+    // LocalGetCustomer calls HasAccess() → CanAccessCustomer(id) → CheckReadAccess()
     // in order. All must pass before the impl executes.
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Scenario 1: GetItem succeeds when all auth checks pass.
+    /// Scenario 1: GetCustomer succeeds when all auth checks pass.
     /// </summary>
     [Fact]
-    public async Task InterfaceFactory_GetItem_Succeeds_WhenAllAuthAllowed()
+    public async Task InterfaceFactory_GetCustomer_Succeeds_WhenAllAuthAllowed()
     {
         var (server, client, _) = SetupScopes();
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        var item = await factory.GetItem(AllowedId);
+        var customer = await factory.GetCustomer(AllowedId);
 
-        Assert.NotNull(item);
-        Assert.Equal(AllowedId, item.Id);
+        Assert.NotNull(customer);
+        Assert.Equal(AllowedId, customer.Id);
 
         server.Dispose();
         client.Dispose();
     }
 
     /// <summary>
-    /// Scenario 2: UpdateItem succeeds when all auth checks pass.
+    /// Scenario 2: RenameCustomer succeeds when all auth checks pass.
     /// Demonstrates that extra non-auth parameters (string name) don't affect auth routing.
     /// </summary>
     [Fact]
-    public async Task InterfaceFactory_UpdateItem_Succeeds_WhenAllAuthAllowed()
+    public async Task InterfaceFactory_RenameCustomer_Succeeds_WhenAllAuthAllowed()
     {
         var (server, client, _) = SetupScopes();
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        var result = await factory.UpdateItem(AllowedId, "Renamed");
+        var result = await factory.RenameCustomer(AllowedId, "Renamed");
 
         Assert.Equal("Renamed", result.Name);
 
@@ -111,16 +107,16 @@ public class InterfaceFactoryAuthorizationTests
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Scenario 3: HasAccess denied → GetItem throws NotAuthorizedException.
+    /// Scenario 3: HasAccess denied → GetCustomer throws NotAuthorizedException.
     /// </summary>
     [Fact]
-    public async Task InterfaceFactory_GetItem_Throws_WhenHasAccessDenied()
+    public async Task InterfaceFactory_GetCustomer_Throws_WhenHasAccessDenied()
     {
         var (server, client, _) = SetupScopes();
-        RepositoryAuth.AllowAccess = false;
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        CustomerDirectoryAuth.AllowAccess = false;
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetItem(AllowedId));
+        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetCustomer(AllowedId));
 
         server.Dispose();
         client.Dispose();
@@ -130,32 +126,32 @@ public class InterfaceFactoryAuthorizationTests
     /// A Task-returning interface method runs on the server when allowed (#122).
     /// </summary>
     /// <remarks>
-    /// Gamma (…03) exists only for this test: the store is static, so deleting it
-    /// leaves the items the other tests read untouched.
+    /// Cy (…03) exists only for this test: the store is static, so closing that
+    /// account leaves the customers the other tests read untouched.
     /// </remarks>
     [Fact]
-    public async Task InterfaceFactory_DeleteItem_RemovesItem_WhenAllowed()
+    public async Task InterfaceFactory_CloseAccount_RemovesCustomer_WhenAllowed()
     {
-        var gammaId = Guid.Parse("00000000-0000-0000-0000-000000000003");
+        var cyId = Guid.Parse("00000000-0000-0000-0000-000000000003");
         var (_, client, _) = SetupScopes();
-        var factory = client.GetRequiredService<IAuthorizedRepositoryFactory>();
+        var factory = client.GetRequiredService<ICustomerDirectoryFactory>();
 
-        await factory.DeleteItem(gammaId);
+        await factory.CloseAccount(cyId);
 
-        Assert.Null(await factory.GetItem(gammaId));
+        Assert.Null(await factory.GetCustomer(cyId));
     }
 
     /// <summary>
-    /// Scenario 4: HasAccess denied → DeleteItem throws NotAuthorizedException.
+    /// Scenario 4: HasAccess denied → CloseAccount throws NotAuthorizedException.
     /// </summary>
     [Fact]
-    public async Task InterfaceFactory_DeleteItem_Throws_WhenHasAccessDenied()
+    public async Task InterfaceFactory_CloseAccount_Throws_WhenHasAccessDenied()
     {
         var (server, client, _) = SetupScopes();
-        RepositoryAuth.AllowAccess = false;
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        CustomerDirectoryAuth.AllowAccess = false;
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.DeleteItem(AllowedId));
+        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.CloseAccount(AllowedId));
 
         server.Dispose();
         client.Dispose();
@@ -166,28 +162,28 @@ public class InterfaceFactoryAuthorizationTests
     //
     // GENERATOR BEHAVIOR: Parameter matching by type
     //
-    // CanAccessItem(Guid id) fires on every interface method (each takes a
+    // CanAccessCustomer(Guid id) fires on every interface method (each takes a
     // Guid id). The generator forwards the Guid from the interface call into
     // the auth method. This enables per-entity authorization — deny the
     // specific id without blocking other ids.
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Scenario 5: CanAccessItem denies specific id → that id throws.
+    /// Scenario 5: CanAccessCustomer denies specific id → that id throws.
     /// Other ids still succeed.
     /// </summary>
     [Fact]
-    public async Task InterfaceFactory_GetItem_Throws_WhenItemIdDenied_OthersSucceed()
+    public async Task InterfaceFactory_GetCustomer_Throws_WhenCustomerIdDenied_OthersSucceed()
     {
         var (server, client, _) = SetupScopes();
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
         // Denied id throws
-        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetItem(DeniedId));
+        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetCustomer(DeniedId));
 
         // Allowed id still succeeds
-        var item = await factory.GetItem(AllowedId);
-        Assert.NotNull(item);
+        var customer = await factory.GetCustomer(AllowedId);
+        Assert.NotNull(customer);
 
         server.Dispose();
         client.Dispose();
@@ -207,13 +203,13 @@ public class InterfaceFactoryAuthorizationTests
     /// Scenario 6: String-returning auth denial surfaces the denial message.
     /// </summary>
     [Fact]
-    public async Task InterfaceFactory_GetItem_ThrowsWithMessage_WhenReadAccessDenied()
+    public async Task InterfaceFactory_GetCustomer_ThrowsWithMessage_WhenReadAccessDenied()
     {
         var (server, client, _) = SetupScopes();
-        RepositoryAuth.ReadDenialMessage = "read-denied-explanation";
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        CustomerDirectoryAuth.ReadDenialMessage = "read-denied-explanation";
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        var ex = await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetItem(AllowedId));
+        var ex = await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetCustomer(AllowedId));
         Assert.Contains("read-denied-explanation", ex.Message, StringComparison.Ordinal);
 
         server.Dispose();
@@ -226,21 +222,21 @@ public class InterfaceFactoryAuthorizationTests
     // GENERATOR BEHAVIOR: Can{Method} on the factory interface
     //
     // For each interface method, the generator emits Can{Method}(matching-params)
-    // on IAuthorizedRepositoryFactory that returns Authorized non-throwingly.
+    // on ICustomerDirectoryFactory that returns Authorized non-throwingly.
     // Callers can check auth before attempting the operation, enabling
     // UI disable-states and conditional rendering.
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Scenario 7: CanGetItem returns HasAccess=true when auth allows.
+    /// Scenario 7: CanGetCustomer returns HasAccess=true when auth allows.
     /// </summary>
     [Fact]
-    public void InterfaceFactory_CanGetItem_ReturnsTrue_WhenAllowed()
+    public void InterfaceFactory_CanGetCustomer_ReturnsTrue_WhenAllowed()
     {
         var (server, client, _) = SetupScopes();
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        var result = factory.CanGetItem(AllowedId);
+        var result = factory.CanGetCustomer(AllowedId);
 
         Assert.True(result.HasAccess);
 
@@ -249,16 +245,16 @@ public class InterfaceFactoryAuthorizationTests
     }
 
     /// <summary>
-    /// Scenario 8: CanGetItem returns HasAccess=false for a denied id.
+    /// Scenario 8: CanGetCustomer returns HasAccess=false for a denied id.
     /// Reflects the same per-entity auth that the method itself enforces.
     /// </summary>
     [Fact]
-    public void InterfaceFactory_CanGetItem_ReturnsFalse_ForDeniedId()
+    public void InterfaceFactory_CanGetCustomer_ReturnsFalse_ForDeniedId()
     {
         var (server, client, _) = SetupScopes();
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        var result = factory.CanGetItem(DeniedId);
+        var result = factory.CanGetCustomer(DeniedId);
 
         Assert.False(result.HasAccess);
 
@@ -267,18 +263,18 @@ public class InterfaceFactoryAuthorizationTests
     }
 
     /// <summary>
-    /// Scenario 9: CanUpdateItem parameters mirror only the auth-matching params.
-    /// UpdateItem(Guid id, string name) has a string param, but CanUpdateItem
+    /// Scenario 9: CanRenameCustomer parameters mirror only the auth-matching params.
+    /// RenameCustomer(Guid id, string name) has a string param, but CanRenameCustomer
     /// takes only (Guid id) because the string isn't used by any auth method.
     /// </summary>
     [Fact]
-    public void InterfaceFactory_CanUpdateItem_OnlyTakesAuthMatchingParams()
+    public void InterfaceFactory_CanRenameCustomer_OnlyTakesAuthMatchingParams()
     {
         var (server, client, _) = SetupScopes();
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
-        // CanUpdateItem signature is (Guid id, CancellationToken) — no string.
-        var result = factory.CanUpdateItem(AllowedId);
+        // CanRenameCustomer signature is (Guid id, CancellationToken) — no string.
+        var result = factory.CanRenameCustomer(AllowedId);
 
         Assert.True(result.HasAccess);
 
@@ -303,12 +299,12 @@ public class InterfaceFactoryAuthorizationTests
     public async Task InterfaceFactory_ServerSideAuthDenial_PropagatesToClient()
     {
         var (server, client, _) = SetupScopes();
-        RepositoryAuth.AllowAccess = false;
-        var factory = client.ServiceProvider.GetRequiredService<IAuthorizedRepositoryFactory>();
+        CustomerDirectoryAuth.AllowAccess = false;
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
 
         // The call serializes to the server, auth denies on the server, exception
         // propagates back through the serialization boundary.
-        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetItem(AllowedId));
+        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.GetCustomer(AllowedId));
 
         server.Dispose();
         client.Dispose();

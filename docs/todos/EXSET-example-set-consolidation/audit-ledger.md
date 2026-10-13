@@ -25,7 +25,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-15 | `bool` `[Create]`, business filter in `[Fetch]`, HR rule in `[Update]` | 007, 010 | |
 | C-16 | `[SuppressFactory]` public static `Task` command as "the shape to copy" | 009 | |
 | C-17 | Installed skill copy predates v1.9.0 | T2 | |
-| C-18 | Read models with `[Create]`; no read-model branch | 003, 010, 012 | |
+| C-18 | Read models with `[Create]`; no read-model branch | 003, 010, 012 | 003: Design read model (`OrderSummary`, Fetch-only) |
 | C-19 | Public concretes everywhere; not interface-first | 005, 006, 007, 008, 009, 010, 011, T2 | |
 | C-20 | Properties and callers typed on concretes; casts | 006, 007, 008, 010 | |
 | C-21 | Method-injected services stored in fields (hooks samples) | 008 | |
@@ -34,7 +34,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-24 | `Terminate` as an `[Update]`; HR rule in `[Update]` | 009, 012 | |
 | C-25 | "Business logic in the entity, not the factory" | T2 | |
 | C-26 | Trimming: "business rules ship to the browser" | 011, T2 | |
-| C-27 | Interface factories named repositories | 003, 009, T2 | |
+| C-27 | Interface factories named repositories | 003, 009, T2 | 003: Design renamed (`IProductCatalog`, `ICustomerDirectory`), CLAUDE-DESIGN and Blazor page; #112 |
 | C-28 | "Persistence routing engine" framing; "Data Mapper Factory" | 005, 007, 008, 010, 012 | |
 | C-29 | Class factory = "aggregate roots with lifecycle" only | 005, T2 | |
 | C-30 | `[Execute]` = "decides which persistence path" | 007 | |
@@ -87,7 +87,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | U-03 | The cascade on plain classes (R-D) | 002, 007, 008 | 002: Design compiled example and tests |
 | U-04 | Missing row in `[Update]` (R-I) | 005, 008, T2 | |
 | U-05 | Target not found in a command (R-I) | 007 | |
-| U-06 | Read model vs interface-factory query (R-H) | 003, 005, 010, T2 | |
+| U-06 | Read model vs interface-factory query (R-H) | 003, 005, 010, T2 | 003: Design has both (`OrderSummary`, `IProductCatalog`) |
 | U-07 | Side effects in a `[Create]` constructor (R-J) | 010 | |
 | U-08 | Server executes a client-supplied query string | 010 | |
 | U-09 | Entity duality (R-G) | 005, 012, T2 | |

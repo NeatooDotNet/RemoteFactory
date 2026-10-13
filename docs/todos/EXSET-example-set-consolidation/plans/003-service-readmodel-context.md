@@ -4,8 +4,8 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-2, AC-4
-**Status:** In Progress
-**Last Updated:** 2026-10-12
+**Status:** Done
+**Last Updated:** 2026-10-13
 **Plan-review opt-in:** Yes (three new Design shapes later plans embed; documented rules D12, D13, R-H, R-I; renames 15 pinned tests)
 **Code-review opt-in:** Yes (behavior-changing: new Design types and a renamed authorized service)
 **Branch:** EXSET-003-service-readmodel-context
@@ -90,14 +90,30 @@ Give Design the three shapes VisionAlignment §3 lists as missing or misnamed. (
 
 | Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|---|
+| Catalog: list, single record, null for unknown, from the client | Must | `[integration]` | `Design.Tests.FactoryTests.InterfaceFactoryTests.InterfaceFactory_SearchAsync_ReturnsDataFromServer` (remote call count 1), `InterfaceFactory_FindBySkuAsync_ReturnsSpecificItem`, `InterfaceFactory_GetDetailsAsync_ReturnsRecordFromServer`, `InterfaceFactory_FindBySkuAsync_HandlesNullResult`; `SerializationTests.NullableValue_SurvivesSerializationRoundTrip` | ✓ |
+| Directory: parameterless, per-id and Read-scope denials; `Can{Method}` auth-matched params only; server denial crosses | Must | `[integration]` | `InterfaceFactoryAuthorizationTests` (all 11, renamed one for one; `InterfaceFactory_CloseAccount_RemovesCustomer_WhenAllowed` is #122's `DeleteItem` test and exercises the plain `Task` method) | ✓ |
+| Order summary loads with line records; null when missing | Must | `[integration]` | `ReadModelAndContextTests.OrderSummary_FetchedThroughClient_ArrivesWithLineRecords`, `OrderSummary_ReturnsNull_WhenOrderDoesNotExist` | ✓ |
+| Context loads with its order in one call; verbs on the client with no server call; save through the root, context holds the saved order | Must | `[integration]` | `ReadModelAndContextTests.OrderCheckout_LoadsWithItsOrder_InOneCall` (one call; lines and values arrive), `OrderCheckout_ReturnsNull_WhenOrderDoesNotExist`, `OrderCheckout_VerbsRunOnClient_AndSaveGoesThroughTheRoot` (count unchanged after verbs, +1 after save, store row updated) | ✓ |
+| No Design type, comment, test or page calls an interface factory a repository | Should | explicit-skip | grep of `src/Design` (.cs, .razor, CLAUDE-DESIGN.md, excluding README.md): every remaining "repository" is the D12 rule statement, a `[Service]` on a server method, or this git repository | ✓ |
+| Both solutions green | Must | explicit-skip | `reviews/003-build.log` (0 errors; 2 warnings, the OrderEntry WASM notice), `reviews/003-test.log` (834 unit, 642 integration + 5 pre-existing skips, 120 Design; both TFMs) | ✓ |
 
 ---
 
 ## Gate Record
 
+- Round 1 (2026-10-12): test-reviewer CLEAN (tech-debt: renamed-test count fixed in Test Evidence). code-reviewer CLEAN with 2 callouts, both punched 2026-10-13: the CLAUDE-DESIGN decision-table row aligned with the rewritten Anti-Pattern 9 and its backwards closing sentence dropped; the authorization tests' header describes convention registration and their redundant `AddScoped` removed. Logs green after the callouts. `reviews/003-test-review.md`, `reviews/003-code-review.md`. Done.
+
 ---
 
 ## Plan Amendments
+
+### 2026-10-12 — The catalog tests never reached the proxy
+
+- **Section affected:** Step 1, Constraints (tests keep intent one-for-one)
+- **Original said:** rename the five catalog tests one for one.
+- **What changed:** the four remote catalog tests and `SerializationTests.NullableValue_SurvivesSerializationRoundTrip` deconstructed `Scopes()` as `(client, server, _)` although it returns `(server, client, local)`: their "client" was the server scope, so they called the implementation directly and never crossed the proxy their names claim. The renamed tests deconstruct correctly, resolve the proxy, and the first asserts one remote call. The null case uses an unknown SKU instead of a null-returning stand-in implementation.
+- **Why:** keeps each test's stated intent, which the old code did not meet.
+- **Discovery Log:** none (strengthening, not intent)
 
 ### 2026-10-12 — Plan-review callouts and the Task fix folded in
 

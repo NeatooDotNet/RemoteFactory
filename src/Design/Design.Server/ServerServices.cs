@@ -114,7 +114,7 @@ public static class ServerServices
         services.AddScoped<ITenantTokenService>(_ => new TenantTokenService("server-token"));
 
         // Convention pass for the stateless remainder (INotificationService ->
-        // NotificationService, IExampleRepository -> ExampleRepository) and for the
+        // NotificationService, IProductCatalog -> ProductCatalog) and for the
         // IFoo -> Foo pairs the generated factories expect to resolve.
         services.RegisterMatchingName(typeof(IOrder).Assembly);
 
