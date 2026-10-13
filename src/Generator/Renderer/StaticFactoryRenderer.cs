@@ -282,16 +282,48 @@ internal static class StaticFactoryRenderer
             sb.AppendLine("                {");
         }
 
+        // [AspAuthorize] (#91): the policy check runs inside the entry, ahead of service
+        // resolution and the method. It forbids on refusal, so the caller receives a 403, as
+        // for an interface factory; a delegate has no Authorized<T> to carry a refusal back.
+        var hasAspAuthorize = del.AspAuthorize.Count > 0;
+        var bodyLambda = hasAspAuthorize ? "async () =>" : "() =>";
+
         sb.AppendLine($"{indent}services.AddTransient<{typeName}.{del.DelegateName}>(cc =>");
         sb.AppendLine($"{indent}{{");
-        sb.AppendLine($"{indent}    return ({paramDecl}) => global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(cc, () => {{");
+        sb.AppendLine($"{indent}    return ({paramDecl}) => global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(cc, {bodyLambda} {{");
+
+        if (hasAspAuthorize)
+        {
+            var aspAuthDataText = string.Join(", ", del.AspAuthorize.Select(asp =>
+            {
+                var result = $"new global::Neatoo.RemoteFactory.AspAuthorizeData({string.Join(", ", asp.ConstructorArgs)})";
+                var namedArgs = string.Join(", ", asp.NamedArgs);
+                if (!string.IsNullOrEmpty(namedArgs))
+                {
+                    result += $"{{ {namedArgs} }}";
+                }
+                return result;
+            }));
+            sb.AppendLine($"{indent}    await cc.GetRequiredService<global::Neatoo.RemoteFactory.IAspAuthorize>().Authorize([ {aspAuthDataText} ], true);");
+        }
 
         if (!string.IsNullOrEmpty(serviceAssignments))
         {
             sb.AppendLine($"{indent}    {serviceAssignments}");
         }
 
-        sb.AppendLine($"{indent}    return {typeName}.{del.Name}({allParamIdentifiers});");
+        if (!hasAspAuthorize)
+        {
+            sb.AppendLine($"{indent}    return {typeName}.{del.Name}({allParamIdentifiers});");
+        }
+        else if (del.HasResult)
+        {
+            sb.AppendLine($"{indent}    return await {typeName}.{del.Name}({allParamIdentifiers});");
+        }
+        else
+        {
+            sb.AppendLine($"{indent}    await {typeName}.{del.Name}({allParamIdentifiers});");
+        }
         sb.AppendLine($"{indent}    }});");
         sb.AppendLine($"{indent}}});");
 
