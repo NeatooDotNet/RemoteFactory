@@ -127,6 +127,25 @@ public class InterfaceFactoryAuthorizationTests
     }
 
     /// <summary>
+    /// A Task-returning interface method runs on the server when allowed (#122).
+    /// </summary>
+    /// <remarks>
+    /// Gamma (…03) exists only for this test: the store is static, so deleting it
+    /// leaves the items the other tests read untouched.
+    /// </remarks>
+    [Fact]
+    public async Task InterfaceFactory_DeleteItem_RemovesItem_WhenAllowed()
+    {
+        var gammaId = Guid.Parse("00000000-0000-0000-0000-000000000003");
+        var (_, client, _) = SetupScopes();
+        var factory = client.GetRequiredService<IAuthorizedRepositoryFactory>();
+
+        await factory.DeleteItem(gammaId);
+
+        Assert.Null(await factory.GetItem(gammaId));
+    }
+
+    /// <summary>
     /// Scenario 4: HasAccess denied → DeleteItem throws NotAuthorizedException.
     /// </summary>
     [Fact]

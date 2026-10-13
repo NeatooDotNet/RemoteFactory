@@ -255,6 +255,12 @@ internal static class InterfaceFactoryRenderer
 
     private static void RenderRemoteMethod(StringBuilder sb, InterfaceMethodModel method)
     {
+        if (!method.HasResult)
+        {
+            RenderRemoteMethodNoResult(sb, method);
+            return;
+        }
+
         // Remote methods are always async, so always use Task-wrapped return type
         var returnTypeWithoutTask = GetReturnTypeWithoutTask(method);
         var returnType = method.IsTask
@@ -275,6 +281,26 @@ internal static class InterfaceFactoryRenderer
         sb.AppendLine($"        public virtual async {returnType} Remote{method.UniqueName}({parameters})");
         sb.AppendLine("        {");
         sb.AppendLine($"            return (await MakeRemoteDelegateRequest!.ForDelegate{nullableText}<{returnTypeWithoutTask}>(typeof({method.UniqueName}Delegate), [{serializedParams}], {ctParamName}))!;");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+    }
+
+    /// <summary>
+    /// A method returning non-generic Task: awaits the server call to completion and reads
+    /// no result (#122).
+    /// </summary>
+    private static void RenderRemoteMethodNoResult(StringBuilder sb, InterfaceMethodModel method)
+    {
+        var parameters = GetParameterDeclarations(method.Parameters);
+        var serializedParams = string.Join(", ", method.Parameters
+            .Where(p => !p.IsService && !p.IsCancellationToken)
+            .Select(p => p.Name));
+        var ctParam = method.Parameters.FirstOrDefault(p => p.IsCancellationToken);
+        var ctParamName = ctParam?.Name ?? "default";
+
+        sb.AppendLine($"        public virtual Task Remote{method.UniqueName}({parameters})");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            return MakeRemoteDelegateRequest!.ForDelegateNoResult(typeof({method.UniqueName}Delegate), [{serializedParams}], {ctParamName});");
         sb.AppendLine("        }");
         sb.AppendLine();
     }
@@ -341,7 +367,15 @@ internal static class InterfaceFactoryRenderer
 
             // Method call
             var methodCall = BuildMethodCall(method, paramIdentifiers);
-            sb.AppendLine($"            return {methodCall};");
+            if (!method.HasResult && method.IsAsync)
+            {
+                // async Task with no result: await the call, return nothing
+                sb.AppendLine($"            {methodCall};");
+            }
+            else
+            {
+                sb.AppendLine($"            return {methodCall};");
+            }
         }
 
         sb.AppendLine("        }");
@@ -576,6 +610,11 @@ internal static class InterfaceFactoryRenderer
 
     private static string GetReturnType(InterfaceMethodModel method)
     {
+        if (!method.HasResult)
+        {
+            return "Task";
+        }
+
         var returnType = method.ReturnType;
 
         // Interface methods don't use Authorized<T> wrapper (they throw exceptions instead)
