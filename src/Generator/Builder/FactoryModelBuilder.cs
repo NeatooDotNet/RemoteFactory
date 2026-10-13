@@ -155,7 +155,8 @@ internal static class FactoryModelBuilder
                     isAsync: interfaceMethod.IsAsync,
                     isNullable: interfaceMethod.IsNullable,
                     parameters: interfaceMethod.Parameters,
-                    authorization: interfaceMethod.Authorization);
+                    authorization: interfaceMethod.Authorization,
+                    hasResult: interfaceMethod.HasResult);
             }
 
             methods.Add(interfaceMethod);
@@ -455,7 +456,8 @@ internal static class FactoryModelBuilder
             isAsync: isAsync,
             isNullable: method.IsNullable,
             parameters: parameters,
-            authorization: authorization);
+            authorization: authorization,
+            hasResult: !method.IsVoidTask);
     }
 
     private static ClassExecuteMethodModel BuildClassExecuteMethod(TypeFactoryMethodInfo method, TypeInfo typeInfo)

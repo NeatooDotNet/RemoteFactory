@@ -251,12 +251,14 @@ public interface IAuthorizedRepository
 
     /// <summary>Deletes a single item. Subject to HasAccess + CanAccessItem(id) + CheckReadAccess.</summary>
     /// <remarks>
-    /// KNOWN LIMITATION: Interface factory methods must return Task&lt;T&gt;, not bare Task.
-    /// Bare-Task-returning interface methods produce Task&lt;Task&gt; in generated code
-    /// (CS0738). Using Task&lt;bool&gt; here with a sentinel true return. Tracked as a
-    /// separate bug; see `docs/todos/`.
+    /// Returns Task: the command has no result to report. A missing item is an
+    /// exception (VisionAlignment R-I), which reaches the client at the await.
+    ///
+    /// GENERATOR BEHAVIOR: A Task-returning interface method generates a Task
+    /// delegate and factory method; the client proxy awaits the server call and
+    /// reads no result (#122, v1.10.4).
     /// </remarks>
-    Task<bool> DeleteItem(Guid id);
+    Task DeleteItem(Guid id);
 
     /// <summary>Updates an item's name. Subject to HasAccess + CanAccessItem(id) + CheckReadAccess.</summary>
     Task<RepositoryItem> UpdateItem(Guid id, string name);
@@ -297,6 +299,7 @@ public class AuthorizedRepository : IAuthorizedRepository
     {
         [Guid.Parse("00000000-0000-0000-0000-000000000001")] = new(Guid.Parse("00000000-0000-0000-0000-000000000001"), "Alpha", 10),
         [Guid.Parse("00000000-0000-0000-0000-000000000002")] = new(Guid.Parse("00000000-0000-0000-0000-000000000002"), "Beta", 20),
+        [Guid.Parse("00000000-0000-0000-0000-000000000003")] = new(Guid.Parse("00000000-0000-0000-0000-000000000003"), "Gamma", 30),
         [Guid.Parse("00000000-0000-0000-0000-000000000042")] = new(Guid.Parse("00000000-0000-0000-0000-000000000042"), "Denied", 99),
     };
 
@@ -306,10 +309,11 @@ public class AuthorizedRepository : IAuthorizedRepository
         return Task.FromResult(item);
     }
 
-    public Task<bool> DeleteItem(Guid id)
+    public Task DeleteItem(Guid id)
     {
-        var removed = _items.Remove(id);
-        return Task.FromResult(removed);
+        if (!_items.Remove(id))
+            throw new KeyNotFoundException($"Item {id} not found");
+        return Task.CompletedTask;
     }
 
     public Task<RepositoryItem> UpdateItem(Guid id, string name)
