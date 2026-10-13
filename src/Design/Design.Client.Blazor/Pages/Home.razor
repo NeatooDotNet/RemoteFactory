@@ -11,8 +11,10 @@
    ========================================================================== *@
 
 @using Design.Domain.Aggregates
+@using Design.Domain.Entities
 @using Design.Domain.FactoryPatterns
 @inject IOrderFactory OrderFactory
+@inject IOrderLineFactory LineFactory
 @inject IExampleClassFactoryFactory ClassFactory
 @inject IExampleRepository Repository
 
@@ -28,6 +30,9 @@
 
    Class factories create and manage entity lifecycle.
    IOrderFactory and IExampleClassFactoryFactory are generated from [Factory] classes.
+
+   OrderFactory.Create and LineFactory.Create run here, on the client: they are
+   public and not [Remote] (D14, R-C). Fetch and Save cross to the server.
    -------------------------------------------------------------------------- *@
 <h2>1. Class Factory Pattern</h2>
 <p>Create and fetch entities using generated factory interfaces.</p>
@@ -35,6 +40,8 @@
 <div class="mb-3">
     <button class="btn btn-primary" @onclick="CreateOrder">Create Order</button>
     <button class="btn btn-secondary" @onclick="FetchOrder">Fetch Order</button>
+    <button class="btn btn-secondary" @onclick="AddLine" disabled="@(currentOrder == null)">Add Line</button>
+    <button class="btn btn-success" @onclick="SaveOrder" disabled="@(currentOrder == null)">Save Order</button>
 </div>
 
 @if (currentOrder != null)
@@ -138,12 +145,12 @@
     // Pattern 1: Class Factory - Create/Fetch
     // -------------------------------------------------------------------------
 
-    private async Task CreateOrder()
+    private void CreateOrder()
     {
         try
         {
-            messages += "Creating order...\n";
-            currentOrder = await OrderFactory.Create("Demo Customer");
+            messages += "Creating order (local, no server call)...\n";
+            currentOrder = OrderFactory.Create("Demo Customer");
             messages += $"Created order: IsNew={currentOrder.IsNew}, Status={currentOrder.Status}\n";
         }
         catch (Exception ex)
@@ -156,9 +163,39 @@
     {
         try
         {
-            messages += "Fetching order #123...\n";
-            currentOrder = await OrderFactory.Fetch(123);
-            messages += $"Fetched order: Id={currentOrder.Id}, Lines={currentOrder.Lines.Count}\n";
+            messages += $"Fetching order #{InMemoryOrderDbContext.DraftOrderId}...\n";
+            currentOrder = await OrderFactory.Fetch(InMemoryOrderDbContext.DraftOrderId);
+            messages += currentOrder == null
+                ? "Order not found\n"
+                : $"Fetched order: Id={currentOrder.Id}, Lines={currentOrder.Lines.Count}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private void AddLine()
+    {
+        try
+        {
+            // The client builds the line with the line factory, then hands it to the order (R-C)
+            currentOrder!.AddLine(LineFactory.Create("Demo Widget", 12.50m, 1));
+            messages += $"Added line: Lines={currentOrder.Lines.Count}\n";
+        }
+        catch (Exception ex)
+        {
+            messages += $"Error: {ex.Message}\n";
+        }
+    }
+
+    private async Task SaveOrder()
+    {
+        try
+        {
+            // Save returns a new instance from the server: reassign it
+            currentOrder = await OrderFactory.Save(currentOrder!);
+            messages += $"Saved order: Id={currentOrder?.Id}, Lines={currentOrder?.Lines.Count}\n";
         }
         catch (Exception ex)
         {
