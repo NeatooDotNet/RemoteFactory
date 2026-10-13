@@ -21,9 +21,17 @@ internal sealed record InterfaceMethodModel : FactoryMethodModel
         bool isAsync = false,
         bool isNullable = false,
         IReadOnlyList<ParameterModel>? parameters = null,
-        AuthorizationModel? authorization = null)
+        AuthorizationModel? authorization = null,
+        bool hasResult = true)
         : base(name, uniqueName, returnType, serviceType, implementationType, operation,
                isRemote, isTask, isAsync, isNullable, parameters, authorization)
     {
+        HasResult = hasResult;
     }
+
+    /// <summary>
+    /// False when the interface method returns non-generic <c>Task</c>: the factory
+    /// method and delegate return <c>Task</c> and the remote call reads no result (#122).
+    /// </summary>
+    public bool HasResult { get; }
 }
