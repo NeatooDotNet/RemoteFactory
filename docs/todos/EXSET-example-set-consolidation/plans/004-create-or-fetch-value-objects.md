@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes (two new Design shapes later plans embed; documented rules D3, D11, D14, R-F; reshapes 9 pinned tests)
 **Code-review opt-in:** Yes (behavior-changing: `Money` loses its factory, three event examples change operation)
 **Branch:** EXSET-004-create-or-fetch-value-objects
-**PR:** —
+**PR:** #129
 
 ---
 
