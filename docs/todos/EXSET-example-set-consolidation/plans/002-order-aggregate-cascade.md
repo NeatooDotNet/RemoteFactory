@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes (changes the Design aggregate every later plan embeds, and its pinned tests; documented rules R-C, R-D, R-E, R-I, D14)
 **Code-review opt-in:** Yes (behavior-changing: Design's persistence path and client-side child creation)
 **Branch:** EXSET-002-order-aggregate-cascade
-**PR:** —
+**PR:** #121
 
 ---
 
