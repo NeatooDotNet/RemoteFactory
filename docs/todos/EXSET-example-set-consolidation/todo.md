@@ -52,11 +52,12 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 006 | [006-aspnetcore-modes-serialization](./plans/006-aspnetcore-modes-serialization.md) | ASP.NET Core integration over HTTP, and setup | AC-3, AC-4 | Done | #132 |
 | 007 | [007-factory-operations](./plans/007-factory-operations.md) | Factory operations page | AC-3, AC-4 | Done | #136 |
 | 008 | [008-save-interfaces](./plans/008-save-interfaces.md) | Save operation and interfaces reference | AC-3, AC-4, AC-5 | Done | #137 |
-| 009 | [009-attributes-authorization](./plans/009-attributes-authorization.md) | Attributes and authorization | AC-3, AC-4 | Draft | — |
+| 009 | [009-authorization](./plans/009-authorization.md) | Authorization: Design auth, server authentication | AC-2, AC-3, AC-4 | In Progress | — |
 | 010 | [010-service-injection-skill-embeds](./plans/010-service-injection-skill-embeds.md) | Service injection and skill-only embeds | AC-3, AC-4 | Draft | — |
 | 011 | [011-events-trimming-lazyload](./plans/011-events-trimming-lazyload.md) | Events, trimming, LazyLoad pages, appendix | AC-4, AC-5 | Draft | — |
 | 012 | [012-retire-reference-app](./plans/012-retire-reference-app.md) | Retire reference app; path and design sweep | AC-4, AC-6 | Draft | — |
 | 013 | [013-modes-serialization](./plans/013-modes-serialization.md) | Factory modes and serialization pages (after 006) | AC-3, AC-4, AC-5 | Done | #134 |
+| 014 | [014-attributes-reference](./plans/014-attributes-reference.md) | Attributes reference (split from 009) | AC-3, AC-4 | Draft | — |
 
 ---
 
@@ -78,6 +79,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Discovery Log
 
+- **2026-10-15 · EXSET-009 · Re-split.** Recon found the stub held two deliverables of different shape. One is authorization: Design's auth types are flag-driven scaffolding, `SecureOrder` is untested, and Design.Server has no authentication. The other is the attributes page, a re-pointing job. Serves AC-3 and AC-4. Keith: rework `AuthorizedOrder` onto an injected `ICurrentUser`, give Design.Server bare `AddAuthentication`, and split the attributes page out as EXSET-014 (14 of 18).
 - **2026-10-15 · EXSET-013 · Stop → Keith.** The reference probe found that in the Ordinal format (the default), `[Factory]` objects lose reference identity: a shared reference arrives as two copies, and a back reference throws "possible object cycle". Named preserves both. Serves AC-4 (serialization.md's reference claims). Keith: document it per format and file a bug, #133 (`critical`); the probe becomes a known-bug regression test.
 - **2026-10-15 · EXSET-006 · Amend.** Over HTTP, the first natural 500 assertion found `HttpRequestException.StatusCode` null on the client: the library built the exception from the message alone. Serves AC-3 (the page's failure table). Keith: fix it in the library on 006, pinned by unit tests; it ships with the arc's merge to main. The same plan's first HTTP run also found Design.Server unable to start in Development, because `RegisterMatchingName` registers a concrete `TenantTokenService` that DI can't build. Design now registers it itself; the library side is #131 (techdebt).
 - **2026-10-15 · EXSET-006 · Re-split.** The plan review found two deliverables. One is the HTTP tier with the ASP.NET Core page. The other is the serialization and modes pages: they need only the in-process harness, and they open with a probe that may stop on a library ruling. Keith: split. EXSET-013 takes serialization and modes, and follows 006 because it reuses 006's format and logging regions. Serves AC-3. 13 of 18 plan numbers are issued.
@@ -87,6 +89,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Skipped Steps
 
+- EXSET-008 plan-reviewer: the plan re-pointed to Design shapes that 002–007 had built and reviewed, and added one region and one test file.
 - EXSET-013 plan-reviewer: the scope came out of EXSET-006's reviewed plan (callouts 7–9 carried), with no new Design shape beyond a Logical registration and three pins.
 - EXSET-001 test-reviewer: no test or code changed; evidence is in the plan's Test Evidence.
 
