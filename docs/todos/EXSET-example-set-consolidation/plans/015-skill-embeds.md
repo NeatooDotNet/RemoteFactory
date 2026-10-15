@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No. Most embeds re-point to regions 002–010 built and reviewed, and the new regions sit on Design code those plans' tests pin.
 **Code-review opt-in:** Yes. The re-pointed embeds change what the skill shows, and the notes attached to them must match.
 **Branch:** EXSET-015-skill-embeds
-**PR:** —
+**PR:** #144
 
 ---
 
