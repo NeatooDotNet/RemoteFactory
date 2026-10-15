@@ -34,18 +34,36 @@ public static partial class RemoteFactoryServices
 	/// <summary>
 	/// Adds Neatoo RemoteFactory services with default serialization options (Ordinal format).
 	/// </summary>
+	/// <remarks>
+	/// Safe to call more than once (#117): see the overload that takes serialization options.
+	/// This overload never replaces options an earlier call registered.
+	/// </remarks>
 	public static IServiceCollection AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory remoteLocal, params Assembly[] assemblies)
 	{
-		return AddNeatooRemoteFactory(services, remoteLocal, new NeatooSerializationOptions(), assemblies);
+		return AddNeatooRemoteFactoryCore(services, remoteLocal, null, assemblies);
 	}
 
 	/// <summary>
 	/// Adds Neatoo RemoteFactory services with custom serialization options.
 	/// </summary>
+	/// <remarks>
+	/// Safe to call more than once, as a host does when it reaches this method through two
+	/// entry points (Neatoo's AddNeatooServices and AddNeatooAspNetCore, in either order).
+	/// The first call registers everything. A later call with the same mode adds only what is
+	/// new: its assemblies join the existing <see cref="IServiceAssemblies"/> and their factories
+	/// are registered; every other registration, including a JSON converter factory the host
+	/// replaced, is left alone. Options passed explicitly replace the registered ones. A later
+	/// call with a different mode throws.
+	/// </remarks>
 	public static IServiceCollection AddNeatooRemoteFactory(this IServiceCollection services, NeatooFactory remoteLocal, NeatooSerializationOptions serializationOptions, params Assembly[] assemblies)
 	{
-		ArgumentNullException.ThrowIfNull(services, nameof(services));
 		ArgumentNullException.ThrowIfNull(serializationOptions, nameof(serializationOptions));
+		return AddNeatooRemoteFactoryCore(services, remoteLocal, serializationOptions, assemblies);
+	}
+
+	private static IServiceCollection AddNeatooRemoteFactoryCore(IServiceCollection services, NeatooFactory remoteLocal, NeatooSerializationOptions? serializationOptions, Assembly[] assemblies)
+	{
+		ArgumentNullException.ThrowIfNull(services, nameof(services));
 		ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
 
 		if (assemblies.Length == 0)
@@ -53,13 +71,44 @@ public static partial class RemoteFactoryServices
 			assemblies = [Assembly.GetExecutingAssembly()!];
 		}
 
+		var existing = services
+			.FirstOrDefault(d => d.ServiceType == typeof(RemoteFactoryRegistration))?
+			.ImplementationInstance as RemoteFactoryRegistration;
+
+		if (existing != null)
+		{
+			if (existing.Mode != remoteLocal)
+			{
+				throw new InvalidOperationException(
+					$"AddNeatooRemoteFactory was already called with NeatooFactory.{existing.Mode}; it cannot also be NeatooFactory.{remoteLocal} in the same service collection.");
+			}
+
+			if (serializationOptions != null)
+			{
+				services.RemoveAll<NeatooSerializationOptions>();
+				services.AddSingleton(serializationOptions);
+			}
+
+			var newAssemblies = assemblies.Distinct().Where(a => !existing.Assemblies.HasAssembly(a)).ToArray();
+			if (newAssemblies.Length > 0)
+			{
+				existing.Assemblies.AddAssemblies(newAssemblies);
+				services.RegisterFactories(remoteLocal, newAssemblies);
+			}
+
+			return services;
+		}
+
+		var serviceAssemblies = new ServiceAssemblies(assemblies);
+		services.AddSingleton(new RemoteFactoryRegistration(remoteLocal, serviceAssemblies));
+
 		// Register serialization options as singleton
-		services.AddSingleton(serializationOptions);
+		services.AddSingleton(serializationOptions ?? new NeatooSerializationOptions());
 
 		// Register correlation context for distributed tracing (scoped per request)
 		services.AddScoped<ICorrelationContext, CorrelationContextImpl>();
 
-		services.AddSingleton<IServiceAssemblies>(new ServiceAssemblies(assemblies));
+		services.AddSingleton<IServiceAssemblies>(serviceAssemblies);
 		services.AddScoped<NeatooJsonTypeInfoResolver>();
 		services.AddTransient<NeatooInterfaceJsonConverterFactory>();
 		services.AddTransient<NeatooJsonConverterFactory, NeatooInterfaceJsonConverterFactory>();
@@ -166,9 +215,19 @@ public static partial class RemoteFactoryServices
 				};
 			});
 
-		services.RegisterFactories(remoteLocal, assemblies);
+		services.RegisterFactories(remoteLocal, assemblies.Distinct().ToArray());
 
 		return services;
+	}
+
+	/// <summary>
+	/// Marks a service collection AddNeatooRemoteFactory has run on: the mode it chose and the
+	/// assembly list it registered, which a later call extends.
+	/// </summary>
+	private sealed class RemoteFactoryRegistration(NeatooFactory mode, ServiceAssemblies assemblies)
+	{
+		public NeatooFactory Mode { get; } = mode;
+		public ServiceAssemblies Assemblies { get; } = assemblies;
 	}
 
 	private static void RegisterFactories(this IServiceCollection services, NeatooFactory remoteLocal, params Assembly[] assemblies)

@@ -16,7 +16,8 @@ internal sealed record ExecuteDelegateModel
         IReadOnlyList<ParameterModel>? parameters = null,
         IReadOnlyList<ParameterModel>? serviceParameters = null,
         bool hasCancellationToken = false,
-        bool hasResult = true)
+        bool hasResult = true,
+        IReadOnlyList<AspAuthorizeCall>? aspAuthorize = null)
     {
         Name = name;
         DelegateName = delegateName;
@@ -27,6 +28,7 @@ internal sealed record ExecuteDelegateModel
         ServiceParameters = serviceParameters ?? System.Array.Empty<ParameterModel>();
         HasCancellationToken = hasCancellationToken;
         HasResult = hasResult;
+        AspAuthorize = aspAuthorize ?? System.Array.Empty<AspAuthorizeCall>();
     }
 
     public string Name { get; }
@@ -52,4 +54,9 @@ internal sealed record ExecuteDelegateModel
     /// not emitted in that case.
     /// </summary>
     public bool HasResult { get; }
+    /// <summary>
+    /// The method's [AspAuthorize] attributes. The local (server) registration checks them
+    /// with forbid before the method runs, so a refusal is a 403 to the remote caller (#91).
+    /// </summary>
+    public IReadOnlyList<AspAuthorizeCall> AspAuthorize { get; }
 }

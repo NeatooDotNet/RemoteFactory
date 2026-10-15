@@ -541,11 +541,17 @@ internal static class FactoryModelBuilder
         var hasCancellationToken = method.Parameters.Any(p => p.IsCancellationToken);
 
         // Same three-way rule as BuildReadMethod / BuildClassExecuteMethod: [Remote] on the method,
-        // a [Remote] authorization method, or an [AspAuthorize] attribute. Static factories render
-        // no authorization enforcement today (see issue #91); the auth terms only decide placement.
+        // a [Remote] authorization method, or an [AspAuthorize] attribute.
         var isRemote = method.IsRemote ||
                        method.AuthMethodInfos.Any(m => m.IsRemote) ||
                        method.AspAuthorizeCalls.Any();
+
+        // [AspAuthorize] is enforced in the local registration, before the method runs (#91).
+        var aspAuthorize = method.AspAuthorizeCalls
+            .Select(asp => new AspAuthorizeCall(
+                constructorArgs: asp.ConstructorArguments.ToList(),
+                namedArgs: asp.NamedArguments.ToList()))
+            .ToList();
 
         return new ExecuteDelegateModel(
             name: method.Name,
@@ -556,7 +562,8 @@ internal static class FactoryModelBuilder
             parameters: parameters,
             serviceParameters: serviceParameters,
             hasCancellationToken: hasCancellationToken,
-            hasResult: !method.IsVoidTask);
+            hasResult: !method.IsVoidTask,
+            aspAuthorize: aspAuthorize);
     }
 
     private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false, bool isSourceAuthMethodRemote = false)

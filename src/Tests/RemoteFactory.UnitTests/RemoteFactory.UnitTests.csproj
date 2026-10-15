@@ -34,6 +34,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\RemoteFactory\RemoteFactory.csproj" />
+		<ProjectReference Include="..\..\RemoteFactory.AspNetCore\RemoteFactory.AspNetCore.csproj" />
 		<ProjectReference Include="..\..\Generator\Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
 	</ItemGroup>
 

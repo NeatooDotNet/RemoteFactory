@@ -81,16 +81,20 @@ public class AspAuthorize : IAspAuthorize
 
 		var authenticateResult = await this.GetAuthenticateResult(policy, context!);
 
+		// A refusal is never null or empty: the caller converts the result to Authorized, which
+		// reads null or empty as allowed. A caller with no credentials authenticates to NoResult,
+		// which has no Failure message; a handler's context.Fail() names no failed requirement.
 		if (!authenticateResult.authenticateResult.Succeeded)
 		{
 			logger.AuthorizationDenied(correlationId, policyNames, "Authentication");
+			var notAuthenticated = string.IsNullOrEmpty(authenticateResult.message) ? "Not Authenticated" : authenticateResult.message;
 			if (forbid)
 			{
 				await context.ForbidAsync();
-				throw new AspForbidException(authenticateResult.message ?? "Forbidden");
+				throw new AspForbidException(notAuthenticated);
 			}
 
-			return authenticateResult.message;
+			return notAuthenticated;
 		}
 
 		var authorizeResult = await this.GetPolicyAuthorizationResult(policy, authenticateResult.authenticateResult, context!);
@@ -98,12 +102,13 @@ public class AspAuthorize : IAspAuthorize
 		if (!authorizeResult.authorizationResult.Succeeded)
 		{
 			logger.AuthorizationDenied(correlationId, policyNames, "Authorization");
+			var notAuthorized = string.IsNullOrEmpty(authorizeResult.message) ? "Not Authorized" : authorizeResult.message;
 			if (forbid)
 			{
 				await context.ForbidAsync();
-				throw new AspForbidException(authorizeResult.message ?? "Not Authorized");
+				throw new AspForbidException(notAuthorized);
 			}
-			return authorizeResult.message ?? "Not Authorized";
+			return notAuthorized;
 		}
 
 		logger.AuthorizationGranted(correlationId, policyNames, "AspAuthorize");
