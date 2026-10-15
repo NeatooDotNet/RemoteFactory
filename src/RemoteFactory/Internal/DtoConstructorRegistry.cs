@@ -44,4 +44,21 @@ public static class DtoConstructorRegistry
 	{
 		_ = typeof(T);
 	}
+
+	/// <summary>
+	/// Preserves the public properties and fields of a [Factory] class that has no generated
+	/// ordinal converter, so their accessors survive IL trimming and the class still
+	/// serializes. Called from generated FactoryServiceRegistrar methods.
+	/// </summary>
+	/// <remarks>
+	/// The ordinal converter is what references a factory class's accessors on a trimmed
+	/// client; a class without one (a constructor that takes services, not partial, or nested)
+	/// otherwise loses every accessor nothing on the client calls, IsNew and IsDeleted included.
+	/// Only public properties and fields are kept: All would also keep every method body,
+	/// [Remote] bodies included, which the IsServerRuntime guards exist to remove.
+	/// </remarks>
+	public static void PreserveProperties<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>()
+	{
+		_ = typeof(T);
+	}
 }

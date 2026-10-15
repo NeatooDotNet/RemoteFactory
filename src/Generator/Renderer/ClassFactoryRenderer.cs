@@ -1623,6 +1623,15 @@ internal static class ClassFactoryRenderer
             sb.AppendLine($"            global::Neatoo.RemoteFactory.Internal.NeatooOrdinalConverterFactory.RegisterConverter(");
             sb.AppendLine($"                {model.ImplementationTypeName}.CreateOrdinalConverter());");
         }
+        else
+        {
+            // No ordinal converter references this class's accessors, so on a trimmed client
+            // nothing would keep them: IsNew/IsDeleted and every other property would serialize
+            // as {} in both formats. Root the public properties and fields only.
+            sb.AppendLine();
+            sb.AppendLine("            // Preserve serialized properties (IL trimming support; no ordinal converter)");
+            sb.AppendLine($"            global::Neatoo.RemoteFactory.Internal.DtoConstructorRegistry.PreserveProperties<{model.ImplementationTypeName}>();");
+        }
 
         // Delegate service registrations
         foreach (var method in model.Methods.Where(m => m.IsRemote && !(m is WriteMethodModel)))

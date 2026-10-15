@@ -59,7 +59,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 013 | [013-modes-serialization](./plans/013-modes-serialization.md) | Factory modes and serialization pages (after 006) | AC-3, AC-4, AC-5 | Done | #134 |
 | 014 | [014-attributes-reference](./plans/014-attributes-reference.md) | Attributes reference (split from 009) | AC-3, AC-4 | Done | #142 |
 | 015 | [015-skill-embeds](./plans/015-skill-embeds.md) | Skill-only embeds (split from 010) | AC-3, AC-4 | Done | #144 |
-| 016 | [016-trimming-appendix-lazyload](./plans/016-trimming-appendix-lazyload.md) | Trimming, appendix, LazyLoad removal (split from 011) | AC-4, AC-5 | Draft | — |
+| 016 | [016-trimming-appendix-lazyload](./plans/016-trimming-appendix-lazyload.md) | Trimming, appendix, LazyLoad removal (split from 011) | AC-3, AC-4, AC-5 | Done | #146 |
 
 ---
 
@@ -67,7 +67,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 - [ ] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must
 - [x] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must → EXSET-009: all three Creates are local `public [Create]`
-- [ ] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-016 · AC-4 · Must
+- [x] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-016 · AC-4 · Must · EXSET-016
 
 ## Dismissed
 
@@ -81,6 +81,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Discovery Log
 
+- **2026-10-15 · EXSET-016 · Amend.** The plan review measured that a trimmed client drops `IsNew`/`IsDeleted` from a public-setter `IFactorySaveMeta` class with no ordinal converter (a constructor that takes services, not `partial`, or nested): both formats wrote `{}`, so every Save routed to Insert. Serves AC-4 (I-01, U-12). Keith: fix it in the generator on 016. The class-factory registrar now emits `DtoConstructorRegistry.PreserveProperties<T>()` (public properties and fields only) when it emits no ordinal converter. `SaveMetaRoundTripSmokeTest` in the trimming harness failed both formats before the fix and passes after; `verify-trimmed.sh` still passes. The release notes for the next version owe a line for this.
 - **2026-10-15 · EXSET-011 · Re-split.** `factory-events.md` alone has 19 hand fences and five findings, and shares no region with `trimming.md`, the appendix or the LazyLoad removal. Those move to EXSET-016, with their ledger owners (C-22, C-26, I-01, I-10, T-01, T-02, T-07, T-09, T-26, T-27, U-12). That is 16 of the 18 plan numbers. Serves AC-3, AC-4, AC-5.
 - **2026-10-15 · EXSET-010 · Re-split.** Recon counted about 30 reference-app embeds in 010's scope. The two docs pages and the skill's `service-injection.md` share regions, so they stay on 010. The skill-only `skill-*` embeds share none, and move to EXSET-015. That is 15 of the 18 plan numbers. Serves AC-3, AC-4.
 - **2026-10-15 · EXSET-009 · Amend.** The code review found that `[AuthorizeFactory<T>]` on a static factory's `[Execute]` was never enforced. The generator used the auth methods only to decide whether the call goes remote, so a rule there compiled and ran for anyone. Serves AC-3, the page's refusal outcomes. Keith: fix it in the generator on 009. The local registration now calls the matching auth methods before `[AspAuthorize]` and the method, and a refusal throws `NotAuthorizedException`. It also registers the auth class, as class and interface factories do. `StaticAuthorizeFactoryTests` (integration) fail 4 of 5 without the fix (`reviews/009-static-authorizefactory-unfixed-test.log`). The release notes for the next version owe a line for this.
@@ -115,6 +116,8 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 - Todo 2 · hand-written skill C# that names sample types EXSET-015 retired: `class-factory.md` "Generated Code" (`ISkillConsultationFactory`) and "Caller Usage" (`IConsultationFactory`); `static-factory.md` "Usage" and `setup.md` "Static Factory Commands" (`SkillEmployeeCommands`, called as statics though delegates are DI-resolved types; `setup.md`'s `SkillEmployeeEvents` line is also the `[Event]` API removed in v1.5.0); `interface-factory.md`'s Server Registration and "Generated surface" names (EXSET-015)
 - Todo 2 · `skills/RemoteFactory/references/polymorphic-hierarchy.md` Key Rule 4 says `[Factory]` and `[Remote]` are inherited and `[Create]`/`[Fetch]` are not; the generator does the reverse for a derived `[Factory]` class (EXSET-014, `attributes-reference.md#attributes-and-inheritance`)
+- Todo 2 · `src/Examples/Person/Person.DomainModel/PersonModel.cs` keeps the private-setter, `[JsonInclude]` and `[DynamicDependency]` recipe and its "visibility narrowing" comments, which `trimming.md` no longer prescribes; `trimming.md` "Complete Example" links Person for its project files only (EXSET-016)
+- Could · CI publishes the trimming harness only at `TrimMode=partial` + `IsTrimmable` (the configuration `trimming.md` prescribes); a regression specific to `full` is backed only by gitignored local logs. A second publish at `full` would cover it (EXSET-016 test review)
 
 ---
 
