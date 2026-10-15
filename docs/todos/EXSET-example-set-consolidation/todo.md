@@ -117,6 +117,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 - Todo 2 · hand-written skill C# that names sample types EXSET-015 retired: `class-factory.md` "Generated Code" (`ISkillConsultationFactory`) and "Caller Usage" (`IConsultationFactory`); `static-factory.md` "Usage" and `setup.md` "Static Factory Commands" (`SkillEmployeeCommands`, called as statics though delegates are DI-resolved types; `setup.md`'s `SkillEmployeeEvents` line is also the `[Event]` API removed in v1.5.0); `interface-factory.md`'s Server Registration and "Generated surface" names (EXSET-015)
 - Todo 2 · `skills/RemoteFactory/references/polymorphic-hierarchy.md` Key Rule 4 says `[Factory]` and `[Remote]` are inherited and `[Create]`/`[Fetch]` are not; the generator does the reverse for a derived `[Factory]` class (EXSET-014, `attributes-reference.md#attributes-and-inheritance`)
 - Todo 2 · `src/Examples/Person/Person.DomainModel/PersonModel.cs` keeps the private-setter, `[JsonInclude]` and `[DynamicDependency]` recipe and its "visibility narrowing" comments, which `trimming.md` no longer prescribes; `trimming.md` "Complete Example" links Person for its project files only (EXSET-016)
+- Could · CI publishes the trimming harness only at `TrimMode=partial` + `IsTrimmable` (the configuration `trimming.md` prescribes); a regression specific to `full` is backed only by gitignored local logs. A second publish at `full` would cover it (EXSET-016 test review)
 
 ---
 

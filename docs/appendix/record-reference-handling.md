@@ -1,6 +1,6 @@
 # Appendix: Record Reference Handling and Value Object Semantics
 
-This appendix explains **why** records bypass reference tracking (`$id`/`$ref`) during serialization and **how** RemoteFactory's three-path serialization architecture handles reference identity for different type categories. For user-facing serialization documentation, see [Serialization](../serialization.md). For serialization internals (type resolution, DI integration), see [Serialization Internals](serialization.md).
+This appendix explains **why** records bypass reference tracking (`$id`/`$ref`) during serialization and **how** RemoteFactory's four serialization paths handles reference identity for different type categories. For user-facing serialization documentation, see [Serialization](../serialization.md). For serialization internals (type resolution, DI integration), see [Serialization Internals](serialization.md).
 
 ## The Problem: Reference Tracking vs. Parameterized Constructors
 
@@ -54,7 +54,7 @@ Types no earlier converter claims, with a default (parameterless) constructor, a
 
 `NeatooPreserveReferenceHandler.CreateResolver()` returns `NeatooReferenceResolver.Current`, the same resolver a Path 2 converter can read. STJ's built-in converters and a framework's converters therefore share a single ID space.
 
-- **Types:** `Dictionary<K,V>`, `List<T>`, plain classes with default constructors, `[Factory]` classes in the Named format, other mutable reference types
+- **Types:** `Dictionary<K,V>`, `List<T>`, plain classes with default constructors, `[Factory]` classes with a parameterless constructor in the Named format, other mutable reference types
 - **Reference tracking:** Yes -- serializer-level, via `ReferenceHandler` on options delegating to `NeatooReferenceResolver.Current`
 - **Handles:** Shared instances (same object in two properties), circular references (A.Next = B, B.Next = A)
 

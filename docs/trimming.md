@@ -297,7 +297,7 @@ The generator unwraps `Task<T>`, nullable `T?`, arrays, and every generic collec
 Not every signature type needs this treatment. The generator preserves a discovered type when it:
 
 - Has at least one public constructor (parameterless → `Register<T>`; parameterized-only, e.g. positional records → `PreserveType<T>`)
-- Is **not** a `[Factory]`-annotated type (those are already preserved via DI registration)
+- Is **not** a `[Factory]`-annotated type (the factory's DI registration keeps its constructors, and its ordinal converter or `PreserveProperties<T>()` keeps its properties)
 - Is **not** a primitive, string, or framework type
 - Is **not** abstract or an interface
 
@@ -307,7 +307,7 @@ If you return or accept a plain DTO class **or a positional record** through any
 
 **Nested DTOs are automatically discovered.** The generator recursively walks the public instance members (including inherited ones) of each discovered DTO type — classes and records alike — to find nested DTOs that also need preservation. Members means properties with a getter **and public fields**: `NeatooJsonSerializer` runs with `IncludeFields = true`, so public fields are on the wire. The same eligibility criteria and bucket rule apply to nested DTOs as to direct signature types. Cycle detection prevents infinite recursion from circular references.
 
-**DTOs carried as `[Factory]` entity members are automatically discovered.** Every class carrying `[Factory]` directly also walks its own public members (inherited ones included) during generation and emits preservation for reachable DTOs in its own `FactoryServiceRegistrar` — so a DTO or record that only rides on an aggregate (never appearing in a factory method signature itself) is still trimming-safe. The entity itself is never treated as a DTO (entities are preserved via DI registration), and entity-typed members are not walked by the *parent* — each `[Factory]` class's own registrar covers its own graph. An entity's public fields are walked as well as its properties: in the default `Ordinal` format an entity carries properties only, but in `Named` format — and always, for an entity whose constructor takes required parameters — it goes through the reflection serializer and its public fields cross the wire.
+**DTOs carried as `[Factory]` entity members are automatically discovered.** Every class carrying `[Factory]` directly also walks its own public members (inherited ones included) during generation and emits preservation for reachable DTOs in its own `FactoryServiceRegistrar` — so a DTO or record that only rides on an aggregate (never appearing in a factory method signature itself) is still trimming-safe. The entity itself is never treated as a DTO (its own registrar preserves it, as [What Keeps the Flags](#what-keeps-the-flags) describes), and entity-typed members are not walked by the *parent* — each `[Factory]` class's own registrar covers its own graph. An entity's public fields are walked as well as its properties: in the default `Ordinal` format an entity carries properties only, but in `Named` format — and always, for an entity whose constructor takes required parameters — it goes through the reflection serializer and its public fields cross the wire.
 
 For example, if a factory method returns `ParentDto` which has a `List<ChildDto> Children` property, both `ParentDto` and `ChildDto` are automatically registered — no additional action is needed. Likewise, if an `[Execute]`-opened aggregate carries a `Banner` record property, the record is preserved through the aggregate's own registrar, and if an entity carries a `Dictionary<string, LocationDto>`, `LocationDto` is preserved the same way.
 
@@ -422,7 +422,7 @@ When an entity implements `IFactorySaveMeta`, its `IsNew` and `IsDeleted` proper
 - **A `partial`, non-nested class whose constructors take no services** gets a generated ordinal converter. It reads and writes every serialized property, and it is registered for both formats.
 - **Any other class factory** has no ordinal converter: one whose constructor takes services, one that is not `partial`, or a nested one. Its registrar calls `DtoConstructorRegistry.PreserveProperties<T>()`, which keeps the class's public properties and fields, and nothing else, so `[Remote]` bodies still trim. Earlier versions emitted no such call, and a trimmed client wrote such a class as `{}` in both formats.
 
-Nothing in your code is needed: no `[JsonInclude]`, no `[DynamicDependency]`. The trimming harness pins both paths on a publish-trimmed client (`SaveMetaRoundTripSmokeTest` round-trips `IsNew = false` and `IsDeleted = true` through each format).
+Nothing in your code is needed: no `[JsonInclude]`, no `[DynamicDependency]`. The trimming harness pins the second path on a publish-trimmed client: `SaveMetaRoundTripSmokeTest` round-trips `IsNew = false` and `IsDeleted = true` through each format on a class whose constructor takes a service. On the first path, the generated converter's own reads and writes are what keep the accessors.
 
 A private setter does not work. The ordinal format skips a property whose setter the generated converter cannot call, a private one included, so a private-setter `IsNew` never crosses the wire in the default format, trimmed or not.
 
@@ -434,14 +434,7 @@ After publishing, decompile the trimmed client-side DLL and confirm both accesso
 ilspycmd <YourClient>/obj/Release/net10.0/linked/<YourDomain>.dll -t Your.Namespace.Employee | grep "IsNew\|IsDeleted"
 ```
 
-Expected output:
-
-```
-public bool IsNew { get; set; }
-public bool IsDeleted { get; set; }
-```
-
-A property shown as `{ set; }` has lost its getter, and it is written as nothing.
+Both properties should be listed with a getter and a setter. A property shown with only a setter has lost its getter, and it is written as nothing.
 
 ## Limitations
 
