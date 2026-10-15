@@ -374,7 +374,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | Should a [Remote] method be `internal`? | On instance methods, yes -- `[Remote]` requires `internal` (NF0105 error if `public`). Static methods are exempt: a static-factory [Execute] is `private static` behind a generated wrapper, a class-level [Execute] `public static` | `Order.cs`; `ClassFactoryWithExecute.cs` | Enables IL trimming; `[Remote]` promotes to `public` on factory interface; on static methods `[Remote]` alone drives the guard |
 | Does [Execute] need [Remote]? | Only when it needs the server -- [Execute] obeys [Remote]. Bare: one unguarded local path, runs where resolved with that tier's services. With [Remote]: the client crosses. On a class factory, `internal static` without [Remote] is server-only | `AllPatterns.cs` (`_SendNotification` / `_ScoreText`), `ClassFactoryWithExecute.cs` (`RunCommand` / `ScoreLocally` / `ArchiveOnServer`) | Client-side engines must not round-trip; both halves measured in RemoteFactory.TrimmingTests |
 | Should non-[Remote] methods be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops). A child's `[Create]` is the exception: `public` and local, so the client can build a child (R-C) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
-| Can I use private setters? | No | `AllPatterns.cs:73` | IL trimming + source generation |
+| Can I use private setters? | No | `AllPatterns.cs:73` | The generated ordinal converter writes only properties it can set, so a private-setter property never crosses the wire (R-M) |
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
 | Should child entities have [Remote]? | Not on a child operation. A root operation on the same class (R-G) is [Remote] | `OrderLine.cs` | Their child Fetch/Insert/Update run inside the root's server call and their Create runs on the client, so [Remote] marks a crossing that never happens. Not an N+1 problem: once on the server, [Remote] does nothing different (D18) |
@@ -1107,7 +1107,7 @@ These are known limitations or open questions. They are documented here to preve
 
 | Topic | Current State | Why Deferred | Reconsider When |
 |-------|--------------|--------------|-----------------|
-| Private setter support | Not supported | The generated ordinal converter cannot call a private setter, so the property never crosses the wire; reaching it would take reflection | If .NET adds source-generator-accessible private member access |
+| Private setter support | Not supported; R-M makes setters public | The generated ordinal converter writes only properties it can set, so a private setter keeps the property off the wire | If R-M is revisited: `[UnsafeAccessor]` (.NET 8+) would let generated code reach a private setter without reflection |
 | OR logic for [AspAuthorize] | Only AND logic | Matches ASP.NET Core behavior, safer default | User demand + clear use case |
 | Automatic [Remote] detection | Must be explicit | Security risk of accidental exposure | Never - explicit is a core principle |
 | IEnumerable<T> serialization | Only concrete collections | Type preservation complexity | User demand for interface collections |

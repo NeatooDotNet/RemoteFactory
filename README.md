@@ -2,7 +2,7 @@
 
 **One domain model on the client and the server, with no DTOs and no controllers between them**
 
-When the library that defines your objects is loaded on both tiers, as it is with Blazor WebAssembly, the client/server seam needs no DTOs and no API controllers. RemoteFactory is a Roslyn source generator that makes that practical: it generates the factories, the serialization and the one endpoint that carry your objects and their operations across the wire. Persistence routing (Create, Fetch, then Save to Insert, Update or Delete) is one use of that.
+When the library that defines your objects is loaded on both tiers, as it is with Blazor WebAssembly, the client/server seam needs no DTOs and no API controllers. RemoteFactory is a Roslyn source generator that makes that practical: it generates the factories and the serialization that carry your objects and their operations across the wire, through one endpoint the library maps. Persistence routing (Create, Fetch, then Save to Insert, Update or Delete) is one use of that.
 
 ## The Opportunity
 

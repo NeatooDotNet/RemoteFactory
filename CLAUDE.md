@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/claude-code) when working 
 
 ## Project Overview
 
-**Neatoo RemoteFactory** is a Roslyn source generator for 3-tier .NET applications. When the library that defines the domain objects is loaded on both tiers, the client/server seam needs no DTOs and no API controllers: it generates the factories, the serialization and the endpoint at compile time. Persistence routing is one use of that, not the headline.
+**Neatoo RemoteFactory** is a Roslyn source generator for 3-tier .NET applications. When the library that defines the domain objects is loaded on both tiers, the client/server seam needs no DTOs and no API controllers: it generates the factories and the serialization at compile time, and the library maps the one endpoint they go through. Persistence routing is one use of that, not the headline.
 
 ## Supported Frameworks
 
@@ -89,11 +89,12 @@ After any `mdsnippets` run, check `git diff --stat` for a file whose deletion co
 
 No other C# is hand-written; what cannot be an embed or a WRONG block is prose.
 
-**Region naming:** region names are unique across the repository, with a topic prefix (`operations-*`, `save-*`, `skill-*`, ...). `skill-*` regions are embedded only by the skill; the others are shared with `docs/` and `README.md`.
+**Region naming:** region names are unique across the repository, with a topic prefix (`operations-*`, `save-*`, `skill-*`, ...). `skill-*` regions are embedded only by the skill; a region without the prefix may be shared with `docs/` and `README.md`.
 
 **Key files:**
 - `src/Design/Design.Domain/` - the domain samples
 - `src/Design/Design.Client.Blazor/` and `src/Design/Design.Server/` - client and server configuration samples
+- `src/Design/Design.Tests/` - the tests that pin each region, and the test-side samples (container setup, HTTP error handling)
 - `mdsnippets.json` - Configuration (includes `skills/RemoteFactory/` directory)
 
 ## Key Build Commands
