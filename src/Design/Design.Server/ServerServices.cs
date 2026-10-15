@@ -65,7 +65,9 @@ public static class ServerServices
         // WRONG:  services.AddNeatooAspNetCore();                     // nothing registered
         // RIGHT:  services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
         // -------------------------------------------------------------------
+        #region readme-server-setup
         services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+        #endregion
 
         return services.AddDesignServerServices();
     }

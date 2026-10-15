@@ -15,7 +15,7 @@ Follow this workflow when working with RemoteFactory patterns:
 1. **To understand a pattern**: Read the relevant file in `Design.Domain/`
    - `FactoryPatterns/AllPatterns.cs` - All three patterns side-by-side
    - `Aggregates/Order.cs` - Complete lifecycle example
-   - `Entities/OrderLine.cs` - Child entity without [Remote]
+   - `Entities/OrderLine.cs` - Child entity with no [Remote] child operation, and the same class as a root (entity duality)
 
 2. **To verify syntax**: Check `Design.Tests/FactoryTests/` for working examples
    - Tests demonstrate correct usage that compiles and runs
@@ -370,14 +370,14 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 
 | Question | Answer | Reference | Reason |
 |----------|--------|-----------|--------|
-| Should this method be [Remote]? | Only aggregate root entry points | `Order.cs` vs `OrderLine.cs` | Once on server, stay on server |
+| Should this method be [Remote]? | Only when the client calls it and the call must cross to the server: a root's Fetch and writes, a server-needing [Execute]. Not a child operation, a local Create, or a bare [Execute] | `Order.cs` vs `OrderLine.cs` (whose root Fetch is [Remote]; its child operations are not) | Once on server, stay on server |
 | Should a [Remote] method be `internal`? | On instance methods, yes -- `[Remote]` requires `internal` (NF0105 error if `public`). Static methods are exempt: a static-factory [Execute] is `private static` behind a generated wrapper, a class-level [Execute] `public static` | `Order.cs`; `ClassFactoryWithExecute.cs` | Enables IL trimming; `[Remote]` promotes to `public` on factory interface; on static methods `[Remote]` alone drives the guard |
 | Does [Execute] need [Remote]? | Only when it needs the server -- [Execute] obeys [Remote]. Bare: one unguarded local path, runs where resolved with that tier's services. With [Remote]: the client crosses. On a class factory, `internal static` without [Remote] is server-only | `AllPatterns.cs` (`_SendNotification` / `_ScoreText`), `ClassFactoryWithExecute.cs` (`RunCommand` / `ScoreLocally` / `ArchiveOnServer`) | Client-side engines must not round-trip; both halves measured in RemoteFactory.TrimmingTests |
 | Should non-[Remote] methods be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops). A child's `[Create]` is the exception: `public` and local, so the client can build a child (R-C) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
 | Can I use private setters? | No | `AllPatterns.cs:73` | IL trimming + source generation |
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
-| Should child entities have [Remote]? | No | `OrderLine.cs` | Their Fetch/Insert/Update run inside the root's server call and their Create runs on the client, so [Remote] marks a crossing that never happens. Not an N+1 problem: once on the server, [Remote] does nothing different (D18) |
+| Should child entities have [Remote]? | Not on a child operation. A root operation on the same class (R-G) is [Remote] | `OrderLine.cs` | Their child Fetch/Insert/Update run inside the root's server call and their Create runs on the client, so [Remote] marks a crossing that never happens. Not an N+1 problem: once on the server, [Remote] does nothing different (D18) |
 | Can [Execute] return void? | No; `Task` when there is no result, `Task<T>` when the caller needs one | `AllPatterns.cs` (`_SendNotification`, `_Notify`) | Request-response: the caller awaits completion whether the call is local or remote |
 | How do I load-or-create (open, start, ensure)? | A class-level `[Remote, Execute]` that calls Fetch, then Create, through its own injected factory. Never a `[Create]` that looks for an existing object or a `[Fetch]` that makes one (D3, D11) | `Order.cs` (`OpenDraft`, `FetchDraft`), `CreateOrFetchTests.cs` | One round trip; the caller gets a fetched or a new, unsaved object, and each operation does what its name says |
 | Does my value object need `[Factory]`? | Only when constructing it needs a service or authorization. Otherwise it is a plain record, built with `new`, whose constructor throws on an invalid value (R-F) | `Money.cs` (`Money`, `Percentage`), `TaxRate.cs` | A factory with no service adds an interface, a registration and an injected parameter at every construction site, and buys nothing |
@@ -579,34 +579,22 @@ public partial class MyEntity { }  // partial required
 
 An entity can be an aggregate root in one context and a child in another. The mistake is applying [Remote] based on the type, not the context.
 
-**WRONG (applying [Remote] to all operations because "it's a Product"):**
+**WRONG (applying [Remote] to all operations because the line is sometimes a root):**
 ```csharp
-// Product.cs - used as aggregate root AND as child of Order
 [Factory]
-internal partial class Product : IProduct
+internal partial class OrderLine : IOrderLine
 {
-    [Remote, Fetch]  // OK as aggregate root entry point
-    internal void Fetch(int id, [Service] IProductRepository repo) { }
+    [Remote, Fetch]  // OK: a line-detail screen loads one line by id
+    internal Task<bool> Fetch(Guid id, [Service] IOrderDbContext db) { ... }
 
-    [Remote, Fetch]  // WRONG: This child-context method doesn't need [Remote]
-    internal void FetchAsChild(int id, string name, decimal price) { }
+    [Remote, Fetch]  // WRONG: the order's load hands this the row, already on the server
+    internal void Fetch(OrderLineRow row) { ... }
 }
 ```
 
-**RIGHT (separate operations for different contexts):**
-```csharp
-[Factory]
-internal partial class Product : IProduct
-{
-    [Remote, Fetch]  // Aggregate root context - client entry point (internal + [Remote] = promoted to public on interface)
-    internal void Fetch(int id, [Service] IProductRepository repo) { }
+**RIGHT:** `OrderLine.cs` — the root `Fetch(Guid id)` is `[Remote]`; the child `Fetch(OrderLineRow row)`, `Insert` and `Update` are plain `internal`; `Create` is `public` and local (R-C). `OrderLineDualityTests` loads a line as a root from the client and the order cascade still loads and saves it as a child.
 
-    [Fetch]  // Child context - called from Order.Fetch on server
-    internal void FetchAsChild(int id, string name, decimal price) { }
-}
-```
-
-**Why it matters:** [Remote] is about *how the method is called*, not *what the type is*. Same type can have both remote and non-remote operations.
+**Why it matters:** [Remote] is about *how the method is called*, not *what the type is*. The factory-method signature is the difference (R-G): a key for the root, the parent's row for the child.
 
 ---
 
@@ -739,7 +727,7 @@ public partial class OrderNotifier
 
 ## Critical Rules
 
-### 1. [Remote] is ONLY for Aggregate Root Entry Points
+### 1. [Remote] is ONLY for Client Entry Points That Cross to the Server
 ```csharp
 // CORRECT: Aggregate root has [Remote] + internal (promoted to public on factory interface)
 [Factory]
@@ -749,15 +737,18 @@ internal partial class Order : IOrder
     internal Task<bool> Fetch(...) { }
 }
 
-// CORRECT: Child entity does NOT have [Remote]
+// CORRECT: Child operations do NOT have [Remote]; a root operation on the same class does (R-G)
 [Factory]
 internal partial class OrderLine : IOrderLine
 {
     [Create]  // public, local: the client builds a line (R-C)
     public void Create(...) { }
 
-    [Fetch]   // internal: called from Order.Fetch on the server
+    [Fetch]   // internal: called from Order.Fetch on the server, as a child
     internal void Fetch(OrderLineRow row) { }
+
+    [Remote, Fetch]  // a line-detail screen loads one line, as a root
+    internal Task<bool> Fetch(Guid id, ...) { }
 }
 ```
 
@@ -841,7 +832,7 @@ The generated factory interface visibility derives from the methods. `[Remote]` 
 | All methods `internal` (no `[Remote]`) | `internal interface IXxxFactory` | All methods included |
 | Mix of `public`/`[Remote] internal` and plain `internal` | `public interface IXxxFactory` | All methods included; plain `internal` methods get `internal` modifier; `[Remote] internal` methods are promoted to `public` |
 
-`[Remote] internal` methods are treated as `public` for interface visibility purposes -- they appear as `public` members on the factory interface because clients need to call them. Plain `internal` methods (without `[Remote]`) appear with the `internal` access modifier. An all-`internal` factory interface is not injectable from the client container; the client cannot even see it. A child entity's factory is not all-internal: its `[Create]` is `public` (R-C), so `IOrderLineFactory` is a `public` interface whose `Fetch` and `Save` are `internal` members. The client sees `Create` and nothing else.
+`[Remote] internal` methods are treated as `public` for interface visibility purposes -- they appear as `public` members on the factory interface because clients need to call them. Plain `internal` methods (without `[Remote]`) appear with the `internal` access modifier. An all-`internal` factory interface is not injectable from the client container; the client cannot even see it. A child entity's factory is not all-internal: its `[Create]` is `public` (R-C), so `IOrderLineFactory` is a `public` interface whose row `Fetch` and `Save` are `internal` members. As a child, the client sees `Create`; `OrderLine` is also a root (R-G), and its `[Remote, Fetch]` by line id is promoted to `public` like any root entry point.
 
 #### Internal Class with Public Interface Pattern
 
@@ -1096,7 +1087,8 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] A context a screen binds to, verbs on the held aggregate, saved through the root (`Contexts/OrderCheckout.cs`)
 - [ ] At least one Static Factory with [Execute] (`ExampleCommands`)
 - [ ] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
-- [ ] Child entities without [Remote] (`OrderLine.cs`)
+- [ ] Child entities with no [Remote] child operation (`OrderLine.cs`)
+- [ ] Entity duality: one class as a child and a root, the factory-method signature the difference (`OrderLine.Fetch(row)` / `[Remote] OrderLine.Fetch(id)`, R-G)
 - [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
 - [ ] Value objects: plain records whose constructors throw (`Money`, `Percentage`), beside one whose construction needs a server service and so carries `[Factory]` (`TaxRate`) (R-F)
 - [ ] Create-or-fetch: a class-level `[Remote, Execute]` that calls Fetch, then Create (`Order.OpenDraft`, D11)
@@ -1219,7 +1211,7 @@ infrastructure already exists.
 | `Design.Domain/Aggregates/ParamAuthOrder.cs` | Parameterized [AuthorizeFactory<T>] with type-matched and target entity params |
 | `Design.Domain/Aggregates/ParamAuthOrderAuth.cs` | Auth interface and implementation with parameterized methods |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
-| `Design.Domain/Entities/OrderLine.cs` | Child entity and child list: public local Create, row-mapped Fetch/Insert/Update, the list's R-D cascade |
+| `Design.Domain/Entities/OrderLine.cs` | Child entity and child list: public local Create, row-mapped Fetch/Insert/Update, the list's R-D cascade; and the line as a root, a `[Remote, Fetch]` by id (entity duality, R-G) |
 | `Design.Domain/Aggregates/OrderPersistence.cs` | The order's rows and `IOrderDbContext`, the store Order's operations inject; the cascade in outline |
 | `Design.Domain/ValueObjects/Money.cs` | Plain-record value objects (`Money`, `Percentage`): no factory, constructors throw (R-F) |
 | `Design.Domain/ValueObjects/TaxRate.cs` | A value object that carries `[Factory]` because its construction needs a server-only service: static `[Remote, Fetch]`, null for an unknown key |

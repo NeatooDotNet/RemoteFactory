@@ -107,23 +107,15 @@ public static class CorsConfigurationSample
 <!-- snippet: getting-started-client-program -->
 <a id='snippet-getting-started-client-program'></a>
 ```cs
-// Register RemoteFactory for client mode with domain assembly
-builder.Services.AddNeatooRemoteFactory(
-    NeatooFactory.Remote,
-    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    typeof(Employee).Assembly);
+// The factory proxies: calls marked [Remote] go to the server
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
 
-// Register HttpClient for remote calls to server
-// In hosted WASM mode, HostEnvironment.BaseAddress targets the server that hosts the client
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
+// The HttpClient RemoteFactory sends them with: the server that hosts this client
+builder.Services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-
-// Optional: Register IName -> Name pairs (auth services, etc.) on the client.
-// Enables factory Can* methods and Create to run locally without a server round-trip.
-// If omitted, these methods will fall back to remote calls.
-builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L11-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L63-L71' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Factory Modes

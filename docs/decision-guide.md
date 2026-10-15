@@ -6,19 +6,23 @@ Quick answers to common "when should I use...?" questions.
 
 ## When Do I Need [Remote]?
 
-`[Remote]` marks entry points from the client to the server. Once execution crosses to the server, it stays there — subsequent calls don't need `[Remote]`.
+`[Remote]` marks the calls that cross from the client to the server. Once execution crosses to the server, it stays there — subsequent calls don't need `[Remote]`. The question is whether the call has to cross, not whether the client makes it: the client calls plenty of methods that run where they are called.
 
 ```
-Is this method called directly from client code (UI, Blazor component)?
-├── YES → Add [Remote]
-└── NO (called from other server-side code)
-    └── No [Remote] needed
+Does this call need to cross to the server (a data store, a server-only service)?
+├── YES, and the client makes it → Add [Remote]
+├── NO, it runs on the client → No [Remote]
+│   (a root's local [Create], a child's public [Create], a Can* check
+│    whose auth needs no server service, a bare [Execute] with client services)
+└── NO, the caller is already on the server → No [Remote]
+    (a child's Fetch/Insert/Update inside its root's call)
 ```
 
 **Examples**:
-- `Fetch()` called by Blazor component → `[Remote, Fetch]`
-- `LoadChildren()` called by `Fetch()` on the server → just `[Fetch]` (no `[Remote]`)
-- `Insert()` called by `Save()` routed from client → `[Remote, Insert]`
+- `Order.Fetch(id)` called by a Blazor component → `[Remote, Fetch]`
+- `Order.Create(customerName)` called by a Blazor component → just `[Create]`: it is `new`, and runs on the client
+- `OrderLine.Fetch(row)` called by `Order.Fetch` on the server → just `[Fetch]` (no `[Remote]`)
+- `Order.Insert` reached through `Save()` from the client → `[Remote, Insert]`: the save crosses to reach the store
 
 ---
 
@@ -28,14 +32,19 @@ RemoteFactory has three factory patterns. The choice depends on what you're buil
 
 | Pattern | `[Factory]` On | Use When | Example |
 |---------|---------------|----------|---------|
-| **Class Factory** | `internal partial class` | Aggregate roots and entities with lifecycle (Create, Fetch, Save) | `Order`, `Employee`, `Invoice` |
-| **Interface Factory** | `public interface` | Remote services without entity identity | `IOrderQueryService`, `IReportGenerator` |
-| **Static Factory** | `public static partial class` | Stateless commands | `EmailCommands`, `PromoteCommand` |
+| **Class Factory** | `internal partial class` behind a `public interface` | Any object the client holds: an entity with a lifecycle, a read model it only loads, a context a screen binds to | `Order`, `OrderLine`, `OrderSummary`, `OrderCheckout` |
+| **Interface Factory** | `public interface` | A domain service the client calls (never a repository) | `IProductCatalog`, `ICustomerDirectory` |
+| **Static Factory** | `public static partial class` | Stateless commands | `ExampleCommands`, `InvoiceFinalizer` |
 
 ```
-Does this type manage entity state (properties, IsNew, IsDeleted)?
+Does the client hold an instance of this type?
 ├── YES → Class Factory
-│         (Create/Fetch/Save lifecycle, serialization across boundary)
+│   ├── It is created, edited and saved (IsNew, IsDeleted) → an entity
+│   │   (Create/Fetch, then Save routes to Insert/Update/Delete)
+│   ├── It is only loaded and shown → a read model
+│   │   ([Fetch] only, false when missing; no IFactorySaveMeta)
+│   └── A screen binds to it, and its verbs act on an aggregate it holds → a context
+│       (loaded in one [Remote, Fetch]; plain instance-method verbs; saved through the root)
 └── NO
     ├── Service with multiple methods the client calls → Interface Factory
     │   (server implementation, client proxy, no operation attributes)
@@ -87,7 +96,7 @@ See [Serialization](serialization.md) for a practical dev/production configurati
 Does your entity support Insert, Update, or Delete via Save()?
 ├── YES → Implement IFactorySaveMeta
 │         (adds IsNew, IsDeleted properties)
-└── NO (read-only, or explicit Insert/Update/Delete calls)
+└── NO: a read model (only loaded) or a context (saves through the root it holds)
     └── Don't implement it
 ```
 
@@ -115,7 +124,7 @@ Does it need the server (a repository, a server-only service)?
 
 **Examples**:
 - Generate monthly report → Static command with `[Remote, Execute]`
-- Check if employee exists, then Create or Fetch → Static method on Employee with `[Remote, Execute]`
+- Open a customer's draft order: fetch it if there is one, otherwise create one → `Order.OpenDraft`, a class-level `[Remote, Execute]` that calls Fetch, then Create
 - Score text in the browser with a pure-computation service → Static command with `[Execute]`, no `[Remote]`
 
 See [Factory Operations](factory-operations.md) for details.

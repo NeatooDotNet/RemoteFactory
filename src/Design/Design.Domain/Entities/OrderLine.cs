@@ -7,18 +7,25 @@
 //
 // VISIBILITY (VisionAlignment R-C):
 //
-//   [Create]   public, no [Remote]  -> the client builds a line, then adds it
-//   [Fetch]    internal             -> server-only, guarded, trimmed on the client
-//   [Insert]   internal             -> server-only, reached through Save
-//   [Update]   internal             -> server-only, reached through Save
+//   [Create]          public, no [Remote]  -> the client builds a line, then adds it
+//   [Fetch](row)      internal             -> server-only, guarded, trimmed on the client
+//   [Insert]          internal             -> server-only, reached through Save
+//   [Update]          internal             -> server-only, reached through Save
+//   [Remote, Fetch]   by line id           -> the line as a ROOT (entity duality, R-G)
 //
 // Because Create is public, the generated IOrderLineFactory is a PUBLIC
-// interface whose Fetch and Save are `internal` interface members. The client
-// sees Create and nothing else; the server-side cascade calls the rest.
+// interface whose row Fetch and Save are `internal` interface members. As a
+// child, the client sees Create and nothing else; the server-side cascade calls
+// the rest.
 //
 // [Remote] goes on no child operation. A child's operations run after the
 // root's [Remote] call has already crossed, so [Remote] there marks a crossing
 // that never happens: a placement and trimming error (VisionAlignment D18).
+//
+// ENTITY DUALITY (VisionAlignment R-G): the same class is also a root. A
+// line-detail screen loads one line by its id, and that Fetch is a client entry
+// point, so it is [Remote]. The factory-method signature is the difference: the
+// child Fetch takes the row its parent's load hands it, the root Fetch takes a key.
 //
 // THE CASCADE (VisionAlignment R-D): see OrderPersistence.cs. The list hands
 // each line its own row; the line maps itself into it.
@@ -98,23 +105,30 @@ internal partial class OrderLine : IOrderLine
     // Factory Operations
     // -------------------------------------------------------------------------
 
+    // The child operations (region orderline-child), and why:
+    //
+    // DESIGN DECISION: A child's Create is the one public child operation (R-C)
+    //   The client builds the line with IOrderLineFactory.Create(...), then hands
+    //   it to Order.AddLine. No server call: creating a line needs nothing only the
+    //   server has.
+    //
+    // DID NOT DO THIS: Store the line factory on the list and create inside AddLine
+    //   A method-injected service stored in a field does not survive
+    //   serialization; after a remote fetch the field is null on the client. The
+    //   caller passing what Create needs is the plainest shape.
+    //
+    // DID NOT DO THIS: Make the row Fetch [Remote]
+    //   Order.Fetch has already crossed to the server and is loading this line;
+    //   there is no client call here for [Remote] to mark. The root Fetch below is
+    //   the client's way in.
+    //
+    // GENERATOR BEHAVIOR: The line factory's Save routes to Insert when IsNew is
+    //   true, otherwise to Update. The line is not new once inserted, so the
+    //   aggregate the save returns can be saved again.
+    #region orderline-child
     /// <summary>
     /// Creates a new OrderLine. Public and local: the client calls it.
     /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: A child's Create is the one public child operation (R-C)
-    ///
-    /// The client builds the line with IOrderLineFactory.Create(...), then hands
-    /// it to Order.AddLine. No server call: creating a line needs nothing only
-    /// the server has.
-    ///
-    /// DID NOT DO THIS: Store the line factory on the list and create inside AddLine
-    ///
-    /// Reasons:
-    /// 1. A method-injected service stored in a field does not survive
-    ///    serialization; after a remote fetch the field is null on the client
-    /// 2. The caller passing what Create needs is the plainest shape
-    /// </remarks>
     [Create]
     public void Create(string productName, decimal unitPrice, int quantity)
     {
@@ -126,32 +140,17 @@ internal partial class OrderLine : IOrderLine
     }
 
     /// <summary>
-    /// Loads an existing OrderLine from its row. Called by OrderLineList.Fetch.
+    /// Loads a line from the row its order's load hands it, as a child.
     /// </summary>
-    /// <remarks>
-    /// DID NOT DO THIS: Make OrderLine.Fetch [Remote]
-    ///
-    /// Order.Fetch has already crossed to the server and is loading this line;
-    /// there is no client call here for [Remote] to mark.
-    /// </remarks>
     [Fetch]
     internal void Fetch(OrderLineRow row)
     {
-        Id = row.Id;
-        ProductName = row.ProductName;
-        UnitPrice = new Money(row.UnitPrice);
-        Quantity = row.Quantity;
-        IsNew = false;
+        LoadFrom(row);
     }
 
     /// <summary>
     /// Maps a new line into the row the list made for it.
     /// </summary>
-    /// <remarks>
-    /// GENERATOR BEHAVIOR: The line factory's Save routes here when IsNew is true.
-    /// The line is not new once inserted, so the aggregate the save returns can
-    /// be saved again.
-    /// </remarks>
     [Insert]
     internal void Insert(OrderLineRow row)
     {
@@ -167,6 +166,47 @@ internal partial class OrderLine : IOrderLine
     internal void Update(OrderLineRow row)
     {
         MapTo(row);
+    }
+    #endregion
+
+    // The same class as a root (region orderline-duality):
+    //
+    // DESIGN DECISION: One entity, a child and a root (VisionAlignment R-G)
+    //   A line-detail screen loads one line by its id. The client calls this
+    //   directly, so it is [Remote]; a missing line is a false Fetch, which the
+    //   factory returns as null (R-I). The child Fetch above keeps its row
+    //   signature and stays server-only: the signature is the difference.
+    //
+    //   A line loaded this way is read-only: its Insert and Update take the row
+    //   the order's cascade hands them, so the line has no save path of its own.
+    //   To change it, fetch its order and save through the root.
+    //
+    // DID NOT DO THIS: A separate OrderLineDetail class with the same fields
+    //   The line already is the object. A second class duplicates its shape and
+    //   drifts from it.
+    #region orderline-duality
+    /// <summary>
+    /// Loads one line by its id, as a root; false when no order holds it.
+    /// </summary>
+    [Remote, Fetch]
+    internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
+    {
+        var row = await db.FindLineAsync(id);
+        if (row == null)
+            return false;
+
+        LoadFrom(row);
+        return true;
+    }
+    #endregion
+
+    private void LoadFrom(OrderLineRow row)
+    {
+        Id = row.Id;
+        ProductName = row.ProductName;
+        UnitPrice = new Money(row.UnitPrice);
+        Quantity = row.Quantity;
+        IsNew = false;
     }
 
     private void MapTo(OrderLineRow row)

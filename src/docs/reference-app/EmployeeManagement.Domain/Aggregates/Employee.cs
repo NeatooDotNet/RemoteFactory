@@ -29,7 +29,6 @@ public partial class Employee : IFactorySaveMeta
         HireDate = DateTime.UtcNow;
     }
 
-    #region getting-started-employee-model
     // [Remote] executes on server; [Service] injects from DI (not serialized)
     [Remote, Fetch]
     internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
@@ -63,7 +62,6 @@ public partial class Employee : IFactorySaveMeta
         await repo.DeleteAsync(Id, ct);
         await repo.SaveChangesAsync(ct);
     }
-    #endregion
 
     private void MapFromEntity(EmployeeEntity entity)
     {

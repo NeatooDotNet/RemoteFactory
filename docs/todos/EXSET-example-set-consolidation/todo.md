@@ -48,7 +48,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 002 | [002-order-aggregate-cascade](./plans/002-order-aggregate-cascade.md) | Order aggregate: R-C, R-D cascade, D14, R-E | AC-2, AC-4 | Done | #121 |
 | 003 | [003-service-readmodel-context](./plans/003-service-readmodel-context.md) | Domain service, read model, context | AC-2, AC-4 | Done | #125 |
 | 004 | [004-create-or-fetch-value-objects](./plans/004-create-or-fetch-value-objects.md) | Create-or-fetch and value objects | AC-2, AC-4 | Done | #129 |
-| 005 | [005-readme-getting-started](./plans/005-readme-getting-started.md) | README, getting started, framing pages | AC-3, AC-4, AC-6 | Draft | — |
+| 005 | [005-readme-getting-started](./plans/005-readme-getting-started.md) | README, getting started, framing pages | AC-3, AC-4, AC-6 | Done | #130 |
 | 006 | [006-aspnetcore-modes-serialization](./plans/006-aspnetcore-modes-serialization.md) | ASP.NET Core, modes, serialization, setup | AC-3, AC-4 | Draft | — |
 | 007 | [007-factory-operations](./plans/007-factory-operations.md) | Factory operations page | AC-3, AC-4 | Draft | — |
 | 008 | [008-save-interfaces](./plans/008-save-interfaces.md) | Save operation and interfaces reference | AC-3, AC-4 | Draft | — |
@@ -66,6 +66,8 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Dismissed
 
+- EXSET-005 · `scripts/extract-snippets.ps1` defaults to a `docs/samples` path that no longer exists · nothing calls the script
+- EXSET-005 · `VisionAlignment.md:69` still lists `src/docs/samples` · it is the as-found inventory the rulings were made against
 - EXSET-004 · `Relay_ServerOnlyFlag_EventNotRelayedToConsumer` waits a fixed 50 ms before its absence check · inherited; Design's `InMemoryAggregatorRelay` has no invocation count to wait on
 - EXSET-004 · `ValueObject_SurvivesSerializationRoundTrip` uses only USD, the default · the seed holds only USD, and `Money`'s constructor validates the currency on both sides
 - EXSET-002 · `OrderLineList.IsNew`/`IsDeleted` read-only, against R-M's `get; set;` · R-M is for objects whose own state crosses the wire; a collection's properties never cross (#119)

@@ -56,6 +56,11 @@ public interface IOrderDbContext
     /// </summary>
     Task<OrderRow?> FindDraftAsync(string customerName, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// One line's row, by line id, or null when no order holds it.
+    /// </summary>
+    Task<OrderLineRow?> FindLineAsync(Guid lineId, CancellationToken cancellationToken = default);
+
     void Add(OrderRow row);
     void Remove(OrderRow row);
 
@@ -114,6 +119,14 @@ public class InMemoryOrderDbContext : IOrderDbContext
         {
             return Task.FromResult(_rows.Values.FirstOrDefault(
                 r => r.CustomerName == customerName && r.Status == OrderStatus.Draft));
+        }
+    }
+
+    public Task<OrderLineRow?> FindLineAsync(Guid lineId, CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult(_rows.Values.SelectMany(r => r.Lines).FirstOrDefault(l => l.Id == lineId));
         }
     }
 

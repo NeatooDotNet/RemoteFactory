@@ -34,6 +34,7 @@ namespace Design.Domain.Aggregates;
 /// Public interface for Order aggregate root.
 /// Exposed to callers outside the assembly (e.g., Blazor client).
 /// </summary>
+#region order-interface
 public interface IOrder : IFactorySaveMeta
 {
     int Id { get; set; }
@@ -47,6 +48,7 @@ public interface IOrder : IFactorySaveMeta
     void Cancel();
     void MarkDeleted();
 }
+#endregion
 
 /// <summary>
 /// Order aggregate root demonstrating lifecycle hooks and Save routing.
@@ -177,25 +179,43 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     // Factory Operations
     // -------------------------------------------------------------------------
 
+    // The operations README and getting started embed (region readme-domain-model).
+    // Why each is shaped this way, kept here so the embedded code stays short:
+    //
+    // DESIGN DECISION: A root's Create is local (VisionAlignment D14)
+    //   Create is the equivalent of `new`. Building an empty draft order needs
+    //   nothing only the server has, so the client creates it without a round
+    //   trip; the order first reaches the server when it is saved. A root's Create
+    //   is [Remote] only when creation needs the server: tenant defaults, a
+    //   sequence, or an [AuthorizeFactory] check that needs server services (the
+    //   check runs inside Create, on whichever tier runs it; the Save is enforced
+    //   on the server either way). It is public because it is not [Remote]: an
+    //   internal Create would be server-only and guarded. The [Service]
+    //   IOrderLineListFactory resolves on the calling tier; every generated
+    //   factory is registered on both tiers.
+    //
+    // DESIGN DECISION: A missing order is a false Fetch, not an exception
+    //   Fetch is the one operation that handles "not there" cleanly: it returns
+    //   false and the factory returns null (VisionAlignment R-I). The load is
+    //   symmetric with the save: the list receives the row's line rows and hands
+    //   each line its own row (R-D).
+    //
+    // GENERATOR BEHAVIOR: Save routes on IsNew and IsDeleted
+    //   IsNew=true -> Insert; IsNew=false, IsDeleted=false -> Update;
+    //   IsNew=false, IsDeleted=true -> Delete.
+    //
+    // THE CASCADE (R-D): Insert and Update make or find the order's row, map the
+    //   order into it, hand the row's line collection to the list factory's Save,
+    //   and flush once. The list and each line do the rest; the root never maps a
+    //   line.
+    //
+    // DESIGN DECISION: A missing row in Update or Delete is an exception
+    //   The order was loaded, so its row existing is the expected state; a row
+    //   deleted underneath it is a failure the caller sees (VisionAlignment R-I).
+    #region readme-domain-model
     /// <summary>
     /// Creates a new Order. Local: runs on the tier that calls it.
     /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: A root's Create is local (VisionAlignment D14)
-    ///
-    /// Create is the equivalent of `new`. Building an empty draft order needs
-    /// nothing only the server has, so the client creates it without a round
-    /// trip; the order first reaches the server when it is saved.
-    ///
-    /// A root's Create is [Remote] only when creation needs the server: tenant
-    /// defaults, a sequence, or an [AuthorizeFactory] check that needs server
-    /// services (the check runs inside Create, on whichever tier runs it; the
-    /// Save is enforced on the server either way). It is public because it is
-    /// not [Remote]: an internal Create would be server-only and guarded.
-    ///
-    /// The [Service] IOrderLineListFactory resolves on the calling tier; every
-    /// generated factory is registered on both tiers.
-    /// </remarks>
     [Create]
     public void Create(
         string customerName,
@@ -208,17 +228,8 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     }
 
     /// <summary>
-    /// Loads an existing Order and its lines from the store.
+    /// Loads an existing Order and its lines; false when there is none.
     /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: A missing order is a false Fetch, not an exception
-    ///
-    /// Fetch is the one operation that handles "not there" cleanly: it returns
-    /// false and the factory returns null (VisionAlignment R-I).
-    ///
-    /// The load is symmetric with the save: the list receives the row's line
-    /// rows and hands each line its own row (R-D).
-    /// </remarks>
     [Remote, Fetch]
     internal async Task<bool> Fetch(
         int id,
@@ -232,6 +243,50 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         LoadFrom(row, lineListFactory);
         return true;
     }
+
+    /// <summary>
+    /// Inserts a new Order and its lines.
+    /// </summary>
+    [Remote, Insert]
+    internal async Task Insert(
+        [Service] IOrderDbContext db,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        var row = new OrderRow();
+        MapTo(row);
+        db.Add(row);
+        lineListFactory.Save(Lines, row.Lines);
+        await db.SaveChangesAsync();
+        Id = row.Id;
+    }
+
+    /// <summary>
+    /// Updates an existing Order and its lines.
+    /// </summary>
+    [Remote, Update]
+    internal async Task Update(
+        [Service] IOrderDbContext db,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        var row = await db.FindAsync(Id)
+            ?? throw new KeyNotFoundException($"Order {Id} not found");
+        MapTo(row);
+        lineListFactory.Save(Lines, row.Lines);
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Deletes an Order. Its line rows go with its row.
+    /// </summary>
+    [Remote, Delete]
+    internal async Task Delete([Service] IOrderDbContext db)
+    {
+        var row = await db.FindAsync(Id)
+            ?? throw new KeyNotFoundException($"Order {Id} not found");
+        db.Remove(row);
+        await db.SaveChangesAsync();
+    }
+    #endregion
 
     /// <summary>
     /// Loads the customer's Draft order. Server-only: <see cref="OpenDraft"/> calls it.
@@ -282,70 +337,6 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     {
         return await factory.FetchDraft(customerName)
             ?? factory.Create(customerName);
-    }
-
-    /// <summary>
-    /// Inserts a new Order and its lines.
-    /// </summary>
-    /// <remarks>
-    /// GENERATOR BEHAVIOR: When Save() is called and IsNew=true, IsDeleted=false,
-    /// the factory routes to this Insert method.
-    ///
-    /// THE CASCADE (R-D): the root makes its own row and maps itself into it,
-    /// hands the row's line collection to the list factory's Save, and flushes
-    /// once. The list and each line do the rest; the root never maps a line.
-    /// </remarks>
-    [Remote, Insert]
-    internal async Task Insert(
-        [Service] IOrderDbContext db,
-        [Service] IOrderLineListFactory lineListFactory)
-    {
-        var row = new OrderRow();
-        MapTo(row);
-        db.Add(row);
-        lineListFactory.Save(Lines, row.Lines);
-        await db.SaveChangesAsync();
-        Id = row.Id;
-    }
-
-    /// <summary>
-    /// Updates an existing Order and its lines.
-    /// </summary>
-    /// <remarks>
-    /// GENERATOR BEHAVIOR: When Save() is called and IsNew=false, IsDeleted=false,
-    /// the factory routes to this Update method.
-    ///
-    /// DESIGN DECISION: A missing row in Update is an exception
-    ///
-    /// The order was loaded, so its row existing is the expected state; a row
-    /// deleted underneath it is a failure the caller sees (VisionAlignment R-I).
-    /// </remarks>
-    [Remote, Update]
-    internal async Task Update(
-        [Service] IOrderDbContext db,
-        [Service] IOrderLineListFactory lineListFactory)
-    {
-        var row = await db.FindAsync(Id)
-            ?? throw new KeyNotFoundException($"Order {Id} not found");
-        MapTo(row);
-        lineListFactory.Save(Lines, row.Lines);
-        await db.SaveChangesAsync();
-    }
-
-    /// <summary>
-    /// Deletes an Order. Its line rows go with its row.
-    /// </summary>
-    /// <remarks>
-    /// GENERATOR BEHAVIOR: When Save() is called and IsNew=false, IsDeleted=true,
-    /// the factory routes to this Delete method.
-    /// </remarks>
-    [Remote, Delete]
-    internal async Task Delete([Service] IOrderDbContext db)
-    {
-        var row = await db.FindAsync(Id)
-            ?? throw new KeyNotFoundException($"Order {Id} not found");
-        db.Remove(row);
-        await db.SaveChangesAsync();
     }
 
     private void LoadFrom(OrderRow row, IOrderLineListFactory lineListFactory)
