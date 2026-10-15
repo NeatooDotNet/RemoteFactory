@@ -405,14 +405,16 @@ public partial class Factory
 
 		/// <summary>
 		/// Collects all public properties from a type and its base types for ordinal serialization.
-		/// Properties are sorted by inheritance depth (base first) then alphabetically by name.
+		/// Properties are sorted by inheritance depth (the type's own first, then its base types'),
+		/// then by name (StringComparer.Ordinal). The order is part of the wire format: changing it
+		/// breaks clients and servers built from different generator versions.
 		/// </summary>
 		private static List<OrdinalPropertyInfo> CollectOrdinalProperties(INamedTypeSymbol symbol)
 		{
 			var properties = new List<OrdinalPropertyInfo>();
 			CollectPropertiesRecursive(symbol, properties, 0);
 
-			// Sort by inheritance depth (base classes first), then alphabetically by name
+			// Sort by inheritance depth (depth 0 is the type itself, so its own properties come first), then by name
 			return properties
 				.OrderBy(p => p.InheritanceDepth)
 				.ThenBy(p => p.Name, StringComparer.Ordinal)
@@ -426,7 +428,7 @@ public partial class Factory
 				return;
 			}
 
-			// First collect from base type (will have higher depth value = processed first)
+			// Collect from the base type first; it gets a higher depth, so it sorts after the type's own properties
 			if (symbol.BaseType != null && symbol.BaseType.SpecialType != SpecialType.System_Object)
 			{
 				CollectPropertiesRecursive(symbol.BaseType, properties, depth + 1);

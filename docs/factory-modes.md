@@ -1,60 +1,69 @@
 # Factory Modes
 
-Your domain assembly doesn't change between client, server, and test projects — the same `Employee` class runs everywhere. Modes tell RemoteFactory how to behave when that assembly is loaded in different contexts: serialize and send to a server, execute locally, or handle incoming requests.
+Your domain assembly doesn't change between client, server and test projects: the same `Order` class is loaded everywhere. The mode tells RemoteFactory what that assembly's factories do in the process that registers them.
 
 ## Runtime Modes
 
-The runtime mode is set when you register RemoteFactory in DI. It controls how factory calls execute:
+The mode is set when you register RemoteFactory in DI:
 
-| Mode | What Happens When You Call a Factory Method | Use For |
-|------|---------------------------------------------|---------|
-| **Server** | Executes locally + handles incoming remote calls | ASP.NET Core server |
-| **Remote** | Serializes the call and sends it to the server via HTTP | Client apps (Blazor, MAUI, WPF, console) |
-| **Logical** | Executes locally, no HTTP at all | Tests, console apps, single-tier apps |
+| Mode | What a factory call does | Use for |
+|------|--------------------------|---------|
+| **Server** | Runs every operation here, and handles the `[Remote]` calls clients send | ASP.NET Core server |
+| **Remote** | Serializes each operation that crosses (`[Remote]`, or authorized on the server) and sends it over HTTP; runs every other operation here | Client apps (Blazor, MAUI, WPF, console) |
+| **Logical** | Runs every operation here, `[Remote]` ones included, with nothing serialized | Tests, console tools, single-tier apps |
 
 ### Server
 
-The server registers factories that execute locally and handles incoming HTTP requests from Remote clients:
+`AddNeatooAspNetCore` registers the factories in Server mode, and `UseNeatoo()` maps the endpoint Remote clients post to:
 
-<!-- snippet: modes-server-config -->
-<a id='snippet-modes-server-config'></a>
+<!-- snippet: readme-server-setup -->
+<a id='snippet-readme-server-setup'></a>
 ```cs
-// Server mode: handles incoming HTTP + local execution
-// services.AddNeatooAspNetCore(options, domainAssembly);
-// app.UseNeatoo();  // Maps /api/neatoo endpoint
+services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L25-L29' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-server-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+See [ASP.NET Core Integration](aspnetcore-integration.md) for the endpoint and its middleware.
 
 ### Remote
 
-The client registers factories that serialize calls and POST them to `/api/neatoo` on the server:
+The client registers the factories in Remote mode, with a keyed `HttpClient` pointed at the server:
 
-<!-- snippet: modes-remote-config -->
-<a id='snippet-modes-remote-config'></a>
+<!-- snippet: getting-started-client-program -->
+<a id='snippet-getting-started-client-program'></a>
 ```cs
-// Remote mode: all operations serialize and POST to server
-// services.AddNeatooRemoteFactory(NeatooFactory.Remote, options, domainAssembly);
-// services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
-//     new HttpClient { BaseAddress = new Uri(serverUrl) });
+// The factory proxies: calls marked [Remote] go to the server
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
+
+// The HttpClient RemoteFactory sends them with: the server that hosts this client
+builder.Services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L18-L23' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-remote-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L64-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`[Remote]` marks the operations that cross. So does server-side authorization: an operation guarded by `[AspAuthorize]`, or by an authorization method marked `[Remote]`, goes to the server for the check (see [Authorization](authorization.md)). Every other operation runs on the client, such as a local `Create` or a `Can*` check whose rules are plain methods, so the `[Service]` parameters it takes must be registered in the client's container.
 
 ### Logical
 
-Everything executes locally in a single process — no HTTP, no serialization. Useful for tests, console apps, background services, and prototyping:
+Everything runs in one process: no HTTP, no serialization. The services a server would supply are registered in the same container:
 
 <!-- snippet: modes-logical-config -->
 <a id='snippet-modes-logical-config'></a>
 ```cs
-// Logical mode: local execution, no HTTP - ideal for testing
-// services.AddNeatooRemoteFactory(NeatooFactory.Logical, options, domainAssembly);
+// One process, no HTTP: every operation runs here, [Remote] ones included
+services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IOrder).Assembly);
+
+// So the services a server would supply to [Service] parameters are registered here too
+services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
+services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Modes/FactoryModeAttributes.cs#L13-L16' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/LogicalModeTests.cs#L28-L35' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-For testing patterns using Logical mode and the Client/Server Container approach, see [Service Injection — Client/Server Container Testing](service-injection.md#clientserver-container-testing).
+For tests that do need the round trip, the client/server containers serialize each `[Remote]` call; see [ASP.NET Core Integration — Testing](aspnetcore-integration.md#testing).
 
 ## Typical Solution Structure
 
@@ -67,20 +76,31 @@ MySolution/
 
 ## Debugging
 
-<!-- snippet: modes-logging -->
-<a id='snippet-modes-logging'></a>
+To see where a call ran, log at `Information`:
+
+- **The client's remote calls:** `[{CorrelationId}] Remote delegate call started: {DelegateType}`, under `Neatoo.RemoteFactory.Internal.MakeRemoteDelegateRequest`.
+- **The server's handling:** `[{CorrelationId}] Handling remote request for delegate {DelegateType}`, under `Neatoo.RemoteFactory.Server`.
+- **Each class factory operation, on the tier that runs it:** `[{CorrelationId}] Factory operation {Operation} started for {TypeName}`, under the generated factory's type name.
+
+Design.Server's filters:
+
+<!-- snippet: aspnetcore-logging -->
+<a id='snippet-aspnetcore-logging'></a>
 ```cs
-// Enable verbose logging to trace factory execution
-// services.AddLogging(b => b.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace));
-// Logs: "Executing local factory method..." or "Sending remote factory request..."
+services.AddLogging(logging => logging
+    .AddFilter("Neatoo.RemoteFactory", LogLevel.Information)
+    .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
+    .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/FactoryModes/FactoryModeConfigurationSamples.cs#L19-L23' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L96-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+A call that logs a client remote call and then a server "Handling" entry crossed; an operation that logs only a factory entry on the client ran there.
 
 ## Next Steps
 
-- [Getting Started](getting-started.md) — Configure modes in a new solution
-- [Client-Server Architecture](client-server-architecture.md) — How [Remote] controls the boundary
-- [IL Trimming](trimming.md) — Remove server-only code from published client bundles
-- [Serialization](serialization.md) — Ordinal vs Named formats
-- [ASP.NET Core Integration](aspnetcore-integration.md) — Server configuration details
+- [Getting Started](getting-started.md): configure modes in a new solution
+- [Client-Server Architecture](client-server-architecture.md): how `[Remote]` controls the boundary
+- [IL Trimming](trimming.md): remove server-only code from published client bundles
+- [Serialization](serialization.md): Ordinal and Named formats
+- [ASP.NET Core Integration](aspnetcore-integration.md): server configuration details

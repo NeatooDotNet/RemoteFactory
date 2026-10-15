@@ -77,13 +77,22 @@ builder.Services.AddKeyedScoped(
 
 ### Factory Modes
 
-```csharp
-// Remote mode - calls go to server
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, ...);
+The client above registers in `NeatooFactory.Remote` mode: `[Remote]` operations, and operations whose authorization runs on the server (`[AspAuthorize]`, or a `[Remote]` authorization method), go to the server; everything else runs on the client. `NeatooFactory.Logical` runs every operation in one process, with nothing serialized, for tests and single-tier apps:
 
-// Local mode - everything runs locally (for testing, single-tier apps)
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Local, ...);
+<!-- snippet: modes-logical-config -->
+<a id='snippet-modes-logical-config'></a>
+```cs
+// One process, no HTTP: every operation runs here, [Remote] ones included
+services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IOrder).Assembly);
+
+// So the services a server would supply to [Service] parameters are registered here too
+services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
+services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/LogicalModeTests.cs#L28-L35' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+`IOrderDbContext` is the example's order store, an in-memory stand-in for a database: in Logical mode, register whatever your `[Service]` parameters need. The server's `AddNeatooAspNetCore` registers in `NeatooFactory.Server` mode.
 
 ---
 

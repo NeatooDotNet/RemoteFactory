@@ -1,184 +1,106 @@
 # Serialization
 
-When the server deserializes an incoming domain object, it can't just call `new Employee()` — that would create a bare instance with no constructor-injected services. RemoteFactory's serialization resolves the instance from the DI container, so constructor injection works across the wire. The deserialized object arrives fully wired, just as if the server had created it locally.
+Every `[Remote]` call carries its arguments to the server and its result back, and an operation on an instance (a Save) carries the object itself. RemoteFactory serializes them with its own System.Text.Json setup, which adds three things to the defaults:
 
-This is the fundamental reason RemoteFactory manages its own serialization rather than using System.Text.Json directly. Standard System.Text.Json uses `Activator.CreateInstance()` — a bare constructor call with no DI awareness. RemoteFactory replaces that with `ServiceProvider.GetRequiredService()`, so your domain objects get their constructor-injected services on deserialization just as they would on creation.
+- **A compact format for `[Factory]` types.** The generator writes each `[Factory]` class as a JSON array of property values: the Ordinal format.
+- **Interface-typed properties.** A property typed as an interface is written with its concrete type, so the other side knows what to build.
+- **Constructor injection on the way in.** A type whose constructor takes services is built through DI when it is read, so it arrives with that tier's services.
 
-Beyond DI resolution, RemoteFactory's custom serialization handles two things System.Text.Json can't:
-
-- **Interface properties** — System.Text.Json can't serialize interface-typed properties. RemoteFactory embeds a `$type` discriminator so the correct concrete type is resolved on deserialization.
-- **Shared instance identity** — When the same object is referenced by two properties (e.g., a parent-child bidirectional reference), System.Text.Json duplicates it. RemoteFactory tracks object identity and serializes shared references as `$ref` pointers, preserving the graph structure.
-
-For everything else — primitives, collections, enums, records — RemoteFactory falls back to standard System.Text.Json.
-
-## LazyLoad\<T\> Properties
-
-`LazyLoad<T>` properties on `[Factory]` classes serialize with full support in both formats. The serialized state includes `Value` and `IsLoaded` — the loader delegate is not serialized (delegates reference server-side services and are reconstructed via the constructor-initialization pattern on deserialization).
-
-**Named format:**
-```json
-{"value": "loaded data", "isLoaded": true}
-```
-or for an unloaded property:
-```json
-{"value": null, "isLoaded": false}
-```
-
-**Ordinal format:** Each `LazyLoad<T>` property occupies two consecutive array slots — one for the Value and one for `IsLoaded`. For example, a class with `string Name` and `LazyLoad<string> Reviews`:
-```
-["ProductName", "review text", true]
-                 ^-- Value       ^-- IsLoaded
-```
-
-An unloaded property serializes as `[null, false]` in the two slots.
-
-The `PropertyNames` and `PropertyTypes` arrays reflect the two-slot encoding: a property named `Reviews` produces entries `"Reviews"` and `"Reviews__IsLoaded"` in `PropertyNames`, and `typeof(string)` and `typeof(bool)` in `PropertyTypes`.
-
-BCL `Lazy<T>` is not supported — use `LazyLoad<T>` instead. See [LazyLoad](lazyload.md) for the full usage guide.
+Everything else (primitives, enums, collections, records) is plain System.Text.Json. What crosses at all: primitives, enums (as numbers), collections, records (a value object needs no `[Factory]`), plain classes, and `[Factory]` types.
 
 ## Serialization Formats
 
-RemoteFactory supports two JSON formats. The choice is straightforward:
+| Format | A `[Factory]` object is written as | Tradeoff |
+|--------|-----------------------------------|----------|
+| **Ordinal** (default) | `["Customer_42", 7, false, false, {...}, ...]` | Compact; positions, not names |
+| **Named** | `{"CustomerName": "Customer_42", "Id": 7, ...}` | Readable in a network trace; larger |
 
-| Format | JSON Shape | Tradeoff |
-|--------|-----------|----------|
-| **Ordinal** (default) | `[true, 42, "John", "Doe"]` | Compact (~40-50% smaller), harder to debug |
-| **Named** | `{"Active": true, "Age": 42, ...}` | Human-readable, larger payloads |
+Both tiers must register the same format. The server announces its format in an `X-Neatoo-Format` response header, but the client does not read it: a Named server and an Ordinal client fail every call.
 
-Ordinal serializes properties as a JSON array in alphabetical order — no property names, just values. Named is standard JSON with property names.
+To use Named, pass `new NeatooSerializationOptions { Format = SerializationFormat.Named }` to both registrations: `AddNeatooAspNetCore` on the server and `AddNeatooRemoteFactory` on the client. With no options, both are Ordinal. If you switch by environment, read the .NET 10 caveat in [ASP.NET Core Integration — Serialization Format](aspnetcore-integration.md#serialization-format): a WebAssembly client's environment is fixed when it is built.
 
-Configure the format during DI registration. Both client and server must use the same format:
+### What the Ordinal Array Holds
 
-<!-- snippet: serialization-config -->
-<a id='snippet-serialization-config'></a>
-```cs
-// Configure serialization format: Ordinal (compact) or Named (readable).
-public static void Configure(IServiceCollection services)
-{
-    var options = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
-    services.AddNeatooAspNetCore(options, typeof(Employee).Assembly);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Serialization/SerializationConfigurationSamples.cs#L11-L18' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-config' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+The positions are the type's `PropertyNames`, which the generator emits:
 
-A practical pattern: use Named in development for readable payloads, Ordinal in production for performance:
+- **The type's own properties first, then its base class's.** Each group is in ordinal (`StringComparer.Ordinal`) name order, not declaration order.
+- **Only properties the other side can set.** A property needs a public getter and a public, `internal` or `init` setter. A get-only property, and one with a `private` setter, is not written at all: the other side keeps whatever its constructor set.
 
-<!-- snippet: serialization-debug-named -->
-<a id='snippet-serialization-debug-named'></a>
-```cs
-// Switch to Named format in development for readable JSON debugging.
-public static void ConfigureByEnvironment(IServiceCollection services, bool isDevelopment)
-{
-    var format = isDevelopment ? SerializationFormat.Named : SerializationFormat.Ordinal;
-    services.AddNeatooAspNetCore(new NeatooSerializationOptions { Format = format }, typeof(Employee).Assembly);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Serialization/SerializationConfigurationSamples.cs#L35-L42' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-debug-named' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### Ordinal Versioning
-
-With Ordinal format, adding or renaming properties changes the alphabetical order, which shifts array indices. This requires a coordinated client/server rebuild:
+`Order`'s properties:
 
 <!-- snippet: serialization-ordinal-versioning -->
 <a id='snippet-serialization-ordinal-versioning'></a>
 ```cs
-// Properties serialized alphabetically: Active[0], Age[1], Email[2], FirstName[3]...
-// Adding "Department" inserts at [2], shifting everything after.
-public bool Active { get; set; } = true;
-public int Age { get; set; }
-public string Email { get; set; } = "";
-public string FirstName { get; set; } = "";
+public int Id { get; set; }
+public string CustomerName { get; set; } = string.Empty;
+public OrderStatus Status { get; set; } = OrderStatus.Draft;
+public IOrderLineList Lines { get; set; } = null!;
+public Money Total => Lines?.CalculateTotal() ?? Money.Zero;
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Serialization/SerializationSamples.cs#L13-L20' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-versioning' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L93-L99' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-versioning' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Named format is more tolerant of property changes since each value is identified by name, not position.
+Its array is `CustomerName, Id, IsDeleted, IsNew, Lines, Status`. `IsNew` and `IsDeleted` are declared further down the class. `Total` has no setter, so it is not written; the other side computes it.
+
+**Versioning.** Adding or renaming a property shifts the positions after it, so a client and a server built from different versions of the domain assembly misread each other. Deploy them together. Named identifies each value by name, so it tolerates the difference better.
+
+**When a type is written in the Named shape anyway.** The generator emits the ordinal form only for a class that meets all of these:
+
+- it is `partial`, not nested, and not a collection;
+- it has at least one property it can write;
+- it can be built without arguments: no explicit constructor, a parameterless one, or one whose parameters all have defaults (a record needs its primary constructor).
+
+Any other `[Factory]` type is written by name even when the format is Ordinal.
+
+## Constructor Injection Across the Wire
+
+The ordinal path rebuilds an object with `new` from the array, so no DI is involved. A type whose constructor takes services fails the "built without arguments" rule above. It therefore always takes the named path, which resolves the instance from that tier's container when the type is registered there, so it arrives with its constructor-injected services. Design's `CtorInjectionExample` shows the pattern, and `SerializationTests` pins it.
 
 ## Interface Properties
 
-System.Text.Json can't serialize a property typed as `IContactInfo` — it doesn't know the concrete type. RemoteFactory embeds a `$type` discriminator:
-
-<!-- snippet: serialization-interface -->
-<a id='snippet-serialization-interface'></a>
-```cs
-// Interface property serializes with $type: "EmailContact" or "PhoneContact"
-public IContactInfo? PrimaryContact { get; set; }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Serialization/SerializationSamples.cs#L89-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-interface' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-The `$type` discriminator identifies the concrete type during deserialization, so `IContactInfo` resolves to `EmailContact` or `PhoneContact` as appropriate. This also powers polymorphic collections — a `List<EmployeeBase>` can contain mixed concrete types, each tagged with `$type`.
-
-## Reference Preservation
-
-When two properties reference the same object instance — common in parent-child relationships — RemoteFactory preserves that identity instead of duplicating the object:
-
-<!-- snippet: serialization-references -->
-<a id='snippet-serialization-references'></a>
-```cs
-// Bidirectional reference - serializes as {"$ref": "1"} to preserve identity.
-public void AddMember(string name) => Members.Add(new TeamMember(name, this));
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Serialization/SerializationSamples.cs#L58-L61' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-references' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-The first occurrence gets a `$id`, and subsequent references use `$ref` pointers:
+System.Text.Json cannot deserialize a property typed as an interface: it doesn't know what to build. RemoteFactory writes such a property with its concrete type's full name:
 
 ```json
-{
-  "$id": "1",
-  "Name": "Team Alpha",
-  "Members": [
-    {
-      "$id": "2",
-      "Name": "Alice",
-      "Team": { "$ref": "1" }
-    }
-  ]
-}
+"Lines": { "$type": "Design.Domain.Entities.OrderLineList", "$value": [ ... ] }
 ```
 
-This handles circular references and ensures the deserialized graph has the same object identity as the original.
+In the Ordinal format, the same object sits at the property's position in the array. This applies to a **non-generic** interface (or abstract type) declared in an assembly registered with RemoteFactory, such as `Order.Lines`, which is `IOrderLineList` (shown above). A generic interface such as `IList<T>` or `IEnumerable<T>` is not covered: type the property as a concrete collection, or as your own non-generic interface.
 
-### Reference Handling by Type Category
+## Reference Identity
 
-RemoteFactory uses a two-path strategy so that reference tracking works for mutable types while records (DDD value objects) serialize cleanly:
+Whether two references to the same object arrive as one object depends on the format:
 
-| Type Category | Examples | Reference Handling | Rationale |
-|---------------|----------|--------------------|-----------|
-| **Neatoo types** (custom converters) | Entities, lists with `[Factory]` | `$id`/`$ref` via `NeatooReferenceResolver.Current` | Converter-level, unchanged from v0.22.0 |
-| **Mutable reference types** (STJ built-in) | `Dictionary<K,V>`, `List<T>`, plain classes with default constructors | `$id`/`$ref` via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions` | STJ's built-in converters participate in reference tracking through the same resolver |
-| **Types with parameterized constructors** | Records, immutable classes | No `$id`/`$ref` -- `RecordBypassConverterFactory` claims them | STJ cannot deserialize reference metadata on parameterized-constructor types; records are value objects where duplication is semantically correct |
+| Graph | Named | Ordinal (default) |
+|-------|-------|-------------------|
+| A shared reference between `[Factory]` objects (`team.Lead` is `team.Members[0]`) | One object | **Two copies** |
+| A back reference between `[Factory]` objects (`member.Team` is `team`) | One object | **Fails:** the serializer throws "a possible object cycle was detected". On a fetch it fails on the server, so over HTTP the call is a 500 |
+| Records | Copied (no `$id`/`$ref`) | Copied |
 
-All three paths share the same `NeatooReferenceResolver` instance per serialization operation, so cross-type reference identity is maintained. For example, the same `Dictionary` instance referenced by both a Neatoo entity property and a plain class property will be serialized once (with `$id`) and referenced (with `$ref`) in both locations.
+Plain classes with a public parameterless constructor, and collections (`Dictionary`, `List<T>`), keep shared and circular references (`NeatooPreserveReferenceHandler`); the tests cover them serialized on their own. A plain class without a public parameterless constructor is handled like a record: no reference tracking.
 
-A mutable type nested inside a record's constructor parameters is serialized as an independent copy. This is correct DDD behavior -- records are value objects, and their internal state is logically independent even if the same instance was shared at runtime. See [Appendix: Record Reference Handling](appendix/record-reference-handling.md) for the full rationale.
+The Ordinal rows are a known bug, [#133](https://github.com/NeatooDotNet/RemoteFactory/issues/133): the generated ordinal converter writes no `$id`/`$ref`. Until it is fixed, keep `[Factory]` aggregates free of back references and shared instances, or use the Named format. A child that needs its parent can be handed the parent's id, or receive the parent as a method argument on the server. `FactoryReferenceIdentityTests` in `RemoteFactory.IntegrationTests` pins both formats, with the Ordinal cases marked as known failures.
 
-Do not mix Neatoo domain types with plain records in the same return type. A record containing an `IValidateBase` property creates a serialization mismatch -- the record bypasses reference handling entirely (including its subtree), but the embedded Neatoo type's converter expects the resolver to be tracking references. Use either pure Neatoo types or pure records/DTOs.
+Records are value objects, so a duplicate is the same value: they bypass reference tracking. A mutable object nested inside a record's constructor parameters is written as an independent copy. See [Appendix: Record Reference Handling](appendix/record-reference-handling.md).
 
 ## Debugging
 
-Enable verbose logging to trace serialization issues:
+Each request's serialize and deserialize steps are logged at `Trace` under `RemoteFactory.Trace`. That category is not under `Neatoo.RemoteFactory`, so a filter on that prefix does not turn it on. Design.Server's filters keep it at `Warning`:
 
-<!-- snippet: serialization-logging -->
-<a id='snippet-serialization-logging'></a>
+<!-- snippet: aspnetcore-logging -->
+<a id='snippet-aspnetcore-logging'></a>
 ```cs
-// Enable verbose logging for serialization debugging.
-public static void ConfigureWithLogging(IServiceCollection services)
-{
-    services.AddLogging(b => b.AddFilter("Neatoo.RemoteFactory", LogLevel.Trace));
-    services.AddNeatooAspNetCore(typeof(Employee).Assembly);
-}
+services.AddLogging(logging => logging
+    .AddFilter("Neatoo.RemoteFactory", LogLevel.Information)
+    .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
+    .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Serialization/SerializationConfigurationSamples.cs#L23-L30' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L96-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Inspect payloads with browser DevTools or Fiddler. Switching to Named format in development (shown above) makes payloads human-readable.
+To read the payloads themselves, switch both tiers to Named and use the browser's network tools.
 
 ## Next Steps
 
-- [Client-Server Architecture](client-server-architecture.md) — How serialization fits in the remote call lifecycle
-- [Factory Modes](factory-modes.md) — When serialization occurs (Remote mode only)
-- [Service Injection](service-injection.md) — Constructor injection that survives serialization
+- [Client-Server Architecture](client-server-architecture.md): how serialization fits in the remote call
+- [Factory Modes](factory-modes.md): when a call is serialized (a `[Remote]` operation called from a Remote-mode client)
+- [Service Injection](service-injection.md): constructor injection that survives serialization
