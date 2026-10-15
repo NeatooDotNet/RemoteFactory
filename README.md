@@ -191,7 +191,7 @@ For reducing client bundle size, see [IL Trimming](docs/trimming.md) — it remo
 
 ## Getting Started
 
-**Server setup (ASP.NET Core):** register RemoteFactory with the assembly that holds your factories,
+**Server setup (ASP.NET Core):** register RemoteFactory with the assembly that holds your factories:
 
 <!-- snippet: readme-server-setup -->
 <a id='snippet-readme-server-setup'></a>
@@ -201,7 +201,7 @@ services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 <sup><a href='/src/Design/Design.Server/ServerServices.cs#L68-L70' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-and add its endpoint to the pipeline:
+That call sits in `AddDesignServer()`, the example set's one composition method, beside the server-only services its factory methods take as `[Service]` parameters. `Program` calls that method and adds the endpoint to the pipeline:
 
 <!-- snippet: getting-started-server-program -->
 <a id='snippet-getting-started-server-program'></a>

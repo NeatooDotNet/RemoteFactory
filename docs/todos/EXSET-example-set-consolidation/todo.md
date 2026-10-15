@@ -66,6 +66,8 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Dismissed
 
+- EXSET-005 · `scripts/extract-snippets.ps1` defaults to a `docs/samples` path that no longer exists · nothing calls the script
+- EXSET-005 · `VisionAlignment.md:69` still lists `src/docs/samples` · it is the as-found inventory the rulings were made against
 - EXSET-004 · `Relay_ServerOnlyFlag_EventNotRelayedToConsumer` waits a fixed 50 ms before its absence check · inherited; Design's `InMemoryAggregatorRelay` has no invocation count to wait on
 - EXSET-004 · `ValueObject_SurvivesSerializationRoundTrip` uses only USD, the default · the seed holds only USD, and `Money`'s constructor validates the currency on both sides
 - EXSET-002 · `OrderLineList.IsNew`/`IsDeleted` read-only, against R-M's `get; set;` · R-M is for objects whose own state crosses the wire; a collection's properties never cross (#119)

@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4, AC-6
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-14
 **Plan-review opt-in:** Yes (a new Design shape later plans embed; the first plan to move embeds; rulings D14, D15, D18, R-C, R-G, R-O)
 **Code-review opt-in:** Yes (README and four framing pages; a new Design operation and store lookup)
@@ -135,14 +135,14 @@ Does NOT touch:
 
 ## Acceptance
 
-- [ ] From the client, a single order line loads as a root by its id, null when missing, while the order cascade still loads and saves it as a child `[integration]` · Must
-- [ ] The regions the five pages embed are pinned by Design tests on the client/server containers: the model slices, client usage and server registration `[integration]` · Must
-- [ ] The middleware and client-registration regions compile in both solutions' builds `[explicit-skip: top-level statements no test runs; Keith 2026-10-14]` · Must
-- [ ] Every C# block on the five pages is an embed from `src/Design` or a WRONG block, and no region is defined twice `[explicit-skip: grep of the five pages' fences and markers, and of all #region names]` · Must
-- [ ] `src/docs/samples` is deleted, and no rendered page, source file, solution or `mdsnippets.json` references it; the reference app still builds `[explicit-skip: filesystem, scoped grep, EmployeeManagement.sln build]` · Must
-- [ ] The five pages carry none of the findings' text this plan lists: persistence-routing framing, `[Remote]`-runs-on-server or called-from-client, `.NET 8`, seven operations, `Event` operation, fall back to remote, no repository layer, `[Factory]`-only serialization, client-side relay methods, child internal interface, private setters, unreassigned saves, Employee/repository prose `[explicit-skip: grep of the five pages]` · Must
-- [ ] The decision guide gives a read model and a context their own branch `[explicit-skip: page review]` · Should
-- [ ] mdsnippets ran clean with no swallowed section; both solutions green `[explicit-skip: meta-bullet]` · Must
+- [x] From the client, a single order line loads as a root by its id, null when missing, while the order cascade still loads and saves it as a child `[integration]` · Must
+- [x] The regions the five pages embed are pinned by Design tests on the client/server containers: the model slices, client usage and server registration `[integration]` · Must
+- [x] The middleware and client-registration regions compile in both solutions' builds `[explicit-skip: top-level statements no test runs; Keith 2026-10-14]` · Must
+- [x] Every C# block on the five pages is an embed from `src/Design` or a WRONG block, and no region is defined twice `[explicit-skip: grep of the five pages' fences and markers, and of all #region names]` · Must
+- [x] `src/docs/samples` is deleted, and no rendered page, source file, solution or `mdsnippets.json` references it; the reference app still builds `[explicit-skip: filesystem, scoped grep, EmployeeManagement.sln build]` · Must
+- [x] The five pages carry none of the findings' text this plan lists: persistence-routing framing, `[Remote]`-runs-on-server or called-from-client, `.NET 8`, seven operations, `Event` operation, fall back to remote, no repository layer, `[Factory]`-only serialization, client-side relay methods, child internal interface, private setters, unreassigned saves, Employee/repository prose `[explicit-skip: grep of the five pages]` · Must
+- [x] The decision guide gives a read model and a context their own branch `[explicit-skip: page review]` · Should
+- [x] mdsnippets ran clean with no swallowed section; both solutions green `[explicit-skip: meta-bullet]` · Must
 
 ---
 
@@ -201,6 +201,15 @@ Does NOT touch:
 ---
 
 ## Gate Record
+
+- Round 1 (2026-10-14): test-reviewer CLEAN, no callouts. Its two tech-debt notes are dismissed: `scripts/extract-snippets.ps1` has a dead `docs/samples` path that nothing calls, and `VisionAlignment.md:69` is the as-found inventory. code-reviewer CLEAN with 5 callouts, all punched:
+  - T-17 and T-22 ledger outcomes corrected;
+  - the decision guide no longer calls a context read-only;
+  - the DI paragraph's closing sentence matches its third bullet;
+  - CLAUDE-DESIGN's Critical Rule 1, its `[Remote]` quick-decision row and the `OrderLine.cs` file row now show the root Fetch;
+  - README says what `AddDesignServer()` is.
+
+  The punches are prose only; no code changed after the green logs. `reviews/005-test-review.md`, `reviews/005-code-review.md`. Done.
 
 ---
 

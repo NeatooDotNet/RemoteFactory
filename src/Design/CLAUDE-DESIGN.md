@@ -370,7 +370,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 
 | Question | Answer | Reference | Reason |
 |----------|--------|-----------|--------|
-| Should this method be [Remote]? | Only aggregate root entry points | `Order.cs` vs `OrderLine.cs` | Once on server, stay on server |
+| Should this method be [Remote]? | Only when the client calls it and the call must cross to the server: a root's Fetch and writes, a server-needing [Execute]. Not a child operation, a local Create, or a bare [Execute] | `Order.cs` vs `OrderLine.cs` (whose root Fetch is [Remote]; its child operations are not) | Once on server, stay on server |
 | Should a [Remote] method be `internal`? | On instance methods, yes -- `[Remote]` requires `internal` (NF0105 error if `public`). Static methods are exempt: a static-factory [Execute] is `private static` behind a generated wrapper, a class-level [Execute] `public static` | `Order.cs`; `ClassFactoryWithExecute.cs` | Enables IL trimming; `[Remote]` promotes to `public` on factory interface; on static methods `[Remote]` alone drives the guard |
 | Does [Execute] need [Remote]? | Only when it needs the server -- [Execute] obeys [Remote]. Bare: one unguarded local path, runs where resolved with that tier's services. With [Remote]: the client crosses. On a class factory, `internal static` without [Remote] is server-only | `AllPatterns.cs` (`_SendNotification` / `_ScoreText`), `ClassFactoryWithExecute.cs` (`RunCommand` / `ScoreLocally` / `ArchiveOnServer`) | Client-side engines must not round-trip; both halves measured in RemoteFactory.TrimmingTests |
 | Should non-[Remote] methods be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops). A child's `[Create]` is the exception: `public` and local, so the client can build a child (R-C) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
@@ -727,7 +727,7 @@ public partial class OrderNotifier
 
 ## Critical Rules
 
-### 1. [Remote] is ONLY for Aggregate Root Entry Points
+### 1. [Remote] is ONLY for Client Entry Points That Cross to the Server
 ```csharp
 // CORRECT: Aggregate root has [Remote] + internal (promoted to public on factory interface)
 [Factory]
@@ -737,15 +737,18 @@ internal partial class Order : IOrder
     internal Task<bool> Fetch(...) { }
 }
 
-// CORRECT: Child entity does NOT have [Remote]
+// CORRECT: Child operations do NOT have [Remote]; a root operation on the same class does (R-G)
 [Factory]
 internal partial class OrderLine : IOrderLine
 {
     [Create]  // public, local: the client builds a line (R-C)
     public void Create(...) { }
 
-    [Fetch]   // internal: called from Order.Fetch on the server
+    [Fetch]   // internal: called from Order.Fetch on the server, as a child
     internal void Fetch(OrderLineRow row) { }
+
+    [Remote, Fetch]  // a line-detail screen loads one line, as a root
+    internal Task<bool> Fetch(Guid id, ...) { }
 }
 ```
 
@@ -1208,7 +1211,7 @@ infrastructure already exists.
 | `Design.Domain/Aggregates/ParamAuthOrder.cs` | Parameterized [AuthorizeFactory<T>] with type-matched and target entity params |
 | `Design.Domain/Aggregates/ParamAuthOrderAuth.cs` | Auth interface and implementation with parameterized methods |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
-| `Design.Domain/Entities/OrderLine.cs` | Child entity and child list: public local Create, row-mapped Fetch/Insert/Update, the list's R-D cascade |
+| `Design.Domain/Entities/OrderLine.cs` | Child entity and child list: public local Create, row-mapped Fetch/Insert/Update, the list's R-D cascade; and the line as a root, a `[Remote, Fetch]` by id (entity duality, R-G) |
 | `Design.Domain/Aggregates/OrderPersistence.cs` | The order's rows and `IOrderDbContext`, the store Order's operations inject; the cascade in outline |
 | `Design.Domain/ValueObjects/Money.cs` | Plain-record value objects (`Money`, `Percentage`): no factory, constructors throw (R-F) |
 | `Design.Domain/ValueObjects/TaxRate.cs` | A value object that carries `[Factory]` because its construction needs a server-only service: static `[Remote, Fetch]`, null for an unknown key |

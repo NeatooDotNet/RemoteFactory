@@ -96,7 +96,7 @@ See [Serialization](serialization.md) for a practical dev/production configurati
 Does your entity support Insert, Update, or Delete via Save()?
 ├── YES → Implement IFactorySaveMeta
 │         (adds IsNew, IsDeleted properties)
-└── NO (read-only: a read model or a context)
+└── NO: a read model (only loaded) or a context (saves through the root it holds)
     └── Don't implement it
 ```
 

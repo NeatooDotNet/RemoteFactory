@@ -66,7 +66,7 @@ A method without `[Remote]` runs on the tier that calls it. If the client calls 
 - **An `internal` method** is generated with a server-only guard. In a client published with the `Neatoo.RemoteFactory.IsServerRuntime` switch set to `false` (the [IL Trimming](trimming.md) setup), the guard throws `InvalidOperationException` and the trimmer removes the body. With the default (`true`), the guard passes, and the method fails only the way a `public` one does, on a missing server service.
 - **From another assembly**, such as your client project, an `internal` factory member cannot be called at all: it is a compile-time error.
 
-All of these are discovered when the method is called, or when the client is published — the domain assembly compiles either way.
+The first two fail only when the method is called; the domain assembly compiles either way. The third is caught by the compiler.
 
 ## Method Visibility and the Client/Server Boundary
 

@@ -69,12 +69,12 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | T-14 | `src/docs/samples` duplicates every README snippet; .NET 8 | 005 | fixed (EXSET-005): `src/docs/samples` deleted; `.NET 8` out of README |
 | T-15 | `CODING_STANDARDS.md` stale throughout | 012 | |
 | T-16 | "not-registered DI exception"; "26 tests"; `reference-docs` path | 005, 012 | 005: client-server-architecture's DI-exception paragraph gives both outcomes with their conditions; "26 tests" and `reference-docs` not on 005's pages |
-| T-17 | "Seven operations" | 005, 007 | 005: none on 005's pages (README, getting started and the problem list the operations) |
+| T-17 | "Seven operations" | 005, 007 | 005: fixed on 005's pages (`getting-started.md` and `the-problem.md` now list Create, Fetch, Insert, Update, Delete and Execute; README drops `Event`) |
 | T-18 | "Right" event handlers are instance methods | 011 | |
 | T-19 | `AddRemoteFactoryServices`/`FactoryMode` names; relay wording | 011, T2 | |
 | T-20 | "Methods fall back to remote calls" | 005 | fixed (EXSET-005): Design's client program has no fallback claim, and the skill's embed re-points to it |
 | T-21 | Partial properties on a plain class | T2 | |
-| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 010, 012, T2 | 005: none on 005's pages |
+| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 010, 012, T2 | 005: the `[SuppressFactory]` README regions it cites are retired; README now embeds Design |
 | T-23 | `IFactoryOnCancelled` "on operation failure" | T2 | |
 | T-24 | "Causes duplicate generation" instead of NF0106 | 010 | |
 | T-25 | Two-container testing sample uses one Logical container | 006 | |
