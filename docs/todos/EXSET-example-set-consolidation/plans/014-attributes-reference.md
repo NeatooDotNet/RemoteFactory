@@ -4,7 +4,7 @@
 **Date:** 2026-10-15
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** No. Nearly every embed re-points to a region 002–009 built and reviewed. Design gains four regions and no new shape.
 **Code-review opt-in:** Yes. The page is restated against the generator, and the inheritance claims change.
@@ -128,13 +128,27 @@ The attributes reference states what each attribute does as the generator applie
 | Bullet | Pinned by | Tier |
 |---|---|---|
 | 1. Page and skill | explicit-skip: no fence outside a snippet pair on `attributes-reference.md`; all 15 embeds come from Design. Retired regions: none defined or embedded; the skill embeds only `attributes-execute-local`, now Design's. `MinimalAttributesSamples.cs` and `AssemblyAttributeSamples.cs` deleted; `AssemblyAttributes.cs` has no markers; `reviews/014-refapp-build.log` (0 errors) | explicit-skip |
-| 2. Inheritance and `[SuppressFactory]` | explicit-skip: the recon probe compile (Current State) and `FactoryGenerator.cs:19-23`; #141 records the attribute declaration | explicit-skip |
+| 2. Inheritance and `[SuppressFactory]` | explicit-skip: the recon probe compile (Current State); `FactoryGenerator.cs:19-23` (class and record predicate, abstract and generic excluded, `SuppressFactory` name match); `FactoryGenerator.Transform.cs:19-31` and `:58-67` (base `[AuthorizeFactory<T>]` and base operation methods); `FactoryGenerator.cs:217-228` (hint-name cap). #141 records the attribute declaration and the gate's additions | explicit-skip |
 | 3. Embedded regions pinned | the new regions: `attributes-factory` (`OperationsTests`), `attributes-factory-interface` (`InterfaceFactoryAuthorizationTests`), `attributes-execute-local` (`LocalExecuteTests`), `attributes-factoryeventhandler` and `attributes-factoryevent` (`FactoryEventHandlerTests`). The reused regions keep the tests 007–009 cite | explicit-skip |
 | 4. Meta | explicit-skip: `reviews/014-mdsnippets.log`; factory-operations, interfaces-reference and save-operation change only in attribution. Logs: `014-build.log`, `014-test.log`, `014-design-build.log`, `014-design-test.log` (unit 852; integration 657 + 7 skips; Design 173 + 1 known-bug skip; unchanged; both TFMs) | explicit-skip |
 
 ---
 
 ## Gate Record
+
+- **Test review** ([014-test-review.md](../reviews/014-test-review.md)):
+  - **Round 1: CONCERNS,** with 2 veto-tier findings on Bullet 2, both amended. `[SuppressFactory]` has no effect on an interface. A derived `[Factory]` class takes its bases' operation methods and nearest `[AuthorizeFactory<T>]`. Of the 3 tech-debt items, the name match was punched, the missing generator test dismissed (#141's when it is decided), and the handler-region drift amended.
+  - **Round 2: APPROVED,** with no findings. Its one theoretical wording note was taken.
+- **Code review** ([014-code-review.md](../reviews/014-code-review.md)): APPROVED, with 6 callouts, all amended:
+  - the inheritance section, including abstract and generic classes ignored;
+  - `[SuppressFactory]` on interfaces;
+  - the hint-name cap stated the right way round (50 by default, NF0104 an error, the attribute raises it);
+  - the `[AspAuthorize]` and `[Remote]` auth-method exception to "without `[Remote]`, local";
+  - the C-16 ledger row;
+  - the handler-region amendment.
+- **Recorded on #141:** the interface gap, the name match, abstract and generic classes, and the base-class inheritance.
+- **Handed to Todo 2 (Follow-on):** `polymorphic-hierarchy.md`'s Key Rule 4.
+- **After the punches:** both solutions build, and both test runs pass (unit 852, integration 657 + 7 known skips, Design 173 + 1 known-bug skip, both TFMs). mdsnippets is clean. Nothing under `src/` changed after the reference-app build (`014-refapp-build.log`).
 
 ---
 

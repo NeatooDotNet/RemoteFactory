@@ -432,7 +432,7 @@ The generator caps the hint names of the files it generates at 50 characters, to
 
 A class gets a factory from its own `[Factory]` only, but a derived `[Factory]` class takes part of its factory from its base classes:
 - **`[Factory]`:** a derived class needs its own. Without it the class has no factory, whatever its base carries.
-- **`[SuppressFactory]`:** affects only the declaration that also carries `[Factory]`.
+- **`[SuppressFactory]`:** affects only a class or record declaration that also carries `[Factory]`.
 - **Operation methods:** the derived class's factory includes its base classes' operation methods (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`), with their `[Remote]`, `[Service]` and `[AspAuthorize]`. Constructors are the exception: only the derived class's own `[Create]` constructors count.
 - **`[AuthorizeFactory<T>]`:** a derived class without its own takes the nearest base class's. A class's own replaces its base's.
 - **`[AuthorizeFactory]`:** declared on the authorization interface's methods, not on the class.

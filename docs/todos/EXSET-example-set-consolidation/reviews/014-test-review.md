@@ -50,3 +50,43 @@ Could not verify:
 
 Theoretical (not triaged):
 - `GetMethodsRecursive` (`FactoryGenerator.Transform.cs:58-67`, used at `FactoryGenerator.Types.cs:179`) collects base-class methods except constructors. So a derived `[Factory]` class takes its base's attributed operations. The page's "each method and parameter declares its own" (`:436`) is literally true, but it does not tell the reader this.
+
+## Round 2 — 2026-10-15 — APPROVED (0 veto-tier, 0 callouts)
+
+**Reviewer:** test-reviewer, against `ad07e40`, diffed from `a564b9d`. Only the round-1 findings were checked.
+
+**Logs: green.** They are timestamped 15:14, and the commit is 15:15.
+- main build (`014-build.log`): 0 errors, 2 warnings. Both are the known OrderEntry WASM native-reference notice.
+- Design build (`014-design-build.log`): 0 errors, 0 warnings.
+- tests (`014-test.log`, `014-design-test.log`): unit 852, integration 657 + 7 skips, Design 173 + 1 skip, each on both TFMs. No failures. The Design skip is `SaveTests.AuthorizedSave_NewAndDeleted_ReturnsNull` (#104).
+- mdsnippets (`014-mdsnippets.log`): no error, exception or missing-snippet line.
+
+**Sacred-test check: clean.** Nothing under `src/` changed between `a564b9d` and `ad07e40`. The commit touches only the page, two skill references, the plan, the todo, the ledger and the reviews.
+
+Round-1 findings:
+- **1 (Veto): closed.**
+  - The Quick Lookup row (`attributes-reference.md:10`) now says "Class, Record".
+  - The `[SuppressFactory]` section (`:62`) says it has no effect on an interface, which keeps its factory.
+  - The skill's `class-factory.md:407` says the same.
+  - This matches the generator. The class/record predicate (`FactoryGenerator.cs:19-23`) is the only `SuppressFactory` check in `src/Generator`, and the interface pipeline (`:54-56`) does not check it.
+  - Nothing on the page or in the skill still names an interface as a `[SuppressFactory]` target.
+- **2 (Veto): closed.**
+  - "Attributes and Inheritance" (`attributes-reference.md:432-440`) and `advanced-patterns.md:545-547` now state two things. A derived `[Factory]` class takes its bases' operation methods, constructors excepted. It also takes the nearest base's `[AuthorizeFactory<T>]` when it has none of its own.
+  - This matches the generator:
+    - `GetMethodsRecursive` (`FactoryGenerator.Transform.cs:58-67`) adds base methods with `includeConst = false`. It is called on the factory type at `FactoryGenerator.Types.cs:179`.
+    - `ClassOrBaseClassHasAttribute` (`Transform.cs:19-31`) returns the type's own attribute first, then walks `BaseType`. It is called from `TypeAuthMethods` (`:310`), which `Types.cs:181` calls.
+  - The old "declared on each class or method they apply to" line is gone. This also closes round 1's Theoretical item on `GetMethodsRecursive`.
+- **3 (Punch): done.** `:62` says to write it as `[SuppressFactory]`, and that `[SuppressFactoryAttribute]` and namespace-qualified forms are not recognised. That agrees with the `== "SuppressFactory"` match at `FactoryGenerator.cs:23`.
+- **4 (Dismiss): not re-raised.**
+- **5 (Amend): recorded.** It is the second 2026-10-15 · Implementation entry in the plan's Plan Amendments.
+
+| # | Tier | Finding | Affects | Triage |
+|---|---|---|---|---|
+
+None.
+
+Could not verify:
+- None.
+
+Theoretical (not triaged):
+- The inheritance list's `[SuppressFactory]` line (`attributes-reference.md:435`) does not repeat the interface exception that `:10` and `:62` now state. It does not contradict them.
