@@ -54,11 +54,12 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 008 | [008-save-interfaces](./plans/008-save-interfaces.md) | Save operation and interfaces reference | AC-3, AC-4, AC-5 | Done | #137 |
 | 009 | [009-authorization](./plans/009-authorization.md) | Authorization: Design auth, server authentication | AC-3, AC-4 | Done | #140 |
 | 010 | [010-service-injection-skill-embeds](./plans/010-service-injection-skill-embeds.md) | Service injection and interface factory pages | AC-3, AC-4 | Done | #143 |
-| 011 | [011-events-trimming-lazyload](./plans/011-events-trimming-lazyload.md) | Events, trimming, LazyLoad pages, appendix | AC-4, AC-5 | Draft | — |
+| 011 | [011-factory-events](./plans/011-factory-events.md) | Factory events page | AC-3, AC-4 | In Progress | — |
 | 012 | [012-retire-reference-app](./plans/012-retire-reference-app.md) | Retire reference app; path and design sweep | AC-4, AC-6 | Draft | — |
 | 013 | [013-modes-serialization](./plans/013-modes-serialization.md) | Factory modes and serialization pages (after 006) | AC-3, AC-4, AC-5 | Done | #134 |
 | 014 | [014-attributes-reference](./plans/014-attributes-reference.md) | Attributes reference (split from 009) | AC-3, AC-4 | Done | #142 |
 | 015 | [015-skill-embeds](./plans/015-skill-embeds.md) | Skill-only embeds (split from 010) | AC-3, AC-4 | Done | #144 |
+| 016 | [016-trimming-appendix-lazyload](./plans/016-trimming-appendix-lazyload.md) | Trimming, appendix, LazyLoad removal (split from 011) | AC-4, AC-5 | Draft | — |
 
 ---
 
@@ -66,7 +67,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 - [ ] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must
 - [x] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must → EXSET-009: all three Creates are local `public [Create]`
-- [ ] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-011 · AC-4 · Must
+- [ ] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-016 · AC-4 · Must
 
 ## Dismissed
 
@@ -80,6 +81,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Discovery Log
 
+- **2026-10-15 · EXSET-011 · Re-split.** `factory-events.md` alone has 19 hand fences and five findings, and shares no region with `trimming.md`, the appendix or the LazyLoad removal. Those move to EXSET-016, with their ledger owners (C-22, C-26, I-01, I-10, T-01, T-02, T-07, T-09, T-26, T-27, U-12). That is 16 of the 18 plan numbers. Serves AC-3, AC-4, AC-5.
 - **2026-10-15 · EXSET-010 · Re-split.** Recon counted about 30 reference-app embeds in 010's scope. The two docs pages and the skill's `service-injection.md` share regions, so they stay on 010. The skill-only `skill-*` embeds share none, and move to EXSET-015. That is 15 of the 18 plan numbers. Serves AC-3, AC-4.
 - **2026-10-15 · EXSET-009 · Amend.** The code review found that `[AuthorizeFactory<T>]` on a static factory's `[Execute]` was never enforced. The generator used the auth methods only to decide whether the call goes remote, so a rule there compiled and ran for anyone. Serves AC-3, the page's refusal outcomes. Keith: fix it in the generator on 009. The local registration now calls the matching auth methods before `[AspAuthorize]` and the method, and a refusal throws `NotAuthorizedException`. It also registers the auth class, as class and interface factories do. `StaticAuthorizeFactoryTests` (integration) fail 4 of 5 without the fix (`reviews/009-static-authorizefactory-unfixed-test.log`). The release notes for the next version owe a line for this.
 - **2026-10-15 · EXSET-009 · Stop → Keith.** The defect in the entry below was already fixed on `main` by #127 (v1.10.6), with #91 and #117 (v1.10.5); the arc had never taken `main`. Serves AC-3. Keith: merge `main` into EXSET first (#139, merged); the duplicate library edit is dropped and #138 closed.
