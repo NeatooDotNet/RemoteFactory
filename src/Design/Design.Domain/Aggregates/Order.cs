@@ -116,8 +116,10 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     // 3. Works with detached scenarios (entity saved, modified, saved again)
     // -------------------------------------------------------------------------
 
+    #region save-ifactorysavemeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Lifecycle Hooks
@@ -174,8 +176,8 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// - Resetting tracking state
     /// - Logging completion
     ///
-    /// When an operation throws, no hook runs. When an async instance operation
-    /// is cancelled, IFactoryOnCancelled / IFactoryOnCancelledAsync runs instead,
+    /// When an operation throws, the start hook has already run and the complete
+    /// hook does not. When an async instance operation is cancelled, IFactoryOnCancelled / IFactoryOnCancelledAsync runs instead,
     /// then the cancellation propagates.
     /// </remarks>
     #region operations-lifecycle-oncomplete

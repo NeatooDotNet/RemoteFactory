@@ -1,249 +1,215 @@
 # Save Operation
 
-Save is the persistence routing heart of RemoteFactory. Instead of the caller deciding whether to insert, update, or delete, the entity tracks its own lifecycle state and Save routes to the right operation. This matters most with object graphs — a parent aggregate calls Save once, and each entity in the graph handles its own persistence based on its own state, cascading the save to its children. One call at the root handles inserts, updates, and deletes across the entire graph, regardless of what the user did in the UI.
+A class factory whose object implements `IFactorySaveMeta` gets one `Save` method in place of its write methods. The object says what it is (new, stored, or marked deleted) and Save calls the matching `[Insert]`, `[Update]` or `[Delete]`. The caller does not choose. Save is one use of the client/server seam that RemoteFactory generates: the object crosses to the server with its state, and the write runs there.
 
-This pattern comes from CSLA's DataPortal — the data mapper principle that each entity knows how to save itself.
+The code on this page comes from RemoteFactory's compiled example set, `src/Design`, mostly its `Order` aggregate.
 
 ## IFactorySaveMeta
 
-To opt into Save routing, implement `IFactorySaveMeta`. It requires two properties:
+`IFactorySaveMeta` has two properties, `IsNew` and `IsDeleted`. `Order` declares them as plain public properties:
 
 <!-- snippet: save-ifactorysavemeta -->
 <a id='snippet-save-ifactorysavemeta'></a>
 ```cs
-// IFactorySaveMeta requires: IsNew (true for new entities) and IsDeleted (true for deletion)
-public bool IsNew { get; private set; } = true;
+public bool IsNew { get; set; } = true;
 public bool IsDeleted { get; set; }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/SaveOperation/EmployeeSaveMetaSamples.cs#L21-L25' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L119-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Why two booleans instead of an enum? These are regular properties that participate in data binding. `IsDeleted` is user-settable — the UI can bind a delete button to it. `IsNew` is set by your Create and Fetch methods. Both properties naturally flow from UI state into persistence routing without any framework-managed state machine.
+Both are public `get; set;`. Both must cross the wire, so that the server's copy routes the same way the client's would, and a property with a private setter does not cross it. The object's own operations keep them right:
+- Create sets `IsNew`;
+- Fetch clears it;
+- `Order`'s complete hook clears it after an Insert;
+- `MarkDeleted` sets `IsDeleted`.
 
-When a class implements `IFactorySaveMeta`, RemoteFactory generates an `IFactorySave<T>` interface on its factory with a `Save()` method.
+A screen binds to the domain verb, not to the flag.
 
-### Serializing IsNew and IsDeleted Across the Remote Boundary
+`IOrder` extends `IFactorySaveMeta`, so the generated `IOrderFactory` has `Save(IOrder target)`.
 
-Save routing happens **server-side** — the generated `LocalSave` reads `target.IsNew` and `target.IsDeleted` on the server-side instance. For that to work in `NeatooFactory.Remote` mode, both properties must round-trip through JSON when the client sends the entity to the server.
+## Routing
 
-`System.Text.Json` serializes public getters by default, so `public bool IsNew { get; set; }` works out of the box. But many domain designs want to prevent external callers from flipping lifecycle state ad-hoc (`entity.IsNew = false` is nonsense from a UI) and use private setters:
+Save checks `IsDeleted` first, then `IsNew`:
 
-```csharp
-public bool IsNew { get; private set; } = true;
-public bool IsDeleted { get; private set; }
-```
+| IsNew | IsDeleted | Save calls | Returns |
+|-------|-----------|-----------|---------|
+| true | false | `[Insert]` | the object |
+| false | false | `[Update]` | the object |
+| false | true | `[Delete]` | the object |
+| true | true | nothing: it was never stored | `null` |
 
-A private setter is invisible to STJ's default reflection-based resolver on the **deserializing** side — the server will construct a fresh `IsNew = true` default and every Save will route to Insert. Add `[JsonInclude]` to force STJ to use the non-public setter on both ends:
-
-```csharp
-[JsonInclude]
-public bool IsNew { get; private set; } = true;
-
-[JsonInclude]
-public bool IsDeleted { get; private set; }
-```
-
-Provide a domain-flavored mutation path for `IsDeleted` so callers don't need the setter:
-
-```csharp
-public void MarkDeleted() => this.IsDeleted = true;
-```
-
-`IsNew` is typically flipped by your own `[Fetch]` / `[Insert]` methods (`this.IsNew = false;` works from inside the same class regardless of setter visibility).
-
-> **IL trimming:** private setters interact badly with the trimmer's visibility analysis — see [Trimming: IFactorySaveMeta Preservation](trimming.md#ifactorysavemeta-preservation). If you run `PublishTrimmed=true`, you need an additional `[DynamicDependency]` annotation on the constructor.
-
-## Routing Logic
-
-Save inspects `IsNew` and `IsDeleted` to decide which operation to call:
-
-| IsNew | IsDeleted | Operation | Why |
-|-------|-----------|-----------|-----|
-| true | false | **Insert** | New entity, not yet persisted |
-| false | false | **Update** | Existing entity with changes |
-| false | true | **Delete** | Existing entity marked for removal |
-| true | true | **No-op** | Created and deleted before saving — nothing to persist |
-
-<!-- snippet: save-generated -->
-<a id='snippet-save-generated'></a>
-```cs
-// Save routing: IsNew=true -> Insert, IsNew=false -> Update, IsDeleted=true -> Delete
-// | IsNew | IsDeleted | Operation |
-// |-------|-----------|-----------|
-// | true  | false     | Insert    |
-// | false | false     | Update    |
-// | false | true      | Delete    |
-// | true  | true      | no-op     |
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/SaveOperation/EmployeeSaveMetaSamples.cs#L113-L121' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-generated' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+The other outcomes:
+- **A missing write method.** A branch whose method the class does not declare throws `NotImplementedException`. With no `[Delete]`, that includes a new-and-deleted object. A type that has no Delete should not offer a way to mark itself deleted: `CustomerPreferences`, below, has none.
+- **A `bool` write that returns `false`.** Save returns `null`.
+- **Authorization.** On a factory with `[AuthorizeFactory<T>]`, `Save` throws `NotAuthorizedException` when a check denies the write, and `TrySave` returns the refusal instead. Two outcomes are currently reported as refusals although no check refused: a new-and-deleted object, and a `bool` write that returns `false` ([#104](https://github.com/NeatooDotNet/RemoteFactory/issues/104)). See [Authorization](authorization.md).
 
 ## Write Operations
 
-Each write operation is a method on your domain class. You write the persistence logic; Save routes to the right one:
+Each write is a method on the class. `Order` is the aggregate root, so its Insert and Update write its own row and hand the row's line collection to the line list's factory:
 
-<!-- snippet: save-write-operations -->
-<a id='snippet-save-write-operations'></a>
+<!-- snippet: operations-insert -->
+<a id='snippet-operations-insert'></a>
 ```cs
-// Save routes to Insert/Update/Delete based on IsNew and IsDeleted flags
+/// <summary>
+/// Inserts a new Order and its lines.
+/// </summary>
 [Remote, Insert]
-internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Insert(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    await repo.AddAsync(new EmployeeEntity { Id = Id, FirstName = FirstName }, ct);
-    IsNew = false;
-}
-
-[Remote, Update]
-internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
-{
-    var e = await repo.GetByIdAsync(Id, ct);
-    if (e != null) { e.FirstName = FirstName; await repo.UpdateAsync(e, ct); }
-}
-
-[Remote, Delete]
-internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
-{
-    await repo.DeleteAsync(Id, ct);
+    var row = new OrderRow();
+    MapTo(row);
+    db.Add(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+    Id = row.Id;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/SaveOperation/EmployeeSaveMetaSamples.cs#L85-L106' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-write-operations' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L268-L284' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-The caller just calls Save — the routing is invisible to them:
+<!-- snippet: operations-update -->
+<a id='snippet-operations-update'></a>
+```cs
+/// <summary>
+/// Updates an existing Order and its lines.
+/// </summary>
+[Remote, Update]
+internal async Task Update(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    MapTo(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L286-L301' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: operations-delete -->
+<a id='snippet-operations-delete'></a>
+```cs
+/// <summary>
+/// Deletes an Order. Its line rows go with its row.
+/// </summary>
+[Remote, Delete]
+internal async Task Delete([Service] IOrderDbContext db)
+{
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    db.Remove(row);
+    await db.SaveChangesAsync();
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L303-L315' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+### Cascading to Children
+
+One Save on the root writes the whole aggregate, but nothing in the generator walks the graph. The root's Insert and Update call `IOrderLineListFactory.Save(Lines, row.Lines)`, and the list does the rest:
+- it makes a row for each new line;
+- it finds the row of each existing line;
+- it removes the row of each deleted line;
+- it hands each live line its own row.
+
+Each line maps itself into the row it is handed. The root saves once, at the end. See [Factory Operations — Collection Factories](factory-operations.md#collection-factories).
+
+## Calling Save
+
+The client calls Save and keeps what it returns:
 
 <!-- snippet: save-usage -->
 <a id='snippet-save-usage'></a>
 ```cs
-// Save routes based on state: Insert (IsNew=true), Update (IsNew=false), Delete (IsDeleted=true)
-var saved = await _factory.Save(employee);       // Insert
-saved = await _factory.Save((EmployeeCrud)saved!); // Update
-((EmployeeCrud)saved!).IsDeleted = true;
-await _factory.Save((EmployeeCrud)saved);        // Delete
+var order = orderFactory.Create("Save_Customer");
+order.AddLine(lineFactory.Create("Widget", 5.00m, 2));
+order = (await orderFactory.Save(order))!;      // IsNew: Insert
+
+order.CustomerName = "Save_Customer_Renamed";
+order = (await orderFactory.Save(order))!;      // stored: Update
+
+order.MarkDeleted();
+order = (await orderFactory.Save(order))!;      // IsDeleted: Delete
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/SaveOperation/SaveUsageSamples.cs#L29-L35' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/SaveTests.cs#L31-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-## Cascading Saves
-
-Save's real power shows in object graphs. When a parent aggregate saves, it can cascade the save to its children. Each child entity knows its own state (IsNew, IsDeleted) and handles its own persistence, then continues the cascade to *its* children. The result: one `Save()` call at the root persists the entire graph — new children are inserted, modified children are updated, removed children are deleted — all in one operation.
-
-You implement the cascade in your Insert/Update methods by calling Save on child collections. Each child entity's `IsNew`/`IsDeleted` state drives its own routing independently.
-
-## Partial Operations
-
-You don't need all three write operations. Save routes based on what you've defined:
-
-<!-- snippet: save-partial-methods -->
-<a id='snippet-save-partial-methods'></a>
-```cs
-// Insert-only entity: no Update/Delete means records are immutable after creation
-[Factory]
-public partial class AuditLog : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string Action { get; set; } = "";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create] public AuditLog() { Id = Guid.NewGuid(); }
-    [Remote, Insert] internal Task Insert(CancellationToken ct) { IsNew = false; return Task.CompletedTask; }
-    // No [Update] or [Delete] = immutable after insert
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/SaveOperation/PartialSaveSamples.cs#L9-L23' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-partial-methods' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Common patterns:
-
-| Operations Defined | Pattern | Example |
-|-------------------|---------|---------|
-| Insert only | Immutable records | Audit logs, event sourcing entries |
-| Insert + Update | Full write, no delete | Soft-delete systems |
-| Insert + Update + Delete | Full CRUD | Standard entities |
-
-For upsert (same method for Insert and Update), mark a single method with both `[Insert, Update]`. See [Factory Operations](factory-operations.md#combining-operations).
+Save returns the object the server sent back, not the one the client passed in. Always reassign it. The server may have set an id, cleared `IsNew`, or removed deleted lines, and none of that reaches the original.
 
 ## Return Values
 
-```csharp
-Task<IFactorySaveMeta?> Save(T entity, CancellationToken cancellationToken = default);
-```
+`Save` returns the object's interface. It is a `Task` when any write is `[Remote]` or returns `Task`, and nullable when the class has a `[Delete]` or a `bool` write. So `Order`'s is `Task<IOrder?>`, while `CustomerPreferences`' `SaveUpsert` returns `Task<ICustomerPreferences>`, never null. Where it is nullable, it is `null` only in the cases the routing table and outcomes above name. When authorization applies, the factory also has `TrySave`, which returns `Authorized<IOrder>`, and `CanSave`.
 
-Returns the entity on success. Returns null when:
-- The write operation returns `false` (not authorized or not found)
-- `IsNew = true` and `IsDeleted = true` (no-op)
+## Partial Operations
 
-## Save vs Explicit Methods
+A class declares only the writes it has. `CustomerPreferences` has one method for both Insert and Update, and no Delete:
 
-Save is optional. You can always call Insert, Update, or Delete directly through the factory.
-
-<!-- snippet: save-explicit -->
-<a id='snippet-save-explicit'></a>
+<!-- snippet: operations-insert-update -->
+<a id='snippet-operations-insert-update'></a>
 ```cs
-// Save: state-based routing (single "Save" button in UI)
-await _factory.Save(employee);           // Routes to Insert (IsNew=true)
-employee.FirstName = "Jane";
-await _factory.Save(employee);           // Routes to Update (IsNew=false)
-employee.IsDeleted = true;
-await _factory.Save(employee);           // Routes to Delete (IsDeleted=true)
+[Remote, Insert, Update]
+internal async Task Upsert([Service] ICustomerPreferencesStore store)
+{
+    await store.WriteAsync(new CustomerPreferencesRow(CustomerName, DeliveryWindow, NotifyBySms, LastSavedAt));
+    IsNew = false;
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/SaveOperation/SaveExplicitSamples.cs#L29-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-explicit' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L89-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Use **Save** when the UI has a single save button and the entity tracks its own state. Use **explicit methods** when the client knows the exact operation (e.g., separate "Create" and "Edit" pages).
+| Writes declared | Shape |
+|-------------------|---------|
+| Insert only | records that never change after they are written |
+| Insert and Update (or one `[Insert, Update]` method) | stored and edited, never removed |
+| Insert, Update and Delete | the full lifecycle |
+
+A combined method's save is named after it: `SaveUpsert` here. See [Factory Operations — Combining Operations](factory-operations.md#combining-operations).
 
 ## Optimistic Concurrency
 
-Use version tokens or timestamps for conflict detection:
+RemoteFactory has no concurrency check of its own, and it maps no exception from a write to a status of its own. Keep a version on the row and on the object, have Fetch load it, and have Update compare it. A stale version is a conflict the user can resolve by reloading, so it is a result, not a throw: declare Update as `bool` and return `false`, and `Save` returns `null`. With `[AuthorizeFactory<T>]`, that `false` currently surfaces as `NotAuthorizedException` ([#104](https://github.com/NeatooDotNet/RemoteFactory/issues/104)). An exception thrown by a write reaches a remote caller as an `HttpRequestException` for a 500 response, and its type and message stay on the server. See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
 
-<!-- snippet: save-optimistic-concurrency -->
-<a id='snippet-save-optimistic-concurrency'></a>
-```cs
-// Add RowVersion property; EF Core throws DbUpdateConcurrencyException on conflict -> 409 response
-[Factory]
-public partial class ConcurrentEmployee : IFactorySaveMeta
-{
-    public byte[]? RowVersion { get; private set; }  // Concurrency token, auto-updated by database
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-    /* Fetch loads RowVersion, Update includes it for conflict detection */
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/SaveOperation/SaveConcurrencySamples.cs#L10-L20' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-optimistic-concurrency' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+## Validation
 
-EF Core's `DbUpdateConcurrencyException` automatically becomes a 409 response when called remotely.
-
-## Authorization and Validation
-
-Save respects authorization rules — you can authorize at the operation level (separate permissions for Insert vs Update vs Delete) or at the Write level (single permission for all writes). See [Authorization](authorization.md) for details.
-
-Validate before Save however you prefer — DataAnnotations, FluentValidation, or manual checks in your write methods. RemoteFactory doesn't prescribe a validation approach.
+Save does not validate. A check the user can recover from is a verdict the screen reads before it calls Save. `Order.CanSubmit` is one. A throw in a write method or a hook is for broken state. Who may write is authorization: see [Authorization](authorization.md).
 
 ## Testing Save Routing
 
-Verify that Save routes to the correct operation based on entity state:
+Save through the client container, so the object crosses the serializer the way it would over HTTP, then read the server's store:
 
 <!-- snippet: save-testing -->
 <a id='snippet-save-testing'></a>
 ```cs
-// Test Save routing: IsNew=true -> Insert, IsNew=false -> Update, IsDeleted=true -> Delete
 [Fact]
-public async Task Save_WhenIsNewTrue_RoutesToInsert()
+public async Task Save_InsertThenUpdate_WritesTheOneRow()
 {
-    var scopes = TestClientServerContainers.CreateScopes();
-    var factory = scopes.local.ServiceProvider.GetRequiredService<IEmployeeCrudFactory>();
-    var employee = factory.Create();
-    Assert.True(employee.IsNew);
-    var saved = (EmployeeCrud)(await factory.Save(employee))!;
-    Assert.False(saved.IsNew);  // Insert sets IsNew = false
+    var (server, client, local) = DesignClientServerContainers.Scopes();
+    var orderFactory = client.GetRequiredService<IOrderFactory>();
+    var db = server.GetRequiredService<IOrderDbContext>();
+
+    var order = orderFactory.Create("Routing_Customer");
+    order = (await orderFactory.Save(order))!;
+    Assert.False(order.IsNew);
+    Assert.Equal("Routing_Customer", (await db.FindAsync(order.Id))!.CustomerName);
+
+    order.CustomerName = "Routing_Customer_Renamed";
+    order = (await orderFactory.Save(order))!;
+    Assert.Equal("Routing_Customer_Renamed", (await db.FindAsync(order.Id))!.CustomerName);
+
+    server.Dispose();
+    client.Dispose();
+    local.Dispose();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/SaveOperation/SaveRoutingTestSample.cs#L16-L28' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/SaveTests.cs#L53-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Next Steps
 
-- [Factory Operations](factory-operations.md) — Insert, Update, Delete details
-- [Authorization](authorization.md) — Secure save operations
-- [Serialization](serialization.md) — Entity state serialization
+- [Factory Operations](factory-operations.md#lifecycle-hooks): Insert, Update, Delete and the lifecycle hooks
+- [Authorization](authorization.md): securing writes
+- [Serialization](serialization.md): what crosses the wire
