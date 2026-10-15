@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** Yes (a new test tier over HTTP, a second Design domain assembly, and Design.Server configuration that later plans build on). Reviewed 2026-10-15, APPROVED; re-split, with serialization and modes moved to EXSET-013 ([review](../reviews/006-plan-review.md))
 **Code-review opt-in:** Yes (a page rewritten against library behaviour; new Design server and client configuration)
@@ -233,6 +233,18 @@ Recon, 2026-10-15. Library behaviour is cited from source; the plan review spot-
 
 ## Gate Record
 
+- **Test review** ([006-test-review.md](../reviews/006-test-review.md)), round 1: CONCERNS, with no veto. Both findings are punched: the logging test now asserts the region's filter rules, and the denied-Save test asserts its loaded order. The mdsnippets and reference-app logs it could not find are now in `reviews/`.
+- **Code review** ([006-code-review.md](../reviews/006-code-review.md)): APPROVED, with five callouts, all punched:
+  - setup.md shows the `AddNeatooAspNetCore` line;
+  - handler exceptions are stated per drain point;
+  - the shutdown row is out of the failure table;
+  - "generated class factories";
+  - the T-22 row and the `Program.cs` comment are corrected.
+
+  Of its theoretical items, two were taken: the Discovery Log entry for the library fix, and "Debug or Release" for the .NET 10 environment.
+- **After the punches:** both solutions rebuilt and passed (unit 839, integration 644 + 5 known skips, Design 151, both TFMs). mdsnippets is clean.
+- **Open, by design:** `aspnetcore-middleware-order` (EXSET-009); setup's static-commands and events block and `skill-blazor-usage` (EXSET-010); #131 (techdebt). The Notes' other park candidates (the logger categories, the static logger factory, the client not reading `X-Neatoo-Format`) are documented on the page as current behaviour, and no issue is filed for them.
+
 ---
 
 ## Plan Amendments
@@ -241,7 +253,7 @@ Recon, 2026-10-15. Library behaviour is cited from source; the plan review spot-
   - `factory-modes.md`, `serialization.md`, setup's factory-modes block, the reference-preservation probe and reviewer callouts 7–9 move to EXSET-013.
   - Callouts 1–6, 10 and 11 are amended into this plan (triage in the review).
 - **2026-10-15 · Format by build configuration** (Keith). Step 2's check found that the tiers can disagree on net10.
-  - On net10, a Debug build of the client bakes `"applicationEnvironment": "Development"` into `_framework/dotnet.js`. Its loader reads the server's `Blazor-Environment` header only when nothing is baked.
+  - On net10, a build of the client (Debug or Release; publish not checked) bakes `"applicationEnvironment": "Development"` into `_framework/dotnet.js`. Its loader reads the server's `Blazor-Environment` header only when nothing is baked.
   - On net9, the client always takes the header.
   - So a net10 client and its server can disagree about the environment, and an environment-chosen format would fail every call.
   - The rule is keyed to the build configuration instead, in Design.Domain, which both tiers load. CI tests Release, which gives Ordinal; a local Debug run gives Named.

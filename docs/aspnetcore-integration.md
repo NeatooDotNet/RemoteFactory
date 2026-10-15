@@ -78,7 +78,7 @@ services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenS
 
 services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L160-L171' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L161-L172' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `RegisterMatchingName` registers each `IName` → `Name` pair in the assemblies you pass, **transient**, with `TryAdd`. It also registers each matched concrete type by itself. Three things follow:
@@ -97,7 +97,7 @@ With no options, both tiers use **Ordinal**, the compact array format. To use **
 
 The two tiers must register the same format. The server announces its format in an `X-Neatoo-Format` response header, but the client does not read it: a Named server and an Ordinal client fail every call.
 
-So be careful about switching formats by environment. On .NET 10, a Blazor WebAssembly client's environment is fixed when the client is built: a Debug build is `Development` whatever the server runs as. A client and a server can therefore disagree about the environment, and so about the format. Key the choice to something both tiers share, such as the build configuration of a library they both load, or leave the default. See [Serialization](serialization.md) for the formats themselves.
+So be careful about switching formats by environment. On .NET 10, a Blazor WebAssembly client's environment is fixed when the client is built: a `dotnet build`, Debug or Release, is `Development` whatever the server runs as. A client and a server can therefore disagree about the environment, and so about the format. Key the choice to something both tiers share, such as the build configuration of a library they both load, or leave the default. See [Serialization](serialization.md) for the formats themselves.
 
 ## What UseNeatoo Does
 
@@ -153,7 +153,7 @@ What the client sees, over HTTP:
 | A class factory's authorization refuses a read (`Create`, `Fetch`) | 200 | The factory call returns `null`, as for a missing object |
 | A class factory's authorization refuses a `Save` | 200 | `NotAuthorizedException` |
 | The operation throws | 500 | `HttpRequestException`, with `StatusCode` 500 |
-| The client cancels, or the server shuts down | — | `OperationCanceledException` (a `TaskCanceledException`) |
+| The client cancels the call | — | `OperationCanceledException` (a `TaskCanceledException`) |
 
 The handler rethrows a server exception, so ASP.NET Core answers 500, and the exception's type and message do not reach the client. Log it on the server. An interface factory's authorization failure is a server exception too, so it also arrives as a 500. A denied `[AspAuthorize]` check that forbids the request is covered in [Authorization](authorization.md).
 
@@ -188,12 +188,12 @@ public async Task Save()
     }
 }
 ```
-<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L91-L117' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L92-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Cancellation
 
-A `[Remote]` operation that declares a `CancellationToken` parameter receives the request's token. It is not serialized and is not a `[Service]`. On the server it fires when the client cancels or disconnects, or when the host begins shutting down (`IHostApplicationLifetime.ApplicationStopping`). Pass it on to the work that can stop:
+A `[Remote]` operation that declares a `CancellationToken` parameter receives the request's token. It is not serialized and is not a `[Service]`. On the server it fires when the client cancels or disconnects, or when the host begins shutting down (`IHostApplicationLifetime.ApplicationStopping`). On shutdown the client is still connected: the operation's cancellation is a server exception, and the client's call fails as one. Pass the token on to the work that can stop:
 
 <!-- snippet: aspnetcore-cancellation -->
 <a id='snippet-aspnetcore-cancellation'></a>
@@ -259,7 +259,7 @@ RemoteFactory logs under three prefixes:
   - the serializer and the client's remote calls (`Neatoo.RemoteFactory.Internal.*`);
   - `AspAuthorize`.
 - **`RemoteFactory.Trace`.** Each request's serialize and deserialize steps, at `Trace`. It is **not** under the prefix above, so a filter on `Neatoo.RemoteFactory` leaves it off.
-- **The generated factories.** Each one logs under its own type name, in your namespace (`Design.Domain.ReadModels.OrderSummaryFactory`), at `Information` for each operation's start and finish.
+- **The generated class factories.** Each one logs under its own type name, in your namespace (`Design.Domain.ReadModels.OrderSummaryFactory`), at `Information` for each operation's start and finish. Static and interface factories write no log entries of their own.
 
 <!-- snippet: aspnetcore-logging -->
 <a id='snippet-aspnetcore-logging'></a>
@@ -267,9 +267,9 @@ RemoteFactory logs under three prefixes:
 services.AddLogging(logging => logging
     .AddFilter("Neatoo.RemoteFactory", LogLevel.Information)
     .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
-    .AddFilter("Design", LogLevel.Information));          // the generated factories
+    .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L95-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L96-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization
@@ -278,7 +278,7 @@ services.AddLogging(logging => logging
 
 ## Event Handlers
 
-`[FactoryEventHandler<T>]` handlers raised during a request run in that request's DI scope, one after another, and are awaited. The HTTP response waits for them, and an exception from one propagates to the operation that raised the event. Nothing runs them in a background or hosted service. See [Factory Events](factory-events.md).
+`[FactoryEventHandler<T>]` handlers raised during a request run in that request's DI scope, one after another, and are awaited: the HTTP response waits for all of them. An exception from an in-transaction handler (`Immediate`, or an `AfterFlush` drain) fails the operation and reaches the client. An `AfterCommit` handler's exception is logged and never fails the response. Nothing runs handlers in a background or hosted service. See [Factory Events](factory-events.md).
 
 ## Testing
 

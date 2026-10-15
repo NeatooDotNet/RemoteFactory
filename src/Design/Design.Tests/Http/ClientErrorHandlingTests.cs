@@ -50,6 +50,7 @@ public class ClientErrorHandlingTests(DesignHttpHost host)
         var screen = new OrderScreen(client.ServiceProvider.GetRequiredService<IAuthorizedOrderFactory>());
         await screen.Load(7);
         var loaded = screen.Order;
+        Assert.NotNull(loaded);
 
         host.Auth.AllowAccess = false;
         try

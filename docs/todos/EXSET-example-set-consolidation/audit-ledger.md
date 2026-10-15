@@ -74,7 +74,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | T-19 | `AddRemoteFactoryServices`/`FactoryMode` names; relay wording | 011, T2 | |
 | T-20 | "Methods fall back to remote calls" | 005 | fixed (EXSET-005): Design's client program has no fallback claim, and the skill's embed re-points to it |
 | T-21 | Partial properties on a plain class | T2 | |
-| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 010, 012, 013, T2 | 005: the `[SuppressFactory]` README regions it cites are retired; README now embeds Design; 006: aspnetcore-integration and setup's server embeds come from Design |
+| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 010, 012, 013, T2 | 005: the `[SuppressFactory]` README regions it cites are retired; README now embeds Design; 006: aspnetcore-integration and setup's server embeds come from Design, except aspnetcore-middleware-order (EXSET-009) |
 | T-23 | `IFactoryOnCancelled` "on operation failure" | T2 | |
 | T-24 | "Causes duplicate generation" instead of NF0106 | 010 | |
 | T-25 | Two-container testing sample uses one Logical container | 006 | fixed (EXSET-006): aspnetcore-testing is Design's three-container round trip from the client scope |

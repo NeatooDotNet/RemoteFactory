@@ -16,6 +16,7 @@ using Design.Domain.ReadModels;
 using Design.Domain.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Neatoo.RemoteFactory;
 
 namespace Design.Tests.Http;
@@ -150,7 +151,12 @@ public class AspNetCoreHttpTests(DesignHttpHost host)
         var entries = host.Logs.Entries.Where(e => e.Message.Contains(correlationId, StringComparison.Ordinal)).ToList();
         Assert.Contains(entries, e => e.Category == "Neatoo.RemoteFactory.Server" && e.Level == LogLevel.Information);
         Assert.Contains(entries, e => e.Category == "Design.Domain.ReadModels.OrderSummaryFactory");
-        Assert.DoesNotContain(host.Logs.Entries, e => e.Category == "RemoteFactory.Trace" && e.Level < LogLevel.Warning);
-    }
 
+        // The region's three rules are what the server's logging runs with. appsettings'
+        // Default level would pass the entries above on its own, so check the rules too.
+        var rules = host.Services.GetRequiredService<IOptions<LoggerFilterOptions>>().Value.Rules;
+        Assert.Contains(rules, r => r.CategoryName == "Neatoo.RemoteFactory" && r.LogLevel == LogLevel.Information);
+        Assert.Contains(rules, r => r.CategoryName == "RemoteFactory.Trace" && r.LogLevel == LogLevel.Warning);
+        Assert.Contains(rules, r => r.CategoryName == "Design" && r.LogLevel == LogLevel.Information);
+    }
 }

@@ -87,8 +87,9 @@ public static class ServerServices
     ///   the serializer, the client's remote calls.
     /// - <c>RemoteFactory.Trace</c>: each request's serialize and deserialize steps.
     ///   It is NOT under the prefix above, so a filter on that prefix leaves it off.
-    /// - The generated factories, which log under their own type names, so in the
-    ///   domain's namespace (<c>Design.Domain.Aggregates.OrderFactory</c>).
+    /// - The generated class factories, which log under their own type names, so in
+    ///   the domain's namespace (<c>Design.Domain.Aggregates.OrderFactory</c>). Static
+    ///   and interface factories write no entries of their own.
     /// </remarks>
     private static IServiceCollection AddDesignLogging(this IServiceCollection services)
     {
@@ -96,7 +97,7 @@ public static class ServerServices
         services.AddLogging(logging => logging
             .AddFilter("Neatoo.RemoteFactory", LogLevel.Information)
             .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
-            .AddFilter("Design", LogLevel.Information));          // the generated factories
+            .AddFilter("Design", LogLevel.Information));          // the generated class factories
         #endregion
 
         return services;

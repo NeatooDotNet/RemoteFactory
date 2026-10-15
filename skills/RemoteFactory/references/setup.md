@@ -39,6 +39,16 @@ await app.RunAsync();
 <sup><a href='/src/Design/Design.Server/Program.cs#L59-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+`AddDesignServer()` is the example's own composition method. Its RemoteFactory registration is:
+
+<!-- snippet: readme-server-setup -->
+<a id='snippet-readme-server-setup'></a>
+```cs
+services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+```
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
 ### Multiple Assemblies
 
 Pass every assembly that declares `[Factory]` types to the **one** `AddNeatooAspNetCore` call: `AddNeatooAspNetCore(typeof(IOrder).Assembly, typeof(IInvoice).Assembly)`. A second call replaces the first call's assembly list instead of adding to it. The client's `AddNeatooRemoteFactory` takes the same list.
