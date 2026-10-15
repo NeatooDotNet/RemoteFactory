@@ -1,15 +1,15 @@
 # Client-Server Architecture
 
-RemoteFactory lets you write your domain model as if it runs in a single process. The same `Employee` class works on both the client and the server — it validates on the client, persists on the server, and serializes across the wire without DTOs or mapping. The client/server boundary is there, but your code doesn't have to think about it.
+RemoteFactory lets you write your domain model as if it runs in a single process. The same `Order` class is loaded on both the client and the server: it is built and edited on the client, loaded and saved on the server, and serialized across the wire without DTOs or mapping. The client/server boundary is there, but your code doesn't have to think about it.
 
-This page is the big picture. [Factory Operations](factory-operations.md) covers each persistence operation in detail. [Service Injection](service-injection.md) covers how DI works across the boundary.
+This page is the big picture. [Factory Operations](factory-operations.md) covers each factory operation in detail. [Service Injection](service-injection.md) covers how DI works across the boundary.
 
 ## One Domain, Two Containers
 
 Your domain assembly is referenced by both the client and the server. Each side has its own DI container with different service registrations:
 
-- **Client container**: UI services, validation, the factory interfaces that serialize calls to the server
-- **Server container**: Repositories, database contexts, secrets — plus everything the client has
+- **Client container**: UI services, client-safe services, the factory interfaces that serialize calls to the server
+- **Server container**: Data stores, database contexts, secrets — plus everything the client has
 
 RemoteFactory generates the factory implementations for each side. The client factory knows to serialize and send. The server factory knows to resolve services and execute locally. Your domain code doesn't change — the same `[Fetch]` method works regardless of which side invokes it.
 
@@ -36,12 +36,17 @@ This is the most important thing to understand: `[Remote]` is not "this method r
 
 ## When to Use [Remote]
 
-Use `[Remote]` for methods the **client calls directly**:
-- Aggregate root Create/Fetch operations
-- Top-level Save (Insert/Update/Delete) operations
-- Execute operations that need the server — `[Execute]` obeys `[Remote]`; a bare `[Execute]` runs on whichever tier resolves it, with that tier's services
+Use `[Remote]` when a call the client makes **has to cross to the server** because the method needs something only the server has: a data store, a server-only service, a secret.
+- A root's Fetch, and the writes `Save` routes to (Insert/Update/Delete)
+- An `[Execute]` that needs server services — `[Execute]` obeys `[Remote]`; a bare `[Execute]` runs on whichever tier resolves it, with that tier's services
 
-**Rule of thumb**: If your client code (Blazor component, MAUI page, etc.) calls the factory method directly, add `[Remote]`. If the method is only called from server-side code after already crossing the boundary, skip it.
+**Rule of thumb**: ask whether the call needs to cross, not whether the client calls it. The client calls plenty of factory methods that must not cross:
+- A root's `[Create]`, which is the equivalent of `new` and is local unless creation needs the server (tenant defaults, a sequence)
+- A child's `[Create]`, which is `public` and local: the client builds a line, then adds it to its order
+- A `Can*` authorization check whose auth method needs no server service
+- A bare `[Execute]` that runs on the client with client services
+
+If a method is only called from server-side code after already crossing the boundary, it needs no `[Remote]` either.
 
 ## When [Remote] is NOT Needed
 
@@ -49,18 +54,19 @@ Most methods don't need `[Remote]` — and this is the common case:
 - Methods called from server-side code (after already crossing the boundary)
 - Child entity operations within an aggregate
 - Any method where the caller is already on the server
+- Local operations the client calls directly (above)
 
 A parent aggregate's `[Remote, Fetch]` method crosses to the server. From there, it can call child entity factories, collection factories, validation methods — none of which need `[Remote]` because execution is already server-side.
 
 ## What Happens If You Get It Wrong
 
-Non-`[Remote]` methods still compile for client assemblies, but calling one from the client fails at runtime — the server-only services it needs aren't registered in the client's DI container. You'll get a standard DI resolution exception:
+A method without `[Remote]` runs on the tier that calls it. If the client calls one that needs the server, what happens depends on the method's visibility and on how the client was built:
 
-```
-System.InvalidOperationException: No service for type 'IEmployeeRepository' has been registered.
-```
+- **A `public` method** runs on the client. If it takes a `[Service]` the client's container does not register, the call fails with the standard DI resolution error, for example `InvalidOperationException: No service for type 'IOrderDbContext' has been registered.`
+- **An `internal` method** is generated with a server-only guard. In a client published with the `Neatoo.RemoteFactory.IsServerRuntime` switch set to `false` (the [IL Trimming](trimming.md) setup), the guard throws `InvalidOperationException` and the trimmer removes the body. With the default (`true`), the guard passes, and the method fails only the way a `public` one does, on a missing server service.
+- **From another assembly**, such as your client project, an `internal` factory member cannot be called at all: it is a compile-time error.
 
-This is runtime enforcement, not compile-time. The code compiles, but the client container doesn't have the services to execute the method.
+All of these are discovered when the method is called, or when the client is published — the domain assembly compiles either way.
 
 ## Method Visibility and the Client/Server Boundary
 
@@ -77,47 +83,79 @@ Method visibility (`public` vs `internal`) and the `[Remote]` attribute together
 
 `[Remote]` requires `internal` on instance methods — `[Remote] public` is a compile-time error (NF0105). The `[Remote] internal` combination means the method body is trimmable on the client, but the generated factory interface exposes it as `public` so clients can call it through the factory. Static methods are exempt from NF0105: a static-factory `[Execute]` is `private static` behind a generated public wrapper and a class-level one is `public static` by convention, so `[Remote]` alone decides placement there — and `[Execute]` obeys it like every other operation.
 
-Use `internal` on child entity factory methods. The generator produces an `internal` factory interface when all methods on a class are `internal` (and none have `[Remote]`). An `internal` factory interface is not injectable from the client's DI container — the client cannot even see it. This prevents accidental client-side calls to server-only operations and enables IL trimming of those method bodies.
+A child entity's operations are `internal` except its `[Create]`, which is `public` and local so the client can build a child and add it to its root. Because Create is public, the child's factory interface is `public`; its other members carry the `internal` modifier, so a client assembly cannot call them, and their bodies are trimmable:
 
-```csharp
-// Aggregate root: public interface, client-visible factory
-public interface IOrder : IFactorySaveMeta { ... }
-
-[Factory]
-internal partial class Order : IOrder
+<!-- snippet: orderline-child -->
+<a id='snippet-orderline-child'></a>
+```cs
+/// <summary>
+/// Creates a new OrderLine. Public and local: the client calls it.
+/// </summary>
+[Create]
+public void Create(string productName, decimal unitPrice, int quantity)
 {
-    [Remote, Create] internal void Create(...) { }    // Client calls via factory (promoted to public on IOrderFactory)
-    [Remote, Fetch]  internal Task<bool> Fetch(...) { }  // Client calls via factory (promoted to public on IOrderFactory)
+    Id = Guid.NewGuid();
+    ProductName = productName;
+    UnitPrice = new Money(unitPrice);
+    Quantity = quantity;
+    IsNew = true;
 }
 
-// Child entity: internal interface, invisible to client
-public interface IOrderLine { ... }
-
-[Factory]
-internal partial class OrderLine : IOrderLine
+/// <summary>
+/// Loads a line from the row its order's load hands it, as a child.
+/// </summary>
+[Fetch]
+internal void Fetch(OrderLineRow row)
 {
-    [Create] internal void Create(...) { }   // Only callable on server
-    [Fetch]  internal void Fetch(...) { }    // Only callable on server
+    LoadFrom(row);
 }
-// Generated: internal interface IOrderLineFactory — client can't inject it
+
+/// <summary>
+/// Maps a new line into the row the list made for it.
+/// </summary>
+[Insert]
+internal void Insert(OrderLineRow row)
+{
+    row.Id = Id;
+    MapTo(row);
+    IsNew = false;
+}
+
+/// <summary>
+/// Maps an existing line into the row the list found for it.
+/// </summary>
+[Update]
+internal void Update(OrderLineRow row)
+{
+    MapTo(row);
+}
 ```
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L128-L170' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-For entities with mixed visibility (aggregate root in one context, child in another), the generator creates a `public` interface containing all methods. `[Remote] internal` methods are promoted to `public` on the interface. Plain `internal` methods appear with the `internal` access modifier:
+The generated `IOrderLineFactory` therefore exposes `Create` to the client and carries the row `Fetch` and `Save` as `internal` members that the order's server-side cascade calls.
 
-```csharp
-[Factory]
-internal partial class Product : IProduct
+An entity can also be a root in one context and a child in another. `OrderLine` is a child of `Order`, and a line-detail screen loads one line on its own. The factory-method signature is the difference: the child `Fetch` takes the row its parent's load hands it and stays `internal`; the root `Fetch` takes a key, is a client entry point, and is `[Remote]` (promoted to `public` on the interface):
+
+<!-- snippet: orderline-duality -->
+<a id='snippet-orderline-duality'></a>
+```cs
+/// <summary>
+/// Loads one line by its id, as a root; false when no order holds it.
+/// </summary>
+[Remote, Fetch]
+internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
 {
-    [Remote, Fetch] internal Task<bool> Fetch(int id, ...) { }     // Promoted to public on interface
-    [Fetch]         internal void FetchAsChild(int id, ...) { }    // Internal on interface
+    var row = await db.FindLineAsync(id);
+    if (row == null)
+        return false;
+
+    LoadFrom(row);
+    return true;
 }
-// Generated:
-// public interface IProductFactory
-// {
-//     Task<IProduct?> Fetch(...);                  // public — promoted by [Remote]
-//     internal IProduct FetchAsChild(...);          // internal modifier — same-assembly only
-// }
 ```
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L187-L201' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-duality' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 ## Best Practice: Exclude Server Packages from Client Projects
 
@@ -137,7 +175,7 @@ For Blazor WASM apps where the domain assembly is shared, [IL Trimming](trimming
 
 ## Next Steps
 
-- [Factory Operations](factory-operations.md) — How each persistence operation works
+- [Factory Operations](factory-operations.md) — How each factory operation works
 - [Service Injection](service-injection.md) — Constructor vs method injection across the boundary
 - [Factory Modes](factory-modes.md) — Remote, Logical, and Server registration modes
 - [IL Trimming](trimming.md) — Remove server-only code from Blazor WASM published output

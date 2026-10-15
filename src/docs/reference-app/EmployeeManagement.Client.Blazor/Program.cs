@@ -8,7 +8,6 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-#region getting-started-client-program
 // Register RemoteFactory for client mode with domain assembly
 builder.Services.AddNeatooRemoteFactory(
     NeatooFactory.Remote,
@@ -24,6 +23,5 @@ builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
 // Enables factory Can* methods and Create to run locally without a server round-trip.
 // If omitted, these methods will fall back to remote calls.
 builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
-#endregion
 
 await builder.Build().RunAsync();

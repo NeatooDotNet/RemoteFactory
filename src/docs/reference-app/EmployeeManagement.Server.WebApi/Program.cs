@@ -5,7 +5,6 @@ using Neatoo.RemoteFactory.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-#region getting-started-server-program
 // Register RemoteFactory services and domain assembly
 builder.Services.AddNeatooAspNetCore(
     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
@@ -28,6 +27,5 @@ app.UseNeatoo();
 
 // Fallback: serve index.html for unmatched routes (SPA routing)
 app.MapFallbackToFile("index.html");
-#endregion
 
 await app.RunAsync();
