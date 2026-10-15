@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes (new Design shapes: a `[Create]` constructor, an `[Insert, Update]` upsert and two commands that act through a root; the most-embedded page after README)
 **Code-review opt-in:** Yes (the page is rewritten against generator behaviour)
 **Branch:** EXSET-007-factory-operations
-**PR:** —
+**PR:** #136
 
 ---
 
