@@ -143,29 +143,29 @@ Does NOT touch:
 
 ## Acceptance
 
-- [ ] Over HTTP against Design.Server's real `Program`, started in Development:
+- [x] Over HTTP against Design.Server's real `Program`, started in Development:
   - a Remote client saves and fetches an Order;
   - a server exception reaches the client as `HttpRequestException` whose `StatusCode` is 500;
   - the server announces its format, Ordinal by default.
 
   `[integration]` · Must
-- [ ] Over HTTP, on a class factory with `[AuthorizeFactory]`, a denied read returns null and a denied Save throws `NotAuthorizedException` `[integration]` · Must
-- [ ] Over HTTP:
+- [x] Over HTTP, on a class factory with `[AuthorizeFactory]`, a denied read returns null and a denied Save throws `NotAuthorizedException` `[integration]` · Must
+- [x] Over HTTP:
   - a caller's `X-Correlation-Id` reaches a server operation's `ICorrelationContext` and returns on the response;
   - a cancelled call cancels the operation's token.
 
   `[integration]` · Must
-- [ ] The client's HTTP call throws `HttpRequestException` carrying the response's status code for any non-success answer `[unit]` · Must
-- [ ] The logging region enables the categories the page names, which an HTTP call is shown to log `[integration]` · Should
-- [ ] The testing region saves and fetches from the `client` scope of the three-container helper `[integration]` · Must
-- [ ] On the page:
+- [x] The client's HTTP call throws `HttpRequestException` carrying the response's status code for any non-success answer `[unit]` · Must
+- [x] The logging region enables the categories the page names, which an HTTP call is shown to log `[integration]` · Should
+- [x] The testing region saves and fetches from the `client` scope of the three-container helper `[integration]` · Must
+- [x] On the page:
   - every C# block is an embed from `src/Design` or WRONG, except `aspnetcore-middleware-order` (EXSET-009);
   - no region is defined twice;
   - none of the findings' text this plan lists remains;
   - the replaced reference-app sources are gone, and the reference app builds.
 
   `[explicit-skip: grep of fences, markers, #region names and finding text; EmployeeManagement.sln build]` · Must
-- [ ] mdsnippets' log has no missing-snippet warning and no section was swallowed; both solutions green `[explicit-skip: meta-bullet]` · Must
+- [x] mdsnippets' log has no missing-snippet warning and no section was swallowed; both solutions green `[explicit-skip: meta-bullet]` · Must
 
 ---
 
@@ -217,6 +217,17 @@ Recon, 2026-10-15. Library behaviour is cited from source; the plan review spot-
 ---
 
 ## Test Evidence
+
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. Over HTTP in Development: save/fetch, 500 `StatusCode`, format header | `AspNetCoreHttpTests`: `Order_SavesAndFetches_OverHttp`, `ServerException_ReachesClient_AsHttpRequestException_With500`, `Server_AnnouncesItsFormat_OrdinalByDefault`. Development startup validation runs in `DesignHttpHost` before any of them | integration |
+| 2. Denied read null, denied Save `NotAuthorizedException` | `ClientErrorHandlingTests`: `DeniedRead_ReturnsNull`, `DeniedSave_ThrowsNotAuthorized_AndTheScreenKeepsItsOrder`, `AllowedSave_ReplacesTheScreensOrder` (the region's success path) | integration |
+| 3. Correlation ID and cancellation | `AspNetCoreHttpTests`: `CorrelationId_FromClient_ReachesServerOperation_AndReturnsOnResponse`, `CancelledCall_CancelsTheServerOperationsToken` | integration |
+| 4. `HttpRequestException.StatusCode` | `MakeRemoteDelegateRequestHttpCallTests`: `NonSuccessStatus_ThrowsHttpRequestException_CarryingTheStatusCode` (500, 403, 404), `Call_PostsToTheEndpoint_WithTheCorrelationIdHeader` | unit |
+| 5. Logging categories | `AspNetCoreHttpTests.ServerLogging_WritesTheConfiguredCategories` | integration |
+| 6. Testing region | `ClientServerTestingTests.Order_SavesAndFetches_FromTheClientScope` | integration |
+| 7. Page: embeds, duplicates, finding text, deletions | explicit-skip: fences on `aspnetcore-integration.md` are all embeds, and only `aspnetcore-middleware-order` comes from the reference app; no `aspnetcore-*` region is defined twice, and no page embeds a retired one; the finding-text grep is clean (the remaining hits are the 009 path, an accurate events sentence, and setup's `skill-blazor-usage` for 010); `EmployeeManagement.sln` builds | explicit-skip |
+| 8. mdsnippets, both solutions | explicit-skip: the mdsnippets log has no missing snippet; the diff touches README and getting started only in attribution lines; `reviews/006-build.log`, `006-test.log`, `006-design-build.log`, `006-design-test.log` (unit 839, integration 644 + 5 known skips, Design 151, both TFMs; the 2 known OrderEntry WASM warnings) | explicit-skip |
 
 ---
 

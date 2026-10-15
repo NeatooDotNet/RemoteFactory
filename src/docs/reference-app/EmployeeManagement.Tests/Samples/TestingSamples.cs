@@ -357,7 +357,7 @@ public class MatchingNameTests
     #endregion
 }
 
-// aspnetcore-testing snippet moved to AspNetCore/TwoContainerTestingSamples.cs
+// aspnetcore-testing snippet moved to src/Design (EXSET-006)
 
 // Serialization tests - snippets consolidated in Server.WebApi/Samples/Serialization
 public class SerializationConfigSample
