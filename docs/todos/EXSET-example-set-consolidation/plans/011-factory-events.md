@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** No. Design already holds every event shape the page teaches (`FactoryEventHandlerPattern.cs`, `FactoryEventPhasesPattern.cs`, `FactoryEventRelayPattern.cs`), with their tests. This plan adds regions and one `CancellationToken`.
 **Code-review opt-in:** Yes. The page is restated against the event runtime, and C-06 changes every raising example.
@@ -86,10 +86,10 @@ The page shows events raised where the rulings put them, in a write or a command
 
 ## Acceptance
 
-- [ ] Every C# block on `factory-events.md` is a Design embed or WRONG `[explicit-skip: grep]` · Must
-- [ ] The page's statements match the event runtime and generator `[explicit-skip: source cited; probe compile for the WRONG blocks]` · Must
-- [ ] The embedded regions are pinned by Design tests, including the `CancellationToken` CheckoutOrder now passes `[integration]` · Must
-- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+- [x] Every C# block on `factory-events.md` is a Design embed or WRONG `[explicit-skip: grep]` · Must
+- [x] The page's statements match the event runtime and generator `[explicit-skip: source cited; probe compile for the WRONG blocks]` · Must
+- [x] The embedded regions are pinned by Design tests, including the `CancellationToken` CheckoutOrder now passes `[integration]` · Must
+- [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -121,6 +121,22 @@ The page shows events raised where the rulings put them, in a write or a command
 ---
 
 ## Gate Record
+
+- **Test review** ([011-test-review.md](../reviews/011-test-review.md)):
+  - **Round 1: CONCERNS.** One veto-tier finding: no Design test pinned the token CheckoutOrder's Insert passes to `Raise`. It was punched with `CheckoutLedgerHandler` over a server-only `ICheckoutLedger`, and with `Save_PassesTheCallersToken_ToTheServerHandler`, which fails under a `CancellationToken.None` mutation.
+  - **Tech-debt:** the Update's token was punched, and the ServerOnly Update's server handler is now asserted. The `OrderNotifyHandlers` token was dismissed, because `INotificationService` takes none.
+  - **Round 2: APPROVED,** with no findings.
+- **Code review** ([011-code-review.md](../reviews/011-code-review.md)): APPROVED, with 4 callouts, all amended:
+  - `ServerOnly` keeps only the raised event out of the batch;
+  - `Relay` runs once per successful round trip;
+  - a handler shares scoped and singleton services, not transient ones;
+  - C-19's outcome.
+
+  Two theoretical items were taken: the shared-scope cause, and the Create wording.
+- **After the punches:**
+  - Design builds and tests 175 + 1 known-bug skip on both TFMs. The main solution is unchanged since round 1 (unit 852, integration 657 + 7 known skips).
+  - mdsnippets is clean. `aspnetcore-integration.md` and `service-injection.md` gain only the ledger's registration line in the shared `aspnetcore-service-registration` embed.
+- **Open, by design:** the skill's `factory-events.md` prose (Todo 2).
 
 ---
 
