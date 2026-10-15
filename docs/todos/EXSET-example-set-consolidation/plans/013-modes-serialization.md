@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No. The scope came out of EXSET-006's reviewed plan (its callouts 7–9 are carried below), and it adds no new Design shape beyond a Logical registration and three pins.
 **Code-review opt-in:** Yes (two pages rewritten against library behaviour; a known-bug regression test)
 **Branch:** EXSET-013-modes-serialization
-**PR:** —
+**PR:** #134
 
 Split from EXSET-006 (Keith, 2026-10-15). It follows 006: its logging and registration embeds reuse 006's regions. Design keeps the default format, because 006 simplified to the happy path.
 
