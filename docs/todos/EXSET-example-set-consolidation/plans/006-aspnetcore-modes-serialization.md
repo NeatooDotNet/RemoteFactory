@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes (a new test tier over HTTP, a second Design domain assembly, and Design.Server configuration that later plans build on). Reviewed 2026-10-15, APPROVED; re-split, with serialization and modes moved to EXSET-013 ([review](../reviews/006-plan-review.md))
 **Code-review opt-in:** Yes (a page rewritten against library behaviour; new Design server and client configuration)
 **Branch:** EXSET-006-aspnetcore-modes-serialization
-**PR:** —
+**PR:** #132
 
 ---
 
