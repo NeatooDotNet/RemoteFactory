@@ -15,90 +15,47 @@
 
 ## Server Setup (ASP.NET Core)
 
-<!-- snippet: aspnetcore-basic-setup -->
-<a id='snippet-aspnetcore-basic-setup'></a>
+<!-- snippet: getting-started-server-program -->
+<a id='snippet-getting-started-server-program'></a>
 ```cs
-public static class BasicSetup
-{
-    public static void Configure(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-        // Register RemoteFactory services with the domain assembly
-        builder.Services.AddNeatooAspNetCore(typeof(Employee).Assembly);
+// RemoteFactory plus the server-only services [Service] parameters resolve (ServerServices.cs)
+builder.Services.AddDesignServer();
 
-        var app = builder.Build();
+var app = builder.Build();
 
-        // Map the /api/neatoo endpoint for remote delegate requests
-        app.UseNeatoo();
+// Serve the hosted Blazor WASM client
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
 
-        app.Run();
-    }
-}
+// The RemoteFactory endpoint: one route for every factory call, no controllers
+app.UseNeatoo();
+
+app.MapFallbackToFile("index.html");
+
+await app.RunAsync();
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L8-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L59-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+`AddDesignServer()` is the example's own composition method. Its RemoteFactory registration is:
+
+<!-- snippet: readme-server-setup -->
+<a id='snippet-readme-server-setup'></a>
+```cs
+services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+```
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Multiple Assemblies
 
-If `[Factory]` types are in multiple assemblies:
-
-<!-- snippet: aspnetcore-multi-assembly -->
-<a id='snippet-aspnetcore-multi-assembly'></a>
-```cs
-public static class MultiAssemblySample
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        // Register factories from multiple domain assemblies
-        services.AddNeatooAspNetCore(
-            typeof(Employee).Assembly
-            // , typeof(OtherDomain.Entity).Assembly
-        );
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/ServiceRegistrationSamples.cs#L22-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+Pass every assembly that declares `[Factory]` types to the **one** `AddNeatooAspNetCore` call: `AddNeatooAspNetCore(typeof(IOrder).Assembly, typeof(IInvoice).Assembly)`. A second call replaces the first call's assembly list instead of adding to it. The client's `AddNeatooRemoteFactory` takes the same list.
 
 ### CORS Configuration (Non-Hosted Deployments Only)
 
-CORS is only needed when the client and server are on different origins (e.g., standalone Blazor WASM hosted separately from the API). In hosted WASM mode, CORS is unnecessary because both share the same origin.
-
-<!-- snippet: aspnetcore-cors -->
-<a id='snippet-aspnetcore-cors'></a>
-```cs
-public static class CorsConfigurationSample
-{
-    public static void Configure(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
-
-        // Only needed for non-hosted deployments where client and server
-        // are on different origins (e.g., separate Blazor WASM standalone app)
-        builder.Services.AddCors(options =>
-        {
-            options.AddDefaultPolicy(policy =>
-            {
-                policy.WithOrigins("https://client.example.com")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod();
-            });
-        });
-
-        builder.Services.AddNeatooAspNetCore(typeof(Employee).Assembly);
-
-        var app = builder.Build();
-
-        app.UseCors();    // CORS must be before UseNeatoo
-        app.UseNeatoo();
-
-        app.Run();
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L9-L38' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+CORS is only needed when the client and server are on different origins (e.g., standalone Blazor WASM hosted separately from the API). In hosted WASM mode, CORS is unnecessary because both share the same origin. When it is needed, add a policy that allows the client's origin with `POST` and the `Content-Type` and `X-Correlation-Id` headers, and call `app.UseCors()` before `app.UseNeatoo()`.
 
 ---
 
@@ -115,7 +72,7 @@ builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L63-L71' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L64-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Factory Modes

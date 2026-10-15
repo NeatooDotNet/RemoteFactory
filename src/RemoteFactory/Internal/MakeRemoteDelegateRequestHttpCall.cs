@@ -34,7 +34,7 @@ public static class MakeRemoteDelegateRequestHttpCallImplementation
 			{
 				var issue = await response.Content.ReadAsStringAsync(cancellationToken);
 				logger?.RemoteCallFailed(correlationId, delegateTypeName, (int)response.StatusCode, null);
-				throw new HttpRequestException($"Failed to call remotefactory. Status code: {response.StatusCode} {issue}");
+				throw new HttpRequestException($"Failed to call remotefactory. Status code: {response.StatusCode} {issue}", null, response.StatusCode);
 			}
 
 			var result = await response.Content.ReadFromJsonAsync(NeatooTransportJsonContext.Default.RemoteResponseDto, cancellationToken) ?? throw new HttpRequestException($"Successful Code but empty response.");

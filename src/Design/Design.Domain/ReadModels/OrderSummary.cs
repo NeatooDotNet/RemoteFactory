@@ -76,11 +76,22 @@ internal partial class OrderSummary : IOrderSummary
     /// A read model may read the store directly: it writes nothing, so no
     /// aggregate's rules are bypassed. It reads the same IOrderDbContext the
     /// Order aggregate writes.
+    ///
+    /// The CancellationToken is not serialized and not a [Service]. Over HTTP it is
+    /// the request's: it fires when the client cancels or disconnects (a screen
+    /// navigating away while the summary loads), or when the server shuts down.
+    /// Passing it to the store is what lets the store stop work nobody will read.
+    /// GENERATOR BEHAVIOR: the factory's Fetch takes an optional CancellationToken
+    /// either way; declaring one here is what hands it to this method.
     /// </remarks>
+    #region aspnetcore-cancellation
     [Remote, Fetch]
-    internal async Task<bool> Fetch(int orderId, [Service] IOrderDbContext db)
+    internal async Task<bool> Fetch(
+        int orderId,
+        [Service] IOrderDbContext db,
+        CancellationToken cancellationToken)
     {
-        var row = await db.FindAsync(orderId);
+        var row = await db.FindAsync(orderId, cancellationToken);
         if (row == null)
             return false;
 
@@ -93,4 +104,5 @@ internal partial class OrderSummary : IOrderSummary
         Total = Lines.Sum(l => l.LineTotal);
         return true;
     }
+    #endregion
 }

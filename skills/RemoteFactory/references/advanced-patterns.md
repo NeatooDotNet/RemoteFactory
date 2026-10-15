@@ -148,34 +148,20 @@ Track operations across the client/server boundary for distributed tracing:
 <!-- snippet: aspnetcore-correlation-id -->
 <a id='snippet-aspnetcore-correlation-id'></a>
 ```cs
-[Factory]
-public partial class EmployeeWithCorrelation
+[Remote, Execute]
+private static async Task<string> _ReportProblem(
+    int orderId,
+    string description,
+    [Service] ICorrelationContext correlation,
+    [Service] ISupportLog supportLog)
 {
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
-
-    [Create]
-    public EmployeeWithCorrelation() => Id = Guid.NewGuid();
-
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(
-        Guid id,
-        [Service] ICorrelationContext correlationContext,
-        [Service] IEmployeeRepository repository,
-        CancellationToken ct)
-    {
-        // CorrelationId auto-populated from X-Correlation-Id header
-        var correlationId = correlationContext.CorrelationId;
-
-        var entity = await repository.GetByIdAsync(id, ct);
-        if (entity == null) return false;
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        return true;
-    }
+    // The same ID tags the server's log lines for this call
+    var reference = correlation.CorrelationId ?? "unknown";
+    await supportLog.RecordAsync(new SupportEntry(reference, orderId, description));
+    return reference;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/AspNetCore/CorrelationIdSamples.cs#L7-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/SupportRequests.cs#L39-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `ICorrelationContext` is automatically registered by `AddNeatooRemoteFactory` and `AddNeatooAspNetCore`. No manual DI registration is required.

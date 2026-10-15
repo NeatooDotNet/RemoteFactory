@@ -18,12 +18,13 @@
 // DESIGN DECISION: AddNeatooRemoteFactory registers client-side proxies
 //
 // Parameters:
-// - NeatooFactory.Remote: Tells the client to serialize calls to server
-// - typeof(IOrder).Assembly: Scans for [Factory] types to create proxies
+// - NeatooFactory.Remote: [Remote] operations are serialized and sent to the
+//   server; everything else runs here, on the client
+// - typeof(IOrder).Assembly: the assembly whose generated factories to register
 //
 // What this does:
-// - Registers generated delegate types that serialize to server
-// - Sets NeatooFactory.Mode = Remote
+// - Registers the generated factories, with each [Remote] operation wired to
+//   the HTTP call
 // - Does NOT register server-only services (they're not needed on client)
 //
 // COMMON MISTAKE: Using NeatooFactory.Logical on client
