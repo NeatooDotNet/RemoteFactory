@@ -36,7 +36,7 @@ A `[Service]` parameter is never serialized, and never appears on the generated 
 
 ## Where a Service Is Resolved
 
-A `[Service]` parameter is resolved from the container of the tier that runs the method. `[Remote]` sends the call to the server, so its services come from the server's container. A method without `[Remote]` runs on the tier that calls it, and its services come from that tier's container, the client's included. See [Factory Operations](factory-operations.md#method-parameters).
+A `[Service]` parameter is resolved from the container of the tier that runs the method. `[Remote]` sends the call to the server, so its services come from the server's container. A method without `[Remote]` runs on the tier that calls it, and its services come from that tier's container, the client's included. The exception is authorization: an operation with an `[AspAuthorize]` check, or a matching `[Remote]` authorization method, goes to the server as if it carried `[Remote]` ([Authorization](authorization.md#placement-on-execute)). See [Factory Operations](factory-operations.md#method-parameters).
 
 | Injection | Resolved | Typical use |
 |-----------|----------|-------------|
@@ -128,7 +128,7 @@ private static async Task<string> _ReportProblem(
 <sup><a href='/src/Design/Design.Domain/Services/SupportRequests.cs#L39-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-The generated `ReportProblem` delegate takes `(int orderId, string description)`. Value parameters come first, then the `[Service]` parameters, then the `CancellationToken`, as [Factory Operations — Method Parameters](factory-operations.md#method-parameters) explains.
+The generated `ReportProblem` delegate takes `(int orderId, string description, CancellationToken cancellationToken = default)`. Value parameters come first, then the `[Service]` parameters, then the `CancellationToken`, as [Factory Operations — Method Parameters](factory-operations.md#method-parameters) explains.
 
 ## Service Lifetimes
 
@@ -158,7 +158,7 @@ Each remote call is one HTTP request, and its services come from that request's 
 
 `RegisterMatchingName`, the last line above, scans the assemblies it is given and registers each interface `IFoo` with the class `Foo` in the same namespace. It registers both the interface and the class as **Transient**, with `TryAdd`, so a registration made before it stands. Register stateful services explicitly first, as Design does.
 
-The convention registers whatever matches in the container it runs in. Design names its server-only implementations off the convention (`InMemoryTaxTable` for `ITaxTable`), so a client that runs it cannot pick them up.
+The convention registers whatever matches, in whichever container calls it: a client that calls it registers the same matching services the server does. To keep an implementation server-only, name it off the convention and register it explicitly on the server, as Design does with `InMemoryTaxTable` for `ITaxTable` and `InMemorySupportLog` for `ISupportLog`.
 
 ## Specialized Services
 
@@ -196,7 +196,7 @@ Check that:
 
 ## Testing with Service Injection
 
-`DesignClientServerContainers.Scopes` takes a configuration for each container, so a test can replace a service on one tier:
+`DesignClientServerContainers.Scopes` takes an optional configuration for the server container and one for the client container, so a test can replace a service on one tier:
 
 <!-- snippet: service-injection-testing -->
 <a id='snippet-service-injection-testing'></a>

@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** No. Most embeds re-point to regions 002–009 built and reviewed. The new regions sit on Design code that tests already pin, and no Design shape is new.
 **Code-review opt-in:** Yes. Both pages are restated against the library, and four of the audit's findings are behavioural (U-07, U-08, T-06, T-24).
@@ -87,10 +87,10 @@ Both pages state where a `[Service]` is resolved: in the container of the tier t
 
 ## Acceptance
 
-- [ ] Every C# block on both pages is a Design embed or WRONG. No region is defined twice, and none retired is embedded. The reference app builds. `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
-- [ ] The pages' resolution, side-effect and interface-factory statements match the library `[explicit-skip: source cited; probe compile for the implementation-class claim]` · Must
-- [ ] The embedded regions are pinned by existing Design tests `[explicit-skip: each region's test named in Test Evidence]` · Must
-- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+- [x] Every C# block on both pages is a Design embed or WRONG. No region is defined twice, and none retired is embedded. The reference app builds. `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
+- [x] The pages' resolution, side-effect and interface-factory statements match the library `[explicit-skip: source cited; probe compile for the implementation-class claim]` · Must
+- [x] The embedded regions are pinned by existing Design tests `[explicit-skip: each region's test named in Test Evidence]` · Must
+- [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -128,6 +128,19 @@ Both pages state where a `[Service]` is resolved: in the container of the tier t
 ---
 
 ## Gate Record
+
+- **Test review** ([010-test-review.md](../reviews/010-test-review.md)): APPROVED, with no callouts and 2 tech-debt items, both dismissed. NF0106's description gives the error's reason; the reference app's leftover region goes with EXSET-012. Its one unverifiable item, the probe compile, is now kept as `reviews/010-probe-implementation-factory.log` (CS0101 and CS0111).
+- **Code review** ([010-code-review.md](../reviews/010-code-review.md)): APPROVED, with 6 callouts, all amended:
+  - `RegisterMatchingName` registers in whichever container calls it;
+  - the `[AspAuthorize]` and `[Remote]` auth-method exception to "without `[Remote]`, local";
+  - the delegate signature includes its `CancellationToken`;
+  - `Scopes` configures the server and the client containers only;
+  - T-02's outcome;
+  - 015 added to eight rows' Owners.
+- **After the punches:** only page prose and the ledger changed, so the builds and tests above stand: three solutions with 0 errors; unit 852, integration 657 + 7 known skips, Design 173 + 1 known-bug skip, both TFMs. mdsnippets reran clean.
+- **Open, by design:**
+  - the skill's prose around the re-pointed embeds (Todo 2);
+  - the skill-only embeds (EXSET-015).
 
 ---
 
