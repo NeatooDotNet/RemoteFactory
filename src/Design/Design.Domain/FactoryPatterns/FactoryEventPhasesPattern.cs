@@ -157,6 +157,7 @@ public record InvoiceFinalizedEvent(Guid InvoiceId, decimal Total) : FactoryEven
 /// the caller's transaction, seeing staged state. A throw here aborts
 /// <c>Finalize</c> itself — this handler is atomic with the save.
 /// </summary>
+#region events-phase-handlers
 [FactoryEventHandler<InvoiceFinalizedEvent>]
 public static partial class InvoiceBalanceGuard
 {
@@ -204,6 +205,7 @@ public static partial class InvoiceSearchIndexRefresh
         return Task.CompletedTask;
     }
 }
+#endregion
 
 /// <summary>
 /// The consumer drain pattern. <c>[Service] IFactoryEventPhaseCoordinator</c> is
@@ -229,6 +231,7 @@ public static partial class InvoiceSearchIndexRefresh
 /// It stages writes, flushes and commits: work, not `new`. A static [Execute]
 /// command is the operation for it, and its result is a plain record.
 /// </remarks>
+#region events-phase-drain
 [Factory]
 public static partial class InvoiceFinalizer
 {
@@ -259,6 +262,7 @@ public static partial class InvoiceFinalizer
         return new FinalizedInvoice(id, total);
     }
 }
+#endregion
 
 /// <summary>What <see cref="InvoiceFinalizer"/> returns to its caller.</summary>
 public record FinalizedInvoice(Guid Id, decimal Total);
@@ -521,6 +525,7 @@ public static partial class PaymentIntake
 public record StatementChangedEvent(Guid AccountId) : FactoryEventBase;
 
 /// <summary>Opted in: three identical raises below become one recompute.</summary>
+#region events-coalesce
 [FactoryEventHandler<StatementChangedEvent>(DispatchPhase.AfterCommit, Coalesce = true)]
 public static partial class StatementProjection
 {
@@ -532,6 +537,7 @@ public static partial class StatementProjection
         return Task.CompletedTask;
     }
 }
+#endregion
 
 /// <summary>The control: no flag, so the same shape runs once per raise.</summary>
 public record TallyRecalculatedEvent(Guid AccountId) : FactoryEventBase;

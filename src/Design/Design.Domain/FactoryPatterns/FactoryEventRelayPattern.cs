@@ -68,7 +68,9 @@ namespace Design.Domain.FactoryPatterns;
 ///
 /// The rule: Events are records that inherit FactoryEventBase. Nothing else required.
 /// </remarks>
+#region events-event
 public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
+#endregion
 
 // -----------------------------------------------------------------------------
 // SERVER-SIDE RAISER — a factory method raises the event during its execution
@@ -142,8 +144,9 @@ internal partial class CheckoutOrder : ICheckoutOrder
     /// <summary>
     /// Stores the checkout and announces it to server handlers and the client.
     /// </summary>
+    #region events-raise
     [Remote, Insert]
-    internal async Task Insert([Service] IFactoryEvents factoryEvents)
+    internal async Task Insert([Service] IFactoryEvents factoryEvents, CancellationToken cancellationToken)
     {
         // A real Insert writes the row here, then raises.
 
@@ -157,11 +160,14 @@ internal partial class CheckoutOrder : ICheckoutOrder
         //      client, IFactoryEventRelay.Relay(...) is invoked fire-and-forget
         //      strictly AFTER this factory method's return value has been handed
         //      back to the caller and their continuation has resumed.
-        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total));
+        // The save's token is threaded through, so handlers that take a
+        // CancellationToken observe the caller's cancellation.
+        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.None, cancellationToken);
 
         // Stored: the next Save routes to Update.
         IsNew = false;
     }
+    #endregion
 
     /// <summary>
     /// Demonstrates RaiseOptions.ServerOnly — dispatches to server handlers but
@@ -173,12 +179,14 @@ internal partial class CheckoutOrder : ICheckoutOrder
     /// Here a change to a stored checkout is re-announced to the server's handlers
     /// only; the client made the change and already knows.
     /// </remarks>
+    #region events-serveronly
     [Remote, Update]
     internal async Task Update([Service] IFactoryEvents factoryEvents)
     {
         // ServerOnly: server handlers run, client does NOT receive the event
         await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.ServerOnly);
     }
+    #endregion
 }
 
 // -----------------------------------------------------------------------------
@@ -273,6 +281,7 @@ public static partial class ClientRaisedNoticeHandler
 ///
 /// The rule: Implement IFactoryEventRelay, register it, bridge to your aggregator.
 /// </remarks>
+#region events-relay
 public sealed class InMemoryAggregatorRelay : IFactoryEventRelay
 {
     private readonly ConcurrentQueue<FactoryEventBase> _received = new();
@@ -295,3 +304,4 @@ public sealed class InMemoryAggregatorRelay : IFactoryEventRelay
         return Task.CompletedTask;
     }
 }
+#endregion

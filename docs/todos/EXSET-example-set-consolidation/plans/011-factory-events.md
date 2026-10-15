@@ -111,6 +111,13 @@ The page shows events raised where the rulings put them, in a write or a command
 
 ## Test Evidence
 
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. Embeds | explicit-skip: `factory-events.md`'s 10 `snippet source` links are all under `src/Design`. Its only C# fences outside a snippet pair are three WRONG blocks. Text diagrams stay as plain fences | explicit-skip |
+| 2. Statements match the runtime | explicit-skip: the DI table against `AddRemoteFactoryServices.cs:118-194` (`RemoteFactoryEvents` in Remote, `FactoryEventsDispatcher` and the coordinator in Server and Logical, the collector in Server); `RemoteResponseDto` against `RemoteResponse.cs`; the WRONG blocks against `reviews/011-probe-handler-factory.log` (CS0111; NF0501) | explicit-skip |
+| 3. Regions pinned | `events-event`, `events-raise`, `events-relay`, `events-relay-register`: `FactoryEventRelayTests.Relay_EventRaisedInRemoteInsert_DeliveredToConsumer`. `events-serveronly`: `Relay_ServerOnlyFlag_EventNotRelayedToConsumer`. `events-client-raise`: `Relay_ClientRaisedEvent_DeliversOwnEventAndHandlerRaisedEvent`. `events-phase-handlers`, `events-phase-drain`: `FactoryEventPhasesTests.Finalize_Remote_RunsEachPhaseAtItsDrainPoint` and `Finalize_Logical_RunsEachPhaseAtItsDrainPoint`. `events-coalesce`: `StatementClose_CoalescingHandlerRunsOnce_ControlRunsPerRaise`. `attributes-factoryeventhandler`: `FactoryEventHandlerTests`. The Insert's token now flows to `Raise`; the library pins a raise's token reaching handlers (`RemoteFactory.IntegrationTests` `FactoryEventHandlerSharedScopeTests.Raise_CancellationToken_FlowsToHandler`) | integration |
+| 4. Meta | explicit-skip: `reviews/011-mdsnippets.log`. Logs: `011-build.log`, `011-test.log`, `011-design-build.log`, `011-design-test.log` (unit 852; integration 657 + 7 skips; Design 174 + 1 known-bug skip; unchanged; both TFMs) | explicit-skip |
+
 ---
 
 ## Gate Record
@@ -118,6 +125,11 @@ The page shows events raised where the rulings put them, in a write or a command
 ---
 
 ## Plan Amendments
+
+- **2026-10-15 · Implementation:**
+  - **The complete example** is a numbered walk through the page's own regions, closed by the one test that runs the flow end to end. Design has no handler for `OrderCheckoutCompleted`, so step 3 names `OrderNotifyHandlers`.
+  - **Stacked handler attributes are prose:** Design has no class that stacks them, and the attributes reference states the rule.
+  - **The "less good" client raise** is a short block labelled WRONG for an operation's own event, because a client raise is otherwise supported.
 
 ---
 

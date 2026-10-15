@@ -20,8 +20,10 @@ public class FactoryEventRelayTests
         var (server, client, _) = DesignClientServerContainers.Scopes(
             configureClient: services =>
             {
+                #region events-relay-register
                 // Consumer replaces the NoOp default by registering their own relay.
                 services.AddSingleton<IFactoryEventRelay>(aggregator);
+                #endregion
             });
         return (server, client, aggregator);
     }
@@ -126,8 +128,10 @@ public class FactoryEventRelayTests
 
         try
         {
+            #region events-client-raise
             var events = client.ServiceProvider.GetRequiredService<IFactoryEvents>();
             await events.Raise(new ClientRaisedNotice(88));
+            #endregion
 
             await WaitForRelayAsync(() => relay.ReceivedOfType<NoticeAcknowledged>().Any());
 
