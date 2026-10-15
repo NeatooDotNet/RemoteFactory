@@ -536,13 +536,15 @@ Files generated:
 
 ### [assembly: FactoryHintNameLength]
 
-`[assembly: FactoryHintNameLength(100)]`, in any file of the assembly that declares the `[Factory]` types, caps the length of generated file hint names. Use when hitting Windows 260-character path limits with deeply nested namespaces or generic types.
+The generator caps generated file hint names at 50 characters, for the Windows 260-character path limit. A longer fully qualified type name is truncated and raises NF0104, an error, because truncated names can collide. `[assembly: FactoryHintNameLength(100)]`, in any file of the assembly that declares the `[Factory]` types, raises the cap; shortening the namespace or type name is the alternative.
 
 ---
 
 ## Attributes and Inheritance
 
-The generator reads attributes from each declaration. A derived class needs its own `[Factory]` to get a factory, whatever its base carries, and `[SuppressFactory]` affects only the declaration that also carries `[Factory]`. Operation attributes, `[Service]`, `[AuthorizeFactory<T>]` and `[AspAuthorize]` are declared on each method, parameter or class they apply to.
+A derived class needs its own `[Factory]` to get a factory, whatever its base carries; `[Factory]` on an `abstract` or generic class is ignored; and `[SuppressFactory]` affects only a class or record that also carries `[Factory]`. A derived `[Factory]` class's factory takes from its base classes:
+- their operation methods (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`), with their `[Remote]`, `[Service]` and `[AspAuthorize]`, but not their constructors;
+- the nearest base class's `[AuthorizeFactory<T>]`, when the derived class declares none.
 
 ---
 

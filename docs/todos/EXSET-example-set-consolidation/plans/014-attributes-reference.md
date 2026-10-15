@@ -141,6 +141,8 @@ The attributes reference states what each attribute does as the generator applie
 ## Plan Amendments
 
 - **2026-10-15 · Implementation:** the techdebt issue is #141. The skill's `[SuppressFactory]` section and inheritance table claimed inheritance, so they are replaced with the generator's rule along with their embeds. The rest of the skill's prose stays Todo 2's.
+- **2026-10-15 · Implementation:** `attributes-factoryeventhandler` sits on `OrderNotifyHandlers`, an `Immediate` handler, not the phased handler Scope names. It is the shortest complete handler in Design, and the attribute's own shape is the same on every phase. `DispatchPhase` and `Coalesce` are stated in prose and linked to `factory-events.md`, which EXSET-011 re-points.
+- **2026-10-15 · Gate:** the reviews found the recon's inheritance rule incomplete. `[SuppressFactory]` is checked only on class and record declarations, so it has no effect on an interface. A derived `[Factory]` class takes its base classes' operation methods (constructors excepted) and the nearest base's `[AuthorizeFactory<T>]` (`FactoryGenerator.Transform.cs:19-31`, `:58-67`). `[Factory]` on an abstract or generic class is ignored (`FactoryGenerator.cs:21`). The page and skill state all three. The hint-name prose was inverted: the cap is always on, at 50, NF0104 is an error, and the attribute raises it (`FactoryGenerator.cs:217-228`).
 
 ---
 

@@ -7,7 +7,7 @@ Every RemoteFactory attribute: what it marks, and what the generator does with i
 | Attribute | Target | Purpose |
 |-----------|--------|---------|
 | `[Factory]` | Class, Interface | Generate a factory for this type |
-| `[SuppressFactory]` | Class, Interface | Turn generation off for a type marked `[Factory]` |
+| `[SuppressFactory]` | Class, Record | Turn generation off for a class marked `[Factory]` |
 | `[Create]` | Constructor, Method | Build a new object |
 | `[Fetch]` | Method | Load a stored object |
 | `[Insert]` | Method | Write a new object |
@@ -20,7 +20,7 @@ Every RemoteFactory attribute: what it marks, and what the generator does with i
 | `[AuthorizeFactory<T>]` | Class, Interface | Apply an authorization class |
 | `[AuthorizeFactory]` | Method (of the authorization interface) | Map a check to operations |
 | `[AspAuthorize]` | Method | ASP.NET Core policies and roles |
-| `[assembly: FactoryHintNameLength]` | Assembly | Limit generated file names |
+| `[assembly: FactoryHintNameLength]` | Assembly | Raise the generated file-name limit |
 
 ---
 
@@ -55,11 +55,11 @@ public interface ICustomerDirectory
 
 See [Interface Factory](interface-factory.md).
 
-**Only the declaring type.** The generator handles types that carry `[Factory]` on their own declaration. A class derived from a `[Factory]` class gets no factory of its own unless it carries `[Factory]` too. `FactoryAttribute`'s `Inherited = true` does not change that, because the generator reads the declaration, not reflection.
+**Only the declaring type.** The generator handles types that carry `[Factory]` on their own declaration. A class derived from a `[Factory]` class gets no factory of its own unless it carries `[Factory]` too. `FactoryAttribute`'s `Inherited = true` does not change that, because the generator reads the declaration, not reflection. `[Factory]` on an `abstract` or generic class is ignored, with no diagnostic. What a derived `[Factory]` class takes from its base is under [Attributes and Inheritance](#attributes-and-inheritance).
 
 ### [SuppressFactory]
 
-On a type that also carries `[Factory]`, turns generation off for it. The type still compiles, with no factory. It has no effect on a type without `[Factory]`, which gets none anyway, a derived class included.
+On a class or record that also carries `[Factory]`, turns generation off for it. The type still compiles, with no factory. It has no effect on an interface, which keeps its factory, and none on a type without `[Factory]`, which gets none anyway, a derived class included. Write it as `[SuppressFactory]`: the generator matches that spelling, so `[SuppressFactoryAttribute]` and namespace-qualified forms are not recognised.
 
 ## Operation Attributes
 
@@ -210,7 +210,7 @@ private static async Task<SubmitOutcome> _SubmitOrder(
 <sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L58-L75' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Like every operation, `[Execute]` obeys `[Remote]`. Without it the command runs on whichever tier resolves it, with that tier's services:
+Like every operation, `[Execute]` obeys `[Remote]`. Without it the command runs on whichever tier resolves it, with that tier's services, unless its authorization sends it to the server (below):
 
 <!-- snippet: attributes-execute-local -->
 <a id='snippet-attributes-execute-local'></a>
@@ -225,7 +225,7 @@ private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
 <!-- endSnippet -->
 
 **Where it runs:**
-- **A bare `[Execute]`** gets one unguarded local path in every factory mode, and no remote delegate or endpoint. Its `[Service]` parameters come from the container that resolved it, so a bare command that takes a server-only service compiles, then fails on the client at call time with a DI resolution error.
+- **A bare `[Execute]`** gets one unguarded local path in every factory mode, and no remote delegate or endpoint, unless it carries `[AspAuthorize]` or a `[Remote]` authorization method applies to it; either makes it remote, as [Authorization](authorization.md#placement-on-execute) explains. Its `[Service]` parameters come from the container that resolved it, so a bare command that takes a server-only service compiles, then fails on the client at call time with a DI resolution error.
 - **`[Remote, Execute]`** gives the client a remote delegate and the server a guarded local path.
 - **On a class factory, visibility follows the ordinary rule:**
   - `public static` runs where the factory resolves;
@@ -306,7 +306,7 @@ Do not apply `[FactoryEvent]` yourself. On a type that does not derive from `Fac
 
 ### [Remote]
 
-Marks a client-to-server entry point. Without `[Remote]`, a method runs locally, `[Execute]` included. Once a call is on the server, the methods it calls need no `[Remote]`. On a class factory, `[Remote]` requires `internal` (NF0105), and the generator promotes the member to `public` on the factory interface. Static methods are exempt, as [[Execute]](#execute) explains.
+Marks a client-to-server entry point. Without `[Remote]`, a method runs locally, `[Execute]` included, with one exception: an operation with an `[AspAuthorize]` check, or a matching `[Remote]` authorization method, goes to the server as if it carried `[Remote]`, because that is where its check runs. Once a call is on the server, the methods it calls need no `[Remote]`. On a class factory, `[Remote]` requires `internal` (NF0105), and the generator promotes the member to `public` on the factory interface. Static methods are exempt, as [[Execute]](#execute) explains.
 
 `Order`'s Create, above, has no `[Remote]` and runs on the caller's tier. Its Fetch and writes carry `[Remote]` and run on the server. See [Client-Server Architecture](client-server-architecture.md).
 
@@ -426,15 +426,16 @@ internal Task Update()
 
 ### [assembly: FactoryHintNameLength]
 
-`[assembly: FactoryHintNameLength(100)]` caps the length of the generated files' hint names, for builds that reach the Windows 260-character path limit. Put it in any file of the assembly that declares the `[Factory]` types.
+The generator caps the hint names of the files it generates at 50 characters, to stay inside the Windows 260-character path limit. A type whose fully qualified name exceeds the cap gets a truncated name and **NF0104**, an error, because truncated names can collide. `[assembly: FactoryHintNameLength(100)]` raises the cap for the assembly that declares it; put it in any file of that assembly. Shortening the namespace or type name is the alternative.
 
 ## Attributes and Inheritance
 
-The generator reads attributes from each declaration:
+A class gets a factory from its own `[Factory]` only, but a derived `[Factory]` class takes part of its factory from its base classes:
 - **`[Factory]`:** a derived class needs its own. Without it the class has no factory, whatever its base carries.
 - **`[SuppressFactory]`:** affects only the declaration that also carries `[Factory]`.
-- **Operation attributes** (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`) and **`[Service]`:** each method and parameter declares its own.
-- **`[AuthorizeFactory<T>]`, `[AuthorizeFactory]` and `[AspAuthorize]`:** declared on each class or method they apply to.
+- **Operation methods:** the derived class's factory includes its base classes' operation methods (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`), with their `[Remote]`, `[Service]` and `[AspAuthorize]`. Constructors are the exception: only the derived class's own `[Create]` constructors count.
+- **`[AuthorizeFactory<T>]`:** a derived class without its own takes the nearest base class's. A class's own replaces its base's.
+- **`[AuthorizeFactory]`:** declared on the authorization interface's methods, not on the class.
 - **`[FactoryEventHandler<T>]`:** declared on each handler class.
 
 ## Next Steps

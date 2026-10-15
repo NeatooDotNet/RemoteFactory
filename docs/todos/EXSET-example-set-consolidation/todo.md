@@ -109,6 +109,8 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Follow-on
 
+- Todo 2 · `skills/RemoteFactory/references/polymorphic-hierarchy.md` Key Rule 4 says `[Factory]` and `[Remote]` are inherited and `[Create]`/`[Fetch]` are not; the generator does the reverse for a derived `[Factory]` class (EXSET-014, `attributes-reference.md#attributes-and-inheritance`)
+
 ---
 
 ## Docs & Retro

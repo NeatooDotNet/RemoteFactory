@@ -404,4 +404,4 @@ For aggregate roots, use `[Remote] internal` for operations that cross to the se
 
 ## [SuppressFactory]
 
-The generator handles only types that carry `[Factory]` on their own declaration: a class derived from a `[Factory]` class gets no factory unless it carries `[Factory]` too. `[SuppressFactory]` turns generation off for a type that also carries `[Factory]`; on any other type it has no effect.
+The generator handles only types that carry `[Factory]` on their own declaration: a class derived from a `[Factory]` class gets no factory unless it carries `[Factory]` too. `[SuppressFactory]` turns generation off for a class or record that also carries `[Factory]`; on an interface, or on a type without `[Factory]`, it has no effect. `[Factory]` on an `abstract` or generic class is ignored.
