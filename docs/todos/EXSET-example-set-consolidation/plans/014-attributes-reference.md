@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No. Nearly every embed re-points to a region 002–009 built and reviewed. Design gains four regions and no new shape.
 **Code-review opt-in:** Yes. The page is restated against the generator, and the inheritance claims change.
 **Branch:** EXSET-014-attributes-reference
-**PR:** —
+**PR:** #142
 
 ---
 
