@@ -26,20 +26,7 @@ The resolution is not a workaround -- it follows directly from DDD value object 
 
 **Nested reference types within a record are part of its state.** A `Dictionary<string, string>` inside a record's constructor parameter is part of the value object's definition. If the same `Dictionary` instance is also referenced from an entity property elsewhere in the graph, the entity's reference participates in `$id`/`$ref` tracking (it has identity), while the record's copy is logically independent (it is state). `ReferenceEquals` between them returns `false` after round-trip. This is correct.
 
-```csharp
-// The Dictionary is part of the value object's state definition
-record ProductSpec(string Name, Dictionary<string, string> Attributes);
-
-// The same Dictionary instance assigned to both an entity property and a record:
-var attrs = new Dictionary<string, string> { ["color"] = "red" };
-entity.Metadata = attrs;           // Entity property -- tracked with $id/$ref
-entity.Spec = new ProductSpec("Widget", attrs);  // Value object -- independent copy
-
-// After round-trip:
-// entity.Metadata participates in reference tracking (shared identity preserved)
-// entity.Spec.Attributes is an independent copy (value object semantics)
-// ReferenceEquals(entity.Metadata, entity.Spec.Attributes) is false -- correct
-```
+For example, take a record `ProductSpec(string Name, Dictionary<string, string> Attributes)`, and one dictionary assigned to both an entity's `Metadata` property and a `ProductSpec`'s `Attributes`. After the round trip, `Metadata` keeps its tracked identity across the graph, while `Spec.Attributes` is an independent copy with the same entries. `ReferenceEquals(entity.Metadata, entity.Spec.Attributes)` is `false`, which is correct.
 
 ## Three-Path Serialization Architecture
 

@@ -1,10 +1,10 @@
 # IL Trimming
 
-RemoteFactory lets you write `[Remote]` methods that take server-only services like `DbContext` and `IEmployeeRepository` — your business logic lives on the domain object, right where it belongs. But when that domain assembly ships to the browser in Blazor WASM, three problems emerge:
+RemoteFactory lets you write `[Remote]` methods that take server-only services like `DbContext` and `IEmployeeRepository`, so the persistence code sits beside the domain object it loads and saves. But when that domain assembly ships to the browser in Blazor WASM, three problems emerge:
 
 1. **Runtime failures.** Blazor WASM publishes with trimming by default. The trimmer sees Entity Framework Core referenced in your assembly, partially strips its internals, and EF crashes at runtime — even though the client never calls those code paths.
 
-2. **Intellectual property exposure.** Your `[Remote]` method bodies — SQL queries, business rules, data transformations — ship to the browser in decompilable IL. Anyone with a disassembler can read your server-side logic.
+2. **Intellectual property exposure.** Your `[Remote]` method bodies — SQL queries, data access, mapping to storage — ship to the browser in decompilable IL. Anyone with a disassembler can read your server-side persistence code.
 
 3. **Bundle bloat.** Server-only packages and their transitive dependencies inflate the download size, even though the client never executes them.
 
@@ -51,9 +51,9 @@ Published without trimming          Published with trimming
 Domain assembly                     Domain assembly
 ├── Employee                        ├── Employee
 │   ├── Validate()                  │   ├── Validate()
-│   ├── DataPortal_Fetch()          │   └── (factory stubs only)
-│   ├── DataPortal_Insert()         │
-│   └── DataPortal_Update()         │
+│   ├── [Remote] Fetch()            │   └── (factory stubs only)
+│   ├── [Remote] Insert()           │
+│   └── [Remote] Update()           │
 ├── EmployeeRepository              ├── (removed)
 ├── EmployeeDbContext                ├── (removed)
 └── EF Core references              └── (removed)
@@ -61,7 +61,7 @@ Domain assembly                     Domain assembly
 
 ## Prerequisite: Direct `Neatoo.RemoteFactory` Reference in Every Project with Factory Types
 
-Roslyn source generators only run in a project when the generator package (or analyzer reference) is resolved **directly**, not transitively. If a project declares any of the following — `[Factory]`, `[FactoryEventHandler<T>]`, `[Execute]`, `[Save]`, `[AuthorizeFactory<T>]` — it **must** have its own `PackageReference` to `Neatoo.RemoteFactory`:
+Roslyn source generators only run in a project when the generator package (or analyzer reference) is resolved **directly**, not transitively. If a project declares any of the following — `[Factory]`, `[FactoryEventHandler<T>]`, `[Execute]`, `[AuthorizeFactory<T>]` — it **must** have its own `PackageReference` to `Neatoo.RemoteFactory`:
 
 ```xml
 <PackageReference Include="Neatoo.RemoteFactory" Version="x.y.z" />
@@ -75,7 +75,7 @@ Relying on a transitive flow (e.g. a `ProjectReference` to a domain project that
 
 Client-side event reception is unaffected by this issue — the consumer-implemented `IFactoryEventRelay` is discovered by plain DI, not by the generator.
 
-This applies to **every** project that declares factory types, including Blazor WASM client projects that host client-side relay handlers. The only projects that may rely on a transitive reference are those that purely *consume* factories (inject the interface, call methods) without declaring any factory types themselves.
+This applies to **every** project that declares factory types, including a Blazor WASM client project that declares any of them. The only projects that may rely on a transitive reference are those that purely *consume* factories (inject the interface, call methods) without declaring any factory types themselves.
 
 ## Configuration
 
@@ -291,7 +291,7 @@ For example, if your factory uses `[AuthorizeFactory<IPersonModelAuth>]`, the ge
 
 Plain DTO classes returned by factory methods are automatically preserved from trimming. When your domain assembly has `IsTrimmable=true`, the IL trimmer strips constructor and property metadata from types that aren't directly referenced in compiled code. This breaks `System.Text.Json` deserialization — `DefaultJsonTypeInfoResolver` uses reflection to discover constructors and properties, and that reflection fails when the metadata has been trimmed away.
 
-Normal Blazor WASM apps don't hit this because their assemblies aren't trimmed — `TrimMode=partial` only trims assemblies explicitly marked `IsTrimmable=true`. RemoteFactory intentionally marks domain assemblies as trimmable to remove server-only business logic from the client. DTOs returned through factory methods cross the client-server boundary via JSON serialization, so they must survive trimming intact.
+Normal Blazor WASM apps don't hit this because their assemblies aren't trimmed — `TrimMode=partial` only trims assemblies explicitly marked `IsTrimmable=true`. RemoteFactory intentionally marks domain assemblies as trimmable to remove server-only persistence code from the client. DTOs returned through factory methods cross the client-server boundary via JSON serialization, so they must survive trimming intact.
 
 ### How RemoteFactory Handles It
 
@@ -304,7 +304,7 @@ Both calls carry `[DynamicallyAccessedMembers(All)]` on the generic parameter, w
 
 This covers all factory patterns:
 
-- **Interface Factory methods** — e.g., `Task<EmployeeDto>` or `Task<IReadOnlyList<EmployeeDto>>` return types
+- **Interface Factory methods** — e.g. Design's `IProductCatalog`, whose `Task<ProductListing?>` and `Task<IReadOnlyList<ProductListing>>` return types are discovered
 - **Class Factory `[Execute]` methods** — DTO return types are discovered and preserved
 - **Static Factory `[Execute]` methods** — same treatment
 
