@@ -18,12 +18,12 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Acceptance Criteria
 
-- [ ] **AC-1** · Must — CI builds and tests `Design.sln` alongside the main solution.
-- [ ] **AC-2** · Must — Design has compiled, tested examples of a context, a read model, a domain-service interface factory, the R-D child write cascade with a public child Create, create-or-fetch, and a plain-record value object beside one that needs a service.
-- [ ] **AC-3** · Must — Every C# embed in `docs/`, `README.md` and the skill comes from `src/Design`.
-- [ ] **AC-4** · Must — Each of the 86 audit findings has one recorded outcome, and every finding outside the skill's prose is fixed against the rulings.
-- [ ] **AC-5** · Should — LazyLoad appears in no doc page, README section or skill reference.
-- [ ] **AC-6** · Must — `src/docs/samples` and `src/docs/reference-app` are deleted.
+- [x] **AC-1** · Must — CI builds and tests `Design.sln` alongside the main solution.
+- [x] **AC-2** · Must — Design has compiled, tested examples of a context, a read model, a domain-service interface factory, the R-D child write cascade with a public child Create, create-or-fetch, and a plain-record value object beside one that needs a service.
+- [x] **AC-3** · Must — Every C# embed in `docs/`, `README.md` and the skill comes from `src/Design`.
+- [x] **AC-4** · Must — Each of the 86 audit findings has one recorded outcome, and every finding outside the skill's prose is fixed against the rulings.
+- [x] **AC-5** · Should — LazyLoad appears in no doc page, README section or skill reference.
+- [x] **AC-6** · Must — `src/docs/samples` and `src/docs/reference-app` are deleted.
 - [x] **AC-7** · Could — A `.claude/rules` file names Design as the snippet source and `.gitattributes` forces LF for `.md`.
 
 ## Out of Scope
@@ -65,7 +65,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Punchlist
 
-- [ ] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must
+- [x] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must · the close-out sweep
 - [x] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must → EXSET-009: all three Creates are local `public [Create]`
 - [x] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-016 · AC-4 · Must · EXSET-016
 
@@ -114,15 +114,23 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Follow-on
 
-- Todo 2 · hand-written skill C# that names sample types EXSET-015 retired: `class-factory.md` "Generated Code" (`ISkillConsultationFactory`) and "Caller Usage" (`IConsultationFactory`); `static-factory.md` "Usage" and `setup.md` "Static Factory Commands" (`SkillEmployeeCommands`, called as statics though delegates are DI-resolved types; `setup.md`'s `SkillEmployeeEvents` line is also the `[Event]` API removed in v1.5.0); `interface-factory.md`'s Server Registration and "Generated surface" names (EXSET-015)
-- Todo 2 · `skills/RemoteFactory/references/polymorphic-hierarchy.md` Key Rule 4 says `[Factory]` and `[Remote]` are inherited and `[Create]`/`[Fetch]` are not; the generator does the reverse for a derived `[Factory]` class (EXSET-014, `attributes-reference.md#attributes-and-inheritance`)
-- Todo 2 · `src/Examples/Person/Person.DomainModel/PersonModel.cs` keeps the private-setter, `[JsonInclude]` and `[DynamicDependency]` recipe and its "visibility narrowing" comments, which `trimming.md` no longer prescribes; `trimming.md` "Complete Example" links Person for its project files only (EXSET-016)
-- Could · CI publishes the trimming harness only at `TrimMode=partial` + `IsTrimmable` (the configuration `trimming.md` prescribes); a regression specific to `full` is backed only by gitignored local logs. A second publish at `full` would cover it (EXSET-016 test review)
-- Todo 2 · `skills/RemoteFactory/SKILL.md` "Code Sample Sources" still tells editors to hand-write "partial examples", which R-A forbids (EXSET-012 code review)
+- Todo 2 · hand-written skill C# that names sample types EXSET-015 retired: `class-factory.md` "Generated Code" (`ISkillConsultationFactory`) and "Caller Usage" (`IConsultationFactory`); `static-factory.md` "Usage" and `setup.md` "Static Factory Commands" (`SkillEmployeeCommands`, called as statics though delegates are DI-resolved types; `setup.md`'s `SkillEmployeeEvents` line is also the `[Event]` API removed in v1.5.0); `interface-factory.md`'s Server Registration and "Generated surface" names (EXSET-015) → #148
+- Todo 2 · `skills/RemoteFactory/references/polymorphic-hierarchy.md` Key Rule 4 says `[Factory]` and `[Remote]` are inherited and `[Create]`/`[Fetch]` are not; the generator does the reverse for a derived `[Factory]` class (EXSET-014, `attributes-reference.md#attributes-and-inheritance`) → #149
+- Todo 2 · `src/Examples/Person/Person.DomainModel/PersonModel.cs` keeps the private-setter, `[JsonInclude]` and `[DynamicDependency]` recipe and its "visibility narrowing" comments, which `trimming.md` no longer prescribes; `trimming.md` "Complete Example" links Person for its project files only (EXSET-016) → #150
+- Could · CI publishes the trimming harness only at `TrimMode=partial` + `IsTrimmable` (the configuration `trimming.md` prescribes); a regression specific to `full` is backed only by gitignored local logs. A second publish at `full` would cover it (EXSET-016 test review) → #151
+- Todo 2 · `skills/RemoteFactory/SKILL.md` "Code Sample Sources" still tells editors to hand-write "partial examples", which R-A forbids (EXSET-012 code review) → #152
 
 ---
 
 ## Docs & Retro
+
+**Parked** (the Follow-on lines above, at the close-out sweep): #148, #149, #150, #152 (skill and example prose, for Todo 2); #151 (techdebt).
+
+**Release-note lines** for the next release. The arc changed the library four times; each change is pinned by tests and recorded in the Discovery Log:
+- **fix (generator):** `[AuthorizeFactory<T>]` on a static factory's `[Execute]` is now enforced; a refusal throws `NotAuthorizedException`. Before, the auth class was used only to decide whether the call goes remote, so the rule never ran (EXSET-009).
+- **fix (generator):** a class factory with no generated ordinal converter (a constructor that takes services, not `partial`, or nested) now keeps its public properties on a trimmed client, via `DtoConstructorRegistry.PreserveProperties<T>()`. Before, it serialized as `{}`, so `IsNew`/`IsDeleted` were lost and every Save routed to Insert (EXSET-016).
+- **fix:** a remote call's relay batch carries only the events that call raised, even when one scope serves several calls (EXSET-004).
+- **fix:** the client's `HttpRequestException` now carries the response's `StatusCode` (EXSET-006).
 
 ---
 
