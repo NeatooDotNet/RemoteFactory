@@ -402,22 +402,6 @@ For aggregate roots, use `[Remote] internal` for operations that cross to the se
 
 ---
 
-## [SuppressFactory] for Derived Classes
+## [SuppressFactory]
 
-Use `[SuppressFactory]` to prevent factory generation on derived classes that inherit from a `[Factory]` base:
-
-<!-- snippet: attributes-suppressfactory -->
-<a id='snippet-attributes-suppressfactory'></a>
-```cs
-[Factory]
-public partial class BaseEntity { }
-
-[SuppressFactory]  // Prevents factory generation on derived class
-public partial class InternalEntity : BaseEntity { }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L20-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-**Use when:**
-- Base class has `[Factory]` but derived class shouldn't have its own factory
-- You want to manage polymorphic types through the base factory
+The generator handles only types that carry `[Factory]` on their own declaration: a class derived from a `[Factory]` class gets no factory unless it carries `[Factory]` too. `[SuppressFactory]` turns generation off for a type that also carries `[Factory]`; on any other type it has no effect.

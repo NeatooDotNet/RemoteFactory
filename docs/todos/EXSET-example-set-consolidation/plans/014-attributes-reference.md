@@ -97,10 +97,10 @@ The attributes reference states what each attribute does as the generator applie
 
 ## Acceptance
 
-- [ ] Every C# block on the page is a Design embed or WRONG. No region is defined twice, and none retired is embedded, page or skill. The reference-app sources are gone, and the app builds. `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
-- [ ] The page's inheritance and `[SuppressFactory]` statements match the generator `[explicit-skip: probe compile and FactoryGenerator.cs:19-23, cited]` · Must
-- [ ] The embedded regions are pinned by existing Design tests `[explicit-skip: each region's test named in Test Evidence]` · Must
-- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+- [x] Every C# block on the page is a Design embed or WRONG. No region is defined twice, and none retired is embedded, page or skill. The reference-app sources are gone, and the app builds. `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
+- [x] The page's inheritance and `[SuppressFactory]` statements match the generator `[explicit-skip: probe compile and FactoryGenerator.cs:19-23, cited]` · Must
+- [x] The embedded regions are pinned by existing Design tests `[explicit-skip: each region's test named in Test Evidence]` · Must
+- [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -125,6 +125,13 @@ The attributes reference states what each attribute does as the generator applie
 
 ## Test Evidence
 
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. Page and skill | explicit-skip: no fence outside a snippet pair on `attributes-reference.md`; all 15 embeds come from Design. Retired regions: none defined or embedded; the skill embeds only `attributes-execute-local`, now Design's. `MinimalAttributesSamples.cs` and `AssemblyAttributeSamples.cs` deleted; `AssemblyAttributes.cs` has no markers; `reviews/014-refapp-build.log` (0 errors) | explicit-skip |
+| 2. Inheritance and `[SuppressFactory]` | explicit-skip: the recon probe compile (Current State) and `FactoryGenerator.cs:19-23`; #141 records the attribute declaration | explicit-skip |
+| 3. Embedded regions pinned | the new regions: `attributes-factory` (`OperationsTests`), `attributes-factory-interface` (`InterfaceFactoryAuthorizationTests`), `attributes-execute-local` (`LocalExecuteTests`), `attributes-factoryeventhandler` and `attributes-factoryevent` (`FactoryEventHandlerTests`). The reused regions keep the tests 007–009 cite | explicit-skip |
+| 4. Meta | explicit-skip: `reviews/014-mdsnippets.log`; factory-operations, interfaces-reference and save-operation change only in attribution. Logs: `014-build.log`, `014-test.log`, `014-design-build.log`, `014-design-test.log` (unit 852; integration 657 + 7 skips; Design 173 + 1 known-bug skip; unchanged; both TFMs) | explicit-skip |
+
 ---
 
 ## Gate Record
@@ -132,6 +139,8 @@ The attributes reference states what each attribute does as the generator applie
 ---
 
 ## Plan Amendments
+
+- **2026-10-15 · Implementation:** the techdebt issue is #141. The skill's `[SuppressFactory]` section and inheritance table claimed inheritance, so they are replaced with the generator's rule along with their embeds. The rest of the skill's prose stays Todo 2's.
 
 ---
 

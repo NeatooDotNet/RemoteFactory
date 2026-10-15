@@ -49,8 +49,10 @@ public interface ICustomerPreferences : IFactorySaveMeta
 /// <summary>
 /// A customer's delivery preferences.
 /// </summary>
+#region attributes-factory
 [Factory]
 internal partial class CustomerPreferences : ICustomerPreferences, IFactoryOnStartAsync
+#endregion
 {
     #region operations-create-constructor
     [Create]
