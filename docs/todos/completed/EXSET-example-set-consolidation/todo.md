@@ -2,7 +2,7 @@
 
 **ID:** EXSET
 **Type:** Enhancement
-**Status:** In Progress
+**Status:** Complete
 **Priority:** High
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-15
@@ -137,3 +137,12 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 ---
 
 ## Results / Conclusions
+
+Complete, 2026-10-15. Close-out audit: C on round 1 (EXSET-006's park candidates had no disposition), **A** on round 2 ([close-out-audit.md](./reviews/close-out-audit.md)).
+
+- `src/Design` is the one example set. Every embed in `docs/`, `README.md` and the skill (142 markers, 74 regions) resolves to a region there, and CI builds and tests `Design.sln`.
+- `src/docs/reference-app`, `src/docs/samples`, `CODING_STANDARDS.md` and the old snippet script are deleted.
+- All 86 audit findings have an outcome in `audit-ledger.md`. The skill-prose remainder is Todo 2's (#148, #149, #152, #112).
+- Library fixes shipped on the arc: static-factory `[AuthorizeFactory<T>]` enforcement, `PreserveProperties<T>()` for class factories without an ordinal converter, per-call relay batches, and the `HttpRequestException` status code. The release-note lines are under Docs & Retro.
+
+**Retro.** 16 plan numbers against a cap of 18: an initial split of 12, plus four re-splits (009→014, 010→015, 011→016, 006→013), each logged when it happened. 5 findings were dismissed. 13 issues were parked: #128, #131, #133, #135, #141, #148–#152 and #154–#156. Most review findings were amended in their plan rather than punched or queued. The lesson for the workflow: a plan's Notes that say "Keith decides at the gate" are a deferral. They need a Gate Record disposition, and an issue if Keith is not asked then; EXSET-006 left three without one, and that was the only thing that held up close-out. The unattended loop held because every library-behaviour stop (009, 013, 016) went to Keith as a question, not a workaround.

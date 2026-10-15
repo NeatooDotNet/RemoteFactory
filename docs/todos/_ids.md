@@ -7,12 +7,12 @@ abandonment. Move rows to the Completed section together with the folder move.
 
 | ID | Todo | Created | Location |
 |----|------|---------|----------|
-| EXSET | One compiled example set, and the audit against it | 2026-10-11 | [EXSET-example-set-consolidation](./EXSET-example-set-consolidation/todo.md) |
 
 ## Completed
 
 | ID | Todo | Completed | Location |
 |----|------|-----------|----------|
+| EXSET | One compiled example set, and the audit against it | 2026-10-15 | [EXSET-example-set-consolidation](./completed/EXSET-example-set-consolidation/todo.md) |
 | DICT | Dictionary and public-field DTO preservation | 2026-10-06 | [DICT-dictionary-dto-preservation](./completed/DICT-dictionary-dto-preservation/todo.md) |
 | EXRM | [Execute] obeys [Remote] | 2026-09-08 | [EXRM-execute-obeys-remote](./completed/EXRM-execute-obeys-remote/todo.md) |
 | PHASE | Phased factory-event dispatch | 2026-08-31 | [PHASE-phased-event-dispatch](./completed/PHASE-phased-event-dispatch/todo.md) |

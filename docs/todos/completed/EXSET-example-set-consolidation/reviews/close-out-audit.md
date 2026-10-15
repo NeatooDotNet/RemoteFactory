@@ -115,3 +115,85 @@ All five are open, and each body opens with `Origin: EXSET-NNN · …`, checked 
   - the arc diff from merge-base `6c2e46b` for `src/Generator`, `src/RemoteFactory` and the modified test files;
   - `src/Tests/RemoteFactory.TrimmingTests` (`Program.cs`, `.csproj`) and `reviews/016-ci-run.log`.
 - **Named but unused:** the per-plan `*.log` files other than `016-ci-run.log`, because the final logs supersede them. The individual code-review and test-review files were not re-read: their closures are summarised in each Gate Record, and I verified the cited tests exist rather than re-walking the reviews.
+
+---
+
+## Close-Out Re-Audit — 2026-10-15 (round 2)
+
+**Grade: A** — V-1, the only round-1 veto, is resolved. Every Acceptance Criterion still traces to the tree, and the build and tests are green. Two items remain under Could not verify, both carried from round 1 and both about events that come later.
+
+The calibration is the same as round 1: iterative-todo 0.11.x vocabulary (Must / Should / Could), with Follow-on lines parked at the sweep.
+
+### Round-1 items verified
+- **V-1 · resolved.** Changed in `b2d1bb2` (PR #157, MERGED into `EXSET` 2026-10-15T22:42Z).
+  - #154 (logger categories), #155 (`UseNeatoo` static logger factory outlives the host) and #156 (client never reads `X-Neatoo-Format`) are all OPEN and labelled `techdebt`. `gh issue view` shows each body opening `Origin: EXSET-006 · …`. #155 cites `reviews/006-plan-review.md` callout 2.
+  - `plans/006-aspnetcore-modes-serialization.md:246` (Gate Record, "Open, by design") now reads "parked at the close-out audit as #154, #155 and #156".
+  - `todo.md:129` (Docs & Retro, **Parked**) and `todo.md:113` (Close-Out Audit) list all three.
+  - The Notes at `plans/006:291-294` and the `UseNeatoo` static at `plans/006:93` now trace to these issues.
+- **C-1 · resolved.** `docs/VisionAlignment.md:238` now says "every embed (155 markers, 165 rendered blocks) re-pointed", which matches §1.1 at `:68`. A grep finds no "162" left in the file. Punchlist row 1 (`todo.md:68`) now closes with "#153; section 7 in the audit fixes".
+- **C-2 · resolved.** I recounted all 11 Discovery Log entries: 48–58 words each, and the longest is EXSET-011 Re-split at 58. Each trimmed entry keeps its `Serves AC-n`, its ruling and its issue or test name. The Goal is 94 words.
+- **Theoretical (boxes) · resolved.** In plans 001–003 the word diff is 21 `[ ]` → `[x]` and nothing else. No plan has an unticked Acceptance box.
+- **Theoretical (#112) · accepted as stated.** Ledger C-27 (`audit-ledger.md:37`) lists T2 among its owners. #112 stays open for the skill prose.
+
+### Acceptance Criteria Trace
+The arc diff since round 1 (`36a46ad..60445ee`) touches 7 markdown files and no source. Round 1's code evidence therefore stands unchanged. I re-checked what that diff could have affected.
+
+| AC | Word | Evidence (file:method:line) | Holds? | If not: parked as? |
+|---|---|---|---|---|
+| AC-1 | Must | `.github/workflows/build.yml:93-106` runs `Design.sln` build and test in Release (unchanged). | Yes. Not yet executed by CI (see Could not verify). | — |
+| AC-2 | Must | As in round 1: `Contexts/OrderCheckout.cs`, `ReadModels/OrderSummary.cs`, `Services/CustomerDirectory.cs:262-282`, `Entities/OrderLine.cs:132-133` + `OrderLineList.Update:314-339`, `Order.OpenDraft:363-370`, `ValueObjects/Money.cs` + `TaxRate.cs`. Pinned by tests that pass in `final-test.log` (Design 175). | Yes | — |
+| AC-3 | Must | Recount: the 32 tracked doc/README/skill files hold 142 `snippet:` hits. One is prose (`skills/RemoteFactory/SKILL.md:119`, "`<!-- snippet: name -->`"), leaving 74 regions. Every rendered "snippet source" link points under `/src/Design/`; the only two non-Design matches are prose lines in `VisionAlignment.md:37,74`. | Yes | — |
+| AC-4 | Must | `audit-ledger.md` has 86 rows, each with an outcome. C-1's stale count is fixed (`VisionAlignment.md:238`). | Yes | — |
+| AC-5 | Should | Unchanged since round 1. #157 touched no doc page, README or skill file. | Yes | — |
+| AC-6 | Must | `src/docs` is still absent from the tree. | Yes | — |
+| AC-7 | Could | `.claude/rules/design-snippets.md` and `.gitattributes:9` are unchanged. | Yes | — |
+
+### Veto-Tier Findings
+None.
+
+### Callouts (Must in full; ≤ 5 Should/Could)
+None.
+
+### Could not verify
+- **AC-1 in execution.** `gh run list --branch EXSET` is still empty, because `build.yml` runs only for `main`. The Design steps first run on the arc's PR into main, as `plans/001` states.
+- **Standing-order check 6.12.** The arc PR into main is not open yet (`gh pr list --head EXSET` is empty). Its body should list the loop's decisions on sentences attributed to Keith. Among them: EXSET-006's "Keith decides at the gate" (`plans/006:291`), resolved by parking #154–#156 at the close-out audit.
+
+### Theoretical (not triaged)
+- `todo.md:113,129` say the three 006 candidates were parked "at the close-out audit" but do not say who chose park over dismiss. The plan reserved that choice for Keith. The Step 7 triage makes him the decider by definition, so nothing is missing; the record just leaves it implicit.
+- Carried from round 1: `plans/012:35` excludes "`src/Examples` (Follow-on)", but the only Follow-on line, #150, covers Person. `src/Examples/OrderEntry` has no line, and I know of no finding against it.
+- `VisionAlignment.md:238` says all 155 markers were "re-pointed". 142 remain because some were retired with their pages (for example `references/lazyload.md`). The count matches recon, which is what Punchlist row 1 asked for.
+
+### Build & Test
+- **Build:** PASSED — `reviews/final-build.log`. Two `Build succeeded` blocks, 0 errors. The main solution has 2 warnings (the known OrderEntry WASM notice); Design has 0. The log is from 17:29, after `36a46ad`. The only later change is `b2d1bb2`, which is markdown only.
+- **Tests:** 0 failed — `reviews/final-test.log`. On both net9.0 and net10.0: Unit 855/855, Integration 657 passed + 7 skipped, Design 175 passed + 1 skipped. The skips are the same reasoned set as in round 1.
+
+### Container
+- **Plans issued / cap:** 16 / 18. The four re-splits are logged.
+- **Status cells over budget:** 0.
+- **Untraced deferrals:** None. Every deferral phrase in `plans/*.md` now traces, including `plans/006:291` → #154–#156.
+- **Prose over budget:** None. The longest Discovery Log entry is 58 words; the Goal is 94.
+- **Open PRs into the arc:** None. #157 and #153 are MERGED.
+- **Must parked without demotion:** None.
+- **Dispositions living only in a PR body:** None.
+
+### Parked (as the todo lists them)
+- #148 · skill hand-written C# names retired sample types (Origin: EXSET-015)
+- #149 · skill `polymorphic-hierarchy.md` Key Rule 4 states inheritance backwards (Origin: EXSET-014)
+- #150 · Person example keeps the private-setter / `[JsonInclude]` / `[DynamicDependency]` recipe (Origin: EXSET-016)
+- #151 · CI publishes the trimming harness only at `TrimMode=partial` (techdebt; Origin: EXSET-016)
+- #152 · skill "Code Sample Sources" still says hand-write partial examples (Origin: EXSET-012)
+- #154 · logger categories: `RemoteFactory.Trace` outside the prefix; `Remote`/`Authorization` unused (techdebt; Origin: EXSET-006)
+- #155 · `UseNeatoo` stores the host's logger factory in a static that outlives the host (techdebt; Origin: EXSET-006)
+- #156 · client never reads the `X-Neatoo-Format` response header (techdebt; Origin: EXSET-006)
+
+All eight are OPEN, and `gh issue view` confirms each body opens with `Origin: EXSET-NNN · …`.
+
+### Read report
+- **Read beyond the brief:**
+  - `git diff 36a46ad 60445ee`, the whole of PR #157;
+  - `gh pr view 157`;
+  - `gh issue view` for #112, #148–#152 and #154–#156;
+  - `gh run list --branch EXSET`;
+  - a re-grep of the embed markers and "snippet source" links across the 32 doc, README and skill files;
+  - a deferral-phrase grep over `plans/*.md`.
+- **Named but unused:** none. Per-plan logs and review files were not re-read, because #157 changed no source and round 1's checks of them stand.
