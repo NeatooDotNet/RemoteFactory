@@ -118,7 +118,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L215-L289' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L224-L298' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The caller calls `order = await orderFactory.Save(order)`. RemoteFactory picks Insert, Update, or Delete from the object's own state (`IsNew`, `IsDeleted`), serializes the object to the server, resolves the store from server-side DI, and calls your method. No DTOs, no controllers, no mapping.

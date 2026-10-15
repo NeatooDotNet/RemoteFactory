@@ -81,13 +81,22 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
 {
     // -------------------------------------------------------------------------
     // Properties
+    //
+    // GENERATOR BEHAVIOR: The ordinal format writes these as one JSON array, in
+    // ordinal name order (CustomerName, Id, IsDeleted, IsNew, Lines, Status), not
+    // in declaration order. Total has no setter, so it is not written; the other
+    // side computes it. Lines is an interface, so it is written with its concrete
+    // type: {"$type": "...OrderLineList", "$value": [...]}. SerializationTests
+    // pins both.
     // -------------------------------------------------------------------------
 
+    #region serialization-ordinal-versioning
     public int Id { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public OrderStatus Status { get; set; } = OrderStatus.Draft;
     public IOrderLineList Lines { get; set; } = null!;
     public Money Total => Lines?.CalculateTotal() ?? Money.Zero;
+    #endregion
 
     // -------------------------------------------------------------------------
     // IFactorySaveMeta Implementation

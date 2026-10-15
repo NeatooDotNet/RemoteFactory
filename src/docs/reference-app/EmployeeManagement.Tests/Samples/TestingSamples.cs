@@ -359,7 +359,7 @@ public class MatchingNameTests
 
 // aspnetcore-testing snippet moved to src/Design (EXSET-006)
 
-// Serialization tests - snippets consolidated in Server.WebApi/Samples/Serialization
+// Serialization snippets moved to src/Design (EXSET-013)
 public class SerializationConfigSample
 {
     [Fact]

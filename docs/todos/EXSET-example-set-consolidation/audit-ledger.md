@@ -11,10 +11,10 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-01 | "`[Remote]` executes on server" comments | 005, 007, 010, 012 | 005: none left on 005's pages (getting started's comment came from the reference app; its embed is now Design's) |
 | C-02 | Child `[Create]`/`[Fetch]` public; "server-side only" on a public method | 002, 007, 010, T2 | 002: Design fixed (R-C) |
 | C-03 | Decision tree: "called from client → `[Remote]`" | 005 | fixed (EXSET-005): the decision guide and client-server-architecture ask whether the call crosses, and list the local shapes |
-| C-04 | "Remote mode: all operations POST to server" | 013 | |
+| C-04 | "Remote mode: all operations POST to server" | 013 | fixed (EXSET-013): factory-modes states D18; Remote sends [Remote] operations and runs the rest locally |
 | C-05 | Static `[Create]` as create-or-fetch | 007 | |
 | C-06 | Events examples insert/commit inside `[Create]` | 004, 011, T2 | 004: Design fixed (raisers moved to Insert/Update and static commands; CLAUDE-DESIGN Pattern 4, phase block and Anti-Pattern 10) |
-| C-07 | `[Factory]` child built with `new` | 013, 012 | |
+| C-07 | `[Factory]` child built with `new` | 013, 012 | 013: serialization-references (new TeamMember) retired with its source; the page's reference section is prose (#133) |
 | C-08 | Hand-coded GetOrCreate service; consumer-app references | T2 | |
 | C-09 | Commands write another aggregate's row | 007, 012 | |
 | C-10 | Parent deletes children's rows | 007 | |
@@ -26,8 +26,8 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-16 | `[SuppressFactory]` public static `Task` command as "the shape to copy" | 009 | |
 | C-17 | Installed skill copy predates v1.9.0 | T2 | |
 | C-18 | Read models with `[Create]`; no read-model branch | 003, 010, 012 | 003: Design read model (`OrderSummary`, Fetch-only) |
-| C-19 | Public concretes everywhere; not interface-first | 005, 006, 007, 008, 009, 010, 011, 013, T2 | 005: its pages embed Design's interface-first Order and OrderLine; 006: aspnetcore-integration embeds Design's interface-first types (OrderSummary, Order, AuthorizedOrder) |
-| C-20 | Properties and callers typed on concretes; casts | 006, 007, 008, 010, 013 | 006: aspnetcore-integration's samples are typed on interfaces (IOrderFactory, IAuthorizedOrder) |
+| C-19 | Public concretes everywhere; not interface-first | 005, 006, 007, 008, 009, 010, 011, 013, T2 | 005: its pages embed Design's interface-first Order and OrderLine; 006: aspnetcore-integration embeds Design's interface-first types (OrderSummary, Order, AuthorizedOrder); 013: factory-modes and serialization embed Design's interface-first Order |
+| C-20 | Properties and callers typed on concretes; casts | 006, 007, 008, 010, 013 | 006: aspnetcore-integration's samples are typed on interfaces (IOrderFactory, IAuthorizedOrder); 013: serialization's SerializationSamples (concrete-typed members) retired; Order's Lines is IOrderLineList |
 | C-21 | Method-injected services stored in fields (hooks samples) | 008 | |
 | C-22 | LazyLoad loader captures a method-injected service | 011 | |
 | C-23 | Client-constructed classes take server services in ctor (unpublished) | 012 | |
@@ -38,7 +38,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-28 | "Persistence routing engine" framing; "Data Mapper Factory" | 005, 007, 008, 010, 012 | 005: README, getting started, the problem and client-server-architecture reframed (D15) |
 | C-29 | Class factory = "aggregate roots with lifecycle" only | 005, T2 | 005: the decision guide gives a read model and a context their own branch |
 | C-30 | `[Execute]` = "decides which persistence path" | 007 | |
-| I-01 | Private setters three ways; ordinal drops them | 005, 006, 008, 009, 011, 013, T2 | 005: README's private setters gone (Design's public setters); 006: aspnetcore-integration's private-setter Id samples (cancellation, correlation) retired; Design's public setters |
+| I-01 | Private setters three ways; ordinal drops them | 005, 006, 008, 009, 011, 013, T2 | 005: README's private setters gone (Design's public setters); 006: aspnetcore-integration's private-setter Id samples (cancellation, correlation) retired; Design's public setters; 013: serialization states ordinal membership (private-setter and get-only properties are not written); Design's SerializationTests guide corrected |
 | I-02 | `[Service]` "server-only" vs "that tier's container" | 007, 009, 010, 012, T2 | 002: CLAUDE-DESIGN Service Injection fixed |
 | I-03 | `[Execute]` return type: skill vs NF0102 | 009, T2 | |
 | I-04 | `[Remote] public` in hand-written blocks | 012, T2 | |
@@ -74,7 +74,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | T-19 | `AddRemoteFactoryServices`/`FactoryMode` names; relay wording | 011, T2 | |
 | T-20 | "Methods fall back to remote calls" | 005 | fixed (EXSET-005): Design's client program has no fallback claim, and the skill's embed re-points to it |
 | T-21 | Partial properties on a plain class | T2 | |
-| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 010, 012, 013, T2 | 005: the `[SuppressFactory]` README regions it cites are retired; README now embeds Design; 006: aspnetcore-integration and setup's server embeds come from Design, except aspnetcore-middleware-order (EXSET-009) |
+| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 010, 012, 013, T2 | 005: the `[SuppressFactory]` README regions it cites are retired; README now embeds Design; 006: aspnetcore-integration and setup's server embeds come from Design, except aspnetcore-middleware-order (EXSET-009); 013: factory-modes and serialization embeds come from Design |
 | T-23 | `IFactoryOnCancelled` "on operation failure" | T2 | |
 | T-24 | "Causes duplicate generation" instead of NF0106 | 010 | |
 | T-25 | Two-container testing sample uses one Logical container | 006 | fixed (EXSET-006): aspnetcore-testing is Design's three-container round trip from the client scope |
