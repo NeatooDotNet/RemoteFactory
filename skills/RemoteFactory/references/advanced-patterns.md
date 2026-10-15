@@ -368,25 +368,78 @@ public partial class SkillAssignmentList : List<Assignment>
 <!-- snippet: collection-factory-basic -->
 <a id='snippet-collection-factory-basic'></a>
 ```cs
-// Constructor-injected child factory (survives serialization)
+/// <summary>
+/// Creates an empty list. Public and local, so a root created on the client
+/// can create its list there (R-C).
+/// </summary>
 [Create]
-public OrderLineList([Service] IOrderLineFactory lineFactory) => _lineFactory = lineFactory;
-
-// Fetch populates collection from data
-[Fetch]
-public void Fetch(
-    IEnumerable<(int id, string name, decimal price, int qty)> items,
-    [Service] IOrderLineFactory lineFactory)
+public void Create()
 {
-    foreach (var item in items)
-        Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
 }
 
-// Domain method uses stored factory to add children
-public void AddLine(string name, decimal price, int qty) => Add(_lineFactory.Create(name, price, qty));
+/// <summary>
+/// Loads the lines from the order row's line rows, handing each line its row.
+/// </summary>
+[Fetch]
+internal void Fetch(IEnumerable<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
+{
+    foreach (var row in rows)
+    {
+        Add((OrderLine)lineFactory.Fetch(row));
+    }
+}
+
+/// <summary>
+/// The cascade: makes, finds or removes each line's row and hands each live
+/// line its row through the line factory's Save.
+/// </summary>
+/// <remarks>
+/// Called by Order.Insert and Order.Update through IOrderLineListFactory.Save,
+/// with the order row's line collection. Neither the list nor the root maps a
+/// line's row; the line does.
+/// </remarks>
+[Update]
+internal void Update(ICollection<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
+{
+    foreach (var line in this)
+    {
+        if (line.IsDeleted)
+        {
+            rows.Remove(rows.Single(r => r.Id == line.Id));
+            continue;
+        }
+
+        OrderLineRow row;
+        if (line.IsNew)
+        {
+            row = new OrderLineRow();
+            rows.Add(row);
+        }
+        else
+        {
+            row = rows.Single(r => r.Id == line.Id);
+        }
+
+        lineFactory.Save(line, row);
+    }
+
+    // The removed lines' rows are gone; the list the save returns holds live lines only.
+    RemoveAll(l => l.IsDeleted);
+}
+
+// -------------------------------------------------------------------------
+// Domain Methods
+// -------------------------------------------------------------------------
+
+public void AddLine(IOrderLine line)
+{
+    Add((OrderLine)line);
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/OrderLineCollectionSamples.cs#L45-L62' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L283-L351' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`OrderLineRow` is the example's stored row for one line, held in the order row's line collection. The list holds no factory: it takes `IOrderLineFactory` as a method parameter in each operation, so nothing has to survive the round trip.
 
 ---
 

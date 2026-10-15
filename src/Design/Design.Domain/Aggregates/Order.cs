@@ -44,6 +44,7 @@ public interface IOrder : IFactorySaveMeta
     Money Total { get; }
     void AddLine(IOrderLine line);
     void RemoveLine(IOrderLine line);
+    bool CanSubmit { get; }
     void Submit();
     void Cancel();
     void MarkDeleted();
@@ -133,11 +134,14 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Called before any factory operation begins.
+    /// Called before each of Order's Task-returning operations begins.
     /// </summary>
     /// <remarks>
-    /// GENERATOR BEHAVIOR: FactoryStartAsync is called at the beginning of
-    /// Create, Fetch, Insert, Update, and Delete operations.
+    /// GENERATOR BEHAVIOR: the async start hook runs before a Task-returning
+    /// operation: here Fetch, FetchDraft, Insert, Update and Delete. It does not run
+    /// for the synchronous Create, and no start hook runs for a constructor or
+    /// static Create/Fetch or for a class-level [Execute] such as OpenDraft.
+    /// CustomerPreferences shows a start hook doing work.
     ///
     /// Use cases:
     /// - Logging or auditing the operation
@@ -157,23 +161,24 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     }
 
     /// <summary>
-    /// Called after any factory operation completes successfully.
+    /// Called after each of Order's Task-returning operations completes successfully.
     /// </summary>
     /// <remarks>
-    /// GENERATOR BEHAVIOR: FactoryCompleteAsync is called after the operation
-    /// method returns but before the result is returned to the caller.
+    /// GENERATOR BEHAVIOR: the async complete hook runs after a Task-returning
+    /// operation succeeds, before the result is returned to the caller. Like the
+    /// start hook, it does not run for synchronous, constructor or static
+    /// operations, nor for a class-level [Execute], nor after a bool operation
+    /// (Fetch, FetchDraft) that returns false.
     ///
     /// Use cases:
     /// - Resetting tracking state
     /// - Logging completion
     ///
-    /// DID NOT DO THIS: Call FactoryComplete on failure
-    ///
-    /// Reasons:
-    /// 1. Clear semantics - complete means success
-    /// 2. Use IFactoryOnCancelled for failure handling
-    /// 3. Prevents confusing state after errors
+    /// When an operation throws, no hook runs. When an async instance operation
+    /// is cancelled, IFactoryOnCancelled / IFactoryOnCancelledAsync runs instead,
+    /// then the cancellation propagates.
     /// </remarks>
+    #region operations-lifecycle-oncomplete
     public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
     {
         // Example: Reset IsNew after successful Insert
@@ -183,6 +188,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         }
         return Task.CompletedTask;
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Factory Operations
@@ -222,6 +228,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     //   The order was loaded, so its row existing is the expected state; a row
     //   deleted underneath it is a failure the caller sees (VisionAlignment R-I).
     #region readme-domain-model
+    #region operations-create-method
     /// <summary>
     /// Creates a new Order. Local: runs on the tier that calls it.
     /// </summary>
@@ -235,7 +242,9 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         Status = OrderStatus.Draft;
         IsNew = true;
     }
+    #endregion
 
+    #region operations-fetch-instance
     /// <summary>
     /// Loads an existing Order and its lines; false when there is none.
     /// </summary>
@@ -252,7 +261,9 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         LoadFrom(row, lineListFactory);
         return true;
     }
+    #endregion
 
+    #region operations-insert
     /// <summary>
     /// Inserts a new Order and its lines.
     /// </summary>
@@ -268,7 +279,9 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         await db.SaveChangesAsync();
         Id = row.Id;
     }
+    #endregion
 
+    #region operations-update
     /// <summary>
     /// Updates an existing Order and its lines.
     /// </summary>
@@ -283,7 +296,9 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         lineListFactory.Save(Lines, row.Lines);
         await db.SaveChangesAsync();
     }
+    #endregion
 
+    #region operations-delete
     /// <summary>
     /// Deletes an Order. Its line rows go with its row.
     /// </summary>
@@ -295,6 +310,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         db.Remove(row);
         await db.SaveChangesAsync();
     }
+    #endregion
     #endregion
 
     /// <summary>
@@ -339,6 +355,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// type, here Task&lt;IOrder&gt;. It is public static, and [Remote] sends the
     /// call to the server.
     /// </remarks>
+    #region operations-class-execute
     [Remote, Execute]
     public static async Task<IOrder> OpenDraft(
         string customerName,
@@ -347,6 +364,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         return await factory.FetchDraft(customerName)
             ?? factory.Create(customerName);
     }
+    #endregion
 
     private void LoadFrom(OrderRow row, IOrderLineListFactory lineListFactory)
     {
@@ -398,13 +416,22 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         Lines.RemoveLine(line);
     }
 
+    /// <summary>
+    /// Whether the order can be submitted: a draft with at least one line.
+    /// </summary>
+    /// <remarks>
+    /// The verdict a screen or a command reads before it calls Submit (R-E).
+    /// Get-only, so it is not serialized; each tier computes it.
+    /// </remarks>
+    public bool CanSubmit => Status == OrderStatus.Draft && Lines.Count > 0;
+
     public void Submit()
     {
-        if (Status != OrderStatus.Draft)
-            throw new InvalidOperationException("Order is not in draft status");
-
-        if (Lines.Count == 0)
-            throw new InvalidOperationException("Cannot submit an empty order");
+        // Calling Submit when CanSubmit is false is a caller bug, not a user error
+        if (!CanSubmit)
+            throw new InvalidOperationException(Status != OrderStatus.Draft
+                ? "Order is not in draft status"
+                : "Cannot submit an empty order");
 
         Status = OrderStatus.Submitted;
     }

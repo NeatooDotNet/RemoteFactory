@@ -260,6 +260,7 @@ public static class DesignClientServerContainers
         serverCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         serverCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
         serverCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
+        serverCollection.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
         serverCollection.AddSingleton<ISupportLog, InMemorySupportLog>();
         localCollection.AddScoped<IExampleService, ExampleService>();
         localCollection.AddScoped<INotificationService, NotificationService>();
@@ -267,6 +268,7 @@ public static class DesignClientServerContainers
         localCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         localCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
         localCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
+        localCollection.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
         localCollection.AddSingleton<ISupportLog, InMemorySupportLog>();
 
         // Client needs server provider reference for remote calls
