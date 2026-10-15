@@ -50,7 +50,7 @@ On an interface, `[Factory]` generates a remote proxy. Every method is a call to
 [AuthorizeFactory<ICustomerDirectoryAuth>]
 public interface ICustomerDirectory
 ```
-<sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L258-L262' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L261-L265' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Interface Factory](interface-factory.md).

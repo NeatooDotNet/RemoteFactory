@@ -58,7 +58,7 @@ internal static async Task<TaxRate?> Fetch(string region, [Service] ITaxTable ta
     return rate is null ? null : new TaxRate(region, rate);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/ValueObjects/TaxRate.cs#L36-L43' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ValueObjects/TaxRate.cs#L37-L44' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Use method injection when:**

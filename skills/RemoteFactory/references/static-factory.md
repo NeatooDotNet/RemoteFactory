@@ -8,55 +8,50 @@ Use `[Execute]` for operations that return a result. The client awaits the respo
 
 > **Note:** `[Execute]` also works on non-static `[Factory]` classes when the operation returns the containing type. See `references/class-factory.md` for that pattern.
 
-<!-- snippet: skill-static-execute-commands -->
-<a id='snippet-skill-static-execute-commands'></a>
+<!-- snippet: operations-execute -->
+<a id='snippet-operations-execute'></a>
 ```cs
-[Factory]
-public static partial class SkillEmployeeCommands
+[Remote, Execute]
+private static async Task<SubmitOutcome> _SubmitOrder(
+    int orderId,
+    [Service] IOrderFactory orderFactory,
+    CancellationToken cancellationToken)
 {
-    [Remote, Execute]
-    private static async Task<bool> _SendNotification(
-        string recipient,
-        string message,
-        [Service] IEmailService service)
-    {
-        await service.SendAsync(recipient, "Notification", message);
-        return true;
-    }
+    var order = await orderFactory.Fetch(orderId, cancellationToken);
+    if (order == null)
+        return SubmitOutcome.NotFound;
+    if (!order.CanSubmit)
+        return SubmitOutcome.NotSubmittable;
 
-    [Remote, Execute]
-    private static async Task<SkillEmployeeSummary> _GetEmployeeSummary(
-        Guid employeeId,
-        [Service] IEmployeeRepository repo)
-    {
-        var employee = await repo.GetByIdAsync(employeeId);
-        if (employee == null)
-            return new SkillEmployeeSummary { Id = employeeId, Found = false };
-
-        return new SkillEmployeeSummary
-        {
-            Id = employeeId,
-            FullName = $"{employee.FirstName} {employee.LastName}",
-            Position = employee.Position,
-            Found = true
-        };
-    }
-}
-
-public class SkillEmployeeSummary
-{
-    public Guid Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string Position { get; set; } = string.Empty;
-    public bool Found { get; set; }
+    order.Submit();
+    await orderFactory.Save(order, cancellationToken);
+    return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/StaticFactorySamples.cs#L6-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-static-execute-commands' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L58-L75' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: operations-execute-command -->
+<a id='snippet-operations-execute-command'></a>
+```cs
+[Remote, Execute]
+private static async Task _CancelOrder(int orderId, [Service] IOrderFactory orderFactory)
+{
+    var order = await orderFactory.Fetch(orderId)
+        ?? throw new KeyNotFoundException($"Order {orderId} not found");
+    if (order.Status == OrderStatus.Cancelled)
+        return;   // already cancelled: a retried call is not an error
+
+    order.Cancel();
+    await orderFactory.Save(order);
+}
+```
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L80-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Generates**:
-- `SkillEmployeeCommands.SendNotification(recipient, message)` delegate
-- `SkillEmployeeCommands.GetEmployeeSummary(employeeId)` delegate
+- the `OrderCommands.SubmitOrder(orderId)` delegate type, returning `SubmitOutcome`
+- the `OrderCommands.CancelOrder(orderId)` delegate type; each also takes an optional `CancellationToken`, and is resolved from DI
 
 **Usage**:
 ```csharp

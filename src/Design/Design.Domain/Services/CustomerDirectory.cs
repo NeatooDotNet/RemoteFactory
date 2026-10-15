@@ -118,6 +118,7 @@ namespace Design.Domain.Services;
 /// Authorization interface for ICustomerDirectory.
 /// Demonstrates Execute/Read scopes with parameter matching for interface factories.
 /// </summary>
+#region skill-interface-factory-auth-authclass
 public interface ICustomerDirectoryAuth
 {
     /// <summary>
@@ -174,6 +175,7 @@ public interface ICustomerDirectoryAuth
     [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
     string? CheckReadAccess();
 }
+#endregion
 
 /// <summary>
 /// Authorization implementation with static flags for test configurability.
@@ -255,6 +257,7 @@ public record CustomerContact(Guid CustomerId, string Name, string Email);
 ///   checks and throw NotAuthorizedException on denial before calling
 ///   CustomerDirectory.
 /// </remarks>
+#region skill-interface-factory-auth-factory
 #region attributes-factory-interface
 [Factory]
 [AuthorizeFactory<ICustomerDirectoryAuth>]
@@ -281,6 +284,7 @@ public interface ICustomerDirectory
     /// <summary>A customer's contacts. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
     Task<IReadOnlyList<CustomerContact>> ListContacts(Guid customerId);
 }
+#endregion
 
 /// <summary>
 /// Server-side implementation of ICustomerDirectory: a plain service.

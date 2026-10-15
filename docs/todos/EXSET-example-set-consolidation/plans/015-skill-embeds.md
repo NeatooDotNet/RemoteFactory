@@ -112,6 +112,13 @@ Every C# embed in the skill comes from Design, and the line that introduces each
 
 ## Test Evidence
 
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. Skill embeds | explicit-skip: every `snippet source` link under `skills/` is under `src/Design` except `lazyload.md`'s two (EXSET-011). The four new keys are each defined once. No retired `skill-*` key is defined or embedded. Ten `Samples/Skill/*.cs` files and `BlazorUsageSamples.cs`/`.razor` deleted; `LazyLoadSamples.cs` stays for EXSET-011; `reviews/015-refapp-build.log` (0 errors) | explicit-skip |
+| 2. Corrected notes | explicit-skip: each note read against its region. `class-factory.md`'s "Generates" names `IOrderFactory`; the value-object lead and note match TaxRate (a positional `[Factory]` record, no setters); the complex aggregate's note matches `readme-client-usage` (lineFactory.Create, then AddLine); the duality prose names the two OrderLine Fetch signatures; `static-factory.md`'s "Generates" names OrderCommands' delegate types (`OrderCommandsFactory.g.cs:16-17`); `interface-factory.md` names `CustomerDirectory` and `ICustomerDirectoryAuth` | explicit-skip |
+| 3. Embedded regions pinned | `skill-interface-factory-auth-authclass` and `-factory` (`InterfaceFactoryAuthorizationTests`), `skill-value-object-factory` (`ValueObjectTests.TaxRate_LoadsFromTheServer_AndAppliesToMoney`, `TaxRate_IsNull_ForAnUnknownRegion`). `skill-blazor-usage` is page code: `Design.Client.Blazor` compiles it, and its calls (local Create, Fetch, lineFactory.Create then AddLine, Save) are the ones `OrderUsageTests` makes on the client container. The reused regions keep the tests 002–010 cite | explicit-skip |
+| 4. Meta | explicit-skip: `reviews/015-mdsnippets.log` (it extracts `skill-blazor-usage` from `Home.razor`); `attributes-reference.md` and both `service-injection.md` change only in attribution. Logs: `015-build.log`, `015-test.log`, `015-design-build.log`, `015-design-test.log` (unit 852; integration 657 + 7 skips; Design 173 + 1 known-bug skip; unchanged; both TFMs) | explicit-skip |
+
 ---
 
 ## Gate Record
@@ -119,6 +126,18 @@ Every C# embed in the skill comes from Design, and the line that introduces each
 ---
 
 ## Plan Amendments
+
+- **2026-10-15 · Implementation:**
+  - **Attached lines corrected beyond the two notes Scope names:**
+    - `class-factory.md`'s "Generates" line;
+    - `static-factory.md`'s "Generates" list;
+    - the duality prose's two method names;
+    - `interface-factory.md`'s auth-class registration names.
+
+    Each described the old embed by name.
+  - **Hand-written C# naming retired types stays, as Todo 2's,** and is recorded in the todo's Follow-on: `class-factory.md` "Generated Code" and "Caller Usage", `static-factory.md` "Usage", and `setup.md` "Static Factory Commands".
+  - **`skill-blazor-usage` sits in `Home.razor`'s `@code` block;** mdsnippets reads it from there. No test renders the page. Its calls are pinned by `OrderUsageTests` (Test Evidence 3).
+  - **`ChildEntitySamples.cs`,** stripped of its markers in EXSET-010, is deleted here with `ComplexAggregateSamples.cs`, its only user.
 
 ---
 

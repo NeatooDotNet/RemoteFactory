@@ -4,51 +4,81 @@ Use for remote services where the client calls through a generated proxy. The im
 
 ## Complete Example
 
-<!-- snippet: skill-interface-factory-complete -->
-<a id='snippet-skill-interface-factory-complete'></a>
+<!-- snippet: interface-factory-contract -->
+<a id='snippet-interface-factory-contract'></a>
 ```cs
 [Factory]
-public interface IEmployeeQueryService
+public interface IProductCatalog
 {
-    Task<IReadOnlyList<EmployeeDto>> GetAllAsync();
-    Task<EmployeeDto?> GetByIdAsync(int id);
-    Task<int> CountAsync();
-}
+    /// <summary>
+    /// Products whose name contains the text. Executed on the server, called from the client.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: The proxy serializes this call to the server,
+    /// where the actual ProductCatalog implementation runs.
+    /// No attributes needed - the [Factory] on the interface is sufficient.
+    /// </remarks>
+    Task<IReadOnlyList<ProductListing>> SearchAsync(string text);
 
-// Server implementation (no [Factory] attribute)
-public class EmployeeQueryService : IEmployeeQueryService
-{
-    private readonly List<EmployeeDto> _employees = new()
-    {
-        new EmployeeDto { Id = 1, Name = "John Doe", Department = "Engineering" },
-        new EmployeeDto { Id = 2, Name = "Jane Smith", Department = "Marketing" }
-    };
+    /// <summary>
+    /// One product by SKU, or null when there is none.
+    /// </summary>
+    Task<ProductListing?> FindBySkuAsync(string sku);
 
-    public Task<IReadOnlyList<EmployeeDto>> GetAllAsync()
-    {
-        return Task.FromResult<IReadOnlyList<EmployeeDto>>(_employees);
-    }
-
-    public Task<EmployeeDto?> GetByIdAsync(int id)
-    {
-        var employee = _employees.FirstOrDefault(e => e.Id == id);
-        return Task.FromResult(employee);
-    }
-
-    public Task<int> CountAsync()
-    {
-        return Task.FromResult(_employees.Count);
-    }
-}
-
-public class EmployeeDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Department { get; set; } = string.Empty;
+    /// <summary>
+    /// A product's details, returned as a record with a primary constructor.
+    /// </summary>
+    /// <remarks>
+    /// Demonstrates that Interface Factory methods can return plain records
+    /// (no [Factory] attribute). The record is serialized without $id/$ref
+    /// metadata, avoiding the System.Text.Json parameterized constructor limitation.
+    /// ProductListing (a class) and ProductDetails (a record) take the two
+    /// serialization paths a returned type can take.
+    /// </remarks>
+    Task<ProductDetails?> GetDetailsAsync(string sku);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/InterfaceFactorySamples.cs#L5-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-complete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L228-L259' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-contract' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: interface-factory-implementation -->
+<a id='snippet-interface-factory-implementation'></a>
+```cs
+public class ProductCatalog : IProductCatalog
+{
+    // In real code, this would query a product store
+    private static readonly ProductDetails[] Products =
+    [
+        new("WA-100", "Widget A", 10.00m, "The standard widget."),
+        new("WB-200", "Widget B", 25.00m, "The heavy-duty widget."),
+        new("WC-300", "Widget C", 7.00m, "The compact widget."),
+    ];
+
+    public Task<IReadOnlyList<ProductListing>> SearchAsync(string text)
+    {
+        IReadOnlyList<ProductListing> found = Products
+            .Where(p => p.Name.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Select(ToListing)
+            .ToList();
+        return Task.FromResult(found);
+    }
+
+    public Task<ProductListing?> FindBySkuAsync(string sku)
+    {
+        var product = Products.FirstOrDefault(p => p.Sku == sku);
+        return Task.FromResult(product == null ? null : ToListing(product));
+    }
+
+    public Task<ProductDetails?> GetDetailsAsync(string sku)
+    {
+        return Task.FromResult(Products.FirstOrDefault(p => p.Sku == sku));
+    }
+
+    private static ProductListing ToListing(ProductDetails product) =>
+        new() { Sku = product.Sku, Name = product.Name, UnitPrice = product.UnitPrice };
+}
+```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L291-L325' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-implementation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Generates**: Proxy implementation that serializes calls to server.
@@ -142,46 +172,64 @@ Fine-grained per-method auth comes from **parameter matching by type**, not per-
 <!-- snippet: skill-interface-factory-auth-authclass -->
 <a id='snippet-skill-interface-factory-auth-authclass'></a>
 ```cs
-// Auth class — scopes are Execute or Read on interface factories. CRUD scopes
-// (Create/Fetch/Insert/Update/Delete) silently never match interface methods.
-public interface IEmployeeQueryAuth
+public interface ICustomerDirectoryAuth
 {
-    // Parameterless — fires on every interface method call.
+    /// <summary>
+    /// Parameterless Execute auth — fires on every interface method call.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: Execute scope on interface factories
+    ///
+    /// AuthorizeFactoryOperation.Execute is the broad scope for interface
+    /// factories — the auth method fires on every interface method unless
+    /// parameter matching restricts it. With no parameters, this method
+    /// runs on ALL four methods of ICustomerDirectory.
+    /// </remarks>
     [AuthorizeFactory(AuthorizeFactoryOperation.Execute)]
     bool HasAccess();
 
-    // Parameterized — Guid matched by TYPE. Fires on every interface method
-    // whose signature includes a Guid parameter; the generator forwards the
-    // value from the call site. Per-entity authorization without needing
-    // per-operation attributes.
+    /// <summary>
+    /// Parameterized Execute auth — receives the customer Guid from every interface method.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: Parameter matching by type
+    ///
+    /// This auth method's Guid parameter matches by TYPE against the interface
+    /// method's parameters. The generator forwards the Guid from each
+    /// interface method into this auth method — enabling per-entity
+    /// authorization (deny access to specific customers) without per-method
+    /// scoping.
+    ///
+    /// All interface methods on ICustomerDirectory take the customer's Guid,
+    /// so this auth method fires on every call.
+    /// </remarks>
     [AuthorizeFactory(AuthorizeFactoryOperation.Execute)]
-    bool CanAccessEmployee(Guid id);
+    bool CanAccessCustomer(Guid customerId);
 
-    // String-returning: null/empty = authorized, non-empty = denial message.
-    // The string surfaces in NotAuthorizedException.Message.
+    /// <summary>
+    /// String-returning Read auth — returns empty string on authorize, message on deny.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: String return types surface denial messages
+    ///
+    /// Auth methods can return bool, Task&lt;bool&gt;, string?, or Task&lt;string?&gt;.
+    /// For string variants:
+    /// - null or empty string = authorized
+    /// - non-empty string     = denied with that string as the denial message
+    ///
+    /// NotAuthorizedException.Message contains the denial string, surfacing
+    /// domain-specific "why" to the caller.
+    ///
+    /// Read scope on an interface factory behaves identically to Execute:
+    /// both apply uniformly across all interface methods. Prefer Execute
+    /// for interface factories for clarity (Read implies a class-factory
+    /// Fetch-like semantic that doesn't exist here).
+    /// </remarks>
     [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
     string? CheckReadAccess();
 }
-
-public class EmployeeQueryAuth : IEmployeeQueryAuth
-{
-    private readonly IUserContext _userContext;
-
-    public EmployeeQueryAuth(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public bool HasAccess() => _userContext.IsAuthenticated;
-
-    public bool CanAccessEmployee(Guid id) =>
-        _userContext.IsInRole("HRManager") || _userContext.IsInRole("Admin");
-
-    public string? CheckReadAccess() =>
-        _userContext.IsInRole("ReadOnly") ? "Tenant is read-only" : null;
-}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/InterfaceFactoryAuthSamples.cs#L14-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-auth-authclass' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L121-L178' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-auth-authclass' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Interface factory (bare contract — no method attributes):**
@@ -189,52 +237,39 @@ public class EmployeeQueryAuth : IEmployeeQueryAuth
 <!-- snippet: skill-interface-factory-auth-factory -->
 <a id='snippet-skill-interface-factory-auth-factory'></a>
 ```cs
-// Interface factory — bare interface, NO attributes on methods.
-// Placing [Create]/[Fetch]/[Insert]/[Update]/[Delete]/[Execute] on any method
-// here is a compile error (NF0106). Fine-grained auth comes from parameter
-// matching on the auth class, not operation attributes on the contract.
 [Factory]
-[AuthorizeFactory<IEmployeeQueryAuth>]
-public interface IAuthorizedEmployeeQuery
+[AuthorizeFactory<ICustomerDirectoryAuth>]
+public interface ICustomerDirectory
 {
-    Task<EmployeeRecord?> GetEmployee(Guid id);
-    Task<EmployeeRecord> UpdateEmployee(Guid id, string name);
-    Task<IReadOnlyList<EmployeeRecord>> ListByDepartment(Guid id);
+    /// <summary>One customer, or null. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
+    Task<CustomerProfile?> GetCustomer(Guid customerId);
+
+    /// <summary>Closes a customer's account. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
+    /// <remarks>
+    /// Returns Task: the command has no result to report. A missing customer is
+    /// an exception (VisionAlignment R-I), which reaches the client at the await.
+    ///
+    /// GENERATOR BEHAVIOR: A Task-returning interface method generates a Task
+    /// delegate and factory method; the client proxy awaits the server call and
+    /// reads no result (#122, v1.10.4).
+    /// </remarks>
+    Task CloseAccount(Guid customerId);
+
+    /// <summary>Renames a customer. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
+    Task<CustomerProfile> RenameCustomer(Guid customerId, string name);
+
+    /// <summary>A customer's contacts. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
+    Task<IReadOnlyList<CustomerContact>> ListContacts(Guid customerId);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/InterfaceFactoryAuthSamples.cs#L55-L68' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-auth-factory' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L260-L287' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-auth-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Server-side impl (plain class — no `[Factory]`, no op attributes):**
 
-<!-- snippet: skill-interface-factory-auth-impl -->
-<a id='snippet-skill-interface-factory-auth-impl'></a>
-```cs
-// Server-side implementation — plain class, NO [Factory], NO operation
-// attributes. Registered on the server only (not the client).
-public class AuthorizedEmployeeQuery : IAuthorizedEmployeeQuery
-{
-    public Task<EmployeeRecord?> GetEmployee(Guid id) =>
-        Task.FromResult<EmployeeRecord?>(new EmployeeRecord { Id = id, Name = "Alice", Department = "HR" });
+The implementation, `CustomerDirectory`, is a plain class: no `[Factory]` and no attributes on its methods.
 
-    public Task<EmployeeRecord> UpdateEmployee(Guid id, string name) =>
-        Task.FromResult(new EmployeeRecord { Id = id, Name = name, Department = "HR" });
-
-    public Task<IReadOnlyList<EmployeeRecord>> ListByDepartment(Guid id) =>
-        Task.FromResult<IReadOnlyList<EmployeeRecord>>([]);
-}
-
-// DI registration (server only):
-//   builder.Services.AddScoped<IAuthorizedEmployeeQuery, AuthorizedEmployeeQuery>();
-//
-// The auth class (EmployeeQueryAuth) is auto-registered by the generator via
-// services.TryAddTransient<IEmployeeQueryAuth, EmployeeQueryAuth>() in the
-// generated FactoryServiceRegistrar — no manual registration needed.
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/InterfaceFactoryAuthSamples.cs#L70-L91' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-auth-impl' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-The auth class is auto-registered by the generator via `services.TryAddTransient<IEmployeeQueryAuth, EmployeeQueryAuth>()` in the generated `FactoryServiceRegistrar` — no manual registration needed. Register the impl on the server only (not the client).
+The auth class is auto-registered by the generator via `services.TryAddTransient<ICustomerDirectoryAuth, CustomerDirectoryAuth>()` in the generated `FactoryServiceRegistrar` — no manual registration needed. Register the impl on the server only (not the client).
 
 ### Generated surface
 
