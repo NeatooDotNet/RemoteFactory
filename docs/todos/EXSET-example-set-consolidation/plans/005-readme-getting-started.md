@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes (a new Design shape later plans embed; the first plan to move embeds; rulings D14, D15, D18, R-C, R-G, R-O)
 **Code-review opt-in:** Yes (README and four framing pages; a new Design operation and store lookup)
 **Branch:** EXSET-005-readme-getting-started
-**PR:** —
+**PR:** #130
 
 ---
 

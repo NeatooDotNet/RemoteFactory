@@ -48,7 +48,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 002 | [002-order-aggregate-cascade](./plans/002-order-aggregate-cascade.md) | Order aggregate: R-C, R-D cascade, D14, R-E | AC-2, AC-4 | Done | #121 |
 | 003 | [003-service-readmodel-context](./plans/003-service-readmodel-context.md) | Domain service, read model, context | AC-2, AC-4 | Done | #125 |
 | 004 | [004-create-or-fetch-value-objects](./plans/004-create-or-fetch-value-objects.md) | Create-or-fetch and value objects | AC-2, AC-4 | Done | #129 |
-| 005 | [005-readme-getting-started](./plans/005-readme-getting-started.md) | README, getting started, framing pages | AC-3, AC-4, AC-6 | In Progress | — |
+| 005 | [005-readme-getting-started](./plans/005-readme-getting-started.md) | README, getting started, framing pages | AC-3, AC-4, AC-6 | Done | #130 |
 | 006 | [006-aspnetcore-modes-serialization](./plans/006-aspnetcore-modes-serialization.md) | ASP.NET Core, modes, serialization, setup | AC-3, AC-4 | Draft | — |
 | 007 | [007-factory-operations](./plans/007-factory-operations.md) | Factory operations page | AC-3, AC-4 | Draft | — |
 | 008 | [008-save-interfaces](./plans/008-save-interfaces.md) | Save operation and interfaces reference | AC-3, AC-4 | Draft | — |
