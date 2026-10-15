@@ -9,7 +9,7 @@
 **Plan-review opt-in:** Yes. The trimming page makes claims about what the trimmer keeps. The IFactorySaveMeta section is rewritten to R-M on a claim no test pins today. The required `TrimMode` is settled by experiment.
 **Code-review opt-in:** Yes.
 **Branch:** EXSET-016-trimming-appendix-lazyload
-**PR:** —
+**PR:** #146
 
 ---
 
