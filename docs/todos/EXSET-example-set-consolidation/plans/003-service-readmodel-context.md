@@ -61,12 +61,12 @@ Give Design the three shapes VisionAlignment §3 lists as missing or misnamed. (
 
 ## Acceptance
 
-- [ ] From the client, the catalog returns a list, a single record, and null for an unknown product `[integration]` · Must
-- [ ] From the client, the customer directory denies by parameterless, per-id and Read-scope auth, exposes `Can{Method}` with the auth-matched parameter only, and a server-side denial crosses as `NotAuthorizedException` `[integration]` · Must
-- [ ] From the client, the order summary loads with its line records for a seeded order and is null for a missing one `[integration]` · Must
-- [ ] From the client, the context loads with its order in one call; adding a product and submitting act on the held order with no server call; saving persists through the order's root Save and the context holds the saved order `[integration]` · Must
-- [ ] No Design type, comment, test or page calls an interface factory a repository `[explicit-skip: grep for "repository" across src/Design excluding README.md and the [Service] IOrderDbContext/IOrderRepository rule statements]` · Should
-- [ ] Both solutions green `[explicit-skip: meta-bullet]` · Must
+- [x] From the client, the catalog returns a list, a single record, and null for an unknown product `[integration]` · Must
+- [x] From the client, the customer directory denies by parameterless, per-id and Read-scope auth, exposes `Can{Method}` with the auth-matched parameter only, and a server-side denial crosses as `NotAuthorizedException` `[integration]` · Must
+- [x] From the client, the order summary loads with its line records for a seeded order and is null for a missing one `[integration]` · Must
+- [x] From the client, the context loads with its order in one call; adding a product and submitting act on the held order with no server call; saving persists through the order's root Save and the context holds the saved order `[integration]` · Must
+- [x] No Design type, comment, test or page calls an interface factory a repository `[explicit-skip: grep for "repository" across src/Design excluding README.md and the [Service] IOrderDbContext/IOrderRepository rule statements]` · Should
+- [x] Both solutions green `[explicit-skip: meta-bullet]` · Must
 
 ---
 

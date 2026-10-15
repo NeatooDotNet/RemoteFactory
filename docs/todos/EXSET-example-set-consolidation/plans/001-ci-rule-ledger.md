@@ -54,11 +54,11 @@ Add `src/Design/Design.sln` to `build.yml`'s build and test steps so Design is c
 
 ## Acceptance
 
-- [ ] `build.yml` builds and tests `Design.sln` in Release, and the same commands pass locally `[explicit-skip: CI configuration; verified by a local Release run now and by CI on the arc's PR into main]` · Must
-- [ ] Both solutions build and test green `[explicit-skip: meta-bullet]` · Must
-- [ ] The ledger has 86 rows and every row names an owning EXSET plan or Todo 2 `[explicit-skip: bookkeeping; counted]` · Must
-- [ ] A rules file scoped to Design, docs, README and skill states the snippet source and region naming `[explicit-skip: guidance file]` · Could
-- [ ] `.gitattributes` forces LF for `.md` and renormalizing changes no content `[explicit-skip: repository configuration; verified by git diff]` · Could
+- [x] `build.yml` builds and tests `Design.sln` in Release, and the same commands pass locally `[explicit-skip: CI configuration; verified by a local Release run now and by CI on the arc's PR into main]` · Must
+- [x] Both solutions build and test green `[explicit-skip: meta-bullet]` · Must
+- [x] The ledger has 86 rows and every row names an owning EXSET plan or Todo 2 `[explicit-skip: bookkeeping; counted]` · Must
+- [x] A rules file scoped to Design, docs, README and skill states the snippet source and region naming `[explicit-skip: guidance file]` · Could
+- [x] `.gitattributes` forces LF for `.md` and renormalizing changes no content `[explicit-skip: repository configuration; verified by git diff]` · Could
 
 ---
 

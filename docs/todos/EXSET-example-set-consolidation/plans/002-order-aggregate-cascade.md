@@ -64,16 +64,16 @@ Bring Design's `Order` / `OrderLineList` / `OrderLine` to the rulings and make t
 
 ## Acceptance
 
-- [ ] From the client: create an order locally, add two lines through the line factory, save; refetching returns the order with both lines and their values `[integration]` · Must
-- [ ] From the client: fetch an existing order, change one line's quantity, remove another, add a third, save; refetching shows exactly that, and the removed line's row is gone from the store; a line added and removed before saving is never written `[integration]` · Must
-- [ ] Fetching an order that does not exist returns null; saving an update for an order whose row was deleted throws to the caller `[integration]` · Must
-- [ ] The order returned by a save can be edited and saved again: inserted lines update, removed lines stay gone `[integration]` · Must
-- [ ] `Order.Create` and `OrderLine.Create` are public, shown by `Design.Client.Blazor` compiling calls to them; creating an order with its list makes no server call `[integration]` · Must
-- [ ] Deleting an order whose row is gone throws to the caller `[integration]` · Should
-- [ ] A line cannot be removed from a submitted order `[integration]` · Should
-- [ ] A removed line does not appear in `Lines` or `Total` before save `[integration]` · Should
-- [ ] CLAUDE-DESIGN and the three file headers state R-C, R-D, D14 and R-E as above, with no "AddLine only works in local mode" and no validation in hooks `[explicit-skip: documentation; checked by grep and review]` · Should
-- [ ] Both solutions green `[explicit-skip: meta-bullet]` · Must
+- [x] From the client: create an order locally, add two lines through the line factory, save; refetching returns the order with both lines and their values `[integration]` · Must
+- [x] From the client: fetch an existing order, change one line's quantity, remove another, add a third, save; refetching shows exactly that, and the removed line's row is gone from the store; a line added and removed before saving is never written `[integration]` · Must
+- [x] Fetching an order that does not exist returns null; saving an update for an order whose row was deleted throws to the caller `[integration]` · Must
+- [x] The order returned by a save can be edited and saved again: inserted lines update, removed lines stay gone `[integration]` · Must
+- [x] `Order.Create` and `OrderLine.Create` are public, shown by `Design.Client.Blazor` compiling calls to them; creating an order with its list makes no server call `[integration]` · Must
+- [x] Deleting an order whose row is gone throws to the caller `[integration]` · Should
+- [x] A line cannot be removed from a submitted order `[integration]` · Should
+- [x] A removed line does not appear in `Lines` or `Total` before save `[integration]` · Should
+- [x] CLAUDE-DESIGN and the three file headers state R-C, R-D, D14 and R-E as above, with no "AddLine only works in local mode" and no validation in hooks `[explicit-skip: documentation; checked by grep and review]` · Should
+- [x] Both solutions green `[explicit-skip: meta-bullet]` · Must
 
 ---
 
