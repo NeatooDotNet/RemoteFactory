@@ -65,7 +65,7 @@ Rulings of 2026-10-09 on section 6:
 | Set | Hand-written `.cs` | `#region`s | Tests | Feeds snippets |
 |---|---|---|---|---|
 | `src/Design` | 35 files, about 8,500 lines | **0** | 115 (`[Fact]`/`[Theory]`), on real Remote / Server / Logical containers (`DesignClientServerContainers.cs:241-243`) | No. `CLAUDE.md` names it the source of truth. `Design.sln` is not built or tested in CI; `build.yml` builds only `src/Neatoo.RemoteFactory.sln`. |
-| `src/docs/reference-app` | 110 files, about 9,900 lines | 178 | Yes, but on one Logical container; nothing serializes (audit T-25) | **All 162 embeds** in the skill, `docs/` and `README.md`. 160 public concretes, 0 `internal`; 14 `[SuppressFactory]`, so some published "compiled" regions are never seen by the generator (T-22). |
+| `src/docs/reference-app` | 110 files, about 9,900 lines | 178 | Yes, but on one Logical container; nothing serializes (audit T-25) | **All 165 rendered blocks (155 embed markers)** in the skill, `docs/` and `README.md`. 160 public concretes, 0 `internal`; 14 `[SuppressFactory]`, so some published "compiled" regions are never seen by the generator (T-22). |
 | `src/docs/samples` | 1 file, 275 lines | 5 | None; in no solution | Yes: duplicates every README snippet, the copy with eight `[Remote] public` methods (T-14). |
 | `src/Examples/Person` | 22 files, about 1,100 lines | 0 | — | No. The Blazor WASM example application. |
 
