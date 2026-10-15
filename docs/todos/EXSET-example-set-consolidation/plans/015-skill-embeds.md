@@ -4,15 +4,124 @@
 **Date:** 2026-10-15
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** Draft
+**Status:** In Progress
 **Last Updated:** 2026-10-15
-**Plan-review opt-in:** set at Step 2
-**Code-review opt-in:** set at Step 2
-**Branch:** cut from EXSET at Step 2
+**Plan-review opt-in:** No. Most embeds re-point to regions 002–010 built and reviewed, and the new regions sit on Design code those plans' tests pin.
+**Code-review opt-in:** Yes. The re-pointed embeds change what the skill shows, and the notes attached to them must match.
+**Branch:** EXSET-015-skill-embeds
 **PR:** —
 
 ---
 
 ## Scope
 
-Split from EXSET-010 at its Step 2 (2026-10-15). Re-point the skill's remaining reference-app embeds to `src/Design`: `skill-class-factory-complete`, `skill-lifecycle-hooks`, `skill-class-execute` (`class-factory.md`); `skill-interface-factory-complete` and the three `skill-interface-factory-auth-*` (`interface-factory.md`); `skill-entity-duality`, `skill-value-object-factory` and `skill-complex-aggregate` (`advanced-patterns.md`; its `clientserver-container-usage` went to `aspnetcore-testing` in EXSET-010); `skill-blazor-usage` (`setup.md`); `skill-static-execute-commands` (`static-factory.md`). Reuse Design's existing regions where one shows the same shape. Fix the findings those embeds carry: C-11, C-14, C-15, C-19, I-05 and U-02's skill shares. Delete the reference-app `Samples/Skill` sources whose every region retires. The skill's prose around the embeds is Todo 2's.
+Split from EXSET-010 at its Step 2 (2026-10-15). Re-point the skill's remaining reference-app embeds to `src/Design`.
+
+**Reused regions:**
+
+| Skill embed | Page | Design region(s) |
+|---|---|---|
+| `skill-class-factory-complete` | `class-factory.md` | `readme-domain-model` (Order's operations) |
+| `skill-lifecycle-hooks` | `class-factory.md` | `operations-lifecycle-onstart`, `operations-lifecycle-oncomplete` |
+| `skill-class-execute` | `class-factory.md` | `operations-class-execute` |
+| `skill-interface-factory-complete` | `interface-factory.md` | `interface-factory-contract`, `interface-factory-implementation` |
+| `skill-entity-duality` | `advanced-patterns.md` | `orderline-child`, `orderline-duality` |
+| `skill-complex-aggregate` | `advanced-patterns.md` | `order-interface`, `operations-create-method`, `readme-client-usage` |
+| `skill-static-execute-commands` | `static-factory.md` | `operations-execute`, `operations-execute-command` |
+
+**New Design regions, keeping the migrating names:**
+- `skill-interface-factory-auth-authclass`, on `ICustomerDirectoryAuth`;
+- `skill-interface-factory-auth-factory`, on the whole `ICustomerDirectory`;
+- `skill-value-object-factory`, on the whole `TaxRate` record;
+- `skill-blazor-usage`, on `Design.Client.Blazor`'s Home page code.
+
+**Becomes prose:** `skill-interface-factory-auth-impl`. The implementation is a plain class, and Design's auth implementation uses test flags, so it is not a shape to copy.
+
+**Notes attached to an embed** that would contradict the Design code it now shows are corrected in one line each:
+- the complex aggregate's "constructor injection on the collection";
+- the value object's "public setters".
+
+The rest of the skill's prose is Todo 2's.
+
+**Findings to fix:** C-11, C-14, C-15, C-19, C-20, C-02, I-05 and U-02's skill shares.
+
+**Delete** the reference-app `Samples/Skill` sources whose every region retires, and strip the markers from any that other code still uses.
+
+Does NOT touch:
+- `references/lazyload.md` (EXSET-011);
+- the skill's other prose (Todo 2).
+
+---
+
+## Intent
+
+Every C# embed in the skill comes from Design, and the line that introduces each embed describes the code it shows.
+
+---
+
+## Framework & Architectural Alignment
+
+- **Rulings:** D14, R-C, R-E, R-F, R-G, R-J and R-M.
+- **`.claude/rules/design-snippets.md`.**
+- **`CLAUDE.md`'s skill rule:** the skill is self-contained, so its prose may not link repository files.
+
+---
+
+## Constraints & Invariants
+
+- **Embeds.** Every skill embed is a Design region (`lazyload.md` excepted, EXSET-011).
+- **Regions.** Each region name is defined once in the repository.
+- **The whole still works:** both solutions green, mdsnippets swallows nothing, the reference app builds.
+
+---
+
+## Steps
+
+1. The new Design regions.
+2. Re-point the skill markers, and correct the attached notes.
+3. Delete or strip the reference-app sources, then build `EmployeeManagement.sln`.
+4. Verify and record: mdsnippets, both solutions, the ledger.
+
+---
+
+## Acceptance
+
+- [ ] Every skill embed outside `lazyload.md` is a Design region. No region is defined twice, and none retired is embedded. The reference app builds. `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
+- [ ] Each corrected note matches the code it introduces `[explicit-skip: read against the region]` · Must
+- [ ] The embedded regions are pinned by Design tests `[explicit-skip: each region's test named in Test Evidence]` · Must
+- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+
+---
+
+## Current State (Pre-Flight)
+
+- **14 skill embeds** come from the reference app's `Samples/Skill` and `Client.Blazor/Samples/Skill`, plus `lazyload.md`'s 2.
+- **Design has every shape:** Order, OrderLine, OrderCommands, CustomerPreferences, IProductCatalog, CustomerDirectory, TaxRate and the Blazor Home page.
+- **The old samples carry findings:**
+  - `[Remote, Create]` with an unused repository (U-02);
+  - a business `Status` set in a `[Create]`;
+  - a `[Create]` with a default parameter (I-05);
+  - a `FactoryStartAsync` "validation" comment (C-11);
+  - public concretes (C-19).
+
+---
+
+## Punchlist
+
+---
+
+## Test Evidence
+
+---
+
+## Gate Record
+
+---
+
+## Plan Amendments
+
+---
+
+## Notes
+
+- **Run unattended** under Keith's standing instruction.
