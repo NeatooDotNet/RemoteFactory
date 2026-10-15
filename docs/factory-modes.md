@@ -21,7 +21,7 @@ The mode is set when you register RemoteFactory in DI:
 ```cs
 services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [ASP.NET Core Integration](aspnetcore-integration.md) for the endpoint and its middleware.
@@ -41,7 +41,7 @@ builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L64-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `[Remote]` marks the operations that cross. So does server-side authorization: an operation guarded by `[AspAuthorize]`, or by an authorization method marked `[Remote]`, goes to the server for the check (see [Authorization](authorization.md)). Every other operation runs on the client, such as a local `Create` or a `Can*` check whose rules are plain methods, so the `[Service]` parameters it takes must be registered in the client's container.
@@ -92,7 +92,7 @@ services.AddLogging(logging => logging
     .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
     .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L96-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L130-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 A call that logs a client remote call and then a server "Handling" entry crossed; an operation that logs only a factory entry on the client ran there.

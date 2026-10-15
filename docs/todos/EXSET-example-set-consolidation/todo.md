@@ -64,7 +64,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 ## Punchlist
 
 - [ ] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must
-- [ ] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must
+- [x] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must → EXSET-009: all three Creates are local `public [Create]`
 - [ ] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-011 · AC-4 · Must
 
 ## Dismissed
@@ -79,6 +79,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Discovery Log
 
+- **2026-10-15 · EXSET-009 · Stop → Keith.** The defect in the entry below was already fixed on `main` by #127 (v1.10.6), with #91 and #117 (v1.10.5); the arc had never taken `main`. Serves AC-3. Keith: merge `main` into EXSET first (#139, merged); the duplicate library edit is dropped and #138 closed.
 - **2026-10-15 · EXSET-009 · Amend.** The plan review found that an anonymous caller passes a class factory's `[AspAuthorize]`. With no authenticated user, `AspAuthorize` returns a null or empty message, which converts to `Authorized(true)`. Serves AC-3 (the page's denial outcomes). Keith: fix it in the library on EXSET-009, with tests and an issue for the record.
 - **2026-10-15 · EXSET-009 · Re-split.** Recon found the stub held two deliverables of different shape. One is authorization: Design's auth types are flag-driven scaffolding, `SecureOrder` is untested, and Design.Server has no authentication. The other is the attributes page, a re-pointing job. Serves AC-3 and AC-4. Keith: rework `AuthorizedOrder` onto an injected `ICurrentUser`, give Design.Server bare `AddAuthentication`, and split the attributes page out as EXSET-014 (14 of 18).
 - **2026-10-15 · EXSET-013 · Stop → Keith.** The reference probe found that in the Ordinal format (the default), `[Factory]` objects lose reference identity: a shared reference arrives as two copies, and a back reference throws "possible object cycle". Named preserves both. Serves AC-4 (serialization.md's reference claims). Keith: document it per format and file a bug, #133 (`critical`); the probe becomes a known-bug regression test.

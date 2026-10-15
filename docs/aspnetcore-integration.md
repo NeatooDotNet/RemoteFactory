@@ -35,6 +35,10 @@ var app = builder.Build();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
+// Sign the caller in before the endpoint runs: [AspAuthorize] and ICurrentUser read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
 // The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();
 
@@ -42,7 +46,7 @@ app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
 ```
-<sup><a href='/src/Design/Design.Server/Program.cs#L59-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `AddDesignServer()` holds the server's whole composition, so a test can build exactly what the server builds. Its RemoteFactory line is:
@@ -52,7 +56,7 @@ await app.RunAsync();
 ```cs
 services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Two calls do the work:
@@ -79,7 +83,7 @@ services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenS
 
 services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L161-L173' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L195-L207' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `RegisterMatchingName` registers each `IName` → `Name` pair in the assemblies you pass, **transient**, with `TryAdd`. It also registers each matched concrete type by itself. Three things follow:
@@ -257,7 +261,7 @@ services.AddLogging(logging => logging
     .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
     .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L96-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L130-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization

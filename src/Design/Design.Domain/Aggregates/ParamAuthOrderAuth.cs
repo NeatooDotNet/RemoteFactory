@@ -86,8 +86,10 @@ public interface IParamAuthOrderAuth
     /// not Create. Create has no Guid parameter, so a Read-scoped
     /// parameterized method would fail to match.
     /// </remarks>
+    #region authorization-parameterized
     [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
     bool CanFetchOrder(Guid orderId);
+    #endregion
 
     /// <summary>
     /// Non-target Write auth -- parameterless role/permission check.
@@ -126,8 +128,10 @@ public interface IParamAuthOrderAuth
     /// CanInsert/CanUpdate/CanDelete are NOT generated because these Can* methods
     /// run before the write operation when the entity isn't available.
     /// </remarks>
+    #region authorization-target
     [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
     bool CanWrite(IParamAuthOrder target);
+    #endregion
 }
 
 /// <summary>

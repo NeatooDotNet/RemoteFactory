@@ -100,12 +100,12 @@ Does NOT touch:
 
 ## Acceptance
 
-- [ ] `AuthorizedOrder`'s `Can*`, Create, Fetch and Save allow or deny by the signed-in user's roles, and a denied client-server Fetch returns null. These are the existing `AuthorizationTests`, now on the test user. `[integration]` · Must
-- [ ] Create is local for the three auth aggregates, and `CanCreate` runs on the client with no server call `[integration]` · Must
-- [ ] Over HTTP, `SecureOrder`'s `[AspAuthorize]` operations allow a user who meets the policy or role. Denied, the Fetch returns null and the Save throws `NotAuthorizedException`. `[integration]` · Must
-- [ ] The page's denial outcomes match the generator: class factory null or `NotAuthorizedException`; interface-factory `[AspAuthorize]` 403. `[explicit-skip: source-cited review; the class-factory outcomes are also pinned by bullets 1 and 3]` · Should
-- [ ] On the page and the skill's embeds: every C# block is from Design or WRONG, and no retired region is embedded; the reference-app sources are gone and the app builds `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
-- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+- [x] `AuthorizedOrder`'s `Can*`, Create, Fetch and Save allow or deny by the signed-in user's roles, and a denied client-server Fetch returns null. These are the existing `AuthorizationTests`, now on the test user. `[integration]` · Must
+- [x] Create is local for the three auth aggregates, and `CanCreate` runs on the client with no server call `[integration]` · Must
+- [x] Over HTTP, `SecureOrder`'s `[AspAuthorize]` operations allow a user who meets the policy or role. Denied, the Fetch returns null and the Save throws `NotAuthorizedException`. `[integration]` · Must
+- [x] The page's denial outcomes match the generator: class factory null or `NotAuthorizedException`; interface-factory `[AspAuthorize]` 403. `[explicit-skip: source-cited review; the class-factory outcomes are also pinned by bullets 1 and 3]` · Should
+- [x] On the page and the skill's embeds: every C# block is from Design or WRONG, and no retired region is embedded; the reference-app sources are gone and the app builds `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
+- [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -129,6 +129,15 @@ Does NOT touch:
 
 ## Test Evidence
 
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. AuthorizedOrder by roles | `AuthorizationTests` scenarios 1–12, now on the shared `TestUser`. A deny takes a role away (`Sales` for Create, `Sales`/`Support` for Fetch, `Manager` for Delete), and every assertion is unchanged. Scenario 12 is the denied client-server Fetch. Over HTTP, `ClientErrorHandlingTests` run the real `AuthorizedOrderAuth` over the request's user, behind `GatedOrderAuth`'s switches | integration |
+| 2. Local Creates, client `CanCreate` | `AuthorizationTests.AuthorizedOrder_Create_WorksThroughClientServer` (no remote call) and `AuthorizedOrder_CanCreate_GuardsTheCreate_OnTheClient` (the `authorization-generated` region: allowed, then denied, with no remote call). `ParamAuthorizationTests` and `SaveTests` use the synchronous Create | integration |
+| 3. `[AspAuthorize]` over HTTP | `AspAuthorizeHttpTests`: a signed-in Fetch is allowed; an anonymous Fetch returns null; Insert needs Admin or Manager (Sales gets `NotAuthorizedException`); Update needs both attributes (Admin alone is refused). Against the arc's pre-#127 `AspAuthorize`, the anonymous test failed on both TFMs (`reviews/009-unfixed-aspauthorize-test.log`) | integration |
+| 4. Denial outcomes | explicit-skip: `FactoryModelBuilder.cs:437` (interface methods forbid), `:587`, `:703` (Can* and Save do not), `HandleRemoteDelegateRequest.cs:246-251`, `AspAuthorize.cs:86-110`, `InterfaceFactoryRenderer.cs:495` (the context format). The class-factory outcomes are also pinned by bullets 1 and 3 | explicit-skip |
+| 5. Page and skill | explicit-skip: no fence outside a snippet pair on `authorization.md`. All 12 embeds come from Design (AuthorizedOrder, AuthorizedOrderAuth, ParamAuthOrderAuth, SecureOrder, ServerServices, AuthorizationTests). The skill's five embeds re-pointed by name. `aspnetcore-middleware-order` is retired. `AuthorizationPolicyConfig.cs` and `BasicSetupSamples.cs` are deleted, and `AuthorizationSamples.cs` lost its region markers; `reviews/009-refapp-build.log` (0 errors) | explicit-skip |
+| 6. Meta | explicit-skip: `reviews/009-mdsnippets.log`. README, getting started and the skill's setup gain the two middleware lines; factory-modes and serialization change only in attribution. Logs: `009-build.log`, `009-test.log`, `009-design-build.log`, `009-design-test.log` (unit 852 and integration 652 + 7 skips, after `main`'s merge; Design 171 + 1 known-bug skip, up 5; both TFMs) | explicit-skip |
+
 ---
 
 ## Gate Record
@@ -138,7 +147,7 @@ Does NOT touch:
 ## Plan Amendments
 
 - **2026-10-15 · Plan review** ([009-plan-review.md](../reviews/009-plan-review.md)): APPROVED, with 15 callouts, all amended (see its Triage column). The ones that change the plan:
-  - **Library fix (Keith).** An anonymous caller passes a class factory's `[AspAuthorize]`. When authentication returns no result, `AspAuthorize` returns a null message, and a challenged denial returns `""`; both convert to `Authorized(true)`. `AspAuthorize` now runs the policy in every case, and a denial always carries a message. This adds unit tests, a Design HTTP test where anonymous is denied, an issue for the record, and release notes.
+  - **The anonymous-caller defect was already fixed on `main`** (#127, v1.10.6, with `AspAuthorizeRefusalTests`); EXSET had been cut before it and had not taken `main`. Keith first chose to fix it on 009. Implementation found #127, so Keith chose to merge `main` into EXSET first (#139). The duplicate edit was dropped, and #138, filed before #127 was found, is closed. Run against the arc's old `AspAuthorize`, Design's `Fetch_AnonymousCaller_IsDenied` failed on both TFMs. It passes on `main`'s fix, and it is the HTTP-level pin for it.
   - **Create call sites (Keith).** Local Creates are synchronous, so `await factory.Create(...)` loses its `await` in AuthorizationTests, ParamAuthorizationTests and SaveTests' #104 test. The assertions are unchanged. The Constraint that ParamAuthorizationTests is "untouched" no longer holds for these call sites.
   - **The three Creates** become `public` `[Create]`.
   - **`ICurrentUser`'s implementation** has a non-matching name and is registered explicitly. `AddHttpContextAccessor()` is added.

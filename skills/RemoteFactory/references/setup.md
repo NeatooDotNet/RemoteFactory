@@ -29,6 +29,10 @@ var app = builder.Build();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
+// Sign the caller in before the endpoint runs: [AspAuthorize] and ICurrentUser read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
 // The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();
 
@@ -36,7 +40,7 @@ app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
 ```
-<sup><a href='/src/Design/Design.Server/Program.cs#L59-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `AddDesignServer()` is the example's own composition method. Its RemoteFactory registration is:
@@ -46,7 +50,7 @@ await app.RunAsync();
 ```cs
 services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Multiple Assemblies
@@ -72,7 +76,7 @@ builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L64-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Factory Modes
