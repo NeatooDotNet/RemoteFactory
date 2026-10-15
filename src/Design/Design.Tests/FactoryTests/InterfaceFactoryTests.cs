@@ -43,11 +43,13 @@ public class InterfaceFactoryTests
         // Arrange
         var (server, client, _) = DesignClientServerContainers.Scopes();
 
+        #region interface-factory-usage
         // Get the interface from client - this is the proxy
         var catalog = client.GetRequiredService<IProductCatalog>();
 
         // Act - call goes through proxy to server
         var result = await catalog.SearchAsync("Widget");
+        #endregion
 
         // Assert
         Assert.NotNull(result);

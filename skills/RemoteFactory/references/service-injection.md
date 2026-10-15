@@ -9,14 +9,15 @@ Services injected via constructor are available on **both client and server**.
 <!-- snippet: service-injection-constructor -->
 <a id='snippet-service-injection-constructor'></a>
 ```cs
-// Constructor injection - service available on BOTH client and server
-[Create]
-public EmployeeCompensation([Service] ISalaryCalculator calculator)
+public CtorInjectedEntity(ITenantTokenService tokens)
 {
-    _calculator = calculator;
+    _tokens = tokens;
 }
+
+// Read on whichever tier holds the instance: the client's service after the round trip
+public string TokenFromContext => _tokens.Token;
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L161-L168' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/CtorInjectionExample.cs#L130-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Use constructor injection when:**
@@ -50,14 +51,14 @@ Services injected via method parameters are **server-only**.
 <!-- snippet: service-injection-server-only -->
 <a id='snippet-service-injection-server-only'></a>
 ```cs
-// Server-only service - [Remote] ensures execution on server where IEmployeeDatabase exists
 [Remote, Fetch]
-internal async Task Fetch(string query, [Service] IEmployeeDatabase database)
+internal static async Task<TaxRate?> Fetch(string region, [Service] ITaxTable taxTable)
 {
-    QueryResult = await database.ExecuteQueryAsync(query);
+    var rate = await taxTable.FindRateAsync(region);
+    return rate is null ? null : new TaxRate(region, rate);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L66-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ValueObjects/TaxRate.cs#L36-L43' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Use method injection when:**
@@ -98,36 +99,52 @@ public void Create([Service] IMyService service)
 
 Child entities within an aggregate do NOT need `[Remote]`:
 
-<!-- snippet: skill-child-entity-no-remote -->
-<a id='snippet-skill-child-entity-no-remote'></a>
+<!-- snippet: orderline-child -->
+<a id='snippet-orderline-child'></a>
 ```cs
-[Factory]
-public partial class Assignment
+/// <summary>
+/// Creates a new OrderLine. Public and local: the client calls it.
+/// </summary>
+[Create]
+public void Create(string productName, decimal unitPrice, int quantity)
 {
-    public int Id { get; set; }
-    public string ProjectName { get; set; } = string.Empty;
-    public decimal HoursAllocated { get; set; }
-    public DateTime StartDate { get; set; }
+    Id = Guid.NewGuid();
+    ProductName = productName;
+    UnitPrice = new Money(unitPrice);
+    Quantity = quantity;
+    IsNew = true;
+}
 
-    [Create]  // No [Remote] - called from server-side Employee operations
-    public void Create(string projectName, decimal hoursAllocated, DateTime startDate)
-    {
-        ProjectName = projectName;
-        HoursAllocated = hoursAllocated;
-        StartDate = startDate;
-    }
+/// <summary>
+/// Loads a line from the row its order's load hands it, as a child.
+/// </summary>
+[Fetch]
+internal void Fetch(OrderLineRow row)
+{
+    LoadFrom(row);
+}
 
-    [Fetch]  // No [Remote]
-    public void Fetch(int id, string projectName, decimal hoursAllocated, DateTime startDate)
-    {
-        Id = id;
-        ProjectName = projectName;
-        HoursAllocated = hoursAllocated;
-        StartDate = startDate;
-    }
+/// <summary>
+/// Maps a new line into the row the list made for it.
+/// </summary>
+[Insert]
+internal void Insert(OrderLineRow row)
+{
+    row.Id = Id;
+    MapTo(row);
+    IsNew = false;
+}
+
+/// <summary>
+/// Maps an existing line into the row the list found for it.
+/// </summary>
+[Update]
+internal void Update(OrderLineRow row)
+{
+    MapTo(row);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/ChildEntitySamples.cs#L5-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-child-entity-no-remote' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L128-L170' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Why No [Remote] on Children?

@@ -172,7 +172,7 @@ internal async Task Upsert([Service] ICustomerPreferencesStore store)
     IsNew = false;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L91-L98' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L93-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Save Operation](save-operation.md).
@@ -221,7 +221,7 @@ private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
     return Task.FromResult(scorer.Score(text));
 }
 ```
-<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L502-L508' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L507-L513' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Where it runs:**

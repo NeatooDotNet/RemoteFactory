@@ -94,7 +94,7 @@ services.AddLogging(logging => logging
     .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
     .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L130-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L132-L137' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 To read the payloads themselves, switch both tiers to Named and use the browser's network tools.

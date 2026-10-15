@@ -33,12 +33,14 @@ namespace Design.Domain.ValueObjects;
 [Factory]
 public partial record TaxRate(string Region, Percentage Rate)
 {
+    #region service-injection-server-only
     [Remote, Fetch]
     internal static async Task<TaxRate?> Fetch(string region, [Service] ITaxTable taxTable)
     {
         var rate = await taxTable.FindRateAsync(region);
         return rate is null ? null : new TaxRate(region, rate);
     }
+    #endregion
 }
 
 /// <summary>

@@ -10,13 +10,11 @@ namespace EmployeeManagement.Infrastructure.Samples;
 /// </summary>
 public static class EmployeeServiceRegistration
 {
-    #region service-injection-matching-name
     // Convention: IName -> Name (Transient lifetime)
     public static void ConfigureServices(IServiceCollection services)
     {
         services.RegisterMatchingName(typeof(IEmployeeRepository).Assembly);
     }
-    #endregion
 }
 
 /// <summary>
@@ -24,7 +22,6 @@ public static class EmployeeServiceRegistration
 /// </summary>
 public static class EmployeeServiceLifetimes
 {
-    #region service-injection-lifetimes
     // Standard ASP.NET Core lifetimes work with [Service] injection
     public static void ConfigureServices(IServiceCollection services)
     {
@@ -32,7 +29,6 @@ public static class EmployeeServiceLifetimes
         services.AddScoped<IAuditContext, AuditContext>();             // Request lifetime
         services.AddTransient<INotificationService, NotificationService>(); // Per-resolution
     }
-    #endregion
 }
 
 /// <summary>
@@ -40,14 +36,12 @@ public static class EmployeeServiceLifetimes
 /// </summary>
 public static class EmployeeTestServices
 {
-    #region service-injection-testing
     // Register test doubles for unit/integration tests
     public static void ConfigureTestServices(IServiceCollection services)
     {
         services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
         services.AddScoped<IUserContext, TestUserContext>();
     }
-    #endregion
 }
 
 /// <summary>

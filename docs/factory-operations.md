@@ -207,7 +207,7 @@ internal async Task Upsert([Service] ICustomerPreferencesStore store)
     IsNew = false;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L91-L98' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L93-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The factory's save method is named `Save` plus your method's name. If the name starts with the group's highest-ranked operation (Delete, then Update, then Insert), that word is dropped. Here the group ranks Update highest and `Upsert` does not start with it, so the method is **`SaveUpsert`**. A combined method named `Update` would give `Save`, but one named `Insert` or `InsertOrUpdate` keeps its whole name: `SaveInsert`, `SaveInsertOrUpdate`. With no `[Delete]`, marking the object deleted makes the save throw.
@@ -427,7 +427,7 @@ public Task FactoryStartAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L108-L117' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L110-L119' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnComplete / IFactoryOnCompleteAsync

@@ -127,10 +127,15 @@ internal partial class CtorInjectedEntity : ICtorInjectedEntity
         init => _name = value;
     }
 
+    #region service-injection-constructor
     public CtorInjectedEntity(ITenantTokenService tokens)
     {
         _tokens = tokens;
     }
+
+    // Read on whichever tier holds the instance: the client's service after the round trip
+    public string TokenFromContext => _tokens.Token;
+    #endregion
 
     /// <summary>
     /// Entry point from client. Loads state on the server, returns the
@@ -145,12 +150,9 @@ internal partial class CtorInjectedEntity : ICtorInjectedEntity
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Reads the token from the ctor-injected service belonging to whichever
-    /// side the instance currently lives on. Tests read this on the client to
-    /// prove DI ran after deserialization.
-    /// </summary>
-    public string TokenFromContext => _tokens.Token;
+    // TokenFromContext (above, with the constructor) reads the token from the
+    // ctor-injected service belonging to whichever side the instance currently
+    // lives on. Tests read it on the client to prove DI ran after deserialization.
 }
 
 /// <summary>

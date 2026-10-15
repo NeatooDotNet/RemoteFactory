@@ -73,6 +73,7 @@ internal partial class CustomerPreferences : ICustomerPreferences, IFactoryOnSta
     /// <summary>
     /// Loads a customer's stored preferences; false when there are none.
     /// </summary>
+    #region service-injection-basic
     [Remote, Fetch]
     internal async Task<bool> Fetch(string customerName, [Service] ICustomerPreferencesStore store)
     {
@@ -87,6 +88,7 @@ internal partial class CustomerPreferences : ICustomerPreferences, IFactoryOnSta
         IsNew = false;
         return true;
     }
+    #endregion
 
     #region operations-insert-update
     [Remote, Insert, Update]

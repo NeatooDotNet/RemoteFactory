@@ -83,7 +83,7 @@ services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenS
 
 services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L195-L207' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L197-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `RegisterMatchingName` registers each `IName` → `Name` pair in the assemblies you pass, **transient**, with `TryAdd`. It also registers each matched concrete type by itself. Three things follow:
@@ -261,7 +261,7 @@ services.AddLogging(logging => logging
     .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
     .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L130-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L132-L137' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization

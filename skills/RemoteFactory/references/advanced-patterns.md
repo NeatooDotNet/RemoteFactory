@@ -472,20 +472,17 @@ public void AddLine(IOrderLine line)
 
 Validate serialization round-trips using the two DI container pattern:
 
-<!-- snippet: clientserver-container-usage -->
-<a id='snippet-clientserver-container-usage'></a>
+<!-- snippet: aspnetcore-testing -->
+<a id='snippet-aspnetcore-testing'></a>
 ```cs
-[Fact]
-public void Local_Create_WorksWithoutSerialization()
-{
-    var (server, client, local) = ClientServerContainers.Scopes();
-    var factory = local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
-    var employee = factory.Create();  // Runs locally (Logical mode)
-    Assert.NotNull(employee);
-    server.Dispose(); client.Dispose(); local.Dispose();
-}
+var (server, client, local) = DesignClientServerContainers.Scopes();
+var orderFactory = client.GetRequiredService<IOrderFactory>();
+
+IOrder? order = orderFactory.Create("Test_Customer");   // local: no server call
+order = await orderFactory.Save(order);                 // serialized to the server and back
+var fetched = await orderFactory.Fetch(order!.Id);      // serialized again
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/ClientServerContainerSamples.cs#L63-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-clientserver-container-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/ClientServerTestingTests.cs#L27-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Container types:**

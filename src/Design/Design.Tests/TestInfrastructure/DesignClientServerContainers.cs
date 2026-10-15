@@ -242,16 +242,23 @@ public static class DesignClientServerContainers
         Action<IServiceCollection>? configureClient = null,
         SerializationFormat format = SerializationFormat.Ordinal)
     {
+        #region clientserver-container-setup
         var serializationOptions = new NeatooSerializationOptions { Format = format };
 
         var serverCollection = new ServiceCollection();
         var clientCollection = new ServiceCollection();
         var localCollection = new ServiceCollection();
 
-        // Add base configuration
+        // One mode per container: Server handles requests, Remote serializes its
+        // [Remote] calls, Logical runs everything in-process
         ConfigureContainer(serverCollection, NeatooFactory.Server, serializationOptions);
         ConfigureContainer(clientCollection, NeatooFactory.Remote, serializationOptions);
         ConfigureContainer(localCollection, NeatooFactory.Logical, serializationOptions);
+
+        // The client's remote calls go to the server scope, serialized, in place of HTTP
+        clientCollection.AddScoped<ServerServiceProvider>();
+        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
+        #endregion
 
         // Server-only services
         serverCollection.AddScoped<IExampleService, ExampleService>();
@@ -270,10 +277,6 @@ public static class DesignClientServerContainers
         localCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
         localCollection.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
         localCollection.AddSingleton<ISupportLog, InMemorySupportLog>();
-
-        // Client needs server provider reference for remote calls
-        clientCollection.AddScoped<ServerServiceProvider>();
-        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
 
         // One signed-in user, shared by the three containers, as a real user is the
         // same person on the client and the server. Tests take a role away to deny.
