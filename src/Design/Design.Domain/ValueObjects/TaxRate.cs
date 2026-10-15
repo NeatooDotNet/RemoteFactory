@@ -30,6 +30,7 @@ namespace Design.Domain.ValueObjects;
 /// Once loaded, TaxRate crosses the wire as a parameter or property like any
 /// other record. The factory is only how it is obtained.
 /// </remarks>
+#region skill-value-object-factory
 [Factory]
 public partial record TaxRate(string Region, Percentage Rate)
 {
@@ -42,6 +43,7 @@ public partial record TaxRate(string Region, Percentage Rate)
     }
     #endregion
 }
+#endregion
 
 /// <summary>
 /// The server's table of tax rates by region. Server-only: injected with [Service]

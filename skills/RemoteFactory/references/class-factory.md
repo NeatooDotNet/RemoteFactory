@@ -4,88 +4,96 @@ Use for domain entities and aggregate roots that have lifecycle operations (Crea
 
 ## Complete Example
 
-<!-- snippet: skill-class-factory-complete -->
-<a id='snippet-skill-class-factory-complete'></a>
+<!-- snippet: order-class-declaration -->
+<a id='snippet-order-class-declaration'></a>
 ```cs
 [Factory]
-public partial class SkillEmployee : IFactorySaveMeta
-{
-    public Guid Id { get; set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public bool IsNew { get; set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Remote, Create]
-    internal void Create(string firstName, string lastName, [Service] IEmployeeRepository repo)
-    {
-        Id = Guid.NewGuid();
-        FirstName = firstName;
-        LastName = lastName;
-        IsNew = true;
-    }
-
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var data = await repo.GetByIdAsync(id, ct);
-        if (data == null) return false;
-
-        Id = data.Id;
-        FirstName = data.FirstName;
-        LastName = data.LastName;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote, Insert]
-    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = string.Format(
-                CultureInfo.InvariantCulture,
-                "{0}.{1}@example.com",
-                FirstName.ToLowerInvariant(),
-                LastName.ToLowerInvariant()),
-            Position = "New Employee",
-            SalaryAmount = 0,
-            SalaryCurrency = "USD",
-            HireDate = DateTime.UtcNow
-        };
-        await repo.AddAsync(entity, ct);
-        await repo.SaveChangesAsync(ct);
-        IsNew = false;
-    }
-
-    [Remote, Update]
-    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var entity = await repo.GetByIdAsync(Id, ct);
-        if (entity != null)
-        {
-            entity.FirstName = FirstName;
-            entity.LastName = LastName;
-            await repo.UpdateAsync(entity, ct);
-            await repo.SaveChangesAsync(ct);
-        }
-    }
-
-    [Remote, Delete]
-    internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        await repo.DeleteAsync(Id, ct);
-        await repo.SaveChangesAsync(ct);
-    }
-}
+internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnCompleteAsync
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/ClassFactorySamples.cs#L7-L82' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-class-factory-complete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L80-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-class-declaration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Generates**: `ISkillEmployeeFactory` with `Create()`, `Fetch()`, `Save()` methods.
+<!-- snippet: readme-domain-model -->
+<a id='snippet-readme-domain-model'></a>
+```cs
+/// <summary>
+/// Creates a new Order. Local: runs on the tier that calls it.
+/// </summary>
+[Create]
+public void Create(
+    string customerName,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    CustomerName = customerName;
+    Lines = lineListFactory.Create();
+    Status = OrderStatus.Draft;
+    IsNew = true;
+}
+
+/// <summary>
+/// Loads an existing Order and its lines; false when there is none.
+/// </summary>
+[Remote, Fetch]
+internal async Task<bool> Fetch(
+    int id,
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    var row = await db.FindAsync(id);
+    if (row == null)
+        return false;
+
+    LoadFrom(row, lineListFactory);
+    return true;
+}
+
+/// <summary>
+/// Inserts a new Order and its lines.
+/// </summary>
+[Remote, Insert]
+internal async Task Insert(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    var row = new OrderRow();
+    MapTo(row);
+    db.Add(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+    Id = row.Id;
+}
+
+/// <summary>
+/// Updates an existing Order and its lines.
+/// </summary>
+[Remote, Update]
+internal async Task Update(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    MapTo(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+}
+
+/// <summary>
+/// Deletes an Order. Its line rows go with its row.
+/// </summary>
+[Remote, Delete]
+internal async Task Delete([Service] IOrderDbContext db)
+{
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    db.Remove(row);
+    await db.SaveChangesAsync();
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L234-L318' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+**Generates**: `IOrderFactory` with `Create()`, `Fetch()` and `Save()` methods.
 
 ---
 
@@ -134,75 +142,35 @@ Without `[JsonInclude]`, `System.Text.Json` skips the private setter on deserial
 
 Implement lifecycle interfaces for cross-cutting concerns:
 
-<!-- snippet: skill-lifecycle-hooks -->
-<a id='snippet-skill-lifecycle-hooks'></a>
+<!-- snippet: operations-lifecycle-onstart -->
+<a id='snippet-operations-lifecycle-onstart'></a>
 ```cs
-[Factory]
-public partial class SkillEmployeeWithLifecycle : IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnCompleteAsync
+public Task FactoryStartAsync(FactoryOperation factoryOperation)
 {
-    public Guid Id { get; set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public bool IsNew { get; set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public SkillEmployeeWithLifecycle()
+    if (factoryOperation is FactoryOperation.Insert or FactoryOperation.Update)
     {
-        Id = Guid.NewGuid();
+        LastSavedAt = DateTimeOffset.UtcNow;
     }
-
-    public Task FactoryStartAsync(FactoryOperation factoryOperation)
-    {
-        // Before operation - validation, logging
-        return Task.CompletedTask;
-    }
-
-    public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
-    {
-        // After operation - cleanup, state reset
-        if (factoryOperation == FactoryOperation.Insert)
-            IsNew = false;
-        return Task.CompletedTask;
-    }
-
-    [Remote, Insert]
-    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var entity = new EmployeeEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = string.Format(
-                CultureInfo.InvariantCulture,
-                "{0}.{1}@example.com",
-                FirstName.ToLowerInvariant(),
-                LastName.ToLowerInvariant()),
-            Position = "New Employee",
-            SalaryAmount = 0,
-            SalaryCurrency = "USD",
-            HireDate = DateTime.UtcNow
-        };
-        await repo.AddAsync(entity, ct);
-        await repo.SaveChangesAsync(ct);
-    }
-
-    [Remote, Update]
-    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var entity = await repo.GetByIdAsync(Id, ct);
-        if (entity != null)
-        {
-            entity.FirstName = FirstName;
-            entity.LastName = LastName;
-            await repo.UpdateAsync(entity, ct);
-            await repo.SaveChangesAsync(ct);
-        }
-    }
+    return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/LifecycleHookSamples.cs#L7-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-lifecycle-hooks' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L110-L119' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: operations-lifecycle-oncomplete -->
+<a id='snippet-operations-lifecycle-oncomplete'></a>
+```cs
+public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
+{
+    // Example: Reset IsNew after successful Insert
+    if (factoryOperation == FactoryOperation.Insert)
+    {
+        IsNew = false;
+    }
+    return Task.CompletedTask;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L185-L195' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Available hooks:**
@@ -226,55 +194,19 @@ If the operation returns a different type, use a static factory `[Execute]` inst
 
 ### Method Signature
 
-<!-- snippet: skill-class-execute -->
-<a id='snippet-skill-class-execute'></a>
+<!-- snippet: operations-class-execute -->
+<a id='snippet-operations-class-execute'></a>
 ```cs
-public interface ISkillConsultation
+[Remote, Execute]
+public static async Task<IOrder> OpenDraft(
+    string customerName,
+    [Service] IOrderFactory factory)
 {
-    long PatientId { get; }
-    string Status { get; }
-}
-
-[Factory]
-public partial class SkillConsultation : ISkillConsultation
-{
-    public long PatientId { get; set; }
-    public string Status { get; set; } = string.Empty;
-
-    public SkillConsultation() { }
-
-    [Remote, Create]
-    internal Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
-    {
-        PatientId = patientId;
-        Status = "Acute";
-        return Task.CompletedTask;
-    }
-
-    [Remote, Fetch]
-    internal Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
-    {
-        PatientId = patientId;
-        Status = "Active";
-        return Task.FromResult(true);
-    }
-
-    // Execute on class factory: public static, returns the interface type
-    [Remote, Execute]
-    public static async Task<ISkillConsultation> StartForPatient(
-        long patientId,
-        [Service] ISkillConsultationFactory factory,
-        [Service] IEmployeeRepository repo)
-    {
-        var existing = await factory.FetchActive(patientId);
-        if (existing != null)
-            return existing;
-
-        return await factory.CreateAcute(patientId);
-    }
+    return await factory.FetchDraft(customerName)
+        ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/ClassFactoryExecuteSamples.cs#L6-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L362-L371' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Key differences from static factory `[Execute]`:

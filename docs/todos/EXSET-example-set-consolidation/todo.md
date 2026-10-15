@@ -58,7 +58,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 012 | [012-retire-reference-app](./plans/012-retire-reference-app.md) | Retire reference app; path and design sweep | AC-4, AC-6 | Draft | — |
 | 013 | [013-modes-serialization](./plans/013-modes-serialization.md) | Factory modes and serialization pages (after 006) | AC-3, AC-4, AC-5 | Done | #134 |
 | 014 | [014-attributes-reference](./plans/014-attributes-reference.md) | Attributes reference (split from 009) | AC-3, AC-4 | Done | #142 |
-| 015 | [015-skill-embeds](./plans/015-skill-embeds.md) | Skill-only embeds (split from 010) | AC-3, AC-4 | Draft | — |
+| 015 | [015-skill-embeds](./plans/015-skill-embeds.md) | Skill-only embeds (split from 010) | AC-3, AC-4 | Done | #144 |
 
 ---
 
@@ -111,6 +111,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Follow-on
 
+- Todo 2 · hand-written skill C# that names sample types EXSET-015 retired: `class-factory.md` "Generated Code" (`ISkillConsultationFactory`) and "Caller Usage" (`IConsultationFactory`); `static-factory.md` "Usage" and `setup.md` "Static Factory Commands" (`SkillEmployeeCommands`, called as statics though delegates are DI-resolved types; `setup.md`'s `SkillEmployeeEvents` line is also the `[Event]` API removed in v1.5.0); `interface-factory.md`'s Server Registration and "Generated surface" names (EXSET-015)
 - Todo 2 · `skills/RemoteFactory/references/polymorphic-hierarchy.md` Key Rule 4 says `[Factory]` and `[Remote]` are inherited and `[Create]`/`[Fetch]` are not; the generator does the reverse for a derived `[Factory]` class (EXSET-014, `attributes-reference.md#attributes-and-inheritance`)
 
 ---

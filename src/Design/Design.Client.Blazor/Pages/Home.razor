@@ -14,8 +14,10 @@
 @using Design.Domain.Contexts
 @using Design.Domain.Entities
 @using Design.Domain.FactoryPatterns
+@* begin-snippet: skill-blazor-inject *@
 @inject IOrderFactory OrderFactory
 @inject IOrderLineFactory LineFactory
+@* end-snippet *@
 @inject IExampleClassFactoryFactory ClassFactory
 @inject IProductCatalog Catalog
 @inject IOrderCheckoutFactory CheckoutFactory
@@ -172,6 +174,7 @@
     // Pattern 1: Class Factory - Create/Fetch
     // -------------------------------------------------------------------------
 
+    #region skill-blazor-usage
     private void CreateOrder()
     {
         try
@@ -229,6 +232,7 @@
             messages += $"Error: {ex.Message}\n";
         }
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Pattern 2: Interface Factory - domain service calls

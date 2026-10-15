@@ -50,7 +50,7 @@ On an interface, `[Factory]` generates a remote proxy. Every method is a call to
 [AuthorizeFactory<ICustomerDirectoryAuth>]
 public interface ICustomerDirectory
 ```
-<sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L258-L262' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L261-L265' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Interface Factory](interface-factory.md).
@@ -84,7 +84,7 @@ public void Create(
     IsNew = true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L233-L247' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L235-L249' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 On a constructor, the factory calls the constructor. That constructor also runs on every Fetch and every deserialization, so keep it to defaults:
@@ -129,7 +129,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L249-L266' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L251-L268' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Auth flags:** `Fetch | Read`.
@@ -157,7 +157,7 @@ internal async Task Insert(
     Id = row.Id;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L268-L284' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L270-L286' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 One method can carry more than one of them. `CustomerPreferences` has a single `[Insert, Update]`, saved through `SaveUpsert`:
@@ -207,7 +207,7 @@ private static async Task<SubmitOutcome> _SubmitOrder(
     return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L58-L75' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L60-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Like every operation, `[Execute]` obeys `[Remote]`. Without it the command runs on whichever tier resolves it, with that tier's services, unless its authorization sends it to the server (below):

@@ -197,194 +197,164 @@ private static async Task<string> _ReportProblem(
 
 An entity can be an aggregate root in one context and a child in another:
 
-<!-- snippet: skill-entity-duality -->
-<a id='snippet-skill-entity-duality'></a>
+<!-- snippet: orderline-child -->
+<a id='snippet-orderline-child'></a>
 ```cs
-[Factory]
-public partial class SkillDepartment
+/// <summary>
+/// Creates a new OrderLine. Public and local: the client calls it.
+/// </summary>
+[Create]
+public void Create(string productName, decimal unitPrice, int quantity)
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Code { get; set; } = string.Empty;
+    Id = Guid.NewGuid();
+    ProductName = productName;
+    UnitPrice = new Money(unitPrice);
+    Quantity = quantity;
+    IsNew = true;
+}
 
-    // Aggregate root context - client entry point
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(Guid id, [Service] IDepartmentRepository repo, CancellationToken ct)
-    {
-        var data = await repo.GetByIdAsync(id, ct);
-        if (data == null) return false;
+/// <summary>
+/// Loads a line from the row its order's load hands it, as a child.
+/// </summary>
+[Fetch]
+internal void Fetch(OrderLineRow row)
+{
+    LoadFrom(row);
+}
 
-        Id = data.Id;
-        Name = data.Name;
-        Code = data.Code;
-        return true;
-    }
+/// <summary>
+/// Maps a new line into the row the list made for it.
+/// </summary>
+[Insert]
+internal void Insert(OrderLineRow row)
+{
+    row.Id = Id;
+    MapTo(row);
+    IsNew = false;
+}
 
-    // Child context - called from Employee.Fetch on server
-    [Fetch]  // No [Remote] - server-side only
-    public void FetchAsChild(Guid id, string name, string code)
-    {
-        Id = id;
-        Name = name;
-        Code = code;
-    }
+/// <summary>
+/// Maps an existing line into the row the list found for it.
+/// </summary>
+[Update]
+internal void Update(OrderLineRow row)
+{
+    MapTo(row);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/EntityDualitySamples.cs#L6-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-entity-duality' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L128-L170' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: orderline-duality -->
+<a id='snippet-orderline-duality'></a>
+```cs
+/// <summary>
+/// Loads one line by its id, as a root; false when no order holds it.
+/// </summary>
+[Remote, Fetch]
+internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
+{
+    var row = await db.FindLineAsync(id);
+    if (row == null)
+        return false;
+
+    LoadFrom(row);
+    return true;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L187-L201' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-duality' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Key insight:** [Remote] is about *how the method is called*, not *what the type is*.
 
-For entity duality, use `internal` on all factory methods. The aggregate root entry point (`Fetch` above) uses `[Remote] internal` -- `[Remote]` promotes it to `public` on the factory interface so clients can call it, while `internal` enables IL trimming of the method body. The child context method (`FetchAsChild`) is `internal` without `[Remote]` -- it gets an `IsServerRuntime` guard, becomes trimmable, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only).
+For entity duality, use `internal` on every factory method except the child's `[Create]`, which is `public` and local so client code can build a child and add it to its parent. The aggregate root entry point (`Fetch(Guid id, ...)` above) uses `[Remote] internal` -- `[Remote]` promotes it to `public` on the factory interface so clients can call it, while `internal` enables IL trimming of the method body. The child context method (`Fetch(OrderLineRow row)`) is `internal` without `[Remote]` -- it gets an `IsServerRuntime` guard, becomes trimmable, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only).
 
 ---
 
 ## Value Objects
 
-Value objects serialize correctly when they have public setters:
+A value object that needs nothing to be built is a plain record with no factory. `[Factory]` is for one whose construction needs a service, as `TaxRate` needs the server's tax table:
 
 <!-- snippet: skill-value-object-factory -->
 <a id='snippet-skill-value-object-factory'></a>
 ```cs
 [Factory]
-public partial record SkillMoney
+public partial record TaxRate(string Region, Percentage Rate)
 {
-    public decimal Amount { get; set; }
-    public string Currency { get; set; } = "USD";
-
-    [Create]
-    public void Create(decimal amount, string currency = "USD")
+    [Remote, Fetch]
+    internal static async Task<TaxRate?> Fetch(string region, [Service] ITaxTable taxTable)
     {
-        Amount = amount;
-        Currency = currency;
-    }
-
-    public static SkillMoney Zero => new() { Amount = 0, Currency = "USD" };
-
-    public SkillMoney Add(SkillMoney other)
-    {
-        if (Currency != other.Currency)
-            throw new InvalidOperationException("Cannot add different currencies");
-        return new SkillMoney { Amount = Amount + other.Amount, Currency = Currency };
-    }
-
-    public static SkillMoney operator +(SkillMoney a, SkillMoney b)
-    {
-        return a.Add(b);
+        var rate = await taxTable.FindRateAsync(region);
+        return rate is null ? null : new TaxRate(region, rate);
     }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/ValueObjectSamples.cs#L5-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-value-object-factory' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ValueObjects/TaxRate.cs#L33-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-value-object-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Note:** Even record types need public setters for serialization.
+**Note:** A positional record crosses the wire through its primary constructor, so it needs no setters.
 
 ---
 
 ## Complex Aggregate with Child Collections
 
-<!-- snippet: skill-complex-aggregate -->
-<a id='snippet-skill-complex-aggregate'></a>
+<!-- snippet: order-interface -->
+<a id='snippet-order-interface'></a>
 ```cs
-[Factory]
-public partial class SkillEmployeeWithAssignments : IFactorySaveMeta
+public interface IOrder : IFactorySaveMeta
 {
-    public Guid Id { get; set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public SkillAssignmentList Assignments { get; set; } = null!;
-    public decimal TotalHours => Assignments?.CalculateTotalHours() ?? 0;
-
-    public bool IsNew { get; set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Remote, Create]
-    internal void Create(
-        string firstName,
-        string lastName,
-        [Service] ISkillAssignmentListFactory assignmentListFactory)
-    {
-        Id = Guid.NewGuid();
-        FirstName = firstName;
-        LastName = lastName;
-        Assignments = assignmentListFactory.Create();
-        IsNew = true;
-    }
-
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(
-        Guid id,
-        [Service] ISkillAssignmentListFactory assignmentListFactory,
-        [Service] IEmployeeRepository repo,
-        CancellationToken ct)
-    {
-        var entity = await repo.GetByIdAsync(id, ct);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        LastName = entity.LastName;
-
-        // Fetch child collection with data
-        var assignmentData = new List<(int, string, decimal, DateTime)>
-        {
-            (1, "Project Alpha", 40, DateTime.Today),
-            (2, "Project Beta", 20, DateTime.Today.AddDays(7))
-        };
-#pragma warning disable CA2016 // Factory method does not accept CancellationToken
-        Assignments = assignmentListFactory.Fetch(assignmentData);
-#pragma warning restore CA2016
-        IsNew = false;
-        return true;
-    }
-
-    // Domain method - business logic in entity
-    public void AddAssignment(string projectName, decimal hoursAllocated, DateTime startDate)
-    {
-        Assignments.AddAssignment(projectName, hoursAllocated, startDate);
-    }
-}
-
-[Factory]
-public partial class SkillAssignmentList : List<Assignment>
-{
-    private readonly IAssignmentFactory _assignmentFactory;
-
-    [Create]
-    public SkillAssignmentList([Service] IAssignmentFactory assignmentFactory)
-    {
-        _assignmentFactory = assignmentFactory;
-    }
-
-    [Fetch]
-    public void Fetch(
-        List<(int Id, string ProjectName, decimal Hours, DateTime StartDate)> data,
-        [Service] IAssignmentFactory assignmentFactory)
-    {
-        foreach (var item in data)
-        {
-            var assignment = assignmentFactory.Fetch(
-                item.Id, item.ProjectName, item.Hours, item.StartDate);
-            Add(assignment);
-        }
-    }
-
-    public void AddAssignment(string projectName, decimal hoursAllocated, DateTime startDate)
-    {
-        var assignment = _assignmentFactory.Create(projectName, hoursAllocated, startDate);
-        Add(assignment);
-    }
-
-    public decimal CalculateTotalHours()
-    {
-        return this.Sum(a => a.HoursAllocated);
-    }
+    int Id { get; set; }
+    string CustomerName { get; set; }
+    OrderStatus Status { get; set; }
+    IOrderLineList Lines { get; set; }
+    Money Total { get; }
+    void AddLine(IOrderLine line);
+    void RemoveLine(IOrderLine line);
+    bool CanSubmit { get; }
+    void Submit();
+    void Cancel();
+    void MarkDeleted();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/ComplexAggregateSamples.cs#L6-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-complex-aggregate' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L37-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Note:** Collection uses constructor injection (`[Service]` on constructor) so factory is available after round-trip.
+<!-- snippet: operations-create-method -->
+<a id='snippet-operations-create-method'></a>
+```cs
+/// <summary>
+/// Creates a new Order. Local: runs on the tier that calls it.
+/// </summary>
+[Create]
+public void Create(
+    string customerName,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    CustomerName = customerName;
+    Lines = lineListFactory.Create();
+    Status = OrderStatus.Draft;
+    IsNew = true;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L235-L249' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: readme-client-usage -->
+<a id='snippet-readme-client-usage'></a>
+```cs
+// The customer's draft: the stored one, or a new one. One server call.
+IOrder? order = await orderFactory.OpenDraft("Customer_42");
+
+// Build a line on the client and add it. No server call.
+order.AddLine(lineFactory.Create("Widget C", 12.50m, 2));
+
+// Save sends the whole order; keep what it returns.
+order = await orderFactory.Save(order);
+```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/OrderUsageTests.cs#L31-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+**Note:** The client builds each line with `IOrderLineFactory.Create` and adds it through the root's `AddLine`. The list holds no factory of its own, so nothing has to survive the round trip.
 
 ---
 
