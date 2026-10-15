@@ -96,6 +96,26 @@ public class InterfaceFactoryAuthorizationTests
         client.Dispose();
     }
 
+    /// <summary>
+    /// ListContacts returns a list of records through the proxy, and the same
+    /// parameter-matched check guards it: the denied customer's contacts are refused.
+    /// </summary>
+    [Fact]
+    public async Task InterfaceFactory_ListContacts_ReturnsContacts_AndDeniesTheDeniedCustomer()
+    {
+        var (server, client, _) = SetupScopes();
+        var factory = client.ServiceProvider.GetRequiredService<ICustomerDirectoryFactory>();
+
+        var contacts = await factory.ListContacts(AllowedId);
+
+        Assert.Equal(2, contacts.Count);
+        Assert.All(contacts, c => Assert.Equal(AllowedId, c.CustomerId));
+        await Assert.ThrowsAsync<NotAuthorizedException>(() => factory.ListContacts(DeniedId));
+
+        server.Dispose();
+        client.Dispose();
+    }
+
     // -------------------------------------------------------------------------
     // Auth Denial Scenarios — Parameterless Auth
     //

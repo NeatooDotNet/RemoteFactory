@@ -53,7 +53,7 @@ public void Create(
     IsNew = true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L233-L247' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L235-L249' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### A Create Constructor
@@ -104,7 +104,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L249-L266' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L251-L268' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Not found is `false`.** Fetch runs on the instance, so it cannot return `null` itself. Returning `false` tells the factory to discard the instance and return `null`, and the generated signature is nullable (`Task<IOrder?>`). This is the one operation that handles "not there" cleanly. Use it for a missing row, not for a business filter.
@@ -143,7 +143,7 @@ internal async Task Insert(
     Id = row.Id;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L268-L284' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L270-L286' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Update
@@ -166,7 +166,7 @@ internal async Task Update(
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L286-L301' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L288-L303' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 A row missing under a loaded object is a failure, so Update throws.
@@ -188,7 +188,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L303-L315' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L305-L317' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Deleting the order removes its row, and its line rows go with it, as a database's cascade delete would. A line removed while the order is still kept is a different case: the list's Save removes that line's row during the next Update.
@@ -253,7 +253,7 @@ private static async Task<SubmitOutcome> _SubmitOrder(
     return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L58-L75' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L60-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The client resolves the delegate and calls it: `var outcome = await submitOrder(orderId)`. A missing order is reported in the result. The command reads the order's `CanSubmit` verdict before calling `Submit`, which throws only when the caller ignored that verdict.
@@ -277,7 +277,7 @@ private static async Task _CancelOrder(int orderId, [Service] IOrderFactory orde
     await orderFactory.Save(order);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L80-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L82-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Over HTTP, that exception reaches the caller as `HttpRequestException`: the server answers 500, and the exception's type does not cross. See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
@@ -300,7 +300,7 @@ public static async Task<IOrder> OpenDraft(
         ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L360-L369' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L362-L371' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `FetchDraft` is a plain `internal` `[Fetch]` with no `[Remote]`, so only the server calls it. The client calls `orderFactory.OpenDraft(customerName)` and gets the stored draft or a new, unsaved one, in one round trip. Don't put that choice in a Create that looks for an existing object, or in a Fetch that makes one: either hides which one the caller got.
@@ -447,7 +447,7 @@ public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L183-L193' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L185-L195' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnCancelled / IFactoryOnCancelledAsync

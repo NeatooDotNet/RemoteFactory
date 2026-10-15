@@ -14,7 +14,7 @@ The code on this page comes from RemoteFactory's compiled example set, `src/Desi
 public bool IsNew { get; set; } = true;
 public bool IsDeleted { get; set; }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L119-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L121-L124' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Both are public `get; set;`. Both must cross the wire, so that the server's copy routes the same way the client's would, and a property with a private setter does not cross it. The object's own operations keep them right:
@@ -66,7 +66,7 @@ internal async Task Insert(
     Id = row.Id;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L268-L284' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L270-L286' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 <!-- snippet: operations-update -->
@@ -87,7 +87,7 @@ internal async Task Update(
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L286-L301' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L288-L303' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 <!-- snippet: operations-delete -->
@@ -105,7 +105,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L303-L315' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L305-L317' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Cascading to Children

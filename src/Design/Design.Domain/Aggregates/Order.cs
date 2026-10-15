@@ -77,8 +77,10 @@ public interface IOrder : IFactorySaveMeta
 /// creates a Save() method on the factory that routes to Insert/Update/Delete
 /// based on the IsNew and IsDeleted properties.
 /// </remarks>
+#region order-class-declaration
 [Factory]
 internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnCompleteAsync
+#endregion
 {
     // -------------------------------------------------------------------------
     // Properties

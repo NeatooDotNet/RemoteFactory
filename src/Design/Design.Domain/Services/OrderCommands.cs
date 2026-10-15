@@ -44,8 +44,10 @@ public enum SubmitOutcome
 /// <summary>
 /// Order commands a client sends to the server.
 /// </summary>
+#region ordercommands-declaration
 [Factory]
 public static partial class OrderCommands
+#endregion
 {
     /// <summary>
     /// Submits a stored draft order.

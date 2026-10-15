@@ -14,8 +14,10 @@
 @using Design.Domain.Contexts
 @using Design.Domain.Entities
 @using Design.Domain.FactoryPatterns
+@* begin-snippet: skill-blazor-inject *@
 @inject IOrderFactory OrderFactory
 @inject IOrderLineFactory LineFactory
+@* end-snippet *@
 @inject IExampleClassFactoryFactory ClassFactory
 @inject IProductCatalog Catalog
 @inject IOrderCheckoutFactory CheckoutFactory

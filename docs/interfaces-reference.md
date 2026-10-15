@@ -54,7 +54,7 @@ public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L183-L193' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L185-L195' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### When Each Hook Runs
@@ -79,7 +79,7 @@ Two read-only members, `bool IsNew` and `bool IsDeleted`, which the generated `S
 public bool IsNew { get; set; } = true;
 public bool IsDeleted { get; set; }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L119-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L121-L124' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Save Operation](save-operation.md) for the routing table and every outcome.

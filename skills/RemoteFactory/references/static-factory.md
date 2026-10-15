@@ -8,6 +8,15 @@ Use `[Execute]` for operations that return a result. The client awaits the respo
 
 > **Note:** `[Execute]` also works on non-static `[Factory]` classes when the operation returns the containing type. See `references/class-factory.md` for that pattern.
 
+<!-- snippet: ordercommands-declaration -->
+<a id='snippet-ordercommands-declaration'></a>
+```cs
+[Factory]
+public static partial class OrderCommands
+```
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L47-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-ordercommands-declaration' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
 <!-- snippet: operations-execute -->
 <a id='snippet-operations-execute'></a>
 ```cs
@@ -28,7 +37,7 @@ private static async Task<SubmitOutcome> _SubmitOrder(
     return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L58-L75' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L60-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 <!-- snippet: operations-execute-command -->
@@ -46,7 +55,7 @@ private static async Task _CancelOrder(int orderId, [Service] IOrderFactory orde
     await orderFactory.Save(order);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L80-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L82-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Generates**:

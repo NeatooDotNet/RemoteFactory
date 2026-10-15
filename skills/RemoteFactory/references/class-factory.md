@@ -4,6 +4,15 @@ Use for domain entities and aggregate roots that have lifecycle operations (Crea
 
 ## Complete Example
 
+<!-- snippet: order-class-declaration -->
+<a id='snippet-order-class-declaration'></a>
+```cs
+[Factory]
+internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnCompleteAsync
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L80-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-class-declaration' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
 <!-- snippet: readme-domain-model -->
 <a id='snippet-readme-domain-model'></a>
 ```cs
@@ -81,7 +90,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L232-L316' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L234-L318' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Generates**: `IOrderFactory` with `Create()`, `Fetch()` and `Save()` methods.
@@ -161,7 +170,7 @@ public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L183-L193' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L185-L195' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Available hooks:**
@@ -197,7 +206,7 @@ public static async Task<IOrder> OpenDraft(
         ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L360-L369' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L362-L371' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Key differences from static factory `[Execute]`:

@@ -104,6 +104,15 @@ services.RegisterMatchingName(typeof(IOrder).Assembly);
 
 ### Inject and Use
 
+<!-- snippet: skill-blazor-inject -->
+<a id='snippet-skill-blazor-inject'></a>
+```razor
+@inject IOrderFactory OrderFactory
+@inject IOrderLineFactory LineFactory
+```
+<sup><a href='/src/Design/Design.Client.Blazor/Pages/Home.razor#L17-L20' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-blazor-inject' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
 <!-- snippet: skill-blazor-usage -->
 <a id='snippet-skill-blazor-usage'></a>
 ```razor
@@ -165,7 +174,7 @@ private async Task SaveOrder()
     }
 }
 ```
-<sup><a href='/src/Design/Design.Client.Blazor/Pages/Home.razor#L175-L233' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-blazor-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Pages/Home.razor#L177-L235' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-blazor-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Static Factory Commands

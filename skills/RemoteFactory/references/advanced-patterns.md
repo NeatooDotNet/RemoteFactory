@@ -267,7 +267,7 @@ internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
 
 **Key insight:** [Remote] is about *how the method is called*, not *what the type is*.
 
-For entity duality, use `internal` on all factory methods. The aggregate root entry point (`Fetch(Guid id, ...)` above) uses `[Remote] internal` -- `[Remote]` promotes it to `public` on the factory interface so clients can call it, while `internal` enables IL trimming of the method body. The child context method (`Fetch(OrderLineRow row)`) is `internal` without `[Remote]` -- it gets an `IsServerRuntime` guard, becomes trimmable, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only).
+For entity duality, use `internal` on every factory method except the child's `[Create]`, which is `public` and local so client code can build a child and add it to its parent. The aggregate root entry point (`Fetch(Guid id, ...)` above) uses `[Remote] internal` -- `[Remote]` promotes it to `public` on the factory interface so clients can call it, while `internal` enables IL trimming of the method body. The child context method (`Fetch(OrderLineRow row)`) is `internal` without `[Remote]` -- it gets an `IsServerRuntime` guard, becomes trimmable, and appears on the public factory interface with the `internal` modifier (accessible to same-assembly callers only).
 
 ---
 
@@ -336,7 +336,7 @@ public void Create(
     IsNew = true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L233-L247' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L235-L249' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 <!-- snippet: readme-client-usage -->
