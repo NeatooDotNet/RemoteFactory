@@ -57,7 +57,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 011 | [011-events-trimming-lazyload](./plans/011-events-trimming-lazyload.md) | Events, trimming, LazyLoad pages, appendix | AC-4, AC-5 | Draft | — |
 | 012 | [012-retire-reference-app](./plans/012-retire-reference-app.md) | Retire reference app; path and design sweep | AC-4, AC-6 | Draft | — |
 | 013 | [013-modes-serialization](./plans/013-modes-serialization.md) | Factory modes and serialization pages (after 006) | AC-3, AC-4, AC-5 | Done | #134 |
-| 014 | [014-attributes-reference](./plans/014-attributes-reference.md) | Attributes reference (split from 009) | AC-3, AC-4 | Draft | — |
+| 014 | [014-attributes-reference](./plans/014-attributes-reference.md) | Attributes reference (split from 009) | AC-3, AC-4 | In Progress | — |
 
 ---
 
@@ -92,6 +92,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Skipped Steps
 
+- EXSET-014 plan-reviewer: the plan re-points to regions 002–009 built and reviewed, and adds five region markers on existing Design code.
 - EXSET-008 plan-reviewer: the plan re-pointed to Design shapes that 002–007 had built and reviewed, and added one region and one test file.
 - EXSET-013 plan-reviewer: the scope came out of EXSET-006's reviewed plan (callouts 7–9 carried), with no new Design shape beyond a Logical registration and three pins.
 - EXSET-001 test-reviewer: no test or code changed; evidence is in the plan's Test Evidence.
