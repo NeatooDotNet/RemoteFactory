@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No. The deletion is gated by mdsnippets and the builds, and every wording change applies a ruling already made (R-A, R-G, R-K, D15, D18).
 **Code-review opt-in:** Yes. It edits the project's instruction files (`CLAUDE.md`, `.claude/agents`) and the requirements doc (`CLAUDE-DESIGN.md`).
 **Branch:** EXSET-012-retire-reference-app
-**PR:** —
+**PR:** #147
 
 ---
 
