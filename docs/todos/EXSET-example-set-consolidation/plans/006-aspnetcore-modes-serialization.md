@@ -21,10 +21,7 @@ Re-point every C# block on `docs/aspnetcore-integration.md` to `src/Design`, tog
 
 Add what Design lacks for them (Keith, 2026-10-15):
 - **An HTTP test tier.** Design.Tests runs `WebApplicationFactory` over Design.Server, with a Remote client whose HttpClient goes to it. This pins what the in-process harness cannot: status codes, middleware, the correlation header, the request's cancellation token.
-- **Real examples:**
-  - CORS for a client served from another origin;
-  - a second domain assembly that both sides register;
-  - the serialization format chosen by environment, on the server and the client together.
+- **Prose, not examples, for CORS, multi-assembly registration and the format choice** (Keith, 2026-10-15, simplified from real examples; Plan Amendments). Design stays on the happy path: one domain assembly, the default format, a same-origin hosted client.
 - A server operation that takes a `CancellationToken`, and one that reads `ICorrelationContext`.
 - Server logging configuration that names the categories the library actually creates.
 - Client error handling.
@@ -47,7 +44,7 @@ Also fix what recon found wrong beyond the audit:
 - **Endpoint wording.** "Automatic endpoint generation" and "simulates client/server" are wrong.
 
 Does NOT touch:
-- `factory-modes.md`, `serialization.md`, setup's factory-modes block and their regions. These are EXSET-013's (Keith, 2026-10-15), and that plan reuses this one's format and logging regions.
+- `factory-modes.md`, `serialization.md`, setup's factory-modes block and their regions. These are EXSET-013's (Keith, 2026-10-15), and that plan reuses this one's logging and registration regions.
 - Authentication, authorization, the 403 path and the `aspnetcore-middleware-order` region. These are EXSET-009's (Keith, 2026-10-15), and its embed stays on the reference app until then.
 - `save-operation.md`'s 409 claim (EXSET-008).
 - Setup's static-commands and events block, and `skill-blazor-usage` (EXSET-010).
@@ -58,8 +55,9 @@ Does NOT touch:
 ## Intent
 
 - A reader setting up the server sees compiled, tested Design code.
-- Every behaviour the page states over HTTP was watched over HTTP by a Design test: status codes, the correlation header, cancellation, CORS and the format header.
-- README and getting started still show a short registration line. The options and the assembly list behind it have their own regions on the ASP.NET Core page (Keith, 2026-10-15).
+- Every behaviour the page states over HTTP was watched over HTTP by a Design test: status codes, the correlation header, cancellation and the format header.
+- README and getting started keep the happy-path registration: one call, one assembly, the default format.
+- Design.Server starts in Development, and a test keeps it that way.
 - The testing section shows Design's real three-container helper, resolving from the client.
 
 ---
@@ -77,7 +75,7 @@ Does NOT touch:
   - Placeholders come in pairs.
   - mdsnippets' log is kept outside the tree, followed by a `git diff --stat` check.
 - **Substrate from EXSET-002–005:** `Order`, `IOrderDbContext`, `AuthorizedOrder`, `ServerServices.AddDesignServer`, `DesignClientServerContainers`, and the `getting-started-*` and `readme-server-setup` regions.
-- **Pinning.** EXSET-005 ruled `Program.cs` build-pinned (Keith, 2026-10-14). The HTTP tier now runs the server's `Program`, so the server regions become test-pinned. The client `Program` stays build-pinned, but its format choice calls a Design.Domain rule that the tests also call.
+- **Pinning.** EXSET-005 ruled `Program.cs` build-pinned (Keith, 2026-10-14). The HTTP tier now runs the server's `Program`, so the server regions become test-pinned. The client `Program` stays build-pinned; the HTTP fixture's client registers the same way.
 
 ---
 
@@ -88,11 +86,9 @@ Does NOT touch:
   - These retire into Design's existing regions, together with their old definitions:
     - `aspnetcore-basic-setup` and `aspnetcore-minimal-api` → `getting-started-server-program`;
     - `aspnetcore-addneatoo` → `readme-server-setup`.
-  - The development/production pair becomes one region: the format rule. One of the two names retires.
+  - These retire to prose, together with their old definitions: `aspnetcore-custom-serialization`, `aspnetcore-development`, `aspnetcore-production`, `aspnetcore-multi-assembly`, `aspnetcore-cors`.
   - The other names migrate as they are.
-- **README's lines.** `readme-server-setup` and `getting-started-client-program` stay one registration call each. That call takes the options and the assembly list, which are built just above it in their own regions. `getting-started-server-program` gains `UseCors()` before `UseNeatoo()`.
-- **One registration call per side.** The second assembly and the options go in the single `AddNeatooAspNetCore` and `AddNeatooRemoteFactory` call on each side, because a second call replaces the assembly list.
-- **The format rule lives in Design.Domain, in one place.** The server, the client `Program` and the HTTP fixture all call it, so the two sides pick the same format in the same environment.
+- **README's lines are unchanged:** `readme-server-setup`, `getting-started-server-program` and `getting-started-client-program` keep the one-assembly, default-format registration.
 - **The HTTP tier runs Design.Server's real `Program`, configuration and services.** A test does not replace the configuration the page shows. The cancellation test may replace the store with one that waits on the token, standing in for a database.
 - **The test hosts live for the test assembly's lifetime.** `UseNeatoo` stores the host's logger factory in a static, so a host disposed mid-run would break later Ordinal harness tests. If order-dependent failures appear anyway, STOP: that is a library behaviour.
 - **Tiers.** The in-process harness stays the tier for domain behaviour. The HTTP tier covers only what the harness cannot see.
@@ -101,8 +97,7 @@ Does NOT touch:
   - They are interface-first, with public setters.
   - There is no `new` on a `[Factory]` type outside its own factory methods.
   - `readme-domain-model` does not change shape.
-- **The second assembly is real and small:** one `[Factory]` type the Order domain does not depend on.
-- **The whole still works.** `Design.Server` composition still resolves every service, the hosted Blazor app still starts, mdsnippets swallows no section, both solutions are green, and the reference app builds.
+- **The whole still works.** `Design.Server` composition still resolves every service, Design.Server starts in Development (startup validation on), mdsnippets swallows no section, both solutions are green, and the reference app builds.
 
 ---
 
@@ -111,16 +106,12 @@ Does NOT touch:
 1. **HTTP tier.**
    - Design.Server becomes testable: `Program` is public on net9 too.
    - Design.Tests gains `WebApplicationFactory`: Mvc.Testing, with the net9 override pattern Design already uses.
-   - The hosts are assembly-lifetime fixtures. Each has a Remote-mode client container whose keyed HttpClient goes to the test server, using the format rule for that host's environment.
-   - First test: an Order saves and fetches over HTTP.
-2. **Format and assemblies.**
-   - First verify how the hosted client learns its environment on net9 and net10. If the two sides can disagree, STOP and ask.
-   - Add the format rule to Design.Domain and the second domain assembly. Both sides register the second assembly in their one call, through the options and assembly-list regions.
-   - Over HTTP: the server answers Named in Development and Ordinal otherwise (the format header), and the second assembly's factory round-trips over HTTP and through the harness.
+   - The host is an assembly-lifetime fixture, started before any test runs. It has a Remote-mode client container whose keyed HttpClient goes to the test server.
+   - First test: an Order saves and fetches over HTTP. The host starts in Development, so this also pins that Design.Server's composition passes startup validation.
+2. **Format.** Over HTTP, the server announces its format (`X-Neatoo-Format: ordinal`, the default).
 3. **Server examples**, each pinned over HTTP:
    - **Cancellation.** A `[Remote]` operation takes the request's `CancellationToken` and passes it to the store; a cancelled call cancels it.
    - **Correlation.** A server operation reads `ICorrelationContext`; an `X-Correlation-Id` the caller sends reaches it and comes back on the response.
-   - **CORS** for another origin: an allowed origin gets the CORS headers on the endpoint, another origin does not.
    - **Logging.** Server logging enables the categories the library creates, including `RemoteFactory.Trace`; a call is shown to log them.
    - **Service registration.** The region shows Design's explicit registrations before `RegisterMatchingName`.
 4. **Client examples.**
@@ -138,7 +129,8 @@ Does NOT touch:
    - correlation is per client scope and carried as a message parameter;
    - event-handler hosting matches `factory-events.md` (T-09);
    - the endpoint is mapped by `UseNeatoo`, not generated;
-   - the testing section is Design's helper.
+   - the testing section is Design's helper;
+   - CORS, multi-assembly registration and the format choice in prose: `UseCors()` before `UseNeatoo()` for a client on another origin; every factory assembly in one call (a second call replaces the list); both tiers register the same format, and on .NET 10 a WASM client's environment is fixed at build, so keying the format to the environment can split the tiers.
 7. **Design's own statements on these topics agree with the library:**
    - `ServerServices.cs`'s registration-order header and "sets Mode = Server";
    - the `Program.cs` comments on a configurable endpoint path and on `NeatooFactory.Mode`.
@@ -151,20 +143,19 @@ Does NOT touch:
 
 ## Acceptance
 
-- [ ] Over HTTP against Design.Server's real `Program`, a Remote client saves and fetches an Order, and a server exception reaches it as `HttpRequestException` with 500 `[integration]` · Must
+- [ ] Over HTTP against Design.Server's real `Program`, started in Development:
+  - a Remote client saves and fetches an Order;
+  - a server exception reaches the client as `HttpRequestException` whose `StatusCode` is 500;
+  - the server announces its format, Ordinal by default.
+
+  `[integration]` · Must
 - [ ] Over HTTP, on a class factory with `[AuthorizeFactory]`, a denied read returns null and a denied Save throws `NotAuthorizedException` `[integration]` · Must
 - [ ] Over HTTP:
   - a caller's `X-Correlation-Id` reaches a server operation's `ICorrelationContext` and returns on the response;
-  - a cancelled call cancels the operation's token;
-  - an allowed origin gets the CORS headers and another origin does not.
+  - a cancelled call cancels the operation's token.
 
   `[integration]` · Must
-- [ ] Over HTTP:
-  - the server answers in Named in Development and in Ordinal otherwise;
-  - the server, the client and the fixture take the format from one Design.Domain rule;
-  - a second assembly's factory round-trips over HTTP and through the harness.
-
-  `[integration]` · Must
+- [ ] The client's HTTP call throws `HttpRequestException` carrying the response's status code for any non-success answer `[unit]` · Must
 - [ ] The logging region enables the categories the page names, which an HTTP call is shown to log `[integration]` · Should
 - [ ] The testing region saves and fetches from the `client` scope of the three-container helper `[integration]` · Must
 - [ ] On the page:
@@ -238,6 +229,31 @@ Recon, 2026-10-15. Library behaviour is cited from source; the plan review spot-
 - **2026-10-15 · Re-split** (Keith).
   - `factory-modes.md`, `serialization.md`, setup's factory-modes block, the reference-preservation probe and reviewer callouts 7–9 move to EXSET-013.
   - Callouts 1–6, 10 and 11 are amended into this plan (triage in the review).
+- **2026-10-15 · Format by build configuration** (Keith). Step 2's check found that the tiers can disagree on net10.
+  - On net10, a Debug build of the client bakes `"applicationEnvironment": "Development"` into `_framework/dotnet.js`. Its loader reads the server's `Blazor-Environment` header only when nothing is baked.
+  - On net9, the client always takes the header.
+  - So a net10 client and its server can disagree about the environment, and an environment-chosen format would fail every call.
+  - The rule is keyed to the build configuration instead, in Design.Domain, which both tiers load. CI tests Release, which gives Ordinal; a local Debug run gives Named.
+  - Superseded by the next entry.
+- **2026-10-15 · Simplified to the happy path** (Keith).
+  - The first HTTP run failed because Design.Server could not start in Development. The cause:
+    - `RegisterMatchingName` also registers each matched concrete type;
+    - `TenantTokenService` takes a `string` that DI can't supply;
+    - Development builds every registration at startup.
+  - This had been true since `12d53da` (2026-08-18), and nothing started the real server.
+  - Keith asked why apps never hit it, and whether Design had diverged from the happy path. It had, partly: the second assembly, the build-keyed format and the CORS policy were pushing README's registration away from the one-line happy path.
+  - Keith: simplify.
+    - `Design.Shipping`, `DesignComposition` and the CORS policy are removed.
+    - README, getting started and both `Program`s keep the one-assembly, default-format registration.
+    - The page covers CORS, multi-assembly and the format choice in prose.
+  - `TenantTokenService` is registered as a concrete type, built with its token, before the convention runs; the interface forwards to it. Library issue: #131 (techdebt).
+- **2026-10-15 · Library fix: `HttpRequestException.StatusCode`** (Keith).
+  - The natural 500 assertion found `StatusCode` null: `MakeRemoteDelegateRequestHttpCall` built the exception from a message only.
+  - The fix passes `response.StatusCode`, pinned by `MakeRemoteDelegateRequestHttpCallTests` (unit). It ships with the arc's merge to main.
+- **2026-10-15 · Stand-ins in the HTTP host.**
+  - The order store is wrapped so that a test can hold one read open until it is cancelled (a slow database).
+  - The `AuthorizedOrder` rules come from an instance owned by the host, not from `AuthorizedOrderAuth`'s static flags. The harness's `AuthorizationTests` switch those flags in parallel, and serialising against them would mean modifying an out-of-scope test.
+  - The host is started in the fixture's `InitializeAsync`. `WebApplicationFactory` starts it lazily and not thread-safely, and two classes starting it at once built two hosts: one intermittent failure on net9.
 
 ---
 
@@ -245,10 +261,10 @@ Recon, 2026-10-15. Library behaviour is cited from source; the plan review spot-
 
 - **Keith, 2026-10-15.**
   - HTTP behaviour is pinned by `WebApplicationFactory` tests over Design.Server.
-  - CORS, multi-assembly registration and the environment-chosen format get real Design examples.
+  - CORS, multi-assembly registration and the format choice are prose. Keith first chose real examples, then chose to simplify to the happy path (Plan Amendments).
   - Authentication, authorization and the middleware-order region are EXSET-009's.
   - The plan is split: serialization and modes go to EXSET-013.
-  - README keeps a short registration line, with the options and assemblies in their own regions.
+  - The `HttpRequestException.StatusCode` fix goes in the library now; #131 is filed for `RegisterMatchingName`.
 - **Candidates to park as issues.** These are library behaviour, not this plan's to change; Keith decides at the gate.
   - **Logger categories:** `RemoteFactory.Trace` sits outside the prefix, the `Remote`/`Authorization` constants are unused, and the client HTTP call has no logger.
   - **Static logger factory:** the one `UseNeatoo` sets outlives its host.

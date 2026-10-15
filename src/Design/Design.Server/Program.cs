@@ -40,7 +40,8 @@
 // DESIGN DECISION: UseNeatoo adds the RemoteFactory middleware
 //
 // This middleware:
-// - Intercepts requests to the configured endpoint (default: /api/neatoo)
+// - Maps the one endpoint, POST /api/neatoo (a fixed path; the client posts to it)
+// - Reads the X-Correlation-Id header into ICorrelationContext and echoes it back
 // - Deserializes the factory operation request
 // - Resolves the delegate and invokes the operation
 // - Serializes the result back to the client
@@ -74,3 +75,7 @@ app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
 #endregion
+
+// Public so the HTTP tests can host this exact Program (WebApplicationFactory<Program>).
+// .NET 10 makes a top-level Program public by itself; .NET 9 does not.
+public partial class Program;

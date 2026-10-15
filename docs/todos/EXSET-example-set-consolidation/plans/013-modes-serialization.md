@@ -11,7 +11,7 @@
 **Branch:** cut from EXSET at Step 2
 **PR:** —
 
-Split from EXSET-006 (Keith, 2026-10-15). It follows 006: its format and logging embeds reuse 006's regions.
+Split from EXSET-006 (Keith, 2026-10-15). It follows 006: its logging and registration embeds reuse 006's regions. Design keeps the default format (006 simplified to the happy path), so the format sections are prose or embed `readme-server-setup`.
 
 ---
 
@@ -25,7 +25,7 @@ Re-point every C# block on `docs/factory-modes.md` and `docs/serialization.md` t
 - `modes-logging` reuses 006's logging region.
 
 **Serialization.**
-- `serialization-config` and `-debug-named` reuse 006's format regions.
+- `serialization-config` and `-debug-named`: Design registers no options (006), so these become prose or retire into `readme-server-setup`; the options overload is stated in prose.
 - `-ordinal-versioning` comes from Order's properties, with a test that pins the ordinal order.
 - `-interface` uses `Order.Lines`, with a test that pins the `$type`/`$value` shape.
 - `-references` follows a probe (below).
