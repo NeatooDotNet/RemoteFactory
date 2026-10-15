@@ -1,6 +1,6 @@
 # IL Trimming
 
-RemoteFactory lets you write `[Remote]` methods that take server-only services like `DbContext` and `IEmployeeRepository`, so the persistence code sits beside the domain object it loads and saves. But when that domain assembly ships to the browser in Blazor WASM, three problems emerge:
+RemoteFactory lets you write `[Remote]` methods that take server-only services like `DbContext` and your repositories, so the persistence code sits beside the domain object it loads and saves. But when that domain assembly ships to the browser in Blazor WASM, three problems emerge:
 
 1. **Runtime failures.** Blazor WASM publishes with trimming by default. The trimmer sees Entity Framework Core referenced in your assembly, partially strips its internals, and EF crashes at runtime — even though the client never calls those code paths.
 
@@ -150,6 +150,8 @@ Add `<TrimmableAssembly>` entries in your **client project** `.csproj` to tell t
 
 The `Trim="true"` on the `RuntimeHostConfigurationOption` is critical — without it, the switch is just a runtime value and the trimmer can't use it for dead code elimination.
 
+**`TrimMode` needs no setting.** Blazor WASM publishes with `TrimMode=partial`, which trims only the assemblies marked `IsTrimmable`. Step 1 marks the domain assembly, and that is what lets the trimmer remove its server-only code. Under `partial`, a domain assembly without `IsTrimmable` keeps all of it. `TrimMode=full` also removes it, because it trims every assembly. RemoteFactory's trimming gate publishes its test harness at `partial` with `IsTrimmable=true`.
+
 ### Complete Example
 
 Here are all three project files showing the full trimming configuration, based on the [Person example](https://github.com/NeatooDotNet/RemoteFactory/tree/main/src/Examples/Person):
@@ -226,7 +228,7 @@ tr -d '\000' < bin/Release/net9.0/publish/YourApp.dll | grep -c "SELECT * FROM"
 Verify your check can actually find things before trusting a clean result: run it against the **non-published** build output, where the server-only code definitely still exists. If it reports "absent" there too, the check is broken, not the code.
 
 If server-only type names still appear in the output, check that:
-1. `TrimMode` is set to `full` (not `partial` or omitted)
+1. The domain assembly has `IsTrimmable=true` (Step 1). Under Blazor WASM's default `TrimMode`, `partial`, an assembly without it is not trimmed at all
 2. The `RuntimeHostConfigurationOption` has `Trim="true"`
 3. You're inspecting the `publish/` output, not the `build/` output
 
@@ -236,33 +238,13 @@ All factory types — class, static, and interface — are automatically preserv
 
 That last part is why the attribute never names your own class. Preserving every method on a type means preserving what those methods *do*, so if the attribute named your class, your `[Remote]` method bodies would be preserved along with it — the opposite of the guarantee above.
 
-Three of the four shapes emit a tiny holder whose only member forwards to the real registrar, for two different reasons. Static factories and `[FactoryEventHandler<T>]` classes have no separate generated type at all — the generator re-opens your own partial class to host `FactoryServiceRegistrar`, so naming the attribute's target at your class would preserve your bodies. Class factories *do* have a generated `{X}Factory`, but it hosts every `Local*` method, so naming it preserved all of those bodies instead. Interface factories still name `{ImplName}Factory` (see the note below the table). The holder looks like this:
-
-```csharp
-// generated, alongside your partial class
-internal static class NeatooFactoryRegistrar_MyCommands
-{
-    internal static void FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)
-        => MyCommands.FactoryServiceRegistrar(services, remoteLocal);
-}
-```
+Three of the four shapes emit a tiny holder whose only member forwards to the real registrar, for two different reasons. Static factories and `[FactoryEventHandler<T>]` classes have no separate generated type at all — the generator re-opens your own partial class to host `FactoryServiceRegistrar`, so naming the attribute's target at your class would preserve your bodies. Class factories *do* have a generated `{X}Factory`, but it hosts every `Local*` method, so naming it preserved all of those bodies instead. Interface factories still name `{ImplName}Factory` (see the note below the table). For a static factory `MyCommands`, the holder is a generated `internal static class NeatooFactoryRegistrar_MyCommands` whose one method, `FactoryServiceRegistrar(IServiceCollection services, NeatooFactory remoteLocal)`, calls `MyCommands.FactoryServiceRegistrar` with the same arguments.
 
 The attribute names the holder. Preservation then reaches exactly one forwarding method instead of everything on `MyCommands`.
 
 **Naming a generated type is necessary, not sufficient.** What makes a holder safe is that it has exactly *one* method. A generated type that hosts many methods still has all of them preserved, bodies included — `{X}Factory` hosts every `Local*` method for its factory, which is why class factories emit a holder too (`NeatooClassFactoryRegistrar_{ClassName}`) rather than naming the factory directly.
 
-The `IsServerRuntime` guard inside each `Local*` method does the other half of the work. For `async` operations that guard is emitted in a **non-async wrapper** that forwards to a private core:
-
-```csharp
-public Task<Person> LocalFetch(int id, CancellationToken cancellationToken = default)
-{
-    if (!NeatooRuntime.IsServerRuntime)
-        throw new InvalidOperationException("Server-only method called in non-server runtime.");
-    return LocalFetchCore(id, cancellationToken);
-}
-
-private async Task<Person> LocalFetchCore(int id, CancellationToken cancellationToken = default) { /* ... */ }
-```
+The `IsServerRuntime` guard inside each `Local*` method does the other half of the work. For `async` operations that guard is emitted in a **non-async wrapper** that forwards to a private core. For an async Fetch, the generated `LocalFetch` is a plain `Task`-returning method: it throws `InvalidOperationException("Server-only method called in non-server runtime.")` when `NeatooRuntime.IsServerRuntime` is `false`, and otherwise returns `LocalFetchCore(...)`, the `async` method that holds the body. Design's generated factories (`Design.Domain/Generated`, after a build) show the shape.
 
 Inside an `async` method the compiler lowers the whole body — guard included — into the state machine's `MoveNext`, within the builder's own protected region. The trimmer folds the feature switch there but does not eliminate the unreachable remainder, so the body survives. A synchronous method puts the guard ahead of any protected region, which is why sync operations always trimmed correctly and `async` ones did not until v1.7.0.
 
@@ -362,14 +344,7 @@ Preserve such a type in your client's `LinkerConfig.xml`:
 </linker>
 ```
 
-or register it in client DI setup, which is exactly what the generator would have emitted:
-
-```csharp
-using Neatoo.RemoteFactory.Internal;
-
-DtoConstructorRegistry.Register<LocationDto>(() => new LocationDto()); // has a public parameterless constructor
-DtoConstructorRegistry.PreserveType<PriceBreakdown>();               // positional record
-```
+or register it in client DI setup, which is exactly what the generator would have emitted: `DtoConstructorRegistry.Register<LocationDto>(() => new LocationDto())` for a type with a public parameterless constructor, or `DtoConstructorRegistry.PreserveType<PriceBreakdown>()` for a positional record (both in `Neatoo.RemoteFactory.Internal`).
 
 See also [Microsoft's documentation on preserving dependencies](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/prepare-libraries-for-trimming#dynamicdependency). One deliberate boundary: a class that merely *implements* a `[Factory]` interface — an interface-factory service implementation — gets no member walk; those are stateless services, not serialized state.
 
@@ -387,12 +362,23 @@ Event records raised via `IFactoryEvents.Raise<T>()` and handled by `[FactoryEve
 
 The source generator discovers every concrete `FactoryEventBase` descendant declared in a compilation and emits a per-assembly event-preservation registrar — a generated static class registered via the same assembly-level `[NeatooFactoryRegistrar]` mechanism as factory registrars, invoked automatically by `AddNeatooRemoteFactory`. The registrar emits `DtoConstructorRegistry.PreserveType<T>()` for each event record (and `Register<T>` / `PreserveType<T>` for the DTOs reachable through each event's property graph, bucketed by constructor shape like every other discovered DTO).
 
-Declaring the event is all it takes:
+Declaring the event is all it takes. For Design's shipping event, the generated registrar preserves both `OrderShippedEvent` and the `ShippingAddress` it carries:
 
-```csharp
-public record OrderShippedEvent(int OrderId, ShippingAddress Address) : FactoryEventBase;
-// → generated registrar preserves OrderShippedEvent AND ShippingAddress
+<!-- snippet: trimming-event-nested-record -->
+<a id='snippet-trimming-event-nested-record'></a>
+```cs
+public record ShippingAddress(string Street, string City, string PostalCode);
+
+/// <summary>
+/// Event object raised when an order ships. Demonstrates an event record with
+/// a nested record property — the generator automatically emits preservation
+/// for both <c>OrderShippedEvent</c> and <c>ShippingAddress</c> so the event
+/// round-trips correctly in IL-trimmed builds.
+/// </summary>
+public record OrderShippedEvent(Guid OrderId, ShippingAddress Address) : FactoryEventBase;
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs#L164-L174' title='Snippet source file'>snippet source</a> | <a href='#snippet-trimming-event-nested-record' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 The `[FactoryEvent]` annotation on `FactoryEventBase` (inherited at runtime) remains what makes descendants discoverable by the `FactoryEventTypeRegistry` assembly scan. Its `[DynamicallyAccessedMembers]` annotation, however, does **not** preserve descendants' members under trimming — `DynamicallyAccessedMembers` does not flow from a base type to derived types in ILLink, which is exactly why the generator emission exists. (An earlier version of this page claimed the annotation alone made every descendant trimming-safe; a publish-trimmed repro proved that wrong for event records whose only reference is a generic subscription call site.)
 
@@ -415,23 +401,14 @@ Automatically preserved. The generator walks each discovered event's public memb
 If your own code re-exposes `Raise` through a generic wrapper method, the compiler will now flag the wrapper with `IL2091` because the wrapper's `T` does not carry the same annotation:
 
 ```csharp
-// In your own code — now produces IL2091 under trimming
+// WRONG - IL2091 under trimming: the wrapper's T lacks Raise<T>'s annotation
 public Task RelayAnyEvent<T>(T evt) where T : FactoryEventBase =>
     _factoryEvents.Raise(evt);
 ```
 
-Resolve by matching the annotation on your own parameter, or by passing a concrete event type instead:
-
-```csharp
-// Option 1 — propagate the annotation
-public Task RelayAnyEvent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(T evt)
-    where T : FactoryEventBase =>
-    _factoryEvents.Raise(evt);
-
-// Option 2 — close the generic at the boundary (no warning)
-public Task RelayCheckoutCompleted(OrderCheckoutCompleted evt) =>
-    _factoryEvents.Raise(evt);
-```
+Resolve it in one of two ways:
+- **Propagate the annotation:** put `[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]` on the wrapper's own `T`.
+- **Close the generic at the boundary:** take a concrete event type, as in `RelayCheckoutCompleted(OrderCheckoutCompleted evt)`, which produces no warning.
 
 The warning fires only when user code forwards a generic `T` into `Raise<T>`. Direct calls with a concrete type (`_factoryEvents.Raise(new OrderCheckoutCompleted(...))`) are unaffected.
 
@@ -439,75 +416,32 @@ The warning fires only when user code forwards a generic `T` into `Raise<T>`. Di
 
 When an entity implements `IFactorySaveMeta`, its `IsNew` and `IsDeleted` properties must round-trip across the client/server boundary as JSON. Save routing happens server-side — the generated `LocalSave` reads `target.IsNew` and `target.IsDeleted` on the server-side deserialized instance. If either property drops out of the wire payload, the server deserializes them as default values (`IsNew = true` from the property initializer, `IsDeleted = false`), and **every Save routes to Insert regardless of the client's actual state**. Delete silently becomes a no-op.
 
-### The Trimming Interaction
+### What Keeps the Flags
 
-A common domain design uses private setters to prevent external callers from flipping lifecycle state:
+`IsNew` and `IsDeleted` are public `get; set;`, as [Save Operation — IFactorySaveMeta](save-operation.md#ifactorysavemeta) shows. Client code seldom reads both, and the library reads neither on the client, so on a trimmed client the generator's own code is what keeps their accessors:
+- **A `partial`, non-nested class whose constructors take no services** gets a generated ordinal converter. It reads and writes every serialized property, and it is registered for both formats.
+- **Any other class factory** has no ordinal converter: one whose constructor takes services, one that is not `partial`, or a nested one. Its registrar calls `DtoConstructorRegistry.PreserveProperties<T>()`, which keeps the class's public properties and fields, and nothing else, so `[Remote]` bodies still trim. Earlier versions emitted no such call, and a trimmed client wrote such a class as `{}` in both formats.
 
-```csharp
-public bool IsNew { get; private set; } = true;
-public bool IsDeleted { get; private set; }
-```
+Nothing in your code is needed: no `[JsonInclude]`, no `[DynamicDependency]`. The trimming harness pins both paths on a publish-trimmed client (`SaveMetaRoundTripSmokeTest` round-trips `IsNew = false` and `IsDeleted = true` through each format).
 
-`[JsonInclude]` (the private-setter workaround; [Save Operation — IFactorySaveMeta](save-operation.md#ifactorysavemeta) now uses public setters) handles the serialization side, but under `PublishTrimmed=true` the IL trimmer performs **visibility analysis** independently: when no concrete-type callsite reads the getter (all reads go through the `IFactorySaveMeta` / entity interface dispatch), the trimmer narrows the property itself from `public` to `private` in the emitted assembly. `System.Text.Json`'s default reflection-based resolver then skips the property entirely outbound, and you're back to the Insert-only routing bug — but only in published Release builds.
-
-**`[DynamicallyAccessedMembers]` on the class is not enough** — that annotation preserves reflection metadata but does not prevent visibility narrowing.
-
-### The Fix: `[DynamicDependency]` on the Constructor
-
-Annotate the `[Create]` constructor with `[DynamicDependency]` pointing at the two properties by name. This roots them against trimmer optimization and preserves their public getter visibility:
-
-```csharp
-using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Serialization;
-
-[Factory]
-internal class Employee : IEmployee
-{
-    [DynamicDependency(nameof(IsNew))]
-    [DynamicDependency(nameof(IsDeleted))]
-    [Create]
-    public Employee() { /* ... */ }
-
-    [JsonInclude]
-    public bool IsNew { get; private set; } = true;
-
-    [JsonInclude]
-    public bool IsDeleted { get; private set; }
-
-    public void MarkDeleted() => this.IsDeleted = true;
-}
-```
-
-`[DynamicDependency]` requires either:
-
-- A named target (as above), or
-- `DynamicallyAccessedMemberTypes.PublicProperties` applied to `typeof(Employee)` to cover all public properties.
-
-The named form is narrower and the recommended default for this specific pattern.
+A private setter does not work. The ordinal format skips a property whose setter the generated converter cannot call, a private one included, so a private-setter `IsNew` never crosses the wire in the default format, trimmed or not.
 
 ### Verifying the Preservation
 
-After publishing, decompile the trimmed client-side DLL and confirm the properties remain public:
+After publishing, decompile the trimmed client-side DLL and confirm both accessors remain:
 
 ```bash
-ilspycmd <YourClient>/obj/Release/net10.0/linked/<YourDomain>.dll -t Your.Namespace.Employee | grep -B1 "IsNew\|IsDeleted"
+ilspycmd <YourClient>/obj/Release/net10.0/linked/<YourDomain>.dll -t Your.Namespace.Employee | grep "IsNew\|IsDeleted"
 ```
 
 Expected output:
 
 ```
-[JsonInclude]
-public bool IsDeleted
-
-[JsonInclude]
-public bool IsNew
+public bool IsNew { get; set; }
+public bool IsDeleted { get; set; }
 ```
 
-If the decompiled output shows `private bool IsDeleted` / `private bool IsNew`, the trimmer has narrowed visibility — `[DynamicDependency]` is missing or the name doesn't resolve.
-
-### If You Use Public Setters
-
-Fully-public `public bool IsNew { get; set; }` and `public bool IsDeleted { get; set; }` avoid both the `[JsonInclude]` and the `[DynamicDependency]` requirement. The tradeoff is giving up the "only the framework and the entity itself can set these" encapsulation. Either design is viable — pick based on how strict you want the domain contract to be.
+A property shown as `{ set; }` has lost its getter, and it is written as nothing.
 
 ## Limitations
 

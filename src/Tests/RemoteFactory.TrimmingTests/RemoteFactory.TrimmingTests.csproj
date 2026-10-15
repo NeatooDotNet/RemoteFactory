@@ -12,7 +12,12 @@
 
 		<!-- Trimming configuration -->
 		<PublishTrimmed>true</PublishTrimmed>
-		<TrimMode>full</TrimMode>
+		<!-- The configuration docs/trimming.md prescribes: Blazor WASM's default TrimMode,
+		     partial, which trims only IsTrimmable assemblies. This project stands in for
+		     the domain assembly, so it is marked trimmable. Measured 2026-10-15 (EXSET-016):
+		     full and partial+IsTrimmable both pass the gate; partial alone fails it. -->
+		<TrimMode>partial</TrimMode>
+		<IsTrimmable>true</IsTrimmable>
 		<!-- Suppress trimming warnings for this prototype -->
 		<SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
 		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>

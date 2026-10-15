@@ -116,6 +116,14 @@ The trimming reference states what a publish actually removes and keeps, with on
 
 ## Test Evidence
 
+| Acceptance bullet | Evidence | Tier |
+|---|---|---|
+| 1 · C# blocks are embeds or WRONG | `grep '```csharp\|```cs$'` over `trimming.md` and `appendix/*.md`: one hit, `trimming.md`'s IL2091 block, labelled `// WRONG`. Every other C# block is an mdsnippets embed (`trimming-event-nested-record`, `service-injection-constructor`, `getting-started-client-program`) | explicit-skip: grep, confirmed |
+| 2 · one `TrimMode`, matching the experiment | `trimming.md` says `TrimMode` needs no setting (Blazor's default `partial`, domain `IsTrimmable`), and checklist item 1 names `IsTrimmable`. Experiment: `reviews/016-trim-*.log`. CI's harness now publishes in that configuration: `reviews/016-ci-{publish,verify,run}.log`, all exit 0 | explicit-skip: logs, confirmed |
+| 3 · `IsNew`/`IsDeleted` survive a trimmed round trip, both formats | `SaveMetaRoundTripSmokeTest` on `TrimCtorSaveTarget` (ctor-injected, so no ordinal converter): `IsNew=false`, `IsDeleted=true`, asserted on serialized text, outbound and re-serialized inbound, Ordinal and Named. Red before the generator fix (`reviews/016-savemeta-unfixed-run.log`, `{}` in both formats), green after (`016-trimfix-*-run.log`, `016-ci-run.log`). Emission pinned by `PreservePropertiesEmissionTests` (3 unit tests) | integration: publish-trimmed harness, confirmed |
+| 4 · no LazyLoad in docs, README, skill | grep `lazyload\|lazy load\|ILazyLoadFactory` over `docs`, `README.md`, `skills`. Exempt: `docs/release-notes/` (historical; the v0.25.0 link is unlinked), `docs/todos/`, `docs/plans/`, `docs/VisionAlignment.md` (the ruling itself). One hit left: `SKILL.md`'s "lazy loading" trigger, kept so the defer-loading row's R-K answer is reached (plan-review callout 9) | explicit-skip: grep, confirmed |
+| 5 · mdsnippets, both solutions, the trimming gate | Builds: `reviews/016-build-{main,design,refapp}.log`, 0 errors, 0 warnings. Tests: `016-test-main.log` (unit 855, integration 657 + 7 skipped, both TFMs), `016-test-design.log` (175 + 1 skipped, #104). `016-mdsnippets.log` exit 0; `git diff --stat` shows no swallowed section. Trimming gate: `016-ci-*.log` | explicit-skip: meta, confirmed |
+
 ---
 
 ## Gate Record
@@ -123,6 +131,12 @@ The trimming reference states what a publish actually removes and keeps, with on
 ---
 
 ## Plan Amendments
+
+- **Library fix (Keith, 2026-10-15: "Fix in generator").** The plan review measured a trimmed client writing `{}` for a public-setter `IFactorySaveMeta` class with no ordinal converter. The registrar now emits `DtoConstructorRegistry.PreserveProperties<T>()` for every class factory without an ordinal converter. The harness check moved from `TrimSaveTarget`, which is on the converter path and would always pass, to the new `TrimCtorSaveTarget`. Release-note line owed.
+- **Step 5's trimming publish** is in the configuration the page prescribes, not `full`: the harness csproj now sets `TrimMode=partial` with `IsTrimmable=true` (plan-review callout 5), so CI measures what the page tells readers to ship.
+- **The appendix's T-27 rewrite** became four paths, not three: the Ordinal converter, which tracks no references (#133), is Path 1. `appendix/serialization.md` §3 no longer says identity is always preserved (callout 4).
+- **`trimming.md` line 3** dropped the reference app's `IEmployeeRepository` for "your repositories".
+- **Design build:** the first Design build failed with MSB3552 (`**/*.resx` cannot be found, `Design.Domain`, net10.0), a glob that did not expand; the unchanged retry built clean. The log kept is the retry's.
 
 ---
 

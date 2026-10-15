@@ -28,29 +28,37 @@ The resolution is not a workaround -- it follows directly from DDD value object 
 
 For example, take a record `ProductSpec(string Name, Dictionary<string, string> Attributes)`, and one dictionary assigned to both an entity's `Metadata` property and a `ProductSpec`'s `Attributes`. After the round trip, `Metadata` keeps its tracked identity across the graph, while `Spec.Attributes` is an independent copy with the same entries. `ReferenceEquals(entity.Metadata, entity.Spec.Attributes)` is `false`, which is correct.
 
-## Three-Path Serialization Architecture
+## Serialization Paths
 
-RemoteFactory routes types through three serialization paths based on which converter claims the type. All three paths share the same `NeatooReferenceResolver` instance (per-operation, via `AsyncLocal`), so reference IDs are unique across the entire graph.
+RemoteFactory routes each type through one of four paths, chosen by the converter that claims it. The paths that write `$id`/`$ref` share one `NeatooReferenceResolver` per operation (via `AsyncLocal`), so reference IDs are unique across the entire graph.
 
-### Path 1: Neatoo Custom Converters (Entities and Lists)
+### Path 1: Generated Ordinal Converters (Ordinal Format)
 
-Types with Neatoo custom converters (`NeatooBaseJsonTypeConverter`, `NeatooListBaseJsonTypeConverter`) are serialized by Neatoo's converters. These converters access `NeatooReferenceResolver.Current` directly to emit `$id`/`$ref` metadata under their own control.
+In the Ordinal format, the default, `NeatooOrdinalConverterFactory` is registered first. It claims each `[Factory]` class that has a generated ordinal converter (a `partial`, non-nested class whose constructors take no services) and writes the object as a JSON array of its property values.
 
-- **Types:** Neatoo entities (`IEditBase`, `IValidateBase`, etc.) and Neatoo lists (`IEditListBase`, etc.)
-- **Reference tracking:** Yes -- converter-level, using `NeatooReferenceResolver.Current` directly
-- **Unchanged from v0.22.0**
+- **Types:** `[Factory]` classes with a generated ordinal converter, in the Ordinal format only
+- **Reference tracking:** No. The array carries no `$id`/`$ref`, so an object two properties share arrives as two copies. That is a known bug, [#133](https://github.com/NeatooDotNet/RemoteFactory/issues/133); see [Serialization](../serialization.md)
 
-### Path 2: STJ Built-in Converters with ReferenceHandler (Mutable Types)
+### Path 2: `NeatooJsonConverterFactory` Converters (Interfaces and Framework Types)
 
-Types without a custom converter and with a default (parameterless) constructor are handled by STJ's built-in converters. `NeatooPreserveReferenceHandler` is set on `JsonSerializerOptions`, which tells STJ to call `CreateResolver()` and use the returned resolver for `$id`/`$ref` tracking.
+`NeatooJsonConverterFactory` is RemoteFactory's extension point: every implementation registered in DI is added to the serializer ahead of the remaining paths. RemoteFactory registers one, `NeatooInterfaceJsonConverterFactory`, which claims interface- and abstract-typed values and writes each as `$type` plus `$value` ([Serialization Internals](serialization.md#how-interface-serialization-works)). The value inside `$value` then takes its own concrete type's path.
 
-`NeatooPreserveReferenceHandler.CreateResolver()` returns `NeatooReferenceResolver.Current` -- the same resolver instance that Neatoo's custom converters use. This means STJ's built-in converters and Neatoo's custom converters share a single ID space.
+A framework built on RemoteFactory registers its own. Neatoo, for example, registers converters for its entity and list base types (`NeatooBaseJsonTypeConverter`, `NeatooListBaseJsonTypeConverter`), which read `NeatooReferenceResolver.Current` directly to write `$id`/`$ref` under their own control. Those types are Neatoo's, not RemoteFactory's.
 
-- **Types:** `Dictionary<K,V>`, `List<T>`, plain classes with default constructors, other mutable reference types
+- **Types:** interface- and abstract-typed values; a framework's own types
+- **Reference tracking:** as the converter does it
+
+### Path 3: STJ Built-in Converters with ReferenceHandler (Mutable Types)
+
+Types no earlier converter claims, with a default (parameterless) constructor, are handled by STJ's built-in converters. `NeatooPreserveReferenceHandler` is set on `JsonSerializerOptions`, which tells STJ to call `CreateResolver()` and use the returned resolver for `$id`/`$ref` tracking.
+
+`NeatooPreserveReferenceHandler.CreateResolver()` returns `NeatooReferenceResolver.Current`, the same resolver a Path 2 converter can read. STJ's built-in converters and a framework's converters therefore share a single ID space.
+
+- **Types:** `Dictionary<K,V>`, `List<T>`, plain classes with default constructors, `[Factory]` classes in the Named format, other mutable reference types
 - **Reference tracking:** Yes -- serializer-level, via `ReferenceHandler` on options delegating to `NeatooReferenceResolver.Current`
 - **Handles:** Shared instances (same object in two properties), circular references (A.Next = B, B.Next = A)
 
-### Path 3: Record Bypass Converter (Value Objects)
+### Path 4: Record Bypass Converter (Value Objects)
 
 Types with parameterized constructors (no public parameterless constructor) are claimed by `RecordBypassConverterFactory`. This converter delegates serialization to an inner `JsonSerializerOptions` that is identical to the outer options except `ReferenceHandler` is `null` and `RecordBypassConverterFactory` is removed (to prevent recursion).
 
@@ -62,14 +70,14 @@ The record and its entire subtree serialize without `$id`/`$ref` metadata.
 
 ### Converter Priority
 
-STJ checks converters in registration order. The order in `NeatooJsonSerializer` is:
+STJ checks converters in registration order. `NeatooJsonSerializer` registers the converters of these paths in this order:
 
-1. `NeatooOrdinalConverterFactory` (if Ordinal format) -- claims `IOrdinalSerializable` types
-2. Neatoo custom converter factories -- claim Neatoo entities and lists
+1. `NeatooOrdinalConverterFactory` (Ordinal format only) -- claims `[Factory]` classes with a generated ordinal converter
+2. `NeatooJsonConverterFactory` implementations -- RemoteFactory's interface converter, and any a framework registers
 3. `RecordBypassConverterFactory` -- claims types with parameterized constructors
 4. STJ built-in converters -- handle everything else (with `ReferenceHandler` active)
 
-A type claimed by an earlier converter is never seen by later ones. Neatoo types are always handled by Neatoo converters (Path 1), regardless of whether they have parameterized constructors. `RecordBypassConverterFactory` only sees non-Neatoo types.
+A type claimed by an earlier converter is never seen by later ones. A framework's types are handled by its own converters, regardless of whether they have parameterized constructors. `RecordBypassConverterFactory` only sees what the earlier converters left.
 
 ### Reference Flow
 
@@ -80,21 +88,21 @@ NeatooJsonSerializer.Serialize()
     |
     +-- JsonSerializer.Serialize(target, OuterOptions)
             |
-            +-- Neatoo entity/list property:
-            |       Path 1: Neatoo converter reads .Current directly
-            |       Emits $id/$ref under converter control
+            +-- [Factory] class with an ordinal converter (Ordinal format):
+            |       Path 1: written as an array, no $id/$ref (#133)
+            |
+            +-- Interface- or abstract-typed property:
+            |       Path 2: $type + $value; the value takes its own path
             |
             +-- Record property:
-            |       Path 3: RecordBypassConverterFactory claims it
+            |       Path 4: RecordBypassConverterFactory claims it
             |       Delegates to InnerOptions (ReferenceHandler = null)
             |       No $id/$ref in the record's subtree
             |
             +-- Dictionary/List/plain class property:
-            |       Path 2: STJ built-in converter
+            |       Path 3: STJ built-in converter
             |       ReferenceHandler calls CreateResolver() -> .Current
             |       STJ emits $id/$ref using the shared resolver
-            |
-            +-- All three paths share the same resolver and ID counter
     |
     +-- Clears .Current in finally block
 ```
@@ -103,7 +111,7 @@ NeatooJsonSerializer.Serialize()
 
 `RecordBypassConverterFactory` uses a simple detection rule: claim any type that has no public parameterless constructor but has at least one public constructor with parameters. This matches STJ's own heuristic for parameterized-constructor deserialization.
 
-This rule is intentionally broad. It claims all C# records with primary constructors, but also non-record classes with only parameterized constructors. In the RemoteFactory ecosystem, such non-record classes are rare. The simpler rule avoids fragile heuristics that attempt to distinguish `record class Foo(int X)` from `class Foo(int X)` -- STJ cannot distinguish them either, and both have the same parameterized-constructor limitation.
+This rule is intentionally broad. It claims all C# records with primary constructors, but also non-record classes with only parameterized constructors, a `[Factory]` class whose constructor takes services among them. The simpler rule avoids fragile heuristics that attempt to distinguish `record class Foo(int X)` from `class Foo(int X)` -- STJ cannot distinguish them either, and both have the same parameterized-constructor limitation.
 
 Types with **both** a parameterless and a parameterized constructor are NOT claimed. STJ uses the parameterless constructor for those types, so they work with `ReferenceHandler` and participate in `$id`/`$ref` tracking.
 
@@ -111,14 +119,16 @@ Types with **both** a parameterless and a parameterized constructor are NOT clai
 
 | Type Category | Reference Tracked? | Example |
 |---|---|---|
-| Neatoo entity | Yes (Path 1) | `Employee`, `IEditBase` implementations |
-| Neatoo list | Yes (Path 1) | `EmployeeList`, `IEditListBase` implementations |
-| Dictionary, List, plain class | Yes (Path 2) | `Dictionary<string, string>`, `List<int>`, `class Holder { ... }` |
-| C# record | No (Path 3) | `record Address(string Street, string City)` |
-| Class with only parameterized ctor | No (Path 3) | `class Foo { public Foo(int x) { } }` |
+| `[Factory]` class with an ordinal converter, Ordinal format | No (Path 1, #133) | Design's `Order` |
+| `[Factory]` class with a parameterless constructor, Named format | Yes (Path 3) | Design's `Order` in the Named format |
+| Interface-typed value | As its concrete type's path | `IOrderLineList Lines` |
+| A framework's own entity or list | As its converter does (Path 2) | Neatoo's entity and list base types |
+| Dictionary, List, plain class | Yes (Path 3) | `Dictionary<string, string>`, `List<int>`, `class Holder { ... }` |
+| C# record | No (Path 4) | `record Address(string Street, string City)` |
+| Class with only parameterized ctor | No (Path 4) | `class Foo { public Foo(int x) { } }`, a `[Factory]` class whose constructor takes services |
 | Primitives, enums, strings | N/A | Not reference types; no tracking needed |
 
-**For most domain models, this works transparently.** Entities get reference tracking. Value objects (records) get correct value-based serialization. Collections and dictionaries shared across properties preserve identity.
+**What to expect.** In the Named format, `[Factory]` classes with a parameterless constructor get reference tracking. In the Ordinal format, the default, their generated converter does not track references yet (#133). Value objects (records) get value-based serialization in both. Collections and dictionaries shared across properties preserve identity.
 
 ## The STJ Limitation in Detail
 

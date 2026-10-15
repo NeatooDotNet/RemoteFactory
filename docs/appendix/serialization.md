@@ -30,6 +30,17 @@ The concrete type's `FullName` (namespace-qualified, **not** assembly-qualified)
 System.Text.Json creates instances using `Activator.CreateInstance()` — a bare constructor call with no DI awareness. In a DDD application, domain objects have constructor-injected services. Design's `CtorInjectedEntity`:
 
 <!-- snippet: service-injection-constructor -->
+<a id='snippet-service-injection-constructor'></a>
+```cs
+public CtorInjectedEntity(ITenantTokenService tokens)
+{
+    _tokens = tokens;
+}
+
+// Read on whichever tier holds the instance: the client's service after the round trip
+public string TokenFromContext => _tokens.Token;
+```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/CtorInjectionExample.cs#L130-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 STJ binds a parameterized constructor from the JSON's properties, and the JSON carries no `tokens` to bind: the service is never supplied, and the domain object is broken.
@@ -38,9 +49,9 @@ RemoteFactory's deserialization resolves instances from the DI container (`Servi
 
 ### 3. Shared Object Identity Is Lost
 
-When two properties reference the same object instance (common in aggregate root / child entity relationships), STJ duplicates it -- creating two independent copies. RemoteFactory preserves identity using `$id` / `$ref` pointers, maintaining the object graph structure across the wire.
+When two properties reference the same object instance (common in aggregate root / child entity relationships), STJ duplicates it -- creating two independent copies. RemoteFactory sets `NeatooPreserveReferenceHandler` on `JsonSerializerOptions` so the serializer writes `$id` / `$ref` pointers, maintaining the object graph structure across the wire.
 
-This applies to Neatoo types (via custom converters) and mutable reference types like `Dictionary`, `List`, and plain classes with default constructors (via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`). Types with parameterized constructors (records, immutable types) are intentionally excluded from reference tracking -- they are DDD value objects where duplication on round-trip is semantically correct. See [Appendix: Record Reference Handling](record-reference-handling.md) for the rationale.
+This applies to mutable reference types like `Dictionary`, `List`, and plain classes with default constructors, to `[Factory]` classes in the Named format, and to a framework's types whose converters track references themselves (Neatoo's do). It does not yet apply to a `[Factory]` class serialized by its generated converter in the Ordinal format, the default: that array carries no `$id` / `$ref`, a known bug ([#133](https://github.com/NeatooDotNet/RemoteFactory/issues/133)). Types with parameterized constructors (records, immutable types) are intentionally excluded from reference tracking -- they are DDD value objects where duplication on round-trip is semantically correct. See [Appendix: Record Reference Handling](record-reference-handling.md) for the rationale.
 
 ## Type Resolution Pipeline
 
@@ -66,6 +77,17 @@ Type resolution is handled by `ServiceAssemblies` (`src/RemoteFactory/Internal/S
 **Registration** — During DI setup, the application passes its domain assemblies to `AddNeatooRemoteFactory()`. Design's client:
 
 <!-- snippet: getting-started-client-program -->
+<a id='snippet-getting-started-client-program'></a>
+```cs
+// The factory proxies: calls marked [Remote] go to the server
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
+
+// The HttpClient RemoteFactory sends them with: the server that hosts this client
+builder.Services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+```
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `ServiceAssemblies` iterates every type in those assemblies and indexes them by `FullName`:

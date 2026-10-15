@@ -161,6 +161,7 @@ public static partial class OrderAuditHdlrs
 /// A record with a parameterized primary ctor — deserialized via
 /// RecordBypassConverterFactory on the receiving side.
 /// </summary>
+#region trimming-event-nested-record
 public record ShippingAddress(string Street, string City, string PostalCode);
 
 /// <summary>
@@ -170,6 +171,7 @@ public record ShippingAddress(string Street, string City, string PostalCode);
 /// round-trips correctly in IL-trimmed builds.
 /// </summary>
 public record OrderShippedEvent(Guid OrderId, ShippingAddress Address) : FactoryEventBase;
+#endregion
 
 /// <summary>
 /// Demonstrates: handler for an event with a nested parameterized-record property.

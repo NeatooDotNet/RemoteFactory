@@ -67,7 +67,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 - [ ] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must
 - [x] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must → EXSET-009: all three Creates are local `public [Create]`
-- [ ] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-016 · AC-4 · Must
+- [x] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-016 · AC-4 · Must · EXSET-016
 
 ## Dismissed
 
@@ -116,6 +116,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 - Todo 2 · hand-written skill C# that names sample types EXSET-015 retired: `class-factory.md` "Generated Code" (`ISkillConsultationFactory`) and "Caller Usage" (`IConsultationFactory`); `static-factory.md` "Usage" and `setup.md` "Static Factory Commands" (`SkillEmployeeCommands`, called as statics though delegates are DI-resolved types; `setup.md`'s `SkillEmployeeEvents` line is also the `[Event]` API removed in v1.5.0); `interface-factory.md`'s Server Registration and "Generated surface" names (EXSET-015)
 - Todo 2 · `skills/RemoteFactory/references/polymorphic-hierarchy.md` Key Rule 4 says `[Factory]` and `[Remote]` are inherited and `[Create]`/`[Fetch]` are not; the generator does the reverse for a derived `[Factory]` class (EXSET-014, `attributes-reference.md#attributes-and-inheritance`)
+- Todo 2 · `src/Examples/Person/Person.DomainModel/PersonModel.cs` keeps the private-setter, `[JsonInclude]` and `[DynamicDependency]` recipe and its "visibility narrowing" comments, which `trimming.md` no longer prescribes; `trimming.md` "Complete Example" links Person for its project files only (EXSET-016)
 
 ---
 
