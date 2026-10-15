@@ -3,7 +3,7 @@
 **Plan #:** 009
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
-**Serves:** AC-2, AC-3, AC-4
+**Serves:** AC-3, AC-4
 **Status:** In Progress
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** Yes. Design gains a cross-tier user service and server authentication, and getting started's server embed changes.
@@ -44,7 +44,7 @@ Re-point every C# block on `docs/authorization.md` (12 embeds, 9 hand-written fe
 - `Terminate` as an `[Update]` (C-24);
 - the 401/403 claim (T-11). It is replaced by the true outcomes: a class factory's denial is a `null` or a `NotAuthorizedException`, and an interface factory's `[AspAuthorize]` denial answers 403.
 
-**Findings to fix:** T-11, C-24, I-09 (the `Can*` method set and flag table), T-09 (the events line), and the C-19/I-01/T-22 shares on this page.
+**Findings to fix:** T-11, C-24, I-09 (the `Can*` method set and flag table), T-09 (the events line), U-02 (the local Creates), and the C-19, C-27, I-01, I-02 and T-22 shares on this page.
 
 Delete `Samples/Authorization/AuthorizationSamples.cs`, `Server.WebApi/Samples/Authorization/AuthorizationPolicyConfig.cs`, and the middleware-order region in `BasicSetupSamples.cs`, along with any of their orphan regions.
 
@@ -116,7 +116,7 @@ Does NOT touch:
   - the three aggregates fabricate their persistence;
   - `SecureOrder` is a public concrete class with no tests;
   - all three aggregates are `[Remote, Create]`.
-- **No server authentication.** Design.Server registers no authentication or authorization, so `SecureOrder`'s `[AspAuthorize]` would throw "No AspCoreNet Authorization registered" over HTTP. `AspAuthorize` authenticates through `IPolicyEvaluator` itself, so `UseAuthentication` is for `HttpContext.User` (the server's `ICurrentUser`), not for `[AspAuthorize]`.
+- **No server authentication.** Design.Server registers no authentication or authorization, so `SecureOrder`'s `[AspAuthorize]` would throw "No AspCoreNet Authorization registered" over HTTP. `AspAuthorize` authenticates through `IPolicyEvaluator`; with no scheme named on the attribute, that reads `HttpContext.User`, which `UseAuthentication` sets. (Corrected by the plan review.)
 - **`forbid`:** `true` only for interface-factory methods (`FactoryModelBuilder.cs:437`). A forbidding denial is answered 403 by `context.Forbid()`, with an empty body (`HandleRemoteDelegateRequest.cs:246-251`). Class-factory reads, writes, `Can*` and Save pass `false`: the denial becomes a `null`, or `NotAuthorizedException` for Save.
 - **`DesignHttpHost`** replaces `IAuthorizedOrderAuth` with a `SwitchableOrderAuth`, and keeps it.
 - **The reference app's middleware-order sample** shows CORS, authentication, authorization, then `UseNeatoo`.
@@ -136,6 +136,18 @@ Does NOT touch:
 ---
 
 ## Plan Amendments
+
+- **2026-10-15 · Plan review** ([009-plan-review.md](../reviews/009-plan-review.md)): APPROVED, with 15 callouts, all amended (see its Triage column). The ones that change the plan:
+  - **Library fix (Keith).** An anonymous caller passes a class factory's `[AspAuthorize]`. When authentication returns no result, `AspAuthorize` returns a null message, and a challenged denial returns `""`; both convert to `Authorized(true)`. `AspAuthorize` now runs the policy in every case, and a denial always carries a message. This adds unit tests, a Design HTTP test where anonymous is denied, an issue for the record, and release notes.
+  - **Create call sites (Keith).** Local Creates are synchronous, so `await factory.Create(...)` loses its `await` in AuthorizationTests, ParamAuthorizationTests and SaveTests' #104 test. The assertions are unchanged. The Constraint that ParamAuthorizationTests is "untouched" no longer holds for these call sites.
+  - **The three Creates** become `public` `[Create]`.
+  - **`ICurrentUser`'s implementation** has a non-matching name and is registered explicitly. `AddHttpContextAccessor()` is added.
+  - **`AuthorizationSamples.cs` stays** for EXSET-014 and EXSET-012; only its region markers go.
+  - **Three embeds:** `authorization-generated` is a region in AuthorizationTests; `authorization-combined` and `authorization-method-level` become prose.
+  - **`aspnetcore-middleware-order` retires.** `aspnetcore-integration.md` points at the server Program it already embeds, so there is no nested region showing the lines twice.
+  - **`SwitchableOrderAuth`** delegates to the real auth class over the request's `ICurrentUser` unless switched, so the allowed HTTP paths exercise the `HttpContext` user.
+  - **The 403** is stated with its conditions.
+  - **Ledger:** C-27 and I-02 added; U-02 gains 009.
 
 ---
 

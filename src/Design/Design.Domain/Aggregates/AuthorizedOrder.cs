@@ -22,12 +22,13 @@
 // AuthorizedOrder demonstrates [AuthorizeFactory<T>] (custom domain auth).
 // Keeping them separate avoids muddying the demonstration of each pattern.
 //
-// DESIGN DECISION: [Remote] internal on all factory methods
+// DESIGN DECISION: Create is local; the reads and writes are [Remote] internal
 //
-// All CRUD methods are [Remote] internal, which means:
-// - Methods are promoted to public on the factory interface
-// - Can* methods have the IsServerRuntime guard (server-only execution)
-// - Method bodies are trimmed on client assemblies
+// A root's Create is local (VisionAlignment D14): the client builds the new
+// order, and the auth class runs the Create rule on the client, reading the
+// client's ICurrentUser. Fetch and the writes are [Remote] internal: they run
+// on the server, where the same rules read the server's ICurrentUser, and
+// their bodies trim from client assemblies.
 //
 // GENERATOR BEHAVIOR: Can* method visibility derived from auth methods
 //
@@ -77,7 +78,7 @@ public interface IAuthorizedOrder : IFactorySaveMeta
 }
 
 /// <summary>
-/// Aggregate root demonstrating [AuthorizeFactory] with [Remote] internal methods.
+/// Aggregate root demonstrating [AuthorizeFactory] with a local Create and [Remote] internal reads and writes.
 /// </summary>
 /// <remarks>
 /// DESIGN DECISION: Internal class with public interface
@@ -93,9 +94,11 @@ public interface IAuthorizedOrder : IFactorySaveMeta
 /// [AuthorizeFactory], this also generates TrySave() which catches
 /// NotAuthorizedException and returns Authorized&lt;IAuthorizedOrder&gt;.
 /// </remarks>
+#region authorization-apply
 [Factory]
 [AuthorizeFactory<IAuthorizedOrderAuth>]
 internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFactoryOnCompleteAsync
+#endregion
 {
     // -------------------------------------------------------------------------
     // Properties
@@ -133,14 +136,14 @@ internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFa
     // -------------------------------------------------------------------------
     // Factory Operations
     //
-    // All methods are [Remote] internal:
+    // Create is public and local (D14). Fetch and the writes are [Remote] internal:
     // - [Remote] causes promotion to public on the factory interface
     // - internal visibility enables IL trimming of method bodies on client
     // - Can* method behavior derives from auth methods, not these factory methods
     // -------------------------------------------------------------------------
 
-    [Remote, Create]
-    internal void Create(string customerName)
+    [Create]
+    public void Create(string customerName)
     {
         CustomerName = customerName;
         IsNew = true;

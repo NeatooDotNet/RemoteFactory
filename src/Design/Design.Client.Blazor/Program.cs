@@ -53,6 +53,7 @@
 using Design.Client.Blazor;
 using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Neatoo.RemoteFactory;
@@ -81,6 +82,17 @@ builder.Services.AddKeyedScoped(
 // -- a bare [Execute] that took one would fail at call time on the client.
 // -------------------------------------------------------------------------
 builder.Services.AddScoped<ITextScorer, TextScorer>();
+
+// -------------------------------------------------------------------------
+// DESIGN DECISION: The client registers the signed-in user too
+//
+// AuthorizedOrder's Create is local and its Can* checks run here, so its auth
+// class reads ICurrentUser from THIS container. An application that signs users
+// in builds it from its AuthenticationStateProvider; Design's client signs nobody
+// in, so its user is anonymous and those checks deny. Fetch and Save still run
+// the same rules on the server, against the server's user.
+// -------------------------------------------------------------------------
+builder.Services.AddScoped<ICurrentUser>(_ => ClaimsUser.Anonymous);
 
 // Standard Blazor HttpClient for other purposes
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });

@@ -203,7 +203,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("Active Order");
+        var order = factory.Create("Active Order");
         Assert.NotNull(order);
         order.Status = "Active";
 
@@ -229,7 +229,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("Locked Order");
+        var order = factory.Create("Locked Order");
         Assert.NotNull(order);
         order.Status = "Locked";
 
@@ -251,7 +251,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("TrySave Locked");
+        var order = factory.Create("TrySave Locked");
         Assert.NotNull(order);
         order.Status = "Locked";
 
@@ -276,7 +276,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("TrySave Active");
+        var order = factory.Create("TrySave Active");
         Assert.NotNull(order);
         order.Status = "Active";
 
@@ -313,7 +313,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("CanSave Target Test");
+        var order = factory.Create("CanSave Target Test");
         Assert.NotNull(order);
         order.Status = "Active"; // CanWrite(target) passes
 
@@ -338,7 +338,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("CanSave Target Locked");
+        var order = factory.Create("CanSave Target Locked");
         Assert.NotNull(order);
         order.Status = "Locked"; // CanWrite(target) fails
 
@@ -364,7 +364,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("CanSave NonTarget Fail");
+        var order = factory.Create("CanSave NonTarget Fail");
         Assert.NotNull(order);
         order.Status = "Active"; // CanWrite(target) would pass
 
@@ -431,7 +431,7 @@ public class ParamAuthorizationTests
         var (_, _, local) = DesignClientServerContainers.Scopes();
         IParamAuthOrderFactory factory = local.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("Factory Interface Target Test");
+        var order = factory.Create("Factory Interface Target Test");
         Assert.NotNull(order);
         order.Status = "Locked"; // CanWrite(target) fails
 
@@ -504,7 +504,7 @@ public class ParamAuthorizationTests
         var (server, client, _) = DesignClientServerContainers.Scopes();
         var factory = client.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("Client-Server Locked");
+        var order = factory.Create("Client-Server Locked");
         Assert.NotNull(order);
         order.Status = "Locked";
 
@@ -527,7 +527,7 @@ public class ParamAuthorizationTests
         var (server, client, _) = DesignClientServerContainers.Scopes();
         var factory = client.GetRequiredService<IParamAuthOrderFactory>();
 
-        var order = await factory.Create("Client-Server CanSave");
+        var order = factory.Create("Client-Server CanSave");
         Assert.NotNull(order);
         order.Status = "Locked";
 

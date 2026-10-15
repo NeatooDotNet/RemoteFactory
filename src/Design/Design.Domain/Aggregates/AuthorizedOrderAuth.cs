@@ -38,12 +38,12 @@
 // AuthorizedOrderAuth>() in FactoryServiceRegistrar. This creates a static
 // reference that survives IL trimming, unlike reflection-based registration.
 //
-// DESIGN DECISION: Static boolean flags for test configurability
+// DESIGN DECISION: The rules read the signed-in user
 //
-// The implementation uses static flags so Design.Tests can toggle authorization
-// per-operation without mock DI setup. Each test resets the flags it depends on.
-// In production, you would inject services (e.g., IUser) via the constructor.
-// See Person.DomainModel/PersonModelAuth.cs for a real-world example.
+// AuthorizedOrderAuth takes ICurrentUser by constructor. Tests deny an
+// operation by taking a role from the test user, the way a real user lacks one.
+// (It used to read static flags, which tied tests together across classes
+// running in parallel.)
 //
 // DID NOT DO THIS: [Remote] on auth interface methods
 //
@@ -56,6 +56,7 @@
 //
 // =============================================================================
 
+using Design.Domain.Services;
 using Neatoo.RemoteFactory;
 
 namespace Design.Domain.Aggregates;
@@ -64,6 +65,7 @@ namespace Design.Domain.Aggregates;
 /// Authorization interface for AuthorizedOrder.
 /// Defines which operations require authorization checks.
 /// </summary>
+#region authorization-interface
 public interface IAuthorizedOrderAuth
 {
     /// <summary>
@@ -90,47 +92,36 @@ public interface IAuthorizedOrderAuth
     [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
     bool CanDelete();
 }
+#endregion
+
 
 /// <summary>
-/// Authorization implementation with static flags for test configurability.
+/// The roles AuthorizedOrder's rules name.
+/// </summary>
+public static class OrderRoles
+{
+    public const string Sales = "Sales";
+    public const string Support = "Support";
+    public const string Manager = "Manager";
+}
+
+/// <summary>
+/// AuthorizedOrder's rules, read from the signed-in user.
 /// </summary>
 /// <remarks>
-/// DESIGN DECISION: Public visibility for test configurability
-///
-/// The implementation is public so that test projects can access the static
-/// flags for per-test authorization configuration. In production, use internal
-/// visibility with constructor-injected services for real authorization logic.
-/// Example: internal class AuthorizedOrderAuth(IUser user) : IAuthorizedOrderAuth { ... }
-/// See PersonModelAuth.cs for the real-world pattern.
+/// Its methods are public and take only ICurrentUser, which both tiers
+/// register, so Can* and the local Create run these rules on the client with no
+/// server call, and the server runs the same rules for Fetch and Save.
 /// </remarks>
-public class AuthorizedOrderAuth : IAuthorizedOrderAuth
+public class AuthorizedOrderAuth(ICurrentUser user) : IAuthorizedOrderAuth
 {
-    /// <summary>Controls the broad-scope HasAccess() check. Default: true.</summary>
-    public static bool AllowAccess { get; set; } = true;
+    #region authorization-implementation
+    public bool HasAccess() => user.IsAuthenticated;
 
-    /// <summary>Controls the fine-grained CanCreate() check. Default: true.</summary>
-    public static bool AllowCreate { get; set; } = true;
+    public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
 
-    /// <summary>Controls the fine-grained CanFetch() check. Default: true.</summary>
-    public static bool AllowFetch { get; set; } = true;
+    public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
 
-    /// <summary>Controls the fine-grained CanDelete() check. Default: true.</summary>
-    public static bool AllowDelete { get; set; } = true;
-
-    /// <summary>
-    /// Resets all flags to their defaults (all allowed).
-    /// Call at the start of each test to avoid flag pollution.
-    /// </summary>
-    public static void ResetFlags()
-    {
-        AllowAccess = true;
-        AllowCreate = true;
-        AllowFetch = true;
-        AllowDelete = true;
-    }
-
-    public bool HasAccess() => AllowAccess;
-    public bool CanCreate() => AllowCreate;
-    public bool CanFetch() => AllowFetch;
-    public bool CanDelete() => AllowDelete;
+    public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
+    #endregion
 }

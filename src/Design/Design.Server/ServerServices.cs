@@ -30,8 +30,10 @@ using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
 using Design.Domain.Services;
 using Design.Domain.ValueObjects;
+using Microsoft.AspNetCore.Http;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.AspNetCore;
+using System.Security.Claims;
 
 namespace Design.Server;
 
@@ -75,7 +77,39 @@ public static class ServerServices
 
         services.AddDesignLogging();
 
+        services.AddDesignAuthorization();
+
         return services.AddDesignServerServices();
+    }
+
+    /// <summary>
+    /// Authentication, the policies [AspAuthorize] names, and the signed-in user.
+    /// </summary>
+    /// <remarks>
+    /// <c>AddAuthentication()</c> registers no scheme: the application adds its own
+    /// (cookies, JWT bearer, ...), and Design.Tests adds a test scheme. [AspAuthorize]
+    /// names no scheme, so the policy reads <c>HttpContext.User</c>, which
+    /// <c>UseAuthentication()</c> in Program.cs sets from the default scheme.
+    /// <c>AspAuthorize</c> needs <c>IHttpContextAccessor</c>; without it every
+    /// [AspAuthorize] call throws "No AspCoreNet Authorization registered".
+    ///
+    /// ICurrentUser is built from the same <c>HttpContext.User</c>, so
+    /// [AuthorizeFactory] classes on the server read the user [AspAuthorize] sees.
+    /// It is registered explicitly; see Design.Domain/Services/CurrentUser.cs.
+    /// </remarks>
+    private static IServiceCollection AddDesignAuthorization(this IServiceCollection services)
+    {
+        #region authorization-policy-config
+        services.AddAuthentication();   // add your scheme here: cookies, JWT bearer, ...
+        services.AddAuthorization(options =>
+            options.AddPolicy("RequireAuthenticated", policy => policy.RequireAuthenticatedUser()));
+        services.AddHttpContextAccessor();
+        #endregion
+
+        services.AddScoped<ICurrentUser>(sp =>
+            new ClaimsUser(sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.User ?? new ClaimsPrincipal()));
+
+        return services;
     }
 
     /// <summary>

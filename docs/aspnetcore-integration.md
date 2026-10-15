@@ -110,24 +110,7 @@ So be careful about switching formats by environment. On .NET 10, a Blazor WebAs
 
 ### Middleware Order
 
-Authentication and authorization run before `UseNeatoo()`, so an `[AspAuthorize]` check sees the signed-in user:
-
-<!-- snippet: aspnetcore-middleware-order -->
-<a id='snippet-aspnetcore-middleware-order'></a>
-```cs
-public static class MiddlewareOrderSample
-{
-    public static void Configure(WebApplication app)
-    {
-        app.UseCors();           // 1. CORS first
-        app.UseAuthentication(); // 2. Auth middleware
-        app.UseAuthorization();
-        app.UseNeatoo();         // 3. RemoteFactory endpoint (after auth)
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L8-L19' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+`UseAuthentication()` and `UseAuthorization()` run before `UseNeatoo()`, as in the [Basic Setup](#basic-setup) Program above. Authentication sets `HttpContext.User` before the endpoint runs, and `[AspAuthorize]`, which names no scheme of its own, checks its policies against that user. The application registers its scheme, cookies or JWT bearer, with `AddAuthentication`; see [Authorization](authorization.md).
 
 A client served from another origin, such as a standalone WASM app on its own host, needs CORS. Add a policy that allows the client's origin, with `POST` and the `Content-Type` and `X-Correlation-Id` request headers. Expose `X-Correlation-Id` if the client reads it, and call `UseCors()` before `UseNeatoo()`. A hosted client like Design's is same-origin and needs none of this.
 

@@ -275,6 +275,15 @@ public static class DesignClientServerContainers
         clientCollection.AddScoped<ServerServiceProvider>();
         clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
 
+        // One signed-in user, shared by the three containers, as a real user is the
+        // same person on the client and the server. Tests take a role away to deny.
+        var user = new TestUser();
+        foreach (var collection in new[] { serverCollection, clientCollection, localCollection })
+        {
+            collection.AddSingleton(user);
+            collection.AddSingleton<ICurrentUser>(user);
+        }
+
         // Apply custom configuration
         configureServer?.Invoke(serverCollection);
         configureClient?.Invoke(clientCollection);
