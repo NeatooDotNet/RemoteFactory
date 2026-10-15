@@ -70,7 +70,7 @@ var app = builder.Build();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
-// Sign the caller in before the endpoint runs: [AspAuthorize] and ICurrentUser read HttpContext.User
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
 app.UseAuthentication();
 app.UseAuthorization();
 

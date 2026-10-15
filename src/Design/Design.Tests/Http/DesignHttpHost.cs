@@ -270,3 +270,14 @@ public sealed class CapturedLogs : ILoggerProvider
             => entries.Enqueue((category, logLevel, formatter(state, exception)));
     }
 }
+
+/// <summary>
+/// The test classes that read AuthorizedOrder over HTTP. They share the host's
+/// <see cref="DesignHttpHost.Auth"/> switches, so they run one after another:
+/// a Fetch in one would otherwise land while another has the switch off.
+/// </summary>
+[CollectionDefinition(Name)]
+public sealed class AuthorizedOrderSwitches
+{
+    public const string Name = "AuthorizedOrder switches";
+}

@@ -17,7 +17,8 @@ internal sealed record ExecuteDelegateModel
         IReadOnlyList<ParameterModel>? serviceParameters = null,
         bool hasCancellationToken = false,
         bool hasResult = true,
-        IReadOnlyList<AspAuthorizeCall>? aspAuthorize = null)
+        IReadOnlyList<AspAuthorizeCall>? aspAuthorize = null,
+        IReadOnlyList<AuthMethodCall>? authMethods = null)
     {
         Name = name;
         DelegateName = delegateName;
@@ -29,6 +30,7 @@ internal sealed record ExecuteDelegateModel
         HasCancellationToken = hasCancellationToken;
         HasResult = hasResult;
         AspAuthorize = aspAuthorize ?? System.Array.Empty<AspAuthorizeCall>();
+        AuthMethods = authMethods ?? System.Array.Empty<AuthMethodCall>();
     }
 
     public string Name { get; }
@@ -59,4 +61,10 @@ internal sealed record ExecuteDelegateModel
     /// with forbid before the method runs, so a refusal is a 403 to the remote caller (#91).
     /// </summary>
     public IReadOnlyList<AspAuthorizeCall> AspAuthorize { get; }
+    /// <summary>
+    /// The class's [AuthorizeFactory&lt;T&gt;] methods that match this [Execute]. The local registration
+    /// checks them before the method runs; a refusal throws NotAuthorizedException, as an
+    /// interface factory's does, because a delegate has no Authorized&lt;T&gt; to carry it back.
+    /// </summary>
+    public IReadOnlyList<AuthMethodCall> AuthMethods { get; }
 }

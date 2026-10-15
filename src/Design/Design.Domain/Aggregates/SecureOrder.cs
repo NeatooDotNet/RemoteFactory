@@ -95,8 +95,9 @@ internal partial class SecureOrder : ISecureOrder
     ///
     /// COMMON MISTAKE: Forgetting to register the policy
     ///
-    /// If the policy isn't registered on the server, the call fails with
-    /// "Authorization policy not found" (a 500).
+    /// If the policy isn't registered on the server, ASP.NET Core throws an
+    /// InvalidOperationException naming the missing policy, and the call fails
+    /// with a 500.
     /// </remarks>
     #region authorization-policy-apply
     [Remote, Fetch]

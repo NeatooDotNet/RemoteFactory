@@ -11,7 +11,7 @@ The code on this page comes from RemoteFactory's compiled example set, `src/Desi
 | **`[AuthorizeFactory<T>]`** | A class you write, with DI | The tier that runs the operation, the client included |
 | **`[AspAuthorize]`** | ASP.NET Core policies and roles | The server, against `HttpContext.User` |
 
-A rule the user can satisfy or not is authorization. A check of the object's own state is a verdict the screen reads before it acts, such as `Order.CanSubmit`; it is not a refusal.
+Authorization is a rule about who may do what to which record: only Sales creates orders, and nobody edits a Locked order. A state the user can change themselves is not authorization. An empty draft that cannot be submitted yet is a verdict the screen reads before it acts (`Order.CanSubmit`), not a refusal.
 
 ## AuthorizeFactory
 
@@ -31,9 +31,14 @@ public interface IAuthorizedOrderAuth
     bool HasAccess();
 
     /// <summary>
-    /// Fine-grained check for Create operations only.
+    /// Who may create an order: checked by the local Create (and CanCreate) on
+    /// the client, and again on the server when the new order is saved (Insert).
     /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    /// <remarks>
+    /// A local Create runs only on the client, so the client check is for the
+    /// screen; the Insert scope is what the server enforces.
+    /// </remarks>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Insert)]
     bool CanCreate();
 
     /// <summary>
@@ -49,10 +54,10 @@ public interface IAuthorizedOrderAuth
     bool CanDelete();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L68-L95' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L68-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`HasAccess` covers every operation through `Read | Write`. The others narrow it, one operation each. When several methods match an operation, all of them must pass.
+`HasAccess` covers every operation through `Read | Write`. The others narrow it. `CanCreate` covers `Create | Insert`: a local Create runs only on the client, so the server applies the same rule when the new order is saved. When several methods match an operation, all of them must pass.
 
 ### Operation Flags
 
@@ -71,15 +76,18 @@ The implementation takes what it decides from by constructor. `AuthorizedOrderAu
 <!-- snippet: authorization-implementation -->
 <a id='snippet-authorization-implementation'></a>
 ```cs
-public bool HasAccess() => user.IsAuthenticated;
+public class AuthorizedOrderAuth(ICurrentUser user) : IAuthorizedOrderAuth
+{
+    public bool HasAccess() => user.IsAuthenticated;
 
-public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
+    public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
 
-public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
+    public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
 
-public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
+    public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
+}
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L118-L126' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L122-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `ICurrentUser` is Design's own service. Both tiers register it, because the rules run on both:
@@ -97,12 +105,12 @@ The generator registers the auth class itself (`IAuthorizedOrderAuth` → `Autho
 [AuthorizeFactory<IAuthorizedOrderAuth>]
 internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFactoryOnCompleteAsync
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrder.cs#L97-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrder.cs#L99-L103' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Checking Before Acting
 
-For each authorized operation the factory gains a `Can` method named after the operation's method: `CanCreate`, `CanFetch`, `CanSave`, and for the writes `CanInsert`, `CanUpdate` and `CanDelete`. Each returns `Authorized`, whose `HasAccess` the screen reads. `AuthorizedOrder`'s Create is local, so both calls below run on the client, with no server call:
+For each authorized operation the factory gains a `Can` method named after the operation's method: `CanCreate`, `CanFetch`, `CanSave`, and for the writes `CanInsert`, `CanUpdate` and `CanDelete`. Each returns `Authorized`, whose `HasAccess` the screen reads, or `Task<Authorized>` when the check has to run on the server (see [Can* Method Behavior](#can-method-behavior)). `AuthorizedOrder`'s Create is local, so both calls below run on the client, with no server call. A check that runs only on the client is for the screen; the server enforces the rule again at Save:
 
 <!-- snippet: authorization-generated -->
 <a id='snippet-authorization-generated'></a>
@@ -112,7 +120,7 @@ if (factory.CanCreate().HasAccess)   // the rules Create runs, asked first: show
     order = factory.Create("New Customer");
 }
 ```
-<sup><a href='/src/Design/Design.Tests/FactoryTests/AuthorizationTests.cs#L399-L404' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-generated' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/AuthorizationTests.cs#L407-L412' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-generated' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## AspAuthorize
@@ -153,7 +161,7 @@ internal void Fetch(int id)
     IsNew = false;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L101-L111' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L102-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Roles. Any one of the listed roles passes:
@@ -169,7 +177,7 @@ internal Task Insert()
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L126-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L127-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Several attributes. All of them must pass:
@@ -185,7 +193,7 @@ internal Task Update()
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L157-L165' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L158-L166' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Placement on [Execute]
@@ -240,13 +248,14 @@ Create and Fetch rules are unaffected.
 
 ## Can* Method Behavior
 
-Where a `Can*` method runs follows the auth class's methods, not the operation's:
+Where a `Can*` method runs follows the auth class's methods, and whether the operation carries `[AspAuthorize]`, not where the operation itself runs:
 
 | Auth method | Can* behavior | Use when |
 |---|---|---|
-| `public`, no `[Remote]` | Runs locally, synchronously, with no guard | The rule needs only services both tiers register, such as `ICurrentUser` |
+| `public`, no `[Remote]` | Runs locally, with no guard; synchronous unless an auth method returns `Task` | The rule needs only services both tiers register, such as `ICurrentUser` |
 | `internal`, no `[Remote]` | Server-only, behind the `IsServerRuntime` guard | The rule needs server services and is never asked from the client |
 | `[Remote] internal` | Called on the server through the remote delegate, asynchronously | The rule needs server services and the client must ask it |
+| Any, on an operation with `[AspAuthorize]` | Called on the server, asynchronously (`Task<Authorized>`), where the policy is checked too | The operation has a policy |
 
 So a `[Remote] internal` Fetch can have a `CanFetch` that runs on the client, as long as the auth class's methods are `public` and need nothing server-only. An auth class that isn't resolvable on the client fails with a DI resolution error when `Can*` is called there.
 
@@ -305,7 +314,7 @@ public void AuthorizedOrder_Create_ReturnsNull_WhenDenied()
     local.Dispose();
 }
 ```
-<sup><a href='/src/Design/Design.Tests/FactoryTests/AuthorizationTests.cs#L154-L171' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/AuthorizationTests.cs#L155-L172' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `[AspAuthorize]` needs a request. Design tests it over HTTP with `WebApplicationFactory` and a test authentication scheme that signs each request in as the user the test names (`Design.Tests/Http/AspAuthorizeHttpTests.cs`).

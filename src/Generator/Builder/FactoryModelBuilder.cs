@@ -546,6 +546,20 @@ internal static class FactoryModelBuilder
                        method.AuthMethodInfos.Any(m => m.IsRemote) ||
                        method.AspAuthorizeCalls.Any();
 
+        // [AuthorizeFactory<T>] methods are enforced there too, ahead of [AspAuthorize], in the
+        // order a class factory runs them. They used to decide isRemote and nothing else, so a
+        // static command's auth class was never called.
+        var authMethods = method.AuthMethodInfos
+            .Select(am => new AuthMethodCall(
+                className: am.ClassName,
+                methodName: am.Name,
+                isTask: am.IsTask,
+                isRemote: am.IsRemote,
+                isInternal: am.IsInternal,
+                parameters: BuildParameters(am.Parameters),
+                concreteClassName: am.ConcreteClassName))
+            .ToList();
+
         // [AspAuthorize] is enforced in the local registration, before the method runs (#91).
         var aspAuthorize = method.AspAuthorizeCalls
             .Select(asp => new AspAuthorizeCall(
@@ -563,7 +577,8 @@ internal static class FactoryModelBuilder
             serviceParameters: serviceParameters,
             hasCancellationToken: hasCancellationToken,
             hasResult: !method.IsVoidTask,
-            aspAuthorize: aspAuthorize);
+            aspAuthorize: aspAuthorize,
+            authMethods: authMethods);
     }
 
     private static CanMethodModel BuildCanMethod(string methodName, TypeInfo typeInfo, IReadOnlyList<AuthMethodCall> authMethods, IReadOnlyList<AspAuthorizeCall> aspAuthorize, bool isInternal = false, bool isSourceAuthMethodRemote = false)

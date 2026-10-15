@@ -18,9 +18,14 @@ public interface IAuthorizedOrderAuth
     bool HasAccess();
 
     /// <summary>
-    /// Fine-grained check for Create operations only.
+    /// Who may create an order: checked by the local Create (and CanCreate) on
+    /// the client, and again on the server when the new order is saved (Insert).
     /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    /// <remarks>
+    /// A local Create runs only on the client, so the client check is for the
+    /// screen; the Insert scope is what the server enforces.
+    /// </remarks>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Insert)]
     bool CanCreate();
 
     /// <summary>
@@ -36,21 +41,24 @@ public interface IAuthorizedOrderAuth
     bool CanDelete();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L68-L95' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L68-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 <!-- snippet: authorization-implementation -->
 <a id='snippet-authorization-implementation'></a>
 ```cs
-public bool HasAccess() => user.IsAuthenticated;
+public class AuthorizedOrderAuth(ICurrentUser user) : IAuthorizedOrderAuth
+{
+    public bool HasAccess() => user.IsAuthenticated;
 
-public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
+    public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
 
-public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
+    public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
 
-public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
+    public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
+}
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L118-L126' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L122-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `ICurrentUser` is the example's signed-in user (`IsAuthenticated`, `IsInRole`), injected by constructor and registered on both tiers, because the rules run wherever the operation runs. `OrderRoles` holds the role names.
@@ -62,7 +70,7 @@ public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
 [AuthorizeFactory<IAuthorizedOrderAuth>]
 internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFactoryOnCompleteAsync
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrder.cs#L97-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrder.cs#L99-L103' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Generated authorization methods:**
@@ -136,7 +144,7 @@ internal void Fetch(int id)
     IsNew = false;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L101-L111' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L102-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Server configuration:**

@@ -75,9 +75,14 @@ public interface IAuthorizedOrderAuth
     bool HasAccess();
 
     /// <summary>
-    /// Fine-grained check for Create operations only.
+    /// Who may create an order: checked by the local Create (and CanCreate) on
+    /// the client, and again on the server when the new order is saved (Insert).
     /// </summary>
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
+    /// <remarks>
+    /// A local Create runs only on the client, so the client check is for the
+    /// screen; the Insert scope is what the server enforces.
+    /// </remarks>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Insert)]
     bool CanCreate();
 
     /// <summary>
@@ -111,11 +116,12 @@ public static class OrderRoles
 /// <remarks>
 /// Its methods are public and take only ICurrentUser, which both tiers
 /// register, so Can* and the local Create run these rules on the client with no
-/// server call, and the server runs the same rules for Fetch and Save.
+/// server call. The server runs them for Fetch and Save: Insert re-checks
+/// CanCreate, so a client cannot skip it.
 /// </remarks>
+#region authorization-implementation
 public class AuthorizedOrderAuth(ICurrentUser user) : IAuthorizedOrderAuth
 {
-    #region authorization-implementation
     public bool HasAccess() => user.IsAuthenticated;
 
     public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
@@ -123,5 +129,5 @@ public class AuthorizedOrderAuth(ICurrentUser user) : IAuthorizedOrderAuth
     public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
 
     public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
-    #endregion
 }
+#endregion

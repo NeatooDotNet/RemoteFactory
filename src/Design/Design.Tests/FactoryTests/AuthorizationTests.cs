@@ -17,8 +17,8 @@
 //
 // Authorization logic is the same in local and remote modes -- the generated
 // code checks auth before executing the operation regardless of mode.
-// Client-server tests (scenarios 11, 12) are separate to verify
-// serialization round-trip preserves auth behavior.
+// Scenarios 11 and 12 use the client container: 11 shows the local Create
+// running its rules on the client, 12 a denied Fetch crossing to the server.
 //
 // =============================================================================
 
@@ -43,12 +43,13 @@ public class AuthorizationTests
     // - CanCreate checks HasAccess() (Read|Write scope) and CanCreate() (Create scope)
     // - CanFetch checks HasAccess() (Read|Write scope) and CanFetch() (Fetch scope)
     // - CanSave aggregates auth from Insert, Update, Delete:
-    //   distinct set = {HasAccess(), CanDelete()}
+    //   distinct set = {HasAccess(), CanCreate(), CanDelete()} (CanCreate is Create | Insert)
     // - CanDelete checks HasAccess() (Read|Write scope) and CanDelete() (Delete scope)
     //
     // DESIGN DECISION: Can* returns Authorized (synchronous, not Task<Authorized>)
     //
-    // Even though the source methods are [Remote] internal, the generated Can*
+    // Whatever the operation's own placement (Fetch and the writes are [Remote]
+    // internal; Create is local), the generated Can*
     // methods return Authorized directly (not Task<Authorized>). The generator
     // makes Can* methods synchronous regardless of the source method's async status.
     // -------------------------------------------------------------------------
@@ -110,7 +111,7 @@ public class AuthorizationTests
         // Act
         var result = factory.CanSave();
 
-        // Assert -- CanSave aggregates {HasAccess(), CanDelete()}; CanDelete fails
+        // Assert -- CanSave aggregates {HasAccess(), CanCreate(), CanDelete()}; CanDelete fails
         Assert.False(result.HasAccess);
 
         local.Dispose();
@@ -341,10 +342,11 @@ public class AuthorizationTests
     /// <summary>
     /// Scenario 11: Auth-allowed Create works from the client container.
     /// Rules 3, 9, 13: Create is local (D14), so it runs its rules on the client and
-    /// returns a non-null IAuthorizedOrder with no server call.
+    /// returns a non-null IAuthorizedOrder with no server call; its Save then crosses
+    /// to the server, which runs the Insert rules (CanCreate included) again.
     /// </summary>
     [Fact]
-    public void AuthorizedOrder_Create_WorksThroughClientServer()
+    public async Task AuthorizedOrder_Create_RunsOnTheClient()
     {
         // Arrange
         var (server, client, _) = DesignClientServerContainers.Scopes();
@@ -358,6 +360,12 @@ public class AuthorizationTests
         Assert.Equal("Client-Server Test", result.CustomerName);
         Assert.True(result.IsNew);
         Assert.Equal(0, client.GetRequiredService<ServerServiceProvider>().RemoteCallCount);
+
+        // The Save crosses, and the server's Insert rules pass for this user
+        var saved = await factory.Save(result);
+        Assert.NotNull(saved);
+        Assert.False(saved.IsNew);
+        Assert.Equal(1, client.GetRequiredService<ServerServiceProvider>().RemoteCallCount);
 
         server.Dispose();
         client.Dispose();

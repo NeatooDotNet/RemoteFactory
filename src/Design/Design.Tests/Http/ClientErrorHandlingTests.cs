@@ -10,8 +10,9 @@
 //   server's exception type does not cross.
 //
 // The screen below is the client code the ASP.NET Core page embeds
-// (aspnetcore-error-handling). AuthorizedOrder's rules come from the host's
-// switchable stand-in (DesignHttpHost).
+// (aspnetcore-error-handling). AuthorizedOrder's rules are the real ones,
+// over the request's signed-in user, behind switches these tests flip
+// (DesignHttpHost).
 //
 // =============================================================================
 
@@ -21,6 +22,7 @@ using Neatoo.RemoteFactory;
 
 namespace Design.Tests.Http;
 
+[Collection(AuthorizedOrderSwitches.Name)]
 public class ClientErrorHandlingTests(DesignHttpHost host)
 {
     [Fact]

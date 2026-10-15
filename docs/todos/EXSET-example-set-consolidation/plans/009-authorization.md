@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** Yes. Design gains a cross-tier user service and server authentication, and getting started's server embed changes.
 **Code-review opt-in:** Yes. The page is rewritten against the generator's authorization paths.
@@ -105,6 +105,7 @@ Does NOT touch:
 - [x] Over HTTP, `SecureOrder`'s `[AspAuthorize]` operations allow a user who meets the policy or role. Denied, the Fetch returns null and the Save throws `NotAuthorizedException`. `[integration]` · Must
 - [x] The page's denial outcomes match the generator: class factory null or `NotAuthorizedException`; interface-factory `[AspAuthorize]` 403. `[explicit-skip: source-cited review; the class-factory outcomes are also pinned by bullets 1 and 3]` · Should
 - [x] On the page and the skill's embeds: every C# block is from Design or WRONG, and no retired region is embedded; the reference-app sources are gone and the app builds `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
+- [x] A static factory's `[Execute]` enforces `[AuthorizeFactory<T>]`: allowed, refused by a `bool` and by a reason, with no result and bare (added at the code review, Keith) `[integration]` · Must
 - [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
@@ -131,16 +132,37 @@ Does NOT touch:
 
 | Bullet | Pinned by | Tier |
 |---|---|---|
-| 1. AuthorizedOrder by roles | `AuthorizationTests` scenarios 1–12, now on the shared `TestUser`. A deny takes a role away (`Sales` for Create, `Sales`/`Support` for Fetch, `Manager` for Delete), and every assertion is unchanged. Scenario 12 is the denied client-server Fetch. Over HTTP, `ClientErrorHandlingTests` run the real `AuthorizedOrderAuth` over the request's user, behind `GatedOrderAuth`'s switches | integration |
-| 2. Local Creates, client `CanCreate` | `AuthorizationTests.AuthorizedOrder_Create_WorksThroughClientServer` (no remote call) and `AuthorizedOrder_CanCreate_GuardsTheCreate_OnTheClient` (the `authorization-generated` region: allowed, then denied, with no remote call). `ParamAuthorizationTests` and `SaveTests` use the synchronous Create | integration |
+| 1. AuthorizedOrder by roles | `AuthorizationTests` scenarios 1–12, now on the shared `TestUser`. A deny takes a role away (`Sales` for Create, `Sales`/`Support` for Fetch, `Manager` for Delete), and every assertion is unchanged. Scenario 12 is the denied client-server Fetch. Over HTTP, `ClientErrorHandlingTests` run the real `AuthorizedOrderAuth` over the request's user, behind `GatedOrderAuth`'s switches. `AuthorizeFactoryHttpTests` shows the server's `ICurrentUser` refusing over HTTP with the switches on: a Manager's Fetch is null, and an anonymous Save throws | integration |
+| 2. Local Creates, client `CanCreate` | `AuthorizationTests.AuthorizedOrder_Create_RunsOnTheClient` (scenario 11, renamed: no remote call) and `AuthorizedOrder_CanCreate_GuardsTheCreate_OnTheClient` (the `authorization-generated` region: allowed, then denied, with no remote call). `ParamAuthorizationTests` and `SaveTests` use the synchronous Create | integration |
 | 3. `[AspAuthorize]` over HTTP | `AspAuthorizeHttpTests`: a signed-in Fetch is allowed; an anonymous Fetch returns null; Insert needs Admin or Manager (Sales gets `NotAuthorizedException`); Update needs both attributes (Admin alone is refused). Against the arc's pre-#127 `AspAuthorize`, the anonymous test failed on both TFMs (`reviews/009-unfixed-aspauthorize-test.log`) | integration |
 | 4. Denial outcomes | explicit-skip: `FactoryModelBuilder.cs:437` (interface methods forbid), `:587`, `:703` (Can* and Save do not), `HandleRemoteDelegateRequest.cs:246-251`, `AspAuthorize.cs:86-110`, `InterfaceFactoryRenderer.cs:495` (the context format). The class-factory outcomes are also pinned by bullets 1 and 3 | explicit-skip |
-| 5. Page and skill | explicit-skip: no fence outside a snippet pair on `authorization.md`. All 12 embeds come from Design (AuthorizedOrder, AuthorizedOrderAuth, ParamAuthOrderAuth, SecureOrder, ServerServices, AuthorizationTests). The skill's five embeds re-pointed by name. `aspnetcore-middleware-order` is retired. `AuthorizationPolicyConfig.cs` and `BasicSetupSamples.cs` are deleted, and `AuthorizationSamples.cs` lost its region markers; `reviews/009-refapp-build.log` (0 errors) | explicit-skip |
-| 6. Meta | explicit-skip: `reviews/009-mdsnippets.log`. README, getting started and the skill's setup gain the two middleware lines; factory-modes and serialization change only in attribution. Logs: `009-build.log`, `009-test.log`, `009-design-build.log`, `009-design-test.log` (unit 852 and integration 652 + 7 skips, after `main`'s merge; Design 171 + 1 known-bug skip, up 5; both TFMs) | explicit-skip |
+| 5. Page and skill | explicit-skip: no fence outside a snippet pair on `authorization.md`. All 11 embeds come from Design (AuthorizedOrder, AuthorizedOrderAuth, ParamAuthOrderAuth, SecureOrder, ServerServices, AuthorizationTests). The skill's five embeds re-pointed by name. `aspnetcore-middleware-order` is retired. `AuthorizationPolicyConfig.cs` and `BasicSetupSamples.cs` are deleted, and `AuthorizationSamples.cs` lost its region markers; `reviews/009-refapp-build.log` (0 errors) | explicit-skip |
+| 7. Static `[AuthorizeFactory]` (added) | `StaticAuthorizeFactoryTests` (5): allowed runs; a `bool` refusal and a type-matched reason both throw `NotAuthorizedException` before the method runs; no-result; and bare on the tier that runs it. 4 of 5 failed before the generator fix (`reviews/009-static-authorizefactory-unfixed-test.log`). The auth-class registration is from source (`StaticFactoryRenderer`): the containers also register by name | integration |
+| 6. Meta | explicit-skip: `reviews/009-mdsnippets.log`. README, getting started and the skill's setup gain the two middleware lines; factory-modes and serialization change only in attribution. Logs: `009-build.log`, `009-test.log`, `009-design-build.log`, `009-design-test.log` (unit 852; integration 657 + 7 skips, up 5 after `main`'s merge; Design 173 + 1 known-bug skip, up 7; both TFMs) | explicit-skip |
 
 ---
 
 ## Gate Record
+
+- **Plan review** ([009-plan-review.md](../reviews/009-plan-review.md)): APPROVED, with 15 callouts, all amended. Callout 1, the anonymous-caller hole, was already fixed on `main` (#127); Keith had `main` merged into EXSET first (#139).
+- **Test review** ([009-test-review.md](../reviews/009-test-review.md)), round 1: APPROVED, with 2 callouts and 4 tech-debt items, all punched. The new `AuthorizeFactoryHttpTests` shows the server's `ICurrentUser` refusing over HTTP. It found that `ClientErrorHandlingTests`' host-wide switches raced a parallel class; the two now share an xUnit collection.
+- **Code review** ([009-code-review.md](../reviews/009-code-review.md)): APPROVED, with 8 callouts, all punched:
+  - the generator now enforces `[AuthorizeFactory<T>]` on a static factory (Keith);
+  - `CanCreate` covers Insert;
+  - the `[AspAuthorize]` `Can*` row;
+  - scenario 11 saves;
+  - the intro's R-E reading (Keith);
+  - the implementation region shows its constructor;
+  - comments;
+  - the C-19 row.
+
+  Two theoretical items were taken.
+- **After the punches:** all three solutions build, and both test runs pass (unit 852, integration 657 + 7 known skips, Design 173 + 1 known-bug skip, both TFMs). mdsnippets is clean.
+- **Open, by design:**
+  - `attributes-reference.md` (EXSET-014);
+  - `CustomerDirectoryAuth`'s and `ParamAuthOrderAuth`'s flag-based implementations;
+  - #104;
+  - the release-note line owed for the static-factory fix.
 
 ---
 
@@ -157,6 +179,12 @@ Does NOT touch:
   - **`SwitchableOrderAuth`** delegates to the real auth class over the request's `ICurrentUser` unless switched, so the allowed HTTP paths exercise the `HttpContext` user.
   - **The 403** is stated with its conditions.
   - **Ledger:** C-27 and I-02 added; U-02 gains 009.
+
+- **2026-10-15 · Code review** ([009-code-review.md](../reviews/009-code-review.md)): APPROVED, with 8 callouts, all punched. The ones that change the plan:
+  - **Generator fix (Keith).** A static factory's `[Execute]` now enforces `[AuthorizeFactory<T>]` (see the Discovery Log). The fix adds `StaticAuthorizeFactoryTests`, 5 integration tests.
+  - **`CanCreate` is `Create | Insert`,** so the server enforces the create rule when the new order is saved. A local Create's check runs only on the client.
+  - **Scenario 11** now saves through the server, as plan-review callout 9 said.
+  - **The page's intro** splits authorization from a user-changeable state by who decides (Keith, R-E).
 
 ---
 

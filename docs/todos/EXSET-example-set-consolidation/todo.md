@@ -52,7 +52,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 006 | [006-aspnetcore-modes-serialization](./plans/006-aspnetcore-modes-serialization.md) | ASP.NET Core integration over HTTP, and setup | AC-3, AC-4 | Done | #132 |
 | 007 | [007-factory-operations](./plans/007-factory-operations.md) | Factory operations page | AC-3, AC-4 | Done | #136 |
 | 008 | [008-save-interfaces](./plans/008-save-interfaces.md) | Save operation and interfaces reference | AC-3, AC-4, AC-5 | Done | #137 |
-| 009 | [009-authorization](./plans/009-authorization.md) | Authorization: Design auth, server authentication | AC-2, AC-3, AC-4 | In Progress | — |
+| 009 | [009-authorization](./plans/009-authorization.md) | Authorization: Design auth, server authentication | AC-3, AC-4 | Done | — |
 | 010 | [010-service-injection-skill-embeds](./plans/010-service-injection-skill-embeds.md) | Service injection and skill-only embeds | AC-3, AC-4 | Draft | — |
 | 011 | [011-events-trimming-lazyload](./plans/011-events-trimming-lazyload.md) | Events, trimming, LazyLoad pages, appendix | AC-4, AC-5 | Draft | — |
 | 012 | [012-retire-reference-app](./plans/012-retire-reference-app.md) | Retire reference app; path and design sweep | AC-4, AC-6 | Draft | — |
@@ -79,6 +79,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Discovery Log
 
+- **2026-10-15 · EXSET-009 · Amend.** The code review found that `[AuthorizeFactory<T>]` on a static factory's `[Execute]` was never enforced. The generator used the auth methods only to decide whether the call goes remote, so a rule there compiled and ran for anyone. Serves AC-3, the page's refusal outcomes. Keith: fix it in the generator on 009. The local registration now calls the matching auth methods before `[AspAuthorize]` and the method, and a refusal throws `NotAuthorizedException`. It also registers the auth class, as class and interface factories do. `StaticAuthorizeFactoryTests` (integration) fail 4 of 5 without the fix (`reviews/009-static-authorizefactory-unfixed-test.log`). The release notes for the next version owe a line for this.
 - **2026-10-15 · EXSET-009 · Stop → Keith.** The defect in the entry below was already fixed on `main` by #127 (v1.10.6), with #91 and #117 (v1.10.5); the arc had never taken `main`. Serves AC-3. Keith: merge `main` into EXSET first (#139, merged); the duplicate library edit is dropped and #138 closed.
 - **2026-10-15 · EXSET-009 · Amend.** The plan review found that an anonymous caller passes a class factory's `[AspAuthorize]`. With no authenticated user, `AspAuthorize` returns a null or empty message, which converts to `Authorized(true)`. Serves AC-3 (the page's denial outcomes). Keith: fix it in the library on EXSET-009, with tests and an issue for the record.
 - **2026-10-15 · EXSET-009 · Re-split.** Recon found the stub held two deliverables of different shape. One is authorization: Design's auth types are flag-driven scaffolding, `SecureOrder` is untested, and Design.Server has no authentication. The other is the attributes page, a re-pointing job. Serves AC-3 and AC-4. Keith: rework `AuthorizedOrder` onto an injected `ICurrentUser`, give Design.Server bare `AddAuthentication`, and split the attributes page out as EXSET-014 (14 of 18).

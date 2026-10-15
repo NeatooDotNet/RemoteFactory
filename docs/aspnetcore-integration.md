@@ -35,7 +35,7 @@ var app = builder.Build();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
-// Sign the caller in before the endpoint runs: [AspAuthorize] and ICurrentUser read HttpContext.User
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -180,7 +180,7 @@ public async Task Save()
     }
 }
 ```
-<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L92-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L94-L120' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Cancellation
