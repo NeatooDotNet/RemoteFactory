@@ -599,7 +599,7 @@ internal void Fetch(int id,
 }
 ```
 
-`LazyLoad<T>` properties serialize their `Value` and `IsLoaded` state across the wire. The loader delegate is not serialized — it is reconstructed via the constructor-initialization pattern on deserialization. See [Serialization — LazyLoad Properties](serialization.md#lazyloadt-properties) for format details.
+`LazyLoad<T>` properties serialize their `Value` and `IsLoaded` state across the wire. The loader delegate is not serialized — it is reconstructed via the constructor-initialization pattern on deserialization. The format is described under [LazyLoad — Serialization](lazyload.md#serialization).
 
 See [LazyLoad](lazyload.md) for the full usage guide.
 

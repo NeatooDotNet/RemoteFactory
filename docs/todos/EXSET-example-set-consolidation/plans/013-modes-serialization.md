@@ -4,7 +4,7 @@
 **Date:** 2026-10-15
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4, AC-5
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** No. The scope came out of EXSET-006's reviewed plan (its callouts 7–9 are carried below), and it adds no new Design shape beyond a Logical registration and three pins.
 **Code-review opt-in:** Yes (two pages rewritten against library behaviour; a known-bug regression test)
@@ -129,6 +129,11 @@ Carried from EXSET-006's recon and plan review.
 ---
 
 ## Gate Record
+
+- **Test review** ([013-test-review.md](../reviews/013-test-review.md)): APPROVED, no callouts. Its tech-debt note is punched (the new tests dispose every scope). The probe logs it could not find are `reviews/013-probe-backref.log` and `013-probe-shared.log`.
+- **Code review** ([013-code-review.md](../reviews/013-code-review.md)): APPROVED. All six callouts are punched: the authorization crossing rule, own-properties-first ordering (generator comments corrected, behaviour unchanged), the plain-class and enum statements, the back-reference outcome over HTTP, the skill's store note, and two LazyLoad links. Of its theoretical items, the enum line and a stale reference-app comment are fixed.
+- **After the punches:** both solutions are green (unit 839; integration 646 + 7 skips; Design 155; both TFMs). mdsnippets is clean.
+- **Open:** #133 (`critical`), which needs a generator and wire-format change.
 
 ---
 

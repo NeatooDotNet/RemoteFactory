@@ -22,7 +22,7 @@
 // YES - These serialize correctly:
 //   - Primitive types (int, string, bool, decimal, etc.)
 //   - Nullable primitives (int?, string?, etc.)
-//   - Enums (serialize as string by default)
+//   - Enums (written as their numeric values)
 //   - DateTime, DateTimeOffset, TimeSpan, Guid
 //   - Records (immutable value objects like Money)
 //   - Classes with [Factory] attribute (generate IOrdinalSerializable)
@@ -69,8 +69,8 @@
 // 2. HOW IT'S GENERATED:
 //    - The [Factory] attribute triggers source generation
 //    - Generator creates partial class implementing IOrdinalSerializable
-//    - Array positions follow PropertyNames: base-class properties first, then
-//      the type's own, each group in ordinal (StringComparer.Ordinal) name
+//    - Array positions follow PropertyNames: the type's own properties first,
+//      then its base class's, each group in ordinal (StringComparer.Ordinal) name
 //      order -- not declaration order. Adding or renaming a property shifts
 //      positions, so client and server rebuild together.
 //
@@ -655,7 +655,7 @@ public class SerializationTests
     [Fact]
     public void Order_OrdinalShape_FollowsPropertyNames()
     {
-        var (server, _, _) = DesignClientServerContainers.Scopes(format: SerializationFormat.Ordinal);
+        var (server, client, local) = DesignClientServerContainers.Scopes(format: SerializationFormat.Ordinal);
         var order = server.GetRequiredService<IOrderFactory>().Create("Ordinal_Customer");
         var serializer = server.GetRequiredService<INeatooJsonSerializer>();
 
@@ -668,6 +668,8 @@ public class SerializationTests
         Assert.True(json.RootElement[3].GetBoolean());   // IsNew
 
         server.Dispose();
+        client.Dispose();
+        local.Dispose();
     }
 
     /// <summary>
@@ -679,7 +681,7 @@ public class SerializationTests
     [InlineData(SerializationFormat.Named)]
     public void Order_LinesInterface_CrossesAsTypeAndValue(SerializationFormat format)
     {
-        var (server, _, _) = DesignClientServerContainers.Scopes(format: format);
+        var (server, client, local) = DesignClientServerContainers.Scopes(format: format);
         var order = server.GetRequiredService<IOrderFactory>().Create("Interface_Customer");
         var serializer = server.GetRequiredService<INeatooJsonSerializer>();
 
@@ -692,5 +694,7 @@ public class SerializationTests
         Assert.True(lines.TryGetProperty("$value", out _));
 
         server.Dispose();
+        client.Dispose();
+        local.Dispose();
     }
 }

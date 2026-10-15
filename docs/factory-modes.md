@@ -9,7 +9,7 @@ The mode is set when you register RemoteFactory in DI:
 | Mode | What a factory call does | Use for |
 |------|--------------------------|---------|
 | **Server** | Runs every operation here, and handles the `[Remote]` calls clients send | ASP.NET Core server |
-| **Remote** | Serializes each `[Remote]` operation and sends it to the server over HTTP; runs every other operation here | Client apps (Blazor, MAUI, WPF, console) |
+| **Remote** | Serializes each operation that crosses (`[Remote]`, or authorized on the server) and sends it over HTTP; runs every other operation here | Client apps (Blazor, MAUI, WPF, console) |
 | **Logical** | Runs every operation here, `[Remote]` ones included, with nothing serialized | Tests, console tools, single-tier apps |
 
 ### Server
@@ -44,7 +44,7 @@ builder.Services.AddKeyedScoped(
 <sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L64-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`[Remote]` marks the operations that cross. An operation without it, such as a local `Create` or a `Can*` check, runs on the client. The `[Service]` parameters it takes must therefore be registered in the client's container.
+`[Remote]` marks the operations that cross. So does server-side authorization: an operation guarded by `[AspAuthorize]`, or by an authorization method marked `[Remote]`, goes to the server for the check (see [Authorization](authorization.md)). Every other operation runs on the client, such as a local `Create` or a `Can*` check whose rules are plain methods, so the `[Service]` parameters it takes must be registered in the client's container.
 
 ### Logical
 

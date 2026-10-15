@@ -192,7 +192,7 @@ Initialize with `new LazyLoad<T>()` as the default. Factory methods replace it w
 
 ## Serialization
 
-`LazyLoad<T>` has full serialization support in both formats. See [Serialization — LazyLoad Properties](serialization.md#lazyloadt-properties) for format details.
+`LazyLoad<T>` has full serialization support in both formats.
 
 **Named format:**
 ```json

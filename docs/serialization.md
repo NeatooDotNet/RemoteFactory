@@ -6,7 +6,7 @@ Every `[Remote]` call carries its arguments to the server and its result back, a
 - **Interface-typed properties.** A property typed as an interface is written with its concrete type, so the other side knows what to build.
 - **Constructor injection on the way in.** A type whose constructor takes services is built through DI when it is read, so it arrives with that tier's services.
 
-Everything else (primitives, enums, collections, records) is plain System.Text.Json. What crosses at all: primitives, collections, records (a value object needs no `[Factory]`), and `[Factory]` types.
+Everything else (primitives, enums, collections, records) is plain System.Text.Json. What crosses at all: primitives, enums (as numbers), collections, records (a value object needs no `[Factory]`), plain classes, and `[Factory]` types.
 
 ## Serialization Formats
 
@@ -23,7 +23,7 @@ To use Named, pass `new NeatooSerializationOptions { Format = SerializationForma
 
 The positions are the type's `PropertyNames`, which the generator emits:
 
-- **Base-class properties first, then the type's own.** Each group is in ordinal (`StringComparer.Ordinal`) name order, not declaration order.
+- **The type's own properties first, then its base class's.** Each group is in ordinal (`StringComparer.Ordinal`) name order, not declaration order.
 - **Only properties the other side can set.** A property needs a public getter and a public, `internal` or `init` setter. A get-only property, and one with a `private` setter, is not written at all: the other side keeps whatever its constructor set.
 
 `Order`'s properties:
@@ -73,10 +73,10 @@ Whether two references to the same object arrive as one object depends on the fo
 | Graph | Named | Ordinal (default) |
 |-------|-------|-------------------|
 | A shared reference between `[Factory]` objects (`team.Lead` is `team.Members[0]`) | One object | **Two copies** |
-| A back reference between `[Factory]` objects (`member.Team` is `team`) | One object | **Fails:** `JsonException`, "a possible object cycle was detected" |
+| A back reference between `[Factory]` objects (`member.Team` is `team`) | One object | **Fails:** the serializer throws "a possible object cycle was detected". On a fetch it fails on the server, so over HTTP the call is a 500 |
 | Records | Copied (no `$id`/`$ref`) | Copied |
 
-Plain classes and collections (`Dictionary`, `List<T>`) serialized on their own, not as part of a `[Factory]` object, keep shared and circular references in either format (`NeatooPreserveReferenceHandler`).
+Plain classes with a public parameterless constructor, and collections (`Dictionary`, `List<T>`), keep shared and circular references (`NeatooPreserveReferenceHandler`); the tests cover them serialized on their own. A plain class without a public parameterless constructor is handled like a record: no reference tracking.
 
 The Ordinal rows are a known bug, [#133](https://github.com/NeatooDotNet/RemoteFactory/issues/133): the generated ordinal converter writes no `$id`/`$ref`. Until it is fixed, keep `[Factory]` aggregates free of back references and shared instances, or use the Named format. A child that needs its parent can be handed the parent's id, or receive the parent as a method argument on the server. `FactoryReferenceIdentityTests` in `RemoteFactory.IntegrationTests` pins both formats, with the Ordinal cases marked as known failures.
 
