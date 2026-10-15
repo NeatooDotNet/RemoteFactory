@@ -5,7 +5,7 @@
 **Status:** In Progress
 **Priority:** High
 **Created:** 2026-10-11
-**Last Updated:** 2026-10-11
+**Last Updated:** 2026-10-15
 **Initial split:** 12 plans
 **Plan cap:** 18 — counts plan numbers issued, including Abandoned and Retired. Issuing a number above the cap is a stop-and-ask.
 **Arc branch:** EXSET — cut from main at Step 1; every plan and punchlist branch PRs into it; it PRs into main at Step 8.
@@ -49,13 +49,14 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 003 | [003-service-readmodel-context](./plans/003-service-readmodel-context.md) | Domain service, read model, context | AC-2, AC-4 | Done | #125 |
 | 004 | [004-create-or-fetch-value-objects](./plans/004-create-or-fetch-value-objects.md) | Create-or-fetch and value objects | AC-2, AC-4 | Done | #129 |
 | 005 | [005-readme-getting-started](./plans/005-readme-getting-started.md) | README, getting started, framing pages | AC-3, AC-4, AC-6 | Done | #130 |
-| 006 | [006-aspnetcore-modes-serialization](./plans/006-aspnetcore-modes-serialization.md) | ASP.NET Core, modes, serialization, setup | AC-3, AC-4 | Draft | — |
+| 006 | [006-aspnetcore-modes-serialization](./plans/006-aspnetcore-modes-serialization.md) | ASP.NET Core integration over HTTP, and setup | AC-3, AC-4 | In Progress | — |
 | 007 | [007-factory-operations](./plans/007-factory-operations.md) | Factory operations page | AC-3, AC-4 | Draft | — |
 | 008 | [008-save-interfaces](./plans/008-save-interfaces.md) | Save operation and interfaces reference | AC-3, AC-4 | Draft | — |
 | 009 | [009-attributes-authorization](./plans/009-attributes-authorization.md) | Attributes and authorization | AC-3, AC-4 | Draft | — |
 | 010 | [010-service-injection-skill-embeds](./plans/010-service-injection-skill-embeds.md) | Service injection and skill-only embeds | AC-3, AC-4 | Draft | — |
 | 011 | [011-events-trimming-lazyload](./plans/011-events-trimming-lazyload.md) | Events, trimming, LazyLoad pages, appendix | AC-4, AC-5 | Draft | — |
 | 012 | [012-retire-reference-app](./plans/012-retire-reference-app.md) | Retire reference app; path and design sweep | AC-4, AC-6 | Draft | — |
+| 013 | [013-modes-serialization](./plans/013-modes-serialization.md) | Factory modes and serialization pages (after 006) | AC-3, AC-4, AC-5 | Draft | — |
 
 ---
 
@@ -76,6 +77,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Discovery Log
 
+- **2026-10-15 · EXSET-006 · Re-split.** The plan review found two deliverables. One is the HTTP tier with the ASP.NET Core page. The other is the serialization and modes pages: they need only the in-process harness, and they open with a probe that may stop on a library ruling. Keith: split. EXSET-013 takes serialization and modes, and follows 006 because it reuses 006's format and logging regions. Serves AC-3. 13 of 18 plan numbers are issued.
 - **2026-10-13 · EXSET-004 · Amend.** The relay collector leaked events across remote calls sharing a server scope (Design's harness shares one; ASP.NET does not). Serves AC-2 (the reshaped relay test). Keith: fix in the library on EXSET-004; the harness's shared scope is #128 (techdebt). Ships to NuGet with the arc's merge to main.
 
 ---
