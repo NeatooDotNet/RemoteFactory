@@ -14,6 +14,8 @@
 //    [Service] injection. Both live in ServerServices.cs.
 // 2. UseNeatoo() - maps the /api/neatoo endpoint and its correlation middleware
 // 3. Hosted WASM middleware to serve the Blazor client
+// 4. UseAuthentication and UseAuthorization before UseNeatoo, so HttpContext.User
+//    is set when [AspAuthorize] and ICurrentUser read it
 //
 // The code below is embedded in getting started (region
 // getting-started-server-program); the reasons are kept here so it stays short.
@@ -67,6 +69,10 @@ var app = builder.Build();
 // Serve the hosted Blazor WASM client
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
+
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
 
 // The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();

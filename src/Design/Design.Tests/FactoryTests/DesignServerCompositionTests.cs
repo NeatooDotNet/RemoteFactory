@@ -101,6 +101,10 @@ public class DesignServerCompositionTests
         // Constructor injection — resolved when the factory news up the entity.
         Assert.NotNull(sp.GetRequiredService<ITenantTokenService>());
 
+        // The signed-in user AuthorizedOrderAuth reads, built from HttpContext.User
+        // (anonymous here, with no request).
+        Assert.NotNull(sp.GetRequiredService<ICurrentUser>());
+
         // Generated factory interfaces, also method-injected by Design.Domain. They come
         // from AddNeatooAspNetCore's registrar rather than the server-only seam, so a
         // registrar regression surfaces here as a named missing type instead of inside

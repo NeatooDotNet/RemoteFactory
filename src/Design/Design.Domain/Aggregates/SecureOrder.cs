@@ -15,6 +15,18 @@ using Neatoo.RemoteFactory;
 namespace Design.Domain.Aggregates;
 
 /// <summary>
+/// Public interface for SecureOrder.
+/// </summary>
+public interface ISecureOrder : IFactorySaveMeta
+{
+    int Id { get; set; }
+    string CustomerName { get; set; }
+    decimal Total { get; set; }
+    new bool IsNew { get; set; }
+    new bool IsDeleted { get; set; }
+}
+
+/// <summary>
 /// Order with ASP.NET Core policy-based authorization.
 /// </summary>
 /// <remarks>
@@ -36,9 +48,11 @@ namespace Design.Domain.Aggregates;
 /// 1. Different operations often need different authorization
 /// 2. Class-level auth can be combined with method-level for granularity
 /// 3. Some operations (like Create for a new draft) may not need auth
+///
+/// DESIGN DECISION: Internal class with public interface, like Order.cs
 /// </remarks>
 [Factory]
-public partial class SecureOrder : IFactorySaveMeta
+internal partial class SecureOrder : ISecureOrder
 {
     public int Id { get; set; }
     public string CustomerName { get; set; } = string.Empty;
@@ -51,12 +65,12 @@ public partial class SecureOrder : IFactorySaveMeta
     //
     // DESIGN DECISION: Create operations often don't need authorization
     //
-    // Creating a new, unsaved entity doesn't access data. Authorization
-    // is checked when the entity is saved (Insert).
+    // Creating a new, unsaved entity doesn't access data, so it is local
+    // (VisionAlignment D14). Authorization is checked when it is saved (Insert).
     // -------------------------------------------------------------------------
 
-    [Remote, Create]
-    internal void Create(string customerName)
+    [Create]
+    public void Create(string customerName)
     {
         CustomerName = customerName;
         IsNew = true;
@@ -76,17 +90,16 @@ public partial class SecureOrder : IFactorySaveMeta
     /// <remarks>
     /// DESIGN DECISION: Policy-based authorization with [AspAuthorize]
     ///
-    /// The "RequireAuthenticated" policy is defined in Program.cs:
-    /// <code>
-    /// options.AddPolicy("RequireAuthenticated", policy =>
-    ///     policy.RequireAuthenticatedUser());
-    /// </code>
+    /// The "RequireAuthenticated" policy is registered in Design.Server's
+    /// ServerServices (region authorization-policy-config).
     ///
     /// COMMON MISTAKE: Forgetting to register the policy
     ///
-    /// If the policy isn't registered in Program.cs, authorization will fail
-    /// with a runtime error. Always verify policies are configured.
+    /// If the policy isn't registered on the server, ASP.NET Core throws an
+    /// InvalidOperationException naming the missing policy, and the call fails
+    /// with a 500.
     /// </remarks>
+    #region authorization-policy-apply
     [Remote, Fetch]
     [AspAuthorize("RequireAuthenticated")]
     internal void Fetch(int id)
@@ -96,6 +109,7 @@ public partial class SecureOrder : IFactorySaveMeta
         Total = 100.00m;
         IsNew = false;
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Insert - Requires Admin or Manager role
@@ -110,6 +124,7 @@ public partial class SecureOrder : IFactorySaveMeta
     /// <summary>
     /// Inserts a new order - requires Admin or Manager role.
     /// </summary>
+    #region authorization-policy-roles
     [Remote, Insert]
     [AspAuthorize(Roles = "Admin,Manager")]
     internal Task Insert()
@@ -117,6 +132,7 @@ public partial class SecureOrder : IFactorySaveMeta
         Id = Random.Shared.Next(1000, 9999);
         return Task.CompletedTask;
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Update - Requires both policy AND role
@@ -139,6 +155,7 @@ public partial class SecureOrder : IFactorySaveMeta
     /// <summary>
     /// Updates an order - requires authentication AND Manager role.
     /// </summary>
+    #region authorization-policy-multiple
     [Remote, Update]
     [AspAuthorize("RequireAuthenticated")]
     [AspAuthorize(Roles = "Manager")]
@@ -146,6 +163,7 @@ public partial class SecureOrder : IFactorySaveMeta
     {
         return Task.CompletedTask;
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Delete - Requires Admin role only

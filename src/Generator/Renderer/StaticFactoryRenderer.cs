@@ -190,6 +190,26 @@ internal static class StaticFactoryRenderer
             sb.AppendLine("            }");
         }
 
+        // Auth type registrations, as on class and interface factories: the delegates resolve the
+        // auth class, and the explicit reference keeps it through IL trimming.
+        var authTypes = model.Delegates
+            .SelectMany(d => d.AuthMethods)
+            .GroupBy(a => a.ClassName)
+            .Select(g => g.First())
+            .ToList();
+
+        if (authTypes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("            // Explicit auth type registrations (IL trimming support)");
+            foreach (var authType in authTypes)
+            {
+                sb.AppendLine(authType.ConcreteClassName != null
+                    ? $"            global::Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddTransient<{authType.ClassName}, {authType.ConcreteClassName}>(services);"
+                    : $"            global::Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddTransient<{authType.ClassName}>(services);");
+            }
+        }
+
         // DTO constructor registrations (IL trimming support)
         if (model.DtoReturnTypes.Count > 0 || model.DtoPreserveTypes.Count > 0)
         {
@@ -286,11 +306,19 @@ internal static class StaticFactoryRenderer
         // resolution and the method. It forbids on refusal, so the caller receives a 403, as
         // for an interface factory; a delegate has no Authorized<T> to carry a refusal back.
         var hasAspAuthorize = del.AspAuthorize.Count > 0;
-        var bodyLambda = hasAspAuthorize ? "async () =>" : "() =>";
+        // [AuthorizeFactory<T>]: the auth class's matching methods run first, as on a class factory.
+        var hasAuthMethods = del.AuthMethods.Count > 0;
+        var isAsyncBody = hasAspAuthorize || hasAuthMethods;
+        var bodyLambda = isAsyncBody ? "async () =>" : "() =>";
 
         sb.AppendLine($"{indent}services.AddTransient<{typeName}.{del.DelegateName}>(cc =>");
         sb.AppendLine($"{indent}{{");
         sb.AppendLine($"{indent}    return ({paramDecl}) => global::Neatoo.RemoteFactory.Internal.FactoryEntryCall.RunAsync(cc, {bodyLambda} {{");
+
+        if (hasAuthMethods)
+        {
+            RenderAuthMethodChecks(sb, del, typeName, indent);
+        }
 
         if (hasAspAuthorize)
         {
@@ -312,7 +340,7 @@ internal static class StaticFactoryRenderer
             sb.AppendLine($"{indent}    {serviceAssignments}");
         }
 
-        if (!hasAspAuthorize)
+        if (!isAsyncBody)
         {
             sb.AppendLine($"{indent}    return {typeName}.{del.Name}({allParamIdentifiers});");
         }
@@ -330,6 +358,55 @@ internal static class StaticFactoryRenderer
         if (guarded)
         {
             sb.AppendLine("                }");
+        }
+    }
+
+    /// <summary>
+    /// The [AuthorizeFactory&lt;T&gt;] checks of a static [Execute], inside its entry call and ahead of
+    /// service resolution and the method. Each auth method receives the command's value arguments
+    /// matched by type. A refusal throws NotAuthorizedException naming the check, as an interface
+    /// factory does: a delegate has no Authorized&lt;T&gt; to return it in.
+    /// </summary>
+    private static void RenderAuthMethodChecks(StringBuilder sb, ExecuteDelegateModel del, string typeName, string indent)
+    {
+        sb.AppendLine($"{indent}    global::Neatoo.RemoteFactory.Authorized __authorized;");
+
+        var classIndex = 0;
+        foreach (var authClass in del.AuthMethods.GroupBy(m => m.ClassName))
+        {
+            var varName = $"__auth{classIndex++}";
+            sb.AppendLine($"{indent}    var {varName} = cc.GetRequiredService<{authClass.Key}>();");
+
+            foreach (var authMethod in authClass)
+            {
+                var available = del.Parameters.ToList();
+                var args = new List<string>();
+                foreach (var authParam in authMethod.Parameters)
+                {
+                    var match = available.FirstOrDefault(p => p.Type == authParam.Type);
+                    if (match != null)
+                    {
+                        args.Add(match.Name);
+                        available.Remove(match);
+                    }
+                    else
+                    {
+                        args.Add($"/* Missing {authParam.Type} {authParam.Name} */");
+                    }
+                }
+
+                var call = $"{varName}.{authMethod.MethodName}({string.Join(", ", args)})";
+                if (authMethod.IsTask)
+                {
+                    call = $"await {call}";
+                }
+
+                sb.AppendLine($"{indent}    __authorized = {call};");
+                sb.AppendLine($"{indent}    if (!__authorized.HasAccess)");
+                sb.AppendLine($"{indent}    {{");
+                sb.AppendLine($"{indent}        throw new global::Neatoo.RemoteFactory.NotAuthorizedException(__authorized, \"operation {del.DelegateName} on {typeName} ({authMethod.ClassName}.{authMethod.MethodName})\");");
+                sb.AppendLine($"{indent}    }}");
+            }
         }
     }
 

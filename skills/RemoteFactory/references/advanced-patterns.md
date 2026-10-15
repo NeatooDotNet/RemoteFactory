@@ -9,42 +9,68 @@ Define domain-specific authorization logic in a dedicated class:
 <!-- snippet: authorization-interface -->
 <a id='snippet-authorization-interface'></a>
 ```cs
-// [AuthorizeFactory] declares which operations this method controls
-[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-bool CanCreate();
+public interface IAuthorizedOrderAuth
+{
+    /// <summary>
+    /// Broad-scope check covering all Read (Create, Fetch) and Write (Insert, Update, Delete) operations.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
+    bool HasAccess();
 
-[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-bool CanRead();
+    /// <summary>
+    /// Who may create an order: checked by the local Create (and CanCreate) on
+    /// the client, and again on the server when the new order is saved (Insert).
+    /// </summary>
+    /// <remarks>
+    /// A local Create runs only on the client, so the client check is for the
+    /// screen; the Insert scope is what the server enforces.
+    /// </remarks>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Insert)]
+    bool CanCreate();
 
-[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-bool CanWrite();
+    /// <summary>
+    /// Fine-grained check for Fetch operations only.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+    bool CanFetch();
+
+    /// <summary>
+    /// Fine-grained check for Delete operations only.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
+    bool CanDelete();
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L17-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L68-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 <!-- snippet: authorization-implementation -->
 <a id='snippet-authorization-implementation'></a>
 ```cs
-// Inject services via constructor for authorization decisions
-public bool CanCreate() => _userContext.IsAuthenticated;
+public class AuthorizedOrderAuth(ICurrentUser user) : IAuthorizedOrderAuth
+{
+    public bool HasAccess() => user.IsAuthenticated;
 
-public bool CanRead() => _userContext.IsAuthenticated;
+    public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
 
-public bool CanWrite() =>
-    _userContext.IsInRole("HRManager") || _userContext.IsInRole("Admin");
+    public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
+
+    public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L42-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L122-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`ICurrentUser` is the example's signed-in user (`IsAuthenticated`, `IsInRole`), injected by constructor and registered on both tiers, because the rules run wherever the operation runs. `OrderRoles` holds the role names.
 
 <!-- snippet: authorization-apply -->
 <a id='snippet-authorization-apply'></a>
 ```cs
-// Apply authorization interface to entity - all operations check IEmployeeAuthorization
 [Factory]
-[AuthorizeFactory<IEmployeeAuthorization>]
-public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
+[AuthorizeFactory<IAuthorizedOrderAuth>]
+internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFactoryOnCompleteAsync
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L60-L65' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrder.cs#L99-L103' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Generated authorization methods:**
@@ -108,17 +134,17 @@ Apply ASP.NET Core policy-based authorization to factory operations:
 <!-- snippet: authorization-policy-apply -->
 <a id='snippet-authorization-policy-apply'></a>
 ```cs
-// [AspAuthorize] applies ASP.NET Core policies to factory methods
 [Remote, Fetch]
 [AspAuthorize("RequireAuthenticated")]
-internal Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+internal void Fetch(int id)
 {
-    EmployeeId = employeeId;
-    AnnualSalary = 75000m;
-    return Task.FromResult(true);
+    Id = id;
+    CustomerName = $"Customer_{id}";
+    Total = 100.00m;
+    IsNew = false;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L331-L341' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L102-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Server configuration:**
@@ -126,16 +152,15 @@ internal Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
 <!-- snippet: authorization-policy-config -->
 <a id='snippet-authorization-policy-config'></a>
 ```cs
-// Configure ASP.NET Core policies for [AspAuthorize] to reference
-public static void ConfigureServices(IServiceCollection services) =>
-    services.AddAuthorization(options =>
-    {
-        options.AddPolicy("RequireHRManager", p => p.RequireRole("HRManager"));
-        options.AddPolicy("RequireAuthenticated", p => p.RequireAuthenticatedUser());
-    });
+services.AddAuthentication();   // add your scheme here: cookies, JWT bearer, ...
+services.AddAuthorization(options =>
+    options.AddPolicy("RequireAuthenticated", policy => policy.RequireAuthenticatedUser()));
+services.AddHttpContextAccessor();
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Authorization/AuthorizationPolicyConfig.cs#L11-L19' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L102-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+The server also calls `app.UseAuthentication()` and `app.UseAuthorization()` before `app.UseNeatoo()`, so the policy sees the signed-in user.
 
 **Note:** Multiple [AspAuthorize] attributes use AND logic (all must pass).
 

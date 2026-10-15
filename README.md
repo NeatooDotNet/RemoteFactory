@@ -199,10 +199,10 @@ For reducing client bundle size, see [IL Trimming](docs/trimming.md) — it remo
 ```cs
 services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-That call sits in `AddDesignServer()`, the example set's one composition method, beside the server-only services its factory methods take as `[Service]` parameters. `Program` calls that method and adds the endpoint to the pipeline:
+That call sits in `AddDesignServer()`, the example set's one composition method, beside the server-only services its factory methods take as `[Service]` parameters. `Program` calls that method and adds authentication and the endpoint to the pipeline:
 
 <!-- snippet: getting-started-server-program -->
 <a id='snippet-getting-started-server-program'></a>
@@ -218,6 +218,10 @@ var app = builder.Build();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
 // The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();
 
@@ -225,7 +229,7 @@ app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
 ```
-<sup><a href='/src/Design/Design.Server/Program.cs#L59-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Client setup (Blazor WASM):**
@@ -241,7 +245,7 @@ builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L64-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 For authorization, see [Authorization](docs/authorization.md). See [Getting Started](docs/getting-started.md) for a complete walkthrough.

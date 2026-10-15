@@ -3,7 +3,8 @@
 // =============================================================================
 //
 // This file demonstrates custom domain authorization using [AuthorizeFactory<T>]
-// on a CLASS FACTORY aggregate root with [Remote] internal methods.
+// on a CLASS FACTORY aggregate root: a local Create, and [Remote] internal
+// reads and writes.
 //
 // DESIGN PATTERN: Internal class with public interface + AuthorizeFactory
 //
@@ -13,8 +14,8 @@
 //
 // The generator produces Can* methods on the factory interface:
 //   - CanCreate(), CanFetch() for read operations
+//   - CanInsert(), CanUpdate(), CanDelete() for the writes
 //   - CanSave() aggregating all write auth checks
-//   - CanDelete() for the Delete operation
 //
 // DESIGN DECISION: Separate from SecureOrder
 //
@@ -22,12 +23,13 @@
 // AuthorizedOrder demonstrates [AuthorizeFactory<T>] (custom domain auth).
 // Keeping them separate avoids muddying the demonstration of each pattern.
 //
-// DESIGN DECISION: [Remote] internal on all factory methods
+// DESIGN DECISION: Create is local; the reads and writes are [Remote] internal
 //
-// All CRUD methods are [Remote] internal, which means:
-// - Methods are promoted to public on the factory interface
-// - Can* methods have the IsServerRuntime guard (server-only execution)
-// - Method bodies are trimmed on client assemblies
+// A root's Create is local (VisionAlignment D14): the client builds the new
+// order, and the auth class runs the Create rule on the client, reading the
+// client's ICurrentUser. Fetch and the writes are [Remote] internal: they run
+// on the server, where the same rules read the server's ICurrentUser, and
+// their bodies trim from client assemblies.
 //
 // GENERATOR BEHAVIOR: Can* method visibility derived from auth methods
 //
@@ -43,19 +45,20 @@
 //
 // CanSave aggregates the distinct auth methods from Insert, Update, and Delete.
 // With our auth interface:
-// - Insert auth methods: HasAccess() (Write scope matches Insert)
+// - Insert auth methods: HasAccess() (Write scope) + CanCreate() (Create | Insert scope)
 // - Update auth methods: HasAccess() (Write scope matches Update)
 // - Delete auth methods: HasAccess() (Write scope matches Delete) + CanDelete() (Delete scope)
-// - CanSave distinct set: {HasAccess(), CanDelete()}
+// - CanSave distinct set: {HasAccess(), CanCreate(), CanDelete()}
 //
-// CanCreate() and CanFetch() are NOT part of CanSave because their scopes
-// (Create, Fetch) don't match any write operations (Insert, Update, Delete).
+// CanCreate() covers Insert as well as Create: the local Create checks it on
+// the client, and the server re-checks it when the new order is saved.
+// CanFetch() is NOT part of CanSave; its Fetch scope matches no write.
 //
 // GENERATOR BEHAVIOR: Auth failure behavior
 //
 // - Create/Fetch return null when authorization fails
 // - Save throws NotAuthorizedException when authorization fails
-// - TrySave catches NotAuthorizedException and returns Authorized<T> with HasAccess=false
+// - TrySave returns the refusal as Authorized<T> with HasAccess=false, without throwing
 //
 // =============================================================================
 
@@ -77,7 +80,7 @@ public interface IAuthorizedOrder : IFactorySaveMeta
 }
 
 /// <summary>
-/// Aggregate root demonstrating [AuthorizeFactory] with [Remote] internal methods.
+/// Aggregate root demonstrating [AuthorizeFactory] with a local Create and [Remote] internal reads and writes.
 /// </summary>
 /// <remarks>
 /// DESIGN DECISION: Internal class with public interface
@@ -93,9 +96,11 @@ public interface IAuthorizedOrder : IFactorySaveMeta
 /// [AuthorizeFactory], this also generates TrySave() which catches
 /// NotAuthorizedException and returns Authorized&lt;IAuthorizedOrder&gt;.
 /// </remarks>
+#region authorization-apply
 [Factory]
 [AuthorizeFactory<IAuthorizedOrderAuth>]
 internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFactoryOnCompleteAsync
+#endregion
 {
     // -------------------------------------------------------------------------
     // Properties
@@ -133,14 +138,14 @@ internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFa
     // -------------------------------------------------------------------------
     // Factory Operations
     //
-    // All methods are [Remote] internal:
+    // Create is public and local (D14). Fetch and the writes are [Remote] internal:
     // - [Remote] causes promotion to public on the factory interface
     // - internal visibility enables IL trimming of method bodies on client
     // - Can* method behavior derives from auth methods, not these factory methods
     // -------------------------------------------------------------------------
 
-    [Remote, Create]
-    internal void Create(string customerName)
+    [Create]
+    public void Create(string customerName)
     {
         CustomerName = customerName;
         IsNew = true;

@@ -102,11 +102,10 @@ public class SaveTests
     [Fact(Skip = "Known bug #104: an authorized Save of a new-and-deleted object throws NotAuthorizedException instead of returning null")]
     public async Task AuthorizedSave_NewAndDeleted_ReturnsNull()
     {
-        AuthorizedOrderAuth.ResetFlags();
         var (server, client, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IAuthorizedOrderFactory>();
 
-        var order = await factory.Create("Never_Saved_Authorized");
+        var order = factory.Create("Never_Saved_Authorized");
         Assert.NotNull(order);
         order.IsDeleted = true;
 

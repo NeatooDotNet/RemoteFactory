@@ -51,7 +51,7 @@ The server registers RemoteFactory with the assembly that holds your factories:
 ```cs
 services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 That call sits in one method, `AddDesignServer()`, beside the server-only services your factory methods take as `[Service]` parameters (here the order store, `IOrderDbContext`). The server's `Program` calls it, adds the endpoint, and hosts the Blazor WASM client:
@@ -70,6 +70,10 @@ var app = builder.Build();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
 // The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();
 
@@ -77,10 +81,10 @@ app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
 ```
-<sup><a href='/src/Design/Design.Server/Program.cs#L59-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`AddNeatooAspNetCore()` registers factories, serialization, and server-side handlers. `UseNeatoo()` adds the `/api/neatoo` endpoint — the single entry point for all remote factory calls. `UseBlazorFrameworkFiles()` and `MapFallbackToFile()` enable hosted Blazor WASM — the server serves the client application.
+`AddNeatooAspNetCore()` registers factories, serialization, and server-side handlers. `UseNeatoo()` adds the `/api/neatoo` endpoint — the single entry point for all remote factory calls. `UseBlazorFrameworkFiles()` and `MapFallbackToFile()` enable hosted Blazor WASM — the server serves the client application. `UseAuthentication()` and `UseAuthorization()` sign the caller in before the endpoint runs; your application registers its scheme ([Authorization](authorization.md#configure-the-server)).
 
 ## Client Configuration
 
@@ -97,7 +101,7 @@ builder.Services.AddKeyedScoped(
     RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L64-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `NeatooFactory.Remote` tells RemoteFactory this is the client side: calls to a `[Remote]` operation are serialized and sent to the server through the keyed HttpClient, and everything else runs on the client.

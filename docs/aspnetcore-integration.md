@@ -35,6 +35,10 @@ var app = builder.Build();
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
 // The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();
 
@@ -42,7 +46,7 @@ app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
 ```
-<sup><a href='/src/Design/Design.Server/Program.cs#L59-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `AddDesignServer()` holds the server's whole composition, so a test can build exactly what the server builds. Its RemoteFactory line is:
@@ -52,7 +56,7 @@ await app.RunAsync();
 ```cs
 services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L72-L74' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Two calls do the work:
@@ -79,7 +83,7 @@ services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenS
 
 services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L161-L173' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L195-L207' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `RegisterMatchingName` registers each `IName` → `Name` pair in the assemblies you pass, **transient**, with `TryAdd`. It also registers each matched concrete type by itself. Three things follow:
@@ -114,24 +118,7 @@ So be careful about switching formats by environment. On .NET 10, a Blazor WebAs
 
 ### Middleware Order
 
-Authentication and authorization run before `UseNeatoo()`, so an `[AspAuthorize]` check sees the signed-in user:
-
-<!-- snippet: aspnetcore-middleware-order -->
-<a id='snippet-aspnetcore-middleware-order'></a>
-```cs
-public static class MiddlewareOrderSample
-{
-    public static void Configure(WebApplication app)
-    {
-        app.UseCors();           // 1. CORS first
-        app.UseAuthentication(); // 2. Auth middleware
-        app.UseAuthorization();
-        app.UseNeatoo();         // 3. RemoteFactory endpoint (after auth)
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L8-L19' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-middleware-order' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+`UseAuthentication()` and `UseAuthorization()` run before `UseNeatoo()`, as in the [Basic Setup](#basic-setup) Program above. Authentication sets `HttpContext.User` before the endpoint runs, and `[AspAuthorize]`, which names no scheme of its own, checks its policies against that user. The application registers its scheme, cookies or JWT bearer, with `AddAuthentication`; see [Authorization](authorization.md).
 
 A client served from another origin, such as a standalone WASM app on its own host, needs CORS. Add a policy that allows the client's origin, with `POST` and the `Content-Type` and `X-Correlation-Id` request headers. Expose `X-Correlation-Id` if the client reads it, and call `UseCors()` before `UseNeatoo()`. A hosted client like Design's is same-origin and needs none of this.
 
@@ -193,7 +180,7 @@ public async Task Save()
     }
 }
 ```
-<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L92-L118' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L94-L120' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Cancellation
@@ -274,7 +261,7 @@ services.AddLogging(logging => logging
     .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
     .AddFilter("Design", LogLevel.Information));          // the generated class factories
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L96-L101' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L130-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-logging' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization

@@ -1,423 +1,327 @@
 # Authorization
 
-RemoteFactory gives you a unified authorization layer: define your authorization rules once, and they're enforced on both client and server. The client can check `CanCreate()` before showing a "New Employee" button, and the server enforces the same check before actually executing Create. Same definition, both sides — the client uses it for UI decisions, the server uses it for security.
+RemoteFactory replaces controllers, so authorization moves from controller actions to the factory. You define a rule once, and the generated factory checks it wherever the operation runs. The client can ask `CanCreate()` before it offers a "New" button, and the server enforces the same rule before a Fetch or a Save runs.
 
-Since RemoteFactory replaces controllers, you lose the `[Authorize]` attribute on controller actions. Authorization moves to the factory level instead — which actually gives you more: you can define rules at a broad scope (Read/Write) or at a fine scope (Create/Fetch/Insert/Update/Delete), with full DI and async support.
+The code on this page comes from RemoteFactory's compiled example set, `src/Design`.
 
 ## Two Approaches
 
-RemoteFactory supports two authorization mechanisms:
+| Approach | Rules live in | Runs on |
+|----------|---------------|---------|
+| **`[AuthorizeFactory<T>]`** | A class you write, with DI | The tier that runs the operation, the client included |
+| **`[AspAuthorize]`** | ASP.NET Core policies and roles | The server, against `HttpContext.User` |
 
-| Approach | Why Use It | Best For |
-|----------|-----------|----------|
-| **AuthorizeFactory** | Unified client+server auth, domain-specific rules, testable without HTTP | New projects, domain-driven authorization |
-| **AspAuthorize** | Familiar to ASP.NET Core developers, easy to port from controllers | Teams migrating from controller-based auth, role/policy-based rules |
+Authorization is a rule about who may do what to which record: only Sales creates orders, and nobody edits a Locked order. A state the user can change themselves is not authorization. An empty draft that cannot be submitted yet is a verdict the screen reads before it acts (`Order.CanSubmit`), not a refusal.
 
 ## AuthorizeFactory
 
-Define authorization logic in a dedicated class. The factory checks it before every operation, on both client and server.
-
 ### Define the Authorization Interface
 
-Each method declares which operations it controls. Return `bool` — true grants access, false denies it:
+Each method carries `[AuthorizeFactory]` with the operations it covers, and returns `bool`, `Task<bool>`, `string?` or `Task<string?>`. `true` or a null or empty string allows the operation; `false` or a message refuses it:
 
 <!-- snippet: authorization-interface -->
 <a id='snippet-authorization-interface'></a>
 ```cs
-// [AuthorizeFactory] declares which operations this method controls
-[AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-bool CanCreate();
+public interface IAuthorizedOrderAuth
+{
+    /// <summary>
+    /// Broad-scope check covering all Read (Create, Fetch) and Write (Insert, Update, Delete) operations.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
+    bool HasAccess();
 
-[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-bool CanRead();
+    /// <summary>
+    /// Who may create an order: checked by the local Create (and CanCreate) on
+    /// the client, and again on the server when the new order is saved (Insert).
+    /// </summary>
+    /// <remarks>
+    /// A local Create runs only on the client, so the client check is for the
+    /// screen; the Insert scope is what the server enforces.
+    /// </remarks>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Insert)]
+    bool CanCreate();
 
-[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-bool CanWrite();
+    /// <summary>
+    /// Fine-grained check for Fetch operations only.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+    bool CanFetch();
+
+    /// <summary>
+    /// Fine-grained check for Delete operations only.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
+    bool CanDelete();
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L17-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L68-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`HasAccess` covers every operation through `Read | Write`. The others narrow it. `CanCreate` covers `Create | Insert`: a local Create runs only on the client, so the server applies the same rule when the new order is saved. When several methods match an operation, all of them must pass.
+
+### Operation Flags
+
+| Flag | Checked for |
+|------|-------------|
+| `Create`, `Fetch`, `Insert`, `Update`, `Delete`, `Execute` | that operation |
+| `Read` | Create, Fetch and Execute |
+| `Write` | Insert, Update and Delete |
+
+Combine flags with `|`, as `HasAccess` does.
 
 ### Implement with Injected Services
 
-The implementation receives any services it needs via constructor injection — user context, repositories, whatever the authorization decision requires:
+The implementation takes what it decides from by constructor. `AuthorizedOrderAuth` reads the signed-in user:
 
 <!-- snippet: authorization-implementation -->
 <a id='snippet-authorization-implementation'></a>
 ```cs
-// Inject services via constructor for authorization decisions
-public bool CanCreate() => _userContext.IsAuthenticated;
+public class AuthorizedOrderAuth(ICurrentUser user) : IAuthorizedOrderAuth
+{
+    public bool HasAccess() => user.IsAuthenticated;
 
-public bool CanRead() => _userContext.IsAuthenticated;
+    public bool CanCreate() => user.IsInRole(OrderRoles.Sales);
 
-public bool CanWrite() =>
-    _userContext.IsInRole("HRManager") || _userContext.IsInRole("Admin");
+    public bool CanFetch() => user.IsInRole(OrderRoles.Sales) || user.IsInRole(OrderRoles.Support);
+
+    public bool CanDelete() => user.IsInRole(OrderRoles.Manager);
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L42-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L122-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-implementation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`ICurrentUser` is Design's own service. Both tiers register it, because the rules run on both:
+- the server builds it from `HttpContext.User`;
+- a Blazor client builds it from its `AuthenticationStateProvider`.
+
+The generator registers the auth class itself (`IAuthorizedOrderAuth` → `AuthorizedOrderAuth`), so each tier needs only what the constructor takes.
 
 ### Apply to Your Domain Class
 
 <!-- snippet: authorization-apply -->
 <a id='snippet-authorization-apply'></a>
 ```cs
-// Apply authorization interface to entity - all operations check IEmployeeAuthorization
 [Factory]
-[AuthorizeFactory<IEmployeeAuthorization>]
-public partial class AuthorizedEmployeeEntity : IFactorySaveMeta
+[AuthorizeFactory<IAuthorizedOrderAuth>]
+internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFactoryOnCompleteAsync
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L60-L65' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrder.cs#L99-L103' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-The factory generates `CanCreate()`, `CanFetch()`, etc. methods that the client can call to drive UI decisions:
+### Checking Before Acting
+
+For each authorized operation the factory gains a `Can` method named after the operation's method: `CanCreate`, `CanFetch`, `CanSave`, and for the writes `CanInsert`, `CanUpdate` and `CanDelete`. Each returns `Authorized`, whose `HasAccess` the screen reads, or `Task<Authorized>` when the check has to run on the server (see [Can* Method Behavior](#can-method-behavior)). `AuthorizedOrder`'s Create is local, so both calls below run on the client, with no server call. A check that runs only on the client is for the screen; the server enforces the rule again at Save:
 
 <!-- snippet: authorization-generated -->
 <a id='snippet-authorization-generated'></a>
 ```cs
-// Generated CanCreate()/CanFetch() methods check authorization before operations
-public AuthorizedEmployeeEntity? CreateNewEmployee()
+if (factory.CanCreate().HasAccess)   // the rules Create runs, asked first: show "New" only if they pass
 {
-    if (!_employeeFactory.CanCreate().HasAccess)
-        return null;
-    return _employeeFactory.Create();
+    order = factory.Create("New Customer");
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L156-L164' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-generated' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### Operation Flags
-
-Authorization checks map to operations via flags. Use `Read` and `Write` for broad scope, or individual flags for fine-grained control:
-
-| Flag | Checked By |
-|------|------------|
-| `Create` | Create operations |
-| `Fetch` | Fetch operations |
-| `Insert` | Insert operations |
-| `Update` | Update operations |
-| `Delete` | Delete operations |
-| `Read` | Create and Fetch (broad read access) |
-| `Write` | Insert, Update, Delete (broad write access) |
-| `Execute` | Execute operations |
-
-Combine flags with bitwise OR for a single method that covers multiple operations:
-
-<!-- snippet: authorization-combined-flags -->
-<a id='snippet-authorization-combined-flags'></a>
-```cs
-// Bitwise OR combines multiple operations into single authorization check
-[AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]
-bool CanCreateOrFetch();
-
-[AuthorizeFactory(AuthorizeFactoryOperation.Insert | AuthorizeFactoryOperation.Update
-                | AuthorizeFactoryOperation.Delete)]
-bool CanWrite();
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L188-L196' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined-flags' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/AuthorizationTests.cs#L407-L412' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-generated' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## AspAuthorize
 
-For developers coming from controller-based authorization, `[AspAuthorize]` works the same way as `[Authorize]` on controllers — policies, roles, and authentication requirements. It's the easiest path when migrating from a controller-based architecture.
+`[AspAuthorize]` works like `[Authorize]` on a controller action: a policy name, `Roles`, or `AuthenticationSchemes`. It is evaluated on the server, so an operation that carries it runs there.
 
-### Configure Policies
+### Configure the Server
+
+Register authentication, the policies the attributes name, and `IHttpContextAccessor`, which `AspAuthorize` reads the request from:
 
 <!-- snippet: authorization-policy-config -->
 <a id='snippet-authorization-policy-config'></a>
 ```cs
-// Configure ASP.NET Core policies for [AspAuthorize] to reference
-public static void ConfigureServices(IServiceCollection services) =>
-    services.AddAuthorization(options =>
-    {
-        options.AddPolicy("RequireHRManager", p => p.RequireRole("HRManager"));
-        options.AddPolicy("RequireAuthenticated", p => p.RequireAuthenticatedUser());
-    });
+services.AddAuthentication();   // add your scheme here: cookies, JWT bearer, ...
+services.AddAuthorization(options =>
+    options.AddPolicy("RequireAuthenticated", policy => policy.RequireAuthenticatedUser()));
+services.AddHttpContextAccessor();
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/Authorization/AuthorizationPolicyConfig.cs#L11-L19' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L102-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-config' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+`AddAuthentication()` here registers no scheme; your application adds its own, such as cookies or JWT bearer. `UseAuthentication()` and `UseAuthorization()` run before `UseNeatoo()`, so `HttpContext.User` is set when a policy checks it ([ASP.NET Core Integration — Middleware Order](aspnetcore-integration.md#middleware-order)).
+
 ### Apply to Factory Methods
+
+A policy:
 
 <!-- snippet: authorization-policy-apply -->
 <a id='snippet-authorization-policy-apply'></a>
 ```cs
-// [AspAuthorize] applies ASP.NET Core policies to factory methods
 [Remote, Fetch]
 [AspAuthorize("RequireAuthenticated")]
-internal Task<bool> Fetch(Guid employeeId, CancellationToken ct = default)
+internal void Fetch(int id)
 {
-    EmployeeId = employeeId;
-    AnnualSalary = 75000m;
-    return Task.FromResult(true);
+    Id = id;
+    CustomerName = $"Customer_{id}";
+    Total = 100.00m;
+    IsNew = false;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L331-L341' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L102-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Multiple policies and roles work as expected:
-
-<!-- snippet: authorization-policy-multiple -->
-<a id='snippet-authorization-policy-multiple'></a>
-```cs
-// Multiple [AspAuthorize] - ALL policies must pass
-[Remote, Execute]
-[AspAuthorize("RequireAuthenticated")]
-[AspAuthorize("RequirePayroll")]
-public static Task _ProcessPayroll(Guid departmentId, DateTime payPeriodEnd, CancellationToken ct = default)
-    => Task.CompletedTask;
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L368-L375' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+Roles. Any one of the listed roles passes:
 
 <!-- snippet: authorization-policy-roles -->
 <a id='snippet-authorization-policy-roles'></a>
 ```cs
-// Roles property - any listed role can access (comma-separated)
-[Remote, Fetch]
-[AspAuthorize(Roles = "Employee,HRManager,Admin")]
-internal Task<bool> Fetch(Guid requestId, CancellationToken ct = default)
+[Remote, Insert]
+[AspAuthorize(Roles = "Admin,Manager")]
+internal Task Insert()
 {
-    Id = requestId;
-    return Task.FromResult(true);
+    Id = Random.Shared.Next(1000, 9999);
+    return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L400-L409' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L127-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+Several attributes. All of them must pass:
+
+<!-- snippet: authorization-policy-multiple -->
+<a id='snippet-authorization-policy-multiple'></a>
+```cs
+[Remote, Update]
+[AspAuthorize("RequireAuthenticated")]
+[AspAuthorize(Roles = "Manager")]
+internal Task Update()
+{
+    return Task.CompletedTask;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L158-L166' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Placement on [Execute]
 
-`[Execute]` obeys `[Remote]`, so a bare `[Execute]` normally runs on whichever tier resolves it. Authorization changes that in one direction only: **`[AspAuthorize]` on a bare `[Execute]` forces the call to the server** on both shapes, because a policy can only be evaluated there. The policy is then enforced on the server before the method runs, on both shapes. On a static factory (since v1.10.5; #91) a refused command never runs, and the caller receives a 403, which the client raises as `HttpRequestException`, as for an interface factory; a delegate has no `Authorized<T>` to carry the refusal back. Enforcement needs `IAspAuthorize`, which `AddNeatooAspNetCore` registers. `[AuthorizeFactory]` does not move the call: an auth method without `[Remote]` runs alongside a bare `[Execute]` on the tier that resolved it, while a `[Remote]` auth method forces the call to the server.
+`[Execute]` obeys `[Remote]`, so a bare `[Execute]` normally runs on whichever tier resolves it. Authorization changes that in one direction only: **`[AspAuthorize]` on a bare `[Execute]` forces the call to the server** on both shapes, because a policy can only be evaluated there. The policy is then enforced on the server before the method runs, on both shapes. On a static factory (since v1.10.5; #91) a refused command never runs, and the request is forbidden as for an interface factory (see [Authorization Failures](#authorization-failures)), which the client raises as `HttpRequestException`; a delegate has no `Authorized<T>` to carry the refusal back. Enforcement needs `IAspAuthorize`, which `AddNeatooAspNetCore` registers. `[AuthorizeFactory]` does not move the call: an auth method without `[Remote]` runs alongside a bare `[Execute]` on the tier that resolved it, while a `[Remote]` auth method forces the call to the server.
 
 ## Combining Both Approaches
 
-Use both for defense in depth — AuthorizeFactory for domain-level checks, AspAuthorize for infrastructure-level checks. Both must pass:
-
-<!-- snippet: authorization-combined -->
-<a id='snippet-authorization-combined'></a>
-```cs
-// Combine [AuthorizeFactory] (class-level) with [AspAuthorize] (method-level)
-// Execution order: AuthorizeFactory checks first, then AspAuthorize
-[Factory]
-[AuthorizeFactory<IPerformanceReviewAuthorization>]
-public partial class PerformanceReview
-{
-    public Guid Id { get; private set; }
-
-    [Remote, Fetch]
-    [AspAuthorize("RequireAuthenticated")]
-    internal Task<bool> Fetch(Guid reviewId, CancellationToken ct = default)
-    {
-        Id = reviewId;
-        return Task.FromResult(true);
-    }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L473-L489' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-combined' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-<!-- snippet: authorization-method-level -->
-<a id='snippet-authorization-method-level'></a>
-```cs
-// [AspAuthorize] adds method-level auth on top of class-level [AuthorizeFactory]
-// Both checks must pass: IEmployeeReadAuthorization AND HRManager role
-[Remote, Update]
-[AspAuthorize(Roles = "HRManager")]
-internal Task Terminate(CancellationToken ct = default)
-{
-    IsTerminated = true;
-    return Task.CompletedTask;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L297-L307' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-method-level' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Execution order: AuthorizeFactory checks first, then AspAuthorize. If either fails, the operation is denied.
+One class can carry `[AuthorizeFactory<T>]` while its methods carry `[AspAuthorize]`. For each operation the generated factory runs the auth class's matching methods first, then the `[AspAuthorize]` checks, and every one must pass. An operation with an `[AspAuthorize]` check runs on the server, so keep such checks off a Create that should stay local.
 
 ## Parameterized Authorization Methods
 
-Authorization methods can receive parameters matched by type from the factory method. This enables per-entity access control — denying access to specific records, not just operations:
+An auth method can take a parameter of the operation. The generator passes the operation's argument of the same type, so the method can refuse one record rather than the whole operation:
 
-```csharp
-public interface IOrderAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
-    bool CanFetchOrder(Guid orderId);
-}
-```
-
-When `Fetch(Guid orderId)` is called, the generator passes `orderId` to `CanFetchOrder(Guid orderId)` by matching the `Guid` type. The auth method name doesn't matter — only the parameter type must match.
-
-The generator produces a parameterized `CanFetch(Guid)` on the factory interface, so the client can check access for a specific entity before calling Fetch:
-
-```csharp
-if (factory.CanFetch(orderId).HasAccess)
-{
-    var order = await factory.Fetch(orderId);
-}
-```
-
-### Scope Matters for Parameterized Methods
-
-Use specific operation scopes (e.g., `Fetch`) rather than broad scopes (e.g., `Read`) when the auth method has parameters. If a `Read`-scoped method has a `Guid` parameter, it would try to match against Create as well — but Create may not have a `Guid` parameter.
-
-```csharp
-// GOOD: Fetch scope applies only to Fetch, which has a Guid parameter
+<!-- snippet: authorization-parameterized -->
+<a id='snippet-authorization-parameterized'></a>
+```cs
 [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
 bool CanFetchOrder(Guid orderId);
-
-// Parameterless Read scope covers Create (no type matching needed)
-[AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-bool CanRead();
 ```
+<sup><a href='/src/Design/Design.Domain/Aggregates/ParamAuthOrderAuth.cs#L89-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-parameterized' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-When both a broad-scope parameterless method and a fine-grained parameterized method apply to the same operation, both are checked and both must pass.
+`ParamAuthOrder`'s `Fetch(Guid orderId)` passes `orderId` to `CanFetchOrder`. The match is by type; the names need not agree. The factory's `CanFetch(Guid orderId)` takes the same parameter, so the client can ask about one order before it fetches it.
+
+Give a parameterized method the narrowest scope, `Fetch` here, not `Read`. A `Read`-scoped method with a `Guid` parameter would also have to match Create, which has none. When a broad parameterless method and a narrow parameterized one both apply to an operation, both run and both must pass.
 
 ## Target Parameter Authorization
 
-Authorization methods can receive the **target entity** on write operations. This enables state-based authorization — denying writes based on entity state (e.g., locked records):
+A Write method can take the object being saved, typed as its class or its interface. The rule can then read the object's state:
 
-```csharp
-public interface IOrderAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite(IOrder target);
-}
+<!-- snippet: authorization-target -->
+<a id='snippet-authorization-target'></a>
+```cs
+[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+bool CanWrite(IParamAuthOrder target);
 ```
+<sup><a href='/src/Design/Design.Domain/Aggregates/ParamAuthOrderAuth.cs#L131-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-target' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-The parameter type must match the entity's class or interface type. On Insert, Update, and Delete operations, the generator passes the entity to the auth method so it can inspect state:
+`ParamAuthOrderAuth` refuses a write to an order whose `Status` is `Locked`.
 
-```csharp
-public class OrderAuthorization : IOrderAuthorization
-{
-    public bool CanWrite(IOrder target)
-    {
-        // Deny writes to locked orders
-        return target.Status != "Locked";
-    }
-}
-```
+### Can* with Target Parameters
 
-### CanXxx Generation with Target Parameters
+`CanInsert`, `CanUpdate` and `CanDelete` are not generated when a Write method takes the target: the screen asks them before it has an object to pass. The check still runs inside `Save`.
 
-When a Write auth method has a target parameter, the generator suppresses `CanInsert`, `CanUpdate`, and `CanDelete` on the factory interface -- these methods are called before the operation, when the entity isn't available at the call site.
+`CanSave` is the exception, because the caller holds the object when it saves. It comes in two overloads:
+- **`CanSave()`** runs only the Write methods that take no target, and returns `Authorized(true)` when there are none;
+- **`CanSave(target)`** runs them all: the ones without a target first, then the ones that inspect the object.
 
-**CanSave is the exception.** The caller has the entity in hand when calling Save, so the generator produces two CanSave overloads:
-
-- **`CanSave()`** (parameterless) -- runs only non-target Write auth methods (role checks, permissions). Returns `Authorized(true)` if no non-target auth methods exist.
-- **`CanSave(target)`** -- runs ALL Write auth methods: non-target auth first, then target-parameterized auth that inspects entity state.
-
-```csharp
-// Check broad write permission (no entity needed)
-if (factory.CanSave().HasAccess)
-{
-    // Check entity-specific permission
-    if (factory.CanSave(order).HasAccess)
-    {
-        await factory.Save(order);
-    }
-}
-```
-
-For `CanInsert`, `CanUpdate`, and `CanDelete`, the auth check happens inside `Save()` where the entity is available. If authorization fails, `Save()` throws `NotAuthorizedException` (or `TrySave()` returns `HasAccess=false`).
-
-Read auth methods (Create, Fetch) are unaffected -- `CanCreate` and `CanFetch` are still generated when their auth methods are parameterless or use type-matched parameters (not target parameters).
+Create and Fetch rules are unaffected.
 
 ## Can* Method Behavior
 
-`Can*` methods derive their guard and remote behavior from the **auth class methods**, not from the parent factory method. This follows the same accessibility paradigm as all other methods in RemoteFactory: the method being called determines the behavior.
+Where a `Can*` method runs follows the auth class's methods, and whether the operation carries `[AspAuthorize]`, not where the operation itself runs:
 
-| Auth Method Accessibility | Can* Behavior | Use When |
+| Auth method | Can* behavior | Use when |
 |---|---|---|
-| `public` (no `[Remote]`) | Runs locally on client, no guard, synchronous | Auth logic uses client-available services (e.g., `IUser` registered on both sides) |
-| `internal` (no `[Remote]`) | Server-only, `IsServerRuntime` guard | Auth logic uses server-only services but doesn't need remote routing |
-| `[Remote] internal` | Routes to server via remote delegate, asynchronous | Auth logic needs server-only services and must be callable from the client |
+| `public`, no `[Remote]` | Runs locally, with no guard; synchronous unless an auth method returns `Task` | The rule needs only services both tiers register, such as `ICurrentUser` |
+| `internal`, no `[Remote]` | Server-only, behind the `IsServerRuntime` guard | The rule needs server services and is never asked from the client |
+| `[Remote] internal` | Called on the server through the remote delegate, asynchronously | The rule needs server services and the client must ask it |
+| Any, on an operation with `[AspAuthorize]` | Called on the server, asynchronously (`Task<Authorized>`), where the policy is checked too | The operation has a policy |
 
-This means a factory method can be `[Remote] internal` (server-side execution) while its `Can*` methods run on the client -- as long as the auth class has `public` methods with no server-only dependencies. The factory method's visibility is irrelevant to whether the auth check can run locally.
-
-### Client-Side Can* (Public Auth Methods)
-
-When auth methods are `public`, `Can*` runs locally on the client without a server round-trip. This means `CanCreate()` can drive UI decisions (show/hide a "New" button) instantly, with no network call.
-
-For this to work, the authorization service must be resolvable on the client. Register your authorization implementation on the client via `RegisterMatchingName` or manual DI registration:
-
-```csharp
-// Client Program.cs — register auth services so Can* methods resolve locally
-builder.Services.RegisterMatchingName(typeof(IEmployeeAuthorization).Assembly);
-```
-
-If the authorization service is not registered on the client, calling `CanCreate()` will produce a standard DI resolution exception. This is a developer configuration choice, not a framework error -- some apps intentionally keep auth server-only.
-
-### Server-Side Can* ([Remote] Auth Methods)
-
-When auth methods have `[Remote] internal`, `Can*` routes to the server. Use this when your authorization logic depends on server-only services (e.g., a database query to check permissions):
-
-```csharp
-// Auth interface with [Remote] — Can* routes to server
-public interface ISecureEntityAuth
-{
-    [Remote]
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-    internal bool CanCreate();  // Can* will route to server
-}
-
-// Auth implementation with server-only dependency
-internal class SecureEntityAuth(IPermissionRepository repo) : ISecureEntityAuth
-{
-    public bool CanCreate() => repo.HasPermission("create");
-}
-```
+So a `[Remote] internal` Fetch can have a `CanFetch` that runs on the client, as long as the auth class's methods are `public` and need nothing server-only. An auth class that isn't resolvable on the client fails with a DI resolution error when `Can*` is called there.
 
 ### CanSave Aggregation
 
-`CanSave` aggregates auth methods from Insert, Update, and Delete operations. If ANY constituent auth method is `internal` or `[Remote]`, CanSave gets the guard (most restrictive wins for security). This means CanSave is server-only if even one write operation requires server-side authorization.
+`CanSave` combines the auth methods of Insert, Update and Delete. If any of them is `internal` or `[Remote]`, `CanSave` gets the guard: the most restrictive wins.
 
 ## Authorization Failures
 
-- `Create()` and `Fetch()` return null when authorization fails
-- `Save()` throws `NotAuthorizedException`
-- Remote calls translate to 401/403 HTTP responses
-- Events bypass authorization — they always execute (use for notifications, audit logging, etc.)
+A class factory's refusal is a result:
+- **Create and Fetch** return `null`.
+- **`Save`** throws `NotAuthorizedException`, and **`TrySave`** returns an `Authorized<T>` with `HasAccess` false and a null `Result`.
+- **`Can*`** returns `Authorized` with `HasAccess` false.
 
-### What a denial says
+Over HTTP the refusal travels in a normal response. The client then sees the `null`, or `NotAuthorizedException` from `Save`, as on the server. `[AspAuthorize]` on a class-factory method refuses the same way; an anonymous caller is refused too (since v1.10.6). See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
 
-`NotAuthorizedException.Message` is never empty, and what it contains depends on what your authorization method returned:
+An interface factory's method, and a static factory's `[Execute]`, have no result to carry a refusal:
+- **An `[AuthorizeFactory]` refusal** is an exception on the server, so the response is a 500. The client raises `HttpRequestException`.
+- **An `[AspAuthorize]` refusal forbids the request** through the default scheme's forbid. JWT bearer answers 403, which the client raises as `HttpRequestException`. The cookie scheme redirects instead. With no scheme registered, the forbid itself throws, and the response is a 500.
 
-| Auth method returns | `Message` |
+### What a Denial Says
+
+`NotAuthorizedException.Message` is never empty:
+
+| The refusal came from | `Message` |
 |---|---|
-| `string?` / `Task<string?>` — a non-empty string | **Your string, verbatim.** Never prefixed or decorated |
-| `bool` / `Task<bool>` — `false` | A framework message naming what was refused: `Authorization denied for operation Save on IOrder; no reason was supplied.` |
+| An auth method returning a non-empty `string?` / `Task<string?>` | That string, verbatim |
+| An auth method returning `false` | `Authorization denied for operation Save on IAuthorizedOrder; no reason was supplied.` |
+| `[AspAuthorize]` | The failed requirements, or `Not Authenticated` / `Not Authorized` |
 
-A `bool` method has no way to carry a reason, so the framework supplies one rather than leaving the message blank — an exception with an empty message is silently dropped by some telemetry pipelines, which turns a correct refusal into an invisible failure.
+A `bool` method cannot carry a reason, so the framework names what was refused rather than leaving the message blank. An empty exception message is dropped by some telemetry pipelines.
 
-`Context` carries the operation and type as a separate property whichever shape you used, so structured logging can capture what was refused without parsing the message:
-
-```csharp
-catch (NotAuthorizedException ex)
-{
-    logger.LogWarning(ex, "Refused: {Context}", ex.Context);  // "operation Save on IOrder"
-}
-```
-
-On an interface factory, where one method can run several authorization methods, the context also names the one that refused — `operation GetItem on IRepository (IRepositoryAuth.CanAccessItem)`. Return a `string?` from the auth method whenever the caller would benefit from knowing *why*.
+`NotAuthorizedException.Context` holds the operation and type on its own (`operation Save on IAuthorizedOrder`), for structured logging. On an interface factory, where one method can run several auth methods, it also names the one that refused, as in `operation GetCustomer on ICustomerDirectory (ICustomerDirectoryAuth.HasAccess)`. Return a `string?` when the caller would benefit from knowing why.
 
 ## Testing
 
-AuthorizeFactory classes are testable without HTTP — inject a mock user context and call the `Can*` methods directly:
+An `[AuthorizeFactory<T>]` class is tested without HTTP. Design's test containers share one signed-in test user, and a test refuses an operation by taking a role away:
 
 <!-- snippet: authorization-testing -->
 <a id='snippet-authorization-testing'></a>
 ```cs
-// Test authorization by injecting mock IUserContext and calling Can* methods
-public void AuthorizedUser_CanCreate()
+[Fact]
+public void AuthorizedOrder_Create_ReturnsNull_WhenDenied()
 {
-    var canCreate = _factory.CanCreate().HasAccess;
-    System.Diagnostics.Debug.Assert(canCreate);
+    // Arrange
+    var (_, _, local) = DesignClientServerContainers.Scopes();
+    var factory = local.GetRequiredService<IAuthorizedOrderFactory>();
+    local.GetRequiredService<TestUser>().Roles.Remove(OrderRoles.Sales);
+
+    // Act
+    var result = factory.Create("Should Not Create");
+
+    // Assert
+    Assert.Null(result);
+
+    local.Dispose();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Authorization/AuthorizationSamples.cs#L571-L578' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/AuthorizationTests.cs#L155-L172' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`[AspAuthorize]` needs a request. Design tests it over HTTP with `WebApplicationFactory` and a test authentication scheme that signs each request in as the user the test names (`Design.Tests/Http/AspAuthorizeHttpTests.cs`).
 
 ## Next Steps
 
-- [Factory Operations](factory-operations.md) — Operations that can be authorized
-- [Service Injection](service-injection.md) — Inject auth services
-- [Save Operation](save-operation.md) — Authorization with Save routing
-- [ASP.NET Core Integration](aspnetcore-integration.md) — Configure policies
+- [Factory Operations](factory-operations.md): the operations that can be authorized
+- [Save Operation](save-operation.md): authorization and Save's outcomes
+- [ASP.NET Core Integration](aspnetcore-integration.md): server setup and what a failed call looks like
+- [Service Injection](service-injection.md): injecting services

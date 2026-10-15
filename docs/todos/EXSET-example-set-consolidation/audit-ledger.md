@@ -23,35 +23,35 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | C-13 | Throwing validation sample regions (unpublished) | 012 | |
 | C-14 | Value-object constructors validate by throwing | 004, 010, 012 | 004: Design fixed; R-F settled the premise (constructors throw): `Money`, `Percentage` |
 | C-15 | `bool` `[Create]`, business filter in `[Fetch]`, HR rule in `[Update]` | 007, 010 | 007: no bool [Create] or filtering [Fetch] in Design; the page says Design does not use a bool Create |
-| C-16 | `[SuppressFactory]` public static `Task` command as "the shape to copy" | 009 | |
+| C-16 | `[SuppressFactory]` public static `Task` command as "the shape to copy" | 014 | |
 | C-17 | Installed skill copy predates v1.9.0 | T2 | |
 | C-18 | Read models with `[Create]`; no read-model branch | 003, 010, 012 | 003: Design read model (`OrderSummary`, Fetch-only) |
-| C-19 | Public concretes everywhere; not interface-first | 005, 006, 007, 008, 009, 010, 011, 013, T2 | 005: its pages embed Design's interface-first Order and OrderLine; 006: aspnetcore-integration embeds Design's interface-first types (OrderSummary, Order, AuthorizedOrder); 013: factory-modes and serialization embed Design's interface-first Order; 007: factory-operations embeds interface-first Order, OrderLineList and CustomerPreferences |
+| C-19 | Public concretes everywhere; not interface-first | 005, 006, 007, 008, 009, 014, 010, 011, 013, T2 | 005: its pages embed Design's interface-first Order and OrderLine; 006: aspnetcore-integration embeds Design's interface-first types (OrderSummary, Order, AuthorizedOrder); 013: factory-modes and serialization embed Design's interface-first Order; 007: factory-operations embeds interface-first Order, OrderLineList and CustomerPreferences; 009: SecureOrder is interface-first (ISecureOrder, internal class); authorization.md embeds only interface-first types (AuthorizedOrder, SecureOrder) |
 | C-20 | Properties and callers typed on concretes; casts | 006, 007, 008, 010, 013 | 006: aspnetcore-integration's samples are typed on interfaces (IOrderFactory, IAuthorizedOrder); 013: serialization's SerializationSamples (concrete-typed members) retired; Order's Lines is IOrderLineList; 007: factory-operations' samples are typed on interfaces; 008: save-operation and interfaces-reference embed Design's interface-typed calls (IOrderFactory); the casting samples retired |
 | C-21 | Method-injected services stored in fields (hooks samples) | 008 | retired (EXSET-008): the hook samples that stored injected services in fields are deleted; the interfaces page embeds Design's hooks |
 | C-22 | LazyLoad loader captures a method-injected service | 011 | |
 | C-23 | Client-constructed classes take server services in ctor (unpublished) | 012 | |
-| C-24 | `Terminate` as an `[Update]`; HR rule in `[Update]` | 009, 012 | |
+| C-24 | `Terminate` as an `[Update]`; HR rule in `[Update]` | 009, 012 | 009: authorization.md's Terminate-as-[Update] sample and its embed retired; the method-level combination is prose |
 | C-25 | "Business logic in the entity, not the factory" | T2 | |
 | C-26 | Trimming: "business rules ship to the browser" | 011, T2 | |
-| C-27 | Interface factories named repositories | 003, 009, T2 | 003: Design renamed (`IProductCatalog`, `ICustomerDirectory`), CLAUDE-DESIGN and Blazor page; #112 |
+| C-27 | Interface factories named repositories | 003, 009, 014, T2 | 003: Design renamed (`IProductCatalog`, `ICustomerDirectory`), CLAUDE-DESIGN and Blazor page; #112; 009: authorization.md names Design's interface factory (ICustomerDirectory), not a repository |
 | C-28 | "Persistence routing engine" framing; "Data Mapper Factory" | 005, 007, 008, 010, 012 | 005: README, getting started, the problem and client-server-architecture reframed (D15); 007: factory-operations drops the persistence routing engine and the Persistence Stage column |
 | C-29 | Class factory = "aggregate roots with lifecycle" only | 005, T2 | 005: the decision guide gives a read model and a context their own branch |
 | C-30 | `[Execute]` = "decides which persistence path" | 007 | fixed (EXSET-007): [Execute] is a command or a factory method with logic around Create/Fetch |
-| I-01 | Private setters three ways; ordinal drops them | 005, 006, 008, 009, 011, 013, T2 | 005: README's private setters gone (Design's public setters); 006: aspnetcore-integration's private-setter Id samples (cancellation, correlation) retired; Design's public setters; 013: serialization states ordinal membership (private-setter and get-only properties are not written); Design's SerializationTests guide corrected; 008: save-operation's private-setter and [JsonInclude] guidance replaced by R-M's public setters |
-| I-02 | `[Service]` "server-only" vs "that tier's container" | 007, 009, 010, 012, T2 | 002: CLAUDE-DESIGN Service Injection fixed; 007: method services are resolved on the tier the method runs on |
-| I-03 | `[Execute]` return type: skill vs NF0102 | 009, T2 | |
+| I-01 | Private setters three ways; ordinal drops them | 005, 006, 008, 009, 014, 011, 013, T2 | 005: README's private setters gone (Design's public setters); 006: aspnetcore-integration's private-setter Id samples (cancellation, correlation) retired; Design's public setters; 013: serialization states ordinal membership (private-setter and get-only properties are not written); Design's SerializationTests guide corrected; 008: save-operation's private-setter and [JsonInclude] guidance replaced by R-M's public setters; 009: authorization.md's samples are Design's public-setter types |
+| I-02 | `[Service]` "server-only" vs "that tier's container" | 007, 009, 014, 010, 012, T2 | 002: CLAUDE-DESIGN Service Injection fixed; 007: method services are resolved on the tier the method runs on; 009: authorization.md says the auth class's services come from the tier that runs the rule (ICurrentUser on both) |
+| I-03 | `[Execute]` return type: skill vs NF0102 | 014, T2 | |
 | I-04 | `[Remote] public` in hand-written blocks | 012, T2 | |
 | I-05 | Parameter defaults: "optional last" vs dropped | 007, 010, T2 | 007: the page says defaults are not carried to the generated method |
 | I-06 | Parameter ordering rule vs `params` sample | 007 | fixed (EXSET-007): one order rule (values, services, token) with params last; the generator gap is #135 |
 | I-07 | `Save` result not reassigned | 002, 005, 008 | 002: Design tests and Blazor page reassign; 005: README and getting started reassign `order = await orderFactory.Save(order)`; fixed (EXSET-008): save-operation's usage and test reassign each Save result (SaveTests) |
 | I-08 | "Events must be raised inside a factory method" vs client raise | 011, T2 | |
-| I-09 | `Can*` method set, `Authorized<T>`, flag coverage | 009, T2 | |
+| I-09 | `Can*` method set, `Authorized<T>`, flag coverage | 009, T2 | 009: authorization.md's flag table (Read covers Execute too), the Can* method set and CanSave's overloads restated against the generator |
 | I-10 | "Feature switch is all that's needed" vs `TrimMode` | 011, T2 | |
 | I-11 | "No separate repository layer" over a repository sample | 005 | fixed (EXSET-005): getting started matched to `[Service] IOrderDbContext`; serializable types stated per R-F |
 | I-12 | Hand-written "generated interface" illustrations | 005, 006, 007, T2 | 005: client-server-architecture's hand-written factory interfaces replaced by Design embeds; 006: aspnetcore-integration's hand-written signature, DTO and IAspAuthorize blocks become prose; 007: factory-operations' hand-written generated interfaces become prose describing IOrderFactory |
 | I-13 | "Child entity: internal interface" comment | 005 | fixed (EXSET-005): the child's Create is public (R-C); no internal-interface claim |
-| I-14 | Duplicate `attributes-factoryhintnamelength` region | 009 | |
+| I-14 | Duplicate `attributes-factoryhintnamelength` region | 014 | |
 | I-15 | "Or before:" block identical to "after" | T2 | |
 | T-01 | LazyLoad loader "re-created on the client" | 011 | |
 | T-02 | Missing `partial` "CS0260" | 010, 011, T2 | |
@@ -61,9 +61,9 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | T-06 | `RegisterMatchingName<T>()` | 010, T2 | |
 | T-07 | `[Save]` attribute | 011, T2 | |
 | T-08 | Static delegates called without injection | T2 | |
-| T-09 | `[Event]` remnants; fire-and-forget event hosting | 005, 006, 009, 011, T2 | 005: README's `Event` operation and fire-and-forget link, and getting started's client-side relay methods, gone; 006: aspnetcore-integration's hosted service, isolated scopes and fire-and-forget gone; handlers stated as factory-events.md has them |
+| T-09 | `[Event]` remnants; fire-and-forget event hosting | 005, 006, 009, 011, T2 | 005: README's `Event` operation and fire-and-forget link, and getting started's client-side relay methods, gone; 006: aspnetcore-integration's hosted service, isolated scopes and fire-and-forget gone; handlers stated as factory-events.md has them; 009: authorization.md's "events bypass authorization" line gone |
 | T-10 | Wrong request/response DTO shapes and log categories | 006 | fixed (EXSET-006): real RemoteRequestDto/RemoteResponseDto shapes, no error bodies (the status and client exception table, pinned over HTTP), real log categories |
-| T-11 | 409 on concurrency; 401/403 for all remote calls | 008, 009 | 008: save-operation states no exception maps to 409; a write's exception reaches a remote caller as a 500 |
+| T-11 | 409 on concurrency; 401/403 for all remote calls | 008, 009 | 008: save-operation states no exception maps to 409; a write's exception reaches a remote caller as a 500; fixed (EXSET-009): authorization.md states each refusal: a class factory's is a null or NotAuthorizedException in a normal response; an interface or static factory's is a 500, or the scheme's forbid (403 with JWT bearer) |
 | T-12 | Save table omits authorized new+deleted and missing-method outcomes | 008, T2 | 008: save-operation's table and outcomes give new-and-deleted, the missing-method throw, the bool false and #104's authorized cases (SaveTests; PartialSaveTests) |
 | T-13 | `IFactoryCore<T>` | 008 | fixed (EXSET-008): IFactoryCore<T> removed from interfaces-reference (the library has none) |
 | T-14 | `src/docs/samples` duplicates every README snippet; .NET 8 | 005 | fixed (EXSET-005): `src/docs/samples` deleted; `.NET 8` out of README |
@@ -74,7 +74,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | T-19 | `AddRemoteFactoryServices`/`FactoryMode` names; relay wording | 011, T2 | |
 | T-20 | "Methods fall back to remote calls" | 005 | fixed (EXSET-005): Design's client program has no fallback claim, and the skill's embed re-points to it |
 | T-21 | Partial properties on a plain class | T2 | |
-| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 010, 012, 013, T2 | 005: the `[SuppressFactory]` README regions it cites are retired; README now embeds Design; 006: aspnetcore-integration and setup's server embeds come from Design, except aspnetcore-middleware-order (EXSET-009); 013: factory-modes and serialization embeds come from Design; 007: factory-operations embeds come from Design |
+| T-22 | "Guaranteed to compile" over `[SuppressFactory]` regions | 005, 006, 007, 008, 009, 014, 010, 012, 013, T2 | 005: the `[SuppressFactory]` README regions it cites are retired; README now embeds Design; 006: aspnetcore-integration and setup's server embeds come from Design, except aspnetcore-middleware-order (EXSET-009); 013: factory-modes and serialization embeds come from Design; 007: factory-operations embeds come from Design; 009: authorization.md's embeds come from Design |
 | T-23 | `IFactoryOnCancelled` "on operation failure" | T2 | |
 | T-24 | "Causes duplicate generation" instead of NF0106 | 010 | |
 | T-25 | Two-container testing sample uses one Logical container | 006 | fixed (EXSET-006): aspnetcore-testing is Design's three-container round trip from the client scope |
@@ -83,7 +83,7 @@ One row per finding in `Neatoo/docs/todos/consistency-audit/audit-remotefactory.
 | T-28 | `Can*` "returns `Authorized<T>`" | T2 | |
 | T-29 | 39 unpublished regions, some on removed concepts | 012 | |
 | U-01 | How is a child created on the client? (R-C) | 002, 007, 010, T2 | 002: Design compiled example and tests; 007: lineFactory.Create then AddLine on the client |
-| U-02 | When does `[Create]` need the server? (D14) | 002, 005, 007, 010, 012, T2 | 002: Design's Order local; AuthorizedOrder, ParamAuthOrder, SecureOrder left for 009; 005: client-server-architecture's `[Remote]` list no longer names Create; README and getting started show a local Create; 007: a root's Create is local; [Remote] only when creating needs the server |
+| U-02 | When does `[Create]` need the server? (D14) | 002, 005, 007, 009, 010, 012, T2 | 002: Design's Order local; AuthorizedOrder, ParamAuthOrder, SecureOrder left for 009; 005: client-server-architecture's `[Remote]` list no longer names Create; README and getting started show a local Create; 007: a root's Create is local; [Remote] only when creating needs the server; 009: AuthorizedOrder, ParamAuthOrder and SecureOrder Creates are local |
 | U-03 | The cascade on plain classes (R-D) | 002, 007, 008 | 002: Design compiled example and tests; 007: the cascade is stated in the writes section and the list section; fixed (EXSET-008): save-operation's cascade section states R-D against Order's Insert and Update |
 | U-04 | Missing row in `[Update]` (R-I) | 005, 008, T2 | 005: README and getting started embed Design's Update, which throws on a missing row |
 | U-05 | Target not found in a command (R-I) | 007 | fixed (EXSET-007): SubmitOrder reports NotFound in its result; CancelOrder (Task) throws |

@@ -22,22 +22,29 @@
 // stand-in for something outside the server:
 // - the order store is wrapped by one that can hold a read open until the
 //   caller cancels (a slow database);
-// - the AuthorizedOrder rules come from an instance the tests switch, not
-//   from AuthorizedOrderAuth's static flags, which the harness's
-//   AuthorizationTests switch in parallel.
+// - AuthorizedOrder's rules are gated by switches a test flips, on top of the
+//   real AuthorizedOrderAuth over the request's ICurrentUser;
+// - a test authentication scheme signs each request in. By default the user
+//   has every role; a client built with AsUser sends a different user, or none.
+//   Design.Server adds no scheme of its own (the application picks one).
 //
 // =============================================================================
 
 using System.Collections.Concurrent;
 using Design.Domain.Aggregates;
 using Design.Tests.Http;
+using Design.Domain.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Neatoo.RemoteFactory;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 
 [assembly: AssemblyFixture(typeof(DesignHttpHost))]
 
@@ -65,7 +72,7 @@ public sealed class DesignHttpHost : WebApplicationFactory<Program>, IAsyncLifet
     /// <summary>The store wrapper whose reads a test can hold open.</summary>
     public GatedOrderDbContext Store { get; } = new(new InMemoryOrderDbContext());
 
-    /// <summary>The AuthorizedOrder rules the server applies.</summary>
+    /// <summary>Switches over the AuthorizedOrder rules the server applies.</summary>
     public SwitchableOrderAuth Auth { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -77,7 +84,11 @@ public sealed class DesignHttpHost : WebApplicationFactory<Program>, IAsyncLifet
             services.RemoveAll<IOrderDbContext>();
             services.AddSingleton<IOrderDbContext>(Store);
             services.RemoveAll<IAuthorizedOrderAuth>();
-            services.AddSingleton<IAuthorizedOrderAuth>(Auth);
+            services.AddScoped<IAuthorizedOrderAuth>(sp =>
+                new GatedOrderAuth(Auth, new AuthorizedOrderAuth(sp.GetRequiredService<ICurrentUser>())));
+
+            services.AddAuthentication(TestUserScheme.Name)
+                .AddScheme<AuthenticationSchemeOptions, TestUserScheme>(TestUserScheme.Name, null);
         });
     }
 
@@ -90,6 +101,7 @@ public sealed class DesignHttpHost : WebApplicationFactory<Program>, IAsyncLifet
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
+        services.AddScoped<ICurrentUser>(_ => ClaimsUser.Anonymous);
         services.AddKeyedScoped(
             RemoteFactoryServices.HttpClientKey,
             (sp, key) => CreateDefaultClient(handlers));
@@ -175,17 +187,64 @@ public sealed class ReadHold
 }
 
 /// <summary>
-/// AuthorizedOrder's rules, switched per test on this instance.
+/// Switches a test flips to deny an AuthorizedOrder operation on the server.
 /// </summary>
-public sealed class SwitchableOrderAuth : IAuthorizedOrderAuth
+public sealed class SwitchableOrderAuth
 {
     public bool AllowAccess { get; set; } = true;
     public bool AllowFetch { get; set; } = true;
+}
 
-    public bool HasAccess() => AllowAccess;
-    public bool CanCreate() => true;
-    public bool CanFetch() => AllowFetch;
-    public bool CanDelete() => true;
+/// <summary>
+/// AuthorizedOrder's real rules, each also required to be switched on.
+/// </summary>
+public sealed class GatedOrderAuth(SwitchableOrderAuth switches, IAuthorizedOrderAuth rules) : IAuthorizedOrderAuth
+{
+    public bool HasAccess() => switches.AllowAccess && rules.HasAccess();
+    public bool CanCreate() => rules.CanCreate();
+    public bool CanFetch() => switches.AllowFetch && rules.CanFetch();
+    public bool CanDelete() => rules.CanDelete();
+}
+
+/// <summary>
+/// Signs each request in as the user its <see cref="Header"/> names: every role
+/// when there is no header, nobody for "anonymous", otherwise the roles listed.
+/// </summary>
+public sealed class TestUserScheme(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    public const string Name = "Test";
+    public const string Header = "X-Test-User";
+    public const string Anonymous = "anonymous";
+
+    private static readonly string[] AllRoles = [OrderRoles.Sales, OrderRoles.Support, OrderRoles.Manager, "Admin"];
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        string[] roles;
+        if (!Request.Headers.TryGetValue(Header, out var value))
+            roles = AllRoles;
+        else if (value == Anonymous)
+            return Task.FromResult(AuthenticateResult.NoResult());
+        else
+            roles = value.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+        var identity = new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, "test-user"), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], Name);
+        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Name)));
+    }
+}
+
+/// <summary>
+/// Sends every request as the given user (roles, comma-separated, or "anonymous").
+/// </summary>
+public sealed class AsUser(string user) : DelegatingHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        request.Headers.Add(TestUserScheme.Header, user);
+        return base.SendAsync(request, cancellationToken);
+    }
 }
 
 /// <summary>
@@ -210,4 +269,15 @@ public sealed class CapturedLogs : ILoggerProvider
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             => entries.Enqueue((category, logLevel, formatter(state, exception)));
     }
+}
+
+/// <summary>
+/// The test classes that read AuthorizedOrder over HTTP. They share the host's
+/// <see cref="DesignHttpHost.Auth"/> switches, so they run one after another:
+/// a Fetch in one would otherwise land while another has the switch off.
+/// </summary>
+[CollectionDefinition(Name)]
+public sealed class AuthorizedOrderSwitches
+{
+    public const string Name = "AuthorizedOrder switches";
 }

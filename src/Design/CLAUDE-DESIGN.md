@@ -1092,7 +1092,7 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
 - [ ] Value objects: plain records whose constructors throw (`Money`, `Percentage`), beside one whose construction needs a server service and so carries `[Factory]` (`TaxRate`) (R-F)
 - [ ] Create-or-fetch: a class-level `[Remote, Execute]` that calls Fetch, then Create (`Order.OpenDraft`, D11)
-- [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
+- [x] ASP.NET Core policy-based authorization (`SecureOrder.cs`, tested over HTTP in `Design.Tests/Http/AspAuthorizeHttpTests.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
 - [x] Interface Factory returning a class and a record type (`AllPatterns.cs`: `ProductListing` class, `ProductDetails` record, `IProductCatalog`)
