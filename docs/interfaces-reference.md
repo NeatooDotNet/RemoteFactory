@@ -5,712 +5,183 @@ nav_order: 11
 
 # Interfaces Reference
 
-RemoteFactory provides interfaces for lifecycle hooks, authorization, state management, and save routing. Implement these interfaces on your domain models to integrate with factory-generated code.
+The interfaces RemoteFactory defines: what each one's members are, who implements it, and which page covers it in full. The code comes from RemoteFactory's compiled example set, `src/Design`.
 
 ## Lifecycle Hooks
 
-### IFactoryOnStart
+An object implements a hook interface to have the factory call it around its operations. The hooks prepare state and record what happened. They are not checks: a check the user can recover from is a verdict the screen reads before it acts, and a throw is for broken state.
 
-Called before a factory operation executes.
+Every hook method takes the `FactoryOperation` being run (`Create`, `Fetch`, `Insert`, `Update`, `Delete`, `Execute`).
 
-```csharp
-public interface IFactoryOnStart
-{
-    void FactoryStart(FactoryOperation factoryOperation);
-}
-```
+| Interface | Member | Called |
+|-----------|--------|--------|
+| `IFactoryOnStart` | `void FactoryStart(FactoryOperation)` | before an instance operation |
+| `IFactoryOnStartAsync` | `Task FactoryStartAsync(FactoryOperation)` | before a `Task`-returning instance operation |
+| `IFactoryOnComplete` | `void FactoryComplete(FactoryOperation)` | after an operation succeeds |
+| `IFactoryOnCompleteAsync` | `Task FactoryCompleteAsync(FactoryOperation)` | after a `Task`-returning instance operation succeeds |
+| `IFactoryOnCancelled` | `void FactoryCancelled(FactoryOperation)` | when an async instance operation throws `OperationCanceledException` |
+| `IFactoryOnCancelledAsync` | `Task FactoryCancelledAsync(FactoryOperation)` | as `IFactoryOnCancelled` |
 
-**When to use:** Pre-operation validation, logging, or setup that doesn't require async work.
+`CustomerPreferences` stamps its save time in an async start hook:
 
-Implement this interface on your domain model to receive a callback before any factory operation:
-
-<!-- snippet: interfaces-factoryonstart -->
-<a id='snippet-interfaces-factoryonstart'></a>
+<!-- snippet: operations-lifecycle-onstart -->
+<a id='snippet-operations-lifecycle-onstart'></a>
 ```cs
-// IFactoryOnStart: Called before factory operation executes
-public void FactoryStart(FactoryOperation factoryOperation)
+public Task FactoryStartAsync(FactoryOperation factoryOperation)
 {
-    // Pre-operation validation
-    if (factoryOperation == FactoryOperation.Delete && EmployeeId == Guid.Empty)
-        throw new InvalidOperationException("Cannot delete unsaved employee");
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/LifecycleHooksSamples.cs#L35-L43' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryonstart' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### IFactoryOnStartAsync
-
-Async version of `IFactoryOnStart`.
-
-```csharp
-public interface IFactoryOnStartAsync
-{
-    Task FactoryStartAsync(FactoryOperation factoryOperation);
-}
-```
-
-**When to use:** Pre-operation work that requires async calls (database queries, external services).
-
-Async pre-operation hook with database access:
-
-<!-- snippet: interfaces-factoryonstart-async -->
-<a id='snippet-interfaces-factoryonstart-async'></a>
-```cs
-// IFactoryOnStartAsync: Async pre-operation hook for database/service calls
-public async Task FactoryStartAsync(FactoryOperation factoryOperation)
-{
-    if (_repository == null) return;
-
-    // Async validation: check department limit before insert
-    var existing = await _repository.GetAllAsync();
-    if (factoryOperation == FactoryOperation.Insert && existing.Count >= 100)
-        throw new InvalidOperationException("Maximum department limit reached");
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/LifecycleHooksSamples.cs#L81-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryonstart-async' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### IFactoryOnComplete
-
-Called after a factory operation completes successfully.
-
-```csharp
-public interface IFactoryOnComplete
-{
-    void FactoryComplete(FactoryOperation factoryOperation);
-}
-```
-
-**When to use:** Post-operation cleanup, audit logging, or state updates that don't require async work.
-
-Implement this interface to track successful operations:
-
-<!-- snippet: interfaces-factoryoncomplete -->
-<a id='snippet-interfaces-factoryoncomplete'></a>
-```cs
-// IFactoryOnComplete: Called after factory operation succeeds
-public void FactoryComplete(FactoryOperation factoryOperation)
-{
-    CompletedOperation = factoryOperation;
-    CompleteTime = DateTime.UtcNow;
-    // Post-operation: audit logging, cache invalidation, etc.
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/LifecycleHooksSamples.cs#L134-L142' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncomplete' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### IFactoryOnCompleteAsync
-
-Async version of `IFactoryOnComplete`.
-
-```csharp
-public interface IFactoryOnCompleteAsync
-{
-    Task FactoryCompleteAsync(FactoryOperation factoryOperation);
-}
-```
-
-**When to use:** Post-operation work that requires async calls (notifications, external logging).
-
-Async post-operation hook for notifications:
-
-<!-- snippet: interfaces-factoryoncomplete-async -->
-<a id='snippet-interfaces-factoryoncomplete-async'></a>
-```cs
-// IFactoryOnCompleteAsync: Async post-operation hook
-public async Task FactoryCompleteAsync(FactoryOperation factoryOperation)
-{
-    if (_notificationService != null)
-        await _notificationService.SendAsync("admin@company.com",
-            $"Operation {factoryOperation} completed for {Name}");
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/LifecycleHooksSamples.cs#L179-L187' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncomplete-async' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### IFactoryOnCancelled
-
-Called when a factory operation is cancelled via `CancellationToken`.
-
-```csharp
-public interface IFactoryOnCancelled
-{
-    void FactoryCancelled(FactoryOperation factoryOperation);
-}
-```
-
-**When to use:** Cleanup after operation cancellation, rollback logic, or cancellation logging.
-
-Handle operation cancellation:
-
-<!-- snippet: interfaces-factoryoncancelled -->
-<a id='snippet-interfaces-factoryoncancelled'></a>
-```cs
-// IFactoryOnCancelled: Called when operation cancelled via CancellationToken
-public void FactoryCancelled(FactoryOperation factoryOperation)
-{
-    CancelledOperation = factoryOperation;
-    CleanupPerformed = true;
-    // Cleanup logic for cancelled operation
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/LifecycleHooksSamples.cs#L215-L223' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncancelled' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### IFactoryOnCancelledAsync
-
-Async version of `IFactoryOnCancelled`.
-
-```csharp
-public interface IFactoryOnCancelledAsync
-{
-    Task FactoryCancelledAsync(FactoryOperation factoryOperation);
-}
-```
-
-**When to use:** Async cleanup after cancellation (database rollback, external API calls).
-
-Async cancellation with database rollback:
-
-<!-- snippet: interfaces-factoryoncancelled-async -->
-<a id='snippet-interfaces-factoryoncancelled-async'></a>
-```cs
-// IFactoryOnCancelledAsync: Async cancellation cleanup
-public async Task FactoryCancelledAsync(FactoryOperation factoryOperation)
-{
-    if (_unitOfWork != null)
-        await _unitOfWork.RollbackAsync();  // Rollback partial changes
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/LifecycleHooksSamples.cs#L262-L269' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factoryoncancelled-async' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### Lifecycle Hook Execution Order
-
-When a factory operation executes:
-
-1. `IFactoryOnStart` / `IFactoryOnStartAsync` - Before operation
-2. Factory operation method (`[Create]`, `[Fetch]`, `[Update]`, etc.)
-3. `IFactoryOnComplete` / `IFactoryOnCompleteAsync` - After successful operation
-
-If cancelled:
-- `IFactoryOnCancelled` / `IFactoryOnCancelledAsync` - After `OperationCanceledException`
-
-Combining sync and async hooks:
-
-<!-- snippet: interfaces-lifecycle-order -->
-<a id='snippet-interfaces-lifecycle-order'></a>
-```cs
-// Lifecycle execution order: Start -> Operation -> Complete (or Cancelled)
-[Factory]
-public partial class EmployeeWithLifecycleOrder : IFactoryOnStart, IFactoryOnComplete, IFactoryOnCancelled
-{
-    public List<string> LifecycleEvents { get; } = new();
-
-    public void FactoryStart(FactoryOperation factoryOperation)
-        => LifecycleEvents.Add($"Start: {factoryOperation}");
-    public void FactoryComplete(FactoryOperation factoryOperation)
-        => LifecycleEvents.Add($"Complete: {factoryOperation}");
-    public void FactoryCancelled(FactoryOperation factoryOperation)
-        => LifecycleEvents.Add($"Cancelled: {factoryOperation}");
-
-    // After Fetch: ["Start: Fetch", "Complete: Fetch"]
-    // If cancelled: ["Start: Fetch", "Cancelled: Fetch"]
-
-    public Guid EmployeeId { get; private set; }
-    public string Name { get; set; } = "";
-
-    [Create]
-    public EmployeeWithLifecycleOrder() => EmployeeId = Guid.NewGuid();
-
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+    if (factoryOperation is FactoryOperation.Insert or FactoryOperation.Update)
     {
-        var entity = await repository.GetByIdAsync(id, ct);
-        if (entity == null) return false;
-        EmployeeId = entity.Id;
-        Name = $"{entity.FirstName} {entity.LastName}";
-        return true;
+        LastSavedAt = DateTimeOffset.UtcNow;
     }
+    return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/LifecycleHooksSamples.cs#L272-L305' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-lifecycle-order' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L106-L115' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-## Save Operation
+`Order` clears `IsNew` in an async complete hook after an Insert:
+
+<!-- snippet: operations-lifecycle-oncomplete -->
+<a id='snippet-operations-lifecycle-oncomplete'></a>
+```cs
+public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
+{
+    // Example: Reset IsNew after successful Insert
+    if (factoryOperation == FactoryOperation.Insert)
+    {
+        IsNew = false;
+    }
+    return Task.CompletedTask;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L183-L193' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+### When Each Hook Runs
+
+- **Before and after:** the start hook runs before the method and the complete hook after it. When the method throws, the start hook has already run and the complete hook does not. When an async instance operation is cancelled, the cancelled hook runs instead of the complete hook.
+- **Async hooks:** they run only around `Task`-returning instance operations.
+- **Constructor and static operations:** a constructor or static Create or Fetch gets only `IFactoryOnComplete`, called on the result.
+- **A class-level `[Execute]`** gets no hooks.
+- **A `bool` operation that returns `false`** skips the complete hook.
+
+See [Factory Operations — Lifecycle Hooks](factory-operations.md#lifecycle-hooks).
+
+## Save
 
 ### IFactorySaveMeta
 
-Provides state properties that the generated factory's `Save` method uses to route to Insert, Update, or Delete.
+Two read-only members, `bool IsNew` and `bool IsDeleted`, which the generated `Save` reads to choose Insert, Update or Delete. `IOrder` extends it, and `Order` implements both as public `get; set;` so that they cross the wire:
 
-```csharp
-public interface IFactorySaveMeta
-{
-    bool IsDeleted { get; }
-    bool IsNew { get; }
-}
-```
-
-**Routing logic:**
-- `IsNew = true, IsDeleted = false` → Insert
-- `IsNew = false, IsDeleted = false` → Update
-- `IsNew = false, IsDeleted = true` → Delete
-- `IsNew = true, IsDeleted = true` → No operation (new item deleted before save)
-
-Implement this interface on domain models that use the Save pattern:
-
-<!-- snippet: interfaces-factorysavemeta -->
-<a id='snippet-interfaces-factorysavemeta'></a>
+<!-- snippet: save-ifactorysavemeta -->
+<a id='snippet-save-ifactorysavemeta'></a>
 ```cs
-// IFactorySaveMeta: Provides IsNew/IsDeleted for Save routing
-[Factory]
-public partial class EmployeeSaveDemo : IFactorySaveMeta
-{
-    public bool IsNew { get; private set; } = true;   // true = Insert, false = Update
-    public bool IsDeleted { get; set; }               // true = Delete
-
-    // Routing: IsNew=true -> Insert, IsNew=false -> Update, IsDeleted=true -> Delete
-
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
-    public string LastName { get; set; } = "";
-
-    [Create]
-    public EmployeeSaveDemo()
-    {
-        Id = Guid.NewGuid();
-        IsNew = true;
-    }
-
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var entity = await repo.GetByIdAsync(id, ct);
-        if (entity == null) return false;
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        LastName = entity.LastName;
-        IsNew = false;  // Fetched = existing
-        return true;
-    }
-
-    [Remote, Insert]
-    internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var entity = new EmployeeEntity
-        {
-            Id = Id, FirstName = FirstName, LastName = LastName,
-            Email = $"{FirstName.ToLowerInvariant()}@example.com",
-            DepartmentId = Guid.Empty, Position = "New",
-            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
-        };
-        await repo.AddAsync(entity, ct);
-        await repo.SaveChangesAsync(ct);
-        IsNew = false;
-    }
-
-    [Remote, Update]
-    internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        var entity = new EmployeeEntity
-        {
-            Id = Id, FirstName = FirstName, LastName = LastName,
-            Email = $"{FirstName.ToLowerInvariant()}@example.com",
-            DepartmentId = Guid.Empty, Position = "Updated",
-            SalaryAmount = 0, SalaryCurrency = "USD", HireDate = DateTime.UtcNow
-        };
-        await repo.UpdateAsync(entity, ct);
-        await repo.SaveChangesAsync(ct);
-    }
-
-    [Remote, Delete]
-    internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
-    {
-        await repo.DeleteAsync(Id, ct);
-        await repo.SaveChangesAsync(ct);
-    }
-}
+public bool IsNew { get; set; } = true;
+public bool IsDeleted { get; set; }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L132-L201' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factorysavemeta' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L119-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-See [Save Operation](save-operation.md) for complete usage details.
+See [Save Operation](save-operation.md) for the routing table and every outcome.
 
 ### IFactorySave&lt;T&gt;
 
-Generated factories implement this interface when the domain model implements `IFactorySaveMeta`.
+The generator implements this on each class factory whose class implements `IFactorySaveMeta`. It registers the factory under it, keyed on the class itself (`IFactorySave<Order>`), and implements it explicitly. Its members are:
+- `Save(T entity, CancellationToken)`, which returns `Task<IFactorySaveMeta?>`;
+- `CanSave(CancellationToken)`;
+- `CanSave(T target, CancellationToken)`.
 
-```csharp
-public interface IFactorySave<T> where T : IFactorySaveMeta
-{
-    Task<IFactorySaveMeta?> Save(T entity, CancellationToken cancellationToken = default);
-    Task<Authorized> CanSave(CancellationToken cancellationToken = default);
-    Task<Authorized> CanSave(T target, CancellationToken cancellationToken = default);
-}
-```
+Both `CanSave` overloads return `Task<Authorized>`, and `Authorized(true)` when no authorization applies. The parameterless one runs the write checks that take no target; the other runs them all.
 
-**You do not implement this interface.** The generator creates it automatically.
+You do not implement it, and application code does not call it. It is for framework code that saves an object knowing only its type. Application code calls the generated factory's own `Save`, typed on the interface:
 
-**CanSave overloads:**
-- `CanSave()` -- runs non-target Write auth methods (role checks, permissions). Returns `Authorized(true)` when no authorization is configured.
-- `CanSave(target)` -- runs ALL Write auth methods, including target-parameterized auth that inspects entity state. Returns `Authorized(true)` when no authorization is configured.
-
-Using the generated Save method:
-
-<!-- snippet: interfaces-factorysave -->
-<a id='snippet-interfaces-factorysave'></a>
+<!-- snippet: save-usage -->
+<a id='snippet-save-usage'></a>
 ```cs
-// IFactorySave<T>: Generated Save() routes to Insert/Update/Delete based on state
-public class SaveLifecycleDemo
-{
-    public async Task Demo(IEmployeeWithSaveMetaFactory factory)
-    {
-        var employee = factory.Create();           // IsNew=true
-        employee.Name = "John Smith";
+var order = orderFactory.Create("Save_Customer");
+order.AddLine(lineFactory.Create("Widget", 5.00m, 2));
+order = (await orderFactory.Save(order))!;      // IsNew: Insert
 
-        await factory.Save(employee);              // IsNew=true -> Insert
-        employee.Name = "Jane Smith";
-        await factory.Save(employee);              // IsNew=false -> Update
+order.CustomerName = "Save_Customer_Renamed";
+order = (await orderFactory.Save(order))!;      // stored: Update
 
-        employee.IsDeleted = true;
-        await factory.Save(employee);              // IsDeleted=true -> Delete
-    }
-}
+order.MarkDeleted();
+await orderFactory.Save(order);                 // IsDeleted: Delete
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Interfaces/FactorySaveSamples.cs#L6-L23' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-factorysave' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/SaveTests.cs#L31-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Authorization
 
 ### IAspAuthorize
 
-Performs ASP.NET Core authorization checks on the server. Injected into factory operations decorated with `[AspAuthorize]`.
+`Task<string?> Authorize(IEnumerable<AspAuthorizeData> authorizeData, bool forbid = false)`. The generated factory calls it for an operation that carries `[AspAuthorize]`.
 
-```csharp
-public interface IAspAuthorize
-{
-    Task<string?> Authorize(
-        IEnumerable<AspAuthorizeData> authorizeData,
-        bool forbid = false);
-}
-```
+`AddNeatooAspNetCore` registers the default, `AspAuthorize`, which evaluates the data against ASP.NET Core's policy provider and evaluator:
+- it returns an empty string when authorized, and the failure message when not;
+- with `forbid` true, it throws `AspForbidException` instead.
 
-**When to use:** Custom ASP.NET Core authorization implementations that need different policy evaluation logic.
-
-**You rarely implement this interface.** The default implementation (`AspAuthorize`) is registered automatically by `AddNeatooAspNetCore()` and integrates with ASP.NET Core's `IAuthorizationPolicyProvider` and `IPolicyEvaluator`.
-
-**Return value:**
-- Empty string if authorized
-- Error message string if not authorized
-- Throws `AspForbidException` if `forbid = true` and authorization fails
-
-Custom authorization implementation:
-
-<!-- snippet: interfaces-aspauthorize -->
-<a id='snippet-interfaces-aspauthorize'></a>
-```cs
-// IAspAuthorize: Custom authorization with audit logging
-public class AuditingAspAuthorize : IAspAuthorize
-{
-    private readonly IAspAuthorize _inner;
-    private readonly IAuditLogService _auditLog;
-
-    public AuditingAspAuthorize(IAspAuthorize inner, IAuditLogService auditLog)
-    {
-        _inner = inner;
-        _auditLog = auditLog;
-    }
-
-    public async Task<string?> Authorize(IEnumerable<AspAuthorizeData> authorizeData, bool forbid = false)
-    {
-        var policies = string.Join(", ", authorizeData.Select(a => a.Policy ?? a.Roles ?? "Default"));
-        await _auditLog.LogAsync("AuthCheck", Guid.Empty, "Auth", $"Policies: {policies}", default);
-
-        var result = await _inner.Authorize(authorizeData, forbid);
-
-        await _auditLog.LogAsync(string.IsNullOrEmpty(result) ? "AuthSuccess" : "AuthFailed",
-            Guid.Empty, "Auth", result ?? "OK", default);
-        return result;
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L263-L288' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-aspauthorize' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-See [Authorization](authorization.md) for standard authorization patterns.
+A replacement or a decorator is registered in DI like any service. See [Authorization](authorization.md).
 
 ## Serialization
 
-### IOrdinalSerializable
+The generator implements these interfaces on `[Factory]` types. A value object is a plain `record`, needs no `[Factory]` to cross the wire, and implements none of them. See [Serialization](serialization.md).
 
-Interface for types that support ordinal (positional) JSON serialization. Types implementing this interface are serialized as JSON arrays instead of objects, reducing payload size.
+| Interface | Members | Purpose |
+|-----------|---------|---------|
+| `IOrdinalSerializable` | `object?[] ToOrdinalArray()` | writes the object as a JSON array of its property values |
+| `IOrdinalConverterProvider<TSelf>` | `static abstract JsonConverter<TSelf> CreateOrdinalConverter()` | supplies the converter without reflection, so it survives IL trimming |
+| `IOrdinalSerializationMetadata` | `static abstract string[] PropertyNames`, `static abstract Type[] PropertyTypes`, `static abstract object FromOrdinalArray(object?[])` | rebuilds the object from the array |
 
-```csharp
-public interface IOrdinalSerializable
-{
-    object?[] ToOrdinalArray();
-}
-```
-
-**When to use:** Types that need compact array-based serialization instead of the default object-based format. The source generator automatically implements this for types with `[Factory]` attribute.
-
-**Ordinal order:** Properties are serialized alphabetically by name. For inherited types, base class properties come first (alphabetically), followed by derived class properties (alphabetically).
-
-Example of implementing IOrdinalSerializable:
-
-<!-- snippet: interfaces-ordinalserializable -->
-<a id='snippet-interfaces-ordinalserializable'></a>
-```cs
-// IOrdinalSerializable: Compact array-based JSON serialization
-public class MoneyValueObject : IOrdinalSerializable
-{
-    public decimal Amount { get; }
-    public string Currency { get; }
-
-    public MoneyValueObject(decimal amount, string currency)
-    {
-        Amount = amount;
-        Currency = currency;
-    }
-
-    // Properties in alphabetical order: Amount, Currency
-    public object?[] ToOrdinalArray() => [Amount, Currency];
-    // JSON: [100.50, "USD"] instead of {"Amount":100.50,"Currency":"USD"}
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L203-L220' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalserializable' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-See [Serialization](serialization.md) for details on ordinal format.
-
-### IOrdinalConverterProvider&lt;TSelf&gt;
-
-Provides a custom `JsonConverter` for ordinal serialization. Uses static abstract interface members for IL trimming compatibility.
-
-```csharp
-public interface IOrdinalConverterProvider<TSelf> where TSelf : class
-{
-    static abstract JsonConverter<TSelf> CreateOrdinalConverter();
-}
-```
-
-**When to use:** Types implementing `IOrdinalSerializable` that need a custom converter for compact serialization. The source generator automatically implements this for `[Factory]` types.
-
-**This is a static abstract interface (C# 11+).** The implementing type provides a static factory method for its converter.
-
-Custom ordinal converter for a value object:
-
-<!-- snippet: interfaces-ordinalconverterprovider -->
-<a id='snippet-interfaces-ordinalconverterprovider'></a>
-```cs
-// IOrdinalConverterProvider<TSelf>: Custom converter for ordinal serialization
-public class MoneyWithConverter : IOrdinalSerializable, IOrdinalConverterProvider<MoneyWithConverter>
-{
-    public decimal Amount { get; }
-    public string Currency { get; }
-
-    public MoneyWithConverter(decimal amount, string currency)
-        => (Amount, Currency) = (amount, currency);
-
-    public object?[] ToOrdinalArray() => [Amount, Currency];
-
-    // Static factory provides the converter
-    public static JsonConverter<MoneyWithConverter> CreateOrdinalConverter()
-        => new MoneyOrdinalConverter();
-}
-
-// Converter implementation (outside snippet for brevity)
-file sealed class MoneyOrdinalConverter : JsonConverter<MoneyWithConverter>
-{
-    public override MoneyWithConverter Read(
-        ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException();
-        reader.Read(); var amount = reader.GetDecimal();
-        reader.Read(); var currency = reader.GetString() ?? "USD";
-        reader.Read();
-        return new MoneyWithConverter(amount, currency);
-    }
-
-    public override void Write(
-        Utf8JsonWriter writer, MoneyWithConverter value, JsonSerializerOptions options)
-    {
-        writer.WriteStartArray();
-        writer.WriteNumberValue(value.Amount);
-        writer.WriteStringValue(value.Currency);
-        writer.WriteEndArray();
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Interfaces/InterfacesSamples.cs#L222-L261' title='Snippet source file'>snippet source</a> | <a href='#snippet-interfaces-ordinalconverterprovider' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-### IOrdinalSerializationMetadata
-
-Provides metadata about ordinal serialization for a specific type. Used by the serializer to reconstruct objects from ordinal arrays.
-
-```csharp
-public interface IOrdinalSerializationMetadata
-{
-    static abstract string[] PropertyNames { get; }
-    static abstract Type[] PropertyTypes { get; }
-    static abstract object FromOrdinalArray(object?[] values);
-}
-```
-
-**You do not implement this interface.** The source generator automatically implements it for types with `[Factory]` attribute to enable ordinal deserialization.
-
-**PropertyNames and PropertyTypes:** Arrays in ordinal order (alphabetical by property name, base class properties first).
-
-**FromOrdinalArray:** Creates an instance from an array of property values in ordinal order.
-
-## Deferred Loading
-
-### ILazyLoadFactory
-
-Creates `LazyLoad<T>` instances for deferred async loading. Registered as a singleton by `AddNeatooRemoteFactory()`.
-
-```csharp
-public interface ILazyLoadFactory
-{
-    LazyLoad<TChild> Create<TChild>(Func<Task<TChild?>> loader) where TChild : class?;
-    LazyLoad<TChild> Create<TChild>(TChild? value) where TChild : class?;
-}
-```
-
-**When to use:** Set up `LazyLoad<T>` properties in factory methods with a loader delegate for on-demand loading, or with a pre-loaded value for eager scenarios.
-
-**Two creation patterns:**
-- `Create<T>(loader)` — Deferred: `IsLoaded = false`, call `LoadAsync()` to trigger the loader
-- `Create<T>(value)` — Pre-loaded: `IsLoaded = true`, `Value` is set immediately
-
-```csharp
-[Remote, Fetch]
-internal void Fetch(int id,
-    [Service] ILazyLoadFactory lazyLoadFactory,
-    [Service] IReviewService reviewService)
-{
-    Id = id;
-    // Deferred: loader set up but not invoked
-    Reviews = lazyLoadFactory.Create<string>(async () =>
-    {
-        return await reviewService.GetReviewsAsync(Id);
-    });
-}
-```
-
-`LazyLoad<T>` properties serialize their `Value` and `IsLoaded` state across the wire. The loader delegate is not serialized — it is reconstructed via the constructor-initialization pattern on deserialization. The format is described under [LazyLoad — Serialization](lazyload.md#serialization).
-
-See [LazyLoad](lazyload.md) for the full usage guide.
+**Ordinal order:** the type's own properties first, then its base class's. Each group is in ordinal (`StringComparer.Ordinal`) name order, not declaration order. See [Serialization — What the Ordinal Array Holds](serialization.md#what-the-ordinal-array-holds).
 
 ## Factory Events
 
+See [Factory Events](factory-events.md) for each contract in full.
+
 ### IFactoryEvents
 
-Request-scoped mediator for publishing factory events. Injected as `[Service] IFactoryEvents` into factory methods.
+`Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default)`, plus `RaiseUntyped`, which the server uses for a remote raise. A factory method takes it as `[Service] IFactoryEvents`.
 
-```csharp
-public interface IFactoryEvents
-{
-    Task Raise<T>(
-        T factoryEvent,
-        RaiseOptions options = RaiseOptions.None,
-        CancellationToken cancellationToken = default)
-        where T : FactoryEventBase;
-}
-```
-
-**When to use:** Publishing domain events from within a factory method. `Raise<T>` dispatches every matching `[FactoryEventHandler<T>]` static-method handler **in the caller's DI scope, sequentially, awaited** — `Immediate` handlers (the default) run at `Raise` itself, sharing the caller's `DbContext` and transaction, and an exception in an `Immediate` handler aborts the chain and propagates to the caller. Handlers registered at `AfterFlush` or `AfterCommit` are queued at `Raise` and run at their [drain point](factory-events.md#dispatch-phases) instead. Unless `RaiseOptions.ServerOnly` is set, the event is also captured for relay back to the client. For fire-and-forget work that should not participate in the factory operation, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)). See [Factory Events](factory-events.md).
+`Raise<T>` runs every matching `[FactoryEventHandler<T>]` in the caller's scope, in order, awaited. An `Immediate` handler runs at `Raise`, and its exception reaches the caller. `AfterFlush` and `AfterCommit` handlers are queued for their [drain point](factory-events.md#dispatch-phases). Unless `RaiseOptions.ServerOnly` is set, the event is also relayed to the client.
 
 ### IFactoryEventRelay
 
-Single-method integration hook. Consumers implement this interface to receive events relayed from the server after a `[Remote]` factory call returns. RemoteFactory invokes it fire-and-forget, exactly once per `[Remote]` call (including the empty-batch case), strictly after the caller's continuation resumes.
+`Task Relay(IReadOnlyList<FactoryEventBase> events)`. The client application implements it and registers it in DI.
 
-```csharp
-public interface IFactoryEventRelay
-{
-    Task Relay(IReadOnlyList<FactoryEventBase> events);
-}
-```
-
-**When to use:** Implement on a service that bridges relayed events to your own event aggregator (MediatR, a UI message bus, a reactive subject, etc.). Register it in DI either before or after `AddNeatooRemoteFactory` — Remote mode registers `NoOpFactoryEventRelay` via `TryAddSingleton`, so a consumer registration before wins, and a consumer registration after overrides.
-
-**Contract:**
-
-- One `[Remote]` call = one `Relay` invocation. The empty-batch case (`events.Count == 0`) still produces one invocation — useful as a "a factory call just returned" signal. The only exception is `UnknownFactoryEventTypeException` during deserialization, which aborts the batch and is logged (EventId 3009).
-- Post-return ordering is a hard guarantee (`Task.Run + Task.Yield` dispatch).
-- Relay exceptions are caught and logged (EventId 3008). They never propagate to the factory caller.
-- The consumer owns SyncContext marshaling for UI work.
-
-> **Migration note.** The former surface (`Register(object handler)` / `Unregister(object handler)`, instance-method `[FactoryEventHandler<T>]` on client classes, `WeakReference`-based handler tracking) has been removed. Classes that still declare instance-method handlers inside `[FactoryEventHandler<T>]` emit **NF0503 (Warning)** and are silently skipped at runtime. See [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay).
+`Relay` is called once per `[Remote]` call, after the caller's continuation resumes, even when the batch is empty. Its exceptions are logged (EventId 3008) and never reach the caller. The consumer marshals to the UI thread itself. Remote mode registers a no-op relay with `TryAddSingleton`, so the application's registration wins whether it comes before or after `AddNeatooRemoteFactory`.
 
 ### IFactoryEventPhaseCoordinator
 
-Consumer-facing drain trigger for handlers registered at `DispatchPhase.AfterFlush`. Injected as `[Service] IFactoryEventPhaseCoordinator` into factory methods (method injection — server-only, registered in Server and Logical modes).
+`Task DrainAsync(DispatchPhase phase, CancellationToken cancellationToken = default)`. A server factory method takes it as `[Service]` and calls it between its flush and its commit.
 
-```csharp
-public interface IFactoryEventPhaseCoordinator
-{
-    Task DrainAsync(DispatchPhase phase, CancellationToken cancellationToken = default);
-}
-```
-
-**When to use:** Call `DrainAsync(DispatchPhase.AfterFlush)` inside a factory method body, between your flush and your commit, to run the queued `AfterFlush` handlers in-transaction against flushed state. See [Dispatch Phases](factory-events.md#dispatch-phases).
-
-**Contract:**
-
-- `AfterFlush` is the only accepted phase — `Immediate` handlers are never queued, and the `AfterCommit` drain point belongs to the framework. Other values throw `ArgumentOutOfRangeException`.
-- Drains the **scope's** queue, sweeping the requested phase and any earlier undrained work; a handler exception propagates to the drain call so the transaction can roll back.
-- Returns without draining when no entry factory call is active in the scope — the drain must run inside the factory body, not from a wrapper around the factory call.
-- `AfterFlush` work never drained by the consumer runs at the `AfterCommit` point instead, fail-open, with Warning 9007.
-
-## Factory Core
-
-### IFactoryCore&lt;T&gt;
-
-Low-level factory execution abstraction. Generated factories use this internally for lifecycle hook invocation and operation tracking.
-
-```csharp
-public interface IFactoryCore<T>
-{
-    T DoFactoryMethodCall(FactoryOperation operation, Func<T> factoryMethodCall);
-    Task<T> DoFactoryMethodCallAsync(FactoryOperation operation, Func<Task<T>> factoryMethodCall);
-    Task<T?> DoFactoryMethodCallAsyncNullable(FactoryOperation operation, Func<Task<T?>> factoryMethodCall);
-    T DoFactoryMethodCall(T target, FactoryOperation operation, Action factoryMethodCall);
-    T? DoFactoryMethodCallBool(T target, FactoryOperation operation, Func<bool> factoryMethodCall);
-    Task<T> DoFactoryMethodCallAsync(T target, FactoryOperation operation, Func<Task> factoryMethodCall);
-    Task<T?> DoFactoryMethodCallBoolAsync(T target, FactoryOperation operation, Func<Task<bool>> factoryMethodCall);
-}
-```
-
-**You rarely implement this interface.** The default implementation (`FactoryCore<T>`) handles lifecycle hooks (IFactoryOnStart, IFactoryOnComplete, IFactoryOnCancelled) and logging. You can register a custom implementation for a specific type to add custom factory behavior without inheritance.
+`DrainAsync` accepts only `DispatchPhase.AfterFlush`; any other phase throws `ArgumentOutOfRangeException`.
+- It runs the scope's queued `AfterFlush` handlers, and a handler's exception reaches the drain call.
+- It does nothing when no entry factory call is active in the scope.
+- `AfterFlush` work never drained runs at the `AfterCommit` point, with Warning 9007.
 
 ## Summary
 
-| Interface | Purpose | Who Implements |
+| Interface | Purpose | Who implements it |
 |-----------|---------|----------------|
-| `IFactoryOnStart` | Pre-operation sync hook | Domain models |
-| `IFactoryOnStartAsync` | Pre-operation async hook | Domain models |
-| `IFactoryOnComplete` | Post-operation sync hook | Domain models |
-| `IFactoryOnCompleteAsync` | Post-operation async hook | Domain models |
-| `IFactoryOnCancelled` | Cancellation sync hook | Domain models |
-| `IFactoryOnCancelledAsync` | Cancellation async hook | Domain models |
-| `IFactorySaveMeta` | Save routing state | Domain models |
-| `IFactorySave<T>` | Save method signature | Generated factories |
-| `IAspAuthorize` | ASP.NET Core authorization | Custom auth implementations |
-| `IOrdinalSerializable` | Ordinal serialization marker | Domain models, value objects |
-| `IOrdinalConverterProvider<TSelf>` | Ordinal converter provider | Source generator (automatic) |
-| `IOrdinalSerializationMetadata` | Ordinal deserialization metadata | Source generator (automatic) |
-| `ILazyLoadFactory` | Deferred loading factory | Framework (inject via `[Service]`) |
-| `IFactoryEvents` | Mediator for publishing factory events | Factory methods (inject) |
-| `IFactoryEventRelay` | Client-side single-method integration hook for relayed events | Application (implement + register in DI) |
-| `IFactoryEventPhaseCoordinator` | Consumer drain trigger for `AfterFlush` handlers | Factory methods (inject via `[Service]`) |
-| `IFactoryCore<T>` | Factory execution pipeline | Framework (rarely customized) |
+| `IFactoryOnStart` / `IFactoryOnStartAsync` | before an operation | the domain class |
+| `IFactoryOnComplete` / `IFactoryOnCompleteAsync` | after an operation succeeds | the domain class |
+| `IFactoryOnCancelled` / `IFactoryOnCancelledAsync` | after an operation is cancelled | the domain class |
+| `IFactorySaveMeta` | Save routing state | the domain class |
+| `IFactorySave<T>` | Save for framework code | the generator |
+| `IAspAuthorize` | ASP.NET Core authorization | RemoteFactory.AspNetCore (replaceable) |
+| `IOrdinalSerializable` | ordinal writing | the generator |
+| `IOrdinalConverterProvider<TSelf>` | ordinal converter | the generator |
+| `IOrdinalSerializationMetadata` | ordinal reading | the generator |
+| `IFactoryEvents` | raising factory events | RemoteFactory (inject it) |
+| `IFactoryEventRelay` | receiving relayed events on the client | the application |
+| `IFactoryEventPhaseCoordinator` | draining `AfterFlush` handlers | RemoteFactory (inject it) |
 
 ## Next Steps
 
-- [Attributes Reference](attributes-reference.md) - All available attributes
-- [Factory Operations](factory-operations.md) - CRUD operation details
-- [Service Injection](service-injection.md) - DI integration
-- [Factory Events](factory-events.md) - `[FactoryEventHandler<T>]` mediator and client relay
-- [Authorization](authorization.md) - Authorization patterns
+- [Attributes Reference](attributes-reference.md): every attribute
+- [Factory Operations](factory-operations.md): the operations and their hooks
+- [Save Operation](save-operation.md): routing and outcomes
+- [Service Injection](service-injection.md): DI integration
+- [Factory Events](factory-events.md): handlers and the client relay
+- [Authorization](authorization.md): authorization patterns

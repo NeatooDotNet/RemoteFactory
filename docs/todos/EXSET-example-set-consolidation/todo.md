@@ -64,6 +64,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 - [ ] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must
 - [ ] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must
+- [ ] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-011 · AC-4 · Must
 
 ## Dismissed
 

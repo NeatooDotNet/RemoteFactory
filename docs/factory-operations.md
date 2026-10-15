@@ -53,7 +53,7 @@ public void Create(
     IsNew = true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L231-L245' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L233-L247' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### A Create Constructor
@@ -104,7 +104,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L247-L264' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L249-L266' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Not found is `false`.** Fetch runs on the instance, so it cannot return `null` itself. Returning `false` tells the factory to discard the instance and return `null`, and the generated signature is nullable (`Task<IOrder?>`). This is the one operation that handles "not there" cleanly. Use it for a missing row, not for a business filter.
@@ -143,7 +143,7 @@ internal async Task Insert(
     Id = row.Id;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L266-L282' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L268-L284' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Update
@@ -166,7 +166,7 @@ internal async Task Update(
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L284-L299' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L286-L301' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 A row missing under a loaded object is a failure, so Update throws.
@@ -188,7 +188,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L301-L313' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L303-L315' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Deleting the order removes its row, and its line rows go with it, as a database's cascade delete would. A line removed while the order is still kept is a different case: the list's Save removes that line's row during the next Update.
@@ -300,7 +300,7 @@ public static async Task<IOrder> OpenDraft(
         ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L358-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L360-L369' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `FetchDraft` is a plain `internal` `[Fetch]` with no `[Remote]`, so only the server calls it. The client calls `orderFactory.OpenDraft(customerName)` and gets the stored draft or a new, unsaved one, in one round trip. Don't put that choice in a Create that looks for an existing object, or in a Fetch that makes one: either hides which one the caller got.
@@ -447,7 +447,7 @@ public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L181-L191' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L183-L193' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnCancelled / IFactoryOnCancelledAsync

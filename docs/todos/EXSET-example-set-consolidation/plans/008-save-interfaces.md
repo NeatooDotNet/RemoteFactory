@@ -97,7 +97,6 @@ Does NOT touch:
    - `SaveTests` through the client containers:
      - **routing:** Save inserts, updates and deletes, with each result reassigned;
      - **new and deleted:** returns null;
-     - **no `[Delete]`:** `CustomerPreferences` marked deleted throws `NotImplementedException`;
      - **#104:** an authorized new-and-deleted Save should return null, but throws `NotAuthorizedException`. Written naturally, skipped as a known bug.
 2. **The save page:**
    - re-point the embeds;
@@ -110,22 +109,22 @@ Does NOT touch:
 
 ## Acceptance
 
-- [ ] Save through the client inserts, updates and deletes, and each result is reassigned `[integration]` · Must
-- [ ] The save table's outcomes are pinned:
+- [x] Save through the client inserts, updates and deletes, and each result is reassigned `[integration]` · Must
+- [x] The save table's outcomes are pinned:
   - new and deleted returns null;
   - with no `[Delete]`, marking the object deleted throws;
   - authorized new-and-deleted is #104, as a skipped known-bug test.
 
   `[integration]` · Should
-- [ ] On both pages:
+- [x] On both pages:
   - every C# block is an embed from Design or WRONG;
   - no LazyLoad and no `IFactoryCore`;
   - none of the findings' text remains;
   - the reference-app sources are gone, and the reference app builds.
 
   `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
-- [ ] The interfaces page's member descriptions and ordinal order match the library source `[explicit-skip: source-cited review]` · Should
-- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+- [x] The interfaces page's member descriptions and ordinal order match the library source `[explicit-skip: source-cited review]` · Should
+- [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -153,6 +152,14 @@ Does NOT touch:
 
 ## Test Evidence
 
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. Routing through the client | `SaveTests.Save_RoutesOnIsNewAndIsDeleted` (the `save-usage` region: Insert, Update and Delete through the client, each result reassigned; the order is gone after the Delete); `Save_InsertThenUpdate_WritesTheOneRow` (the `save-testing` region: each save reaches the server's row) | integration |
+| 2. Outcomes | `SaveTests.Save_NewAndDeleted_ReturnsNull` (null, and no draft stored). The missing-method throw: the library's `PartialSaveTests` (`:196`, `:289`, `:358`; see Amendments). #104: `SaveTests.AuthorizedSave_NewAndDeleted_ReturnsNull`, skipped as a known bug. Run unskipped, it failed on both TFMs with `NotAuthorizedException: Authorization denied for operation Save on IAuthorizedOrder; no reason was supplied.` | integration |
+| 3. Pages | explicit-skip: both pages have no fence outside a `snippet:`/`endSnippet` pair. The 11 embeds come from Order, CustomerPreferences and SaveTests. No LazyLoad, `IFactoryCore`, `[JsonInclude]` or 409 text remains. The 14 reference-app files are deleted; `reviews/008-refapp-build.log` (0 errors) | explicit-skip |
+| 4. Interfaces page | explicit-skip: members as printed from `src/RemoteFactory/*.cs` and `AspAuthorize.cs`; `IFactorySave<T>` from `ClassFactoryRenderer.cs:165`, `:1245-1321`, `:1571`; ordinal order as 013 established | explicit-skip |
+| 5. Meta | explicit-skip: `reviews/008-mdsnippets.log`. README, getting started, the-problem and factory-operations change only in attribution lines. Logs: `008-build.log`, `008-test.log`, `008-design-build.log`, `008-design-test.log` (unit 839; integration 646 + 7 skips; Design 166 + 1 known-bug skip, up 4; both TFMs) | explicit-skip |
+
 ---
 
 ## Gate Record
@@ -160,6 +167,11 @@ Does NOT touch:
 ---
 
 ## Plan Amendments
+
+- **2026-10-15 · Implementation:**
+  - The planned Design test of the missing-`[Delete]` throw is dropped. `ICustomerPreferences` offers no way to mark the object deleted, which is right for a type with no Delete, so a caller cannot reach that branch without a cast (C-20). The throw is pinned by the library's `PartialSaveTests`, and the page says a type with no Delete should not offer deletion.
+  - `trimming.md's` link to the removed private-setter section now points to `#ifactorysavemeta`. The section itself is EXSET-011's, and is on the todo punchlist.
+  - The interfaces page keeps `### IFactoryEvents` and `### IFactoryEventRelay` headings, because `attributes-reference.md` and the v1.1.0 notes link to them. `lazyload.md's` link to `#ilazyloadfactory` goes with that page (EXSET-011).
 
 ---
 
