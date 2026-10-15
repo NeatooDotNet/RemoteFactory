@@ -1,26 +1,26 @@
 # Attributes Reference
 
-Complete reference of all RemoteFactory attributes.
+Every RemoteFactory attribute: what it marks, and what the generator does with it. The code comes from RemoteFactory's compiled example set, `src/Design`.
 
 ## Quick Lookup
 
 | Attribute | Target | Purpose |
 |-----------|--------|---------|
-| `[Factory]` | Class, Interface | Enable factory generation |
-| `[SuppressFactory]` | Class, Interface | Disable factory generation |
-| `[Create]` | Constructor, Method | Instance creation |
-| `[Fetch]` | Method | Load existing data |
-| `[Insert]` | Method | Persist new entity |
-| `[Update]` | Method | Persist changes |
-| `[Delete]` | Method | Remove entity |
-| `[Execute]` | Method | Business operations |
-| `[FactoryEventHandler<T>]` | Class | Mediator + client relay handler for `FactoryEventBase` events |
-| `[Remote]` | Method | Client-to-server entry point |
-| `[Service]` | Parameter | Inject from DI |
-| `[AuthorizeFactory<T>]` | Class, Interface | Custom authorization |
-| `[AuthorizeFactory]` | Method | Authorization check |
-| `[AspAuthorize]` | Method | ASP.NET Core policies |
-| `[assembly: FactoryHintNameLength]` | Assembly | Limit generated file names |
+| `[Factory]` | Class, Interface | Generate a factory for this type |
+| `[SuppressFactory]` | Class, Record | Turn generation off for a class marked `[Factory]` |
+| `[Create]` | Constructor, Method | Build a new object |
+| `[Fetch]` | Method | Load a stored object |
+| `[Insert]` | Method | Write a new object |
+| `[Update]` | Method | Write a stored object's changes |
+| `[Delete]` | Method | Remove a stored object |
+| `[Execute]` | Method | A command, or create-or-fetch on a class |
+| `[FactoryEventHandler<T>]` | Class | A server-side handler for `FactoryEventBase` events |
+| `[Remote]` | Method | A client-to-server entry point |
+| `[Service]` | Parameter | Resolve from DI on the tier that runs the method |
+| `[AuthorizeFactory<T>]` | Class, Interface | Apply an authorization class |
+| `[AuthorizeFactory]` | Method (of the authorization interface) | Map a check to operations |
+| `[AspAuthorize]` | Method | ASP.NET Core policies and roles |
+| `[assembly: FactoryHintNameLength]` | Assembly | Raise the generated file-name limit |
 
 ---
 
@@ -28,442 +28,419 @@ Complete reference of all RemoteFactory attributes.
 
 ### [Factory]
 
-Marks a class or interface for factory generation. Generates `I{TypeName}Factory` interface and `{TypeName}Factory` implementation.
-
-**Inherited:** Yes
+Marks a class or interface for generation: the generator emits `I{TypeName}Factory` and its implementation. `CustomerPreferences`:
 
 <!-- snippet: attributes-factory -->
 <a id='snippet-attributes-factory'></a>
 ```cs
-[Factory]  // Enables factory generation
-public partial class MinimalEmployee
-{
-    [Create]
-    public MinimalEmployee() { }
-}
+[Factory]
+internal partial class CustomerPreferences : ICustomerPreferences, IFactoryOnStartAsync
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L11-L18' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L52-L55' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-On an interface, `[Factory]` generates a remote proxy. All interface methods become remote entry points — no operation attributes needed. The server provides the implementation class (without `[Factory]`). See [Interface Factory](interface-factory.md) for the full pattern.
+The class is `internal` and `partial`, behind its public interface, so the factory is typed on `ICustomerPreferences`.
 
-```csharp
-[Factory]  // Generates proxy — all methods are remote
-public interface IOrderQueryService
-{
-    Task<IReadOnlyList<OrderSummary>> GetAllAsync();
-    Task<OrderSummary?> GetByIdAsync(int id);
-}
+On an interface, `[Factory]` generates a remote proxy. Every method is a call to the server, and needs no operation attribute. The server registers the implementing class, which carries no `[Factory]`. Design's customer directory:
 
-// Server implementation — no [Factory] here
-public class OrderQueryService : IOrderQueryService { ... }
+<!-- snippet: attributes-factory-interface -->
+<a id='snippet-attributes-factory-interface'></a>
+```cs
+[Factory]
+[AuthorizeFactory<ICustomerDirectoryAuth>]
+public interface ICustomerDirectory
 ```
+<sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L258-L262' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factory-interface' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+See [Interface Factory](interface-factory.md).
+
+**Only the declaring type.** The generator handles types that carry `[Factory]` on their own declaration. A class derived from a `[Factory]` class gets no factory of its own unless it carries `[Factory]` too. `FactoryAttribute`'s `Inherited = true` does not change that, because the generator reads the declaration, not reflection. `[Factory]` on an `abstract` or generic class is ignored, with no diagnostic. What a derived `[Factory]` class takes from its base is under [Attributes and Inheritance](#attributes-and-inheritance).
 
 ### [SuppressFactory]
 
-Prevents factory generation for a class or interface. Use when a base class has `[Factory]` but a derived class shouldn't have its own factory.
-
-**Inherited:** Yes
-
-<!-- snippet: attributes-suppressfactory -->
-<a id='snippet-attributes-suppressfactory'></a>
-```cs
-[Factory]
-public partial class BaseEntity { }
-
-[SuppressFactory]  // Prevents factory generation on derived class
-public partial class InternalEntity : BaseEntity { }
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L20-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-suppressfactory' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+On a class or record that also carries `[Factory]`, turns generation off for it. The type still compiles, with no factory. It has no effect on an interface, which keeps its factory, and none on a type without `[Factory]`, which gets none anyway, a derived class included. Write it as `[SuppressFactory]`: the generator matches that spelling, so `[SuppressFactoryAttribute]` and namespace-qualified forms are not recognised.
 
 ## Operation Attributes
 
 ### [Create]
 
-Marks constructors or methods that create new instances. Supports multiple overloads with different signatures.
+Builds a new object. On a method, the factory calls it on a new instance:
 
-**Inherited:** No | **Auth flags:** `Create | Read`
-
-<!-- snippet: attributes-create -->
-<a id='snippet-attributes-create'></a>
+<!-- snippet: operations-create-method -->
+<a id='snippet-operations-create-method'></a>
 ```cs
-[Factory]
-public partial class EmployeeCreate
+/// <summary>
+/// Creates a new Order. Local: runs on the tier that calls it.
+/// </summary>
+[Create]
+public void Create(
+    string customerName,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    [Create]  // Constructor-based creation
-    public EmployeeCreate(string name) { Name = name; }
-
-    [Create]  // Static factory method - different signature
-    public static EmployeeCreate Create(string name, decimal salary) => new(name) { Salary = salary };
-
-    public string Name { get; }
-    public decimal Salary { get; private set; }
+    CustomerName = customerName;
+    Lines = lineListFactory.Create();
+    Status = OrderStatus.Draft;
+    IsNew = true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L28-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-create' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L233-L247' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+On a constructor, the factory calls the constructor. That constructor also runs on every Fetch and every deserialization, so keep it to defaults:
+
+<!-- snippet: operations-create-constructor -->
+<a id='snippet-operations-create-constructor'></a>
+```cs
+[Create]
+public CustomerPreferences()
+{
+    DeliveryWindow = "Any";
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L57-L63' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+A root's Create is local; it is `[Remote]` only when creating needs the server. See [Factory Operations — Create](factory-operations.md#create-operation).
+
+**Auth flags:** `Create | Read`.
 
 ### [Fetch]
 
-Marks methods that load data into existing instances. Returns `bool` or `Task<bool>` — `false` means not found (factory returns `null`).
+Loads a stored object into the new instance. Returning `bool`, `false` means not found, and the factory returns `null`:
 
-**Inherited:** No | **Auth flags:** `Fetch | Read`
-
-<!-- snippet: attributes-fetch -->
-<a id='snippet-attributes-fetch'></a>
+<!-- snippet: operations-fetch-instance -->
+<a id='snippet-operations-fetch-instance'></a>
 ```cs
-[Factory]
-public partial class EmployeeFetch
+/// <summary>
+/// Loads an existing Order and its lines; false when there is none.
+/// </summary>
+[Remote, Fetch]
+internal async Task<bool> Fetch(
+    int id,
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    [Remote, Fetch]  // Returns bool: false = not found (factory returns null)
-    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
-        => Task.FromResult(true);
+    var row = await db.FindAsync(id);
+    if (row == null)
+        return false;
+
+    LoadFrom(row, lineListFactory);
+    return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L43-L51' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-fetch' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L249-L266' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+**Auth flags:** `Fetch | Read`.
 
 ### [Insert], [Update], [Delete]
 
-Write operations routed by `Save()` based on `IsNew` and `IsDeleted` flags. Require `IFactorySaveMeta`. Can be combined on a single method (e.g., `[Insert, Update]` for upsert).
+The writes, which the factory's `Save` calls according to `IsNew` and `IsDeleted` (`IFactorySaveMeta`). They are not on the factory interface; the caller calls `Save`. `Order`'s Insert:
 
-**Inherited:** No | **Auth flags:** `Insert|Write`, `Update|Write`, `Delete|Write`
-
-<!-- snippet: attributes-insert -->
-<a id='snippet-attributes-insert'></a>
+<!-- snippet: operations-insert -->
+<a id='snippet-operations-insert'></a>
 ```cs
-[Factory]
-public partial class EmployeeInsert : IFactorySaveMeta
+/// <summary>
+/// Inserts a new Order and its lines.
+/// </summary>
+[Remote, Insert]
+internal async Task Insert(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Remote, Insert]  // Persists new entity
-    internal Task Insert([Service] IEmployeeRepository repo, CancellationToken ct) => Task.CompletedTask;
+    var row = new OrderRow();
+    MapTo(row);
+    db.Add(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+    Id = row.Id;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L53-L63' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L268-L284' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Combining operations on one method:
+One method can carry more than one of them. `CustomerPreferences` has a single `[Insert, Update]`, saved through `SaveUpsert`:
 
-<!-- snippet: attributes-multiple-operations -->
-<a id='snippet-attributes-multiple-operations'></a>
+<!-- snippet: operations-insert-update -->
+<a id='snippet-operations-insert-update'></a>
 ```cs
-[Factory]
-public partial class UpsertSetting : IFactorySaveMeta
+[Remote, Insert, Update]
+internal async Task Upsert([Service] ICustomerPreferencesStore store)
 {
-    public bool IsNew { get; private set; }
-    public bool IsDeleted { get; set; }
-
-    [Remote, Insert, Update]  // Both operations point to same method
-    internal Task Upsert(CancellationToken ct) => Task.CompletedTask;
+    await store.WriteAsync(new CustomerPreferencesRow(CustomerName, DeliveryWindow, NotifyBySms, LastSavedAt));
+    IsNew = false;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L184-L194' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-multiple-operations' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L91-L98' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+See [Save Operation](save-operation.md).
+
+**Auth flags:** `Insert | Write`, `Update | Write`, `Delete | Write`.
 
 ### [Execute]
 
-Marks static methods for business operations — request-response commands on a static `[Factory]` class (the delegate name is the method name with its underscore prefix removed), or orchestration on a class factory (a factory-interface method returning the containing type). Like every operation, **`[Execute]` obeys `[Remote]`**: with it the call is a client-to-server entry point; without it the method runs on whichever tier resolves it, with that tier's services.
+A request-response command. Every `[Execute]` returns `Task` or `Task<T>` (NF0102), with or without `[Remote]`. It comes in two shapes:
+- **On a static `[Factory]` class:** a `private static` method whose name has an underscore prefix. The generator emits a delegate type named without it.
+- **On a class factory:** a `public static` method returning `Task` of the class's interface, or of the class itself when there is no matching interface. It becomes a method on the factory interface. `Order.OpenDraft`, create-or-fetch, is one ([Factory Operations — Class Factory Execute](factory-operations.md#class-factory-execute)).
 
-**Inherited:** No | **Auth flags:** `Execute | Read`
+A static command that crosses to the server:
 
-<!-- snippet: attributes-execute -->
-<a id='snippet-attributes-execute'></a>
+<!-- snippet: operations-execute -->
+<a id='snippet-operations-execute'></a>
 ```cs
-[Factory]
-public static partial class PromoteCommand
+[Remote, Execute]
+private static async Task<SubmitOutcome> _SubmitOrder(
+    int orderId,
+    [Service] IOrderFactory orderFactory,
+    CancellationToken cancellationToken)
 {
-    [Remote, Execute]  // Business operation - underscore prefix removed in delegate name
-    private static Task<bool> _Execute(Guid employeeId, [Service] IEmployeeRepository repo, CancellationToken ct)
-        => Task.FromResult(true);
+    var order = await orderFactory.Fetch(orderId, cancellationToken);
+    if (order == null)
+        return SubmitOutcome.NotFound;
+    if (!order.CanSubmit)
+        return SubmitOutcome.NotSubmittable;
+
+    order.Submit();
+    await orderFactory.Save(order, cancellationToken);
+    return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L89-L97' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L58-L75' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Without `[Remote]`, the same shape runs locally — on the client with the client's services, on the server with the server's:
+Like every operation, `[Execute]` obeys `[Remote]`. Without it the command runs on whichever tier resolves it, with that tier's services, unless its authorization sends it to the server (below):
 
 <!-- snippet: attributes-execute-local -->
 <a id='snippet-attributes-execute-local'></a>
 ```cs
-[Factory]
-public static partial class TallyCommand
+[Execute]
+private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
 {
-    [Execute]  // No [Remote] - runs on whichever tier resolves the delegate, with that tier's services
-    private static Task<decimal> _Total(decimal baseSalary, decimal bonus, [Service] ISalaryCalculator calculator)
-        => Task.FromResult(calculator.Calculate(baseSalary, bonus));
+    return Task.FromResult(scorer.Score(text));
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L99-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L502-L508' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Where it runs.** A bare `[Execute]` gets one unguarded local path in every factory mode and no remote delegate or endpoint: it runs on whichever tier resolves it, and its `[Service]` parameters are resolved from that tier's container — so a bare command that takes a server-only repository compiles, then fails on the client at call time with a DI resolution error. `[Remote, Execute]` gives the client a remote delegate and the server a guarded local path. On a class factory, visibility follows the ordinary rule: `public static` runs where the factory resolves; `internal static` without `[Remote]` is server-only, guarded, and carried on the factory interface with the `internal` modifier; `[Remote] internal static` is promoted to `public` on the interface. See [Factory Operations](factory-operations.md#execute-operation) for the two shapes.
+**Where it runs:**
+- **A bare `[Execute]`** gets one unguarded local path in every factory mode, and no remote delegate or endpoint, unless it carries `[AspAuthorize]` or a `[Remote]` authorization method applies to it; either makes it remote, as [Authorization](authorization.md#placement-on-execute) explains. Its `[Service]` parameters come from the container that resolved it, so a bare command that takes a server-only service compiles, then fails on the client at call time with a DI resolution error.
+- **`[Remote, Execute]`** gives the client a remote delegate and the server a guarded local path.
+- **On a class factory, visibility follows the ordinary rule:**
+  - `public static` runs where the factory resolves;
+  - `internal static` without `[Remote]` is server-only and guarded, and carried on the factory interface as `internal`;
+  - `[Remote] internal static` is promoted to `public` on the interface.
 
-**Trimming:** `[Remote]` is what makes an `[Execute]` body trimmable, by deciding whether a guard is emitted at all. With `[Remote]` — or `internal` on a class factory — the local path is guarded by `NeatooRuntime.IsServerRuntime`, so a client published with the feature switch set to `false` drops the method body, its `[Service]` dependencies, and their transitive references. Without it the body ships to the client and runs there; that is the point. Both halves are measured in the trimming gate rather than inferred. See [IL Trimming](trimming.md).
+**Trimming:** `[Remote]` decides whether a guard is emitted at all. With `[Remote]`, or `internal` on a class factory, the local path is guarded by `NeatooRuntime.IsServerRuntime`. A client published with the feature switch set to `false` then drops the method body, its `[Service]` dependencies, and their transitive references. Without a guard the body ships to the client and runs there; that is the point. See [IL Trimming](trimming.md).
 
-**NF0105 and static methods.** `[Remote] public` is an error on instance methods (NF0105) because on a class factory visibility is the local/server-only axis. Static methods are exempt: a static-factory `[Execute]` is `private static` behind a generated public wrapper, and a class-level `[Execute]` is `public static` by convention — on those shapes `[Remote]` alone drives the guard, and the body trims regardless of visibility.
+**NF0105 and static methods.** `[Remote] public` is an error on instance methods (NF0105), because on a class factory visibility is the local/server-only axis. Static methods are exempt. A static-factory `[Execute]` is `private static` behind a generated public wrapper, and a class-level `[Execute]` is `public static` by convention. On those shapes `[Remote]` alone drives the guard.
+
+**Auth flags:** `Execute | Read`.
 
 ### [FactoryEventHandler\<T\>]
 
-Class-level attribute that marks a class as a **server-side** static handler for factory events of type `T` (where `T : FactoryEventBase`). The source generator finds one matching `static` method by signature and registers it with `FactoryEventHandlerRegistry`. An optional `DispatchPhase` argument declares *when* the handler runs — `Immediate` (the default, at `Raise`), `AfterFlush` (queued, drained by the factory body's `IFactoryEventPhaseCoordinator.DrainAsync` call), or `AfterCommit` (queued, drained by the framework after the entry call succeeds). See [Factory Events](factory-events.md) for the full pattern and [Dispatch Phases](factory-events.md#dispatch-phases) for the phase contract.
+Marks a static class as a **server-side** handler for events of type `T` (`T : FactoryEventBase`). The generator finds one matching `static` method by its signature and registers it:
 
-```csharp
-[FactoryEventHandler<OrderShipped>]                            // Immediate — the default
-[FactoryEventHandler<OrderShipped>(DispatchPhase.AfterFlush)]  // deferred, consumer-drained
-[FactoryEventHandler<OrderShipped>(DispatchPhase.AfterCommit)] // deferred, framework-drained
-[FactoryEventHandler<OrderShipped>(DispatchPhase.AfterCommit,
-                                   Coalesce = true)]           // identical queued dispatches collapse
-```
-
-The optional `Coalesce` named argument collapses identical **queued** dispatches (same handler, `Equals`-equal event, same `RaiseOptions`) to one per drain — see [Coalescing](factory-events.md#coalescing-identical-dispatches-opt-in) for the identity contract and its hazards. The flag is inert on anything that isn't queued (`Immediate` emits `NF0505`).
-
-**Inherited:** No | **Multiple:** Yes (stack one per event type)
-
-**Method matching rules (static handler only):**
-- Must be `static`
-- Return type must be `Task`
-- First non-`[Service]`/non-`CancellationToken` parameter must be of type `T`
-- Any accessibility allowed
-- Exactly one match required — `NF0501` if none, `NF0502` if multiple
-- One attribute per event type — a repeated event type on the same class emits `NF0504` (Warning) and only the first declaration registers: its phase and its `Coalesce` flag
-
-```csharp
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public static partial class OrderAuditHandler
+<!-- snippet: attributes-factoryeventhandler -->
+<a id='snippet-attributes-factoryeventhandler'></a>
+```cs
+[FactoryEventHandler<OrderPlacedEvent>]
+public static partial class OrderNotifyHandlers
 {
-    internal static Task Log(
-        OrderCheckoutCompleted evt,
-        [Service] IAuditLogService audit,
-        CancellationToken ct) =>
-        audit.LogAsync("Checkout", evt.OrderId, "Order", $"Total: {evt.Total:C}", ct);
+    internal static async Task SendOrderConfirmation(
+        OrderPlacedEvent orderEvent,
+        [Service] INotificationService notificationService,
+        CancellationToken cancellationToken)
+    {
+        await notificationService.SendAsync(
+            orderEvent.CustomerEmail,
+            $"Order {orderEvent.OrderId} confirmed!");
+    }
 }
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs#L92-L106' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryeventhandler' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-**Trimming:** handler registrations are wrapped in `NeatooRuntime.IsServerRuntime`, so a client published with the feature switch set to `false` drops the handler bodies and their `[Service]` dependencies. Because those registrations are entirely server-guarded, there is nothing left on a trimmed client to resolve — handler registration cannot be verified from a client-side test, only from server-side or untrimmed ones. See [IL Trimming](trimming.md).
+An optional `DispatchPhase` argument says when the handler runs:
+- **`Immediate`**, the default: at `Raise`.
+- **`AfterFlush`:** queued, and drained by the factory body's `IFactoryEventPhaseCoordinator.DrainAsync` call.
+- **`AfterCommit`:** queued, and drained by the framework after the entry call succeeds.
 
-Runs in the caller's DI scope via `FactoryEventHandlerRegistry`, triggered by `IFactoryEvents.Raise` during a factory method. Handlers run sequentially, awaited, at the drain point their phase declares. `Immediate` handlers (the default) run at `Raise`, sharing the caller's `DbContext` and transaction with staged (unflushed) state visible; a throwing `Immediate` handler aborts the chain and propagates to the caller. Deferred handlers (`AfterFlush`, `AfterCommit`) are queued at `Raise` and run at their drain point — in-transaction drains propagate exceptions, the post-completion drain logs and swallows them, and a failed factory call discards queued work entirely. See [Dispatch Phases](factory-events.md#dispatch-phases). For fire-and-forget work that should not participate in the factory operation at all, compose a manual `Task.Run` + `IServiceScopeFactory.CreateScope()` pattern inside the factory method (see the [v1.5.0 release notes](release-notes/v1.5.0.md)).
+The optional `Coalesce = true` collapses identical queued dispatches (same handler, `Equals`-equal event, same `RaiseOptions`) to one per drain. It is inert where nothing is queued; on `Immediate` it emits NF0505. See [Factory Events](factory-events.md) and [Dispatch Phases](factory-events.md#dispatch-phases).
 
-> **Instance-method handlers are not supported.** Declaring a non-`static` matching method inside a `[FactoryEventHandler<T>]` class emits **NF0503 (Warning)** and is silently skipped at runtime. Client-side reception is handled by implementing `IFactoryEventRelay` on your own class and registering it in DI — see [Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay) and the [`IFactoryEventRelay`](interfaces-reference.md#ifactoryeventrelay) interface reference.
+**Method matching rules:**
+- the method is `static`, of any accessibility, and returns `Task`;
+- its first parameter that is neither `[Service]` nor `CancellationToken` is of type `T`;
+- exactly one method matches (NF0501 if none, NF0502 if several).
 
-A single class can stack multiple `[FactoryEventHandler<T>]` attributes to handle **several event types** — the generator matches one `static` method per attribute, and each attribute carries its own phase and `Coalesce` flag. That is the documented basis of stacking, and the generator enforces it: repeating the *same* event type on one class emits `NF0504` (Warning), and only the first declaration's registration — phase and flag — stands.
+**One attribute per event type.** A class stacks `[FactoryEventHandler<T>]` to handle several event types, one matching method each. Repeating the same event type on one class emits NF0504 (warning), and only the first declaration registers.
+
+**Inherited:** No. **Multiple:** Yes.
+
+Handlers run in the caller's DI scope, one at a time and awaited, in no specified order, at the drain point their phase names:
+- **An `Immediate` handler** shares the caller's `DbContext` and transaction, and sees staged state. Its exception aborts the chain and reaches the caller.
+- **The in-transaction drains** propagate exceptions.
+- **The post-completion drain** logs exceptions and swallows them.
+- **A failed factory call** discards queued work.
+
+Registrations are wrapped in `NeatooRuntime.IsServerRuntime`, so a trimmed client drops the handler bodies and their services.
+
+> **Instance-method handlers are not supported.** A non-`static` matching method emits **NF0503** (warning) and is skipped at runtime. To receive events on the client, implement [`IFactoryEventRelay`](interfaces-reference.md#ifactoryeventrelay) and register it in DI ([Factory Events — Client-Side Relay](factory-events.md#client-side-relay-consumer-implements-ifactoryeventrelay)).
 
 ### [FactoryEvent]
 
-Class-level attribute carried by `FactoryEventBase` with `Inherited = true`. Drives runtime discovery of event types by `FactoryEventTypeRegistry` — every descendant of `FactoryEventBase` is automatically discoverable without per-event annotation.
+`FactoryEventBase` carries `[FactoryEvent]` with `Inherited = true`, so every event type is discoverable at runtime with no attribute of its own. An event is a record deriving from `FactoryEventBase`:
 
-**Inherited:** Yes | **Multiple:** No
-
-```csharp
-// FactoryEventBase (in Neatoo.RemoteFactory) — applied once, inherited by every descendant.
-[FactoryEvent]
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
-                            DynamicallyAccessedMemberTypes.PublicProperties)]
-public abstract record FactoryEventBase;
-
-// Consumer code — no attribute required on the descendant.
-public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
+<!-- snippet: attributes-factoryevent -->
+<a id='snippet-attributes-factoryevent'></a>
+```cs
+public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEventBase;
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs#L52-L54' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryevent' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-Consumers **do not** apply `[FactoryEvent]` directly — inheriting `FactoryEventBase` is sufficient. The attribute is documented here for completeness; applying it to a type that does not inherit `FactoryEventBase` has no effect.
+Do not apply `[FactoryEvent]` yourself. On a type that does not derive from `FactoryEventBase` it has no effect.
 
 ## Execution Control
 
 ### [Remote]
 
-Marks methods as client-to-server entry points. Without `[Remote]`, methods execute locally — on every operation, `[Execute]` included. On class factories `[Remote]` requires `internal` (NF0105) and the generator promotes the member to `public` on the factory interface; static methods are exempt from NF0105 — see [[Execute]](#execute) for why. See [Client-Server Architecture](client-server-architecture.md) for when to use it.
+Marks a client-to-server entry point. Without `[Remote]`, a method runs locally, `[Execute]` included, with one exception: an operation with an `[AspAuthorize]` check, or a matching `[Remote]` authorization method, goes to the server as if it carried `[Remote]`, because that is where its check runs. Once a call is on the server, the methods it calls need no `[Remote]`. On a class factory, `[Remote]` requires `internal` (NF0105), and the generator promotes the member to `public` on the factory interface. Static methods are exempt, as [[Execute]](#execute) explains.
 
-**Inherited:** Yes
-
-<!-- snippet: attributes-remote -->
-<a id='snippet-attributes-remote'></a>
-```cs
-[Factory]
-public partial class EmployeeRemote
-{
-    [Create]  // No [Remote] - executes locally without network call
-    public EmployeeRemote() { }
-
-    [Remote, Fetch]  // [Remote] - crosses client/server boundary via HTTP
-    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
-        => Task.FromResult(true);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L109-L120' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-remote' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+`Order`'s Create, above, has no `[Remote]` and runs on the caller's tier. Its Fetch and writes carry `[Remote]` and run on the server. See [Client-Server Architecture](client-server-architecture.md).
 
 ### [Service]
 
-Marks parameters for dependency injection. Service parameters are resolved from the DI container and never serialized. See [Service Injection](service-injection.md) for constructor vs method injection.
+Marks a parameter that the factory resolves from DI, on the tier that runs the method. It is never serialized. Value parameters come first, then the `[Service]` parameters, then the `CancellationToken`:
 
-**Inherited:** No
-
-<!-- snippet: attributes-service -->
-<a id='snippet-attributes-service'></a>
+<!-- snippet: aspnetcore-cancellation -->
+<a id='snippet-aspnetcore-cancellation'></a>
 ```cs
-[Factory]
-public partial class EmployeeWithService
+[Remote, Fetch]
+internal async Task<bool> Fetch(
+    int orderId,
+    [Service] IOrderDbContext db,
+    CancellationToken cancellationToken)
 {
-    [Remote, Fetch]
-    internal Task<bool> Fetch(
-        Guid employeeId,                          // Value parameter: serialized to server
-        [Service] IEmployeeRepository repository, // [Service]: resolved from DI container
-        CancellationToken ct) => Task.FromResult(true);
+    var row = await db.FindAsync(orderId, cancellationToken);
+    if (row == null)
+        return false;
+
+    OrderId = row.Id;
+    CustomerName = row.CustomerName;
+    Status = row.Status;
+    Lines = row.Lines
+        .Select(l => new OrderSummaryLine(l.ProductName, l.Quantity, l.UnitPrice * l.Quantity))
+        .ToList();
+    Total = Lines.Sum(l => l.LineTotal);
+    return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L122-L132' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-service' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L87-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+See [Service Injection](service-injection.md) for method and constructor injection.
 
 ## Authorization
 
 ### [AuthorizeFactory\<T\>]
 
-Applies a custom authorization interface to the factory. The type parameter must be an interface with methods decorated with `[AuthorizeFactory]`. See [Authorization](authorization.md).
+Applies an authorization interface to a class or interface factory. `T`'s methods carry `[AuthorizeFactory]`:
 
-**Inherited:** No
-
-<!-- snippet: attributes-authorizefactory-generic -->
-<a id='snippet-attributes-authorizefactory-generic'></a>
+<!-- snippet: authorization-apply -->
+<a id='snippet-authorization-apply'></a>
 ```cs
 [Factory]
-[AuthorizeFactory<IEmployeeAuthorization>]  // Class-level authorization
-public partial class AuthEmployee { }
+[AuthorizeFactory<IAuthorizedOrderAuth>]
+internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFactoryOnCompleteAsync
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L134-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-generic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrder.cs#L99-L103' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-apply' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### [AuthorizeFactory]
 
-Marks methods in authorization interfaces, mapping them to operation flags.
+On a method of the authorization interface, maps it to the operations it checks. Flags combine with `|`:
 
-**Inherited:** No
-
-<!-- snippet: attributes-authorizefactory-interface -->
-<a id='snippet-attributes-authorizefactory-interface'></a>
+<!-- snippet: authorization-interface -->
+<a id='snippet-authorization-interface'></a>
 ```cs
-public interface IMinimalDocAuth
+public interface IAuthorizedOrderAuth
 {
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]   // Maps to Fetch operations
-    bool CanRead();
+    /// <summary>
+    /// Broad-scope check covering all Read (Create, Fetch) and Write (Insert, Update, Delete) operations.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Read | AuthorizeFactoryOperation.Write)]
+    bool HasAccess();
 
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]  // Maps to Insert, Update, Delete
-    bool CanWrite();
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L140-L149' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorizefactory-interface' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+    /// <summary>
+    /// Who may create an order: checked by the local Create (and CanCreate) on
+    /// the client, and again on the server when the new order is saved (Insert).
+    /// </summary>
+    /// <remarks>
+    /// A local Create runs only on the client, so the client check is for the
+    /// screen; the Insert scope is what the server enforces.
+    /// </remarks>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Insert)]
+    bool CanCreate();
 
-Combine flags with bitwise OR:
+    /// <summary>
+    /// Fine-grained check for Fetch operations only.
+    /// </summary>
+    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+    bool CanFetch();
 
-<!-- snippet: attributes-authorization-operation -->
-<a id='snippet-attributes-authorization-operation'></a>
-```cs
-public interface IOpAuth
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create | AuthorizeFactoryOperation.Fetch)]  // Combined flags
-    bool CanCreateAndRead();
-
+    /// <summary>
+    /// Fine-grained check for Delete operations only.
+    /// </summary>
     [AuthorizeFactory(AuthorizeFactoryOperation.Delete)]
     bool CanDelete();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L211-L220' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-authorization-operation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/AuthorizedOrderAuth.cs#L68-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+See [Authorization](authorization.md) for the flags and what each refusal does.
 
 ### [AspAuthorize]
 
-Applies ASP.NET Core authorization policies to factory methods. Multiple `[AspAuthorize]` attributes require all policies to pass. See [Authorization](authorization.md).
+Applies ASP.NET Core authorization to a factory method. Its properties are `Policy`, `Roles` (comma-separated; any one passes) and `AuthenticationSchemes` (comma-separated). Several `[AspAuthorize]` attributes on one method must all pass:
 
-**Inherited:** No | **Multiple:** Yes
-
-**Properties:** `Policy` (string?), `Roles` (string?, comma-delimited), `AuthenticationSchemes` (string?, comma-delimited)
-
-<!-- snippet: attributes-aspauthorize -->
-<a id='snippet-attributes-aspauthorize'></a>
+<!-- snippet: authorization-policy-multiple -->
+<a id='snippet-authorization-policy-multiple'></a>
 ```cs
-[Factory]
-public partial class PolicyEmployee : IFactorySaveMeta
+[Remote, Update]
+[AspAuthorize("RequireAuthenticated")]
+[AspAuthorize(Roles = "Manager")]
+internal Task Update()
 {
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Remote, Fetch]
-    [AspAuthorize("RequireEmployee")]  // Policy-based authorization
-    internal Task<bool> FetchWithPolicy(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
-        => Task.FromResult(true);
-
-    [Remote, Insert]
-    [AspAuthorize(Roles = "HR,Manager")]  // Role-based authorization
-    internal Task InsertWithRoles([Service] IEmployeeRepository repo, CancellationToken ct)
-        => Task.CompletedTask;
+    return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L165-L182' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-aspauthorize' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L158-L166' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+**Inherited:** No. **Multiple:** Yes.
 
 ## Assembly-Level Attributes
 
 ### [assembly: FactoryHintNameLength]
 
-Limits generated file hint name length. Use when hitting Windows path length limits (260 characters).
+The generator caps the hint names of the files it generates at 50 characters, to stay inside the Windows 260-character path limit. A type whose fully qualified name exceeds the cap gets a truncated name and **NF0104**, an error, because truncated names can collide. `[assembly: FactoryHintNameLength(100)]` raises the cap for the assembly that declares it; put it in any file of that assembly. Shortening the namespace or type name is the alternative.
 
-<!-- snippet: attributes-factoryhintnamelength -->
-<a id='snippet-attributes-factoryhintnamelength'></a>
-```cs
-// Increase hint name length to accommodate long namespace/type names
-// Use when hitting Windows path length limits (260 characters)
-[assembly: FactoryHintNameLength(100)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/AssemblyAttributes.cs#L3-L7' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-attributes-factoryhintnamelength-1'></a>
-```cs
-// Limits generated file name length for Windows path limits
-// [assembly: FactoryHintNameLength(100)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L5-L8' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength-1' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+## Attributes and Inheritance
 
-## Attribute Inheritance
-
-| Attribute | Inherited | Note |
-|-----------|-----------|------|
-| `[Factory]` | Yes | Derived classes get their own factory |
-| `[SuppressFactory]` | Yes | Blocks factory on derived classes too |
-| `[Remote]` | Yes | Derived methods inherit remote execution |
-| `[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]` | No | Must redeclare on each class |
-| `[FactoryEventHandler<T>]` | No | Stack multiple for multiple event types |
-| `[Service]` | No | Must apply to each parameter |
-| `[AuthorizeFactory<T>]`, `[AuthorizeFactory]`, `[AspAuthorize]` | No | Must redeclare on each class/method |
-
-<!-- snippet: attributes-inheritance -->
-<a id='snippet-attributes-inheritance'></a>
-```cs
-[Factory]   // Inherited: Yes
-public partial class BaseWithFactory
-{
-    [Create]    // Inherited: No
-    public BaseWithFactory() { }
-
-    [Remote, Fetch]  // [Remote] Inherited: Yes
-    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
-}
-
-public partial class DerivedEntity : BaseWithFactory
-{
-    // Inherits [Factory] and [Remote] from base
-    // Does NOT inherit [Create] - must redeclare
-    [Create]
-    public DerivedEntity() : base() { }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L222-L240' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+A class gets a factory from its own `[Factory]` only, but a derived `[Factory]` class takes part of its factory from its base classes:
+- **`[Factory]`:** a derived class needs its own. Without it the class has no factory, whatever its base carries.
+- **`[SuppressFactory]`:** affects only a class or record declaration that also carries `[Factory]`.
+- **Operation methods:** the derived class's factory includes its base classes' operation methods (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`), with their `[Remote]`, `[Service]` and `[AspAuthorize]`. Constructors are the exception: only the derived class's own `[Create]` constructors count.
+- **`[AuthorizeFactory<T>]`:** a derived class without its own takes the nearest base class's. A class's own replaces its base's.
+- **`[AuthorizeFactory]`:** declared on the authorization interface's methods, not on the class.
+- **`[FactoryEventHandler<T>]`:** declared on each handler class.
 
 ## Next Steps
 
-- [Interfaces Reference](interfaces-reference.md) — All RemoteFactory interfaces
-- [Factory Operations](factory-operations.md) — Operation details and patterns
-- [Factory Events](factory-events.md) — `[FactoryEventHandler<T>]` mediator + client relay
-- [Authorization](authorization.md) — Authorization attribute usage
+- [Interfaces Reference](interfaces-reference.md): every RemoteFactory interface
+- [Factory Operations](factory-operations.md): the operations in detail
+- [Factory Events](factory-events.md): handlers and the client relay
+- [Authorization](authorization.md): authorization in detail

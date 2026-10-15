@@ -36,7 +36,7 @@ public Task FactoryStartAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L106-L115' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L108-L117' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `Order` clears `IsNew` in an async complete hook after an Insert:

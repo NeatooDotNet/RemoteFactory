@@ -499,11 +499,13 @@ public static partial class ExampleCommands
     /// The rule: [Remote] when the command needs the server; bare when it must run
     /// where it is called.
     /// </remarks>
+    #region attributes-execute-local
     [Execute]
     private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
     {
         return Task.FromResult(scorer.Score(text));
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // DID NOT DO THIS: Use instance methods for stateless operations

@@ -93,16 +93,16 @@ Leave `[Remote]` off when the command must run on the tier that calls it — a c
 <!-- snippet: attributes-execute-local -->
 <a id='snippet-attributes-execute-local'></a>
 ```cs
-[Factory]
-public static partial class TallyCommand
+[Execute]
+private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
 {
-    [Execute]  // No [Remote] - runs on whichever tier resolves the delegate, with that tier's services
-    private static Task<decimal> _Total(decimal baseSalary, decimal bonus, [Service] ISalaryCalculator calculator)
-        => Task.FromResult(calculator.Calculate(baseSalary, bonus));
+    return Task.FromResult(scorer.Score(text));
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L99-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L502-L508' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`ITextScorer` is the example's pure-computation scoring service. The client registers it, so the bare command runs there with no server call.
 
 ### [Execute] returns `Task` or `Task<T>`, never `void`
 

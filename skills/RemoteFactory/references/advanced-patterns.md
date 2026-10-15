@@ -536,65 +536,15 @@ Files generated:
 
 ### [assembly: FactoryHintNameLength]
 
-Limits generated file hint name length for Windows path limits:
-
-<!-- snippet: attributes-factoryhintnamelength -->
-<a id='snippet-attributes-factoryhintnamelength'></a>
-```cs
-// Increase hint name length to accommodate long namespace/type names
-// Use when hitting Windows path length limits (260 characters)
-[assembly: FactoryHintNameLength(100)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/AssemblyAttributes.cs#L3-L7' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-attributes-factoryhintnamelength-1'></a>
-```cs
-// Limits generated file name length for Windows path limits
-// [assembly: FactoryHintNameLength(100)]
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/AssemblyAttributeSamples.cs#L5-L8' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryhintnamelength-1' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Use when hitting Windows 260-character path limits with deeply nested namespaces or generic types.
+The generator caps generated file hint names at 50 characters, for the Windows 260-character path limit. A longer fully qualified type name is truncated and raises NF0104, an error, because truncated names can collide. `[assembly: FactoryHintNameLength(100)]`, in any file of the assembly that declares the `[Factory]` types, raises the cap; shortening the namespace or type name is the alternative.
 
 ---
 
-## Attribute Inheritance Rules
+## Attributes and Inheritance
 
-| Attribute | Inherited | Notes |
-|-----------|-----------|-------|
-| `[Factory]` | Yes | Derived classes get factories |
-| `[SuppressFactory]` | Yes | Stops inheritance chain |
-| `[Remote]` | Yes | Derived methods are also remote |
-| `[Create]`, `[Fetch]`, etc. | No | Must apply to each method |
-| `[Service]` | No | Must apply to each parameter |
-| `[AuthorizeFactory<T>]` | No | Must apply per class |
-| `[AspAuthorize]` | No | Must apply per method |
-
-**Example:**
-
-<!-- snippet: attributes-inheritance -->
-<a id='snippet-attributes-inheritance'></a>
-```cs
-[Factory]   // Inherited: Yes
-public partial class BaseWithFactory
-{
-    [Create]    // Inherited: No
-    public BaseWithFactory() { }
-
-    [Remote, Fetch]  // [Remote] Inherited: Yes
-    internal Task<bool> Fetch(Guid id, [Service] IEmployeeRepository r, CancellationToken ct) => Task.FromResult(true);
-}
-
-public partial class DerivedEntity : BaseWithFactory
-{
-    // Inherits [Factory] and [Remote] from base
-    // Does NOT inherit [Create] - must redeclare
-    [Create]
-    public DerivedEntity() : base() { }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L222-L240' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-inheritance' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+A derived class needs its own `[Factory]` to get a factory, whatever its base carries; `[Factory]` on an `abstract` or generic class is ignored; and `[SuppressFactory]` affects only a class or record that also carries `[Factory]`. A derived `[Factory]` class's factory takes from its base classes:
+- their operation methods (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`), with their `[Remote]`, `[Service]` and `[AspAuthorize]`, but not their constructors;
+- the nearest base class's `[AuthorizeFactory<T>]`, when the derived class declares none.
 
 ---
 

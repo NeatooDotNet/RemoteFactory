@@ -69,7 +69,7 @@ public CustomerPreferences()
     DeliveryWindow = "Any";
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L55-L61' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L57-L63' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Be aware that this constructor is also the one every other path uses to build the object. A Fetch, and a deserialization on either tier, both run it before they fill the properties. Keep it to defaults the next step may overwrite, and put anything with a side effect (a lookup, a counter, an event) in a Create method. The constructor takes no arguments: a type whose only constructor requires arguments loses its ordinal serializer, and DI could not build the object to fetch it.
@@ -207,7 +207,7 @@ internal async Task Upsert([Service] ICustomerPreferencesStore store)
     IsNew = false;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L89-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L91-L98' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The factory's save method is named `Save` plus your method's name. If the name starts with the group's highest-ranked operation (Delete, then Update, then Insert), that word is dropped. Here the group ranks Update highest and `Upsert` does not start with it, so the method is **`SaveUpsert`**. A combined method named `Update` would give `Save`, but one named `Insert` or `InsertOrUpdate` keeps its whole name: `SaveInsert`, `SaveInsertOrUpdate`. With no `[Delete]`, marking the object deleted makes the save throw.
@@ -427,7 +427,7 @@ public Task FactoryStartAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L106-L115' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L108-L117' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnComplete / IFactoryOnCompleteAsync

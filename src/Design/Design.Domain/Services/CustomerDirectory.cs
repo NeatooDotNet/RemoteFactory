@@ -255,9 +255,11 @@ public record CustomerContact(Guid CustomerId, string Name, string Email);
 ///   checks and throw NotAuthorizedException on denial before calling
 ///   CustomerDirectory.
 /// </remarks>
+#region attributes-factory-interface
 [Factory]
 [AuthorizeFactory<ICustomerDirectoryAuth>]
 public interface ICustomerDirectory
+#endregion
 {
     /// <summary>One customer, or null. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
     Task<CustomerProfile?> GetCustomer(Guid customerId);

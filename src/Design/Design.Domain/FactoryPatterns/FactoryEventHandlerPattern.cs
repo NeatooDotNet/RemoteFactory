@@ -49,7 +49,9 @@ namespace Design.Domain.FactoryPatterns;
 /// <summary>
 /// Event object raised when an order is placed. Inherits from FactoryEventBase.
 /// </summary>
+#region attributes-factoryevent
 public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEventBase;
+#endregion
 
 /// <summary>
 /// Demonstrates: [FactoryEventHandler&lt;T&gt;] with a static server-side handler.
@@ -87,6 +89,7 @@ public record OrderPlacedEvent(int OrderId, string CustomerEmail) : FactoryEvent
 /// 2. Keeping <c>[FactoryEventHandler]</c> focused on transactional,
 ///    caller-scope handlers avoids the two-models-one-API confusion.
 /// </remarks>
+#region attributes-factoryeventhandler
 [FactoryEventHandler<OrderPlacedEvent>]
 public static partial class OrderNotifyHandlers
 {
@@ -100,6 +103,7 @@ public static partial class OrderNotifyHandlers
             $"Order {orderEvent.OrderId} confirmed!");
     }
 }
+#endregion
 
 /// <summary>
 /// Demonstrates: multiple handlers for the same event type.
