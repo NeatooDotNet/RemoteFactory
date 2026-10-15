@@ -243,7 +243,7 @@ Recon, 2026-10-15. Library behaviour is cited from source; the plan review spot-
 
   Of its theoretical items, two were taken: the Discovery Log entry for the library fix, and "Debug or Release" for the .NET 10 environment.
 - **After the punches:** both solutions rebuilt and passed (unit 839, integration 644 + 5 known skips, Design 151, both TFMs). mdsnippets is clean.
-- **Open, by design:** `aspnetcore-middleware-order` (EXSET-009); setup's static-commands and events block and `skill-blazor-usage` (EXSET-010); #131 (techdebt). The Notes' other park candidates (the logger categories, the static logger factory, the client not reading `X-Neatoo-Format`) are documented on the page as current behaviour, and no issue is filed for them.
+- **Open, by design:** `aspnetcore-middleware-order` (EXSET-009); setup's static-commands and events block and `skill-blazor-usage` (EXSET-010); #131 (techdebt). The Notes' other park candidates (the logger categories, the static logger factory, the client not reading `X-Neatoo-Format`) are documented on the page as current behaviour; they were parked at the close-out audit as #154, #155 and #156.
 
 ---
 

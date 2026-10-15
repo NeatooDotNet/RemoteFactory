@@ -65,7 +65,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Punchlist
 
-- [x] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must · the close-out sweep
+- [x] VisionAlignment says "162 embeds"; recon counts 155 markers rendering 165 blocks · `docs/VisionAlignment.md` §1.1, §7 · done when the count matches · AC-4 · Must · the close-out sweep (#153; section 7 in the audit fixes)
 - [x] `AuthorizedOrder`, `ParamAuthOrder`, `SecureOrder` `[Remote, Create]` with no server need (D14) · Design `Aggregates/` · done when local or justified, in EXSET-009 · AC-4 · Must → EXSET-009: all three Creates are local `public [Create]`
 - [x] `trimming.md`'s "IFactorySaveMeta Preservation" assumes private setters and `[JsonInclude]` (R-M) · `docs/trimming.md` · done when rewritten against public setters, in EXSET-016 · AC-4 · Must · EXSET-016
 
@@ -81,16 +81,16 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Discovery Log
 
-- **2026-10-15 · EXSET-016 · Amend.** The plan review measured that a trimmed client drops `IsNew`/`IsDeleted` from a public-setter `IFactorySaveMeta` class with no ordinal converter (a constructor that takes services, not `partial`, or nested): both formats wrote `{}`, so every Save routed to Insert. Serves AC-4 (I-01, U-12). Keith: fix it in the generator on 016. The class-factory registrar now emits `DtoConstructorRegistry.PreserveProperties<T>()` (public properties and fields only) when it emits no ordinal converter. `SaveMetaRoundTripSmokeTest` in the trimming harness failed both formats before the fix and passes after; `verify-trimmed.sh` still passes. The release notes for the next version owe a line for this.
+- **2026-10-15 · EXSET-016 · Amend.** The plan review measured a trimmed client writing `{}` for a public-setter `IFactorySaveMeta` class with no ordinal converter, so every Save routed to Insert. Serves AC-4 (I-01, U-12). Keith: fix in the generator. Its registrar now emits `PreserveProperties<T>()`; `SaveMetaRoundTripSmokeTest` was red before and is green after. Release-note line owed.
 - **2026-10-15 · EXSET-011 · Re-split.** `factory-events.md` alone has 19 hand fences and five findings, and shares no region with `trimming.md`, the appendix or the LazyLoad removal. Those move to EXSET-016, with their ledger owners (C-22, C-26, I-01, I-10, T-01, T-02, T-07, T-09, T-26, T-27, U-12). That is 16 of the 18 plan numbers. Serves AC-3, AC-4, AC-5.
 - **2026-10-15 · EXSET-010 · Re-split.** Recon counted about 30 reference-app embeds in 010's scope. The two docs pages and the skill's `service-injection.md` share regions, so they stay on 010. The skill-only `skill-*` embeds share none, and move to EXSET-015. That is 15 of the 18 plan numbers. Serves AC-3, AC-4.
-- **2026-10-15 · EXSET-009 · Amend.** The code review found that `[AuthorizeFactory<T>]` on a static factory's `[Execute]` was never enforced. The generator used the auth methods only to decide whether the call goes remote, so a rule there compiled and ran for anyone. Serves AC-3, the page's refusal outcomes. Keith: fix it in the generator on 009. The local registration now calls the matching auth methods before `[AspAuthorize]` and the method, and a refusal throws `NotAuthorizedException`. It also registers the auth class, as class and interface factories do. `StaticAuthorizeFactoryTests` (integration) fail 4 of 5 without the fix (`reviews/009-static-authorizefactory-unfixed-test.log`). The release notes for the next version owe a line for this.
+- **2026-10-15 · EXSET-009 · Amend.** The code review found `[AuthorizeFactory<T>]` on a static factory's `[Execute]` never enforced: the auth methods only chose remote or local. Serves AC-3. Keith: fix in the generator. The local registration now runs them first and throws `NotAuthorizedException` on refusal. `StaticAuthorizeFactoryTests` fail 4 of 5 without the fix. Release-note line owed.
 - **2026-10-15 · EXSET-009 · Stop → Keith.** The defect in the entry below was already fixed on `main` by #127 (v1.10.6), with #91 and #117 (v1.10.5); the arc had never taken `main`. Serves AC-3. Keith: merge `main` into EXSET first (#139, merged); the duplicate library edit is dropped and #138 closed.
 - **2026-10-15 · EXSET-009 · Amend.** The plan review found that an anonymous caller passes a class factory's `[AspAuthorize]`. With no authenticated user, `AspAuthorize` returns a null or empty message, which converts to `Authorized(true)`. Serves AC-3 (the page's denial outcomes). Keith: fix it in the library on EXSET-009, with tests and an issue for the record.
-- **2026-10-15 · EXSET-009 · Re-split.** Recon found the stub held two deliverables of different shape. One is authorization: Design's auth types are flag-driven scaffolding, `SecureOrder` is untested, and Design.Server has no authentication. The other is the attributes page, a re-pointing job. Serves AC-3 and AC-4. Keith: rework `AuthorizedOrder` onto an injected `ICurrentUser`, give Design.Server bare `AddAuthentication`, and split the attributes page out as EXSET-014 (14 of 18).
-- **2026-10-15 · EXSET-013 · Stop → Keith.** The reference probe found that in the Ordinal format (the default), `[Factory]` objects lose reference identity: a shared reference arrives as two copies, and a back reference throws "possible object cycle". Named preserves both. Serves AC-4 (serialization.md's reference claims). Keith: document it per format and file a bug, #133 (`critical`); the probe becomes a known-bug regression test.
-- **2026-10-15 · EXSET-006 · Amend.** Over HTTP, the first natural 500 assertion found `HttpRequestException.StatusCode` null on the client: the library built the exception from the message alone. Serves AC-3 (the page's failure table). Keith: fix it in the library on 006, pinned by unit tests; it ships with the arc's merge to main. The same plan's first HTTP run also found Design.Server unable to start in Development, because `RegisterMatchingName` registers a concrete `TenantTokenService` that DI can't build. Design now registers it itself; the library side is #131 (techdebt).
-- **2026-10-15 · EXSET-006 · Re-split.** The plan review found two deliverables. One is the HTTP tier with the ASP.NET Core page. The other is the serialization and modes pages: they need only the in-process harness, and they open with a probe that may stop on a library ruling. Keith: split. EXSET-013 takes serialization and modes, and follows 006 because it reuses 006's format and logging regions. Serves AC-3. 13 of 18 plan numbers are issued.
+- **2026-10-15 · EXSET-009 · Re-split.** Recon found two deliverables. One is authorization: Design's auth types were flag-driven, `SecureOrder` untested, Design.Server unauthenticated. The other is the attributes page. Serves AC-3, AC-4. Keith: `AuthorizedOrder` on an injected `ICurrentUser`, bare `AddAuthentication`, and the attributes page split out as EXSET-014 (14 of 18).
+- **2026-10-15 · EXSET-013 · Stop → Keith.** The probe found that the Ordinal format (the default) loses `[Factory]` reference identity: a shared reference arrives as two copies, and a back reference throws. Named preserves both. Serves AC-4. Keith: document it per format and file #133 (`critical`); the probe becomes a known-bug regression test.
+- **2026-10-15 · EXSET-006 · Amend.** Over HTTP, the client's `HttpRequestException.StatusCode` was null. Serves AC-3. Keith: fix in the library, pinned by unit tests. The first HTTP run also found Design.Server failing in Development: `RegisterMatchingName` registers a concrete DI can't build. Design registers it itself; the library side is #131 (techdebt).
+- **2026-10-15 · EXSET-006 · Re-split.** The plan review found two deliverables: the HTTP tier with the ASP.NET Core page, and the serialization and modes pages, which need only the in-process harness. Keith: split; EXSET-013 takes serialization and modes, after 006. Serves AC-3. 13 of 18 numbers issued.
 - **2026-10-13 · EXSET-004 · Amend.** The relay collector leaked events across remote calls sharing a server scope (Design's harness shares one; ASP.NET does not). Serves AC-2 (the reshaped relay test). Keith: fix in the library on EXSET-004; the harness's shared scope is #128 (techdebt). Ships to NuGet with the arc's merge to main.
 
 ---
@@ -110,6 +110,8 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Close-Out Audit
 
+- **2026-10-15 · round 1: C** ([close-out-audit.md](./reviews/close-out-audit.md)). Every criterion traces to the tree. One veto-tier item: EXSET-006's three library park candidates had no disposition; they are parked as #154, #155 and #156. Callouts fixed: VisionAlignment section 7's count, and six Discovery Log entries over 60 words. Plans 001-003 now have their Acceptance boxes ticked.
+
 ---
 
 ## Follow-on
@@ -124,7 +126,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 
 ## Docs & Retro
 
-**Parked** (the Follow-on lines above, at the close-out sweep): #148, #149, #150, #152 (skill and example prose, for Todo 2); #151 (techdebt).
+**Parked** (the Follow-on lines above, at the close-out sweep): #148, #149, #150, #152 (skill and example prose, for Todo 2); #151 (techdebt). At the close-out audit, EXSET-006's three library park candidates: #154, #155, #156 (techdebt).
 
 **Release-note lines** for the next release. The arc changed the library four times; each change is pinned by tests and recorded in the Discovery Log:
 - **fix (generator):** `[AuthorizeFactory<T>]` on a static factory's `[Execute]` is now enforced; a refusal throws `NotAuthorizedException`. Before, the auth class was used only to decide whether the call goes remote, so the rule never ran (EXSET-009).
