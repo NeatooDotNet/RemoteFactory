@@ -38,7 +38,6 @@ All workflow state goes in this memory file — not the plan. Do NOT read other 
 
 **Must NOT directly edit:**
 - `src/Design/**` — Design projects (source of truth, managed by architect/developer)
-- `src/docs/reference-app/**` — Reference app code (developer agent territory)
 - `skills/RemoteFactory/**` — Skill files (require MarkdownSnippets workflow)
 - `.cs`, `.csproj`, `.json`, `.xml` — Source code files
 - `CLAUDE.md`, `CLAUDE-DESIGN.md` — Project instructions (requirements documenter handles CLAUDE-DESIGN.md)

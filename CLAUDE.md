@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/claude-code) when working 
 
 ## Project Overview
 
-**Neatoo RemoteFactory** is a Roslyn Source Generator-powered Data Mapper Factory for 3-tier .NET applications. It eliminates the need for DTOs, manual factories, and API controllers by generating everything at compile time.
+**Neatoo RemoteFactory** is a Roslyn source generator for 3-tier .NET applications. When the library that defines the domain objects is loaded on both tiers, the client/server seam needs no DTOs and no API controllers: it generates the factories and the serialization at compile time, and the library maps the one endpoint they go through. Persistence routing is one use of that, not the headline.
 
 ## Supported Frameworks
 
@@ -23,8 +23,9 @@ Both frameworks are included in the NuGet packages.
 The Design projects are the **single source of truth** for RemoteFactory's API. They contain:
 - All three factory patterns (Class, Interface, Static) with working examples
 - Heavily commented code explaining "why" and "what we didn't do"
-- 26 passing tests demonstrating correct usage
+- Tests on the real client/server containers demonstrating correct usage
 - Server and client projects showing configuration
+- The source of every C# snippet in `docs/`, `README.md` and the skill (`.claude/rules/design-snippets.md`)
 
 When in doubt about how something should work, read the Design code first.
 
@@ -45,15 +46,13 @@ RemoteFactory/
 │   ├── Generator/                        # Roslyn source generator (netstandard2.0)
 │   ├── Design/                           # DESIGN SOURCE OF TRUTH
 │   │   ├── Design.Domain/                # All factory patterns with comments
-│   │   ├── Design.Tests/                 # 26 tests demonstrating patterns
+│   │   ├── Design.Tests/                 # Tests demonstrating patterns
 │   │   ├── Design.Server/                # ASP.NET Core configuration
 │   │   └── Design.Client.Blazor/         # Blazor WASM configuration
 │   ├── Tests/
 │   │   ├── RemoteFactory.UnitTests/      # Unit tests for generator, factories, serialization
 │   │   ├── RemoteFactory.IntegrationTests/ # Integration tests with ASP.NET Core
 │   │   └── ...
-│   ├── docs/
-│   │   └── reference-docs/              # Production-quality reference application (MarkdownSnippets source)
 │   └── Examples/
 │       ├── Person/                       # Complete Blazor WASM example
 │       └── ...
@@ -70,33 +69,32 @@ This constraint exists because the skill may be distributed separately from the 
 
 ### Skill Code Samples (MarkdownSnippets Integration)
 
-The skill uses MarkdownSnippets to embed compiled, tested code from the reference application (`src/docs/reference-app/`). This ensures all code samples in the skill actually compile and work.
+The skill, `docs/` and `README.md` use MarkdownSnippets to embed `#region` blocks from `src/Design` (`docs/VisionAlignment.md` R-A; `.claude/rules/design-snippets.md`). Each region's behaviour is pinned by a Design test on the real client/server containers.
 
-**Workflow for updating skill code:**
-1. Make changes to code in `src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/` (or other locations with `skill-*` regions)
-2. Build and test the reference app: `dotnet build && dotnet test src/docs/reference-app/EmployeeManagement.sln`
-3. Run mdsnippets to extract and embed code: `mdsnippets` (from repository root)
-4. Commit the updated skill files (they now contain embedded code)
-5. Push changes
+**Workflow for updating an embedded sample:**
+1. Change the code inside the region in `src/Design`, and the Design test that pins it
+2. Build and test both solutions (see Key Build Commands)
+3. Run mdsnippets from the repository root to re-embed the code
+4. Commit the source and the updated markdown together
 
 **Adding a new embed — write both markers, not just the opening one.** A placeholder is an opening `snippet: my-region` comment *and* a matching `endSnippet` comment on the line after it. An opening marker alone is not an empty placeholder: under the `InPlaceOverwrite` convention mdsnippets reads it as the start of an existing embed and replaces everything up to the next `endSnippet` in the file — silently deleting whole sections when a later one exists, and failing the run outright when none does. Copy a live pair from `docs/attributes-reference.md`. The literal markers are deliberately not reproduced in this file, because mdsnippets scans it too and would treat them as a real (and missing) embed — which is the same hazard from the other side.
 
 After any `mdsnippets` run, check `git diff --stat` for a file whose deletion count exceeds the edit you made; that is the signature of a swallowed section. Attribution-line drift in files you did not touch is expected and correct whenever a sample source file gained lines. Point the run's log outside the repository (`mdsnippets > /tmp/mdsnippets.log 2>&1`) — mdsnippets reads files under `docs/todos` despite the `mdsnippets.json` exclude list and will crash on its own open log.
 
-**Code block categories in skill files:**
+**C# blocks in markdown:**
 | Category | Source | How to Update |
 |----------|--------|---------------|
-| Full compilable examples | MarkdownSnippets extraction | Edit reference-app code, run mdsnippets |
-| Anti-pattern examples | Hand-written in markdown | Edit markdown directly (intentionally wrong) |
-| Partial/illustrative | Hand-written in markdown | Edit markdown directly (incomplete by design) |
+| Every working example | A `#region` in `src/Design`, embedded by MarkdownSnippets | Edit the Design code and its test, run mdsnippets |
+| Anti-pattern examples | Hand-written in markdown, labelled `// WRONG` | Edit markdown directly (intentionally wrong) |
 
-**Region naming convention:**
-- `skill-*` prefix: Regions created specifically for skill examples
-- No prefix: Shared with docs (`docs/*.md` files)
+No other C# is hand-written; what cannot be an embed or a WRONG block is prose.
+
+**Region naming:** region names are unique across the repository, with a topic prefix (`operations-*`, `save-*`, `skill-*`, ...). `skill-*` regions are embedded only by the skill; a region without the prefix may be shared with `docs/` and `README.md`.
 
 **Key files:**
-- `src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/` - Skill-specific code samples
-- `src/docs/reference-app/EmployeeManagement.Client.Blazor/Samples/Skill/` - Blazor-specific samples
+- `src/Design/Design.Domain/` - the domain samples
+- `src/Design/Design.Client.Blazor/` and `src/Design/Design.Server/` - client and server configuration samples
+- `src/Design/Design.Tests/` - the tests that pin each region, and the test-side samples (container setup, HTTP error handling)
 - `mdsnippets.json` - Configuration (includes `skills/RemoteFactory/` directory)
 
 ## Key Build Commands
@@ -149,11 +147,11 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 
 **Constructor vs Method Injection:**
 - **Constructor injection** (`[Service]` on constructor): Services available on both client and server
-- **Method injection** (`[Service]` on method parameters): Server-only services—the common case for most factory methods
+- **Method injection** (`[Service]` on method parameters): resolved on the tier that runs the method—the server for a `[Remote]` or `internal` method (the common case, so this is where server-only services go), the calling tier for a `public` local method such as a root `[Create]`
 
 **When to use `[Remote]`:**
 - Factory methods that are entry points from the client
-- Typically aggregate root operations (Create, Fetch, Save)
+- Typically aggregate root operations (Fetch, Save). A root `[Create]` is local unless creation needs something only the server has (VisionAlignment D14)
 - Always paired with `internal` visibility
 
 **When `[Remote]` is NOT needed (the common case):**
@@ -161,9 +159,11 @@ dotnet pack src/RemoteFactory.AspNetCore/RemoteFactory.AspNetCore.csproj --confi
 - Child entity operations within an aggregate
 - Any method invoked after already crossing to the server
 
-**Entity duality (Neatoo/CSLA pattern):** An entity can be an aggregate root in one object graph and a child in another. The same class may have `[Remote] internal` methods for aggregate root scenarios while other methods are plain `internal` (server-only).
+**Entity duality (VisionAlignment R-G):** An entity can be an aggregate root in one object graph and a child in another, and the factory method's signature is usually the whole difference. Design's `OrderLine` has a child `Fetch(row)`, plain `internal`, and a root `[Remote] internal Fetch(id)`.
 
-**Runtime enforcement:** Non-`[Remote]` methods are generated for client assemblies but result in "not-registered" DI exceptions if called—server-only services aren't in the client container.
+**Runtime enforcement:** a non-`[Remote]` method runs on the tier that calls it. If the client calls one that needs the server:
+- a `public` method runs on the client and fails with the standard DI resolution error on its first server-only `[Service]`;
+- an `internal` method carries a server-only guard. In a client published with the `Neatoo.RemoteFactory.IsServerRuntime` switch set to `false` (the trimming setup), the guard throws `InvalidOperationException` and the trimmer removes the body. With the default (`true`), the guard passes and the method fails the way a `public` one does.
 
 **Best practice - Blazor WASM:** Exclude server-only packages (Entity Framework Core, etc.) from client projects to enforce the boundary and reduce bundle size.
 
