@@ -44,3 +44,36 @@ Theoretical (not triaged):
 Read report:
 - Read beyond the brief: `.github/workflows/build.yml` trimming step, to confirm CI passes no `TrimMode` override; `docs/trimming.md` and both appendix pages, to re-run bullets 1, 2 and 4; `015-test-review.md`, for the review format; and `011-factory-events.md`'s evidence, for the prior unit count (852).
 - Named but unused: `016-trim-*.log` beyond the verify comparisons; `016-build.log`, `016-test.log`, `016-design-*.log`, `016-unit-*.log`, `016-refapp-build.log` (the logs the map does not cite).
+
+## Round 2 — APPROVED (0 veto-tier, 0 callouts)
+
+**Reviewer:** test-reviewer, against `17d0135`, diffed from `0428c12`. `git diff --stat 0428c12..17d0135 -- src` is empty: the fix commit touches only `docs/trimming.md`, both appendix pages, the plan, the todo and the review files. No source, test or snippet marker changed, so the round-1 logs still stand. Re-grepped: `016-test-main.log` unit 855 and integration 657 + 7 skipped on both TFMs, `016-test-design.log` 175 + 1 skipped on both, 0 failures; the three builds show `0 Error(s)`; `016-ci-run.log` ends "All checks passed".
+
+**Veto 1: closed.** Every opening fence on the three pages, tagged or not:
+- `docs/trimming.md`: untagged `:48` (publish tree diagram); `xml` `:66`, `:86`, `:100`, `:116`, `:132`, `:160`, `:177`, `:190`, `:339` (csproj and linker XML); `bash` `:209`, `:223`, `:433` (shell commands); `cs` `:369`, inside `trimming-event-nested-record` markers (`:367`/`:381`); `csharp` `:403`, whose first line is `// WRONG - IL2091 ...`. The ILSpy "Expected output" fence is gone and its content is now a prose sentence (`:437`).
+- `docs/appendix/serialization.md`: `json` `:19` (wire shape); `cs` `:34` and `:81`, inside `service-injection-constructor` and `getting-started-client-program` markers; untagged `:95` (name-to-type map, not C#).
+- `docs/appendix/record-reference-handling.md`: untagged `:9` (exception text) and `:84` (reference-flow diagram). Neither holds C#.
+
+Each C# block is an embed or labelled WRONG, and no untagged fence holds C#.
+
+**Test Evidence map: honest.**
+- Row 1 now covers every fence and names the same C# and untagged fences listed above. It doesn't list the `xml`/`bash`/`json` fences one by one, but none of them is C#.
+- Row 3's wording ("deserialized and serialized back") matches the single-pass check, which closes round-1 Theoretical 3.
+- Row 5 names the main build's 2 OrderEntry warnings, which closes round-1 Theoretical 4.
+- `trimming.md:425` now says the harness pins only the no-converter path and that the converter path keeps its accessors by its own reads and writes. That matches what `SaveMetaRoundTripSmokeTest` exercises.
+
+**Sacred-test check: clean.** Nothing under `src` changed in this round.
+
+| # | Tier | Finding | Affects | Triage |
+|---|---|---|---|---|
+
+No new findings.
+
+Could not verify: none.
+
+Theoretical (not triaged):
+- `record-reference-handling.md:3`, rewritten in this round, reads "four serialization paths handles". That is a grammar slip in prose, not a test matter.
+
+Read report:
+- Read beyond the brief: none. The fence content on the three pages was read in full to place each fence.
+- Named but unused: `016-code-review.md`. Its changes were prose only and none touched a fence.

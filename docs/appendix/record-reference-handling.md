@@ -1,6 +1,6 @@
 # Appendix: Record Reference Handling and Value Object Semantics
 
-This appendix explains **why** records bypass reference tracking (`$id`/`$ref`) during serialization and **how** RemoteFactory's four serialization paths handles reference identity for different type categories. For user-facing serialization documentation, see [Serialization](../serialization.md). For serialization internals (type resolution, DI integration), see [Serialization Internals](serialization.md).
+This appendix explains **why** records bypass reference tracking (`$id`/`$ref`) during serialization and **how** RemoteFactory's four serialization paths handle reference identity for different type categories. For user-facing serialization documentation, see [Serialization](../serialization.md). For serialization internals (type resolution, DI integration), see [Serialization Internals](serialization.md).
 
 ## The Problem: Reference Tracking vs. Parameterized Constructors
 

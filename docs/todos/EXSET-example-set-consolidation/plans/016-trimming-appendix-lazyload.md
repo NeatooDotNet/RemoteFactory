@@ -4,7 +4,7 @@
 **Date:** 2026-10-15
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4, AC-5
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** Yes. The trimming page makes claims about what the trimmer keeps. The IFactorySaveMeta section is rewritten to R-M on a claim no test pins today. The required `TrimMode` is settled by experiment.
 **Code-review opt-in:** Yes.
@@ -80,11 +80,11 @@ The trimming reference states what a publish actually removes and keeps, with on
 
 ## Acceptance
 
-- [ ] Every C# block on `trimming.md` and both appendix pages is a Design embed or WRONG `[explicit-skip: grep]` · Must
-- [ ] `trimming.md` states one `TrimMode`, matching the experiment `[explicit-skip: reviews/016-trim-*.log]` · Must
-- [ ] A public-setter `IFactorySaveMeta` object keeps `IsNew`/`IsDeleted` across a trimmed round trip, in both formats `[integration: trimming harness, publish-trimmed]` · Must
-- [ ] LazyLoad appears in no doc page, README section or skill file `[explicit-skip: grep]` · Should (AC-5)
-- [ ] mdsnippets clean; both solutions green; the trimming gate green `[explicit-skip: meta]` · Must
+- [x] Every C# block on `trimming.md` and both appendix pages is a Design embed or WRONG `[explicit-skip: grep]` · Must
+- [x] `trimming.md` states one `TrimMode`, matching the experiment `[explicit-skip: reviews/016-trim-*.log]` · Must
+- [x] A public-setter `IFactorySaveMeta` object keeps `IsNew`/`IsDeleted` across a trimmed round trip, in both formats `[integration: trimming harness, publish-trimmed]` · Must
+- [x] LazyLoad appears in no doc page, README section or skill file `[explicit-skip: grep]` · Should (AC-5)
+- [x] mdsnippets clean; both solutions green; the trimming gate green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -127,6 +127,20 @@ The trimming reference states what a publish actually removes and keeps, with on
 ---
 
 ## Gate Record
+
+- **Plan review** ([016-plan-review.md](../reviews/016-plan-review.md)): DECISION NEEDED. Callout 1, a trimmed client writing `{}` for a public-setter `IFactorySaveMeta` class with no ordinal converter, went to Keith, who ruled "Fix in generator". The other 9 callouts were amended, apart from Person's recipe, which went to Follow-on.
+- **Test review** ([016-test-review.md](../reviews/016-test-review.md)):
+  - **Round 1: CONCERNS.** One veto-tier finding: bullet 1's grep saw only tagged fences, and missed the ILSpy "Expected output" fence that held C#. That fence is now prose, and row 1 lists every fence.
+  - **Tech-debt:** CI no longer publishes the harness at `full`; it went to Follow-on (Could).
+  - **Round 2: APPROVED,** with no findings.
+- **Code review** ([016-code-review.md](../reviews/016-code-review.md)): APPROVED, with 5 callouts, all amended:
+  - Named-format tracking is limited to `[Factory]` classes with a parameterless constructor;
+  - the intro says four paths;
+  - the harness claim is narrowed to the path it pins;
+  - the "preserved via DI registration" claims are corrected;
+  - row 5 names the 2 known warnings.
+- **After the punches:** prose only, so the round-1 logs stand: main unit 855 and integration 657 + 7 known skips, Design 175 + 1 known-bug skip, on both TFMs. mdsnippets is clean, and the CI-shaped trimming gate is green.
+- **Open, by design:** the skill's `trimming.md` prose (Todo 2); Person's recipe and a `full` CI publish (Follow-on); the release-note line for `PreserveProperties<T>()` (close-out).
 
 ---
 
