@@ -118,12 +118,13 @@ public interface IOrder : IFactorySaveMeta
     Money Total { get; }
     void AddLine(IOrderLine line);
     void RemoveLine(IOrderLine line);
+    bool CanSubmit { get; }
     void Submit();
     void Cancel();
     void MarkDeleted();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L37-L51' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L37-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The operations live on the domain object itself. Each attribute names the operation; `[Service]` parameters are injected on the tier that runs the method, so the order store (`IOrderDbContext`) is a server service the client never sees. No DTOs, no controllers:
@@ -205,7 +206,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L224-L298' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L229-L313' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Quick reference:

@@ -164,6 +164,7 @@ public static class ServerServices
         services.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         services.AddScoped<IExampleService, ExampleService>();
         services.AddSingleton<ITaxTable, InMemoryTaxTable>();
+        services.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
         services.AddSingleton<ISupportLog, InMemorySupportLog>();
         services.AddScoped(_ => new TenantTokenService("server-token"));
         services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenService>());

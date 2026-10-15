@@ -1,214 +1,149 @@
 # Factory Operations
 
-RemoteFactory is a persistence routing engine. It routes your domain objects to the right method for each stage of their persistence lifecycle — creation, loading, saving, and deletion — and injects the services needed to do the work. RemoteFactory doesn't care what you do inside those methods. It prepares for the call (creates the instance, resolves services, handles serialization across client/server) and trusts that when the method returns, the operation is complete.
+An operation attribute tells the generator what a method is for: creating an object, loading one, writing one, or a command. The generator builds the factory that calls it, injects the `[Service]` parameters the method declares, and, for a `[Remote]` operation called from a client, carries the call to the server and the result back.
 
-Each operation attribute tells RemoteFactory what persistence stage a method belongs to. You write the persistence logic; RemoteFactory gets you there.
-
-If you're new to RemoteFactory, start with [Getting Started](getting-started.md) for a walkthrough. This page is the complete reference for all seven operations.
+If you're new to RemoteFactory, start with [Getting Started](getting-started.md). This page is the reference for the six operations. The code comes from RemoteFactory's compiled example set, `src/Design`, mostly its `Order` aggregate.
 
 ## Overview
 
-| Operation | Persistence Stage | What RemoteFactory Does For You |
-|-----------|------------------|--------------------------------|
-| `[Create]` | Instantiation | Calls your constructor or static method, returns the new instance |
-| `[Fetch]` | Load existing data | Creates an instance, calls your method to populate it, returns the result |
-| `[Insert]` | First persist | `Save()` routes here when `IsNew = true` |
-| `[Update]` | Subsequent persist | `Save()` routes here when `IsNew = false` |
-| `[Delete]` | Removal | `Save()` routes here when `IsDeleted = true` |
-| `[Execute]` | Orchestration | Runs logic that decides *which* persistence path to take |
+| Operation | What it is | What the factory does |
+|-----------|-----------|-----------------------|
+| `[Create]` | The equivalent of `new` | Builds the object and calls your Create; returns it |
+| `[Fetch]` | Load existing data by key | Builds the object and calls your Fetch; returns it, or `null` when Fetch returns `false` |
+| `[Insert]` | Write a new object | `Save()` runs it when `IsNew` is true |
+| `[Update]` | Write a changed object | `Save()` runs it when `IsNew` is false |
+| `[Delete]` | Remove an object | `Save()` runs it when `IsDeleted` is true |
+| `[Execute]` | A command, or a factory method with logic around Create and Fetch | Calls your method and returns its result |
+
+## The Generated Factory
+
+For `Order`, the generator emits `IOrderFactory`:
+- **`Create(string customerName)`** for the `[Create]`.
+- **`Fetch(int id)` returning `Task<IOrder?>`.** A `bool` Fetch makes the result nullable.
+- **`OpenDraft(string customerName)`** for the class-level `[Execute]`.
+- **`Save(IOrder target)` returning `Task<IOrder?>`.** It is nullable because a Delete returns nothing to keep.
+- **`TrySave`, `CanSave` and the other `Can*` methods,** when authorization applies.
+
+Insert, Update and Delete are never on the interface: callers call `Save`.
+
+Each method's parameters are the operation's value parameters plus an optional `CancellationToken cancellationToken = default`. `[Service]` parameters are not on the interface; the factory resolves them. Default values on your method's parameters are not carried over. When the class implements a matching `I{ClassName}` interface, the factory returns that interface.
 
 ## Create Operation
 
-Create tells RemoteFactory how to instantiate your domain object. When the method returns, RemoteFactory assumes the object is properly initialized and ready to use.
+Create is `new` for a factory object: it takes what a constructor would take and returns a new object. A root's Create is local. It runs on the tier that calls it, with no server call, and needs `[Remote]` only when creating needs something only the server has.
 
-For simple cases, mark a constructor with `[Create]`:
+### A Create Method
 
-### Constructor-based Creation
+A method marked `[Create]` runs after the object is built. It can take `[Service]` parameters, here the factory for the order's line list:
+
+<!-- snippet: operations-create-method -->
+<a id='snippet-operations-create-method'></a>
+```cs
+/// <summary>
+/// Creates a new Order. Local: runs on the tier that calls it.
+/// </summary>
+[Create]
+public void Create(
+    string customerName,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    CustomerName = customerName;
+    Lines = lineListFactory.Create();
+    Status = OrderStatus.Draft;
+    IsNew = true;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L230-L244' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+### A Create Constructor
+
+A constructor can be the Create:
 
 <!-- snippet: operations-create-constructor -->
 <a id='snippet-operations-create-constructor'></a>
 ```cs
-// Constructor marked with [Create] - factory calls this to create instances
 [Create]
-public EmployeeWithConstructorCreate() => Id = Guid.NewGuid();
+public CustomerPreferences()
+{
+    DeliveryWindow = "Any";
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L16-L20' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L53-L59' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Generated factory interface:
-```csharp
-public interface IEmployeeFactory
-{
-    Employee Create(CancellationToken cancellationToken = default);
-}
-```
+Be aware that this constructor is also the one every other path uses to build the object. A Fetch, and a deserialization on either tier, both run it before they fill the properties. Keep it to defaults the next step may overwrite, and put anything with a side effect (a lookup, a counter, an event) in a Create method. The constructor takes no arguments: a constructor with arguments costs the type its ordinal serializer, and DI could not build the object to fetch it.
 
-### Static Factory Method
+Two other forms exist:
+- **A static `[Create]` method** that builds and returns the object, for a type whose constructor is private.
+- **Several `[Create]` overloads,** each generating a `Create` on the factory.
 
-Sometimes you need to make a decision *before* the object exists. Should you create a new consultation or fetch an existing one? By the time you're inside a constructor or a `[Fetch]` method, you've already committed to one path — it's too late to choose. A static `[Create]` method runs before instantiation, so it can inspect data, call other factory methods, and choose the right path. (See also [Execute on class factories](#class-factory-execute) for the full orchestration pattern.)
-
-<!-- snippet: operations-create-static -->
-<a id='snippet-operations-create-static'></a>
-```cs
-// Static factory method with [Create] - returns instance with initialization
-[Create]
-public static EmployeeWithStaticCreate Create(
-    string employeeNumber, string firstName, string lastName, decimal initialSalary)
-{
-    return new EmployeeWithStaticCreate
-    {
-        Id = Guid.NewGuid(),
-        EmployeeNumber = employeeNumber,
-        FirstName = firstName,
-        LastName = lastName,
-        InitialSalary = initialSalary
-    };
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L37-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-static' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Generated factory interface:
-```csharp
-public interface IEmployeeFactory
-{
-    Employee Create(string employeeNumber, string firstName, string lastName, decimal initialSalary, CancellationToken cancellationToken = default);
-}
-```
-
-### Return Value Handling
-
-Create methods support multiple return types. You can define multiple `[Create]` overloads — the factory generates a method for each:
-
-<!-- snippet: operations-create-return-types -->
-<a id='snippet-operations-create-return-types'></a>
-```cs
-// Multiple [Create] overloads - factory generates method for each
-[Create]
-public EmployeeCreateReturnTypes() { Id = Guid.NewGuid(); IsValid = true; }
-
-[Create]
-public EmployeeCreateReturnTypes(string employeeNumber)
-{
-    Id = Guid.NewGuid();
-    EmployeeNumber = employeeNumber;
-    IsValid = !string.IsNullOrEmpty(employeeNumber) && employeeNumber.StartsWith('E');
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L65-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-return-types' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Factory return types:
-- **void**: Returns the instance
-- **bool**: Returns instance if true, null if false
-- **Task**: Returns instance after await
-- **Task\<bool\>**: Returns instance if true, null if false
-- **Task\<T\>**: Returns the T instance
-- **T**: Returns the instance
+A Create that returns `bool` makes the factory return `null` when it returns `false`. Design does not use it: a check the user can recover from is a verdict the screen reads before it acts, not a Create that declines.
 
 ## Fetch Operation
 
-Fetch is like Create — it produces a ready-to-use instance — but for *existing* data that might not be found. RemoteFactory assumes that when your Fetch method returns, the object is fully populated with `IsNew = false`.
-
-The caller sees a single step — `var employee = await factory.Fetch(id)` — but internally RemoteFactory does two things: creates the object via its constructor, then calls the `[Fetch]` method to populate it.
-
-**Why two steps instead of one?** You might expect Fetch to just return a new, populated object in a single call. The two-step design exists because of how RemoteFactory handles services. Constructor-injected services (`[Service]` on the constructor) are services the object *always* needs — they work on both client and server and survive serialization. Method-injected services (`[Service]` on the Fetch method) are server-only — repositories, database contexts, things that only exist where the data lives. By separating construction from population, RemoteFactory keeps "always needed" services on the constructor and "server-only" services on the method. The alternative — different constructors for client and server — would be far less clear.
-
-### Instance Method Fetch
+Fetch loads existing data by key. The factory builds the object (running its constructor) and calls your Fetch to fill it:
 
 <!-- snippet: operations-fetch-instance -->
 <a id='snippet-operations-fetch-instance'></a>
 ```cs
-// [Fetch] loads data into instance; [Service] marks DI-injected parameters
+/// <summary>
+/// Loads an existing Order and its lines; false when there is none.
+/// </summary>
 [Remote, Fetch]
-internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task<bool> Fetch(
+    int id,
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    var entity = await repository.GetByIdAsync(employeeId, ct);
-    if (entity == null) return false;  // Return false = factory returns null
-    Id = entity.Id;
-    FirstName = entity.FirstName;
-    LastName = entity.LastName;
-    IsNew = false;
+    var row = await db.FindAsync(id);
+    if (row == null)
+        return false;
+
+    LoadFrom(row, lineListFactory);
     return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L95-L108' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L246-L263' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Generated factory interface:
-```csharp
-public interface IEmployeeFactory
-{
-    Employee Create(CancellationToken cancellationToken = default);
-    Task<Employee> Fetch(Guid employeeId, CancellationToken cancellationToken = default);
-}
-```
+**Not found is `false`.** Fetch runs on the instance, so it cannot return `null` itself. Returning `false` tells the factory to discard the instance and return `null`, and the generated signature is nullable (`Task<IOrder?>`). This is the one operation that handles "not there" cleanly. Use it for a missing row, not for a business filter.
 
-The factory creates a new instance, calls Fetch, and returns the instance. If Fetch throws, the exception propagates.
-
-### Return Types and Not-Found Handling
-
-Because Fetch runs *on* the instance (it's an instance method), it can't return null — it *is* the instance. Instead, returning `bool` signals RemoteFactory: `true` means "this instance is populated, return it to the caller," `false` means "the data wasn't found, discard this instance and return null." This keeps not-found as a normal business result rather than an exception — which matters especially when that signal has to cross an HTTP boundary.
-
-<!-- snippet: operations-fetch-bool-return -->
-<a id='snippet-operations-fetch-bool-return'></a>
-```cs
-// Return bool: true = success (instance), false = not found (factory returns null)
-[Remote, Fetch]
-internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository, CancellationToken ct)
-{
-    var entity = await repository.GetByIdAsync(employeeId, ct);
-    if (entity == null) return false;  // Factory returns null
-    Id = entity.Id;
-    FirstName = entity.FirstName;
-    IsNew = false;
-    return true;  // Factory returns instance
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L125-L137' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-bool-return' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Generated factory interface for bool return:
-```csharp
-public interface IEmployeeFactory
-{
-    Employee Create(CancellationToken cancellationToken = default);
-    Task<Employee?> TryFetch(Guid employeeId, CancellationToken cancellationToken = default);
-}
-```
-
-Note the nullable return type when Fetch returns bool.
-
-Fetch return types:
-- **void**: Returns non-nullable instance, throws on error
-- **bool**: True = success, false = not found (factory returns null, generated signature is nullable)
-- **Task**: Returns non-nullable instance, throws on error
-- **Task\<bool\>**: True = success, false = not found (factory returns null, generated signature is nullable)
+**Constructor and method services.** A `[Service]` on the constructor is something the object needs on whichever tier it is on, and it is injected again after deserialization. A `[Service]` on the method is resolved from the container of the tier the method runs on. For a `[Remote]` Fetch that is the server, so a store or database context goes there.
 
 ## Insert, Update, Delete Operations
 
-These are the persistence write operations. Callers don't invoke them directly — they call `factory.Save(instance)`, and RemoteFactory routes to the right one based on entity metadata: `IsNew = true` routes to Insert, `IsNew = false` routes to Update, `IsDeleted = true` routes to Delete.
+Callers don't invoke these: they call `factory.Save(order)`, and the factory runs the one the object's state calls for:
+- `IsNew` true runs Insert;
+- `IsNew` false runs Update;
+- `IsDeleted` true runs Delete.
 
-RemoteFactory assumes that when your method returns, the persistence operation is complete. What you do inside the method is up to you.
+Keep what `Save` returns: `order = await factory.Save(order)`. See [Save Operation](save-operation.md).
 
-**Why three separate methods instead of one Save?** Because in practice, these are very different problems to solve. Insert creates new database records. Update modifies existing ones. Delete often involves cascading — removing child records, cleaning up references — or sometimes the aggregate root just deletes its own records without walking the children at all. Each operation may need different injected services too. Keeping them separate means each method contains exactly the logic for its case, with exactly the services it needs, rather than a single method with branching logic trying to handle everything.
+Each write handles only its own object's row. An aggregate's children are written by the cascade: the root hands its row's child collection to the list factory's `Save`, and the list makes, finds or removes each child's row and hands each child its own (see [Collection Factories](#collection-factories)). The root flushes once.
 
 ### Insert
 
 <!-- snippet: operations-insert -->
 <a id='snippet-operations-insert'></a>
 ```cs
-// [Insert] persists new entities to storage
+/// <summary>
+/// Inserts a new Order and its lines.
+/// </summary>
 [Remote, Insert]
-internal async Task Insert([Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task Insert(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
-    await repository.AddAsync(entity, ct);
-    await repository.SaveChangesAsync(ct);
-    IsNew = false;
+    var row = new OrderRow();
+    MapTo(row);
+    db.Add(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+    Id = row.Id;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L155-L165' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L265-L281' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Update
@@ -216,598 +151,360 @@ internal async Task Insert([Service] IEmployeeRepository repository, Cancellatio
 <!-- snippet: operations-update -->
 <a id='snippet-operations-update'></a>
 ```cs
-// [Update] persists changes to existing entities
+/// <summary>
+/// Updates an existing Order and its lines.
+/// </summary>
 [Remote, Update]
-internal async Task Update([Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task Update(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    var entity = new EmployeeEntity { Id = Id, FirstName = FirstName, LastName = LastName, /* ... */ };
-    await repository.UpdateAsync(entity, ct);
-    await repository.SaveChangesAsync(ct);
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    MapTo(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L197-L206' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L283-L298' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+A row missing under a loaded object is a failure, so Update throws.
 
 ### Delete
 
 <!-- snippet: operations-delete -->
 <a id='snippet-operations-delete'></a>
 ```cs
-// [Delete] removes entities from storage
+/// <summary>
+/// Deletes an Order. Its line rows go with its row.
+/// </summary>
 [Remote, Delete]
-internal async Task Delete([Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task Delete([Service] IOrderDbContext db)
 {
-    await repository.DeleteAsync(Id, ct);
-    await repository.SaveChangesAsync(ct);
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    db.Remove(row);
+    await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L234-L242' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L300-L312' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+Deleting the order removes its row, and its line rows go with it, as a database's cascade delete would. A line removed while the order is still kept is a different case: the list's Save removes that line's row during the next Update.
 
 ### Combining Operations
 
-When insert and update use the same logic (e.g., an upsert), you can combine attributes on a single method:
+When Insert and Update do the same write, one method can carry both attributes:
 
 <!-- snippet: operations-insert-update -->
 <a id='snippet-operations-insert-update'></a>
 ```cs
-// Multiple attributes on one method - same handler for insert and update (upsert)
 [Remote, Insert, Update]
-internal async Task Upsert([Service] ISettingsRepository repository, CancellationToken ct)
+internal async Task Upsert([Service] ICustomerPreferencesStore store)
 {
-    await repository.UpsertAsync(Key, Value, ct);
+    await store.WriteAsync(new CustomerPreferencesRow(CustomerName, DeliveryWindow, NotifyBySms, LastSavedAt));
     IsNew = false;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L259-L267' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L87-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Generated factory interfaces include methods that operate on the instance:
-```csharp
-public interface IEmployeeInsertFactory
-{
-    Employee Create(CancellationToken cancellationToken = default);
-    Task Insert(Employee instance, CancellationToken cancellationToken = default);
-}
-
-public interface IEmployeeUpdateFactory
-{
-    Employee Create(CancellationToken cancellationToken = default);
-    Task<Employee?> Fetch(Guid employeeId, CancellationToken cancellationToken = default);
-    Task Update(Employee instance, CancellationToken cancellationToken = default);
-}
-
-public interface IEmployeeDeleteFactory
-{
-    Employee Create(CancellationToken cancellationToken = default);
-    Task<Employee?> Fetch(Guid employeeId, CancellationToken cancellationToken = default);
-    Task Delete(Employee instance, CancellationToken cancellationToken = default);
-}
-```
-
-Return value handling:
-- **void**: Operation succeeded
-- **bool**: True = success, false = not authorized or not found
-- **Task**: Operation succeeded after await
-- **Task\<bool\>**: True = success, false = not authorized or not found
+The factory's save method is named `Save` plus your method's name without its operation prefix. The name comes from the group's highest-ranked write: Delete, then Update, then Insert. `Upsert` starts with neither, so the method is **`SaveUpsert`**; a combined method named `Update` would give `Save`. With no `[Delete]`, marking the object deleted makes the save throw.
 
 ## Execute Operation
 
-Create, Fetch, and Save cover the standard persistence lifecycle. Execute is for operations that need to orchestrate *across* that lifecycle — deciding which persistence path to take before committing to one.
+`[Execute]` is for two things:
+- **A command** on a static `[Factory]` class. It usually returns nothing or a simple result.
+- **A factory method on a class factory** with logic around the standard operations, such as create-or-fetch.
 
-The motivating example: "start a consultation for a patient" needs to check if an active consultation already exists. If it does, fetch it. If not, create a new one. You can't do this inside a `[Create]` constructor (you've already committed to creating) or a `[Fetch]` method (you've already committed to fetching). Execute runs before that commitment, with access to the factory itself, so it can call Create, Fetch, or any other factory method based on the situation.
+| Context | Method | Generates |
+|---------|--------|-----------|
+| **Static factory** class | `private static`, underscore prefix (`_SubmitOrder`) | A delegate type (`OrderCommands.SubmitOrder`), registered in DI |
+| **Class factory** | `public static` (or `internal static` for a server-only one) | A method on the factory interface; must return `Task` of the class's interface |
 
-Execute works in two contexts with different conventions:
+`[Execute]` obeys `[Remote]` like every other operation:
+- **With it,** the client's call crosses to the server.
+- **Without it,** the method runs on whichever tier resolves it, with that tier's `[Service]` parameters. So a bare `[Execute]` that takes a server-only service fails on the client at call time.
 
-| Context | Method Visibility | Naming | Generates |
-|---------|------------------|--------|-----------|
-| **Static factory** class | `private static` | Underscore prefix (`_MethodName`) | Delegate type |
-| **Class factory** | `public static` to run where the factory resolves; `internal static` for server-only | No prefix (`MethodName`) | Factory interface method |
-
-In both contexts **`[Execute]` obeys `[Remote]`**, like every other operation. With `[Remote]` the call is a client-to-server entry point: the client gets a remote delegate and the server a local path guarded by `NeatooRuntime.IsServerRuntime`. Without it there is no remote delegate and no endpoint: the method runs on whichever tier resolves it, and its `[Service]` parameters come from that tier's container — so a bare `[Execute]` that takes a server-only service compiles, then fails on the client at call time. Use `[Remote]` when the command needs the server; leave it off for computation that must run where it is called, such as a client-side engine in Blazor WASM. The examples below carry `[Remote]` because they take repositories; see the [attributes reference](attributes-reference.md#execute) for the bare shape.
+See the [attributes reference](attributes-reference.md#execute) for the bare shape.
 
 ### Static Factory Execute
 
-For stateless operations in static `[Factory]` classes. Generates delegate types registered in DI.
+A command changes an aggregate through the aggregate's own factory: it fetches the aggregate, calls its verb, and saves. It never writes the aggregate's row itself, which would skip the aggregate's rules and its own Insert/Update. On the server, the factory runs locally, with no second round trip:
 
 <!-- snippet: operations-execute -->
 <a id='snippet-operations-execute'></a>
 ```cs
-// [Execute] for business operations - underscore prefix removed in generated delegate name
 [Remote, Execute]
-private static async Task<PromotionResult> _PromoteEmployee(
-    Guid employeeId, string newTitle, decimal salaryIncrease,
-    [Service] IEmployeeRepository repository, CancellationToken ct)
+private static async Task<SubmitOutcome> _SubmitOrder(
+    int orderId,
+    [Service] IOrderFactory orderFactory,
+    CancellationToken cancellationToken)
 {
-    var employee = await repository.GetByIdAsync(employeeId, ct);
-    if (employee == null) return new PromotionResult(false, "Employee not found");
-    employee.Position = newTitle;
-    employee.SalaryAmount += salaryIncrease;
-    await repository.UpdateAsync(employee, ct);
-    await repository.SaveChangesAsync(ct);
-    return new PromotionResult(true, $"Promoted to {newTitle}");
+    var order = await orderFactory.Fetch(orderId, cancellationToken);
+    if (order == null)
+        return SubmitOutcome.NotFound;
+    if (!order.CanSubmit)
+        return SubmitOutcome.NotSubmittable;
+
+    order.Submit();
+    await orderFactory.Save(order, cancellationToken);
+    return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L284-L299' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L55-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Generated delegate (not a factory interface):
-```csharp
-// Method: _PromoteEmployee -> Delegate: PromoteEmployee (underscore prefix removed)
-public static partial class EmployeePromotionCommand
-{
-    public delegate Task<PromotionResult> PromoteEmployee(
-        Guid employeeId,
-        string newTitle,
-        decimal salaryIncrease,
-        CancellationToken cancellationToken = default);
-}
-```
-
-Execute operations on static classes generate delegates registered in DI. The delegate name is derived from the method name with underscore prefix removed. They can return any type and accept any parameters. With `[Remote]` the client's delegate serializes the call to the server; without it the delegate runs locally on whichever tier resolved it.
+The client resolves the delegate and calls it: `var outcome = await submitOrder(orderId)`. A missing order is reported in the result. The command reads the order's `CanSubmit` verdict before calling `Submit`, which throws only when the caller ignored that verdict.
 
 ### Command Pattern
+
+A command that returns only `Task` has nowhere to report a missing target, so a missing order is an exception:
 
 <!-- snippet: operations-execute-command -->
 <a id='snippet-operations-execute-command'></a>
 ```cs
-// Command pattern with [Execute] - static class with private method, underscore prefix removed
 [Remote, Execute]
-private static async Task<TransferResult> _TransferEmployee(
-    Guid employeeId, Guid newDepartmentId, DateTime effectiveDate,
-    [Service] IEmployeeRepository employeeRepo, [Service] IDepartmentRepository departmentRepo)
+private static async Task _CancelOrder(int orderId, [Service] IOrderFactory orderFactory)
 {
-    var employee = await employeeRepo.GetByIdAsync(employeeId);
-    if (employee == null) throw new InvalidOperationException($"Employee {employeeId} not found.");
-    employee.DepartmentId = newDepartmentId;
-    await employeeRepo.UpdateAsync(employee);
-    await employeeRepo.SaveChangesAsync();
-    return new TransferResult(employeeId, newDepartmentId, effectiveDate, true);
+    var order = await orderFactory.Fetch(orderId)
+        ?? throw new KeyNotFoundException($"Order {orderId} not found");
+
+    order.Cancel();
+    await orderFactory.Save(order);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Application/Samples/Operations/ExecuteOperationSamples.cs#L20-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L77-L87' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+Over HTTP, that exception reaches the caller as `HttpRequestException`: the server answers 500, and the exception's type does not cross. See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
 
 ### Class Factory Execute
 
-When the orchestration belongs with the aggregate — especially when it needs to call the aggregate's own Create and Fetch methods — use Execute on a class factory. This is the "create or fetch" pattern: check whether something exists, then load it or create a new one.
+Create-or-fetch belongs with the aggregate. It is an `[Execute]` that calls the aggregate's own Fetch and then, when nothing is found, its Create:
 
 <!-- snippet: operations-class-execute -->
 <a id='snippet-operations-class-execute'></a>
 ```cs
-public interface IConsultation
+[Remote, Execute]
+public static async Task<IOrder> OpenDraft(
+    string customerName,
+    [Service] IOrderFactory factory)
 {
-    long PatientId { get; }
-    string Status { get; }
-}
-
-[Factory]
-public partial class Consultation : IConsultation
-{
-    public long PatientId { get; set; }
-    public string Status { get; set; } = string.Empty;
-
-    public Consultation() { }
-
-    [Remote, Create]
-    internal Task CreateAcute(long patientId, [Service] IEmployeeRepository repo)
-    {
-        PatientId = patientId;
-        Status = "Acute";
-        return Task.CompletedTask;
-    }
-
-    [Remote, Fetch]
-    internal Task<bool> FetchActive(long patientId, [Service] IEmployeeRepository repo)
-    {
-        PatientId = patientId;
-        Status = "Active";
-        return Task.FromResult(true);
-    }
-
-    // Execute on class factory: public static, returns containing type's interface
-    [Remote, Execute]
-    public static async Task<IConsultation> StartForPatient(
-        long patientId,
-        [Service] IConsultationFactory factory,
-        [Service] IEmployeeRepository repo)
-    {
-        var existing = await factory.FetchActive(patientId);
-        if (existing != null)
-            return existing;
-
-        return await factory.CreateAcute(patientId);
-    }
+    return await factory.FetchDraft(customerName)
+        ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/ClassExecuteSamples.cs#L6-L53' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L357-L366' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`StartForPatient` receives its own factory via `[Service]`, checks for an existing consultation, and either fetches or creates. The caller just sees `factory.StartForPatient(patientId)` — the orchestration decision is encapsulated.
-
-When the class implements a matching `I{ClassName}` interface, all generated factory methods return the interface type. Classes without a matching interface return the concrete type instead.
-
-Generated factory interface:
-```csharp
-public interface IConsultationFactory
-{
-    Task<IConsultation> CreateAcute(long patientId, CancellationToken ct = default);
-    Task<IConsultation?> FetchActive(long patientId, CancellationToken ct = default);
-    Task<IConsultation> StartForPatient(long patientId, CancellationToken ct = default);
-}
-```
-
-Key differences from static factory Execute:
-- Method is **`static`** with no underscore prefix — `public static` to run where the factory resolves, or `internal static` without `[Remote]` for a server-only operation, which is guarded like any other `internal` method and carried on the factory interface with the `internal` modifier
-- Must return the **containing type** (or its matching interface) — keeps the factory interface cohesive
-- Generates a **factory interface method**, not a delegate type
-- `[Service]` parameters are injected by the factory, not included in the caller's signature
-
-Class factory Execute obeys `[Remote]` exactly as static factory Execute does: with it the client crosses to the server; without it the method runs on whichever tier resolves the factory, with that tier's services. Use class factory Execute when the orchestration logic is tightly coupled to the aggregate (calls its own factory methods, uses internal helpers). If the operation returns a different type, use a static factory Execute instead.
+`FetchDraft` is a plain `internal` `[Fetch]` with no `[Remote]`, so only the server calls it. The client calls `orderFactory.OpenDraft(customerName)` and gets the stored draft or a new, unsaved one, in one round trip. Don't put that choice in a Create that looks for an existing object, or in a Fetch that makes one: either hides which one the caller got.
 
 ## Events
 
-There is no `[Event]` method attribute. Domain events are published via the mediator surface — `IFactoryEvents.Raise<T>` inside a factory method, dispatched to server-side `[FactoryEventHandler<T>]` static handlers and optionally relayed to the client. Handlers run **in the caller's DI scope, sequentially, awaited** — at the default `Immediate` phase they participate in the caller's transaction, while `AfterFlush`/`AfterCommit` handlers defer to later drain points. See [Factory Events](factory-events.md) for the full pattern and [Dispatch Phases](factory-events.md#dispatch-phases) for the phase contract.
+There is no `[Event]` method attribute. Domain events are raised with `IFactoryEvents.Raise<T>` inside a factory method. They are dispatched to `[FactoryEventHandler<T>]` handlers, which run in the caller's DI scope, one after another, and are awaited, and they can be relayed to the client. See [Factory Events](factory-events.md).
 
-For fire-and-forget work that must not participate in the caller's transaction (email, webhooks, audit sinks to external systems), RemoteFactory no longer ships a framework-supplied surface. Compose a manual pattern inside the factory method:
-
-```csharp
-[Remote, Insert]
-internal async Task Insert(
-    [Service] IEmployeeRepository repo,
-    [Service] IServiceScopeFactory scopeFactory,
-    [Service] ICorrelationContext correlation,
-    [Service] IHostApplicationLifetime lifetime,
-    CancellationToken ct)
-{
-    await repo.AddAsync(/* ... */, ct);
-
-    // Snapshot ambient state BEFORE entering the background task.
-    var correlationId = correlation.CorrelationId;
-    var shutdownToken = lifetime.ApplicationStopping;
-
-    _ = Task.Run(async () =>
-    {
-        using var scope = scopeFactory.CreateScope();
-        // Copy the snapshotted state into the fresh scope.
-        scope.ServiceProvider.GetRequiredService<ICorrelationContext>().CorrelationId = correlationId;
-
-        var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
-        try { await email.SendWelcomeAsync(/* ... */, shutdownToken); }
-        catch (Exception ex) { /* log and swallow */ }
-    }, CancellationToken.None);
-}
-```
-
-See the [v1.5.0 release notes](release-notes/v1.5.0.md) for the full migration guide from the retired `[Event]` attribute API, including graceful-shutdown tracking and tenant-context propagation.
+Work that must not join the caller's transaction (email, webhooks, an external audit sink) has no framework surface. [Factory Events](factory-events.md) describes the manual pattern: a `Task.Run` with its own `IServiceScopeFactory` scope, with any ambient state such as the correlation ID copied in first.
 
 ## Collection Factories
 
-This is an advanced feature. Most developers won't need collection factories initially — a plain `List<Child>` works fine when children don't need their own persistence awareness.
+A `[Factory]` list class is how an aggregate's children are created, loaded and saved. The list's `[Update]` is the cascade, and it is how a child removed on the client reaches the server: the list keeps the removed child, flagged deleted, until the next save removes its row. A plain `List<Child>` has none of that, so use one only for children that are never written.
 
-Collection factories exist for scenarios where a plain list isn't enough for persistence. The key example: when a user removes an item from a list on the client, the application considers it "deleted" — but the server still needs to know about that deletion to remove the database record. A persistence-aware collection can track deleted items and include them in the Save operation, even after the UI has moved on. Collection factories also ensure that each child entity is properly constructed through its own factory (with DI wiring), and that the child factory reference survives serialization so new children can be added after the aggregate crosses the client/server boundary.
-
-### Basic Collection Factory
+`OrderLineList`:
 
 <!-- snippet: collection-factory-basic -->
 <a id='snippet-collection-factory-basic'></a>
 ```cs
-// Constructor-injected child factory (survives serialization)
+/// <summary>
+/// Creates an empty list. Public and local, so a root created on the client
+/// can create its list there (R-C).
+/// </summary>
 [Create]
-public OrderLineList([Service] IOrderLineFactory lineFactory) => _lineFactory = lineFactory;
+public void Create()
+{
+}
 
-// Fetch populates collection from data
+/// <summary>
+/// Loads the lines from the order row's line rows, handing each line its row.
+/// </summary>
 [Fetch]
-public void Fetch(
-    IEnumerable<(int id, string name, decimal price, int qty)> items,
-    [Service] IOrderLineFactory lineFactory)
+internal void Fetch(IEnumerable<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
 {
-    foreach (var item in items)
-        Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
+    foreach (var row in rows)
+    {
+        Add((OrderLine)lineFactory.Fetch(row));
+    }
 }
 
-// Domain method uses stored factory to add children
-public void AddLine(string name, decimal price, int qty) => Add(_lineFactory.Create(name, price, qty));
+/// <summary>
+/// The cascade: makes, finds or removes each line's row and hands each live
+/// line its row through the line factory's Save.
+/// </summary>
+/// <remarks>
+/// Called by Order.Insert and Order.Update through IOrderLineListFactory.Save,
+/// with the order row's line collection. Neither the list nor the root maps a
+/// line's row; the line does.
+/// </remarks>
+[Update]
+internal void Update(ICollection<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
+{
+    foreach (var line in this)
+    {
+        if (line.IsDeleted)
+        {
+            rows.Remove(rows.Single(r => r.Id == line.Id));
+            continue;
+        }
+
+        OrderLineRow row;
+        if (line.IsNew)
+        {
+            row = new OrderLineRow();
+            rows.Add(row);
+        }
+        else
+        {
+            row = rows.Single(r => r.Id == line.Id);
+        }
+
+        lineFactory.Save(line, row);
+    }
+
+    // The removed lines' rows are gone; the list the save returns holds live lines only.
+    RemoveAll(l => l.IsDeleted);
+}
+
+// -------------------------------------------------------------------------
+// Domain Methods
+// -------------------------------------------------------------------------
+
+public void AddLine(IOrderLine line)
+{
+    Add((OrderLine)line);
+}
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/OrderLineCollectionSamples.cs#L45-L62' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L283-L351' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Generated factory interface:
-```csharp
-public interface IOrderLineListFactory
-{
-    OrderLineList Create();
-    OrderLineList Fetch(IEnumerable<(int, string, decimal, int)> items);
-}
-```
+- **The list's Create is public and local,** so a root created on the client creates its list there. Its other operations are `internal`: only the root's operations call them, on the server.
+- **Load is symmetric with the save.** The list's Fetch receives the rows and hands each line its own; neither the list nor the root maps a line's row.
+- **The list does not store the line factory.** A client builds a line with `lineFactory.Create(...)` and adds it with `AddLine`. A factory stored on the list would be a method-injected service, which does not survive serialization.
+- **No `[Remote]` on the list's own operations;** the root's `[Remote]` operation is the entry point. A list loaded on demand is the exception: a `[Remote]` Fetch on the list factory, called when needed.
 
-### Key Points
-
-**Collection inherits from List<T> or implements IList<T>:**
-Collections that need factory behavior inherit from `List<T>` or implement a list interface.
-
-**Child factory is constructor-injected:**
-Use constructor injection for the child factory so it survives serialization (see [Service Injection](service-injection.md#serialization-caveat-method-injected-services-are-lost)).
-
-**No [Remote] on collection:**
-Collections are part of their parent aggregate. The parent's `[Remote]` method is the entry point; collection operations run server-side within that call.
-
-**Parent creates collection via factory:**
-
-<!-- snippet: collection-factory-parent -->
-<a id='snippet-collection-factory-parent'></a>
-```cs
-// Parent creates collection via factory - collection is properly initialized with child factory
-[Remote, Create]
-internal void Create(string customerName, [Service] IOrderLineListFactory lineListFactory)
-{
-    Id = Random.Shared.Next(1, 10000);
-    CustomerName = customerName;
-    Lines = lineListFactory.Create();
-}
-
-[Remote, Fetch]
-internal void Fetch(int id, [Service] IOrderLineListFactory lineListFactory)
-{
-    Id = id;
-    Lines = lineListFactory.Fetch([(1, "Widget A", 10.00m, 2), (2, "Widget B", 25.00m, 1)]);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/OrderLineCollectionSamples.cs#L77-L93' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-parent' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-This pattern ensures:
-1. Collections are properly initialized with child factories
-2. Children can be added after the aggregate is fetched
-3. Factory references survive serialization via constructor injection
+The root creates, loads and saves its list through the list factory: `Lines = lineListFactory.Create()` in Create, `lineListFactory.Fetch(row.Lines)` when it loads, and `lineListFactory.Save(Lines, row.Lines)` in Insert and Update, as shown above.
 
 ## Remote Attribute
 
-`[Remote]` marks methods as **entry points from the client to the server**. It's how RemoteFactory knows which calls need to cross the network boundary. Once execution reaches the server, subsequent calls stay there — you don't need `[Remote]` on methods that are only called from server-side code.
+`[Remote]` marks an entry point from the client to the server. When a Remote-mode client calls a `[Remote]` operation:
+- the factory serializes the call and posts it to `/api/neatoo`;
+- the server runs the method with its own services;
+- the result comes back.
 
-<!-- snippet: operations-remote -->
-<a id='snippet-operations-remote'></a>
-```cs
-// No [Remote] = local execution (client-side)
-[Create]
-public EmployeeRemoteVsLocal() => Id = Guid.NewGuid();
-
-// [Remote] = serialized to server where repository is available
-[Remote, Fetch]
-internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
-{
-    var entity = await repository.GetByIdAsync(id, ct);
-    if (entity == null) return false;
-    Id = entity.Id;
-    FirstName = entity.FirstName;
-    IsNew = false;
-    return true;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L315-L331' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-remote' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-When a factory is registered with `NeatooFactory.Remote`:
-1. Factory method (e.g., `Fetch()`) routes to `RemoteFetch()`
-2. Parameters serialized
-3. HTTP POST to `/api/neatoo`
-4. Server executes method with injected services
-5. Response serialized and returned
-
-When a factory is registered with `NeatooFactory.Logical` or `NeatooFactory.Server`:
-- Factory method routes to `LocalFetch()`
-- Direct method execution
-- No serialization, no HTTP call
-
-Use `[Remote]` for aggregate root factory methods and other client entry points. Most methods with method-injected services do NOT need `[Remote]`—they're called from server-side code after already crossing the boundary.
-
-See [Client-Server Architecture](client-server-architecture.md) for the complete mental model.
+Once on the server, `[Remote]` does nothing different: methods called from server-side code need none. Order's Create, above, has no `[Remote]` and runs on the client; its Fetch and writes have it and run on the server. In Server and Logical mode every operation runs locally. See [Client-Server Architecture](client-server-architecture.md) and [Factory Modes](factory-modes.md).
 
 ## Lifecycle Hooks
 
-Most developers won't need lifecycle hooks — they're an advanced feature for cross-cutting concerns that apply across multiple operations without cluttering each method. Common uses include audit logging, cache invalidation, and guard rails like preventing deletion of unsaved entities.
-
-Implement the corresponding interface on your class to hook into the persistence lifecycle:
+An object can implement hook interfaces that the factory calls around its operations. They are for preparing state and recording what happened; they are not checks. A check the user can recover from is a verdict the screen reads before acting, and a throw is for broken state.
 
 ### IFactoryOnStart / IFactoryOnStartAsync
 
-Called before the operation executes. Use for validation gates or pre-operation setup:
+Called before the operation. `CustomerPreferences` stamps its save time before a write:
 
 <!-- snippet: operations-lifecycle-onstart -->
 <a id='snippet-operations-lifecycle-onstart'></a>
 ```cs
-// IFactoryOnStart - called before any factory operation executes
-public void FactoryStart(FactoryOperation factoryOperation)
+public Task FactoryStartAsync(FactoryOperation factoryOperation)
 {
-    OnStartCalled = true;
-    LastOperation = factoryOperation;
-    if (factoryOperation == FactoryOperation.Delete && Id == Guid.Empty)
-        throw new InvalidOperationException("Cannot delete unsaved employee.");
+    if (factoryOperation is FactoryOperation.Insert or FactoryOperation.Update)
+    {
+        LastSavedAt = DateTimeOffset.UtcNow;
+    }
+    return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/LifecycleHookSamples.cs#L18-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L104-L113' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnComplete / IFactoryOnCompleteAsync
 
-Called after successful operation. Use for audit logging, cache invalidation, or triggering follow-up actions:
+Called after the operation succeeds. `Order` resets `IsNew` after an Insert:
 
 <!-- snippet: operations-lifecycle-oncomplete -->
 <a id='snippet-operations-lifecycle-oncomplete'></a>
 ```cs
-// IFactoryOnComplete - called after operation succeeds (audit, cache invalidation, etc.)
-public void FactoryComplete(FactoryOperation factoryOperation)
+public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
 {
-    OnCompleteCalled = true;
-    CompletedOperation = factoryOperation;
+    // Example: Reset IsNew after successful Insert
+    if (factoryOperation == FactoryOperation.Insert)
+    {
+        IsNew = false;
+    }
+    return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/LifecycleHookSamples.cs#L43-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L180-L190' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnCancelled / IFactoryOnCancelledAsync
 
-Called when operation is cancelled via CancellationToken. Use for cleanup or logging of cancelled operations:
+Called when an async instance operation is cancelled through its `CancellationToken`, before the cancellation propagates. Use it for cleanup or logging.
 
-<!-- snippet: operations-lifecycle-oncancelled -->
-<a id='snippet-operations-lifecycle-oncancelled'></a>
-```cs
-// IFactoryOnCancelled - called when operation cancelled via CancellationToken
-public void FactoryCancelled(FactoryOperation factoryOperation)
-{
-    OnCancelledCalled = true;
-    CancelledOperation = factoryOperation;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/LifecycleHookSamples.cs#L66-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncancelled' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+### When Each Hook Runs
 
-Lifecycle execution order:
-1. `FactoryStart()` or `FactoryStartAsync()`
-2. Operation method executes
-3. `FactoryComplete()` or `FactoryCompleteAsync()` (if successful)
-4. `FactoryCancelled()` or `FactoryCancelledAsync()` (if cancelled)
+- **The synchronous hooks** (`IFactoryOnStart`, `IFactoryOnComplete`) run around instance operations.
+- **The async hooks** (`IFactoryOnStartAsync`, `IFactoryOnCompleteAsync`) run only around `Task`-returning operations. So `Order`'s async start hook runs for its Fetch and writes, but not for its synchronous Create.
+- **A constructor or static Create or Fetch** gets only the complete hook, not the start hook.
+- **A class-level `[Execute]`** gets no hooks.
+- **When an operation throws,** no hook runs. When an async instance operation is cancelled, the cancelled hook runs instead of the complete hook.
 
 ## CancellationToken Support
 
-All generated factory methods include an optional CancellationToken as the last parameter. RemoteFactory threads it through the pipeline — linking it to `HttpContext.RequestAborted` on the server and `ApplicationStopping` for graceful shutdown. If you include CancellationToken in your operation method signature, you'll receive this linked token automatically.
+Every generated factory method takes an optional `CancellationToken`. Declare one on your operation to receive it. Over HTTP it is the request's: it fires when the client cancels or disconnects, or when the server begins shutting down. It is never serialized and never a `[Service]`.
 
-<!-- snippet: operations-cancellation -->
-<a id='snippet-operations-cancellation'></a>
+<!-- snippet: aspnetcore-cancellation -->
+<a id='snippet-aspnetcore-cancellation'></a>
 ```cs
-// CancellationToken always last - pass to async calls, check before expensive operations
 [Remote, Fetch]
-internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repository, CancellationToken ct)
+internal async Task<bool> Fetch(
+    int orderId,
+    [Service] IOrderDbContext db,
+    CancellationToken cancellationToken)
 {
-    ct.ThrowIfCancellationRequested();
-    var entity = await repository.GetByIdAsync(id, ct);
-    if (entity == null) return false;
-    Id = entity.Id;
-    FirstName = entity.FirstName;
-    IsNew = false;
+    var row = await db.FindAsync(orderId, cancellationToken);
+    if (row == null)
+        return false;
+
+    OrderId = row.Id;
+    CustomerName = row.CustomerName;
+    Status = row.Status;
+    Lines = row.Lines
+        .Select(l => new OrderSummaryLine(l.ProductName, l.Quantity, l.UnitPrice * l.Quantity))
+        .ToList();
+    Total = Lines.Sum(l => l.LineTotal);
     return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L357-L370' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L87-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
-
-Generated factory methods automatically include CancellationToken:
-```csharp
-public interface IEmployeeFactory
-{
-    Employee Create(CancellationToken cancellationToken = default);
-    Task<Employee?> Fetch(Guid id, CancellationToken cancellationToken = default);
-}
-```
-
-CancellationToken is:
-- Automatically passed to your operation methods
-- Linked to `HttpContext.RequestAborted` on the server
-- Linked to `ApplicationStopping` for graceful shutdown
-- Triggers `IFactoryOnCancelled` lifecycle hook when fired
 
 ## Method Parameters
 
-RemoteFactory requires a specific parameter ordering: **value parameters first, then service parameters, then CancellationToken last**. This isn't arbitrary — the generator uses this ordering to cleanly split parameters into three categories: values go on the generated factory interface (they cross the wire), services are injected from DI (they don't cross the wire), and the CancellationToken is managed by the framework. The caller only sees value parameters and the token; services are invisible to them.
+Declare an operation's parameters in this order: **value parameters, then `[Service]` parameters, then the `CancellationToken`.**
 
-**Value parameters**: Serialized and sent to server
-<!-- snippet: operations-params-value -->
-<a id='snippet-operations-params-value'></a>
-```cs
-// Value parameters (without [Service]) are serialized and sent to server
-[Remote, Fetch]
-internal async Task<bool> Fetch(
-    Guid departmentId, string? positionFilter, int maxResults,
-    [Service] IEmployeeRepository repository, CancellationToken ct)
-{
-    var employees = await repository.GetByDepartmentIdAsync(departmentId, ct);
-    Results = employees
-        .Where(e => positionFilter == null || e.Position.Contains(positionFilter))
-        .Take(maxResults).Select(e => $"{e.FirstName} {e.LastName}").ToList();
-    return Results.Count > 0;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L381-L394' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-value' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+- **Value parameters** are the caller's arguments. They are serialized for a `[Remote]` call and appear on the generated factory method.
+- **`[Service]` parameters** are resolved from DI on the tier that runs the method. They are not serialized and not on the factory method. Their order among themselves is free.
+- **The `CancellationToken`** goes last.
 
-**Service parameters**: Injected from DI, not serialized
-<!-- snippet: operations-params-service -->
-<a id='snippet-operations-params-service'></a>
-```cs
-// [Service] parameters are DI-injected, not serialized
-[Remote, Fetch]
-internal async Task<bool> Fetch(
-    Guid employeeId,                          // Value: serialized
-    [Service] IEmployeeRepository repository, // Service: DI-injected
-    [Service] IAuditLogService auditLog,      // Service: DI-injected
-    CancellationToken ct)
-{
-    var entity = await repository.GetByIdAsync(employeeId, ct);
-    if (entity == null) return false;
-    Id = entity.Id;
-    FirstName = entity.FirstName;
-    IsNew = false;
-    await auditLog.LogAsync("Fetch", employeeId, "Employee", "Employee loaded", ct);
-    return true;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L411-L428' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-service' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+`OrderSummary.Fetch` above and `SubmitOrder` follow it. A `params` array is a value parameter, and C# requires it to be last of all. On the generated class factory method, the token comes just before the `params` array.
 
-**Params arrays**: Variable-length arguments
-<!-- snippet: operations-params-array -->
-<a id='snippet-operations-params-array'></a>
-```cs
-// params arrays supported for batch operations
-[Remote, Fetch]
-internal async Task<bool> Fetch(
-    [Service] IEmployeeRepository repository, CancellationToken ct, params Guid[] employeeIds)
-{
-    EmployeeNames = [];
-    foreach (var id in employeeIds)
-    {
-        var entity = await repository.GetByIdAsync(id, ct);
-        if (entity != null) EmployeeNames.Add($"{entity.FirstName} {entity.LastName}");
-    }
-    return EmployeeNames.Count > 0;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L439-L453' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-array' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+The generator does not check the order. A class operation still compiles with another order. An `[Execute]` does not: its generated call passes values, then services, then the token, so an out-of-order `[Execute]` fails inside the generated code ([#135](https://github.com/NeatooDotNet/RemoteFactory/issues/135)).
 
-**CancellationToken**: Optional, always last parameter
-<!-- snippet: operations-params-cancellation -->
-<a id='snippet-operations-params-cancellation'></a>
-```cs
-// Parameter order: value params, [Service] params, CancellationToken (always last)
-[Remote, Fetch]
-internal async Task<bool> Fetch(
-    Guid employeeId, string? filter,          // Value parameters
-    [Service] IEmployeeRepository repository, // Service parameters
-    [Service] IAuditLogService auditLog,
-    CancellationToken ct)                     // CancellationToken last
-{
-    var entity = await repository.GetByIdAsync(employeeId, ct);
-    if (entity == null) return false;
-    if (filter != null && !entity.Position.Contains(filter)) return false;
-    Id = entity.Id;
-    FirstName = entity.FirstName;
-    IsNew = false;
-    await auditLog.LogAsync("Fetch", employeeId, "Employee", "Filtered fetch", ct);
-    return true;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Operations/OperationsSamples.cs#L470-L488' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-params-cancellation' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Parameter order rules:
-1. Value parameters (required first, optional last)
-2. Service parameters (any order among services)
-3. CancellationToken (always last)
+Default values on value parameters are not carried to the generated factory method, so every argument is passed.
 
 ## Next Steps
 
-- [Service Injection](service-injection.md) - Inject dependencies into factory methods
-- [Authorization](authorization.md) - Secure factory operations
-- [Save Operation](save-operation.md) - IFactorySave routing
-- [Factory Events](factory-events.md) - `[FactoryEventHandler<T>]` mediator + client relay
+- [Service Injection](service-injection.md): inject dependencies into factory methods
+- [Authorization](authorization.md): secure factory operations
+- [Save Operation](save-operation.md): `IFactorySave` routing
+- [Factory Events](factory-events.md): `[FactoryEventHandler<T>]` and the client relay

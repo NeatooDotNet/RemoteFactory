@@ -37,7 +37,7 @@ public OrderStatus Status { get; set; } = OrderStatus.Draft;
 public IOrderLineList Lines { get; set; } = null!;
 public Money Total => Lines?.CalculateTotal() ?? Money.Zero;
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L93-L99' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-versioning' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L94-L100' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-ordinal-versioning' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Its array is `CustomerName, Id, IsDeleted, IsNew, Lines, Status`. `IsNew` and `IsDeleted` are declared further down the class. `Total` has no setter, so it is not written; the other side computes it.

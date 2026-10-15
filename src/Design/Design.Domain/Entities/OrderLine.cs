@@ -280,6 +280,7 @@ internal partial class OrderLineList : List<OrderLine>, IOrderLineList
     // Factory Operations
     // -------------------------------------------------------------------------
 
+    #region collection-factory-basic
     /// <summary>
     /// Creates an empty list. Public and local, so a root created on the client
     /// can create its list there (R-C).
@@ -347,6 +348,7 @@ internal partial class OrderLineList : List<OrderLine>, IOrderLineList
     {
         Add((OrderLine)line);
     }
+    #endregion
 
     /// <summary>
     /// Removes a line. A line that was never saved is dropped; a saved line is

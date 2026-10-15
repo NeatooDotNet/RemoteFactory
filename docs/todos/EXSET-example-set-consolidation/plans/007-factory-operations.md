@@ -142,29 +142,29 @@ Does NOT touch: `save-operation.md` (008), `service-injection.md` (010), the ski
 
 ## Acceptance
 
-- [ ] `CustomerPreferences`:
+- [x] `CustomerPreferences`:
   - its `[Create]` constructor runs locally;
   - `SaveUpsert` inserts, then updates, through the client;
   - Fetch is null for an unknown customer.
 
   `[integration]` · Must
-- [ ] Order's commands:
+- [x] Order's commands:
   - submit through the client changes a stored draft to Submitted and returns `Submitted`;
   - it returns `NotFound` for a missing id, and `NotSubmittable` for an order that is not a draft;
   - cancel of a missing id throws.
 
   `[integration]` · Must
-- [ ] `CustomerPreferences`' start hook stamps `LastSavedAt` on Insert and Update, and `SaveUpsert` leaves `IsNew` false after the first save `[integration]` · Should
-- [ ] The page's statements of when each hook runs match the generator source `[explicit-skip: source-cited review; the start and complete hooks are also pinned by tests]` · Should
-- [ ] The page's regions for the list (Create, Fetch from rows, AddLine) and create-or-fetch are pinned by the existing cascade and create-or-fetch tests `[integration]` · Must
-- [ ] On the page:
+- [x] `CustomerPreferences`' start hook stamps `LastSavedAt` on Insert and Update, and `SaveUpsert` leaves `IsNew` false after the first save `[integration]` · Should
+- [x] The page's statements of when each hook runs match the generator source `[explicit-skip: source-cited review; the start and complete hooks are also pinned by tests]` · Should
+- [x] The page's regions for the list (Create, Fetch from rows, AddLine) and create-or-fetch are pinned by the existing cascade and create-or-fetch tests `[integration]` · Must
+- [x] On the page:
   - every C# block is an embed from Design or WRONG;
   - no region is defined twice, and none retired is embedded;
   - none of the findings' text remains;
   - the reference-app sources are gone, and the reference app builds.
 
   `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
-- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+- [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -196,6 +196,16 @@ See the recon notes (2026-10-15). The points that matter:
 ---
 
 ## Test Evidence
+
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. CustomerPreferences | `OperationsTests`: `CreateConstructor_RunsOnTheClient_WithItsDefaults` (no remote call), `SaveUpsert_InsertsThenUpdatesTheOneRow`, `Fetch_UnknownCustomer_ReturnsNull` | integration |
+| 2. Commands | `OperationsTests.SubmitOrder_ChangesTheOrderThroughItsRoot_AndReportsWhatItDid` (Submitted, NotSubmittable, NotFound); `CancelOrder_CancelsAStoredOrder_AndThrowsForAMissingOne` | integration |
+| 3. Start hook and IsNew | `SaveUpsert_InsertsThenUpdatesTheOneRow` asserts `LastSavedAt` stamped on each save and `IsNew` false after the first | integration |
+| 4. Hook timing | explicit-skip: stated from `ClassFactoryRenderer.cs` (425-428, 563-578, 609-613, 732-739, 765-784, 834-880). The start hook is pinned by bullet 3, and the complete hook by Order's existing `IsNew` tests (`AggregateTests`, `SerializationTests`) | explicit-skip |
+| 5. List and create-or-fetch regions | existing `AggregateTests` (cascade), `OrderLineDualityTests`, `CreateOrFetchTests` (`OpenDraft`) | integration |
+| 6. Page | explicit-skip: every fence on the page is an embed from `src/Design` (Order, OrderLine, OrderSummary, CustomerPreferences, OrderCommands); the finding-text grep is clean; `reviews/007-refapp-build.log` | explicit-skip |
+| 7. Meta | explicit-skip: `reviews/007-mdsnippets.log`. README, getting started and the-problem gain only `CanSubmit` (amended) and attribution lines. Logs: `007-build.log`, `007-test.log`, `007-design-build.log`, `007-design-test.log` (unit 839; integration 646 + 7 skips; Design 160, up 5; both TFMs) | explicit-skip |
 
 ---
 
