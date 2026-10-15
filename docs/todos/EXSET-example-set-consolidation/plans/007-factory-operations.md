@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** Yes (new Design shapes: a `[Create]` constructor, an `[Insert, Update]` upsert and two commands that act through a root; the most-embedded page after README)
 **Code-review opt-in:** Yes (the page is rewritten against generator behaviour)
@@ -199,17 +199,32 @@ See the recon notes (2026-10-15). The points that matter:
 
 | Bullet | Pinned by | Tier |
 |---|---|---|
-| 1. CustomerPreferences | `OperationsTests`: `CreateConstructor_RunsOnTheClient_WithItsDefaults` (no remote call), `SaveUpsert_InsertsThenUpdatesTheOneRow`, `Fetch_UnknownCustomer_ReturnsNull` | integration |
-| 2. Commands | `OperationsTests.SubmitOrder_ChangesTheOrderThroughItsRoot_AndReportsWhatItDid` (Submitted, NotSubmittable, NotFound); `CancelOrder_CancelsAStoredOrder_AndThrowsForAMissingOne` | integration |
-| 3. Start hook and IsNew | `SaveUpsert_InsertsThenUpdatesTheOneRow` asserts `LastSavedAt` stamped on each save and `IsNew` false after the first | integration |
+| 1. CustomerPreferences | `OperationsTests`: `CreateConstructor_RunsOnTheClient_WithItsDefaults` (no remote call), `SaveUpsert_InsertsThenUpdatesTheOneRow`, `Fetch_UnknownCustomer_ReturnsNull`, `Fetch_StoredCustomer_ReturnsTheSavedValues` | integration |
+| 2. Commands | `OperationsTests.SubmitOrder_ChangesTheOrderThroughItsRoot_AndReportsWhatItDid` (Submitted, NotSubmittable, NotFound); `SubmitOrder_EmptyDraft_IsNotSubmittable_AndStaysADraft` (the empty-draft conjunct of `CanSubmit`); `Submit_WhenCanSubmitIsFalse_Throws` (both messages); `CancelOrder_CancelsAStoredOrder_AndThrowsForAMissingOne` (a retried cancel succeeds) | integration |
+| 3. Start hook and IsNew | `SaveUpsert_InsertsThenUpdatesTheOneRow` asserts `LastSavedAt` stamped by the first save and `IsNew` false after it; the client clears the stamp before the second save, and the stored row carries a fresh one. `Fetch_StoredCustomer_ReturnsTheSavedValues` asserts a Fetch leaves it unchanged | integration |
 | 4. Hook timing | explicit-skip: stated from `ClassFactoryRenderer.cs` (425-428, 563-578, 609-613, 732-739, 765-784, 834-880). The start hook is pinned by bullet 3, and the complete hook by Order's existing `IsNew` tests (`AggregateTests`, `SerializationTests`) | explicit-skip |
 | 5. List and create-or-fetch regions | existing `AggregateTests` (cascade), `OrderLineDualityTests`, `CreateOrFetchTests` (`OpenDraft`) | integration |
 | 6. Page | explicit-skip: every fence on the page is an embed from `src/Design` (Order, OrderLine, OrderSummary, CustomerPreferences, OrderCommands); the finding-text grep is clean; `reviews/007-refapp-build.log` | explicit-skip |
-| 7. Meta | explicit-skip: `reviews/007-mdsnippets.log`. README, getting started and the-problem gain only `CanSubmit` (amended) and attribution lines. Logs: `007-build.log`, `007-test.log`, `007-design-build.log`, `007-design-test.log` (unit 839; integration 646 + 7 skips; Design 160, up 5; both TFMs) | explicit-skip |
+| 7. Meta | explicit-skip: `reviews/007-mdsnippets.log`. README, getting started and the-problem gain only `CanSubmit` (amended) and attribution lines. Logs: `007-build.log`, `007-test.log`, `007-design-build.log`, `007-design-test.log` (unit 839; integration 646 + 7 skips; Design 163, up 8; both TFMs) | explicit-skip |
 
 ---
 
 ## Gate Record
+
+- **Test review** ([007-test-review.md](../reviews/007-test-review.md)), round 1: APPROVED, with three callouts and three tech-debt items, all punched:
+  - the Update stamp is pinned: the client clears it before the second save;
+  - three new tests: an empty draft is `NotSubmittable` and stays a draft, a stored customer fetches back unchanged, and `Submit` throws with both messages;
+  - every test disposes its scopes, and README's `CanSubmit` line is committed.
+- **Code review** ([007-code-review.md](../reviews/007-code-review.md)): APPROVED, with five callouts, all punched:
+  - why Save is nullable;
+  - the save-method naming rule;
+  - four hook-timing statements, on the page and in Order's comments;
+  - `CancelOrder` leaves an already-cancelled order, so a retried cancel succeeds (R-E);
+  - the skill says what `OrderLineRow` is.
+
+  Four of its five theoretical items were taken as wording fixes, and the region-map change is recorded under Amendments.
+- **After the punches:** both solutions rebuilt and passed (unit 839, integration 646 + 7 known skips, Design 163, both TFMs). mdsnippets is clean, and getting started and the-problem change only by the `CanSubmit` line and attribution. One rebuild hit MSB3552: the first TFM's `RemoveDir` of `Generated/` raced the second TFM's resource glob. The rerun was clean, with no change.
+- **Open, by design:** the skill's `:360` note on a constructor-injected list factory goes with `skill-complex-aggregate` (EXSET-010); #135 (techdebt).
 
 ---
 
@@ -222,6 +237,7 @@ See the recon notes (2026-10-15). The points that matter:
   - only `Samples/Operations/LifecycleHookSamples.cs` is deleted;
   - the fire-and-forget block becomes prose;
   - the `params` wording.
+- **2026-10-15 · Region map:** `collection-factory-parent` and `operations-remote` do not render `readme-domain-model` whole on the page. It embeds the nested Create, Fetch and write regions, and gives `[Remote]` and the root's list calls as prose, so the aggregate is not shown twice.
 
 ---
 

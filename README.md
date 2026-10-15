@@ -46,12 +46,13 @@ public interface IOrder : IFactorySaveMeta
     Money Total { get; }
     void AddLine(IOrderLine line);
     void RemoveLine(IOrderLine line);
+    bool CanSubmit { get; }
     void Submit();
     void Cancel();
     void MarkDeleted();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L37-L51' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-interface' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L37-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-interface' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Its factory operations. `Create` runs wherever it is called; the `[Remote]` ones cross to the server, where their `[Service]` parameters are resolved:
@@ -133,7 +134,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L224-L298' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L230-L314' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Client code calls the generated factory:

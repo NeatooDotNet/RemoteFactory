@@ -161,13 +161,14 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     }
 
     /// <summary>
-    /// Called after any factory operation completes successfully.
+    /// Called after each of Order's Task-returning operations completes successfully.
     /// </summary>
     /// <remarks>
     /// GENERATOR BEHAVIOR: the async complete hook runs after a Task-returning
     /// operation succeeds, before the result is returned to the caller. Like the
     /// start hook, it does not run for synchronous, constructor or static
-    /// operations, nor for a class-level [Execute].
+    /// operations, nor for a class-level [Execute], nor after a bool operation
+    /// (Fetch, FetchDraft) that returns false.
     ///
     /// Use cases:
     /// - Resetting tracking state

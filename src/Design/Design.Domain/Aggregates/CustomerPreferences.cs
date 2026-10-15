@@ -14,16 +14,18 @@
 // deserialization on either tier, both run it before they fill the properties.
 // So it holds only defaults the next step may overwrite. Anything with a side
 // effect (a lookup, a counter, an event) belongs in a [Create] method instead
-// (VisionAlignment R-J). It takes no arguments: a constructor with arguments
-// costs the type its ordinal converter, and DI could not build it to fetch.
+// (VisionAlignment R-J). It takes no arguments: a type whose only constructor
+// requires arguments loses its ordinal converter, and DI could not build it to
+// fetch.
 //
 // DESIGN DECISION: One [Insert, Update] method, because the store's write is
 // the same either way
 //
 // GENERATOR BEHAVIOR: the factory's save method is named "Save" plus the
-// method name without its operation prefix, taken from the group's
-// highest-ranked write (Delete, then Update, then Insert). "Upsert" starts with
-// neither, so the method is SaveUpsert. With no [Delete], marking the object
+// method name, less the group's highest-ranked operation (Delete, then Update,
+// then Insert) when the name starts with it. Here that is Update, and "Upsert"
+// does not start with it, so the method is SaveUpsert. A method named Insert
+// would give SaveInsert. With no [Delete], marking the object
 // deleted makes the save throw.
 //
 // =============================================================================

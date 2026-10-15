@@ -19,6 +19,9 @@
 // A command that returns only Task has nowhere to put it, so a missing order is
 // an exception (CancelOrder). Over HTTP that exception reaches the caller as
 // an HttpRequestException (the server answers 500). (VisionAlignment R-I.)
+// An order that is already cancelled is not missing: CancelOrder reads its
+// status and leaves it, so Order.Cancel throws only for a caller that ignored
+// it (R-E).
 //
 // =============================================================================
 
@@ -80,6 +83,8 @@ public static partial class OrderCommands
     {
         var order = await orderFactory.Fetch(orderId)
             ?? throw new KeyNotFoundException($"Order {orderId} not found");
+        if (order.Status == OrderStatus.Cancelled)
+            return;   // already cancelled: a retried call is not an error
 
         order.Cancel();
         await orderFactory.Save(order);

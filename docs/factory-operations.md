@@ -21,7 +21,7 @@ For `Order`, the generator emits `IOrderFactory`:
 - **`Create(string customerName)`** for the `[Create]`.
 - **`Fetch(int id)` returning `Task<IOrder?>`.** A `bool` Fetch makes the result nullable.
 - **`OpenDraft(string customerName)`** for the class-level `[Execute]`.
-- **`Save(IOrder target)` returning `Task<IOrder?>`.** It is nullable because a Delete returns nothing to keep.
+- **`Save(IOrder target)` returning `Task<IOrder?>`.** It is nullable because saving an object that is both new and deleted returns `null`, as does a `bool` write that returns `false`. Saving a deleted stored object returns the object.
 - **`TrySave`, `CanSave` and the other `Can*` methods,** when authorization applies.
 
 Insert, Update and Delete are never on the interface: callers call `Save`.
@@ -53,7 +53,7 @@ public void Create(
     IsNew = true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L230-L244' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L231-L245' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### A Create Constructor
@@ -69,10 +69,10 @@ public CustomerPreferences()
     DeliveryWindow = "Any";
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L53-L59' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L55-L61' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Be aware that this constructor is also the one every other path uses to build the object. A Fetch, and a deserialization on either tier, both run it before they fill the properties. Keep it to defaults the next step may overwrite, and put anything with a side effect (a lookup, a counter, an event) in a Create method. The constructor takes no arguments: a constructor with arguments costs the type its ordinal serializer, and DI could not build the object to fetch it.
+Be aware that this constructor is also the one every other path uses to build the object. A Fetch, and a deserialization on either tier, both run it before they fill the properties. Keep it to defaults the next step may overwrite, and put anything with a side effect (a lookup, a counter, an event) in a Create method. The constructor takes no arguments: a type whose only constructor requires arguments loses its ordinal serializer, and DI could not build the object to fetch it.
 
 Two other forms exist:
 - **A static `[Create]` method** that builds and returns the object, for a type whose constructor is private.
@@ -104,7 +104,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L246-L263' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L247-L264' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-fetch-instance' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Not found is `false`.** Fetch runs on the instance, so it cannot return `null` itself. Returning `false` tells the factory to discard the instance and return `null`, and the generated signature is nullable (`Task<IOrder?>`). This is the one operation that handles "not there" cleanly. Use it for a missing row, not for a business filter.
@@ -143,7 +143,7 @@ internal async Task Insert(
     Id = row.Id;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L265-L281' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L266-L282' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Update
@@ -166,7 +166,7 @@ internal async Task Update(
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L283-L298' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L284-L299' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 A row missing under a loaded object is a failure, so Update throws.
@@ -188,7 +188,7 @@ internal async Task Delete([Service] IOrderDbContext db)
     await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L300-L312' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L301-L313' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-delete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Deleting the order removes its row, and its line rows go with it, as a database's cascade delete would. A line removed while the order is still kept is a different case: the list's Save removes that line's row during the next Update.
@@ -207,10 +207,10 @@ internal async Task Upsert([Service] ICustomerPreferencesStore store)
     IsNew = false;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L87-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L89-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-insert-update' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-The factory's save method is named `Save` plus your method's name without its operation prefix. The name comes from the group's highest-ranked write: Delete, then Update, then Insert. `Upsert` starts with neither, so the method is **`SaveUpsert`**; a combined method named `Update` would give `Save`. With no `[Delete]`, marking the object deleted makes the save throw.
+The factory's save method is named `Save` plus your method's name. If the name starts with the group's highest-ranked operation (Delete, then Update, then Insert), that word is dropped. Here the group ranks Update highest and `Upsert` does not start with it, so the method is **`SaveUpsert`**. A combined method named `Update` would give `Save`, but one named `Insert` or `InsertOrUpdate` keeps its whole name: `SaveInsert`, `SaveInsertOrUpdate`. With no `[Delete]`, marking the object deleted makes the save throw.
 
 ## Execute Operation
 
@@ -221,7 +221,7 @@ The factory's save method is named `Save` plus your method's name without its op
 | Context | Method | Generates |
 |---------|--------|-----------|
 | **Static factory** class | `private static`, underscore prefix (`_SubmitOrder`) | A delegate type (`OrderCommands.SubmitOrder`), registered in DI |
-| **Class factory** | `public static` (or `internal static` for a server-only one) | A method on the factory interface; must return `Task` of the class's interface |
+| **Class factory** | `public static` (or `internal static` for a server-only one) | A method on the factory interface; must return `Task` of the class's interface, or of the class itself when it has no matching interface |
 
 `[Execute]` obeys `[Remote]` like every other operation:
 - **With it,** the client's call crosses to the server.
@@ -253,7 +253,7 @@ private static async Task<SubmitOutcome> _SubmitOrder(
     return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L55-L72' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L58-L75' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 The client resolves the delegate and calls it: `var outcome = await submitOrder(orderId)`. A missing order is reported in the result. The command reads the order's `CanSubmit` verdict before calling `Submit`, which throws only when the caller ignored that verdict.
@@ -270,15 +270,19 @@ private static async Task _CancelOrder(int orderId, [Service] IOrderFactory orde
 {
     var order = await orderFactory.Fetch(orderId)
         ?? throw new KeyNotFoundException($"Order {orderId} not found");
+    if (order.Status == OrderStatus.Cancelled)
+        return;   // already cancelled: a retried call is not an error
 
     order.Cancel();
     await orderFactory.Save(order);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L77-L87' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L80-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Over HTTP, that exception reaches the caller as `HttpRequestException`: the server answers 500, and the exception's type does not cross. See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
+
+An order that is already cancelled is not missing: the command reads its status and leaves it, so a retried cancel succeeds. `Order.Cancel` throws only for a caller that skipped that check.
 
 ### Class Factory Execute
 
@@ -296,7 +300,7 @@ public static async Task<IOrder> OpenDraft(
         ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L357-L366' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L358-L367' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `FetchDraft` is a plain `internal` `[Fetch]` with no `[Remote]`, so only the server calls it. The client calls `orderFactory.OpenDraft(customerName)` and gets the stored draft or a new, unsaved one, in one round trip. Don't put that choice in a Create that looks for an existing object, or in a Fetch that makes one: either hides which one the caller got.
@@ -423,7 +427,7 @@ public Task FactoryStartAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L104-L113' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L106-L115' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-onstart' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnComplete / IFactoryOnCompleteAsync
@@ -443,20 +447,21 @@ public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
     return Task.CompletedTask;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L180-L190' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L181-L191' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### IFactoryOnCancelled / IFactoryOnCancelledAsync
 
-Called when an async instance operation is cancelled through its `CancellationToken`, before the cancellation propagates. Use it for cleanup or logging.
+Called when an async instance operation throws `OperationCanceledException`, as cancelling its `CancellationToken` does, before the cancellation propagates. Use it for cleanup or logging.
 
 ### When Each Hook Runs
 
-- **The synchronous hooks** (`IFactoryOnStart`, `IFactoryOnComplete`) run around instance operations.
+- **The synchronous hooks** (`IFactoryOnStart`, `IFactoryOnComplete`) run around instance operations: start before the method, complete after it.
 - **The async hooks** (`IFactoryOnStartAsync`, `IFactoryOnCompleteAsync`) run only around `Task`-returning operations. So `Order`'s async start hook runs for its Fetch and writes, but not for its synchronous Create.
-- **A constructor or static Create or Fetch** gets only the complete hook, not the start hook.
+- **A constructor or static Create or Fetch** gets only the synchronous `IFactoryOnComplete`, called on the result, even when the operation returns `Task`.
 - **A class-level `[Execute]`** gets no hooks.
-- **When an operation throws,** no hook runs. When an async instance operation is cancelled, the cancelled hook runs instead of the complete hook.
+- **A `bool` operation that returns `false`** skips the complete hook; the factory returns `null`.
+- **When an operation throws,** the start hook has already run and the complete hook does not. When an async instance operation is cancelled, the cancelled hook runs instead of the complete hook.
 
 ## CancellationToken Support
 
