@@ -17,7 +17,7 @@ public bool IsDeleted { get; set; }
 <sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L119-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Both are public `get; set;`. Both must cross the wire, so that the server's copy routes the same way the client's would, and a property with a private setter is not serialized. The object's own operations keep them right:
+Both are public `get; set;`. Both must cross the wire, so that the server's copy routes the same way the client's would, and a property with a private setter does not cross it. The object's own operations keep them right:
 - Create sets `IsNew`;
 - Fetch clears it;
 - `Order`'s complete hook clears it after an Insert;
@@ -133,7 +133,7 @@ order.CustomerName = "Save_Customer_Renamed";
 order = (await orderFactory.Save(order))!;      // stored: Update
 
 order.MarkDeleted();
-await orderFactory.Save(order);                 // IsDeleted: Delete
+order = (await orderFactory.Save(order))!;      // IsDeleted: Delete
 ```
 <sup><a href='/src/Design/Design.Tests/FactoryTests/SaveTests.cs#L31-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
@@ -142,7 +142,7 @@ Save returns the object the server sent back, not the one the client passed in. 
 
 ## Return Values
 
-`Save` returns `Task` of the object's interface, nullable: `Task<IOrder?>` for `Order`. It is `null` only in the cases the routing table and outcomes above name. When authorization applies, the factory also has `TrySave`, which returns `Authorized<IOrder>`, and `CanSave`.
+`Save` returns the object's interface. It is a `Task` when any write is `[Remote]` or returns `Task`, and nullable when the class has a `[Delete]` or a `bool` write. So `Order`'s is `Task<IOrder?>`, while `CustomerPreferences`' `SaveUpsert` returns `Task<ICustomerPreferences>`, never null. Where it is nullable, it is `null` only in the cases the routing table and outcomes above name. When authorization applies, the factory also has `TrySave`, which returns `Authorized<IOrder>`, and `CanSave`.
 
 ## Partial Operations
 
@@ -171,7 +171,7 @@ A combined method's save is named after it: `SaveUpsert` here. See [Factory Oper
 
 ## Optimistic Concurrency
 
-RemoteFactory has no concurrency check of its own and maps no exception to an HTTP status. Keep a version on the row and on the object, have Fetch load it, and have Update compare it. An exception thrown by a write reaches a remote caller as an `HttpRequestException` for a 500 response. See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
+RemoteFactory has no concurrency check of its own, and it maps no exception from a write to a status of its own. Keep a version on the row and on the object, have Fetch load it, and have Update compare it. A stale version is a conflict the user can resolve by reloading, so it is a result, not a throw: declare Update as `bool` and return `false`, and `Save` returns `null`. With `[AuthorizeFactory<T>]`, that `false` currently surfaces as `NotAuthorizedException` ([#104](https://github.com/NeatooDotNet/RemoteFactory/issues/104)). An exception thrown by a write reaches a remote caller as an `HttpRequestException` for a 500 response, and its type and message stay on the server. See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
 
 ## Validation
 

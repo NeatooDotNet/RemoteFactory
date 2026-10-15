@@ -106,7 +106,7 @@ order.CustomerName = "Save_Customer_Renamed";
 order = (await orderFactory.Save(order))!;      // stored: Update
 
 order.MarkDeleted();
-await orderFactory.Save(order);                 // IsDeleted: Delete
+order = (await orderFactory.Save(order))!;      // IsDeleted: Delete
 ```
 <sup><a href='/src/Design/Design.Tests/FactoryTests/SaveTests.cs#L31-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
@@ -125,7 +125,7 @@ A replacement or a decorator is registered in DI like any service. See [Authoriz
 
 ## Serialization
 
-The generator implements these interfaces on `[Factory]` types. A value object is a plain `record`, needs no `[Factory]` to cross the wire, and implements none of them. See [Serialization](serialization.md).
+The generator implements these interfaces on `[Factory]` types. A value object is a plain `record` and needs no `[Factory]` to cross the wire, so it implements none of them. One that takes `[Factory]` because its construction needs a service, such as Design's `TaxRate`, gets all three like any other `[Factory]` type. See [Serialization](serialization.md).
 
 | Interface | Members | Purpose |
 |-----------|---------|---------|
@@ -143,13 +143,13 @@ See [Factory Events](factory-events.md) for each contract in full.
 
 `Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default)`, plus `RaiseUntyped`, which the server uses for a remote raise. A factory method takes it as `[Service] IFactoryEvents`.
 
-`Raise<T>` runs every matching `[FactoryEventHandler<T>]` in the caller's scope, in order, awaited. An `Immediate` handler runs at `Raise`, and its exception reaches the caller. `AfterFlush` and `AfterCommit` handlers are queued for their [drain point](factory-events.md#dispatch-phases). Unless `RaiseOptions.ServerOnly` is set, the event is also relayed to the client.
+`Raise<T>` runs every matching `[FactoryEventHandler<T>]` in the caller's scope, one at a time and awaited, in no specified order. An `Immediate` handler runs at `Raise`, and its exception reaches the caller. `AfterFlush` and `AfterCommit` handlers are queued for their [drain point](factory-events.md#dispatch-phases). Unless `RaiseOptions.ServerOnly` is set, the event is also relayed to the client.
 
 ### IFactoryEventRelay
 
 `Task Relay(IReadOnlyList<FactoryEventBase> events)`. The client application implements it and registers it in DI.
 
-`Relay` is called once per `[Remote]` call, after the caller's continuation resumes, even when the batch is empty. Its exceptions are logged (EventId 3008) and never reach the caller. The consumer marshals to the UI thread itself. Remote mode registers a no-op relay with `TryAddSingleton`, so the application's registration wins whether it comes before or after `AddNeatooRemoteFactory`.
+`Relay` is called once per remote round trip (a `[Remote]` factory call, or a client's own `Raise`, whose event comes back in the batch), after the caller's continuation resumes, even when the batch is empty. A batch that fails to deserialize (`UnknownFactoryEventTypeException`) is logged (EventId 3009) and not relayed. Its exceptions are logged (EventId 3008) and never reach the caller. The consumer marshals to the UI thread itself. Remote mode registers a no-op relay with `TryAddSingleton`, so the application's registration wins whether it comes before or after `AddNeatooRemoteFactory`.
 
 ### IFactoryEventPhaseCoordinator
 

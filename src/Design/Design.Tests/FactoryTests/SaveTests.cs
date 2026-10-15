@@ -37,7 +37,7 @@ public class SaveTests
         order = (await orderFactory.Save(order))!;      // stored: Update
 
         order.MarkDeleted();
-        await orderFactory.Save(order);                 // IsDeleted: Delete
+        order = (await orderFactory.Save(order))!;      // IsDeleted: Delete
         #endregion
 
         Assert.Null(await orderFactory.Fetch(order.Id));

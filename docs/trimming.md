@@ -448,7 +448,7 @@ public bool IsNew { get; private set; } = true;
 public bool IsDeleted { get; private set; }
 ```
 
-`[JsonInclude]` (the private-setter workaround; [Save Operation — IFactorySaveMeta](save-operation.md#ifactorysavemeta) now uses public setters, R-M) handles the serialization side, but under `PublishTrimmed=true` the IL trimmer performs **visibility analysis** independently: when no concrete-type callsite reads the getter (all reads go through the `IFactorySaveMeta` / entity interface dispatch), the trimmer narrows the property itself from `public` to `private` in the emitted assembly. `System.Text.Json`'s default reflection-based resolver then skips the property entirely outbound, and you're back to the Insert-only routing bug — but only in published Release builds.
+`[JsonInclude]` (the private-setter workaround; [Save Operation — IFactorySaveMeta](save-operation.md#ifactorysavemeta) now uses public setters) handles the serialization side, but under `PublishTrimmed=true` the IL trimmer performs **visibility analysis** independently: when no concrete-type callsite reads the getter (all reads go through the `IFactorySaveMeta` / entity interface dispatch), the trimmer narrows the property itself from `public` to `private` in the emitted assembly. `System.Text.Json`'s default reflection-based resolver then skips the property entirely outbound, and you're back to the Insert-only routing bug — but only in published Release builds.
 
 **`[DynamicallyAccessedMembers]` on the class is not enough** — that annotation preserves reflection metadata but does not prevent visibility narrowing.
 

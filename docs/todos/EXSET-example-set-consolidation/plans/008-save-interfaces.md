@@ -4,7 +4,7 @@
 **Date:** 2026-10-11
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4, AC-5
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** No. The pages re-point to Design shapes that 002–007 built and tested. Design gains only one region on Order and one test file.
 **Code-review opt-in:** Yes. Both pages are rewritten against the generator's Save routing and the library's interfaces.
@@ -155,14 +155,30 @@ Does NOT touch:
 | Bullet | Pinned by | Tier |
 |---|---|---|
 | 1. Routing through the client | `SaveTests.Save_RoutesOnIsNewAndIsDeleted` (the `save-usage` region: Insert, Update and Delete through the client, each result reassigned; the order is gone after the Delete); `Save_InsertThenUpdate_WritesTheOneRow` (the `save-testing` region: each save reaches the server's row) | integration |
-| 2. Outcomes | `SaveTests.Save_NewAndDeleted_ReturnsNull` (null, and no draft stored). The missing-method throw: the library's `PartialSaveTests` (`:196`, `:289`, `:358`; see Amendments). #104: `SaveTests.AuthorizedSave_NewAndDeleted_ReturnsNull`, skipped as a known bug. Run unskipped, it failed on both TFMs with `NotAuthorizedException: Authorization denied for operation Save on IAuthorizedOrder; no reason was supplied.` | integration |
+| 2. Outcomes | `SaveTests.Save_NewAndDeleted_ReturnsNull` (null, and no draft stored). The missing-method throw: the library's `PartialSaveTests` (`:196`, `:289`, `:358` for a missing Insert or Update; `InsertOnly_Save_ThrowsNotImplemented_WhenDeleted` and `…_WhenNewAndDeleted` for a missing Delete, added at the gate; see Amendments). #104: `SaveTests.AuthorizedSave_NewAndDeleted_ReturnsNull`, skipped as a known bug. Run unskipped, it failed on both TFMs with `NotAuthorizedException: Authorization denied for operation Save on IAuthorizedOrder; no reason was supplied.` | integration |
 | 3. Pages | explicit-skip: both pages have no fence outside a `snippet:`/`endSnippet` pair. The 11 embeds come from Order, CustomerPreferences and SaveTests. No LazyLoad, `IFactoryCore`, `[JsonInclude]` or 409 text remains. The 14 reference-app files are deleted; `reviews/008-refapp-build.log` (0 errors) | explicit-skip |
 | 4. Interfaces page | explicit-skip: members as printed from `src/RemoteFactory/*.cs` and `AspAuthorize.cs`; `IFactorySave<T>` from `ClassFactoryRenderer.cs:165`, `:1245-1321`, `:1571`; ordinal order as 013 established | explicit-skip |
-| 5. Meta | explicit-skip: `reviews/008-mdsnippets.log`. README, getting started, the-problem and factory-operations change only in attribution lines. Logs: `008-build.log`, `008-test.log`, `008-design-build.log`, `008-design-test.log` (unit 839; integration 646 + 7 skips; Design 166 + 1 known-bug skip, up 4; both TFMs) | explicit-skip |
+| 5. Meta | explicit-skip: `reviews/008-mdsnippets.log`. README, getting started, the-problem and factory-operations change only in attribution lines. Logs: `008-build.log`, `008-test.log`, `008-design-build.log`, `008-design-test.log` (unit 841, up 2; integration 646 + 7 skips; Design 166 + 1 known-bug skip, up 4; both TFMs) | explicit-skip |
 
 ---
 
 ## Gate Record
+
+- **Test review** ([008-test-review.md](../reviews/008-test-review.md)), round 1: APPROVED, with two callouts, both punched:
+  - two unit tests pin the missing-`[Delete]` throw, stored and new;
+  - the `save-usage` region reassigns the Delete result as well.
+
+  Its tech-debt item, end-of-body disposal, is dismissed: that is the Design-wide pattern.
+- **Code review** ([008-code-review.md](../reviews/008-code-review.md)): APPROVED, with five callouts, all punched:
+  - the events contracts (handler order, the relay count);
+  - concurrency as a result, not a throw (R-E);
+  - `[Factory]` value objects get the ordinal interfaces;
+  - Order's hook remark that 007 missed;
+  - the Save return shape.
+
+  Three theoretical items were taken as wording fixes.
+- **After the punches:** both solutions rebuilt and passed (unit 841, integration 646 + 7 known skips, Design 166 + 1 known-bug skip, both TFMs). mdsnippets is clean.
+- **Open, by design:** `trimming.md`'s private-setter section (todo punchlist, EXSET-011); `lazyload.md`'s `#ilazyloadfactory` link (EXSET-011); #104.
 
 ---
 
