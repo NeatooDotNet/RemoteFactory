@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No. Design already holds every event shape the page teaches (`FactoryEventHandlerPattern.cs`, `FactoryEventPhasesPattern.cs`, `FactoryEventRelayPattern.cs`), with their tests. This plan adds regions and one `CancellationToken`.
 **Code-review opt-in:** Yes. The page is restated against the event runtime, and C-06 changes every raising example.
 **Branch:** EXSET-011-factory-events
-**PR:** —
+**PR:** #145
 
 ---
 
