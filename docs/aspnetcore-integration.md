@@ -88,9 +88,13 @@ services.RegisterMatchingName(typeof(IOrder).Assembly);
 - **Register anything stateful explicitly, as scoped.** Two `[Service]` parameters of a transient type get two instances.
 - **A matched type whose constructor needs a value DI cannot supply must be registered first.** Design's `TenantTokenService`, which takes a token string, is one. Otherwise the convention's registration of the concrete type can never be built, and in Development, where ASP.NET Core builds every registration at startup, the server does not start.
 
+### Calling It Alongside Another Registration
+
+`AddNeatooAspNetCore` and `AddNeatooRemoteFactory` may both run on one server, in either order: a Neatoo server calls `AddNeatooServices(NeatooFactory.Server, ...)`, which reaches `AddNeatooRemoteFactory`, and `AddNeatooAspNetCore` for `IAspAuthorize`. Since v1.10.5 (#117) the second registration adds only what is new: its assemblies join the existing list and their factories are registered, and everything else the first call set up stands, including a JSON converter factory the host replaced. Serialization options passed explicitly replace the registered ones; the overloads without options keep them. A second call in a different `NeatooFactory` mode throws.
+
 ## Multiple Assemblies
 
-Pass every assembly that declares `[Factory]` types to the **one** `AddNeatooAspNetCore` call: `AddNeatooAspNetCore(typeof(IOrder).Assembly, typeof(IInvoice).Assembly)`. A second call does not add to the first; it replaces the registered assembly list. The client's `AddNeatooRemoteFactory` call takes the same list, so keep it where both tiers read it.
+Pass every assembly that declares `[Factory]` types to `AddNeatooAspNetCore`: `AddNeatooAspNetCore(typeof(IOrder).Assembly, typeof(IInvoice).Assembly)`. A second registration adds its assemblies to the first (see above). The client's `AddNeatooRemoteFactory` call takes the same list, so keep it where both tiers read it.
 
 ## Serialization Format
 
