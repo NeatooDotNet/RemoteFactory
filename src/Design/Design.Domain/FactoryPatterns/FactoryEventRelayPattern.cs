@@ -181,12 +181,57 @@ internal partial class CheckoutOrder : ICheckoutOrder
     /// </remarks>
     #region events-serveronly
     [Remote, Update]
-    internal async Task Update([Service] IFactoryEvents factoryEvents)
+    internal async Task Update([Service] IFactoryEvents factoryEvents, CancellationToken cancellationToken)
     {
         // ServerOnly: server handlers run, client does NOT receive the event
-        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.ServerOnly);
+        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.ServerOnly, cancellationToken);
     }
     #endregion
+}
+
+/// <summary>
+/// The server's ledger of checkouts. Server-only: injected with [Service] into
+/// <see cref="CheckoutLedgerHandler"/>, never called by the client.
+/// </summary>
+public interface ICheckoutLedger
+{
+    Task RecordAsync(int orderId, decimal total, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// In-memory checkout ledger standing in for a ledger table.
+/// </summary>
+/// <remarks>
+/// Named InMemoryCheckoutLedger, not CheckoutLedger, so RegisterMatchingName does not
+/// pick it up on a client; it is registered explicitly on the server.
+/// </remarks>
+public class InMemoryCheckoutLedger : ICheckoutLedger
+{
+    private readonly ConcurrentQueue<(int OrderId, decimal Total)> _entries = new();
+
+    public IReadOnlyCollection<(int OrderId, decimal Total)> Entries => _entries.ToArray();
+
+    public Task RecordAsync(int orderId, decimal total, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _entries.Enqueue((orderId, total));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Demonstrates: the server handler for <see cref="OrderCheckoutCompleted"/>. It runs
+/// in the save's scope for both the Insert's raise and the Update's ServerOnly raise,
+/// and receives the token the write passed to Raise.
+/// </summary>
+[FactoryEventHandler<OrderCheckoutCompleted>]
+public static partial class CheckoutLedgerHandler
+{
+    internal static Task Record(
+        OrderCheckoutCompleted checkout,
+        [Service] ICheckoutLedger ledger,
+        CancellationToken cancellationToken)
+        => ledger.RecordAsync(checkout.OrderId, checkout.Total, cancellationToken);
 }
 
 // -----------------------------------------------------------------------------
@@ -226,8 +271,10 @@ public record NoticeAcknowledged(int OrderId) : FactoryEventBase;
 ///      client-side handlers observe it at all.
 ///   2. NoticeAcknowledged — raised by the handler below.
 ///
-/// Pass RaiseOptions.ServerOnly to suppress the relay entirely: handlers still run
-/// server-side, and the client receives an empty batch.
+/// Pass RaiseOptions.ServerOnly to keep the raised event itself out of the batch:
+/// handlers still run server-side. ServerOnly applies to that event only. An event
+/// a handler raises with RaiseOptions.None is still relayed, so with ServerOnly the
+/// batch here would be [NoticeAcknowledged].
 ///
 /// The await covers the whole chain. Raise returns only after every server handler
 /// has completed, and a handler exception propagates back to the client — a client

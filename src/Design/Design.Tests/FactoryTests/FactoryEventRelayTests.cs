@@ -171,4 +171,49 @@ public class FactoryEventRelayTests
             client.Dispose();
         }
     }
+
+    /// <summary>
+    /// The checkout's writes pass the save's token to Raise, so the server handler gets
+    /// the caller's token: for the Insert's raise, and for the Update's ServerOnly raise,
+    /// which runs the handler though nothing is relayed.
+    /// </summary>
+    [Fact]
+    public async Task Save_PassesTheCallersToken_ToTheServerHandler()
+    {
+        var ledger = new TokenRecordingLedger();
+        var (server, client, _) = DesignClientServerContainers.Scopes(
+            configureServer: services => services.AddSingleton<ICheckoutLedger>(ledger));
+
+        try
+        {
+            var factory = client.GetRequiredService<ICheckoutOrderFactory>();
+            using var cts = new CancellationTokenSource();
+
+            var checkout = await factory.Save(factory.Create(11, 20.00m), cts.Token);   // Insert
+            checkout.Total = 21.00m;
+            await factory.Save(checkout, cts.Token);                                    // Update, ServerOnly
+
+            Assert.Equal([(11, 20.00m), (11, 21.00m)], ledger.Entries.Select(e => (e.OrderId, e.Total)));
+            Assert.All(ledger.Entries, e => Assert.False(e.Token.IsCancellationRequested));
+
+            cts.Cancel();
+            Assert.All(ledger.Entries, e => Assert.True(e.Token.IsCancellationRequested));
+        }
+        finally
+        {
+            server.Dispose();
+            client.Dispose();
+        }
+    }
+
+    private sealed class TokenRecordingLedger : ICheckoutLedger
+    {
+        public List<(int OrderId, decimal Total, CancellationToken Token)> Entries { get; } = [];
+
+        public Task RecordAsync(int orderId, decimal total, CancellationToken cancellationToken)
+        {
+            Entries.Add((orderId, total, cancellationToken));
+            return Task.CompletedTask;
+        }
+    }
 }

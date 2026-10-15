@@ -152,12 +152,12 @@ public class PhaseAuditService : IPhaseAuditService
 /// <summary>Raised once when an invoice is finalized; handled at all three phases.</summary>
 public record InvoiceFinalizedEvent(Guid InvoiceId, decimal Total) : FactoryEventBase;
 
+#region events-phase-handlers
 /// <summary>
 /// Immediate (no attribute argument — the default). Runs at <c>Raise</c>, inside
 /// the caller's transaction, seeing staged state. A throw here aborts
 /// <c>Finalize</c> itself — this handler is atomic with the save.
 /// </summary>
-#region events-phase-handlers
 [FactoryEventHandler<InvoiceFinalizedEvent>]
 public static partial class InvoiceBalanceGuard
 {
