@@ -1,394 +1,267 @@
 # Service Injection
 
-You already know DI from ASP.NET Core. You had two injection points: constructor injection for services the class always needs, and controller action injection for services needed to handle a specific request. RemoteFactory replaces the controller layer — now you have constructor injection and factory method injection. Same concept, different mechanism. RemoteFactory doesn't manage DI for you; it gives you the runway to wire DI correctly across the client/server boundary.
+You already know DI from ASP.NET Core: constructor injection for what a class always needs, and action injection for what one request needs. RemoteFactory replaces the controller, so the second becomes factory-method injection. RemoteFactory does not manage DI for you. It decides which container each service comes from, and you register each service in the containers that need it. The code comes from RemoteFactory's compiled example set, `src/Design`.
 
 ## The [Service] Attribute
 
-RemoteFactory is a Roslyn Source Generator. The code that resolves services and calls your factory method is generated at compile time — the generator can't inspect DI registrations or make runtime decisions about which parameters are services. `[Service]` is the explicit marker that tells the generator: "resolve this from DI, don't serialize it."
+RemoteFactory is a source generator. The generated code that calls your factory method cannot inspect DI registrations, so `[Service]` tells it which parameters to resolve from DI rather than take from the caller. `CustomerPreferences` loads a customer's stored preferences:
 
 <!-- snippet: service-injection-basic -->
 <a id='snippet-service-injection-basic'></a>
 ```cs
-// [Service] marks parameters for DI injection (not serialized)
 [Remote, Fetch]
-internal async Task<bool> Fetch(Guid employeeId, [Service] IEmployeeRepository repository)
+internal async Task<bool> Fetch(string customerName, [Service] ICustomerPreferencesStore store)
 {
-    var entity = await repository.GetByIdAsync(employeeId);
-    if (entity == null) return false;
-    Id = entity.Id;
-    Name = $"{entity.FirstName} {entity.LastName}";
+    var row = await store.FindAsync(customerName);
+    if (row == null)
+        return false;
+
+    CustomerName = row.CustomerName;
+    DeliveryWindow = row.DeliveryWindow;
+    NotifyBySms = row.NotifyBySms;
+    LastSavedAt = row.LastSavedAt;
+    IsNew = false;
     return true;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L22-L33' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-basic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/CustomerPreferences.cs#L76-L91' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-basic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-When the factory calls `Fetch()`:
-- **Client**: Serializes `employeeId` parameter only
-- **Server**: Deserializes `employeeId`, resolves `IEmployeeRepository` from DI
-- **Server**: Calls method with both parameters
-- **Result**: Serialized and returned
+When the client calls `Fetch("Ada")`:
+- **On the client**, the factory serializes `customerName` and nothing else.
+- **On the server**, it deserializes `customerName`, resolves `ICustomerPreferencesStore` from the server's container, and calls the method.
+- **The result** is serialized back to the client.
 
-`IEmployeeRepository` is never serialized or sent over HTTP.
+A `[Service]` parameter is never serialized, and never appears on the generated factory method.
 
-## Constructor vs Method Injection
+## Where a Service Is Resolved
 
-Think of it as the ASP.NET Core parallel: before RemoteFactory, you had constructor injection + controller action injection. Now you have constructor injection + factory method injection. The factory method *is* the controller action — just without the controller boilerplate.
+A `[Service]` parameter is resolved from the container of the tier that runs the method. `[Remote]` sends the call to the server, so its services come from the server's container. A method without `[Remote]` runs on the tier that calls it, and its services come from that tier's container, the client's included. See [Factory Operations](factory-operations.md#method-parameters).
 
-| Injection Type | The Parallel | Available On | Typical Use |
-|---------------|-------------|--------------|-------------|
-| Constructor (`[Service]` on constructor) | Same as before | Client + Server | Services the object always needs — survives serialization |
-| Method (`[Service]` on method parameters) | Controller action injection | Server only | Repositories, database contexts, secrets |
+| Injection | Resolved | Typical use |
+|-----------|----------|-------------|
+| Constructor parameter | By DI, each time the object is built on either tier: when it is created, and again when it is deserialized | Services the object needs on both tiers |
+| `[Service]` method parameter | Once, from the container of the tier that runs the method | Repositories, database contexts, anything only the server has, behind `[Remote]` |
 
-Constructor-injected services are resolved from DI on *both* sides of the wire. When an object is deserialized on the client, RemoteFactory resolves constructor services from the client's DI container. This means the service reference survives the round-trip.
+### Constructor Injection
 
-Method-injected services are resolved once, on whichever side executes the method — typically the server. They're the common case: most factory methods need a repository or database context that only exists where the data lives.
+`CtorInjectedEntity` takes its service in the constructor and reads it later:
 
 <!-- snippet: service-injection-constructor -->
 <a id='snippet-service-injection-constructor'></a>
 ```cs
-// Constructor injection - service available on BOTH client and server
-[Create]
-public EmployeeCompensation([Service] ISalaryCalculator calculator)
+public CtorInjectedEntity(ITenantTokenService tokens)
 {
-    _calculator = calculator;
+    _tokens = tokens;
 }
+
+// Read on whichever tier holds the instance: the client's service after the round trip
+public string TokenFromContext => _tokens.Token;
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L161-L168' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/CtorInjectionExample.cs#L130-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+The entity has no parameterless constructor, so it is built through DI on both tiers. The server builds it with the server's `ITenantTokenService` for the Fetch. When the result reaches the client, the client's container builds it again with the client's service, and the deserializer fills its state. `TokenFromContext` then reads the client's token.
+
+On a `[Create]` constructor, `[Service]` marks the parameters that come from DI instead of from the caller.
+
+### A Server-Only Service
+
+`TaxRate`'s rates live in a table only the server reads:
 
 <!-- snippet: service-injection-server-only -->
 <a id='snippet-service-injection-server-only'></a>
 ```cs
-// Server-only service - [Remote] ensures execution on server where IEmployeeDatabase exists
 [Remote, Fetch]
-internal async Task Fetch(string query, [Service] IEmployeeDatabase database)
+internal static async Task<TaxRate?> Fetch(string region, [Service] ITaxTable taxTable)
 {
-    QueryResult = await database.ExecuteQueryAsync(query);
+    var rate = await taxTable.FindRateAsync(region);
+    return rate is null ? null : new TaxRate(region, rate);
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L66-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ValueObjects/TaxRate.cs#L36-L43' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-## Serialization Caveat: Method-Injected Services Are Lost
+`[Remote]` sends the call to the server, where `ITaxTable` is registered. The client sends a region, a key, and the server decides what to read. A method that ran a query the client wrote would hand the client the server's data source.
 
-RemoteFactory doesn't manage your DI — it gives you the runway to do DI correctly. The most important thing to understand: you register your DI differently on the client vs the server, and you need to choose the right injection point for each service. If you store a method-injected service in a field, that reference won't survive serialization — it may cause serialization errors or null references on the other side.
+## Method-Injected Services Do Not Cross the Wire
 
-<!-- snippet: serialization-caveat-broken -->
-<a id='snippet-serialization-caveat-broken'></a>
-```cs
-// BROKEN: Method-injected service stored in field is lost after serialization
-private IOrderLineBrokenFactory? _lineFactory;  // NULL after crossing wire!
+The serializer writes an object's state, not the services it was handed. A `[Service]` parameter stored in a field is gone when the object reaches the other tier:
 
-[Fetch]
-public void Fetch(IEnumerable<(int id, string name, decimal price, int qty)> items,
-    [Service] IOrderLineBrokenFactory lineFactory)
+```csharp
+// WRONG - a method-injected service kept in a field is null after the round trip
+private IOrderLineFactory? _lineFactory;
+
+[Remote, Fetch]
+internal void Fetch(int id, [Service] IOrderLineFactory lineFactory)
 {
-    _lineFactory = lineFactory;  // Stored - but NOT serialized
-    foreach (var item in items)
-        Add(lineFactory.Fetch(item.id, item.name, item.price, item.qty));
-}
-
-public void AddLine(string name, decimal price, int qty)
-{
-    var line = _lineFactory!.Create(name, price, qty);  // NullReferenceException!
-    Add(line);
+    _lineFactory = lineFactory;   // set on the server; null on the client
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/SerializationCaveatSamples.cs#L11-L29' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-caveat-broken' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
 
-**Solution: Use constructor injection for services needed on both sides.** Constructor-injected services are resolved from DI after deserialization — the reference is restored on the client.
+Take a service the object needs on both tiers in its constructor, as `CtorInjectedEntity` does. DI supplies it again wherever the object is built. Otherwise take it again as a `[Service]` parameter of the method that needs it.
 
-<!-- snippet: serialization-caveat-fixed -->
-<a id='snippet-serialization-caveat-fixed'></a>
-```cs
-// CORRECT: Constructor injection - resolved from DI on BOTH client and server
-private readonly IOrderLineFixedFactory _lineFactory;
+### Side Effects in a Constructor
 
-[Create]
-public OrderLineListFixed([Service] IOrderLineFixedFactory lineFactory)
-{
-    _lineFactory = lineFactory;  // Resolved on both sides after deserialization
-}
-
-public void AddLine(string name, decimal price, int qty)
-{
-    var line = _lineFactory.Create(name, price, qty);  // Works on client!
-    Add(line);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Collections/SerializationCaveatSamples.cs#L66-L81' title='Snippet source file'>snippet source</a> | <a href='#snippet-serialization-caveat-fixed' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-**Rule of thumb**: If you need a service reference after the object crosses the wire, use constructor injection.
+A constructor runs every time the object is built, and that includes every deserialization. Be aware that `[Create]` constructors are called on deserialization: if there is side-effect behaviour, such as sending a notification or writing a log entry, a `[Create]` factory method is the better place for it. Keep a constructor to storing what it is given.
 
 ## Multiple Service Parameters
 
-A factory method can receive any number of services. The generator strips all `[Service]` parameters from the generated caller signature — the caller only sees value parameters and CancellationToken.
+A method can take any number of services. The caller sees only the value parameters and the `CancellationToken`:
 
-<!-- snippet: service-injection-multiple -->
-<a id='snippet-service-injection-multiple'></a>
+<!-- snippet: aspnetcore-correlation-id -->
+<a id='snippet-aspnetcore-correlation-id'></a>
 ```cs
-// Multiple [Service] parameters - all resolved from DI, none serialized
 [Remote, Execute]
-private static async Task<string> _ProcessTransfer(
-    Guid employeeId,                               // Value: serialized
-    Guid newDepartmentId,                          // Value: serialized
-    [Service] IEmployeeRepository employeeRepo,    // Service: injected
-    [Service] IDepartmentRepository departmentRepo,// Service: injected
-    [Service] IUserContext userContext)            // Service: injected
+private static async Task<string> _ReportProblem(
+    int orderId,
+    string description,
+    [Service] ICorrelationContext correlation,
+    [Service] ISupportLog supportLog)
 {
-    var employee = await employeeRepo.GetByIdAsync(employeeId);
-    var department = await departmentRepo.GetByIdAsync(newDepartmentId);
-    if (employee == null || department == null) return "Not found";
-    return $"Transfer by {userContext.Username}";
+    // The same ID tags the server's log lines for this call
+    var reference = correlation.CorrelationId ?? "unknown";
+    await supportLog.RecordAsync(new SupportEntry(reference, orderId, description));
+    return reference;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L82-L97' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-multiple' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/SupportRequests.cs#L39-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-correlation-id' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-For parameter ordering rules, see [Factory Operations — Method Parameters](factory-operations.md#method-parameters).
+The generated `ReportProblem` delegate takes `(int orderId, string description)`. Value parameters come first, then the `[Service]` parameters, then the `CancellationToken`, as [Factory Operations — Method Parameters](factory-operations.md#method-parameters) explains.
 
 ## Service Lifetimes
 
-Standard ASP.NET Core lifetimes work with `[Service]` injection — RemoteFactory doesn't change how DI lifetimes behave. You register services the same way you always have:
+RemoteFactory does not change how DI lifetimes behave. Design's server registers its services with the standard lifetimes:
 
-<!-- snippet: service-injection-lifetimes -->
-<a id='snippet-service-injection-lifetimes'></a>
+<!-- snippet: aspnetcore-service-registration -->
+<a id='snippet-aspnetcore-service-registration'></a>
 ```cs
-// Standard ASP.NET Core lifetimes work with [Service] injection
-public static void ConfigureServices(IServiceCollection services)
-{
-    services.AddSingleton<ISalaryCalculator, SalaryCalculator>();  // App lifetime
-    services.AddScoped<IAuditContext, AuditContext>();             // Request lifetime
-    services.AddTransient<INotificationService, NotificationService>(); // Per-resolution
-}
+services.AddScoped<IPhaseAuditService, PhaseAuditService>();
+services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
+services.AddScoped<IProductReviewService, InMemoryProductReviewService>();
+services.AddScoped<IExampleService, ExampleService>();
+services.AddSingleton<ITaxTable, InMemoryTaxTable>();
+services.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
+services.AddSingleton<ISupportLog, InMemorySupportLog>();
+services.AddScoped(_ => new TenantTokenService("server-token"));
+services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenService>());
+
+services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/ServiceRegistrationSamples.cs#L27-L35' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-lifetimes' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-service-injection-lifetimes-1'></a>
-```cs
-[Fact]
-public void ScopedServices_SameWithinScope()
-{
-    var scopes = TestClientServerContainers.CreateScopes();
-    var repo1 = scopes.local.ServiceProvider.GetRequiredService<IEmployeeRepository>();
-    var repo2 = scopes.local.ServiceProvider.GetRequiredService<IEmployeeRepository>();
-    Assert.Same(repo1, repo2);  // Same instance within scope
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L322-L331' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-lifetimes-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L197-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Scoped services are particularly useful on the server side — scoped per factory call, just as they would be scoped per controller action. On the client side, scoped services are less common since there's typically no per-request scope.
+Each remote call is one HTTP request, and its services come from that request's scope. A scoped service is therefore shared within one call: by the factory method, the operations it calls through other factories, and its `Immediate` event handlers. `ICorrelationContext`, above, is scoped: the middleware writes the request's correlation ID into it, and `_ReportProblem` reads it in the same scope. A client usually has one long-lived scope, so scoped and singleton services behave alike there.
 
-RemoteFactory creates a new scope for each remote request.
+## RegisterMatchingName
 
-<!-- snippet: service-injection-scoped -->
-<a id='snippet-service-injection-scoped'></a>
-```cs
-// Scoped services share state within a request
-[Remote, Execute]
-private static Task<Guid> _LogEmployeeAction(string action, [Service] IAuditContext auditContext)
-{
-    auditContext.LogAction(action);
-    return Task.FromResult(auditContext.CorrelationId);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L125-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-scoped' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+`RegisterMatchingName`, the last line above, scans the assemblies it is given and registers each interface `IFoo` with the class `Foo` in the same namespace. It registers both the interface and the class as **Transient**, with `TryAdd`, so a registration made before it stands. Register stateful services explicitly first, as Design does.
 
-## Client-Side Service Injection
-
-Constructor-injected services are resolved on the client too. This is useful for services the object needs regardless of which side it's on — validation, calculation, notification:
-
-<!-- snippet: service-injection-client -->
-<a id='snippet-service-injection-client'></a>
-```cs
-// Constructor injection runs locally - available on client
-[Create]
-public EmployeeNotifier([Service] INotificationService notificationService)
-{
-    notificationService.Notify("Employee created");
-    Notified = true;
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L201-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-client' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-## RegisterMatchingName Helper
-
-A convenience method for bulk DI registration. Scans an assembly and registers interfaces to matching implementations by name convention:
-
-<!-- snippet: service-injection-matching-name -->
-<a id='snippet-service-injection-matching-name'></a>
-```cs
-// Convention: IName -> Name (Transient lifetime)
-public static void ConfigureServices(IServiceCollection services)
-{
-    services.RegisterMatchingName(typeof(IEmployeeRepository).Assembly);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/ServiceRegistrationSamples.cs#L13-L19' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-matching-name' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-service-injection-matching-name-1'></a>
-```cs
-[Fact]
-public void RegisterMatchingName_ResolvesCorrectImplementation()
-{
-    var scopes = TestClientServerContainers.CreateScopes();
-    var repository = scopes.local.ServiceProvider.GetRequiredService<IEmployeeRepository>();
-    Assert.IsType<InMemoryEmployeeRepository>(repository);  // IName -> Name convention
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L349-L357' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-matching-name-1' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-Registers with **Transient** lifetime. Accepts multiple assemblies.
+The convention registers whatever matches in the container it runs in. Design names its server-only implementations off the convention (`InMemoryTaxTable` for `ITaxTable`), so a client that runs it cannot pick them up.
 
 ## Specialized Services
 
-### IHttpContextAccessor
+### The HTTP Context
 
-Server-side methods can access the HTTP context through a wrapper service — useful for extracting user identity or correlation IDs:
+Domain code should not depend on ASP.NET Core. Design's authorization classes take `ICurrentUser`, and the server builds it from the request's `HttpContext`:
 
 <!-- snippet: service-injection-httpcontext -->
 <a id='snippet-service-injection-httpcontext'></a>
 ```cs
-// Access HTTP context via wrapper service (server-only)
-[Remote, Fetch]
-internal Task Fetch([Service] IHttpContextAccessorWrapper accessor)
-{
-    UserId = accessor.GetUserId();
-    CorrelationId = accessor.GetCorrelationId();
-    return Task.CompletedTask;
-}
+services.AddScoped<ICurrentUser>(sp =>
+    new ClaimsUser(sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.User ?? new ClaimsPrincipal()));
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L272-L281' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-httpcontext' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L109-L112' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-httpcontext' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`IHttpContextAccessor` comes from `AddHttpContextAccessor()`, in the same registration (see [Authorization](authorization.md)). The client registers its own `ICurrentUser`, so code that takes it runs on either tier.
 
 ### IServiceProvider
 
-Direct service provider access for dynamic resolution. Use sparingly — prefer typed `[Service]` parameters:
-
-<!-- snippet: service-injection-serviceprovider -->
-<a id='snippet-service-injection-serviceprovider'></a>
-```cs
-// IServiceProvider for dynamic resolution - use sparingly
-[Remote, Execute]
-private static Task<bool> _ResolveEmployeeServices([Service] IServiceProvider serviceProvider)
-{
-    var repository = serviceProvider.GetService(typeof(IEmployeeRepository));
-    return Task.FromResult(repository != null);
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Services/ServiceInjectionSamples.cs#L290-L298' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-serviceprovider' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+A `[Service] IServiceProvider` parameter receives the running tier's provider, for a service chosen at run time. Prefer typed `[Service]` parameters: they show what the method needs, and a missing registration fails at the call rather than inside the method's logic.
 
 ## Service Resolution Failures
 
-If a service can't be resolved:
+A service that is not registered in the container of the tier running the method fails when the method is called. For a method without `[Remote]` that needs a server-only service, called on the client:
 
-**Server-side:**
 ```
-System.InvalidOperationException: No service for type 'IEmployeeRepository' has been registered.
-```
-
-**Client-side (Remote mode):**
-```
-System.InvalidOperationException: No service for type 'IEmployeeDatabase' has been registered.
+System.InvalidOperationException: No service for type 'Design.Domain.ValueObjects.ITaxTable' has been registered.
 ```
 
-Ensure:
-1. Service is registered in the correct DI container (client, server, or both)
-2. Method marked `[Remote]` if service is server-only
-3. Service lifetime is appropriate (avoid singleton capturing scoped)
+Check that:
+1. the service is registered in the container of the tier that runs the method: the client's, the server's, or both;
+2. a method that needs a server-only service carries `[Remote]`;
+3. the lifetime is right: a singleton that captures a scoped service keeps the first scope's instance.
 
 ## Testing with Service Injection
 
-Register test doubles in your DI container:
+`DesignClientServerContainers.Scopes` takes a configuration for each container, so a test can replace a service on one tier:
 
 <!-- snippet: service-injection-testing -->
 <a id='snippet-service-injection-testing'></a>
 ```cs
-// Register test doubles for unit/integration tests
-public static void ConfigureTestServices(IServiceCollection services)
-{
-    services.AddScoped<IEmployeeRepository, InMemoryEmployeeRepository>();
-    services.AddScoped<IUserContext, TestUserContext>();
-}
+var recorder = new RecordingNotificationService();
+var (server, client, _) = DesignClientServerContainers.Scopes(
+    configureServer: services => services.AddSingleton<INotificationService>(recorder));
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Infrastructure/Samples/ServiceRegistrationSamples.cs#L43-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-service-injection-testing-1'></a>
-```cs
-[Fact]
-public void ServiceParameter_ResolvedFromDI()
-{
-    var scopes = TestClientServerContainers.CreateScopes();
-    var repository = scopes.local.ServiceProvider.GetRequiredService<IEmployeeRepository>();
-    Assert.NotNull(repository);  // Services resolve from test container
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/TestingSamples.cs#L306-L314' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/StaticFactoryTests.cs#L95-L99' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+The recorder replaces the server's `INotificationService`, and the test asserts that the call arrived on the server.
 
 ## Client/Server Container Testing
 
-For integration tests that validate the full serialization round-trip without HTTP, use the **ClientServerContainers** pattern. This creates three isolated DI containers — client, server, and local — each with different service registrations, just like a real deployment:
+To test the serialization round trip without HTTP, build three containers: a server, a client whose `[Remote]` calls are serialized and handed to that server, and a local one that runs everything in-process. Design's test harness configures them like this:
 
 <!-- snippet: clientserver-container-setup -->
 <a id='snippet-clientserver-container-setup'></a>
 ```cs
-// Three containers: client (Remote), server (Server), local (Logical)
-public static (IServiceScope server, IServiceScope client, IServiceScope local) Scopes()
-{
-    var options = new NeatooSerializationOptions { Format = SerializationFormat.Ordinal };
-    var serverCollection = new ServiceCollection();
-    var clientCollection = new ServiceCollection();
-    var localCollection = new ServiceCollection();
+var serializationOptions = new NeatooSerializationOptions { Format = format };
 
-    // Configure each container with appropriate mode
-    serverCollection.AddNeatooRemoteFactory(NeatooFactory.Server, options, typeof(Employee).Assembly);
-    clientCollection.AddNeatooRemoteFactory(NeatooFactory.Remote, options, typeof(Employee).Assembly);
-    localCollection.AddNeatooRemoteFactory(NeatooFactory.Logical, options, typeof(Employee).Assembly);
+var serverCollection = new ServiceCollection();
+var clientCollection = new ServiceCollection();
+var localCollection = new ServiceCollection();
 
-    // Server/local get infrastructure; client gets server reference
-    serverCollection.AddInfrastructureServices();
-    localCollection.AddInfrastructureServices();
-    clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
+// One mode per container: Server handles requests, Remote serializes its
+// [Remote] calls, Logical runs everything in-process
+ConfigureContainer(serverCollection, NeatooFactory.Server, serializationOptions);
+ConfigureContainer(clientCollection, NeatooFactory.Remote, serializationOptions);
+ConfigureContainer(localCollection, NeatooFactory.Logical, serializationOptions);
 
-    // ... build providers, create scopes, link client to server
+// The client's remote calls go to the server scope, serialized, in place of HTTP
+clientCollection.AddScoped<ServerServiceProvider>();
+clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/ClientServerContainerSamples.cs#L16-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-clientserver-container-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/TestInfrastructure/DesignClientServerContainers.cs#L245-L261' title='Snippet source file'>snippet source</a> | <a href='#snippet-clientserver-container-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-<!-- snippet: clientserver-container-usage -->
-<a id='snippet-clientserver-container-usage'></a>
+A test resolves its factories from the client scope, to exercise what a real client sends and receives:
+
+<!-- snippet: aspnetcore-testing -->
+<a id='snippet-aspnetcore-testing'></a>
 ```cs
-[Fact]
-public void Local_Create_WorksWithoutSerialization()
-{
-    var (server, client, local) = ClientServerContainers.Scopes();
-    var factory = local.ServiceProvider.GetRequiredService<IEmployeeFactory>();
-    var employee = factory.Create();  // Runs locally (Logical mode)
-    Assert.NotNull(employee);
-    server.Dispose(); client.Dispose(); local.Dispose();
-}
+var (server, client, local) = DesignClientServerContainers.Scopes();
+var orderFactory = client.GetRequiredService<IOrderFactory>();
+
+IOrder? order = orderFactory.Create("Test_Customer");   // local: no server call
+order = await orderFactory.Save(order);                 // serialized to the server and back
+var fetched = await orderFactory.Fetch(order!.Id);      // serialized again
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Tests/Samples/ClientServerContainerSamples.cs#L63-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-clientserver-container-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/ClientServerTestingTests.cs#L27-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-testing' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Benefits of this pattern:
-1. **Faster** — No HTTP overhead
-2. **Deterministic** — No timing issues
-3. **Validates serialization** — JSON round-trip still happens
-4. **Isolated** — No external dependencies
+This approach is:
+1. **Fast:** no HTTP.
+2. **Deterministic:** no timing.
+3. **A serialization check:** every `[Remote]` call still goes through the serializer.
+4. **Isolated:** no external dependencies.
 
-For a complete implementation, see `src/Design/Design.Tests/TestInfrastructure/DesignClientServerContainers.cs`.
+The whole harness is `src/Design/Design.Tests/TestInfrastructure/DesignClientServerContainers.cs`.
 
 ## Next Steps
 
-- [Factory Operations](factory-operations.md) — All operation types and parameter ordering
-- [LazyLoad](lazyload.md) — Deferred async loading with `ILazyLoadFactory`
-- [Authorization](authorization.md) — Inject auth services
-- [ASP.NET Core Integration](aspnetcore-integration.md) — Server DI configuration
-- [Client-Server Architecture](client-server-architecture.md) — The complete mental model
+- [Factory Operations](factory-operations.md): every operation type, and parameter ordering
+- [Authorization](authorization.md): services in authorization classes
+- [ASP.NET Core Integration](aspnetcore-integration.md): server DI configuration
+- [Client-Server Architecture](client-server-architecture.md): the complete mental model

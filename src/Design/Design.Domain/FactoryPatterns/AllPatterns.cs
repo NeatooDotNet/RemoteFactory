@@ -39,7 +39,7 @@ namespace Design.Domain.FactoryPatterns;
 /// - [Remote] marks client-to-server entry points
 /// - [Create] generates a factory method that instantiates and initializes
 /// - [Fetch] generates a factory method that loads existing state
-/// - Method injection ([Service] on parameters) = server-only
+/// - Method injection ([Service] on parameters) = resolved on the tier that runs the method
 /// </summary>
 /// <remarks>
 /// COMMON MISTAKE: Forgetting the 'partial' keyword
@@ -86,13 +86,14 @@ public partial class ExampleClassFactory
     // -------------------------------------------------------------------------
     // DESIGN DECISION: Constructor injection vs method injection
     //
-    // Constructor injection ([Service] on constructor): The service is available
-    // on BOTH client and server. Use sparingly - only for services genuinely
-    // needed on both sides.
+    // Constructor injection: DI fills the constructor wherever the object is
+    // built, on BOTH client and server. Use sparingly - only for services
+    // genuinely needed on both sides.
     //
-    // Method injection ([Service] on method parameters): Server-only. This is
-    // the common case. Most services (repositories, external APIs, etc.) should
-    // only run on the server.
+    // Method injection ([Service] on method parameters): resolved from the
+    // container of the tier that runs the method, so for a [Remote] method the
+    // server's. This is the common case: most services (repositories, external
+    // APIs, etc.) exist only on the server and are reached through [Remote].
     //
     // SERIALIZATION INTERACTION: see CtorInjectionExample.cs
     //
@@ -224,6 +225,7 @@ public partial class ExampleClassFactory
 ///
 /// Enforced at compile time by NF0106 — see CLAUDE-DESIGN.md Anti-Pattern 2.
 /// </remarks>
+#region interface-factory-contract
 [Factory]
 public interface IProductCatalog
 {
@@ -254,6 +256,7 @@ public interface IProductCatalog
     /// </remarks>
     Task<ProductDetails?> GetDetailsAsync(string sku);
 }
+#endregion
 
 // DID NOT DO THIS: Require [Remote] on interface methods
 //
@@ -285,6 +288,7 @@ public interface IProductCatalog
 ///
 /// The interface already has [Factory]; the implementation is just a service.
 /// </remarks>
+#region interface-factory-implementation
 public class ProductCatalog : IProductCatalog
 {
     // In real code, this would query a product store
@@ -318,6 +322,7 @@ public class ProductCatalog : IProductCatalog
     private static ProductListing ToListing(ProductDetails product) =>
         new() { Sku = product.Sku, Name = product.Name, UnitPrice = product.UnitPrice };
 }
+#endregion
 
 // =============================================================================
 // PATTERN 3: STATIC FACTORY (Execute Commands)

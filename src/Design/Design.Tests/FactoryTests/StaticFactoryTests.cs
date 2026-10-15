@@ -92,9 +92,11 @@ public class StaticFactoryTests
     public async Task Execute_ReturningTask_RunsOnServer()
     {
         // Arrange
+        #region service-injection-testing
         var recorder = new RecordingNotificationService();
         var (server, client, _) = DesignClientServerContainers.Scopes(
             configureServer: services => services.AddSingleton<INotificationService>(recorder));
+        #endregion
 
         var notify = client.GetRequiredService<ExampleCommands.Notify>();
 

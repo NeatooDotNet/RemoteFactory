@@ -2,7 +2,6 @@ using Neatoo.RemoteFactory;
 
 namespace EmployeeManagement.Domain.Samples.Skill;
 
-#region skill-child-entity-no-remote
 [Factory]
 public partial class Assignment
 {
@@ -28,4 +27,3 @@ public partial class Assignment
         StartDate = startDate;
     }
 }
-#endregion

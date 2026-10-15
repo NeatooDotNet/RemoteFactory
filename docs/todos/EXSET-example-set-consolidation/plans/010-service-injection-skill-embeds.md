@@ -118,6 +118,13 @@ Both pages state where a `[Service]` is resolved: in the container of the tier t
 
 ## Test Evidence
 
+| Bullet | Pinned by | Tier |
+|---|---|---|
+| 1. Pages and sources | explicit-skip: both pages have no C# fence outside a snippet pair except three WRONG blocks, and every `snippet source` link is under `src/Design`. The skill's `service-injection.md` embeds only Design regions. No `service-injection-*`, `clientserver-container-*` or `interface-factory-*` key is defined twice. `SerializationCaveatSamples.cs` and `ClientServerContainerSamples.cs` deleted; markers stripped from `ServiceInjectionSamples.cs`, `ServiceRegistrationSamples.cs`, `TestingSamples.cs` and `ChildEntitySamples.cs`, whose types other reference-app code uses; `reviews/010-refapp-build.log` (0 errors) | explicit-skip |
+| 2. Statements match the library | explicit-skip: `[Service]` resolution from the generated code (`cc.GetRequiredService`, `ExampleCommands` factory); `RegisterMatchingName` (`AddRemoteFactoryServices.cs:256-276`); the request scope (`WebApplicationExtensions.cs:56`); the interface registrations and auth order (`IProductCatalogFactory.g.cs`, `ICustomerDirectoryFactory.g.cs`); NF0106 (`DiagnosticDescriptors.cs:65`); `partial` (`FactoryModelBuilder.cs:68`, `:309`); `[Factory]` on the implementation: probe compile, CS0101 and CS0111 (Plan Amendments) | explicit-skip |
+| 3. Embedded regions pinned | `service-injection-basic` (`OperationsTests.Fetch_StoredCustomer_ReturnsTheSavedValues`, `Fetch_UnknownCustomer_ReturnsNull`), `service-injection-constructor` (`SerializationTests.CtorInjectedEntity_ServiceArrivesOnEachSideAfterRoundTrip`), `service-injection-server-only` (`ValueObjectTests.TaxRate_LoadsFromTheServer_AndAppliesToMoney`), `service-injection-httpcontext` (`AuthorizeFactoryHttpTests`, over the real Design.Server host), `service-injection-testing` (`StaticFactoryTests.Execute_ReturningTask_RunsOnServer`, its own region), `clientserver-container-setup` (every test through `Scopes()`), `interface-factory-contract`/`-implementation`/`-usage` (`InterfaceFactoryTests`). The reused regions keep the tests 002–009 cite | explicit-skip |
+| 4. Meta | explicit-skip: `reviews/010-mdsnippets.log`; the shared pages change only in attribution, and `advanced-patterns.md` only in the re-pointed `aspnetcore-testing` embed. Logs: `010-build.log`, `010-test.log`, `010-design-build.log`, `010-design-test.log` (unit 852; integration 657 + 7 skips; Design 173 + 1 known-bug skip; unchanged; both TFMs) | explicit-skip |
+
 ---
 
 ## Gate Record
@@ -125,6 +132,13 @@ Both pages state where a `[Service]` is resolved: in the container of the tier t
 ---
 
 ## Plan Amendments
+
+- **2026-10-15 · Implementation:**
+  - **The skill's `clientserver-container-usage` embed** (`advanced-patterns.md`) is re-pointed to `aspnetcore-testing` here, not in EXSET-015: its source file is deleted in this plan.
+  - **Two files are deleted.** `SerializationCaveatSamples.cs` and `ClientServerContainerSamples.cs` go; the four files with types other reference-app code uses keep their code, with the markers stripped.
+  - **The probe compile** for `[Factory]` on both the interface and its implementation failed with CS0101 and CS0111, the class's factory taking the interface factory's names. The page says so, in place of "duplicate registration".
+  - **`DesignClientServerContainers.Scopes`** moves the client's two registrations up beside the mode configuration, so that `clientserver-container-setup` is one tight region. Registration order is unchanged in effect.
+  - **Design's AllPatterns comments** that called method injection "server-only" are corrected (I-02).
 
 ---
 

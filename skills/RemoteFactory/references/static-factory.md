@@ -99,7 +99,7 @@ private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
     return Task.FromResult(scorer.Score(text));
 }
 ```
-<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L502-L508' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L507-L513' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `ITextScorer` is the example's pure-computation scoring service. The client registers it, so the bare command runs there with no server call.

@@ -303,7 +303,6 @@ public class ExplicitMethodTests
 /// </summary>
 public class ServiceInjectionTests
 {
-    #region service-injection-testing
     [Fact]
     public void ServiceParameter_ResolvedFromDI()
     {
@@ -311,7 +310,6 @@ public class ServiceInjectionTests
         var repository = scopes.local.ServiceProvider.GetRequiredService<IEmployeeRepository>();
         Assert.NotNull(repository);  // Services resolve from test container
     }
-    #endregion
 }
 
 /// <summary>
@@ -319,7 +317,6 @@ public class ServiceInjectionTests
 /// </summary>
 public class ServiceLifetimeTests
 {
-    #region service-injection-lifetimes
     [Fact]
     public void ScopedServices_SameWithinScope()
     {
@@ -328,7 +325,6 @@ public class ServiceLifetimeTests
         var repo2 = scopes.local.ServiceProvider.GetRequiredService<IEmployeeRepository>();
         Assert.Same(repo1, repo2);  // Same instance within scope
     }
-    #endregion
 
     [Fact]
     public void ScopedServices_DifferentAcrossScopes()
@@ -346,7 +342,6 @@ public class ServiceLifetimeTests
 /// </summary>
 public class MatchingNameTests
 {
-    #region service-injection-matching-name
     [Fact]
     public void RegisterMatchingName_ResolvesCorrectImplementation()
     {
@@ -354,7 +349,6 @@ public class MatchingNameTests
         var repository = scopes.local.ServiceProvider.GetRequiredService<IEmployeeRepository>();
         Assert.IsType<InMemoryEmployeeRepository>(repository);  // IName -> Name convention
     }
-    #endregion
 }
 
 // aspnetcore-testing snippet moved to src/Design (EXSET-006)

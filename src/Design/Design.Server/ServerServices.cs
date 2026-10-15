@@ -106,8 +106,10 @@ public static class ServerServices
         services.AddHttpContextAccessor();
         #endregion
 
+        #region service-injection-httpcontext
         services.AddScoped<ICurrentUser>(sp =>
             new ClaimsUser(sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.User ?? new ClaimsPrincipal()));
+        #endregion
 
         return services;
     }
