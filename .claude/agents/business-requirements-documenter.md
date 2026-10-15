@@ -43,7 +43,7 @@ All workflow state goes in this memory file — not the plan. Do NOT read other 
 - `skills/RemoteFactory/**/*.md` — Skill files (these use MarkdownSnippets and have a separate update workflow)
 - Any other `.cs`, `.csproj`, `.json`, or non-markdown source file
 
-**Important:** The `skills/RemoteFactory/` directory uses MarkdownSnippets to embed compiled code from `src/docs/reference-app/`. Skill updates require code changes in the reference app followed by running `mdsnippets`. Always list skill updates as Developer Deliverables with this workflow noted.
+**Important:** The `skills/RemoteFactory/` directory uses MarkdownSnippets to embed `#region` blocks from `src/Design` (`.claude/rules/design-snippets.md`). Skill updates require code changes in the Design projects followed by running `mdsnippets`. Always list skill updates as Developer Deliverables with this workflow noted.
 
 ## RemoteFactory Requirements Documentation Structure
 
@@ -175,7 +175,7 @@ For each business rule assertion in the plan:
   - Updated comments in existing Design.Domain files
   - New or updated Design.Tests test cases
   - Design Completeness Checklist item to check off
-  - Skill reference-app code changes + `mdsnippets` run
+  - Design region changes for skill samples + `mdsnippets` run
 
 ### Step 4: Record Work in Memory File
 

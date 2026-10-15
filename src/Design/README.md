@@ -22,9 +22,12 @@ src/Design/
 │   ├── Aggregates/               # DDD aggregate root example
 │   │   └── Order.cs              # Full lifecycle with IFactorySaveMeta
 │   ├── Entities/                 # Child entity example
-│   │   └── OrderLine.cs          # No [Remote] - server-side only
-│   └── ValueObjects/             # Value object example
-│       └── Money.cs              # Record with [Factory] for self-hydration
+│   │   └── OrderLine.cs          # Child and root (R-G): no [Remote] child operation
+│   ├── ReadModels/               # Fetch-only read model (OrderSummary)
+│   ├── Contexts/                 # A context a screen binds to (OrderCheckout)
+│   └── ValueObjects/             # Value object examples
+│       ├── Money.cs              # Plain records whose constructors throw (R-F)
+│       └── TaxRate.cs            # A value object whose construction needs the server
 ├── Design.Tests/                 # Comprehensive test suite
 │   ├── TestInfrastructure/       # Client/server container simulation
 │   └── FactoryTests/             # Tests for each pattern
@@ -92,13 +95,13 @@ public static partial class ExampleCommands
 ## Key Design Decisions
 
 ### [Remote] Marks Client Entry Points
-- Only aggregate root operations need `[Remote]`
-- Child entity operations are server-side only (no `[Remote]`)
+- Only client entry points need `[Remote]`, typically aggregate root operations
+- A child's Fetch, Insert and Update are reached from the root's operations, already on the server, so they carry no `[Remote]`; a child's Create is `public` and local
 - Once on server, execution stays there
 
 ### Service Injection
 - **Constructor injection** (`[Service]` on constructor): Available on both client and server
-- **Method injection** (`[Service]` on method parameters): Server-only (common case)
+- **Method injection** (`[Service]` on method parameters): resolved on the tier that runs the method, the server for `[Remote]` and `internal` methods (the common case)
 
 ### IFactorySaveMeta Controls Routing
 ```csharp

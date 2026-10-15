@@ -402,8 +402,7 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | One save raises the same event N times and my deferred projection recomputes N times. | `Coalesce = true` on the attribute — identical queued dispatches collapse to one per drain | `FactoryEventPhasesPattern.cs` (`StatementProjection`) | Identity is `Equals` + same options + same registration; value-only event payloads coalesce reliably; flagless handlers keep one-run-per-raise |
 | Do phased handlers run if the factory call throws? | No — queued work is discarded (9006); only the `Immediate` handlers already ran, inside the rolled-back transaction | `FactoryEventPhasesPattern.cs` (`PaymentIntake`) | Deferred handlers never observe a failed operation |
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
-| How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
-| Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
+| How do I defer loading of related data? | A `[Remote, Fetch]` on the child list's factory, called when the data is needed | `docs/VisionAlignment.md` R-K | `LazyLoad<T>` is being removed (#114); do not use it |
 | Do I need to register DTOs for IL trimming? | No -- the generator auto-preserves DTO types from factory signatures, records included | `DtoConstructorRegistry.cs` | Parameterless ctor → `Register<T>(() => new T())` lambda used by `NeatooJsonTypeInfoResolver`; positional records → `PreserveType<T>()` rooting, deserialized via `RecordBypassConverterFactory` |
 | What if my nested DTO fails to deserialize under trimming? | Check that it is reachable from a factory method signature, a discovered DTO's members, or a `[Factory]` entity's members, and not only through an interface/abstract-typed member, a tuple, a non-generic collection subclass, or `object`; otherwise register it manually | `docs/trimming.md` | The generator walks properties and public fields, through every generic collection and both halves of every dictionary, from discovered DTOs AND every `[Factory]` class; only types it cannot reach statically need manual registration |
 | Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
@@ -1081,17 +1080,17 @@ builder.Services.AddKeyedScoped(
 
 When reviewing or extending the Design source of truth, verify these patterns are demonstrated:
 
-- [ ] At least one Class Factory with lifecycle hooks (`Order.cs`)
-- [ ] At least one Interface Factory, named as a domain service (`IProductCatalog` in `AllPatterns.cs`)
-- [ ] A read model: `[Fetch]`-only, `bool`/`false` not-found (`ReadModels/OrderSummary.cs`)
-- [ ] A context a screen binds to, verbs on the held aggregate, saved through the root (`Contexts/OrderCheckout.cs`)
-- [ ] At least one Static Factory with [Execute] (`ExampleCommands`)
-- [ ] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
-- [ ] Child entities with no [Remote] child operation (`OrderLine.cs`)
-- [ ] Entity duality: one class as a child and a root, the factory-method signature the difference (`OrderLine.Fetch(row)` / `[Remote] OrderLine.Fetch(id)`, R-G)
-- [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
-- [ ] Value objects: plain records whose constructors throw (`Money`, `Percentage`), beside one whose construction needs a server service and so carries `[Factory]` (`TaxRate`) (R-F)
-- [ ] Create-or-fetch: a class-level `[Remote, Execute]` that calls Fetch, then Create (`Order.OpenDraft`, D11)
+- [x] At least one Class Factory with lifecycle hooks (`Order.cs`)
+- [x] At least one Interface Factory, named as a domain service (`IProductCatalog` in `AllPatterns.cs`)
+- [x] A read model: `[Fetch]`-only, `bool`/`false` not-found (`ReadModels/OrderSummary.cs`)
+- [x] A context a screen binds to, verbs on the held aggregate, saved through the root (`Contexts/OrderCheckout.cs`)
+- [x] At least one Static Factory with [Execute] (`ExampleCommands`)
+- [x] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
+- [x] Child entities with no [Remote] child operation (`OrderLine.cs`)
+- [x] Entity duality: one class as a child and a root, the factory-method signature the difference (`OrderLine.Fetch(row)` / `[Remote] OrderLine.Fetch(id)`, R-G)
+- [x] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
+- [x] Value objects: plain records whose constructors throw (`Money`, `Percentage`), beside one whose construction needs a server service and so carries `[Factory]` (`TaxRate`) (R-F)
+- [x] Create-or-fetch: a class-level `[Remote, Execute]` that calls Fetch, then Create (`Order.OpenDraft`, D11)
 - [x] ASP.NET Core policy-based authorization (`SecureOrder.cs`, tested over HTTP in `Design.Tests/Http/AspAuthorizeHttpTests.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
@@ -1099,7 +1098,6 @@ When reviewing or extending the Design source of truth, verify these patterns ar
 - [x] Factory event handler (mediator) — server-side static handler (`FactoryEventHandlerPattern.cs`)
 - [x] Factory event relay — consumer-implemented `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` bridge with in-memory aggregator demo (`FactoryEventRelayPattern.cs`: `InMemoryAggregatorRelay`)
 - [x] Event record with a nested record property — exercises automatic IL-trimming preservation for both the event type and the nested record (`FactoryEventHandlerPattern.cs`: `OrderShippedEvent` with `ShippingAddress`, `OrderShippedHandlers`)
-- [x] LazyLoad<T> property with constructor-initialization pattern (`LazyLoadExample.cs`)
 
 ---
 
@@ -1109,7 +1107,7 @@ These are known limitations or open questions. They are documented here to preve
 
 | Topic | Current State | Why Deferred | Reconsider When |
 |-------|--------------|--------------|-----------------|
-| Private setter support | Not supported | Adds reflection, incompatible with IL trimming | If .NET adds source-generator-accessible private member access |
+| Private setter support | Not supported | The generated ordinal converter cannot call a private setter, so the property never crosses the wire; reaching it would take reflection | If .NET adds source-generator-accessible private member access |
 | OR logic for [AspAuthorize] | Only AND logic | Matches ASP.NET Core behavior, safer default | User demand + clear use case |
 | Automatic [Remote] detection | Must be explicit | Security risk of accidental exposure | Never - explicit is a core principle |
 | IEnumerable<T> serialization | Only concrete collections | Type preservation complexity | User demand for interface collections |
@@ -1218,13 +1216,13 @@ infrastructure already exists.
 | `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler running in the caller's DI scope (shared DbContext/transaction), sequential, awaited |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | Consumer-implemented `IFactoryEventRelay.Relay` — bridges relayed events to an aggregator (demonstrates the `InMemoryAggregatorRelay` reference impl) |
 | `Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs` | `DispatchPhase` on the handler attribute — consumer `AfterFlush` drain via `IFactoryEventPhaseCoordinator`, per-drain-point ordering, fail-open never-drained path, discard on failure, opt-in `Coalesce` collapse vs. per-raise control |
-| `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
+| `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | Kept only until LazyLoad is removed (#114, R-K); not guidance |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | `Relay(IReadOnlyList<FactoryEventBase>)` invocation, batch contents, `RaiseOptions.ServerOnly` exclusion, empty-batch still invokes Relay once |
 | `Design.Tests/FactoryTests/FactoryEventPhasesTests.cs` | Observed marker sequences for the four phase scenarios: each phase at its drain point, phase order vs. raise order, fail-open sweep, failed-call discard |
 | `Design.Tests/FactoryTests/ParamAuthorizationTests.cs` | Parameterized auth: type-matched params, target params, CanXxx suppression |
 | `Design.Tests/FactoryTests/InterfaceFactoryAuthorizationTests.cs` | Interface-factory auth: Execute/Read scopes, parameter matching, Can{Method}, NotAuthorizedException across client/server |
-| `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
+| `Design.Tests/FactoryTests/LazyLoadTests.cs` | Kept only until LazyLoad is removed (#114, R-K) |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
 | `Design.Tests/FactoryTests/CreateOrFetchTests.cs` | `Order.OpenDraft` from the client: the stored Draft when there is one, a new unsaved order otherwise, one call each |
 | `Design.Tests/FactoryTests/ValueObjectTests.cs` | Value-object constructors throw; `TaxRate` loads from the server, null for an unknown region, its table absent on the client |

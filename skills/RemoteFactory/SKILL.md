@@ -116,7 +116,7 @@ Consult these files for detailed patterns and examples:
 This skill contains two types of code examples:
 
 ### Compiled Code (via MarkdownSnippets)
-Code blocks marked with `<!-- snippet: name -->` are extracted from the reference application and are guaranteed to compile and work. These include:
+Code blocks marked with `<!-- snippet: name -->` are embedded from RemoteFactory's Design example projects, where each one compiles and a test pins its behaviour. These include:
 - Complete class/interface examples
 - Full working implementations
 - Configuration samples
@@ -134,4 +134,4 @@ The following code blocks are intentionally hand-written and NOT extracted from 
    - Usage examples that aren't full compilable units
    - Inline comparisons (WRONG vs RIGHT patterns)
 
-When updating this skill, edit anti-patterns and partial examples directly in the markdown files. For compiled examples, update the reference application code and run `mdsnippets` to re-extract.
+When updating this skill, edit anti-patterns and partial examples directly in the markdown files. For embedded examples, update the Design code and its test, and run `mdsnippets` to re-embed.
