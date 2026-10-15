@@ -21,9 +21,9 @@ Re-point every C# block on `docs/factory-operations.md` to `src/Design`. That co
 - **A `[Create]` constructor.** It sits beside R-J's warning: the constructor also runs on deserialization.
 - **An `[Insert, Update]` upsert,** with its generated name, `SaveUpsert`.
 - **Two static commands that act on Order through its root.** Each fetches through `IOrderFactory`, calls a domain verb, and saves (statement 6):
-  - one reports a missing order through its result (U-05);
-  - one throws when the order is missing (R-I).
-- **An Order start hook that does real work,** where today it is a no-op. The hooks' false comments are corrected.
+  - submit returns an outcome (`Submitted`, `NotFound`, `NotSubmittable`), reading Order's new `CanSubmit` verdict first (R-E, R-I, U-05);
+  - cancel throws when the order is missing (R-I).
+- **A start hook with real work, on `CustomerPreferences`:** it stamps `LastSavedAt` on Insert and Update. Order's hooks keep their behaviour, and their false comments are corrected.
 
 **Parameter order** (Keith, 2026-10-15). The page states one rule for every operation: values, then `[Service]` parameters, then the `CancellationToken`. Design follows it. The generator does not enforce it: class operations tolerate other orders, while `[Execute]` breaks in generated code. That is issue #135, for Todo 3's analyzers.
 
@@ -35,10 +35,11 @@ Re-point every C# block on `docs/factory-operations.md` to `src/Design`. That co
 - C-15: `bool` `[Create]` and a business filter in `[Fetch]`;
 - C-01: "`[Remote]` executes on server";
 - C-02 and U-01: child visibility and creation;
-- C-19, C-20 and I-01;
+- C-19 and C-20;
 - C-28 and C-30: persistence-routing framing; `[Execute]` "decides which persistence path";
 - I-02: "server-only" `[Service]`;
 - I-05 and I-06: parameter defaults and ordering;
+- the page's "No `[Remote]` on collection" (VisionAlignment allows a `[Remote]` list Fetch) and "child factory is constructor-injected" (Design rejects storing it);
 - I-12: hand-written generated interfaces;
 - T-03: write methods on the interface;
 - T-04: `TryFetch`;
@@ -111,7 +112,9 @@ Does NOT touch: `save-operation.md` (008), `service-injection.md` (010), the ski
      - a `[Remote, Fetch]` by customer;
      - a `[Remote, Insert, Update]` `Upsert` over a server-only store.
    - **Two static commands on Order through `IOrderFactory`:** submit, which returns whether the order was found, and cancel, which throws when it is missing.
-   - **Order's start hook** normalizes the customer name before a write. Correct the hooks' comments: when each one runs, and that `IFactoryOnCancelled` is for cancellation.
+   - **`CustomerPreferences`'s start hook** stamps `LastSavedAt` on Insert and Update. Correct Order's hook comments: when each one runs, and that `IFactoryOnCancelled` is for cancellation.
+   - **Order** gains `CanSubmit`; `Submit` throws only when it is false.
+   - **The new store** is registered explicitly as a singleton on the server, in the harness's server and local lists, and in `DesignServerCompositionTests`.
 2. **Regions,** nested in Order and OrderLineList where they share lines; the region map above.
 3. **Tests through the client containers:**
    - the constructor Create runs locally;
@@ -146,11 +149,13 @@ Does NOT touch: `save-operation.md` (008), `service-injection.md` (010), the ski
 
   `[integration]` · Must
 - [ ] Order's commands:
-  - submit through the client changes a stored order to Submitted and returns true, and returns false for a missing id;
+  - submit through the client changes a stored draft to Submitted and returns `Submitted`;
+  - it returns `NotFound` for a missing id, and `NotSubmittable` for an order that is not a draft;
   - cancel of a missing id throws.
 
   `[integration]` · Must
-- [ ] Order's start hook normalizes the customer name before Insert and Update `[integration]` · Should
+- [ ] `CustomerPreferences`' start hook stamps `LastSavedAt` on Insert and Update, and `SaveUpsert` leaves `IsNew` false after the first save `[integration]` · Should
+- [ ] The page's statements of when each hook runs match the generator source `[explicit-skip: source-cited review; the start and complete hooks are also pinned by tests]` · Should
 - [ ] The page's regions for the list (Create, Fetch from rows, AddLine) and create-or-fetch are pinned by the existing cascade and create-or-fetch tests `[integration]` · Must
 - [ ] On the page:
   - every C# block is an embed from Design or WRONG;
@@ -199,6 +204,14 @@ See the recon notes (2026-10-15). The points that matter:
 ---
 
 ## Plan Amendments
+
+- **2026-10-15 · Plan review** ([007-plan-review.md](../reviews/007-plan-review.md)): APPROVED, with 13 callouts, all amended (see its Triage column). The ones that change the plan:
+  - the start-hook example moves to `CustomerPreferences`. Normalizing Order's name would break `OpenDraft`'s draft lookup and pinned tests;
+  - submit returns an outcome after reading a new `Order.CanSubmit`, so `order-interface`, which README and getting started embed, gains one line;
+  - the `[Create]` constructor takes no arguments;
+  - only `Samples/Operations/LifecycleHookSamples.cs` is deleted;
+  - the fire-and-forget block becomes prose;
+  - the `params` wording.
 
 ---
 
