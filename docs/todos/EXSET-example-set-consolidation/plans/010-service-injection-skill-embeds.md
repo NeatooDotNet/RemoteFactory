@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No. Most embeds re-point to regions 002–009 built and reviewed. The new regions sit on Design code that tests already pin, and no Design shape is new.
 **Code-review opt-in:** Yes. Both pages are restated against the library, and four of the audit's findings are behavioural (U-07, U-08, T-06, T-24).
 **Branch:** EXSET-010-service-injection-skill-embeds
-**PR:** —
+**PR:** #143
 
 ---
 
