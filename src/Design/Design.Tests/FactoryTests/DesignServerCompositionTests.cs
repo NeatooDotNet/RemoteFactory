@@ -96,6 +96,7 @@ public class DesignServerCompositionTests
         Assert.NotNull(sp.GetRequiredService<IPhaseAuditService>());     // phase pattern
         Assert.NotNull(sp.GetRequiredService<ITaxTable>());              // TaxRate value object
         Assert.NotNull(sp.GetRequiredService<ISupportLog>());            // SupportRequests command
+        Assert.NotNull(sp.GetRequiredService<ICheckoutLedger>());        // CheckoutLedgerHandler
         Assert.NotNull(sp.GetRequiredService<ICustomerPreferencesStore>()); // CustomerPreferences
 
         // Constructor injection — resolved when the factory news up the entity.

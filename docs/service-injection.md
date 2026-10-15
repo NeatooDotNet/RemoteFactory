@@ -144,12 +144,13 @@ services.AddScoped<IExampleService, ExampleService>();
 services.AddSingleton<ITaxTable, InMemoryTaxTable>();
 services.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
 services.AddSingleton<ISupportLog, InMemorySupportLog>();
+services.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
 services.AddScoped(_ => new TenantTokenService("server-token"));
 services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenService>());
 
 services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/Design/Design.Server/ServerServices.cs#L197-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L197-L210' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Each remote call is one HTTP request, and its services come from that request's scope. A scoped service is therefore shared within one call: by the factory method, the operations it calls through other factories, and its `Immediate` event handlers. `ICorrelationContext`, above, is scoped: the middleware writes the request's correlation ID into it, and `_ReportProblem` reads it in the same scope. A client usually has one long-lived scope, so scoped and singleton services behave alike there.

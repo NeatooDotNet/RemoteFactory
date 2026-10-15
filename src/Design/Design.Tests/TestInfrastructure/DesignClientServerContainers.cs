@@ -269,6 +269,7 @@ public static class DesignClientServerContainers
         serverCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
         serverCollection.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
         serverCollection.AddSingleton<ISupportLog, InMemorySupportLog>();
+        serverCollection.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
         localCollection.AddScoped<IExampleService, ExampleService>();
         localCollection.AddScoped<INotificationService, NotificationService>();
         localCollection.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
@@ -277,6 +278,7 @@ public static class DesignClientServerContainers
         localCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
         localCollection.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
         localCollection.AddSingleton<ISupportLog, InMemorySupportLog>();
+        localCollection.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
 
         // One signed-in user, shared by the three containers, as a real user is the
         // same person on the client and the server. Tests take a role away to deny.
