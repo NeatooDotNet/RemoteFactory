@@ -52,7 +52,7 @@ RemoteFactory has one compiled example set, `src/Design`. Every C# block in `doc
 | 006 | [006-aspnetcore-modes-serialization](./plans/006-aspnetcore-modes-serialization.md) | ASP.NET Core integration over HTTP, and setup | AC-3, AC-4 | Done | #132 |
 | 007 | [007-factory-operations](./plans/007-factory-operations.md) | Factory operations page | AC-3, AC-4 | Done | #136 |
 | 008 | [008-save-interfaces](./plans/008-save-interfaces.md) | Save operation and interfaces reference | AC-3, AC-4, AC-5 | Done | #137 |
-| 009 | [009-authorization](./plans/009-authorization.md) | Authorization: Design auth, server authentication | AC-3, AC-4 | Done | — |
+| 009 | [009-authorization](./plans/009-authorization.md) | Authorization: Design auth, server authentication | AC-3, AC-4 | Done | #140 |
 | 010 | [010-service-injection-skill-embeds](./plans/010-service-injection-skill-embeds.md) | Service injection and skill-only embeds | AC-3, AC-4 | Draft | — |
 | 011 | [011-events-trimming-lazyload](./plans/011-events-trimming-lazyload.md) | Events, trimming, LazyLoad pages, appendix | AC-4, AC-5 | Draft | — |
 | 012 | [012-retire-reference-app](./plans/012-retire-reference-app.md) | Retire reference app; path and design sweep | AC-4, AC-6 | Draft | — |
