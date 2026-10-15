@@ -24,6 +24,9 @@ public class ServiceAssemblies : IServiceAssemblies
 
 	public void AddAssemblies(params Assembly[] assemblies)
 	{
+		ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
+
+		assemblies = assemblies.Distinct().Where(a => !this.Assemblies.Contains(a)).ToArray();
 		this.Assemblies.AddRange(assemblies);
 
 		var foundTypes = assemblies.SelectMany(a => a.GetTypes())
@@ -48,6 +51,8 @@ public class ServiceAssemblies : IServiceAssemblies
 
 		return this.Assemblies.Contains(type.Assembly);
 	}
+
+	internal bool HasAssembly(Assembly assembly) => this.Assemblies.Contains(assembly);
 
 	public Type? FindType(string fullName)
 	{
