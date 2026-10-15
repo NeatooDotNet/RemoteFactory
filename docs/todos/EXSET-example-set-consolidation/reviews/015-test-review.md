@@ -52,3 +52,40 @@ Could not verify:
 
 Theoretical (not triaged):
 - None.
+
+## Round 2 — 2026-10-15 — APPROVED (0 veto-tier, 0 callouts)
+
+**Reviewer:** test-reviewer, against `60cd0d1`, diffed from `50eb667`. Within `src/`, only four Design files changed: `Home.razor`, `Order.cs` and `OrderCommands.cs` (+2 lines each), and `InterfaceFactoryAuthorizationTests.cs` (+20). Nothing else under `src/` changed, so the round-1 main-solution and reference-app logs still apply.
+
+Logs green, and they postdate the edits. The source edits are 15:54:05 (the test) and 15:59:04 (the three marker files). The logs are 16:00:04–16:00:07 and the commit 16:00:20.
+- Design build (`015-design-build.log`): `Build succeeded`, 0 warnings, 0 errors. `Design.Domain`, `Design.Client.Blazor`, `Design.Server` and `Design.Tests` were built on both TFMs.
+- Design tests (`015-design-test.log`): `Failed: 0, Passed: 174, Skipped: 1` on net9.0 and on net10.0. The only skip is `SaveTests.AuthorizedSave_NewAndDeleted_ReturnsNull` (#104). The count rose by one, which is the new test.
+- mdsnippets (`015-mdsnippets.log`): no error, exception or missing-snippet line; it ends `Finished`. It extracts `skill-blazor-inject` and `skill-blazor-usage` from `Home.razor`, `order-class-declaration` from `Order.cs` and `ordercommands-declaration` from `OrderCommands.cs`.
+
+Round-1 findings:
+- **Finding 1 (veto): closed.** Test Evidence 3 and the Plan Amendments now cite the three tests round 1 named for `skill-blazor-usage`: `AggregateTests.Order_CreateAndEditLines_RunOnClientWithoutServerCall`, `AggregateTests.Order_EditLinesFromClient_SavesExactlyThoseChanges` and `ClientServerTestingTests.Order_SavesAndFetches_FromTheClientScope`. Each was read in round 1 and pins the calls it is cited for. The `OrderUsageTests` citation is gone.
+- **Finding 2 (tech-debt punch): honest.** `InterfaceFactory_ListContacts_ReturnsContacts_AndDeniesTheDeniedCustomer` resolves `ICustomerDirectoryFactory` from the client container, so the call goes through the remote proxy. It asserts three things:
+  - `Count == 2`, which matches the two `_contacts` seed rows for `...0001`;
+  - every contact's `CustomerId` is `AllowedId`. This `Assert.All` is not vacuous, because the count assertion comes first;
+  - `NotAuthorizedException` for `DeniedId` (`...0042`). The generated `LocalListContactsCore` runs `CanAccessCustomer` on it.
+  The diff only adds lines; no existing test in the file was altered.
+
+Gate punches (markers only):
+- `order-class-declaration` wraps the `[Factory]` attribute and the `internal partial class Order ...` line, and nothing else. Order is pinned by the existing `AggregateTests`, `ClientServerTestingTests` and `OrderUsageTests`.
+- `ordercommands-declaration` wraps `[Factory]` and `public static partial class OrderCommands`, and nothing else. OrderCommands is pinned by `OperationsTests`: `SubmitOrder_ChangesTheOrderThroughItsRoot_AndReportsWhatItDid`, `CancelOrder_CancelsAStoredOrder_AndThrowsForAMissingOne` and `SubmitOrder_EmptyDraft_IsNotSubmittable_AndStaysADraft`, all on the client container.
+- `skill-blazor-inject` is a pair of razor comments (`@* begin-snippet *@` / `@* end-snippet *@`) around the page's two `@inject` lines, `IOrderFactory` and `IOrderLineFactory`. Razor comments emit nothing. The lines are DI declarations, and `Design.Client.Blazor` compiles them on both TFMs.
+- Each of the three names is defined once outside `docs/todos`. They are embedded in `class-factory.md`, `static-factory.md` and `setup.md`.
+
+**Sacred-test check: clean.** The only test-file change in `50eb667..HEAD` is the 20-line addition above. Nothing changed under `src/Tests`.
+
+**Plan-introduced reachable paths:** none. The punches add markers only.
+
+| # | Tier | Finding | Affects | Triage |
+|---|---|---|---|---|
+| — | — | None | — | |
+
+Could not verify:
+- None.
+
+Theoretical (not triaged):
+- None.

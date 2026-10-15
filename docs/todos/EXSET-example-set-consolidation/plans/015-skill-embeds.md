@@ -4,7 +4,7 @@
 **Date:** 2026-10-15
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-15
 **Plan-review opt-in:** No. Most embeds re-point to regions 002–010 built and reviewed, and the new regions sit on Design code those plans' tests pin.
 **Code-review opt-in:** Yes. The re-pointed embeds change what the skill shows, and the notes attached to them must match.
@@ -86,10 +86,10 @@ Every C# embed in the skill comes from Design, and the line that introduces each
 
 ## Acceptance
 
-- [ ] Every skill embed outside `lazyload.md` is a Design region. No region is defined twice, and none retired is embedded. The reference app builds. `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
-- [ ] Each corrected note matches the code it introduces `[explicit-skip: read against the region]` · Must
-- [ ] The embedded regions are pinned by Design tests `[explicit-skip: each region's test named in Test Evidence]` · Must
-- [ ] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
+- [x] Every skill embed outside `lazyload.md` is a Design region. No region is defined twice, and none retired is embedded. The reference app builds. `[explicit-skip: greps; EmployeeManagement.sln build]` · Must
+- [x] Each corrected note matches the code it introduces `[explicit-skip: read against the region]` · Must
+- [x] The embedded regions are pinned by Design tests `[explicit-skip: each region's test named in Test Evidence]` · Must
+- [x] mdsnippets clean; both solutions green `[explicit-skip: meta]` · Must
 
 ---
 
@@ -122,6 +122,21 @@ Every C# embed in the skill comes from Design, and the line that introduces each
 ---
 
 ## Gate Record
+
+- **Test review** ([015-test-review.md](../reviews/015-test-review.md)):
+  - **Round 1: CONCERNS.** One veto-tier finding: the `skill-blazor-usage` citation named `OrderUsageTests`, which makes neither the Create nor the Fetch call. It now cites the `AggregateTests` and `ClientServerTestingTests` tests that do.
+  - **Tech-debt:** `ListContacts` was unpinned, so `InterfaceFactory_ListContacts_ReturnsContacts_AndDeniesTheDeniedCustomer` was added. `SKILL.md:121` was dismissed to Todo 2 (T-22).
+  - **Round 2: APPROVED,** with no findings.
+- **Code review** ([015-code-review.md](../reviews/015-code-review.md)): APPROVED, with 5 callouts, all taken:
+  - the duality sentence excepts the child's public `[Create]` (R-C);
+  - `order-class-declaration` and `ordercommands-declaration` show the lead examples' declarations;
+  - `skill-blazor-inject` shows the `@inject` lines;
+  - U-02 and C-19 corrected;
+  - the Follow-on completed, with `trimming.md`'s `EmployeeDto` added to EXSET-011.
+- **After the punches:**
+  - Design builds and tests 174 + 1 known-bug skip on both TFMs. The main solution (unit 852, integration 657 + 7 known skips) and the reference app are unchanged since round 1.
+  - mdsnippets is clean. Shared pages change only in attribution.
+- **Open, by design:** the skill's hand-written C# naming retired types (Follow-on, Todo 2), and `lazyload.md` (EXSET-011).
 
 ---
 
