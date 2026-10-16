@@ -19,18 +19,18 @@ Someone building an application, human or Claude, opens the RemoteFactory skill 
 
 ## Acceptance Criteria
 
-- [ ] **AC-1** · Required — `SKILL.md` opens with the five model statements RemoteFactory owns, verbatim from VisionAlignment section 2, before any prohibition.
-- [ ] **AC-2** · Required — The eleven habit-trap rows follow the model, each with the question, the answer and a compiled example, worded to match the Neatoo skill's pointer block.
-- [ ] **AC-3** · Required — Every C# block in the skill is a `src/Design` region or a short block labelled WRONG, and the editing guidance says so; closes #148 and #152.
-- [ ] **AC-4** · Required — No skill page names an interface factory as a repository; closes #112.
-- [ ] **AC-5** · Required — `polymorphic-hierarchy.md` states attribute inheritance the way the generator does it; closes #149.
-- [ ] **AC-6** · Required — `SKILL.md` points at the Neatoo skill's statements, rows and its "Neatoo, or plain RemoteFactory" test, and no ruling ID appears in skill prose.
-- [ ] **AC-7** · Required — A fresh session given only the installed skills falls into no RemoteFactory trap row across the five SKR-007 scenarios and new scenarios for the five rows those never exercise.
-- [ ] **AC-8** · Required — `~/.claude/skills/RemoteFactory` matches the repository copy at close.
-- [ ] **AC-9** · Optional — The skill's trigger words and reference pages carry no LazyLoad guidance.
-- [ ] **AC-10** · Optional — The Person example drops the private-setter recipe `trimming.md` no longer prescribes; closes #150.
-- [ ] **AC-11** · Optional — The "where does business logic go" row carries the wording the Neatoo session sends.
-- [ ] **AC-12** · Optional — The skill names each known defect in VisionAlignment section 5 with its issue or analyzer.
+- [x] **AC-1** · Required — `SKILL.md` opens with the five model statements RemoteFactory owns, verbatim from VisionAlignment section 2, before any prohibition.
+- [x] **AC-2** · Required — The eleven habit-trap rows follow the model, each with the question, the answer and a compiled example, worded to match the Neatoo skill's pointer block.
+- [x] **AC-3** · Required — Every C# block in the skill is a `src/Design` region or a short block labelled WRONG, and the editing guidance says so; closes #148 and #152.
+- [x] **AC-4** · Required — No skill page names an interface factory as a repository; closes #112.
+- [x] **AC-5** · Required — `polymorphic-hierarchy.md` states attribute inheritance the way the generator does it; closes #149.
+- [x] **AC-6** · Required — `SKILL.md` points at the Neatoo skill's statements, rows and its "Neatoo, or plain RemoteFactory" test, and no ruling ID appears in skill prose.
+- [x] **AC-7** · Required — A fresh session given only the installed skills falls into no RemoteFactory trap row across the five SKR-007 scenarios and new scenarios for the five rows those never exercise.
+- [x] **AC-8** · Required — `~/.claude/skills/RemoteFactory` matches the repository copy at close.
+- [x] **AC-9** · Optional — The skill's trigger words and reference pages carry no LazyLoad guidance.
+- [x] **AC-10** · Optional — The Person example drops the private-setter recipe `trimming.md` no longer prescribes; closes #150.
+- [ ] **AC-11** · Optional — The "where does business logic go" row carries the wording the Neatoo session sends. Accepted as a gap: no wording arrived before close; parked as #173.
+- [x] **AC-12** · Optional — The skill names each known defect in VisionAlignment section 5 with its issue or analyzer.
 
 ## Out of Scope
 
@@ -89,6 +89,7 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 - #165 · A generated factory cannot be declared internal · RFSK-002 code review (F6)
 - #167 · Design.Client.Blazor is compiled but never run by a test · RFSK-003 test review
 - #171 · getting-started.md: "everything else runs on the client" restates the T18 habit · RFSK-006 fresh-session run (Amendment 2)
+- #173 · AC-11: the "where does business logic go" row awaits the Neatoo session's wording · Step 6
 
 ---
 
@@ -98,6 +99,11 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 - **Finding:** No Design test showed a class-level `[Remote, Execute]` crossing the wire; the control used a static command.
 - **Decision:** Amend
 - **Follow-up:** n/a
+
+### 2026-10-16 — Step 6 · serves AC-11
+- **Finding:** Every Required criterion and every Optional one except AC-11 is met by a Done plan. The Neatoo session has sent no wording for AC-11, and the standing orders forbid writing it.
+- **Decision:** Accept the Optional gap; park it as #173. The Punchlist is empty, so the sweep has nothing to work.
+- **Follow-up:** #173
 
 ---
 
