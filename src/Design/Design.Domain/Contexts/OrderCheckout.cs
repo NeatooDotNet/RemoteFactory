@@ -60,6 +60,7 @@ public interface IOrderCheckout
 /// <summary>
 /// Checkout context: the order a checkout screen is working on.
 /// </summary>
+#region skill-context-checkout
 [Factory]
 internal partial class OrderCheckout : IOrderCheckout
 {
@@ -121,3 +122,4 @@ internal partial class OrderCheckout : IOrderCheckout
             ?? throw new InvalidOperationException("Saving the order returned nothing.");
     }
 }
+#endregion

@@ -60,6 +60,7 @@ public record OrderSummaryLine(string ProductName, int Quantity, decimal LineTot
 /// Properties have public setters: ordinal serialization writes only
 /// properties it can set on the other side.
 /// </remarks>
+#region skill-readmodel
 [Factory]
 internal partial class OrderSummary : IOrderSummary
 {
@@ -106,3 +107,4 @@ internal partial class OrderSummary : IOrderSummary
     }
     #endregion
 }
+#endregion
