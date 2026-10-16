@@ -79,9 +79,9 @@ Walked 2026-10-16 on the arc at `d85feaa`.
 
 | Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|---|
-| Installed copy matches | Required | `[explicit-skip]` | `diff -rq skills/RemoteFactory ~/.claude/skills/RemoteFactory` empty after the sync (the stale `lazyload.md` removed) | ✓ |
-| Ten fresh sessions, read-only tools | Required | `[explicit-skip]` | `reviews/006-runs/s1-s10.txt` and `out1-out10.md`; mechanism in `reviews/006-fresh-session.md`; every session exited 0 | ✓ |
-| No row or finding fallen into | Required | `[explicit-skip]` | `reviews/006-fresh-session.md`: every row reached by at least two scenarios except T3 (s4), every finding reached, none fallen into | ✓ |
+| Installed copy matches | Required | `[explicit-skip]` | `diff -rq skills/RemoteFactory ~/.claude/skills/RemoteFactory` empty: after the first sync (the stale `lazyload.md` removed), before run2, and again after the `setup.md` amendment, before run3 | ✓ |
+| Ten fresh sessions, read-only tools | Required | `[explicit-skip]` | `reviews/006-runs/run2/out1-out10.md` and `run3/out10.md`. The isolated mechanism, the probe, the exit codes and the transcript audit are in `reviews/006-fresh-session.md` "Run record". run1 is kept but not scored, because it was not isolated (Amendment 1) | ✓ |
+| No row or finding fallen into | Required | `[explicit-skip]` | `reviews/006-fresh-session.md`. run2 fell into T18 in s10's prose. The skill was amended (Amendment 2) and s10's re-run passes. Every row and finding is reached, and after the amendment none is fallen into | ✓ |
 
 No code changed on this branch, so the full suite was not re-run here; the arc's last run is `reviews/005-*.log` (green), and the close-out audit runs it again.
 
@@ -94,6 +94,16 @@ No code changed on this branch, so the full suite was not re-run here; the arc's
 ---
 
 ## Plan Amendments
+
+1. **2026-10-16, the run's mechanism (code review V1).** `--allowedTools` narrowed nothing: the user settings carry `defaultMode: auto` and a blanket `Read`/`Grep`/`Glob` allow. Six run1 sessions therefore read the repositories, three of them RemoteFactory's `src/Design`.
+   - run1 is kept as `006-runs/run1/` and not scored.
+   - All ten scenarios ran again as run2, under `--permission-mode dontAsk`, `--strict-mcp-config`, Read, Glob and Grep scoped to `~/.claude/skills/**`, and denies on the shells, agents, web tools, edit tools and the source, temp and project trees.
+   - The isolation was proven by a probe first and verified from every transcript afterwards.
+   - SKR-007's sessions ran the same way and also used Bash; that is reported to the Neatoo session at close.
+2. **2026-10-16, the T18 row (run2 s10).** s10's explanation gave the habit's answer: "`[Remote]` runs on the server … without `[Remote]` runs on the client". It came from `references/setup.md`, whose factory-modes sentence ended "everything else runs on the client".
+   - The sentence now says the client's call to a `[Remote]` operation crosses, any other call runs on the tier that makes it, the same operation called on the server runs there locally, and `internal` without `[Remote]` is server-only.
+   - The skill was re-synced and s10 re-run as run3, which passes.
+   - `docs/getting-started.md:107` has the same sentence. It is published documentation, not the skill, so it is parked as #171.
 
 ---
 

@@ -88,6 +88,7 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 
 - #165 · A generated factory cannot be declared internal · RFSK-002 code review (F6)
 - #167 · Design.Client.Blazor is compiled but never run by a test · RFSK-003 test review
+- #171 · getting-started.md: "everything else runs on the client" restates the T18 habit · RFSK-006 fresh-session run (Amendment 2)
 
 ---
 
