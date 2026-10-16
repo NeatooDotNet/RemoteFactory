@@ -4,7 +4,7 @@
 **Date:** 2026-10-16
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-2, AC-3
-**Status:** Draft — pre-flight done
+**Status:** Done
 **Last Updated:** 2026-10-16
 **Plan-review opt-in:** No (no public API, no behaviour change; region markers and their tests only)
 **Code-review opt-in:** No (mechanical; the test-reviewer gate checks that each region is pinned)
@@ -99,7 +99,7 @@ The flip step was not run: temporarily breaking production code to watch a test 
 |---|---|---|---|---|
 | Checkout: one call, null when missing, verbs on client, save through root | Required | `[integration]` | `Design.Tests.FactoryTests.ReadModelAndContextTests.OrderCheckout_LoadsWithItsOrder_InOneCall`, `…OrderCheckout_ReturnsNull_WhenOrderDoesNotExist`, `…OrderCheckout_VerbsRunOnClient_AndSaveGoesThroughTheRoot` | ✓ |
 | Summary: line records, null when missing | Required | `[integration]` | `…ReadModelAndContextTests.OrderSummary_FetchedThroughClient_ArrivesWithLineRecords`, `…OrderSummary_ReturnsNull_WhenOrderDoesNotExist` | ✓ |
-| `ClassExecuteDemo`: `[Remote]` crosses, bare runs on caller, `internal` on server | Required | `[integration]` | `…LocalExecuteTests.Execute_ClassFactory_WithRemote_TriesTheWire` (new), `…LocalExecuteTests.Execute_ClassFactory_WithoutRemote_RunsOnClient`, `…ClassFactoryExecuteTests.Execute_InternalStaticWithoutRemote_RunsOnServer`; the client-side guard is pinned at `[unit]` in `RemoteFactory.UnitTests…InternalVisibilityTests`, because `IsServerRuntime` is process-wide | ✓ |
+| `ClassExecuteDemo`: `[Remote]` crosses, bare runs on caller, `internal` on server | Required | `[integration]` | `…LocalExecuteTests.Execute_ClassFactory_WithRemote_TriesTheWire` (new), `…LocalExecuteTests.Execute_ClassFactory_WithoutRemote_RunsOnClient`, `…ClassFactoryExecuteTests.Execute_InternalStaticWithoutRemote_RunsOnServer`; the client-side guard is pinned at `[unit]` in `RemoteFactory.UnitTests…InternalVisibilityTests.ClassExecute_InternalStaticWithoutRemote_IsGuardedAndNotPromoted`, because `IsServerRuntime` is process-wide | ✓ |
 | Order line: root by id, null, stays a child | Required | `[integration]` | `…OrderLineDualityTests.OrderLine_FetchedAsARoot_ByItsId`, `…OrderLine_FetchedAsARoot_IsNull_WhenNoOrderHoldsIt`, `…OrderLine_StaysAChild_OfItsOrder` | ✓ |
 | `OpenDraft`: existing draft, else new unsaved | Required | `[integration]` | `…CreateOrFetchTests.OpenDraft_FetchesTheCustomersDraft_WhenOneExists`, `…OpenDraft_CreatesANewUnsavedOrder_WhenTheCustomerHasNoDraft` | ✓ |
 | Region names unique; mdsnippets clean, attribution drift only | Required | `[explicit-skip: tooling check]` | all 8 regions extracted; 7 markdown files changed, 0 lines besides `snippet source` attributions | ✓ |
@@ -109,7 +109,8 @@ The flip step was not run: temporarily breaking production code to watch a test 
 
 ## Gate Record
 
-- 
+- Round 1 (2026-10-16): DECISION NEEDED — the red net9.0 unit log (#100 flake); answered with a fresh full green run rather than a ruling. Theoretical item fixed. — `reviews/001-test-review.md`
+- Round 2 (2026-10-16): APPROVED, no leftovers — Done
 
 ---
 
