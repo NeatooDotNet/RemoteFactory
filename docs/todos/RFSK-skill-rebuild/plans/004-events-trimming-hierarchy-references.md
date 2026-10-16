@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No (no public API; one new Design example and its tests, no library change)
 **Code-review opt-in:** Yes (four pages restate generator and runtime behaviour, and a new Design example states the inheritance rule #149 is about)
 **Branch:** RFSK-004-events-trimming-hierarchy-references
-**PR:** —
+**PR:** #169
 
 ---
 
