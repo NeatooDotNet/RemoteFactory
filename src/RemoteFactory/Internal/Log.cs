@@ -179,6 +179,16 @@ internal static partial class Log
         string keptAssembly,
         string droppedAssembly);
 
+    [LoggerMessage(
+        EventId = 3013,
+        Level = LogLevel.Information,
+        Message = "[{CorrelationId}] Remote delegate call not authorized: {DelegateType}, {ErrorMessage}")]
+    public static partial void RemoteCallNotAuthorized(
+        this ILogger logger,
+        string correlationId,
+        string delegateType,
+        string errorMessage);
+
     // ===== Converter Factory (4xxx) =====
 
     [LoggerMessage(
@@ -349,6 +359,16 @@ internal static partial class Log
         this ILogger logger,
         string correlationId,
         string delegateType);
+
+    [LoggerMessage(
+        EventId = 7009,
+        Level = LogLevel.Warning,
+        Message = "[{CorrelationId}] Remote request not authorized for delegate {DelegateType}: {ErrorMessage}")]
+    public static partial void RemoteRequestNotAuthorized(
+        this ILogger logger,
+        string correlationId,
+        string delegateType,
+        string errorMessage);
 
     // ===== Pipeline Trace (8xxx) =====
 

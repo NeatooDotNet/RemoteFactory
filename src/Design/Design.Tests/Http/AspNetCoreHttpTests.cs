@@ -49,7 +49,8 @@ public class AspNetCoreHttpTests(DesignHttpHost host)
 
     /// <summary>
     /// The server's handler rethrows, so ASP.NET Core answers 500 and the client's
-    /// HTTP call throws HttpRequestException. The server's exception type does not cross.
+    /// HTTP call throws HttpRequestException. The server's exception type does not cross,
+    /// except NotAuthorizedException (AuthorizeFactoryHttpTests).
     /// </summary>
     [Fact]
     public async Task ServerException_ReachesClient_AsHttpRequestException_With500()

@@ -7,7 +7,9 @@
 // - a Save the rules refuse throws NotAuthorizedException;
 // - any other exception on the server answers 500, and the client's call
 //   throws HttpRequestException (AspNetCoreHttpTests pins the 500). The
-//   server's exception type does not cross.
+//   server's exception type does not cross, except NotAuthorizedException:
+//   a refusal thrown on the server, as an interface factory's is, reaches
+//   the client as NotAuthorizedException (AuthorizeFactoryHttpTests).
 //
 // The screen below is the client code the ASP.NET Core page embeds
 // (aspnetcore-error-handling). AuthorizedOrder's rules are the real ones,

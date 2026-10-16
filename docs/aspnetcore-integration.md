@@ -145,10 +145,11 @@ What the client sees, over HTTP:
 |---|---|---|
 | A class factory's authorization refuses a read (`Create`, `Fetch`) | 200 | The factory call returns `null`, as for a missing object |
 | A class factory's authorization refuses a `Save` | 200 | `NotAuthorizedException` |
-| The operation throws | 500 | `HttpRequestException`, with `StatusCode` 500 |
+| An interface factory's or a static `[Execute]`'s `[AuthorizeFactory]` check refuses the call, or the operation throws `NotAuthorizedException` itself | 403 | `NotAuthorizedException`, with the server's `Message` and `Context` |
+| The operation throws anything else | 500 | `HttpRequestException`, with `StatusCode` 500 |
 | The client cancels the call | — | `OperationCanceledException` (a `TaskCanceledException`) |
 
-The handler rethrows a server exception, so ASP.NET Core answers 500, and the exception's type and message do not reach the client. Log it on the server. An interface factory's authorization failure is a server exception too, so it also arrives as a 500. A denied `[AspAuthorize]` check that forbids the request is covered in [Authorization](authorization.md).
+The handler rethrows a server exception, so ASP.NET Core answers 500, and the exception's type and message do not reach the client. Log it on the server. `NotAuthorizedException` is the one exception that crosses (#103): `UseNeatoo()` answers it with a 403 that carries the exception's `Message`, `Context` and `Authorized`, marked by an `X-Neatoo-Not-Authorized` header, and the client's call throws it again. The server logs the refusal at Warning (event 7009), not as a failed request. A 403 without that header, such as an authentication scheme's forbid, still throws `HttpRequestException`. A denied `[AspAuthorize]` check that forbids the request is covered in [Authorization](authorization.md).
 
 A screen handles the cases it can tell apart:
 

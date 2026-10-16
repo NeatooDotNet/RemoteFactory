@@ -132,6 +132,13 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 			logger.RemoteCallCancelled(correlationId, delegateTypeName);
 			throw;
 		}
+		catch (NotAuthorizedException ex)
+		{
+			// The server refused the call; the call did not fail.
+			sw.Stop();
+			logger.RemoteCallNotAuthorized(correlationId, delegateTypeName, ex.Message);
+			throw;
+		}
 		catch (Exception ex)
 		{
 			sw.Stop();
@@ -179,6 +186,12 @@ public class MakeRemoteDelegateRequest : IMakeRemoteDelegateRequest
 		{
 			sw.Stop();
 			logger.RemoteCallCancelled(correlationId, delegateTypeName);
+			throw;
+		}
+		catch (NotAuthorizedException ex)
+		{
+			sw.Stop();
+			logger.RemoteCallNotAuthorized(correlationId, delegateTypeName, ex.Message);
 			throw;
 		}
 		catch (Exception ex)
