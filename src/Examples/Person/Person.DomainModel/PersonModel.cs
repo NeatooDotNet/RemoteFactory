@@ -4,9 +4,7 @@ using Neatoo.RemoteFactory;
 using Person.Ef;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Text.Json.Serialization;
 
 namespace Person.DomainModel;
 
@@ -21,30 +19,18 @@ public interface IPersonModel : INotifyPropertyChanged, IFactorySaveMeta
 	DateTime Modified { get; }
 
 	/// <summary>
-	/// Marks this entity for deletion on the next Save. External callers can't flip
-	/// <see cref="IFactorySaveMeta.IsDeleted"/> directly — this is the one domain-sanctioned path.
+	/// Marks this entity for deletion on the next Save. <see cref="IFactorySaveMeta.IsDeleted"/>
+	/// is read-only through this interface, so this is the domain's way to delete.
 	/// </summary>
 	void MarkDeleted();
 }
 
+// partial: the generator adds the ordinal serializer, which carries IsNew and IsDeleted
+// across the wire, trimmed or not. They are public get; set; and need no annotation.
 [Factory]
 [AuthorizeFactory<IPersonModelAuth>]
-// Keep the public property getters visible after IL trimming. Without this, the trimmer
-// downgrades `public bool IsNew { get; private set; }` to `private` (since no concrete-type
-// call site reads the getter — all reads go via IPersonModel / IFactorySaveMeta), and STJ's
-// reflection-based serializer then skips these properties outbound. [JsonInclude] alone isn't
-// enough because it addresses the *accessor* visibility, not the *property* visibility.
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
-internal class PersonModel : IPersonModel
+internal partial class PersonModel : IPersonModel
 {
-	// [DynamicDependency] roots the property metadata (not just reflection visibility) so the
-	// trimmer can't narrow the getter from public to private. Without this, IsNew / IsDeleted
-	// silently drop out of the outbound JSON payload and Save routing breaks (everything
-	// routes to Insert because IsNew defaults to true on the server's freshly constructed
-	// instance). Must point at members by string because DynamicallyAccessedMembers on the
-	// class preserves reflection metadata but doesn't prevent visibility narrowing.
-	[DynamicDependency(nameof(IsNew))]
-	[DynamicDependency(nameof(IsDeleted))]
 	[Create]
 	public PersonModel()
 	{
@@ -62,14 +48,9 @@ internal class PersonModel : IPersonModel
 	public string? Notes { get; set { field = value; this.OnPropertyChanged(); } }
 	public DateTime Created { get; set { field = value; this.OnPropertyChanged(); } }
 	public DateTime Modified { get; set { field = value; this.OnPropertyChanged(); } }
-	// [JsonInclude] lets System.Text.Json both read AND write private-setter properties.
-	// Private setters keep external callers from flipping state ad-hoc; the serializer
-	// still round-trips the flags across the client/server boundary.
-	[JsonInclude]
-	public bool IsDeleted { get; private set; }
+	public bool IsDeleted { get; set; }
 
-	[JsonInclude]
-	public bool IsNew { get; private set; } = true;
+	public bool IsNew { get; set; } = true;
 
 	public void MarkDeleted() => this.IsDeleted = true;
 
