@@ -286,7 +286,7 @@ internal partial class OrderLineList : List<OrderLine>, IOrderLineList
     #region collection-factory-basic
     /// <summary>
     /// Creates an empty list. Public and local, so a root created on the client
-    /// can create its list there (R-C).
+    /// can create its list there.
     /// </summary>
     [Create]
     public void Create()

@@ -1,8 +1,10 @@
-# Interface Factory Pattern
+# Interface Factory
 
-Use for remote services where the client calls through a generated proxy. The implementation lives only on the server.
+Use for a domain service the client calls: a search, a lookup, a calculation only the server can make. The call returns and is done. The contract is a C# interface with `[Factory]`; the implementation is a plain class on the server; the client resolves the interface and gets a generated proxy that sends each call to the server.
 
-## Complete Example
+A repository is never an interface factory. A repository is a `[Service]` parameter on a server operation (`Order`'s `Fetch` in [class-factory.md](class-factory.md)); what the client calls is a service named for what it does.
+
+## The contract
 
 <!-- snippet: interface-factory-contract -->
 <a id='snippet-interface-factory-contract'></a>
@@ -40,6 +42,12 @@ public interface IProductCatalog
 ```
 <sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L228-L259' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-contract' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+The methods return a class (`ProductListing`) and a record (`ProductDetails`), plain types with no `[Factory]`, serialized as the call's result.
+
+## The implementation
+
+A plain class, with no `[Factory]` and no attributes on its methods:
 
 <!-- snippet: interface-factory-implementation -->
 <a id='snippet-interface-factory-implementation'></a>
@@ -81,93 +89,60 @@ public class ProductCatalog : IProductCatalog
 <sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L291-L325' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-implementation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Generates**: Proxy implementation that serializes calls to server.
+## Registration
 
----
+The server registers the implementation. `ProductCatalog` is named for its interface without the leading `I`, in the same namespace, so `RegisterMatchingName` picks it up; `services.AddScoped<IProductCatalog, ProductCatalog>()` is the explicit form. The client registers nothing: the generated registration gives it the proxy.
 
-## Critical Rules
+<!-- snippet: aspnetcore-service-registration -->
+<a id='snippet-aspnetcore-service-registration'></a>
+```cs
+services.AddScoped<IPhaseAuditService, PhaseAuditService>();
+services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
+services.AddScoped<IProductReviewService, InMemoryProductReviewService>();
+services.AddScoped<IExampleService, ExampleService>();
+services.AddSingleton<ITaxTable, InMemoryTaxTable>();
+services.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
+services.AddSingleton<ISupportLog, InMemorySupportLog>();
+services.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
+services.AddScoped(_ => new TenantTokenService("server-token"));
+services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenService>());
 
-### Interface methods do NOT need operation attributes
-
-```csharp
-// WRONG - emits NF0106 (factory-operation attribute on interface factory method)
-[Factory]
-public interface IMyRepository
-{
-    [Fetch]  // DON'T DO THIS — NF0106 error
-    Task<Item> GetByIdAsync(int id);
-}
-
-// RIGHT - no attributes needed
-[Factory]
-public interface IMyRepository
-{
-    Task<Item> GetByIdAsync(int id);
-}
+services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L197-L210' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-The interface IS the remote boundary. Every method crosses it automatically. Enforced by **NF0106** — factory-operation attributes (`[Create]`/`[Fetch]`/`[Insert]`/`[Update]`/`[Delete]`/`[Execute]`) on any `[Factory]` interface method are a compile-time error. Applies with or without `[AuthorizeFactory<T>]` on the interface.
+## The call
 
-### Server implementation does NOT have [Factory]
+<!-- snippet: interface-factory-usage -->
+<a id='snippet-interface-factory-usage'></a>
+```cs
+// Get the interface from client - this is the proxy
+var catalog = client.GetRequiredService<IProductCatalog>();
 
-```csharp
-// WRONG - causes duplicate registration
-[Factory]
-public class EmployeeRepository : IEmployeeRepository { }
-
-// RIGHT - no [Factory] on implementation
-public class EmployeeRepository : IEmployeeRepository { }
+// Act - call goes through proxy to server
+var result = await catalog.SearchAsync("Widget");
 ```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/InterfaceFactoryTests.cs#L46-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-usage' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-The interface already has `[Factory]`; the implementation is just a service.
+**Generates** `IProductCatalogFactory`, which extends `IProductCatalog`, and its implementation; a delegate type per method, which the server's endpoint invokes; and registrations for each mode. In Remote mode both interfaces resolve to the proxy; in Server mode the delegates call the registered implementation; in Logical mode `IProductCatalog` resolves to the implementation directly.
 
----
+## Rules
 
-## Server Registration
-
-Register the implementation in DI:
-
-```csharp
-// Program.cs
-builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-```
-
-Or use convention-based registration:
-```csharp
-builder.Services.RegisterMatchingName<IEmployeeRepository>();  // Auto-finds EmployeeRepository
-```
-
----
-
-## When to Use Interface Factory
-
-- **Remote services without entity identity** - Query services, report generators
-- **Clean separation** - Interface defines contract, server provides implementation
-- **Multiple implementations** - Can swap implementations via DI
-- **Third-party integrations** - Wrap external APIs behind interface
-
----
+- **No attributes on the interface's methods.** `[Factory]` on the interface makes every method a remote entry point. An operation attribute (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`) on one is compile error NF0106, with or without `[AuthorizeFactory<T>]`. `[Remote]` is not needed either.
+- **No `[Factory]` on the implementation.** On both, the build fails with CS0101 and CS0111: the class's own factory would be generated as `IProductCatalogFactory` and `ProductCatalogFactory`, the interface's names.
+- **Return `Task` or `Task<T>`.** A `Task` method awaits the server call and reads no result; a server exception rethrows at the await.
 
 ## Authorization with `[AuthorizeFactory<T>]`
 
-Interface factories support `[AuthorizeFactory<T>]` for server-side authorization of remote calls — but the scope model is different from class factories.
+`[AuthorizeFactory<T>]` on the interface applies an authorization class to its methods. The checks run on the server before the implementation.
 
-### Scope model — use `Execute` / `Read`, not CRUD
+**Scopes: `Execute` and `Read`.** An interface has no Create, Fetch or Save, so an auth method scoped `Create`, `Fetch`, `Insert`, `Update` or `Delete` never runs - silently; the generator does not warn. `Execute` and `Read` both run on every interface method.
 
-Interface factories have no Create/Fetch/Insert/Update/Delete operations (every interface method is just a remote call), so CRUD scopes silently never match. Use:
+**Per-method checks match parameters by type.** An auth method whose parameters match an interface method's receives the call's values. Every method of `ICustomerDirectory` takes the customer's `Guid`, so `CanAccessCustomer(Guid)` runs on each. Keep every authorized method on the parameter the auth method takes: one that lacks it fails CS7036 in generated code today ([#123](https://github.com/NeatooDotNet/RemoteFactory/issues/123)).
 
-- **`AuthorizeFactoryOperation.Execute`** — fires on every interface method call. The broad-scope default for interface factories.
-- **`AuthorizeFactoryOperation.Read`** — also fires on every interface method call. Use for "read-like" semantics on the auth side (identical runtime effect to `Execute` on an interface factory).
-
-Using `Create` / `Fetch` / `Insert` / `Update` / `Delete` scopes on an interface-factory auth class is a silent no-op — the auth method is never invoked. The generator does not warn about this today.
-
-### Per-method authorization via parameter matching
-
-Fine-grained per-method auth comes from **parameter matching by type**, not per-operation scopes. An auth method declaring parameters typed to match an interface-method's parameters receives the forwarded values from the call site. Auth methods can return `bool`, `Task<bool>`, `string?`, or `Task<string?>`. String returns surface denial messages in `NotAuthorizedException.Message`, verbatim; a `bool` return carries no reason, so the framework supplies one naming the operation, the interface, and which auth method refused — `Authorization denied for operation GetItem on IRepository (IRepositoryAuth.CanAccessItem); no reason was supplied.` Either way `NotAuthorizedException.Context` exposes that same detail as a property for structured logging. Prefer `string?` whenever the caller benefits from knowing why.
-
-### Complete example
-
-**Auth class:**
+**Return `bool` or `string?`** (or their `Task` forms). A `string?` refusal reaches the caller as `NotAuthorizedException.Message`, verbatim; a `bool` refusal gets a message naming the operation, the interface and the auth method that refused. Either way `NotAuthorizedException.Context` carries that detail.
 
 <!-- snippet: skill-interface-factory-auth-authclass -->
 <a id='snippet-skill-interface-factory-auth-authclass'></a>
@@ -232,8 +207,6 @@ public interface ICustomerDirectoryAuth
 <sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L121-L178' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-auth-authclass' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Interface factory (bare contract — no method attributes):**
-
 <!-- snippet: skill-interface-factory-auth-factory -->
 <a id='snippet-skill-interface-factory-auth-factory'></a>
 ```cs
@@ -247,7 +220,7 @@ public interface ICustomerDirectory
     /// <summary>Closes a customer's account. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
     /// <remarks>
     /// Returns Task: the command has no result to report. A missing customer is
-    /// an exception (VisionAlignment R-I), which reaches the client at the await.
+    /// an exception, which reaches the client at the await.
     ///
     /// GENERATOR BEHAVIOR: A Task-returning interface method generates a Task
     /// delegate and factory method; the client proxy awaits the server call and
@@ -265,39 +238,18 @@ public interface ICustomerDirectory
 <sup><a href='/src/Design/Design.Domain/Services/CustomerDirectory.cs#L260-L287' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-interface-factory-auth-factory' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Server-side impl (plain class — no `[Factory]`, no op attributes):**
+The implementation, `CustomerDirectory`, is a plain class. The generator registers the auth class (`TryAddTransient<ICustomerDirectoryAuth, CustomerDirectoryAuth>`); register the implementation on the server only.
 
-The implementation, `CustomerDirectory`, is a plain class: no `[Factory]` and no attributes on its methods.
+**Generated surface.** For each method, `ICustomerDirectoryFactory` carries the method itself and a `Can{Method}` that runs the same checks without calling the implementation and returns `Authorized` (`CanGetCustomer(Guid customerId, CancellationToken cancellationToken = default)`). A `Can{Method}` takes only the parameters an auth method matches.
 
-The auth class is auto-registered by the generator via `services.TryAddTransient<ICustomerDirectoryAuth, CustomerDirectoryAuth>()` in the generated `FactoryServiceRegistrar` — no manual registration needed. Register the impl on the server only (not the client).
+**Failure.** A refused call throws `NotAuthorizedException` on the server, and the client throws it again, with the same message and `Context`; over HTTP it travels as a 403. `Can{Method}` returns `HasAccess == false` and does not throw. There is no "null on refusal": the method has no result to carry one.
 
-### Generated surface
+| | Class factory | Interface factory |
+|---|---|---|
+| Scopes | `Create`, `Fetch`, `Insert`, `Update`, `Delete`, `Read`, `Write` | `Execute`, `Read` |
+| Per-method checks | The operation's scope | Parameter matching by type |
+| Generated checks | `CanCreate`, `CanFetch`, `CanSave`, ... | `Can{Method}` per method |
+| A refused read | Returns `null` | Throws `NotAuthorizedException` |
+| Operation attributes on the contract | Required | NF0106 |
 
-For each interface method, the generator emits on `IAuthorizedRepositoryFactory`:
-
-- **`{Method}(params)`** — normal forwarding method. `Local{Method}` on the server invokes all applicable auth methods (parameterless + parameter-matched by signature) and throws `NotAuthorizedException` on any denial before calling the impl.
-- **`Can{Method}(matching-params, CancellationToken = default)`** — non-throwing helper returning `Authorized`. Runs the same scoped+parameter-matched auth checks. Useful for UI disable-states.
-
-Example: `IAuthorizedRepository.GetItem(Guid id)` generates `CanGetItem(Guid id, CancellationToken ct = default)`.
-
-`Can{Method}` parameters include only those matched by auth methods — e.g., `UpdateItem(Guid id, string name)` → `CanUpdateItem(Guid id)` (the `string name` is dropped because no auth method takes a string parameter).
-
-### Failure behavior
-
-- **Method path:** any denied auth check throws `NotAuthorizedException`. For string-returning auth methods, the denial message appears in `Exception.Message`.
-- **`Can{Method}` path:** returns `Authorized` with `HasAccess=false` (no throw).
-
-Unlike class-factory auth, interface factories have no "null on Read failure" behavior — denied calls always throw. There is no `TrySave` equivalent for interface factories (no Save semantics).
-
-### Contrast with class factory auth
-
-| Aspect | Class Factory | Interface Factory |
-|--------|--------------|-------------------|
-| Auth scopes used | `Create`/`Fetch`/`Insert`/`Update`/`Delete`/`Read`/`Write` | `Execute`/`Read` only |
-| Per-method scoping | Via operation attribute on factory method | Via parameter matching by type |
-| Generated `Can*` methods | `CanCreate`/`CanFetch`/`CanSave`/`CanDelete` | `Can{Method}` per interface method |
-| Failure on Read | Returns `null` | Throws `NotAuthorizedException` |
-| `TrySave` available | Yes (with `IFactorySaveMeta`) | No |
-| Op attributes on contract | `[Create]`/etc. on class factory methods | **Forbidden** (NF0106) |
-
-See `references/advanced-patterns.md` for class-factory auth (CRUD scopes, `CanSave` aggregation, target parameters).
+Class-factory authorization is in [advanced-patterns.md](advanced-patterns.md).

@@ -81,7 +81,9 @@ builder.Services.AddKeyedScoped(
 // here. Server-side services (IExampleService, INotificationService) stay out
 // -- a bare [Execute] that took one would fail at call time on the client.
 // -------------------------------------------------------------------------
+#region skill-client-services
 builder.Services.AddScoped<ITextScorer, TextScorer>();
+#endregion
 
 // -------------------------------------------------------------------------
 // DESIGN DECISION: The client registers the signed-in user too

@@ -1,339 +1,194 @@
-# Anti-Patterns to Avoid
+# Anti-Patterns
 
-## 1. [Remote] on Child Entities
+Each mistake is a short block labelled WRONG, in the example domain's names. The fix is a sentence; the compiled right shape is on the page it names.
 
-**Problem**: Causes N+1 remote calls - one HTTP request per child entity.
+## 1. A repository as an interface factory
 
 ```csharp
-// WRONG - 10 assignments = 10 HTTP calls!
+// WRONG - the client gets a repository
 [Factory]
-internal partial class Assignment : IAssignment
+public interface IOrderRepository
 {
-    [Remote, Create]  // DON'T DO THIS
-    internal void Create(string name) { }
-}
-
-// RIGHT - all children created in parent's single server call
-[Factory]
-internal partial class Assignment : IAssignment
-{
-    [Create]  // No [Remote] on children
-    internal void Create(string name) { }
+    Task<OrderRow?> GetAsync(int id);
 }
 ```
 
-**Why**: `[Remote]` marks client-to-server entry points. Child entities are created/fetched as part of parent operations that are already on the server.
+**Fix:** a repository is a `[Service]` parameter on a server operation (`Order`'s `Fetch`, [class-factory.md](class-factory.md)). What the client calls is a domain service named for what it does (`IProductCatalog`, [interface-factory.md](interface-factory.md)).
 
----
-
-## 2. Attributes on Interface Methods
-
-**Problem**: Compile-time error NF0106 (factory-operation attribute on interface factory method).
+## 2. `[Remote, Create]` with nothing to do on the server
 
 ```csharp
-// WRONG - NF0106 error
-[Factory]
-public interface IEmployeeRepository
+// WRONG - a round trip for new; the service is never used
+[Remote, Create]
+internal void Create(string customerName, [Service] IOrderDbContext db)
 {
-    [Fetch]  // NF0106: factory-operation attribute on interface factory method
-    Task<EmployeeEntity> GetByIdAsync(Guid id);
-}
-
-// RIGHT - interface IS the boundary
-[Factory]
-public interface IEmployeeRepository
-{
-    Task<EmployeeEntity> GetByIdAsync(Guid id);  // No attribute needed
+    CustomerName = customerName;
 }
 ```
 
-**Why**: For interface factories, every method is automatically remote. Placing `[Create]`/`[Fetch]`/`[Insert]`/`[Update]`/`[Delete]`/`[Execute]` on an interface method would cause duplicate code generation. **NF0106** enforces the rule at compile time, with or without `[AuthorizeFactory<T>]` on the interface. Fine-grained authorization on interface factories uses parameter matching on the auth class, not operation attributes on the contract — see `references/interface-factory.md`.
+**Fix:** a root `[Create]` is local and `public` (`Order.Create`, [class-factory.md](class-factory.md)). It is `[Remote, Create]` only when building the object needs something only the server has.
 
----
-
-## 3. Public Static Factory Methods
-
-**Problem**: Conflicts with generated public method.
+## 3. A `[Create]` that looks for an existing row
 
 ```csharp
-// WRONG - your public method conflicts with generated code
-[Factory]
-public static partial class EmployeeCommands
+// WRONG - Create claims "new"; this one may load
+[Remote, Create]
+internal async Task Create(string customerName, [Service] IOrderDbContext db)
 {
-    [Remote, Execute]
-    public static Task<bool> SendNotification(...) { }  // Public!
-}
-
-// RIGHT - private implementation, generator creates public API
-[Factory]
-public static partial class EmployeeCommands
-{
-    [Remote, Execute]
-    private static Task<bool> _SendNotification(...) { }  // Private with underscore
+    var draft = await db.FindDraftAsync(customerName);
+    ...
 }
 ```
 
-**Why**: The generator creates the public method that handles serialization. Your code provides the private implementation.
+**Fix:** load-or-create is an `[Execute]` that calls Fetch, then Create (`OpenDraft`, [class-factory.md](class-factory.md#class-level-execute)). A loaded object built with `Create` claims to be new, and its next save inserts it again.
 
----
-
-## 4. Private Property Setters
-
-**Problem**: Breaks deserialization - properties won't restore after round-trip.
+## 4. A parent that writes its children's rows
 
 ```csharp
-// WRONG - won't deserialize
-public Guid Id { get; private set; }
-public string Name { get; private set; }
-
-// RIGHT - public setters for serialization
-public Guid Id { get; set; }
-public string Name { get; set; }
+// WRONG - the order maps its lines
+foreach (var line in Lines)
+    row.Lines.Add(new OrderLineRow { ProductName = line.ProductName, Quantity = line.Quantity });
 ```
 
-**Why**: Generated serialization code uses property setters. Private setters aren't accessible from generated partial class.
+**Fix:** the root hands the row's child collection to the list factory's `Save`; the list hands each child its row, and the child maps itself ([class-factory.md](class-factory.md#the-list-cascade)).
 
----
-
-## 5. Storing Method-Injected Services
-
-**Problem**: Field will be null after client/server round-trip.
+## 5. `[Remote]` on a child's operation
 
 ```csharp
-// WRONG - service reference lost after serialization
+// WRONG - the call is already on the server
+[Remote, Insert]
+internal void Insert(OrderLineRow row) { ... }
+```
+
+**Fix:** `internal`, no `[Remote]` (`OrderLine`, [service-injection.md](service-injection.md#child-entities-already-on-the-server)). It costs no extra round trip - once on the server, `[Remote]` does nothing different - but it promotes the operation onto the client's factory interface and gives the client a way in around the root. A child's `Create` is the one `public` child operation.
+
+## 6. `[Remote]` on a `public` method
+
+```csharp
+// WRONG - NF0105
+[Remote, Fetch]
+public async Task<bool> Fetch(int id, [Service] IOrderDbContext db) { ... }
+```
+
+**Fix:** `[Remote] internal`. The generator promotes it to `public` on the factory interface, and the body can be trimmed from the client. A static method is exempt; `[Remote]` alone decides where it runs.
+
+## 7. Operation attributes on an interface factory's methods
+
+```csharp
+// WRONG - NF0106
 [Factory]
-internal partial class Employee
+public interface IProductCatalog
 {
-    private IEmployeeRepository _repo;  // Will be null on client!
-
-    [Remote, Create]
-    internal void Create([Service] IEmployeeRepository repo)
-    {
-        _repo = repo;  // Lost after serialization!
-    }
-
-    public void DoSomething()
-    {
-        _repo.GetAll();  // NullReferenceException on client!
-    }
-}
-
-// RIGHT - use immediately, don't store
-[Factory]
-internal partial class Employee
-{
-    [Remote, Create]
-    internal void Create([Service] IEmployeeRepository repo)
-    {
-        repo.Initialize(this);  // Use it here, don't store
-    }
+    [Fetch]
+    Task<ProductListing?> FindBySkuAsync(string sku);
 }
 ```
 
-**Why**: Method-injected services are server-only. They aren't serialized because the client shouldn't have access to server services.
+**Fix:** no attributes. `[Factory]` on the interface makes every method a remote entry point.
 
-**Alternative**: Use constructor injection if you need the service on both sides:
+## 8. `[Factory]` on the interface factory's implementation
+
 ```csharp
-public Employee([Service] ILogger logger)  // Available on client AND server
-{
-    _logger = logger;
-}
+// WRONG - CS0101/CS0111: both generate ProductCatalogFactory
+[Factory]
+public class ProductCatalog : IProductCatalog { ... }
 ```
 
----
+**Fix:** only the interface carries `[Factory]`; the implementation is a plain class registered on the server.
 
-## 6. Missing `partial` Keyword
-
-**Problem**: Won't compile - CS0260 error.
+## 9. A `public` static command method
 
 ```csharp
-// WRONG - missing partial
-[Factory]
-public class Employee { }
-
-// RIGHT
-[Factory]
-public partial class Employee { }
-```
-
-**Why**: The generator creates a partial class to add `IOrdinalSerializable` implementation. Without `partial`, C# can't merge the generated code.
-
----
-
-## 7. [Factory] on Implementation Classes
-
-**Problem**: Duplicate registration when interface already has `[Factory]`.
-
-```csharp
-// WRONG - duplicate registration
-[Factory]  // Interface has [Factory]
-public interface IEmployeeRepository { }
-
-[Factory]  // DON'T add [Factory] to implementation!
-public class EmployeeRepository : IEmployeeRepository { }
-
-// RIGHT - only interface has [Factory]
-[Factory]
-public interface IEmployeeRepository { }
-
-public class EmployeeRepository : IEmployeeRepository { }  // No [Factory]
-```
-
-**Why**: The interface defines the factory contract. The implementation is just a service registered in DI.
-
----
-
-## 8. Inventing a Result for a Command That Has None
-
-**Problem**: A `Task<bool>` that is always `true` tells the caller nothing.
-
-```csharp
-// WRONG - the bool exists only to have something to return
+// WRONG - conflicts with the generated delegate
 [Remote, Execute]
-private static async Task<bool> _ProcessEmployee(Guid id, [Service] IEmployeeService svc)
+public static Task<SubmitOutcome> SubmitOrder(int orderId, [Service] IOrderFactory orderFactory) { ... }
+```
+
+**Fix:** `private static _SubmitOrder`. The generator makes the public delegate `OrderCommands.SubmitOrder` from it ([static-factory.md](static-factory.md)).
+
+## 10. A result invented for a command that has none
+
+```csharp
+// WRONG - the bool is always true
+[Remote, Execute]
+private static async Task<bool> _CancelOrder(int orderId, [Service] IOrderFactory orderFactory)
 {
-    await svc.ProcessAsync(id);
+    ...
     return true;
 }
+```
 
-// RIGHT - a command with no result returns Task
+**Fix:** return `Task`. The await confirms the server ran it and rethrows a server exception. `void` is NF0102.
+
+## 11. A class-level `[Execute]` that returns another type
+
+```csharp
+// WRONG - fails in generated code, no diagnostic yet
 [Remote, Execute]
-private static Task _ProcessEmployee(Guid id, [Service] IEmployeeService svc)
-    => svc.ProcessAsync(id);
+public static Task<Invoice> GenerateInvoice(int orderId, [Service] IInvoiceService invoices) { ... }
 ```
 
-**Why**: Awaiting a `Task` already confirms completion: the await returns once the server method has run, and a server exception rethrows at the await. Return `Task<T>` when the caller needs the value. `[Execute]` never returns `void` (NF0102). Until the #113 fix, a `Task`-returning `[Execute]` generated a `Task<Task>` delegate that did not compile.
+**Fix:** a class-level `[Execute]` returns `Task<T>` of its own class's service type (`Task<IOrder>`); a command that returns something else is a static factory command. An analyzer is pending.
 
----
-
-## 9. Class Factory [Execute] Returning Wrong Type
-
-**Problem**: Execute method on a class factory must return the containing type's service type.
+## 12. A non-public setter
 
 ```csharp
-// WRONG - returns a different type
-[Factory]
-public partial class Order
-{
-    [Remote, Execute]
-    public static Task<Invoice> GenerateInvoice(  // Returns Invoice, not Order!
-        int orderId, [Service] IInvoiceService svc) { }
-}
-
-// RIGHT - returns the containing type
-[Factory]
-public partial class Order
-{
-    [Remote, Execute]
-    public static Task<Order> CloneOrder(
-        int orderId, [Service] IOrderRepository repo) { }
-}
+// WRONG - silently left out of serialization
+public int Id { get; private set; }
 ```
 
-**Why**: Class factory Execute generates a method on `IOrderFactory`. Every method on that interface deals with `Order`. If you need to return a different type, use a static class `[Execute]` instead.
+**Fix:** a public setter on every property that must cross the wire. A `private` or `protected` setter is dropped with no diagnostic; an analyzer is pending.
 
----
-
-## 10. [Remote] on Public Methods
-
-**Problem**: `[Remote]` requires `internal` -- diagnostic error NF0105.
+## 13. A missing `partial`
 
 ```csharp
-// WRONG - [Remote] requires internal for IL trimming
+// WRONG - the class factory falls back to named serialization
 [Factory]
-internal partial class Order : IOrder
-{
-    [Remote, Create]  // NF0105: [Remote] requires internal methods
-    public void Create(string name, [Service] IMyService service) { }
-}
-
-// RIGHT - [Remote] + internal, promoted to public on factory interface
-[Factory]
-internal partial class Order : IOrder
-{
-    [Remote, Create]  // Correct: internal enables trimming; promoted to public on IOrderFactory
-    internal void Create(string name, [Service] IMyService service) { }
-}
+internal class Order : IOrder { ... }
 ```
 
-**Why**: `[Remote]` requires `internal` to enable IL trimming of method bodies on client assemblies. The generator promotes `[Remote] internal` methods to `public` on the factory interface, so clients call them through the factory. Change `public` to `internal` on `[Remote]` methods.
+**Fix:** `partial`. A class factory without it still gets a factory but no ordinal serializer, with no diagnostic; a static `[Factory]` class without it is NF0101.
 
----
-
-## 11. Optional Parameters in Factory Methods
-
-**Problem**: Default values are silently dropped — generated factory methods require all arguments.
+## 14. A method-injected service kept in a field
 
 ```csharp
-// WRONG - default value is lost in generated code
-[Factory]
-public partial class EmployeeSearch
-{
-    [Remote, Create]
-    internal void Create(string? searchQuery = null) { }  // = null is stripped!
-}
-
-// Generated factory method becomes:
-// Task<EmployeeSearch> Create(string? searchQuery)  -- no default, caller must pass argument
-
-// RIGHT - don't use optional parameters; pass explicitly
-[Factory]
-public partial class EmployeeSearch
-{
-    [Remote, Create]
-    internal void Create(string? searchQuery) { }  // Caller always passes value (or null)
-}
+// WRONG - the field is null once the object reaches the client
+private IOrderDbContext _db = null!;
 ```
 
-**Why**: The source generator captures parameter name and type but discards default values. The generated factory interface and implementation will not include `= null`, `= ""`, `= 0`, or any other defaults. Callers will get a compile error if they omit the argument.
+**Fix:** use a `[Service]` parameter inside its method. A service the object needs on both tiers is a constructor parameter ([service-injection.md](service-injection.md)).
 
----
-
-## 12. Assuming CS0051 Blocks Internal Services on Internal Classes
-
-**Problem**: Avoiding `internal` factory methods because their `internal` factory interface would be injected as `[Service]` into another class — when that other class is itself `internal`.
+## 15. Default values on factory method parameters
 
 ```csharp
-// WRONG - avoiding internal out of CS0051 fear
-[Factory]
-internal partial class PersonPhoneList
-{
-    [Create]
-    public void Create([Service] IPersonPhoneFactory phoneFactory) { }
-    // "Can't make this internal because IPersonPhoneListFactory would be internal
-    //  and couldn't be injected as [Service] elsewhere"
-    // WRONG — PersonPhoneList is internal, so CS0051 doesn't apply!
-}
-
-// RIGHT - when the consuming class is internal, internal services are fine
-[Factory]
-internal partial class PersonPhoneList
-{
-    [Create]
-    internal void Create([Service] IPersonPhoneFactory phoneFactory) { }
-    // IPersonPhoneFactory is internal, IPersonPhoneListFactory will be internal
-    // No CS0051 because PersonPhoneList is also internal
-}
+// WRONG - the default is dropped from the generated factory
+[Create]
+public void Create(string customerName = "") { ... }
 ```
 
-**Why**: CS0051 only occurs when an `internal` type appears in a `public` method on a **`public`** class. When the consuming class is `internal`, C# caps the effective accessibility of its `public` methods to `internal`, so referencing `internal` service types is allowed. Child entities in an aggregate are typically all `internal` classes, so their `internal` factory interfaces can be freely injected into each other.
+**Fix:** no defaults. The generated method requires every argument; a caller who omits one gets a compile error.
 
----
+## 16. Avoiding `internal` services for fear of CS0051
 
-## Summary Table
+CS0051 occurs only when an `internal` type appears in a `public` method of a `public` class. On an `internal` class, C# caps its `public` methods at `internal`, so a child's `internal` factory interface can be a `[Service]` parameter there. Most aggregate classes are `internal`, so the fear rarely applies.
 
-| Anti-Pattern | Problem | Solution |
-|--------------|---------|----------|
-| [Remote] on children | N+1 calls | Remove [Remote] from child entities |
-| Attributes on interface methods | NF0106 compile error | Remove operation attributes (interface IS the boundary) |
-| Public static methods (static factory) | Name conflict | Use `private static _MethodName` |
-| Private setters | Won't deserialize | Use public setters |
-| Storing method services | Null after round-trip | Use immediately or constructor inject |
-| Missing partial | Won't compile | Add `partial` keyword |
-| [Factory] on implementation | Duplicate registration | Only on interface |
-| Inventing a result for a command | `Task<bool>` that is always `true` | Return `Task` |
-| Class [Execute] wrong return type | Won't compile | Must return containing type |
-| [Remote] on public instance methods | NF0105 diagnostic | Change method to `internal` (static methods are exempt) |
-| [Remote] on an [Execute] that must run on the client | Round-trips; server-only services fail | Leave [Remote] off — [Execute] obeys it |
-| Optional parameters | Defaults silently dropped | Don't use defaults; pass all args explicitly |
-| CS0051 fear on internal classes | Avoids `internal` unnecessarily | Internal classes can take internal services even in public methods |
+## Summary
+
+| Mistake | What goes wrong | Fix |
+|---|---|---|
+| A repository as an interface factory | The client gets the persistence layer | `[Service]` on a server operation; a domain service for the client |
+| `[Remote, Create]` with nothing for the server | A round trip for `new` | A local `public` `[Create]` |
+| A `[Create]` that loads | A loaded object claims to be new | An `[Execute]` that calls Fetch, then Create |
+| A parent writing its children's rows | The child's own operations are bypassed | The list factory's `Save` |
+| `[Remote]` on a child operation | A client way in around the root | `internal`, no `[Remote]` |
+| `[Remote] public` | NF0105 | `[Remote] internal` |
+| Attributes on interface methods | NF0106 | None |
+| `[Factory]` on the implementation | CS0101/CS0111 | Only on the interface |
+| A `public` static command | Conflicts with the delegate | `private static _Name` |
+| An always-`true` result | Tells the caller nothing | `Task` |
+| A class `[Execute]` returning another type | Fails in generated code | A static command |
+| A non-public setter | Dropped from serialization | A public setter |
+| No `partial` | Named serialization, or NF0101 | `partial` |
+| A method service in a field | Null on the client | Use it in the method, or inject in the constructor |
+| Parameter defaults | Dropped | Pass every argument |
+| CS0051 fear | `internal` avoided for nothing | `internal` classes take `internal` services |

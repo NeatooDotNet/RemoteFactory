@@ -270,7 +270,7 @@ public interface ICustomerDirectory
     /// <summary>Closes a customer's account. Subject to HasAccess + CanAccessCustomer(id) + CheckReadAccess.</summary>
     /// <remarks>
     /// Returns Task: the command has no result to report. A missing customer is
-    /// an exception (VisionAlignment R-I), which reaches the client at the await.
+    /// an exception, which reaches the client at the await.
     ///
     /// GENERATOR BEHAVIOR: A Task-returning interface method generates a Task
     /// delegate and factory method; the client proxy awaits the server call and
