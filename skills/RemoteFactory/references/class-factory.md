@@ -365,7 +365,7 @@ internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
 3. `[Remote] internal` on the operations the client calls; `[Remote] public` is NF0105.
 4. Child operations `internal`, never `[Remote]`; a child's `Create` `public` and local.
 5. A class-level `[Execute]` is `static` and returns `Task<T>` of the class's service type.
-6. Business logic lives in the entity, not the factory; the Neatoo skill places it.
+6. Business logic: In the entity, not the factory: first as a property a later reader needs and the rules that follow from it, a verb only for intent the state cannot hold. The Neatoo skill places it.
 
 ## `[SuppressFactory]`
 
