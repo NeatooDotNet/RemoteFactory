@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Neatoo.RemoteFactory.Generator.Model;
 
@@ -35,6 +36,18 @@ internal sealed record OrdinalSerializationModel
     public IReadOnlyList<OrdinalPropertyModel> Properties { get; }
     public IReadOnlyList<string> ConstructorParameterNames { get; }
     public IReadOnlyList<string> Usings { get; }
+
+    /// <summary>
+    /// True when the converter writes $id/$ref for the object (#133). Records are value
+    /// objects and bypass reference tracking, as they do in the Named format.
+    /// </summary>
+    public bool TracksReferences => !IsRecord;
+
+    /// <summary>
+    /// True when the converter builds the object before reading its properties, so a back
+    /// reference to it from a child resolves. Needs every property assignable after construction.
+    /// </summary>
+    public bool BuildsFirst => TracksReferences && Properties.All(p => p.IsSettableAfterConstruction);
 }
 
 /// <summary>
@@ -47,13 +60,15 @@ internal sealed record OrdinalPropertyModel
         string type,
         bool isNullable = false,
         bool isLazyLoad = false,
-        string? innerType = null)
+        string? innerType = null,
+        bool isSettableAfterConstruction = true)
     {
         Name = name;
         Type = type;
         IsNullable = isNullable;
         IsLazyLoad = isLazyLoad;
         InnerType = innerType;
+        IsSettableAfterConstruction = isSettableAfterConstruction;
     }
 
     public string Name { get; }
@@ -71,4 +86,9 @@ internal sealed record OrdinalPropertyModel
     /// For example, for LazyLoad&lt;string&gt; this would be "string".
     /// </summary>
     public string? InnerType { get; }
+
+    /// <summary>
+    /// True when the property can be assigned after construction (not init-only, not required).
+    /// </summary>
+    public bool IsSettableAfterConstruction { get; }
 }

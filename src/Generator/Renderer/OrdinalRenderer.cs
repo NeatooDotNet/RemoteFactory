@@ -112,6 +112,17 @@ internal static class OrdinalRenderer
         sb.AppendLine("                return null;");
         sb.AppendLine();
 
+        // Reference identity (#133): a $ref returns the object read earlier in the graph;
+        // a $id wrapper leaves the reader on the ordinal array and yields the id to register.
+        var buildsFirst = model.BuildsFirst;
+        if (model.TracksReferences)
+        {
+            var buildsFirstLiteral = buildsFirst ? "true" : "false";
+            sb.AppendLine($"            if (global::Neatoo.RemoteFactory.Internal.NeatooOrdinalReferences.ReadReferenceOrStart<{model.FullTypeName}>(ref reader, buildsFirst: {buildsFirstLiteral}, out var existing, out var referenceId))");
+            sb.AppendLine("                return existing;");
+            sb.AppendLine();
+        }
+
         sb.AppendLine("            if (reader.TokenType != global::System.Text.Json.JsonTokenType.StartArray)");
         sb.AppendLine($"                throw new global::System.Text.Json.JsonException(");
         sb.AppendLine($"                    $\"Expected StartArray for {model.TypeName} ordinal format, got {{reader.TokenType}}\");");
@@ -119,6 +130,15 @@ internal static class OrdinalRenderer
 
         sb.AppendLine("            reader.Read(); // Move past StartArray");
         sb.AppendLine();
+
+        // Built before its properties are read, and registered, so a child's back
+        // reference to it resolves. Each property is assigned as soon as it is read.
+        if (buildsFirst)
+        {
+            sb.AppendLine($"            var result = new {model.FullTypeName}();");
+            sb.AppendLine("            global::Neatoo.RemoteFactory.Internal.NeatooOrdinalReferences.AddReference(referenceId, result);");
+            sb.AppendLine();
+        }
 
         // Read each property using trim-safe Deserialize overload with GetTypeInfo.
         // Cast to the correct type since the non-generic overload returns object?.
@@ -152,6 +172,10 @@ internal static class OrdinalRenderer
                 sb.AppendLine($"            var prop{i}_lazy = prop{slotIndex + 1}");
                 sb.AppendLine($"                ? new global::Neatoo.RemoteFactory.LazyLoad<{innerType}>(prop{slotIndex})");
                 sb.AppendLine($"                : new global::Neatoo.RemoteFactory.LazyLoad<{innerType}>();");
+                if (buildsFirst)
+                {
+                    sb.AppendLine($"            result.{prop.Name} = prop{i}_lazy;");
+                }
 
                 slotIndex += 2;
             }
@@ -172,6 +196,11 @@ internal static class OrdinalRenderer
                     sb.AppendLine($"            var prop{slotIndex} = ({castType})global::System.Text.Json.JsonSerializer.Deserialize(ref reader, options.GetTypeInfo(typeof({baseType}))){nullForgiving};");
                 }
                 sb.AppendLine("            reader.Read();");
+                if (buildsFirst)
+                {
+                    var isEffectivelyNullable = prop.IsNullable || prop.Type.EndsWith("?");
+                    sb.AppendLine($"            result.{prop.Name} = prop{slotIndex}{(isEffectivelyNullable ? "" : "!")};");
+                }
 
                 slotIndex++;
             }
@@ -183,8 +212,23 @@ internal static class OrdinalRenderer
         sb.AppendLine($"                    $\"Too many values in ordinal array for {model.TypeName}. Expected {totalSlotCount}.\");");
         sb.AppendLine();
 
-        // Construct the object
-        RenderConstruction(sb, model, "prop");
+        if (buildsFirst)
+        {
+            sb.AppendLine("            global::Neatoo.RemoteFactory.Internal.NeatooOrdinalReferences.ReadEnd(ref reader, referenceId);");
+            sb.AppendLine("            return result;");
+        }
+        else if (model.TracksReferences)
+        {
+            // Built from its properties: registered only once they are all read.
+            RenderConstruction(sb, model, "prop", "var result = ");
+            sb.AppendLine("            global::Neatoo.RemoteFactory.Internal.NeatooOrdinalReferences.AddReference(referenceId, result);");
+            sb.AppendLine("            global::Neatoo.RemoteFactory.Internal.NeatooOrdinalReferences.ReadEnd(ref reader, referenceId);");
+            sb.AppendLine("            return result;");
+        }
+        else
+        {
+            RenderConstruction(sb, model, "prop", "return ");
+        }
 
         sb.AppendLine("        }");
         sb.AppendLine();
@@ -204,6 +248,15 @@ internal static class OrdinalRenderer
         sb.AppendLine("                return;");
         sb.AppendLine("            }");
         sb.AppendLine();
+
+        // Reference identity (#133): a repeat is written as {"$ref":"n"}; a first
+        // appearance is wrapped as {"$id":"n","$values":[...]}.
+        if (model.TracksReferences)
+        {
+            sb.AppendLine("            if (global::Neatoo.RemoteFactory.Internal.NeatooOrdinalReferences.WriteReferenceOrStart(writer, value, out var wrapped))");
+            sb.AppendLine("                return;");
+            sb.AppendLine();
+        }
 
         sb.AppendLine("            writer.WriteStartArray();");
 
@@ -245,6 +298,10 @@ internal static class OrdinalRenderer
         }
 
         sb.AppendLine("            writer.WriteEndArray();");
+        if (model.TracksReferences)
+        {
+            sb.AppendLine("            global::Neatoo.RemoteFactory.Internal.NeatooOrdinalReferences.WriteEnd(writer, wrapped);");
+        }
         sb.AppendLine("        }");
     }
 
@@ -346,20 +403,20 @@ internal static class OrdinalRenderer
         sb.AppendLine("    }");
     }
 
-    private static void RenderConstruction(StringBuilder sb, OrdinalSerializationModel model, string propPrefix)
+    private static void RenderConstruction(StringBuilder sb, OrdinalSerializationModel model, string propPrefix, string lead)
     {
         if (model.IsRecord && model.HasPrimaryConstructor && model.ConstructorParameterNames.Count > 0)
         {
             // For records with primary constructors, use constructor syntax
             var constructorArgs = BuildConstructorArgs(model, propPrefix);
-            sb.AppendLine($"            return new {model.FullTypeName}({constructorArgs});");
+            sb.AppendLine($"            {lead}new {model.FullTypeName}({constructorArgs});");
         }
         else
         {
             // For classes and records without primary constructors, use object initializer.
             // LazyLoad<T> properties use the pre-constructed lazy variable (prop{i}_lazy)
             // instead of the raw slot variable, because their value was assembled from two slots.
-            sb.AppendLine($"            return new {model.FullTypeName}");
+            sb.AppendLine($"            {lead}new {model.FullTypeName}");
             sb.AppendLine("            {");
 
             int slotIndex = 0;

@@ -12,7 +12,7 @@ Everything else (primitives, enums, collections, records) is plain System.Text.J
 
 | Format | A `[Factory]` object is written as | Tradeoff |
 |--------|-----------------------------------|----------|
-| **Ordinal** (default) | `["Customer_42", 7, false, false, {...}, ...]` | Compact; positions, not names |
+| **Ordinal** (default) | `{"$id":"1","$values":["Customer_42", 7, false, false, {...}, ...]}` | Compact; positions, not names |
 | **Named** | `{"CustomerName": "Customer_42", "Id": 7, ...}` | Readable in a network trace; larger |
 
 Both tiers must register the same format. The server announces its format in an `X-Neatoo-Format` response header, but the client does not read it: a Named server and an Ordinal client fail every call.
@@ -21,7 +21,7 @@ To use Named, pass `new NeatooSerializationOptions { Format = SerializationForma
 
 ### What the Ordinal Array Holds
 
-The positions are the type's `PropertyNames`, which the generator emits:
+The array sits under `$values`, beside the `$id` a later reference to the same object names (see [Reference Identity](#reference-identity)). Its positions are the type's `PropertyNames`, which the generator emits:
 
 - **The type's own properties first, then its base class's.** Each group is in ordinal (`StringComparer.Ordinal`) name order, not declaration order.
 - **Only properties the other side can set.** A property needs a public getter and a public, `internal` or `init` setter. A get-only property, and one with a `private` setter, is not written at all: the other side keeps whatever its constructor set.
@@ -68,17 +68,21 @@ In the Ordinal format, the same object sits at the property's position in the ar
 
 ## Reference Identity
 
-Whether two references to the same object arrive as one object depends on the format:
+Two references to the same `[Factory]` object arrive as one object in both formats, with one exception in Ordinal:
 
 | Graph | Named | Ordinal (default) |
 |-------|-------|-------------------|
-| A shared reference between `[Factory]` objects (`team.Lead` is `team.Members[0]`) | One object | **Two copies** |
-| A back reference between `[Factory]` objects (`member.Team` is `team`) | One object | **Fails:** the serializer throws "a possible object cycle was detected". On a fetch it fails on the server, so over HTTP the call is a 500 |
+| A shared reference between `[Factory]` objects (`team.Lead` is `team.Members[0]`) | One object | One object |
+| A back reference between `[Factory]` objects (`member.Team` is `team`) | One object | One object, when the type it points at has only plain setters (below) |
 | Records | Copied (no `$id`/`$ref`) | Copied |
 
 Plain classes with a public parameterless constructor, and collections (`Dictionary`, `List<T>`), keep shared and circular references (`NeatooPreserveReferenceHandler`); the tests cover them serialized on their own. A plain class without a public parameterless constructor is handled like a record: no reference tracking.
 
-The Ordinal rows are a known bug, [#133](https://github.com/NeatooDotNet/RemoteFactory/issues/133): the generated ordinal converter writes no `$id`/`$ref`. Until it is fixed, keep `[Factory]` aggregates free of back references and shared instances, or use the Named format. A child that needs its parent can be handed the parent's id, or receive the parent as a method argument on the server. `FactoryReferenceIdentityTests` in `RemoteFactory.IntegrationTests` pins both formats, with the Ordinal cases marked as known failures.
+In the Ordinal format, an object's first appearance is written as `{"$id":"2","$values":[...]}` and each later one as `{"$ref":"2"}`. The ids share one sequence with the `$id`s System.Text.Json writes for collections in the same graph.
+
+**A back reference in the Ordinal format.** The generated converter builds a `[Factory]` class before reading its properties when every ordinal property has a plain setter, so a child read in the meantime can point back at it. A class with an `init` or `required` property is built from its properties instead, once they are all read. A shared reference to it still resolves, but a back reference into it fails with a `JsonException` that names the type. Give such a type plain setters, or keep the child from pointing back. Named builds the object first, so the `init`-only case resolves there.
+
+`FactoryReferenceIdentityTests` in `RemoteFactory.IntegrationTests` pins both formats, including the `init`-only case.
 
 Records are value objects, so a duplicate is the same value: they bypass reference tracking. A mutable object nested inside a record's constructor parameters is written as an independent copy. See [Appendix: Record Reference Handling](appendix/record-reference-handling.md).
 

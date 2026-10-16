@@ -49,11 +49,12 @@
 //   - Collection classes: only the items cross the wire, never the collection's
 //     own properties; state the server needs (a removed line) lives on the item
 //   - Child entity collections (see OrderLineList pattern)
-//   - Shared and circular references: preserved for plain mutable classes and
-//     STJ collections (NeatooPreserveReferenceHandler), and for [Factory]
-//     types in the Named format. NOT in the Ordinal format (the default)
-//     between [Factory] objects: a shared reference arrives duplicated and a
-//     back reference throws "possible object cycle" (issue #133). Records
+//   - Shared and circular references: preserved for plain mutable classes,
+//     STJ collections (NeatooPreserveReferenceHandler) and [Factory] types,
+//     in both formats. In Ordinal, a back reference needs the [Factory] class
+//     it points at to have only plain setters: one with an init-only or
+//     required property is built after its properties are read, so the
+//     reference fails with a JsonException naming the type (#133). Records
 //     bypass reference tracking entirely: value objects have no identity.
 //
 // -----------------------------------------------------------------------------
@@ -63,8 +64,11 @@
 // RemoteFactory uses ordinal-based serialization for efficiency and type safety:
 //
 // 1. WHAT IT DOES:
-//    - The object is written as a JSON array of property values, no names
-//    - JSON payload is smaller: ["Customer",1,...] vs {"CustomerName":"Customer","Id":1,...}
+//    - The object is written as a JSON array of property values, no names,
+//      under the $id a later reference to it names: {"$id":"1","$values":[...]};
+//      the later reference is {"$ref":"1"}
+//    - JSON payload is smaller: {"$id":"1","$values":["Customer",1,...]} vs
+//      {"$id":"1","CustomerName":"Customer","Id":1,...}
 //
 // 2. HOW IT'S GENERATED:
 //    - The [Factory] attribute triggers source generation
@@ -650,7 +654,8 @@ public class SerializationTests
     /// <summary>
     /// The ordinal array follows PropertyNames: ordinal name order, not declaration
     /// order, and only properties with a setter the other side can call. Order's
-    /// get-only Total is not written.
+    /// get-only Total is not written. The array sits under $values, beside the $id
+    /// a later reference to the same Order would name (#133).
     /// </summary>
     [Fact]
     public void Order_OrdinalShape_FollowsPropertyNames()
@@ -660,12 +665,14 @@ public class SerializationTests
         var serializer = server.GetRequiredService<INeatooJsonSerializer>();
 
         using var json = JsonDocument.Parse(serializer.Serialize(order)!);
+        var values = json.RootElement.GetProperty("$values");
 
         Assert.Equal(["CustomerName", "Id", "IsDeleted", "IsNew", "Lines", "Status"], Order.PropertyNames);
-        Assert.Equal(JsonValueKind.Array, json.RootElement.ValueKind);
-        Assert.Equal(Order.PropertyNames.Length, json.RootElement.GetArrayLength());
-        Assert.Equal("Ordinal_Customer", json.RootElement[0].GetString());
-        Assert.True(json.RootElement[3].GetBoolean());   // IsNew
+        Assert.Equal("1", json.RootElement.GetProperty("$id").GetString());
+        Assert.Equal(JsonValueKind.Array, values.ValueKind);
+        Assert.Equal(Order.PropertyNames.Length, values.GetArrayLength());
+        Assert.Equal("Ordinal_Customer", values[0].GetString());
+        Assert.True(values[3].GetBoolean());   // IsNew
 
         server.Dispose();
         client.Dispose();
@@ -687,7 +694,7 @@ public class SerializationTests
 
         using var json = JsonDocument.Parse(serializer.Serialize(order)!);
         var lines = format == SerializationFormat.Ordinal
-            ? json.RootElement[Array.IndexOf(Order.PropertyNames, "Lines")]
+            ? json.RootElement.GetProperty("$values")[Array.IndexOf(Order.PropertyNames, "Lines")]
             : json.RootElement.GetProperty("Lines");
 
         Assert.Equal(typeof(OrderLineList).FullName, lines.GetProperty("$type").GetString());
