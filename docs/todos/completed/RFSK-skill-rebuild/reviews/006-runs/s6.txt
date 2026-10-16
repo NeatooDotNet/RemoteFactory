@@ -1,0 +1,3 @@
+You are building zCRM, a CRM: a Blazor WebAssembly client and an ASP.NET Core server on .NET 9, using the RemoteFactory library, without Neatoo, with MudBlazor. There is no existing code. Write every piece of code your answer needs as complete C# and Razor in your reply (do not create or edit files), and say briefly why each piece is where it is.
+
+A Company has a name and a list of Addresses, each with a street, a city and a kind (billing or shipping). A user opens an existing company, renames it, edits one address, adds a new address and removes another, then saves. Write the domain classes and their server-side persistence (assume an EF Core DbContext with CompanyRow and AddressRow tables), and say for each factory method whether it is [Remote] and why.

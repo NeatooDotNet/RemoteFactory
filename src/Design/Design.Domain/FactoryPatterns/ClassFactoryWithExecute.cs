@@ -116,12 +116,14 @@ public partial class ClassExecuteDemo
     /// publish-trimmed artifact, and Design.Tests run untrimmed. RemoteFactory.TrimmingTests
     /// is the verification surface; this shape is measured absent there.
     /// </remarks>
+    #region skill-execute-remote
     [Remote, Execute]
     public static async Task<ClassExecuteDemo> RunCommand(
         string input, [Service] IExampleService service, [Service] IClassExecuteDemoFactory factory)
     {
         return factory.Create(service.GenerateId(), $"Executed: {input}");
     }
+    #endregion
 
     /// <summary>
     /// Execute method WITHOUT [Remote]: runs on whichever tier resolves the factory.
@@ -149,12 +151,14 @@ public partial class ClassExecuteDemo
     /// calls the bare method there to prove it still runs. Design.Tests run untrimmed
     /// and cannot observe any of that.
     /// </remarks>
+    #region skill-execute-local
     [Execute]
     public static Task<ClassExecuteDemo> ScoreLocally(
         string input, [Service] ITextScorer scorer, [Service] IClassExecuteDemoFactory factory)
     {
         return Task.FromResult(factory.Create(scorer.Score(input), $"Scored: {input}"));
     }
+    #endregion
 
     /// <summary>
     /// Execute method that is internal static WITHOUT [Remote]: server-only.
@@ -184,10 +188,12 @@ public partial class ClassExecuteDemo
     /// RemoteFactory.UnitTests (InternalVisibilityTests); ClassFactoryExecuteTests shows
     /// the method resolving and running through the server container.
     /// </remarks>
+    #region skill-execute-internal
     [Execute]
     internal static Task<ClassExecuteDemo> ArchiveOnServer(
         string input, [Service] IExampleService service, [Service] IClassExecuteDemoFactory factory)
     {
         return Task.FromResult(factory.Create(service.GenerateId(), $"Archived: {input}"));
     }
+    #endregion
 }

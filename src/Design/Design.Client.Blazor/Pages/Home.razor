@@ -167,8 +167,10 @@
     // - ExampleCommands.SendNotification
     // -------------------------------------------------------------------------
 
+    #region skill-command-inject
     [Inject]
     private ExampleCommands.SendNotification SendNotification { get; set; } = default!;
+    #endregion
 
     // -------------------------------------------------------------------------
     // Pattern 1: Class Factory - Create/Fetch
@@ -209,7 +211,7 @@
     {
         try
         {
-            // The client builds the line with the line factory, then hands it to the order (R-C)
+            // The client builds the line with the line factory, then hands it to the order
             currentOrder!.AddLine(LineFactory.Create("Demo Widget", 12.50m, 1));
             messages += $"Added line: Lines={currentOrder.Lines.Count}\n";
         }
@@ -270,6 +272,7 @@
     // Context: Checkout
     // -------------------------------------------------------------------------
 
+    #region skill-context-usage
     private async Task StartCheckout()
     {
         try
@@ -321,11 +324,13 @@
             messages += $"Error: {ex.Message}\n";
         }
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Pattern 3: Static Factory - Commands
     // -------------------------------------------------------------------------
 
+    #region skill-command-call
     private async Task ExecuteCommand()
     {
         try
@@ -339,5 +344,6 @@
             messages += $"Error: {ex.Message}\n";
         }
     }
+    #endregion
 
 }

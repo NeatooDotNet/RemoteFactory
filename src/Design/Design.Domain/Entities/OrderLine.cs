@@ -125,6 +125,23 @@ internal partial class OrderLine : IOrderLine
     // GENERATOR BEHAVIOR: The line factory's Save routes to Insert when IsNew is
     //   true, otherwise to Update. The line is not new once inserted, so the
     //   aggregate the save returns can be saved again.
+    //
+    // The same class as a root (region orderline-duality):
+    //
+    // DESIGN DECISION: One entity, a child and a root (VisionAlignment R-G)
+    //   A line-detail screen loads one line by its id. The client calls this
+    //   directly, so it is [Remote]; a missing line is a false Fetch, which the
+    //   factory returns as null (R-I). The child Fetch keeps its row
+    //   signature and stays server-only: the signature is the difference.
+    //
+    //   A line loaded this way is read-only: its Insert and Update take the row
+    //   the order's cascade hands them, so the line has no save path of its own.
+    //   To change it, fetch its order and save through the root.
+    //
+    // DID NOT DO THIS: A separate OrderLineDetail class with the same fields
+    //   The line already is the object. A second class duplicates its shape and
+    //   drifts from it.
+    #region skill-orderline-root-and-child
     #region orderline-child
     /// <summary>
     /// Creates a new OrderLine. Public and local: the client calls it.
@@ -169,21 +186,6 @@ internal partial class OrderLine : IOrderLine
     }
     #endregion
 
-    // The same class as a root (region orderline-duality):
-    //
-    // DESIGN DECISION: One entity, a child and a root (VisionAlignment R-G)
-    //   A line-detail screen loads one line by its id. The client calls this
-    //   directly, so it is [Remote]; a missing line is a false Fetch, which the
-    //   factory returns as null (R-I). The child Fetch above keeps its row
-    //   signature and stays server-only: the signature is the difference.
-    //
-    //   A line loaded this way is read-only: its Insert and Update take the row
-    //   the order's cascade hands them, so the line has no save path of its own.
-    //   To change it, fetch its order and save through the root.
-    //
-    // DID NOT DO THIS: A separate OrderLineDetail class with the same fields
-    //   The line already is the object. A second class duplicates its shape and
-    //   drifts from it.
     #region orderline-duality
     /// <summary>
     /// Loads one line by its id, as a root; false when no order holds it.
@@ -198,6 +200,7 @@ internal partial class OrderLine : IOrderLine
         LoadFrom(row);
         return true;
     }
+    #endregion
     #endregion
 
     private void LoadFrom(OrderLineRow row)
@@ -283,7 +286,7 @@ internal partial class OrderLineList : List<OrderLine>, IOrderLineList
     #region collection-factory-basic
     /// <summary>
     /// Creates an empty list. Public and local, so a root created on the client
-    /// can create its list there (R-C).
+    /// can create its list there.
     /// </summary>
     [Create]
     public void Create()

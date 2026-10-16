@@ -324,6 +324,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     /// Internal without [Remote], so the client cannot call it; the client asks for
     /// a draft through OpenDraft, which decides between this and Create.
     /// </remarks>
+    #region skill-order-fetchdraft
     [Fetch]
     internal async Task<bool> FetchDraft(
         string customerName,
@@ -337,6 +338,7 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         LoadFrom(row, lineListFactory);
         return true;
     }
+    #endregion
 
     /// <summary>
     /// The customer's Draft order: the stored one if there is one, otherwise a new one.

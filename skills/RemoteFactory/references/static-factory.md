@@ -1,12 +1,8 @@
-# Static Factory Pattern
+# Static Factory
 
-Use for stateless commands. No instance state — pure functions with side effects via services.
+Use for a command: a call that returns and is done, with nothing or a simple result. The class is `static partial` with `[Factory]`; each command is a `private static` method named with a leading underscore, and the generator makes a delegate type the caller resolves from DI. A command that returns the aggregate it works on is a class-level `[Execute]` instead ([class-factory.md](class-factory.md#class-level-execute)).
 
-## Execute Commands (Request-Response)
-
-Use `[Execute]` for operations that return a result. The client awaits the response. `[Execute]` obeys `[Remote]` like every other operation: with it the call crosses to the server; without it the delegate runs on whichever tier resolves it, with that tier's services — the shape for client-side computation that must not round-trip.
-
-> **Note:** `[Execute]` also works on non-static `[Factory]` classes when the operation returns the containing type. See `references/class-factory.md` for that pattern.
+## The commands
 
 <!-- snippet: ordercommands-declaration -->
 <a id='snippet-ordercommands-declaration'></a>
@@ -16,6 +12,8 @@ public static partial class OrderCommands
 ```
 <sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L47-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-ordercommands-declaration' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+A command that changes an aggregate fetches it through its factory, calls its verb, and saves through the root factory; it never writes the row. A missing order and an order that is not a draft are results the caller reads:
 
 <!-- snippet: operations-execute -->
 <a id='snippet-operations-execute'></a>
@@ -40,6 +38,8 @@ private static async Task<SubmitOutcome> _SubmitOrder(
 <sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L60-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
+A command with no result returns `Task`. The await confirms the server ran it, and a server exception rethrows there; a missing target is an exception:
+
 <!-- snippet: operations-execute-command -->
 <a id='snippet-operations-execute-command'></a>
 ```cs
@@ -58,41 +58,44 @@ private static async Task _CancelOrder(int orderId, [Service] IOrderFactory orde
 <sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L82-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Generates**:
-- the `OrderCommands.SubmitOrder(orderId)` delegate type, returning `SubmitOutcome`
-- the `OrderCommands.CancelOrder(orderId)` delegate type; each also takes an optional `CancellationToken`, and is resolved from DI
+**Generates** the delegate types `OrderCommands.SubmitOrder(int orderId, CancellationToken cancellationToken = default)` returning `Task<SubmitOutcome>`, and `OrderCommands.CancelOrder(int orderId, CancellationToken cancellationToken = default)` returning `Task`, each registered in DI. The `[Service]` parameters are the server's and do not appear on the delegate.
 
-**Usage**:
-```csharp
-var success = await SkillEmployeeCommands.SendNotification("admin@example.com", "Hello!");
-var summary = await SkillEmployeeCommands.GetEmployeeSummary(employeeId);
+## The call
+
+The caller injects the delegate and calls it like a method:
+
+<!-- snippet: skill-command-inject -->
+<a id='snippet-skill-command-inject'></a>
+```razor
+[Inject]
+private ExampleCommands.SendNotification SendNotification { get; set; } = default!;
 ```
+<sup><a href='/src/Design/Design.Client.Blazor/Pages/Home.razor#L170-L173' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-command-inject' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-> **Looking for domain events?** See `references/factory-events.md` for `IFactoryEvents.Raise`, the `[FactoryEventHandler<T>]` class attribute, `RaiseOptions.ServerOnly`, and `IFactoryEventRelay`. That is RemoteFactory's only event-shaped abstraction; the former `[Event]` method attribute was removed in v1.5.0.
-
----
-
-## Critical Rules
-
-### Methods must be `private static` with underscore prefix
-
-```csharp
-// WRONG - conflicts with generated code
-[Remote, Execute]
-public static Task<bool> SendNotification(...) { }
-
-// RIGHT - private with underscore
-[Remote, Execute]
-private static Task<bool> _SendNotification(...) { }
+<!-- snippet: skill-command-call -->
+<a id='snippet-skill-command-call'></a>
+```razor
+private async Task ExecuteCommand()
+{
+    try
+    {
+        messages += "Executing SendNotification command...\n";
+        commandResult = await SendNotification("demo@example.com", "Hello from Blazor!");
+        messages += $"Command returned: {commandResult}\n";
+    }
+    catch (Exception ex)
+    {
+        messages += $"Error: {ex.Message}\n";
+    }
+}
 ```
+<sup><a href='/src/Design/Design.Client.Blazor/Pages/Home.razor#L333-L347' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-command-call' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-The generator creates the public method. Your code provides the private implementation.
+## `[Execute]` obeys `[Remote]`
 
-`private static` also matters for trimming: with `[Remote]`, the generated local registration is guarded by `NeatooRuntime.IsServerRuntime`, so on a Blazor WASM client published with the feature switch set to `false`, the method body, its `[Service]` dependencies, and their transitive references are removed. Without `[Remote]` there is no guard — the body ships to the client and runs there, which is the point of a bare `[Execute]`. Static factories are exempt from the NF0105 `[Remote] public` check; `[Remote]` alone decides placement. See `references/trimming.md`, which documents what each factory shape does and does not remove.
-
-### Bare [Execute] runs where it is called
-
-Leave `[Remote]` off when the command must run on the tier that calls it — a client-side engine, a scoring rule, anything that must not round-trip. The generator emits one unguarded local delegate in every mode and no remote delegate; `[Service]` parameters resolve from that tier's container, so the dependency must be registered there (a bare command that takes a server-only repository compiles, then fails on the client at call time).
+With `[Remote]`, the client's call crosses to the server. Without it, the delegate runs on whichever tier resolves it, with that tier's services - the shape for client-side computation that must not round-trip:
 
 <!-- snippet: attributes-execute-local -->
 <a id='snippet-attributes-execute-local'></a>
@@ -106,44 +109,26 @@ private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
 <sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L507-L513' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`ITextScorer` is the example's pure-computation scoring service. The client registers it, so the bare command runs there with no server call.
+A bare command's `[Service]` dependencies must be registered on the tier that calls it. The client registers the scorer the bare command needs, and nothing server-only:
 
-### [Execute] returns `Task` or `Task<T>`, never `void`
-
-```csharp
-// WRONG - NF0102
-[Remote, Execute]
-private static void _DoSomething(...) { }
-
-// RIGHT - no result: the await confirms completion and rethrows a server exception
-[Remote, Execute]
-private static Task _DoSomething(...) { ... }
-
-// RIGHT - the caller needs the value
-[Remote, Execute]
-private static Task<Summary> _Summarize(...) { ... }
+<!-- snippet: skill-client-services -->
+<a id='snippet-skill-client-services'></a>
+```cs
+builder.Services.AddScoped<ITextScorer, TextScorer>();
 ```
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L84-L86' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-client-services' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-A `Task`-returning `[Execute]` generates a `Task` delegate and round-trips with no result. Until the #113 fix it generated a `Task<Task>` delegate that did not compile.
+A bare command that took a server-only service compiles, then fails on the client when it is called.
 
-### Static classes must be `partial`
+## Rules
 
-```csharp
-// WRONG - missing partial
-[Factory]
-public static class Commands { }
+- **`private static`, with a leading underscore.** The generator makes the public delegate from the name without the underscore; a `public` method of the same name conflicts with it.
+- **`Task` or `Task<T>`, never `void`** (NF0102). Return `Task` when there is no result; invent no `bool` that is always `true`.
+- **`static partial class`.** A static `[Factory]` class without `partial` is NF0101.
+- **Value parameters before `[Service]` parameters.** A `[Service]` before a value breaks the generated code today, with no diagnostic ([#135](https://github.com/NeatooDotNet/RemoteFactory/issues/135)).
+- **Trimming.** With `[Remote]`, the command's local registration is guarded by `IsServerRuntime`, so a client published with the switch off drops its body and its `[Service]` dependencies. Without `[Remote]` the body ships to the client and runs there, which is the point. A static method is exempt from NF0105; `[Remote]` alone decides whether the client's call crosses. [trimming.md](trimming.md).
 
-// RIGHT
-[Factory]
-public static partial class Commands { }
-```
+## Commands, events and fire-and-forget
 
----
-
-## When to Use Static Factory
-
-- **Stateless commands** — No instance state needed
-- **Request-response operations** — Clean function-style API
-- **Cross-cutting operations** — Notifications, auditing, logging (invoked via `[Execute]` request-response)
-
-For fire-and-forget work (email, webhooks, queue publishes), call `Task.Run` directly inside the factory method with a fresh scope from `IServiceScopeFactory.CreateScope()`. For transactional domain events, use `IFactoryEvents.Raise` + `[FactoryEventHandler<T>]` — see `references/factory-events.md`.
+A command is request and response. A domain event raised inside an operation is `IFactoryEvents.Raise` with a `[FactoryEventHandler<T>]` ([factory-events.md](factory-events.md)). Fire-and-forget work (email, a webhook, a queue) is not a command: call `Task.Run` inside the operation with a new scope from `IServiceScopeFactory`.

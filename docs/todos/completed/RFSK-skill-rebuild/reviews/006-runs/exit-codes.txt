@@ -1,0 +1,15 @@
+run2 (as printed by the background run), then run3:
+s3 exit 0 520 lines
+s1 exit 0 747 lines
+s4 exit 0 816 lines
+s2 exit 0 504 lines
+s5 exit 0 610 lines
+s8 exit 0 478 lines
+s9 exit 0 406 lines
+s10 exit 0 520 lines
+s6 exit 0 578 lines
+s7 exit 0 804 lines
+done
+
+[exited with code 0]
+s10 (run3) exit 0 455 lines

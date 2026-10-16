@@ -1,0 +1,3 @@
+You are building zCRM, a CRM: a Blazor WebAssembly client and an ASP.NET Core server on .NET 9, using the Neatoo and RemoteFactory libraries with MudBlazor. There is no existing code. Write every piece of code your answer needs as complete C# and Razor in your reply (do not create or edit files), and say briefly why each piece is where it is.
+
+A 'Merge duplicates' screen: the user picks two contacts, sees them side by side, and chooses which value wins for each field; they can change their choices any number of times. Confirming keeps one contact with the chosen values and deletes the other, in one transaction. Write the domain and server code and the page's code (assume an EF Core DbContext with a Contacts table).

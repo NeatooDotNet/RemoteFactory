@@ -1,8 +1,8 @@
-# Class Factory Pattern
+# Class Factory
 
-Use for domain entities and aggregate roots that have lifecycle operations (Create, Fetch, Save).
+Use for an aggregate the client creates, loads, edits and saves. `[Factory]` goes on the class, `[Remote]` on the operations the client calls, and `IFactorySaveMeta` gives `Save` its routing. The example is RemoteFactory Design's `Order`, whose lines are `OrderLine` children in an `OrderLineList`.
 
-## Complete Example
+## The aggregate
 
 <!-- snippet: order-class-declaration -->
 <a id='snippet-order-class-declaration'></a>
@@ -93,54 +93,129 @@ internal async Task Delete([Service] IOrderDbContext db)
 <sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L234-L318' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Generates**: `IOrderFactory` with `Create()`, `Fetch()` and `Save()` methods.
+`Create` is local: building a new order needs nothing only the server has, so the client calls it with no round trip, and its `[Service]` parameter resolves on the client. It is `[Remote, Create]` only when creation needs the server - tenant defaults, a sequence, an authorization check that needs server services. `Fetch`, `Insert`, `Update` and `Delete` are `[Remote] internal`: the client's call crosses to the server, where the persistence services are.
 
----
+**Generates** `IOrderFactory` with `Create`, `Fetch`, `OpenDraft` and `Save`, and `FetchDraft` as an `internal` member the client cannot call. `Insert`, `Update` and `Delete` are not on the interface; `Save` chooses one.
 
-## IFactorySaveMeta for Save Routing
+## `IFactorySaveMeta` and Save routing
 
-Implement `IFactorySaveMeta` to enable automatic Save() routing:
+<!-- snippet: save-ifactorysavemeta -->
+<a id='snippet-save-ifactorysavemeta'></a>
+```cs
+public bool IsNew { get; set; } = true;
+public bool IsDeleted { get; set; }
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L121-L124' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-ifactorysavemeta' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-```csharp
-public partial class Employee : IFactorySaveMeta
+| `IsNew` | `IsDeleted` | `Save` calls |
+|---|---|---|
+| true | false | `[Insert]` |
+| false | false | `[Update]` |
+| false | true | `[Delete]` |
+| true | true | nothing |
+
+A class that leaves out the operation `Save` routes to gets a generated `Save` that throws `NotImplementedException` on that branch: a new object with no `[Insert]`, a loaded one with no `[Update]`, a deleted one with no `[Delete]` (new-and-deleted included, so the "nothing" row needs a `[Delete]`). Declare every operation the object's states can reach.
+
+Both properties are public `get; set;`: routing happens on the server, so they must cross the wire. `Save` returns the saved instance - from the client, a new one - so the caller reassigns:
+
+<!-- snippet: save-usage -->
+<a id='snippet-save-usage'></a>
+```cs
+var order = orderFactory.Create("Save_Customer");
+order.AddLine(lineFactory.Create("Widget", 5.00m, 2));
+order = (await orderFactory.Save(order))!;      // IsNew: Insert
+
+order.CustomerName = "Save_Customer_Renamed";
+order = (await orderFactory.Save(order))!;      // stored: Update
+
+order.MarkDeleted();
+order = (await orderFactory.Save(order))!;      // IsDeleted: Delete
+```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/SaveTests.cs#L31-L41' title='Snippet source file'>snippet source</a> | <a href='#snippet-save-usage' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+On a factory with `[AuthorizeFactory<T>]`, a new-and-deleted object and a `bool` write that returns `false` both surface as `NotAuthorizedException` today ([#104](https://github.com/NeatooDotNet/RemoteFactory/issues/104)).
+
+## The list cascade
+
+The root's `Insert` and `Update` above make the order's row and hand its line rows to the list factory's `Save`. The list loops: it makes a row for each new line, finds the row of each existing one, removes the row of each removed one, and hands each line its row. Each line maps itself into the row it is handed (`OrderLine` in [SKILL.md](../SKILL.md#one-class-a-child-and-a-root)). The root flushes once.
+
+<!-- snippet: collection-factory-basic -->
+<a id='snippet-collection-factory-basic'></a>
+```cs
+/// <summary>
+/// Creates an empty list. Public and local, so a root created on the client
+/// can create its list there.
+/// </summary>
+[Create]
+public void Create()
 {
-    public bool IsNew { get; set; } = true;
-    public bool IsDeleted { get; set; }
+}
+
+/// <summary>
+/// Loads the lines from the order row's line rows, handing each line its row.
+/// </summary>
+[Fetch]
+internal void Fetch(IEnumerable<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
+{
+    foreach (var row in rows)
+    {
+        Add((OrderLine)lineFactory.Fetch(row));
+    }
+}
+
+/// <summary>
+/// The cascade: makes, finds or removes each line's row and hands each live
+/// line its row through the line factory's Save.
+/// </summary>
+/// <remarks>
+/// Called by Order.Insert and Order.Update through IOrderLineListFactory.Save,
+/// with the order row's line collection. Neither the list nor the root maps a
+/// line's row; the line does.
+/// </remarks>
+[Update]
+internal void Update(ICollection<OrderLineRow> rows, [Service] IOrderLineFactory lineFactory)
+{
+    foreach (var line in this)
+    {
+        if (line.IsDeleted)
+        {
+            rows.Remove(rows.Single(r => r.Id == line.Id));
+            continue;
+        }
+
+        OrderLineRow row;
+        if (line.IsNew)
+        {
+            row = new OrderLineRow();
+            rows.Add(row);
+        }
+        else
+        {
+            row = rows.Single(r => r.Id == line.Id);
+        }
+
+        lineFactory.Save(line, row);
+    }
+
+    // The removed lines' rows are gone; the list the save returns holds live lines only.
+    RemoveAll(l => l.IsDeleted);
+}
+
+// -------------------------------------------------------------------------
+// Domain Methods
+// -------------------------------------------------------------------------
+
+public void AddLine(IOrderLine line)
+{
+    Add((OrderLine)line);
 }
 ```
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L286-L354' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-The factory's `Save()` method examines these properties:
-
-| IsNew | IsDeleted | Operation Called |
-|-------|-----------|------------------|
-| true | false | Insert |
-| false | false | Update |
-| false | true | Delete |
-| true | true | No operation |
-
-### Serialization Gotcha: Private Setters Need `[JsonInclude]`
-
-Save routing happens server-side, so `IsNew` and `IsDeleted` must round-trip through JSON when the client sends the entity to the server. Public setters work by default. If you prefer private setters to prevent external callers from flipping lifecycle state:
-
-```csharp
-using System.Text.Json.Serialization;
-
-[JsonInclude]
-public bool IsNew { get; private set; } = true;
-
-[JsonInclude]
-public bool IsDeleted { get; private set; }
-
-public void MarkDeleted() => IsDeleted = true;
-```
-
-Without `[JsonInclude]`, `System.Text.Json` skips the private setter on deserialization — the server deserializes `IsNew = true` from its default initializer and **every Save routes to Insert**, and Delete silently no-ops. This is one of those rules that every RemoteFactory user with `IFactorySaveMeta` + private setters will eventually trip over. Under `PublishTrimmed=true` you also need `[DynamicDependency]` on the `[Create]` constructor — see [trimming.md](trimming.md#ifactorysavemeta-preservation).
-
----
-
-## Lifecycle Hooks
-
-Implement lifecycle interfaces for cross-cutting concerns:
+## Lifecycle hooks
 
 <!-- snippet: operations-lifecycle-onstart -->
 <a id='snippet-operations-lifecycle-onstart'></a>
@@ -173,26 +248,13 @@ public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
 <sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L185-L195' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-lifecycle-oncomplete' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Available hooks:**
-- `IFactoryOnStart` / `IFactoryOnStartAsync` - Before any operation
-- `IFactoryOnComplete` / `IFactoryOnCompleteAsync` - After successful operation
-- `IFactoryOnCancelled` / `IFactoryOnCancelledAsync` - On operation failure
+- `IFactoryOnStart` / `IFactoryOnStartAsync` - before the operation
+- `IFactoryOnComplete` / `IFactoryOnCompleteAsync` - after it succeeds
+- `IFactoryOnCancelled` / `IFactoryOnCancelledAsync` - when it is cancelled
 
----
+## Class-level `[Execute]`
 
-## Execute Methods on Class Factories
-
-Use `[Execute]` on `static` methods within a class factory to co-locate orchestration logic with the aggregate it operates on. `[Execute]` obeys `[Remote]`: with it the client crosses to the server; without it the method runs on whichever tier resolves the factory, with that tier's services. Use `public static` for a method that runs where the factory resolves, and `internal static` without `[Remote]` for a server-only one — guarded like any `internal` method, and carried on the factory interface with the `internal` modifier.
-
-### When to Use
-
-- The operation creates or returns an instance of the containing type
-- The logic is tightly coupled to the aggregate (calls its factory methods, uses internal helpers)
-- You want the operation on the same factory interface as Create/Fetch/Save
-
-If the operation returns a different type, use a static factory `[Execute]` instead (see `references/static-factory.md`).
-
-### Method Signature
+A `static` `[Execute]` on the class is an aggregate factory method with logic around the standard operations: it returns the aggregate. The common one is create-or-fetch, every open, start and ensure seam:
 
 <!-- snippet: operations-class-execute -->
 <a id='snippet-operations-class-execute'></a>
@@ -206,134 +268,105 @@ public static async Task<IOrder> OpenDraft(
         ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L362-L371' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L364-L373' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Key differences from static factory `[Execute]`:
-- Method is **`static`** — `public static` to run where the factory resolves, `internal static` for server-only (no underscore prefix, no `private`)
-- Must return the **containing type** (or its matching interface)
-- Generates a **factory interface method**, not a delegate type
+It calls a server-only `[Fetch]`, `internal` without `[Remote]`, which the client cannot reach:
 
-### Generated Code
-
-When the class implements a matching `I{ClassName}` interface, all generated factory methods return the interface type. Classes without a matching interface return the concrete type instead.
-
-```csharp
-public interface ISkillConsultationFactory
+<!-- snippet: skill-order-fetchdraft -->
+<a id='snippet-skill-order-fetchdraft'></a>
+```cs
+[Fetch]
+internal async Task<bool> FetchDraft(
+    string customerName,
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    Task<ISkillConsultation> CreateAcute(long patientId, CancellationToken ct = default);
-    Task<ISkillConsultation?> FetchActive(long patientId, CancellationToken ct = default);
-    Task<ISkillConsultation> StartForPatient(long patientId, CancellationToken ct = default);
+    var row = await db.FindDraftAsync(customerName);
+    if (row == null)
+        return false;
+
+    LoadFrom(row, lineListFactory);
+    return true;
 }
 ```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L327-L341' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-order-fetchdraft' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-### Caller Usage
+The caller asks the factory, as for any operation:
 
-```csharp
-// Inject the factory -- same as any other factory method
-var factory = serviceProvider.GetRequiredService<IConsultationFactory>();
-var consultation = await factory.StartForPatient(patientId);
+<!-- snippet: readme-client-usage -->
+<a id='snippet-readme-client-usage'></a>
+```cs
+// The customer's draft: the stored one, or a new one. One server call.
+IOrder? order = await orderFactory.OpenDraft("Customer_42");
+
+// Build a line on the client and add it. No server call.
+order.AddLine(lineFactory.Create("Widget C", 12.50m, 2));
+
+// Save sends the whole order; keep what it returns.
+order = await orderFactory.Save(order);
 ```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/OrderUsageTests.cs#L31-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
----
+- It is `public static` or `internal static`, named as the factory method will be (no underscore). `[Remote]` decides whether the client crosses: `[Remote] public static` crosses, `public static` runs on whichever tier resolves the factory, `internal static` without `[Remote]` is server-only. The three side by side: [SKILL.md](../SKILL.md#execute-obeys-remote).
+- It returns `Task<T>` of the class's service type - `Task<IOrder>` here, or the concrete type when there is no matching interface. A command that returns something else is a static factory command ([static-factory.md](static-factory.md)).
+- It becomes a method on `IOrderFactory`, not a delegate type. There is no instance `[Execute]` (NF0103).
 
-## Internal Visibility for Child Entities
+## Visibility
 
-Child entity factory methods should be `internal` to signal that they are server-only. This enables IL trimming of the method bodies and affects the generated factory interface.
+The generator reads each method's declared accessibility, not the class's:
 
-### Factory Interface Visibility Rules
+| Method | On the factory interface | Guard and trimming |
+|---|---|---|
+| `[Remote] internal` | promoted to `public` | guarded; body trimmed from a client published with `IsServerRuntime` off |
+| `internal`, no `[Remote]` | `internal` | guarded; trimmed |
+| `public`, no `[Remote]` | `public` | none; runs on the tier that calls it |
+| `[Remote] public` | - | NF0105 (a static method is exempt: `[Remote]` alone decides) |
 
-The generator determines factory interface visibility from **method** accessibility, not class accessibility:
+The factory interface is `internal` only when every member is. A `public` method on an `internal` class is still treated as `public`: unguarded, untrimmed, on the public interface.
 
-| Method Visibility in Class | Generated Factory Interface | Which Methods on Interface? | Guards? |
-|---|---|---|---|
-| All methods `internal` (no `[Remote]`) | `internal` | All (internal interface) | All get `IsServerRuntime` guard |
-| All methods `public` or `[Remote] internal` | `public` | All | `[Remote]`: guarded; `public`: no guard |
-| Mix of `public`/`[Remote] internal` and plain `internal` | `public` | **All methods** — plain `internal` methods get `internal` modifier; `[Remote] internal` promoted to `public` | `internal` and `[Remote]`: guarded; `public`: no guard |
-
-**[Remote] promotes to public.** `[Remote] internal` methods are treated as `public` for interface visibility — they appear as `public` members on the factory interface because clients call them. Plain `internal` methods (without `[Remote]`) appear with the `internal` access modifier. All-internal interfaces (where every method is internal and none have `[Remote]`) use an `internal` interface, making them invisible to the client container.
-
-### Class Accessibility vs Method Accessibility
-
-The generator checks the **method's** `DeclaredAccessibility`, not the class's effective accessibility. A `public` method on an `internal` class is treated as `public` by the generator — no `IsServerRuntime` guard, included in the public factory interface.
-
-This means class accessibility and method accessibility serve **different purposes** in RemoteFactory:
-
-| Accessibility | What It Controls |
+| Accessibility | Controls |
 |---|---|
-| **Class** `internal` | Hides the concrete type from external assemblies. Use with a `public` interface (`IOrder`) so the factory returns the interface type. |
-| **Method** `internal` (no `[Remote]`) | Tells the generator: emit `IsServerRuntime` guard, add `internal` modifier on public factory interface, make trimmable. |
-| **Method** `internal` with `[Remote]` | Tells the generator: emit `IsServerRuntime` guard, promote to `public` on factory interface, make trimmable. Client calls via factory. |
-| **Method** `public` | Tells the generator: include on factory interface, no guard. Cannot have `[Remote]` (NF0105 error). |
+| Class `internal` | Hides the concrete type; pair it with a `public` interface (`IOrder`) so the factory returns the interface |
+| Method `internal`, no `[Remote]` | Server-only: guard, `internal` modifier on the interface, trimmable |
+| Method `[Remote] internal` | The client's entry point: guard, promoted to `public`, trimmable |
+| Method `public` | On the interface, no guard, cannot take `[Remote]` |
 
-A `public` method on an `internal` class does **not** behave like an `internal` method for code generation. The method is still unguarded, untrimmable, and included on the public factory interface — even though C# caps its effective accessibility to `internal`.
+A child's operations are `internal` and never `[Remote]`; its `Create` is the exception, `public` and local, so the client builds a child before adding it. A type that is both a child and a root carries both shapes, and the signature tells them apart: `OrderLine`'s child `Fetch` takes its row, its root `Fetch` takes a key and is `[Remote]`:
 
-### Example: All Internal Methods
-
-```csharp
-// Internal class with public interface — recommended pattern for child entities
-public interface IOrderLine
+<!-- snippet: orderline-duality -->
+<a id='snippet-orderline-duality'></a>
+```cs
+/// <summary>
+/// Loads one line by its id, as a root; false when no order holds it.
+/// </summary>
+[Remote, Fetch]
+internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
 {
-    int Id { get; set; }
-    string ProductName { get; set; }
+    var row = await db.FindLineAsync(id);
+    if (row == null)
+        return false;
+
+    LoadFrom(row);
+    return true;
 }
-
-[Factory]
-internal partial class OrderLine : IOrderLine
-{
-    public int Id { get; set; }
-    public string ProductName { get; set; } = "";
-
-    [Create]
-    internal void Create(string productName, decimal price, int qty) { }
-
-    [Fetch]
-    internal void Fetch(int id, string productName, decimal price, int qty) { }
-}
-// Generated: internal interface IOrderLineFactory — client can't inject or see it
-// Both methods get IsServerRuntime guards — trimmable on client
 ```
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L189-L203' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-duality' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-### Example: Mixed Visibility (Entity Duality)
+**CS0051** occurs when an `internal` type appears in a `public` method of a `public` class. On an `internal` class, C# caps its `public` methods at `internal`, so an `internal` factory interface can be a `[Service]` parameter there. If you hit CS0051, make the consuming class `internal`.
 
-```csharp
-[Factory]
-internal partial class Department : IDepartment
-{
-    // [Remote] internal: aggregate root entry point — promoted to public on factory interface, gets guard
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(Guid id, [Service] IDeptRepo repo, CancellationToken ct) { ... }
+## Rules
 
-    // Plain internal: child context — on public interface with `internal` modifier, gets IsServerRuntime guard
-    [Fetch]
-    internal void FetchAsChild(Guid id, string name) { ... }
-}
-// Generated:
-// public interface IDepartmentFactory
-// {
-//     Task<IDepartment?> Fetch(...);            // public — promoted by [Remote]
-//     internal IDepartment FetchAsChild(...);    // internal modifier — same-assembly only
-// }
-```
+1. `partial` on every `[Factory]` class; the generator adds serialization to it.
+2. Public setters on every property that must cross the wire.
+3. `[Remote] internal` on the operations the client calls; `[Remote] public` is NF0105.
+4. Child operations `internal`, never `[Remote]`; a child's `Create` `public` and local.
+5. A class-level `[Execute]` is `static` and returns `Task<T>` of the class's service type.
+6. Business logic lives in the entity, not the factory; the Neatoo skill places it.
 
-For aggregate roots, use `[Remote] internal` for operations that cross to the server (the generator promotes these to `public` on the factory interface). For child entities called only from server-side aggregate operations, use `internal` without `[Remote]`.
+## `[SuppressFactory]`
 
-**CS0051 constraint:** CS0051 occurs when an `internal` type appears in a `public` method on a **`public`** class. When the consuming class is also `internal`, there is no CS0051 — C# caps the effective accessibility of `public` methods to the containing type's level, so `internal` service types are allowed. In practice, this means `internal` factory interfaces (from child entities with all-internal methods) can freely be injected as `[Service]` parameters into other `internal` classes. The constraint only applies when injecting into a **`public`** class. If you hit CS0051, either make the consuming class `internal` or keep the child entity methods `public` — the feature is opt-in and all `public` methods work identically to before.
-
----
-
-## Key Rules
-
-1. **Classes must be `partial`** - Generator adds serialization code
-2. **Properties need public setters** - Required for deserialization
-3. **[Remote] requires `internal`** - on instance methods, `[Remote] public` is a compile-time error (NF0105); `[Remote] internal` is promoted to `public` on the factory interface. Static methods are exempt: `[Remote]` alone decides their placement
-4. **Business logic belongs in the entity** - Not in the factory
-5. **Execute methods must be `static`** - `public static` to run where the factory resolves, `internal static` for server-only; no underscore prefix (unlike static factory Execute). `[Remote]` decides whether the client crosses
-6. **Execute must return the containing type** (or concrete type if no matching interface) - Keeps the factory interface cohesive
-7. **Use `internal` for child entity factory methods** - Server-only, trimmable, invisible to client
-
----
-
-## [SuppressFactory]
-
-The generator handles only types that carry `[Factory]` on their own declaration: a class derived from a `[Factory]` class gets no factory unless it carries `[Factory]` too. `[SuppressFactory]` turns generation off for a class or record that also carries `[Factory]`; on an interface, or on a type without `[Factory]`, it has no effect. `[Factory]` on an `abstract` or generic class is ignored.
+The generator handles only types that carry `[Factory]` on their own declaration: a class derived from a `[Factory]` class gets no factory unless it carries `[Factory]` too ([#141](https://github.com/NeatooDotNet/RemoteFactory/issues/141)). `[SuppressFactory]` turns generation off for a class or record that also carries `[Factory]`; on an interface, or on a type without `[Factory]`, it has no effect. `[Factory]` on an `abstract` or generic class is ignored.

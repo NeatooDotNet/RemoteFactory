@@ -150,4 +150,24 @@ public class LocalExecuteTests
         server.Dispose();
         client.Dispose();
     }
+
+    /// <summary>
+    /// The same control on a class factory: RunCommand differs from ScoreLocally only by
+    /// [Remote], and it is the one that tries to cross the wire.
+    /// </summary>
+    [Fact]
+    public async Task Execute_ClassFactory_WithRemote_TriesTheWire()
+    {
+        // Arrange
+        var (server, client) = ScopesWithNoWire();
+        var factory = client.GetRequiredService<IClassExecuteDemoFactory>();
+
+        // Act / Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => factory.RunCommand("test input"));
+        Assert.Contains("tried to cross the wire", ex.Message, StringComparison.Ordinal);
+
+        server.Dispose();
+        client.Dispose();
+    }
 }
