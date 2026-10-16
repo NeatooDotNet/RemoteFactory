@@ -1,10 +1,8 @@
 # Service Injection
 
-RemoteFactory supports two injection patterns with different scopes.
+Two ways to get a service, resolved on different tiers. Constructor injection is both tiers: the object is built through DI on whichever side holds it. A `[Service]` method parameter is the tier that runs the method: the server for a `[Remote]` or `internal` method, the calling tier for a `public` local one.
 
-## Constructor Injection (Client + Server)
-
-Services injected via constructor are available on **both client and server**.
+## Constructor injection: both tiers
 
 <!-- snippet: service-injection-constructor -->
 <a id='snippet-service-injection-constructor'></a>
@@ -20,33 +18,21 @@ public string TokenFromContext => _tokens.Token;
 <sup><a href='/src/Design/Design.Domain/FactoryPatterns/CtorInjectionExample.cs#L130-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Use constructor injection when:**
-- Service is needed on both client and server
-- Service must survive serialization round-trip
-- Examples: ILogger, IValidator (client-side validation)
+Take a service in the constructor only when it is registered on both tiers, because the client builds the object too. A context's generated factories are the common case: the checkout context in [SKILL.md](../SKILL.md#which-factory-shape) takes `IOrderFactory` and `IOrderLineFactory` so its verbs work on the client.
 
-### How constructor injection actually survives the wire
+**How it survives the wire.** A class whose constructors all need arguments cannot be built from an object initializer, so the generator skips the ordinal serializer for it and the named JSON path is used instead. Named deserialization resolves the instance through `IServiceProvider.GetRequiredService`, and DI calls the constructor with that tier's services: the server's instance on the server, the client's on the client.
 
-A class whose only constructors require non-default arguments cannot be built via object-initializer syntax. The generator detects this at compile time and **skips ordinal serialization** for that type — the compact array-based format is replaced by the named JSON path. That fallback is what makes constructor injection work: named-format deserialization resolves the instance via `IServiceProvider.GetRequiredService`, and DI then invokes your constructor with each side's local service registrations. So the injected service is the *server's* instance on the server and the *client's* instance on the client.
-
-**The rule is purely constructor-shape-based:**
-
-| Constructor shape | Ordinal generated? | Deserialization path |
+| Constructor shape | Ordinal serializer | Deserialized by |
 |---|---|---|
-| No explicit constructor (compiler-generated parameterless) | Yes | Ordinal array |
-| Explicit parameterless constructor | Yes | Ordinal array |
-| All parameters have default values | Yes | Ordinal array |
-| One or more required (non-default) parameters | No | Named JSON + `GetRequiredService` (DI fills ctor params) |
+| None declared, or parameterless | Yes | the ordinal array |
+| Every parameter has a default | Yes | the ordinal array |
+| A parameter without a default | No | named JSON and `GetRequiredService` |
 
-The generator does not look at `[Service]` — only at parameter count and default values. `[Service]` on a ctor parameter is documentation; it does not change which path the generator emits.
+The generator looks at parameter count and defaults, not at `[Service]`. A data parameter in the constructor (`(int id, IRepo repo)`) also turns ordinal off, and DI cannot supply `id`; restore data from public properties instead. Private fields never cross the wire on either path. Public fields differ by path: the ordinal array carries properties only, while the named JSON path includes fields, so a public field crosses there. Prefer public properties for state the other side needs.
 
-**Gotcha:** Mixing required *data* parameters into the constructor (e.g., `MyEntity(int id, IRepo repo)`) also disables ordinal, but DI cannot supply `id` from the container. Either the data needs to be a public property restored from JSON, or you need a parameterless / all-defaults ctor available for DI to choose. Private field state — such as an injected service stored in a `private readonly` field — never crosses the wire on either path. Public fields differ by path: the ordinal array carries properties only, but the named JSON path goes through `System.Text.Json` with `IncludeFields` on, so a public field does cross there. Prefer public properties for state that must reach the other side.
+## `[Service]` parameters: the tier that runs the method
 
----
-
-## Method Injection (Server Only)
-
-Services injected via method parameters are **server-only**.
+On a `[Remote]` method the service is the server's. This is where server-only services go:
 
 <!-- snippet: service-injection-server-only -->
 <a id='snippet-service-injection-server-only'></a>
@@ -61,43 +47,49 @@ internal static async Task<TaxRate?> Fetch(string region, [Service] ITaxTable ta
 <sup><a href='/src/Design/Design.Domain/ValueObjects/TaxRate.cs#L37-L44' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-server-only' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Use method injection when:**
-- Service runs only on server (most common case)
-- Service handles data access, external APIs, etc.
-- Examples: IRepository, IEmailService, IPaymentGateway
+On a `public` local method the service is the calling tier's. `Order.Create` takes the line-list factory, which exists on the client:
 
-### Critical Rule: Don't Store Method-Injected Services
+<!-- snippet: operations-create-method -->
+<a id='snippet-operations-create-method'></a>
+```cs
+/// <summary>
+/// Creates a new Order. Local: runs on the tier that calls it.
+/// </summary>
+[Create]
+public void Create(
+    string customerName,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    CustomerName = customerName;
+    Lines = lineListFactory.Create();
+    Status = OrderStatus.Draft;
+    IsNew = true;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L235-L249' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-create-method' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+A server-only service belongs only on a method that runs on the server: one that is `[Remote]` or `internal`. Repositories, the database context, email and payment gateways are `[Service]` parameters there.
+
+**Use a method-injected service inside the method; never store it.** A field holding it is empty after the object crosses the wire:
 
 ```csharp
-// WRONG - field will be null after round-trip
-private IMyService _service;
+// WRONG - the field is null once the object reaches the client
+private IOrderDbContext _db = null!;
 
-[Remote, Create]
-public void Create([Service] IMyService service)
+[Remote, Fetch]
+internal async Task<bool> Fetch(int id, [Service] IOrderDbContext db)
 {
-    _service = service;  // Lost after serialization!
-}
-
-public void DoSomething()
-{
-    _service.Execute();  // NullReferenceException on client!
+    _db = db;
+    ...
 }
 ```
 
-```csharp
-// RIGHT - use immediately, don't store
-[Remote, Create]
-public void Create([Service] IMyService service)
-{
-    service.DoSomething();  // Use it here
-}
-```
+A service the object needs on both tiers is a constructor parameter.
 
----
+## Child entities: already on the server
 
-## Child Entities (No [Remote])
-
-Child entities within an aggregate do NOT need `[Remote]`:
+A child's operations run inside its root's operation, which has already crossed. They are `internal` and take no `[Remote]`:
 
 <!-- snippet: orderline-child -->
 <a id='snippet-orderline-child'></a>
@@ -147,65 +139,39 @@ internal void Update(OrderLineRow row)
 <sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L145-L187' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-### Why No [Remote] on Children?
+`[Remote]` marks where the client's call crosses. On a child operation it costs no extra round trip - once on the server, `[Remote]` does nothing different - but it is wrong: it promotes the operation to `public` on the factory interface and gives the client its own way in to the child, around the root that should reach it. A child's `Create` is `public` and local, so the client builds the line and adds it to the order.
 
-`[Remote]` marks entry points from client to server. Once execution is on the server, subsequent calls stay there.
+## Registration on each tier
 
-```csharp
-// In Employee.Create (already on server):
-[Remote, Create]
-public void Create(string firstName, [Service] IAssignmentFactory assignmentFactory)
-{
-    FirstName = firstName;
+The server registers the services its `[Service]` parameters take, and the domain services the client calls:
 
-    // assignmentFactory.Create() is server-side - no network call
-    Assignments.Add(assignmentFactory.Create("Project Alpha", 40, DateTime.Today));
-    Assignments.Add(assignmentFactory.Create("Project Beta", 20, DateTime.Today.AddDays(7)));
-}
+<!-- snippet: aspnetcore-service-registration -->
+<a id='snippet-aspnetcore-service-registration'></a>
+```cs
+services.AddScoped<IPhaseAuditService, PhaseAuditService>();
+services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
+services.AddScoped<IProductReviewService, InMemoryProductReviewService>();
+services.AddScoped<IExampleService, ExampleService>();
+services.AddSingleton<ITaxTable, InMemoryTaxTable>();
+services.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
+services.AddSingleton<ISupportLog, InMemorySupportLog>();
+services.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
+services.AddScoped(_ => new TenantTokenService("server-token"));
+services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenService>());
+
+services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L197-L210' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-service-registration' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-### The N+1 Problem
+The client registers only what code running on the client resolves - a bare `[Execute]`'s services, a constructor's services - and nothing server-only:
 
-Adding `[Remote]` to child entities causes N+1 remote calls:
-
-```csharp
-// WRONG - 10 assignments = 10 HTTP calls!
-[Factory]
-public partial class Assignment
-{
-    [Remote, Create]  // DON'T DO THIS
-    public void Create(string name) { }
-}
+<!-- snippet: skill-client-services -->
+<a id='snippet-skill-client-services'></a>
+```cs
+builder.Services.AddScoped<ITextScorer, TextScorer>();
 ```
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L84-L86' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-client-services' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-```csharp
-// RIGHT - all children created in single server call
-[Factory]
-public partial class Assignment
-{
-    [Create]  // No [Remote]
-    public void Create(string name) { }
-}
-```
-
----
-
-## Service Registration
-
-### Server (ASP.NET Core)
-
-```csharp
-// Program.cs
-builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-builder.Services.AddScoped<IEmailService, EmailService>();
-```
-
-### Client (Blazor WASM)
-
-Only register services needed on client:
-
-```csharp
-// Program.cs
-builder.Services.AddSingleton<ILogger, ConsoleLogger>();
-// Don't register server-only services
-```
+`RegisterMatchingName` registers each class for the interface named after it, in the same namespace. It registers concrete types DI may not be able to build, which fails `ValidateOnBuild` ([#131](https://github.com/NeatooDotNet/RemoteFactory/issues/131)).

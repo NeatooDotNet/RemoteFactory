@@ -322,7 +322,7 @@ A `[Factory]` list class is how an aggregate's children are created, loaded and 
 ```cs
 /// <summary>
 /// Creates an empty list. Public and local, so a root created on the client
-/// can create its list there (R-C).
+/// can create its list there.
 /// </summary>
 [Create]
 public void Create()
