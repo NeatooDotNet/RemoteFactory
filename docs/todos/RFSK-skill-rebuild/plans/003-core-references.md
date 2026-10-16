@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No (no public API; three regions added, no behaviour change)
 **Code-review opt-in:** Yes (six pages restate documented rules and generator behaviour; the review checks them against VisionAlignment and the generator)
 **Branch:** RFSK-003-core-references
-**PR:** —
+**PR:** #168
 
 ---
 
