@@ -1,0 +1,3 @@
+You are building zCRM, a CRM: a Blazor WebAssembly client and an ASP.NET Core server on .NET 9, using the RemoteFactory library, without Neatoo, with MudBlazor. There is no existing code. Write every piece of code your answer needs as complete C# and Razor in your reply (do not create or edit files), and say briefly why each piece is where it is.
+
+First, in one short paragraph, explain to a developer new to the team what RemoteFactory is for. Then write two creates: a new Contact, whose default region comes from the server's Settings table, and a new Note for an existing contact, which needs nothing from the server. Show the client code that calls both (assume an EF Core DbContext with Contacts, Notes and Settings tables).

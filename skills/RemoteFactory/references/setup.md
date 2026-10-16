@@ -78,7 +78,7 @@ builder.Services.AddScoped<ITextScorer, TextScorer>();
 
 ## Factory modes
 
-The client registers in `NeatooFactory.Remote` mode: `[Remote]` operations, and operations whose authorization runs on the server (`[AspAuthorize]`, or a `[Remote]` authorization method), go to the server; everything else runs on the client. `NeatooFactory.Logical` runs every operation in one process, with nothing serialized, for tests and single-tier applications:
+The client registers in `NeatooFactory.Remote` mode: a call the client makes to a `[Remote]` operation, or to one whose authorization runs on the server (`[AspAuthorize]`, or a `[Remote]` authorization method), crosses to the server; any other call runs on the tier that makes it, which here is the client. `[Remote]` marks the crossing, not where the code lives: the same operation called on the server runs there locally, and an `internal` operation without `[Remote]` is server-only. `NeatooFactory.Logical` runs every operation in one process, with nothing serialized, for tests and single-tier applications:
 
 <!-- snippet: modes-logical-config -->
 <a id='snippet-modes-logical-config'></a>

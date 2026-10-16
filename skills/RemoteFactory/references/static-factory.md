@@ -127,7 +127,7 @@ A bare command that took a server-only service compiles, then fails on the clien
 - **`Task` or `Task<T>`, never `void`** (NF0102). Return `Task` when there is no result; invent no `bool` that is always `true`.
 - **`static partial class`.** A static `[Factory]` class without `partial` is NF0101.
 - **Value parameters before `[Service]` parameters.** A `[Service]` before a value breaks the generated code today, with no diagnostic ([#135](https://github.com/NeatooDotNet/RemoteFactory/issues/135)).
-- **Trimming.** With `[Remote]`, the command's local registration is guarded by `IsServerRuntime`, so a client published with the switch off drops its body and its `[Service]` dependencies. Without `[Remote]` the body ships to the client and runs there, which is the point. A static method is exempt from NF0105; `[Remote]` alone decides where it runs. [trimming.md](trimming.md).
+- **Trimming.** With `[Remote]`, the command's local registration is guarded by `IsServerRuntime`, so a client published with the switch off drops its body and its `[Service]` dependencies. Without `[Remote]` the body ships to the client and runs there, which is the point. A static method is exempt from NF0105; `[Remote]` alone decides whether the client's call crosses. [trimming.md](trimming.md).
 
 ## Commands, events and fire-and-forget
 
