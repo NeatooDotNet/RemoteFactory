@@ -130,7 +130,7 @@ public static Task<Invoice> GenerateInvoice(int orderId, [Service] IInvoiceServi
 
 **Fix:** a class-level `[Execute]` returns `Task<T>` of its own class's service type (`Task<IOrder>`); a command that returns something else is a static factory command. An analyzer is pending.
 
-## 12. A non-public setter
+## 12. A private setter
 
 ```csharp
 // WRONG - silently left out of serialization
@@ -187,7 +187,7 @@ CS0051 occurs only when an `internal` type appears in a `public` method of a `pu
 | A `public` static command | Conflicts with the delegate | `private static _Name` |
 | An always-`true` result | Tells the caller nothing | `Task` |
 | A class `[Execute]` returning another type | Fails in generated code | A static command |
-| A non-public setter | Dropped from serialization | A public setter |
+| A `private` or `protected` setter | Dropped from serialization | A public setter |
 | No `partial` | Named serialization, or NF0101 | `partial` |
 | A method service in a field | Null on the client | Use it in the method, or inject in the constructor |
 | Parameter defaults | Dropped | Pass every argument |

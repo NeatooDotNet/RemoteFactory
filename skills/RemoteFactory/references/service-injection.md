@@ -28,7 +28,7 @@ Take a service in the constructor only when it is registered on both tiers, beca
 | Every parameter has a default | Yes | the ordinal array |
 | A parameter without a default | No | named JSON and `GetRequiredService` |
 
-The generator looks at parameter count and defaults, not at `[Service]`. A data parameter in the constructor (`(int id, IRepo repo)`) also turns ordinal off, and DI cannot supply `id`; restore data from public properties instead. Private fields never cross the wire on either path; prefer public properties for state the other side needs.
+The generator looks at parameter count and defaults, not at `[Service]`. A data parameter in the constructor (`(int id, IRepo repo)`) also turns ordinal off, and DI cannot supply `id`; restore data from public properties instead. Private fields never cross the wire on either path. Public fields differ by path: the ordinal array carries properties only, while the named JSON path includes fields, so a public field crosses there. Prefer public properties for state the other side needs.
 
 ## `[Service]` parameters: the tier that runs the method
 

@@ -91,7 +91,7 @@ public class ProductCatalog : IProductCatalog
 
 ## Registration
 
-The server registers the implementation. `ProductCatalog` is named for its interface without the leading `I`, in the same namespace, so `RegisterMatchingName` picks it up; `services.AddScoped<IProductCatalog, ProductCatalog>()` is the explicit form. The client registers nothing: the generated registration gives it the proxy.
+The server registers the implementation. `ProductCatalog` is named for its interface without the leading `I`, in the same namespace, so `RegisterMatchingName` picks it up; it registers transient, and `services.AddTransient<IProductCatalog, ProductCatalog>()` is the explicit form. The client registers nothing: the generated registration gives it the proxy.
 
 <!-- snippet: aspnetcore-service-registration -->
 <a id='snippet-aspnetcore-service-registration'></a>

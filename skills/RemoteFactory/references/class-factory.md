@@ -95,7 +95,7 @@ internal async Task Delete([Service] IOrderDbContext db)
 
 `Create` is local: building a new order needs nothing only the server has, so the client calls it with no round trip, and its `[Service]` parameter resolves on the client. It is `[Remote, Create]` only when creation needs the server - tenant defaults, a sequence, an authorization check that needs server services. `Fetch`, `Insert`, `Update` and `Delete` are `[Remote] internal`: the client's call crosses to the server, where the persistence services are.
 
-**Generates** `IOrderFactory` with `Create`, `Fetch`, `OpenDraft` and `Save`. `Insert`, `Update` and `Delete` are not on the interface; `Save` chooses one.
+**Generates** `IOrderFactory` with `Create`, `Fetch`, `OpenDraft` and `Save`, and `FetchDraft` as an `internal` member the client cannot call. `Insert`, `Update` and `Delete` are not on the interface; `Save` chooses one.
 
 ## `IFactorySaveMeta` and Save routing
 

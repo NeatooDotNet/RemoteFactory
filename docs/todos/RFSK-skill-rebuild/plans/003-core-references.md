@@ -4,7 +4,7 @@
 **Date:** 2026-10-16
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-4
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-16
 **Plan-review opt-in:** No (no public API; three regions added, no behaviour change)
 **Code-review opt-in:** Yes (six pages restate documented rules and generator behaviour; the review checks them against VisionAlignment and the generator)
@@ -105,11 +105,20 @@ The flip step was not run, as in RFSK-001: temporary production edits are refuse
 
 ## Gate Record
 
-- 
+- Round 1 (2026-10-16): test review APPROVED, one tech-debt line parked as #167 — `reviews/003-test-review.md`. Code review APPROVED, two callouts fixed (the setter heading and summary row; `FetchDraft` on the generated surface) and three theoretical items taken (amendment below, the public-field fact restored, the explicit registration form made transient) — `reviews/003-code-review.md`
+- No round 2: no veto — Done
 
 ---
 
 ## Plan Amendments
+
+### 2026-10-16 — Two existing regions lose a ruling ID
+
+- **Section affected:** Constraints & Invariants
+- **Original said:** "No existing region is renamed or changed."
+- **What changed:** `collection-factory-basic` (`OrderLine.cs`) and `skill-interface-factory-auth-factory` (`CustomerDirectory.cs`) each lost a ruling ID from a doc comment, as did a line comment in `skill-blazor-usage` (`Home.razor`). No code, name or bound changed.
+- **Why:** the IDs showed through the embeds, and a reader of the skill cannot decode them (AC-6).
+- **Discovery Log:** none; comment-only
 
 ---
 
