@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No (no code, no public API; the code review below checks the doctrine)
 **Code-review opt-in:** Yes (the page restates documented rules: VisionAlignment sections 0, 2 and 4 are the rules it must not contradict)
 **Branch:** RFSK-002-skill-model-and-traps
-**PR:** —
+**PR:** #166
 
 ---
 
