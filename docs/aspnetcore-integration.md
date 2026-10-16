@@ -182,7 +182,7 @@ public async Task Save()
     }
 }
 ```
-<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L94-L120' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/Http/ClientErrorHandlingTests.cs#L96-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-error-handling' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Cancellation
@@ -216,7 +216,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L87-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L88-L108' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Every generated factory method takes an optional `CancellationToken`, so the client passes one in the same call: `await summaryFactory.Fetch(orderId, cancellationToken)`. Cancelling it ends the client's HTTP call and cancels the server's token.

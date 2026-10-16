@@ -242,7 +242,7 @@ internal void Update(OrderLineRow row)
     MapTo(row);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L128-L170' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L145-L187' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 <!-- snippet: orderline-duality -->
@@ -262,7 +262,7 @@ internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L187-L201' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-duality' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L189-L203' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-duality' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Key insight:** [Remote] is about *how the method is called*, not *what the type is*.
@@ -431,7 +431,7 @@ public void AddLine(IOrderLine line)
     Add((OrderLine)line);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L283-L351' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L286-L354' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `OrderLineRow` is the example's stored row for one line, held in the order row's line collection. The list holds no factory: it takes `IOrderLineFactory` as a method parameter in each operation, so nothing has to survive the round trip.

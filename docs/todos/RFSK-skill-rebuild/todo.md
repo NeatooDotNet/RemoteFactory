@@ -65,7 +65,7 @@ VisionAlignment section 4 holds the rows and the answers. This table is the Step
 
 | # | File | Title (≤ 8 words) | Serves | Status | PR |
 |---|------|-------|--------|--------|----|
-| 001 | [001-design-regions-for-trap-rows](./plans/001-design-regions-for-trap-rows.md) | Design regions the trap rows embed | AC-2, AC-3 | Draft | — |
+| 001 | [001-design-regions-for-trap-rows](./plans/001-design-regions-for-trap-rows.md) | Design regions the trap rows embed | AC-2, AC-3 | Done | #164 |
 | 002 | [002-skill-model-and-traps](./plans/002-skill-model-and-traps.md) | SKILL.md: model, trap table, pointers, pains | AC-1, AC-2, AC-6, AC-9, AC-12 | Draft | — |
 | 003 | [003-core-references](./plans/003-core-references.md) | Core references as compiled mechanism | AC-3, AC-4 | Draft | — |
 | 004 | [004-events-trimming-hierarchy-references](./plans/004-events-trimming-hierarchy-references.md) | Events, trimming, hierarchy, advanced references | AC-3, AC-5, AC-9 | Draft | — |
@@ -92,11 +92,16 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 
 ## Discovery Log
 
+### 2026-10-16 — RFSK-001 · serves AC-2
+- **Finding:** No Design test showed a class-level `[Remote, Execute]` crossing the wire; the control used a static command.
+- **Decision:** Amend
+- **Follow-up:** n/a
+
 ---
 
 ## Skipped Steps
 
-- 
+- RFSK-001 Step 5 flip: temporary production edits refused by the permission classifier; regions-only plan, cited tests gated in EXSET.
 
 ---
 

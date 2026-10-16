@@ -270,6 +270,7 @@
     // Context: Checkout
     // -------------------------------------------------------------------------
 
+    #region skill-context-usage
     private async Task StartCheckout()
     {
         try
@@ -321,6 +322,7 @@
             messages += $"Error: {ex.Message}\n";
         }
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Pattern 3: Static Factory - Commands
