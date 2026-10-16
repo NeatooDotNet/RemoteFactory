@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No (an example application; no library, no public API)
 **Code-review opt-in:** Yes (it changes how the example's model serializes, and the example has no tests)
 **Branch:** RFSK-005-person-example-recipe
-**PR:** —
+**PR:** #170
 
 ---
 
