@@ -4,7 +4,7 @@
 **Date:** 2026-10-16
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-10
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-16
 **Plan-review opt-in:** No (an example application; no library, no public API)
 **Code-review opt-in:** Yes (it changes how the example's model serializes, and the example has no tests)
@@ -88,7 +88,8 @@ The Person example has no test project; the plan's bullets are checks on the sou
 
 ## Gate Record
 
-- 
+- Round 1 (2026-10-16): test review APPROVED, no findings — `reviews/005-test-review.md`. Code review APPROVED, two theoretical items taken (an unused using removed; the comment names the ordinal format) — `reviews/005-code-review.md`
+- No round 2: no veto — Done
 
 ---
 

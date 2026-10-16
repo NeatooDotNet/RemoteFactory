@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Neatoo.RemoteFactory;
 using Person.Ef;
 using System.ComponentModel;
@@ -26,7 +25,7 @@ public interface IPersonModel : INotifyPropertyChanged, IFactorySaveMeta
 }
 
 // partial: the generator adds the ordinal serializer, which carries IsNew and IsDeleted
-// across the wire, trimmed or not. They are public get; set; and need no annotation.
+// across the wire in the default (ordinal) format, trimmed or not. They are public get; set; and need no annotation.
 [Factory]
 [AuthorizeFactory<IPersonModelAuth>]
 internal partial class PersonModel : IPersonModel
