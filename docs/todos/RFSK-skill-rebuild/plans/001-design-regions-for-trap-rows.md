@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No (no public API, no behaviour change; region markers and their tests only)
 **Code-review opt-in:** No (mechanical; the test-reviewer gate checks that each region is pinned)
 **Branch:** RFSK-001-design-regions-for-trap-rows
-**PR:** —
+**PR:** #164
 
 ---
 
