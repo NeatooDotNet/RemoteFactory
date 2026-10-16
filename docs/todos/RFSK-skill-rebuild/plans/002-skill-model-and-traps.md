@@ -92,7 +92,14 @@ Walked 2026-10-16 on the arc at `95befa1`.
 
 | Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|---|
-| | | | | |
+| Model statements first | Required | `[explicit-skip]` | the page's `## The model` is the first section after the two-paragraph opening; code review | — |
+| Eleven rows, questions as the Neatoo pointer block | Required | `[explicit-skip]` | code review against `Neatoo/skills/neatoo/SKILL.md:42` | — |
+| Every C# block an embed, each pinned | Required | `[integration]` | 8 fences, 8 embeds. `skill-context-checkout`: `ReadModelAndContextTests.OrderCheckout_LoadsWithItsOrder_InOneCall`, `…_ReturnsNull_WhenOrderDoesNotExist`, `…_VerbsRunOnClient_AndSaveGoesThroughTheRoot`. `operations-class-execute`, `skill-order-fetchdraft`: `CreateOrFetchTests.OpenDraft_FetchesTheCustomersDraft_WhenOneExists`, `…_CreatesANewUnsavedOrder_WhenTheCustomerHasNoDraft`. `skill-orderline-root-and-child`: `OrderLineDualityTests` (all three), `SaveTests` for the child Insert and Update through the order. `skill-execute-*`: `LocalExecuteTests.Execute_ClassFactory_WithRemote_TriesTheWire`, `…_WithoutRemote_RunsOnClient`, `ClassFactoryExecuteTests.Execute_InternalStaticWithoutRemote_RunsOnServer`. `skill-readmodel`: `ReadModelAndContextTests.OrderSummary_*` | ✓ |
+| No contradiction, no fixed defect as open, no ruling ID | Required | `[explicit-skip]` | code review; grep for `D\d`, `R-[A-P]`, `T\d`, `F\d`, `Q\d` finds none (the one "(R-I)", in an embedded comment, was removed from `OrderCheckout.cs`) | — |
+| Points at the Neatoo skill without copying | Required | `[explicit-skip]` | code review | — |
+| Known pains with issue or analyzer | Optional | `[explicit-skip]` | 10 lines: #135, #123, #104, #141, #131, #97, #114, three pending analyzers | — |
+| No LazyLoad guidance | Optional | `[explicit-skip]` | triggers dropped; one mention, the removal warning in Known pains, pointing at the child list `[Remote, Fetch]` | — |
+| mdsnippets clean; both solutions green | Required | `[explicit-skip]` | `reviews/002-*.log`: unit 871, integration 664 (5 skipped), Design 177 (1 skipped), both TFMs | ✓ |
 
 ---
 

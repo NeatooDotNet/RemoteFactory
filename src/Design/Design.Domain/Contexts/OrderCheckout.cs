@@ -81,7 +81,7 @@ internal partial class OrderCheckout : IOrderCheckout
     /// <remarks>
     /// Runs on the server: the order's own Fetch runs there too, as a local
     /// call, so the screen's whole state arrives in one round trip. A missing
-    /// order is a false Fetch, and the factory returns null (R-I).
+    /// order is a false Fetch, and the factory returns null.
     /// </remarks>
     [Remote, Fetch]
     internal async Task<bool> Fetch(int orderId)
