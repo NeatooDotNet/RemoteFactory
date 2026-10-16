@@ -98,7 +98,7 @@ The generator registers the class in `FactoryEventHandlerRegistry` and finds its
 - returns `Task`, not `void` or `Task<T>`;
 - its first parameter that is neither `[Service]` nor `CancellationToken` is `T`;
 - any accessibility;
-- exactly one match: none is NF0501, several is NF0502.
+- exactly one match: several is NF0502; none, when the class declares some `static` method, is NF0501. A class with no `static` method at all gets no diagnostic, and no handler.
 
 Several classes may handle one event, and all of them run. One class may handle several event types by stacking attributes, one matching method per type and each attribute with its own phase and `Coalesce`; the same type twice on one class is NF0504, and only the first registers. A handler class is not a factory: `[Factory]` on it puts it through the wrong generator.
 

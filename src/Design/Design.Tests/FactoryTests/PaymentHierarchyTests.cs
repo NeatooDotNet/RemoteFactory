@@ -51,6 +51,8 @@ public class PaymentHierarchyTests
         var (server, client, _) = DesignClientServerContainers.Scopes();
         var cards = client.GetRequiredService<ICardPaymentFactory>();
         var invoices = client.GetRequiredService<IInvoicePaymentFactory>();
+        var calls = client.GetRequiredService<ServerServiceProvider>();
+        var callsBefore = calls.RemoteCallCount;
 
         var card = await cards.Fetch(PaymentLedger.CardOrderId);
         var invoice = await invoices.Fetch(PaymentLedger.InvoiceOrderId);
@@ -63,6 +65,7 @@ public class PaymentHierarchyTests
         Assert.Equal(120.00m, invoice.Amount);
         Assert.Equal(30, invoice.NetDays);
         Assert.Null(await cards.Fetch(PaymentLedger.InvoiceOrderId));
+        Assert.Equal(callsBefore + 3, calls.RemoteCallCount);
 
         server.Dispose();
         client.Dispose();

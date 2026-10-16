@@ -4,7 +4,7 @@
 **Date:** 2026-10-16
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-3, AC-5, AC-9
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-16
 **Plan-review opt-in:** No (no public API; one new Design example and its tests, no library change)
 **Code-review opt-in:** Yes (four pages restate generator and runtime behaviour, and a new Design example states the inheritance rule #149 is about)
@@ -107,7 +107,8 @@ The flip step was not run (temporary production edits are refused by the permiss
 
 ## Gate Record
 
-- 
+- Round 1 (2026-10-16): test review APPROVED, its theoretical item taken (test 2 asserts the call count) — `reviews/004-test-review.md`. Code review APPROVED, two callouts fixed (the same call count; the `SKILL.md` base-class row limited to abstract or generic bases) and three theoretical items taken (the NF0501 condition, the public-field fact, a code-text path made a link) — `reviews/004-code-review.md`
+- No round 2: no veto — Done
 
 ---
 
