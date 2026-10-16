@@ -37,7 +37,8 @@ RemoteFactory routes each type through one of four paths, chosen by the converte
 In the Ordinal format, the default, `NeatooOrdinalConverterFactory` is registered first. It claims each `[Factory]` class that has a generated ordinal converter (a `partial`, non-nested class whose constructors take no services) and writes the object as a JSON array of its property values.
 
 - **Types:** `[Factory]` classes with a generated ordinal converter, in the Ordinal format only
-- **Reference tracking:** No. The array carries no `$id`/`$ref`, so an object two properties share arrives as two copies. That is a known bug, [#133](https://github.com/NeatooDotNet/RemoteFactory/issues/133); see [Serialization](../serialization.md)
+- **Reference tracking:** Yes -- converter-level. The generated converter calls `NeatooReferenceResolver.Current` through `NeatooOrdinalReferences`, writing `{"$id":"n","$values":[...]}` for an object's first appearance and `{"$ref":"n"}` after it. A back reference needs the class it points at to have only plain setters; see [Serialization](../serialization.md#reference-identity)
+- **Records:** a record's generated converter writes a bare array, with no `$id`/`$ref`, for the reasons below
 
 ### Path 2: `NeatooJsonConverterFactory` Converters (Interfaces and Framework Types)
 
@@ -89,7 +90,7 @@ NeatooJsonSerializer.Serialize()
     +-- JsonSerializer.Serialize(target, OuterOptions)
             |
             +-- [Factory] class with an ordinal converter (Ordinal format):
-            |       Path 1: written as an array, no $id/$ref (#133)
+            |       Path 1: {"$id","$values":[...]}, then {"$ref"} for a repeat
             |
             +-- Interface- or abstract-typed property:
             |       Path 2: $type + $value; the value takes its own path
@@ -119,7 +120,7 @@ Types with **both** a parameterless and a parameterized constructor are NOT clai
 
 | Type Category | Reference Tracked? | Example |
 |---|---|---|
-| `[Factory]` class with an ordinal converter, Ordinal format | No (Path 1, #133) | Design's `Order` |
+| `[Factory]` class with an ordinal converter, Ordinal format | Yes (Path 1) | Design's `Order` |
 | `[Factory]` class with a parameterless constructor, Named format | Yes (Path 3) | Design's `Order` in the Named format |
 | Interface-typed value | As its concrete type's path | `IOrderLineList Lines` |
 | A framework's own entity or list | As its converter does (Path 2) | Neatoo's entity and list base types |
@@ -128,7 +129,7 @@ Types with **both** a parameterless and a parameterized constructor are NOT clai
 | Class with only parameterized ctor | No (Path 4) | `class Foo { public Foo(int x) { } }`, a `[Factory]` class whose constructor takes services |
 | Primitives, enums, strings | N/A | Not reference types; no tracking needed |
 
-**What to expect.** In the Named format, `[Factory]` classes with a parameterless constructor get reference tracking. In the Ordinal format, the default, their generated converter does not track references yet (#133). Value objects (records) get value-based serialization in both. Collections and dictionaries shared across properties preserve identity.
+**What to expect.** `[Factory]` classes with a parameterless constructor get reference tracking in both formats: through STJ in the Named format, through their generated converter in the Ordinal format. Value objects (records) get value-based serialization in both. Collections and dictionaries shared across properties preserve identity.
 
 ## The STJ Limitation in Detail
 

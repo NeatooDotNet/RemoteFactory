@@ -1111,7 +1111,8 @@ internal static class FactoryModelBuilder
                 type: p.Type,
                 isNullable: p.IsNullable,
                 isLazyLoad: p.IsLazyLoad,
-                innerType: p.InnerType))
+                innerType: p.InnerType,
+                isSettableAfterConstruction: p.IsSettableAfterConstruction))
             .ToList();
 
         var constructorParameterNames = typeInfo.PrimaryConstructorParameterNames.ToList();

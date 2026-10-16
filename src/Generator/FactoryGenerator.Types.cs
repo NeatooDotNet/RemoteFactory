@@ -63,7 +63,15 @@ public partial class Factory
 		/// </summary>
 		public string? InnerType { get; }
 
-		public OrdinalPropertyInfo(string name, string type, bool isNullable, int inheritanceDepth, bool isLazyLoad = false, string? innerType = null)
+		/// <summary>
+		/// True when the property can be assigned after construction: its setter is not
+		/// init-only and the property is not required. When every property can, the
+		/// ordinal converter builds the object before reading them, so a back reference
+		/// to it resolves (#133).
+		/// </summary>
+		public bool IsSettableAfterConstruction { get; }
+
+		public OrdinalPropertyInfo(string name, string type, bool isNullable, int inheritanceDepth, bool isLazyLoad = false, string? innerType = null, bool isSettableAfterConstruction = true)
 		{
 			Name = name;
 			Type = type;
@@ -71,6 +79,7 @@ public partial class Factory
 			InheritanceDepth = inheritanceDepth;
 			IsLazyLoad = isLazyLoad;
 			InnerType = innerType;
+			IsSettableAfterConstruction = isSettableAfterConstruction;
 		}
 	}
 
@@ -493,7 +502,8 @@ public partial class Factory
 						isNullable,
 						depth,
 						isLazyLoad,
-						innerType));
+						innerType,
+						isSettableAfterConstruction: !propertySymbol.SetMethod.IsInitOnly && !propertySymbol.IsRequired));
 				}
 			}
 		}

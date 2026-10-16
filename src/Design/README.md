@@ -188,7 +188,7 @@ public bool IsDeleted { get; set; }
 ### Serialization Requirements
 - Properties need **public setters**; the generated ordinal converter writes only properties it can set
 - Value objects are records, deserialized through their constructors
-- The default Ordinal format does not yet preserve a shared reference (#133)
+- Shared and back references between `[Factory]` objects are preserved in both formats; in Ordinal, a back reference needs the type it points at to have only plain setters
 
 ## Running the Projects
 

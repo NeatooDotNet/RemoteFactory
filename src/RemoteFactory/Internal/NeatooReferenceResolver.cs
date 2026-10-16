@@ -26,11 +26,16 @@ public sealed class NeatooReferenceResolver : ReferenceResolver, IDisposable
 	private Dictionary<string, object> _referenceIdToObjectMap = new Dictionary<string, object>();
 	private Dictionary<object, string> _objectToReferenceIdMap = new Dictionary<object, string>(ReferenceEqualityComparer.Instance);
 
+	// Ordinal objects whose $id has been read but which are not built yet: their
+	// properties are read before construction (init-only, required, or a record).
+	private Dictionary<string, Type> _pendingReferenceIdToTypeMap = new Dictionary<string, Type>();
+
 	public void Dispose()
 	{
 		this._referenceCount = 0;
 		this._referenceIdToObjectMap.Clear();
 		this._objectToReferenceIdMap.Clear();
+		this._pendingReferenceIdToTypeMap.Clear();
 	}
 
 	public override void AddReference(string referenceId, object value)
@@ -39,6 +44,23 @@ public sealed class NeatooReferenceResolver : ReferenceResolver, IDisposable
 		{
 			throw new JsonException();
 		}
+		this._pendingReferenceIdToTypeMap.Remove(referenceId);
+	}
+
+	internal void AddPendingReference(string referenceId, Type type)
+	{
+		this._pendingReferenceIdToTypeMap[referenceId] = type;
+	}
+
+	internal bool TryResolveReference(string referenceId, out object? value, out Type? pendingType)
+	{
+		pendingType = null;
+		if (this._referenceIdToObjectMap.TryGetValue(referenceId, out value))
+		{
+			return true;
+		}
+		this._pendingReferenceIdToTypeMap.TryGetValue(referenceId, out pendingType);
+		return false;
 	}
 
 	public bool AlreadyExists(object reference)
