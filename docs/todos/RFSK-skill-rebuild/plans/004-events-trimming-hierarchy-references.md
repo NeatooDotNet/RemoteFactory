@@ -91,9 +91,17 @@ Walked 2026-10-16 on the arc at `7be38fe`.
 
 ## Test Evidence
 
+The flip step was not run (temporary production edits are refused by the permission classifier). Each new test's assertions fail if the behaviour it pins breaks: a base `[Create]` missing from a concrete factory is a compile error in the test; a base property dropped on the wire fails the `Amount` asserts; a lookup that returned the base type fails `IsAssignableFrom<ICardPayment>`; a `Create` that crossed fails the call count.
+
 | Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|---|
-| | | | | |
+| Base `[Create]` on each concrete factory, runs on the client | Required | `[integration]` | `Design.Tests.FactoryTests.PaymentHierarchyTests.ConcreteFactories_CarryTheBasesCreate_AndRunItOnTheClient` | ✓ |
+| Each concrete payment loads across the wire as its own type | Required | `[integration]` | `…PaymentHierarchyTests.ConcretePayments_LoadAcrossTheWire_WithTheirOwnAndTheBasesData` | ✓ |
+| The lookup returns each concrete type through `IPayment` | Required | `[integration]` | `…PaymentHierarchyTests.PaymentLookup_ReturnsEachConcreteType_ThroughTheBaseInterface` | ✓ |
+| The hierarchy page states inheritance as the generator does | Required | `[explicit-skip]` | code review against `FactoryGenerator.cs:19-23` and `FactoryGenerator.Transform.cs:19-31, 58-67` | — |
+| Every C# block an embed or WRONG | Required | `[explicit-skip]` | fences = embeds + WRONG: factory-events 14 = 10 + 4, trimming 3 = 2 + 1, polymorphic-hierarchy 3 = 3 + 0, advanced-patterns 18 = 18 + 0, SKILL.md 8 = 8 + 0 | ✓ |
+| No private-setter recipe, `TrimMode`, Create-persistence, LazyLoad, N+1 | Required | `[explicit-skip]` | grep of the four pages: none of `JsonInclude`, `DynamicDependency`, `lazy`, `N+1`, `CRTP`, "business logic"; the one `TrimMode` line says it needs no setting; code review | — |
+| mdsnippets clean; both green | Required | `[explicit-skip]` | `reviews/004-*.log`: unit 871, integration 664 (5 skipped), Design 180 (1 skipped; +3), both TFMs. No file outside the skill changed | ✓ |
 
 ---
 
