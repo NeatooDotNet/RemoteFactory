@@ -53,3 +53,34 @@ Written by the orchestrator from the code-reviewer's report (close-out mode).
 
 - **AC-7:** not every citation was re-scored. The two per-plan gates did that.
 - **Area 6.12:** the arc PR into `main` was not open yet.
+
+---
+
+# Close-Out Audit — RFSK — 2026-10-16 — Round 2
+
+Re-audit at `0d776d3`, after #174.
+
+**Grade: B.** No veto-tier findings and no callouts. Every Required criterion is traced. The only gap is AC-11, Optional and parked as #173, so B is the grade the checklist allows.
+
+## Round-1 items verified
+
+- **V1:**
+  - Amendment 1 records the send to `desktopNeatooSkills`.
+  - Observation 3 is Dismissed.
+  - The Discovery Log carries the round.
+  - *Could not verify:* the message itself. The Neatoo session's reply, received the same day, confirms it arrived. That session parsed SKR-007's six transcripts: every call stayed inside `~/.claude/skills`, so SKR-007's scoring stands, and the isolated command becomes Neatoo's required mechanism.
+- **Callout 1:** the index line matches `polymorphic-hierarchy.md:104-111`.
+- **Callout 2:** `class-factory.md:118` matches `ClassFactoryRenderer.cs:1131-1170`, including new-and-deleted with no `[Delete]`.
+- **Callout 3:** both issue bodies open with `Origin:`. #173 names both sites, and #171 cites §2, statement 4.
+- **Theoretical items:** taken.
+
+## Also checked
+
+- **The criteria:** AC-1 to AC-12 were re-traced; all hold except AC-11 (#173).
+- **The sync:** `diff -rq` was empty at `0d776d3`.
+- **The embeds:** they match, except one false positive from the reviewer's script. `skill-blazor-inject` is a Razor `@* begin-snippet *@` region, which the script does not parse.
+- **The logs:** `final-*.log` stand, because only markdown changed after them.
+
+## Theoretical (taken)
+
+- **The round-1 Discovery Log entry ran to 86 words.** It is trimmed to under 60.

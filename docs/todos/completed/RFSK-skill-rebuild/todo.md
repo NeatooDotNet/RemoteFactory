@@ -2,7 +2,7 @@
 
 **ID:** RFSK
 **Type:** Enhancement
-**Status:** In Progress
+**Status:** Complete
 **Created:** 2026-10-16
 **Last Updated:** 2026-10-16
 **Initial split:** 6 plans
@@ -106,8 +106,8 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 - **Follow-up:** #173
 
 ### 2026-10-16 — Close-out audit round 1 · serves AC-5, AC-11, AC-12
-- **Finding:** Grade C. V1: RFSK-006's "reported to the Neatoo session at close" was untraced. Callouts: the `SKILL.md` index misdescribed the hierarchy page (AC-5); the missing-operation half of VisionAlignment F5 was absent (AC-12); #171 and #173 lacked an origin line and had wrong locations.
-- **Decision:** Fix all of them on `RFSK-closeout-fixes`. The SKR-007 isolation finding was sent to `desktopNeatooSkills`. Observation 3 is Dismissed. The skill index and the `class-factory.md` save table were edited and re-synced. The issue bodies were corrected. Then re-audit.
+- **Finding:** Grade C. V1: RFSK-006's promised report to the Neatoo session had no trace. Callouts: the hierarchy index line (AC-5), F5's missing-operation half (AC-12), the bodies of #171 and #173.
+- **Decision:** Fix all, in #174; message sent; Observation 3 Dismissed; re-audit.
 - **Follow-up:** `reviews/close-out-audit.md`
 
 ---
@@ -126,11 +126,45 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 
 ## Close-Out Audit
 
+- **2026-10-16 · round 1: C** ([close-out-audit.md](./reviews/close-out-audit.md)). Every criterion traces. One veto-tier item: RFSK-006's report to the Neatoo session had no trace. It was sent and recorded, Observation 3 was Dismissed, and three callouts were fixed in #174.
+- **2026-10-16 · round 2: B.** No findings. The only gap is AC-11, which is Optional and parked as #173.
+
 ---
 
 ## Docs & Retro
+
+**Parked:**
+- #165 (factory visibility)
+- #167 (the Blazor client is never run by a test)
+- #171 (`getting-started.md`'s copy of the T18 sentence; `docs/` was out of scope)
+- #173 (AC-11's wording, which the Neatoo session sends after Keith's next Neatoo todo)
+
+**Release-note lines** for the next release (docs only; no library change):
+- **docs (skill):** the RemoteFactory skill is rebuilt (v2.0.0). It leads with the model, then the eleven habit questions with compiled answers. Every C# block is a `src/Design` region or a WRONG block. It no longer names an interface factory as a repository (#112). It states attribute inheritance as the generator does it (#149), and drops LazyLoad guidance.
+- **docs (example):** the Person example drops the private-setter trimming recipe (#150).
+
+**Documentation check:**
+- The skill's prose and embeds were re-checked at the close-out audit; every embed matches its region.
+- The only `docs/` delta is attribution lines from changed regions.
+- The one doc debt found is #171.
 
 ---
 
 ## Results / Conclusions
 
+Complete, 2026-10-16. Close-out audit: C on round 1, **B** on round 2 ([close-out-audit.md](./reviews/close-out-audit.md)).
+
+**What the skill now does:**
+- `SKILL.md` opens with the five model statements RemoteFactory owns, then the eleven habit-trap rows. Each row has its question, its answer and a compiled example, worded as the Neatoo skill's pointer block words them.
+- Each reference is mechanism over `src/Design` regions.
+- The installed copy matches the repository.
+
+**The fresh-session test:**
+- Ten isolated sessions, given only the installed skills, fell into one row: T18, in prose. That traced to one sentence in `setup.md`, which was fixed; the re-run passes.
+- None fell into SKR-007's four findings.
+
+**Retro.**
+- **The numbers:** 6 plan numbers against a cap of 9, all from the initial split, with no re-splits. 1 finding dismissed, 0 punched, 4 parked (#165, #167, #171, #173), 0 queued. RFSK-006 needed a second gate round, and so did the close-out audit.
+- **Lesson one, isolation:** `claude -p --allowedTools` isolates nothing on a machine whose user settings carry `defaultMode: auto` and blanket read allows. A fresh-session test needs `--permission-mode dontAsk`, path-scoped allows and explicit denies, a probe before the run and a transcript audit after it. SKR-007 had the same gap; its sessions happened to stay inside the skills.
+- **Lesson two, the deferral:** a sentence like "reported to X at close" is a deferral like any other. It needs a row the day it is written; RFSK's only C came from one that had none.
+- **Where the lessons go:** both are routed to memory, and the isolated command is now Neatoo's required mechanism.
