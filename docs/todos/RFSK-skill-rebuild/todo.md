@@ -68,7 +68,7 @@ VisionAlignment section 4 holds the rows and the answers. This table is the Step
 | 001 | [001-design-regions-for-trap-rows](./plans/001-design-regions-for-trap-rows.md) | Design regions the trap rows embed | AC-2, AC-3 | Done | #164 |
 | 002 | [002-skill-model-and-traps](./plans/002-skill-model-and-traps.md) | SKILL.md: model, trap table, pointers, pains | AC-1, AC-2, AC-6, AC-9, AC-12 | Done | #166 |
 | 003 | [003-core-references](./plans/003-core-references.md) | Core references as compiled mechanism | AC-3, AC-4 | Done | #168 |
-| 004 | [004-events-trimming-hierarchy-references](./plans/004-events-trimming-hierarchy-references.md) | Events, trimming, hierarchy, advanced references | AC-3, AC-5, AC-9 | Draft | — |
+| 004 | [004-events-trimming-hierarchy-references](./plans/004-events-trimming-hierarchy-references.md) | Events, trimming, hierarchy, advanced references | AC-3, AC-5, AC-9 | Done | #169 |
 | 005 | [005-person-example-recipe](./plans/005-person-example-recipe.md) | Person example drops the private-setter recipe | AC-10 | Draft | — |
 | 006 | [006-fresh-session-and-sync](./plans/006-fresh-session-and-sync.md) | Fresh-session test, then sync | AC-7, AC-8 | Draft | — |
 

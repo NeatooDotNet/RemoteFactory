@@ -363,7 +363,7 @@ A static method has no promotion to do: on a static factory or a class-level sta
 | How does the client hear about an event? | Register an `IFactoryEventRelay`; it gets each round trip's batch. `RaiseOptions.ServerOnly` keeps an event off it |
 | Where must an operation's event be raised? | Inside the operation, through a `[Service] IFactoryEvents` |
 | Fire-and-forget external IO from an operation? | Not a factory event: `Task.Run` with a new scope from `IServiceScopeFactory`, snapshotting any ambient context first |
-| Can several types share a generic base? | Yes: `[Factory]` on each concrete type, with a CRTP constraint on the base. [polymorphic-hierarchy.md](references/polymorphic-hierarchy.md) |
+| Can several types share a base class? | Yes: `[Factory]` on each concrete type; the base's operation methods join each one's factory, and `[Factory]` on an abstract or generic base does nothing. [polymorphic-hierarchy.md](references/polymorphic-hierarchy.md) |
 | How do I keep server code out of the Blazor bundle? | IL trimming with the `IsServerRuntime` switch set to `false`. [trimming.md](references/trimming.md) |
 | How do I wire the server and the client? | `AddNeatooAspNetCore` and `UseNeatoo()` on the server; `AddNeatooRemoteFactory` in Remote mode and a keyed `HttpClient` on the client. [setup.md](references/setup.md) |
 | Where does business logic go? | In the entity, not the factory. The Neatoo skill places it |
