@@ -1,8 +1,8 @@
 # Neatoo RemoteFactory
 
-**Roslyn Source Generator-powered Data Mapper Factory for 3-tier .NET applications**
+**One domain model on the client and the server, with no DTOs and no controllers between them**
 
-RemoteFactory eliminates DTOs, manual factories, and API controllers by generating everything at compile time. Write domain model methods once, get client and server implementations automatically.
+When the library that defines your objects is loaded on both tiers, as it is with Blazor WebAssembly, the client/server seam needs no DTOs and no API controllers. RemoteFactory is a Roslyn source generator that makes that practical: it generates the factories and the serialization that carry your objects and their operations across the wire, through one endpoint the library maps. Persistence routing (Create, Fetch, then Save to Insert, Update or Delete) is one use of that.
 
 ## The Opportunity
 
@@ -12,7 +12,7 @@ With Blazor WebAssembly, the same .NET library can run on both client and server
 Your domain model lived on the server. To get data to the browser, you serialized to JSON, wrote DTOs to receive it, and mapped back and forth. Two representations of the same thing.
 
 **The new world (Blazor WASM + ASP.NET Core):**
-Your domain model can run in the browser. The same `Employee` class executes client-side and server-side. No translation layer needed.
+Your domain model can run in the browser. The same `Order` is built and edited on the client and loaded and saved on the server. No translation layer needed.
 
 **RemoteFactory makes this practical.** It generates the factories, serialization, and HTTP plumbing so your domain methods "just work" across the wire. One source of truth, zero boilerplate.
 
@@ -32,241 +32,126 @@ Your domain model can run in the browser. The same `Employee` class executes cli
 
 ## Quick Example
 
-Domain model with factory methods:
+The domain model's public interface, which is what the client holds:
+
+<!-- snippet: order-interface -->
+<a id='snippet-order-interface'></a>
+```cs
+public interface IOrder : IFactorySaveMeta
+{
+    int Id { get; set; }
+    string CustomerName { get; set; }
+    OrderStatus Status { get; set; }
+    IOrderLineList Lines { get; set; }
+    Money Total { get; }
+    void AddLine(IOrderLine line);
+    void RemoveLine(IOrderLine line);
+    bool CanSubmit { get; }
+    void Submit();
+    void Cancel();
+    void MarkDeleted();
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L37-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-interface' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+Its factory operations. `Create` runs wherever it is called; the `[Remote]` ones cross to the server, where their `[Service]` parameters are resolved:
 
 <!-- snippet: readme-domain-model -->
 <a id='snippet-readme-domain-model'></a>
 ```cs
-public interface IPerson : IFactorySaveMeta
+/// <summary>
+/// Creates a new Order. Local: runs on the tier that calls it.
+/// </summary>
+[Create]
+public void Create(
+    string customerName,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    Guid Id { get; }
-    string FirstName { get; set; }
-    string LastName { get; set; }
-    string? Email { get; set; }
-    new bool IsDeleted { get; set; }
+    CustomerName = customerName;
+    Lines = lineListFactory.Create();
+    Status = OrderStatus.Draft;
+    IsNew = true;
 }
 
-[Factory]
-[SuppressFactory] // Suppress factory generation for documentation sample
-public partial class Person : IPerson
+/// <summary>
+/// Loads an existing Order and its lines; false when there is none.
+/// </summary>
+[Remote, Fetch]
+internal async Task<bool> Fetch(
+    int id,
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
+    var row = await db.FindAsync(id);
+    if (row == null)
+        return false;
 
-    [Create]
-    public Person()
-    {
-        Id = Guid.NewGuid();
-    }
+    LoadFrom(row, lineListFactory);
+    return true;
+}
 
-    [Remote]
-    [Fetch]
-    internal async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
+/// <summary>
+/// Inserts a new Order and its lines.
+/// </summary>
+[Remote, Insert]
+internal async Task Insert(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    var row = new OrderRow();
+    MapTo(row);
+    db.Add(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+    Id = row.Id;
+}
 
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        LastName = entity.LastName;
-        Email = entity.Email;
-        IsNew = false;
-        return true;
-    }
+/// <summary>
+/// Updates an existing Order and its lines.
+/// </summary>
+[Remote, Update]
+internal async Task Update(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    MapTo(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+}
 
-    [Remote]
-    [Insert]
-    internal async Task Insert([Service] IPersonRepository repository)
-    {
-        var entity = new PersonEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = Email,
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        };
-        await repository.AddAsync(entity);
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-
-    [Remote]
-    [Update]
-    internal async Task Update([Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Person {Id} not found");
-
-        entity.FirstName = FirstName;
-        entity.LastName = LastName;
-        entity.Email = Email;
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-
-    [Remote]
-    [Delete]
-    internal async Task Delete([Service] IPersonRepository repository)
-    {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
-    }
+/// <summary>
+/// Deletes an Order. Its line rows go with its row.
+/// </summary>
+[Remote, Delete]
+internal async Task Delete([Service] IOrderDbContext db)
+{
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    db.Remove(row);
+    await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L9-L93' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-readme-domain-model-1'></a>
-```cs
-public interface IPerson : IFactorySaveMeta
-{
-    Guid Id { get; }
-    string FirstName { get; set; }
-    string LastName { get; set; }
-    string? Email { get; set; }
-    new bool IsDeleted { get; set; }
-}
-
-[Factory]
-public partial class Person : IPerson
-{
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public Person()
-    {
-        Id = Guid.NewGuid();
-    }
-
-    [Remote]
-    [Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        LastName = entity.LastName;
-        Email = entity.Email;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote]
-    [Insert]
-    public async Task Insert([Service] IPersonRepository repository)
-    {
-        var entity = new PersonEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = Email,
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        };
-        await repository.AddAsync(entity);
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-
-    [Remote]
-    [Update]
-    public async Task Update([Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Person {Id} not found");
-
-        entity.FirstName = FirstName;
-        entity.LastName = LastName;
-        entity.Email = Email;
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-
-    [Remote]
-    [Delete]
-    public async Task Delete([Service] IPersonRepository repository)
-    {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
-    }
-}
-```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L13-L96' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L234-L318' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-Client code calls the factory:
+Client code calls the generated factory:
 
 <!-- snippet: readme-client-usage -->
 <a id='snippet-readme-client-usage'></a>
 ```cs
-public static class ClientUsageExample
-{
-    // IPersonFactory is auto-generated from Person class
-    public static async Task BasicOperations(IPersonFactory factory)
-    {
-        // Create a new person
-        var person = factory.Create();
-        person.FirstName = "John";
-        person.LastName = "Doe";
-        person.Email = "john.doe@example.com";
+// The customer's draft: the stored one, or a new one. One server call.
+IOrder? order = await orderFactory.OpenDraft("Customer_42");
 
-        // Save (routes to Insert because IsNew = true)
-        await factory.Save(person);
+// Build a line on the client and add it. No server call.
+order.AddLine(lineFactory.Create("Widget C", 12.50m, 2));
 
-        // Fetch existing
-        var existing = await factory.Fetch(person.Id);
-
-        // Update
-        existing!.Email = "john.updated@example.com";
-        await factory.Save(existing);  // Routes to Update
-
-        // Delete
-        existing.IsDeleted = true;
-        await factory.Save(existing);  // Routes to Delete
-    }
-}
+// Save sends the whole order; keep what it returns.
+order = await orderFactory.Save(order);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L95-L122' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-readme-client-usage-1'></a>
-```cs
-// Create a new person
-// var person = factory.Create();
-// person.FirstName = "John";
-// person.LastName = "Doe";
-// person.Email = "john.doe@example.com";
-//
-// // Save routes to Insert (IsNew = true)
-// var saved = await factory.Save(person);
-//
-// // Fetch an existing person
-// var fetched = await factory.Fetch(saved!.Id);
-// // fetched.FirstName is "John"
-//
-// // Update - Save routes to Update (IsNew = false)
-// fetched!.Email = "john.updated@example.com";
-// await factory.Save(fetched);
-//
-// // Delete - set IsDeleted, then Save
-// fetched.IsDeleted = true;
-// await factory.Save(fetched);
-```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L98-L119' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/OrderUsageTests.cs#L31-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Server automatically exposes the endpoint at `/api/neatoo`. No controllers needed.
@@ -304,279 +189,91 @@ dotnet add package Neatoo.RemoteFactory
 
 For reducing client bundle size, see [IL Trimming](docs/trimming.md) — it removes server-only code at publish time.
 
+
 ## Getting Started
 
-**Server setup (ASP.NET Core):**
+**Server setup (ASP.NET Core):** register RemoteFactory with the assembly that holds your factories:
 
 <!-- snippet: readme-server-setup -->
 <a id='snippet-readme-server-setup'></a>
 ```cs
-// Server setup (Program.cs):
-// services.AddNeatooAspNetCore(typeof(Person).Assembly);
-// app.UseNeatoo();
+services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L124-L128' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-readme-server-setup-1'></a>
-```cs
-public static class ServerSetup
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        // Register Neatoo ASP.NET Core services
-        // services.AddNeatooAspNetCore(typeof(Person).Assembly);
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-        // Register domain services
-        // services.AddScoped<IPersonRepository, PersonRepository>();
-    }
-}
+That call sits in `AddDesignServer()`, the example set's one composition method, beside the server-only services its factory methods take as `[Service]` parameters. `Program` calls that method and adds authentication and the endpoint to the pipeline:
+
+<!-- snippet: getting-started-server-program -->
+<a id='snippet-getting-started-server-program'></a>
+```cs
+var builder = WebApplication.CreateBuilder(args);
+
+// RemoteFactory plus the server-only services [Service] parameters resolve (ServerServices.cs)
+builder.Services.AddDesignServer();
+
+var app = builder.Build();
+
+// Serve the hosted Blazor WASM client
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
+// The RemoteFactory endpoint: one route for every factory call, no controllers
+app.UseNeatoo();
+
+app.MapFallbackToFile("index.html");
+
+await app.RunAsync();
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L121-L133' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Client setup (Blazor WASM):**
 
-<!-- snippet: readme-client-setup -->
-<a id='snippet-readme-client-setup'></a>
+<!-- snippet: getting-started-client-program -->
+<a id='snippet-getting-started-client-program'></a>
 ```cs
-// Client setup (Program.cs):
-// services.AddNeatooRemoteFactory(
-//     NeatooFactory.Remote,
-//     new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-//     typeof(Person).Assembly);
-// services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey, (sp, key) =>
-//     new HttpClient { BaseAddress = new Uri("https://api.example.com/") });
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L130-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-readme-client-setup-1'></a>
-```cs
-public static class ClientSetup
-{
-    public static void ConfigureServices(IServiceCollection services, Uri baseAddress)
-    {
-        // Register Neatoo RemoteFactory for client
-        // services.AddNeatooRemoteFactory(
-        //     NeatooFactory.Remote,
-        //     typeof(Person).Assembly);
+// The factory proxies: calls marked [Remote] go to the server
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
 
-        // Register keyed HttpClient for Neatoo
-        // services.AddKeyedScoped(
-        //     RemoteFactoryServices.HttpClientKey,
-        //     (sp, key) => new HttpClient { BaseAddress = baseAddress });
-    }
-}
+// The HttpClient RemoteFactory sends them with: the server that hosts this client
+builder.Services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L135-L151' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-setup-1' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-**Domain model:**
-
-<!-- snippet: readme-full-example -->
-<a id='snippet-readme-full-example'></a>
-```cs
-[Factory]
-[SuppressFactory] // Suppress factory generation for documentation sample
-[AuthorizeFactory<IPersonAuthorization>]
-public partial class PersonWithAuth : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = "";
-    public string LastName { get; set; } = "";
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public PersonWithAuth() { Id = Guid.NewGuid(); }
-
-    [Remote, Fetch]
-    internal async Task<bool> Fetch(
-        Guid id,
-        [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        LastName = entity.LastName;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote, Insert]
-    internal async Task Insert([Service] IPersonRepository repository)
-    {
-        await repository.AddAsync(new PersonEntity
-        {
-            Id = Id, FirstName = FirstName, LastName = LastName,
-            Email = "", Created = DateTime.UtcNow, Modified = DateTime.UtcNow
-        });
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-
-    [Remote, Update]
-    internal async Task Update([Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException();
-        entity.FirstName = FirstName;
-        entity.LastName = LastName;
-        entity.Modified = DateTime.UtcNow;
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-
-    [Remote, Delete]
-    internal async Task Delete([Service] IPersonRepository repository)
-    {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
-    }
-}
-
-public interface IPersonAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-    bool CanRead();
-
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/ReadmeSamples.cs#L140-L209' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example' title='Start of snippet'>anchor</a></sup>
-<a id='snippet-readme-full-example-1'></a>
-```cs
-[Factory]
-[AuthorizeFactory<IPersonAuthorization>]
-public partial class PersonWithAuth : IFactorySaveMeta
-{
-    public Guid Id { get; private set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public bool IsNew { get; private set; } = true;
-    public bool IsDeleted { get; set; }
-
-    [Create]
-    public PersonWithAuth()
-    {
-        Id = Guid.NewGuid();
-    }
-
-    [Remote]
-    [Fetch]
-    public async Task<bool> Fetch(Guid id, [Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(id);
-        if (entity == null) return false;
-
-        Id = entity.Id;
-        FirstName = entity.FirstName;
-        LastName = entity.LastName;
-        Email = entity.Email;
-        IsNew = false;
-        return true;
-    }
-
-    [Remote]
-    [Insert]
-    public async Task Insert([Service] IPersonRepository repository)
-    {
-        var entity = new PersonEntity
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Email = Email,
-            Created = DateTime.UtcNow,
-            Modified = DateTime.UtcNow
-        };
-        await repository.AddAsync(entity);
-        await repository.SaveChangesAsync();
-        IsNew = false;
-    }
-
-    [Remote]
-    [Update]
-    public async Task Update([Service] IPersonRepository repository)
-    {
-        var entity = await repository.GetByIdAsync(Id)
-            ?? throw new InvalidOperationException($"Person {Id} not found");
-
-        entity.FirstName = FirstName;
-        entity.LastName = LastName;
-        entity.Email = Email;
-        entity.Modified = DateTime.UtcNow;
-
-        await repository.UpdateAsync(entity);
-        await repository.SaveChangesAsync();
-    }
-
-    [Remote]
-    [Delete]
-    public async Task Delete([Service] IPersonRepository repository)
-    {
-        await repository.DeleteAsync(Id);
-        await repository.SaveChangesAsync();
-    }
-}
-
-public interface IPersonAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Create)]
-    bool CanCreate();
-
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-    bool CanRead();
-
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite();
-}
-
-public class PersonAuthorization : IPersonAuthorization
-{
-    private readonly IUserContext _userContext;
-
-    public PersonAuthorization(IUserContext userContext)
-    {
-        _userContext = userContext;
-    }
-
-    public bool CanCreate() => _userContext.IsAuthenticated;
-    public bool CanRead() => _userContext.IsAuthenticated;
-    public bool CanWrite() =>
-        _userContext.IsInRole("Admin") || _userContext.IsInRole("Manager");
-}
-```
-<sup><a href='/src/docs/samples/ReadmeSamples.cs#L153-L255' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-full-example-1' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
-
-See [Getting Started](docs/getting-started.md) for a complete walkthrough.
+For authorization, see [Authorization](docs/authorization.md). See [Getting Started](docs/getting-started.md) for a complete walkthrough.
 
 ## Documentation
 
 - [What Problem Does RemoteFactory Solve?](docs/the-problem.md) - The opportunity and approach
 - [Getting Started](docs/getting-started.md) - Installation and first example
 - [Decision Guide](docs/decision-guide.md) - When to use what
-- [Factory Operations](docs/factory-operations.md) - Create, Fetch, Insert, Update, Delete, Execute, Event
+- [Factory Operations](docs/factory-operations.md) - Create, Fetch, Insert, Update, Delete, Execute
 - [Service Injection](docs/service-injection.md) - DI integration with `[Service]` attribute
 - [Authorization](docs/authorization.md) - Custom auth and ASP.NET Core policies
 - [Serialization](docs/serialization.md) - Ordinal vs Named formats
 - [Save Operation](docs/save-operation.md) - IFactorySave routing pattern
 - [Factory Modes](docs/factory-modes.md) - Server, Remote, Logical runtime modes
-- [Events](docs/events.md) - Fire-and-forget domain events
+- [Factory Events](docs/factory-events.md) - Transactional handlers in the caller's scope, dispatch phases, and the client relay
 - [ASP.NET Core Integration](docs/aspnetcore-integration.md) - Server-side configuration
 - [Attributes Reference](docs/attributes-reference.md) - All available attributes
 - [Interfaces Reference](docs/interfaces-reference.md) - All available interfaces
 
 ## Supported Frameworks
 
-- .NET 8.0 (LTS)
 - .NET 9.0 (STS)
 - .NET 10.0 (LTS)
 
 ## Examples
 
-Complete working examples in `src/Examples/`:
+The compiled, tested source of every example on this page is `src/Design` (the Order domain). Complete applications are in `src/Examples/`:
 
 - **Person** - Simple Blazor WASM CRUD application
 - **OrderEntry** - Order entry system with aggregate roots

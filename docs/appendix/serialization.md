@@ -8,13 +8,9 @@ RemoteFactory's custom serialization exists because System.Text.Json makes three
 
 ### 1. Interface-Typed Properties Lose Their Concrete Type
 
-When System.Text.Json encounters an interface-typed property, it has no way to round-trip it:
+When System.Text.Json encounters an interface-typed property, it has no way to round-trip it. Design's `IOrder` declares `IOrderLineList Lines { get; set; }`, and an `IContactInfo PrimaryContact` property is the same shape.
 
-```csharp
-public IContactInfo PrimaryContact { get; set; }
-```
-
-On **serialization**, STJ serializes only the properties declared on `IContactInfo`, silently dropping any properties that exist on the concrete type (`EmailContact`, `PhoneContact`). On **deserialization**, STJ fails entirely — it can't construct an interface.
+On **serialization**, STJ serializes only the properties declared on the interface, silently dropping any that exist only on the concrete type (`EmailContact`, `PhoneContact`). On **deserialization**, STJ fails entirely — it can't construct an interface.
 
 STJ's built-in solution (`[JsonPolymorphic]` + `[JsonDerivedType]`) requires you to annotate every interface with every possible concrete type at compile time. In a DDD application where the domain model defines the interfaces and concrete types evolve independently, this is impractical.
 
@@ -31,30 +27,31 @@ The concrete type's `FullName` (namespace-qualified, **not** assembly-qualified)
 
 ### 2. Deserialized Objects Need DI Services
 
-System.Text.Json creates instances using `Activator.CreateInstance()` — a bare constructor call with no DI awareness. In a DDD application, domain objects have constructor-injected services:
+System.Text.Json creates instances using `Activator.CreateInstance()` — a bare constructor call with no DI awareness. In a DDD application, domain objects have constructor-injected services. Design's `CtorInjectedEntity`:
 
-```csharp
-[Factory]
-public partial class Employee
+<!-- snippet: service-injection-constructor -->
+<a id='snippet-service-injection-constructor'></a>
+```cs
+public CtorInjectedEntity(ITenantTokenService tokens)
 {
-    private readonly IValidationService _validator;
-
-    public Employee([Service] IValidationService validator)
-    {
-        _validator = validator;
-    }
+    _tokens = tokens;
 }
-```
 
-If STJ deserializes this, `_validator` is null. The domain object is broken.
+// Read on whichever tier holds the instance: the client's service after the round trip
+public string TokenFromContext => _tokens.Token;
+```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/CtorInjectionExample.cs#L130-L138' title='Snippet source file'>snippet source</a> | <a href='#snippet-service-injection-constructor' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+STJ binds a parameterized constructor from the JSON's properties, and the JSON carries no `tokens` to bind: the service is never supplied, and the domain object is broken.
 
 RemoteFactory's deserialization resolves instances from the DI container (`ServiceProvider.GetRequiredService()`), so constructor-injected services are wired up on deserialization exactly as they would be on creation.
 
 ### 3. Shared Object Identity Is Lost
 
-When two properties reference the same object instance (common in aggregate root / child entity relationships), STJ duplicates it -- creating two independent copies. RemoteFactory preserves identity using `$id` / `$ref` pointers, maintaining the object graph structure across the wire.
+When two properties reference the same object instance (common in aggregate root / child entity relationships), STJ duplicates it -- creating two independent copies. RemoteFactory sets `NeatooPreserveReferenceHandler` on `JsonSerializerOptions` so the serializer writes `$id` / `$ref` pointers, maintaining the object graph structure across the wire.
 
-This applies to Neatoo types (via custom converters) and mutable reference types like `Dictionary`, `List`, and plain classes with default constructors (via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`). Types with parameterized constructors (records, immutable types) are intentionally excluded from reference tracking -- they are DDD value objects where duplication on round-trip is semantically correct. See [Appendix: Record Reference Handling](record-reference-handling.md) for the rationale.
+This applies to mutable reference types like `Dictionary`, `List`, and plain classes with default constructors, to `[Factory]` classes with a parameterless constructor in the Named format, and to a framework's types whose converters track references themselves (Neatoo's do). A `[Factory]` class whose constructor takes services has no parameterless constructor, so it takes the record path and is not tracked in either format. Nor does it yet apply to a `[Factory]` class serialized by its generated converter in the Ordinal format, the default: that array carries no `$id` / `$ref`, a known bug ([#133](https://github.com/NeatooDotNet/RemoteFactory/issues/133)). Types with parameterized constructors (records, immutable types) are intentionally excluded from reference tracking -- they are DDD value objects where duplication on round-trip is semantically correct. See [Appendix: Record Reference Handling](record-reference-handling.md) for the rationale.
 
 ## Type Resolution Pipeline
 
@@ -77,11 +74,21 @@ Both sides reference the same domain assembly (`MyApp.Domain.dll`), but the runt
 
 Type resolution is handled by `ServiceAssemblies` (`src/RemoteFactory/Internal/ServiceAssemblies.cs`), which maintains a dictionary mapping `Type.FullName` strings to `Type` objects.
 
-**Registration** — During DI setup, the application passes its domain assemblies to `AddNeatooRemoteFactory()`:
+**Registration** — During DI setup, the application passes its domain assemblies to `AddNeatooRemoteFactory()`. Design's client:
 
-```csharp
-services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Employee).Assembly);
+<!-- snippet: getting-started-client-program -->
+<a id='snippet-getting-started-client-program'></a>
+```cs
+// The factory proxies: calls marked [Remote] go to the server
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
+
+// The HttpClient RemoteFactory sends them with: the server that hosts this client
+builder.Services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
+    (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 ```
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 `ServiceAssemblies` iterates every type in those assemblies and indexes them by `FullName`:
 
@@ -122,12 +129,6 @@ This applies equally to single properties and collection elements. A `List<ICont
 
 The `DelegateFullName` field in `RemoteRequestDto` serves a different purpose from `$type` — it's a **routing key**, not a serialization discriminator.
 
-When the client calls a `[Remote]` factory method, the generated code sends a request containing the delegate type's `FullName`. The server uses this to look up the corresponding delegate in the DI container:
-
-```csharp
-// Server-side: resolve the delegate type, then resolve the delegate from DI
-var delegateType = serviceAssemblies.FindType(request.DelegateFullName);
-var method = (Delegate)serviceProvider.GetRequiredService(delegateType);
-```
+When the client calls a `[Remote]` factory method, the generated code sends a request containing the delegate type's `FullName`. The server resolves that name to the delegate type with `ServiceAssemblies.FindType`, then resolves the delegate itself from the request's DI scope and invokes it.
 
 The delegate type identifies *which operation to run*. The `ObjectJson` parameters identify *what data to pass*. Both use `FullName` for type identification, but they serve fundamentally different roles.

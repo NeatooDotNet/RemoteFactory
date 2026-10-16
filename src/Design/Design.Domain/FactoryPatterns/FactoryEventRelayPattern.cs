@@ -68,7 +68,9 @@ namespace Design.Domain.FactoryPatterns;
 ///
 /// The rule: Events are records that inherit FactoryEventBase. Nothing else required.
 /// </remarks>
+#region events-event
 public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
+#endregion
 
 // -----------------------------------------------------------------------------
 // SERVER-SIDE RAISER — a factory method raises the event during its execution
@@ -89,7 +91,7 @@ public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventB
 /// PREFER THIS OVER a separate client-side raise
 ///
 /// LESS GOOD:
-///     var result = await factory.Create(...);
+///     order = await factory.Save(order);
 ///     await factoryEvents.Raise(new MyEvent(...));  // a SECOND round-trip
 ///
 /// BETTER: Raise inside the factory method itself, while still on the server.
@@ -101,25 +103,52 @@ public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventB
 /// and it costs a second round-trip. Raise inside the method when the event
 /// belongs to the operation.
 /// </remarks>
-public interface ICheckoutOrder
+public interface ICheckoutOrder : IFactorySaveMeta
 {
     int Id { get; set; }
     decimal Total { get; set; }
 }
 
+/// <summary>
+/// A checkout created on the client and saved to the server, where its write raises the event.
+/// </summary>
+/// <remarks>
+/// DESIGN DECISION: Raise from the write, not from Create (VisionAlignment D3)
+///
+/// Create is `new` and runs locally; nothing has happened yet that anyone needs to
+/// hear about. The checkout completes when the order is stored, so the Insert
+/// raises the event, inside the same server call and scope as the write.
+///
+/// DID NOT DO THIS: [Remote, Create] that raises the event
+///
+/// It sends `new` to the server, and announces a checkout that was never stored:
+/// the client can discard the object it got back.
+/// </remarks>
 [Factory]
 internal partial class CheckoutOrder : ICheckoutOrder
 {
     public int Id { get; set; }
     public decimal Total { get; set; }
+    public bool IsNew { get; set; } = true;
+    public bool IsDeleted { get; set; }
 
     public CheckoutOrder() { }
 
-    [Remote, Create]
-    internal async Task Create(int id, decimal total, [Service] IFactoryEvents factoryEvents)
+    [Create]
+    public void Create(int id, decimal total)
     {
-        this.Id = id;
-        this.Total = total;
+        Id = id;
+        Total = total;
+    }
+
+    /// <summary>
+    /// Stores the checkout and announces it to server handlers and the client.
+    /// </summary>
+    #region events-raise
+    [Remote, Insert]
+    internal async Task Insert([Service] IFactoryEvents factoryEvents, CancellationToken cancellationToken)
+    {
+        // A real Insert writes the row here, then raises.
 
         // Raise the event. With default RaiseOptions.None, the event is:
         //   1. Dispatched to every server-side [FactoryEventHandler<T>] static-method
@@ -131,8 +160,14 @@ internal partial class CheckoutOrder : ICheckoutOrder
         //      client, IFactoryEventRelay.Relay(...) is invoked fire-and-forget
         //      strictly AFTER this factory method's return value has been handed
         //      back to the caller and their continuation has resumed.
-        await factoryEvents.Raise(new OrderCheckoutCompleted(id, total));
+        // The save's token is threaded through, so handlers that take a
+        // CancellationToken observe the caller's cancellation.
+        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.None, cancellationToken);
+
+        // Stored: the next Save routes to Update.
+        IsNew = false;
     }
+    #endregion
 
     /// <summary>
     /// Demonstrates RaiseOptions.ServerOnly — dispatches to server handlers but
@@ -141,16 +176,62 @@ internal partial class CheckoutOrder : ICheckoutOrder
     /// <remarks>
     /// Use ServerOnly when the event is a server-internal concern (e.g.,
     /// triggering a downstream process) that the UI doesn't need to know about.
+    /// Here a change to a stored checkout is re-announced to the server's handlers
+    /// only; the client made the change and already knows.
     /// </remarks>
-    [Remote, Create]
-    internal async Task CreateWithServerOnlyEvent(int id, decimal total, [Service] IFactoryEvents factoryEvents)
+    #region events-serveronly
+    [Remote, Update]
+    internal async Task Update([Service] IFactoryEvents factoryEvents, CancellationToken cancellationToken)
     {
-        this.Id = id;
-        this.Total = total;
-
         // ServerOnly: server handlers run, client does NOT receive the event
-        await factoryEvents.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.ServerOnly);
+        await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.ServerOnly, cancellationToken);
     }
+    #endregion
+}
+
+/// <summary>
+/// The server's ledger of checkouts. Server-only: injected with [Service] into
+/// <see cref="CheckoutLedgerHandler"/>, never called by the client.
+/// </summary>
+public interface ICheckoutLedger
+{
+    Task RecordAsync(int orderId, decimal total, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// In-memory checkout ledger standing in for a ledger table.
+/// </summary>
+/// <remarks>
+/// Named InMemoryCheckoutLedger, not CheckoutLedger, so RegisterMatchingName does not
+/// pick it up on a client; it is registered explicitly on the server.
+/// </remarks>
+public class InMemoryCheckoutLedger : ICheckoutLedger
+{
+    private readonly ConcurrentQueue<(int OrderId, decimal Total)> _entries = new();
+
+    public IReadOnlyCollection<(int OrderId, decimal Total)> Entries => _entries.ToArray();
+
+    public Task RecordAsync(int orderId, decimal total, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _entries.Enqueue((orderId, total));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Demonstrates: the server handler for <see cref="OrderCheckoutCompleted"/>. It runs
+/// in the save's scope for both the Insert's raise and the Update's ServerOnly raise,
+/// and receives the token the write passed to Raise.
+/// </summary>
+[FactoryEventHandler<OrderCheckoutCompleted>]
+public static partial class CheckoutLedgerHandler
+{
+    internal static Task Record(
+        OrderCheckoutCompleted checkout,
+        [Service] ICheckoutLedger ledger,
+        CancellationToken cancellationToken)
+        => ledger.RecordAsync(checkout.OrderId, checkout.Total, cancellationToken);
 }
 
 // -----------------------------------------------------------------------------
@@ -190,8 +271,10 @@ public record NoticeAcknowledged(int OrderId) : FactoryEventBase;
 ///      client-side handlers observe it at all.
 ///   2. NoticeAcknowledged — raised by the handler below.
 ///
-/// Pass RaiseOptions.ServerOnly to suppress the relay entirely: handlers still run
-/// server-side, and the client receives an empty batch.
+/// Pass RaiseOptions.ServerOnly to keep the raised event itself out of the batch:
+/// handlers still run server-side. ServerOnly applies to that event only. An event
+/// a handler raises with RaiseOptions.None is still relayed, so with ServerOnly the
+/// batch here would be [NoticeAcknowledged].
 ///
 /// The await covers the whole chain. Raise returns only after every server handler
 /// has completed, and a handler exception propagates back to the client — a client
@@ -228,7 +311,7 @@ public static partial class ClientRaisedNoticeHandler
 ///    implementation BEFORE calling AddNeatooRemoteFactory (TryAdd keeps it) OR
 ///    AFTER (standard DI override replaces the NoOp).
 /// 3. Relay.Relay is called fire-and-forget on a separate continuation, so the
-///    caller's `_entity = await factory.Create(...)` assignment has already
+///    caller's `_entity = await factory.Save(_entity)` assignment has already
 ///    completed when Relay fires — handlers that read caller state see the new
 ///    value.
 /// 4. Exceptions thrown by Relay are caught and logged; they never propagate to
@@ -245,6 +328,7 @@ public static partial class ClientRaisedNoticeHandler
 ///
 /// The rule: Implement IFactoryEventRelay, register it, bridge to your aggregator.
 /// </remarks>
+#region events-relay
 public sealed class InMemoryAggregatorRelay : IFactoryEventRelay
 {
     private readonly ConcurrentQueue<FactoryEventBase> _received = new();
@@ -267,3 +351,4 @@ public sealed class InMemoryAggregatorRelay : IFactoryEventRelay
         return Task.CompletedTask;
     }
 }
+#endregion

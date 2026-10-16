@@ -97,8 +97,8 @@ internal partial class ParamAuthOrder : IParamAuthOrder, IFactorySaveMeta, IFact
     /// <summary>
     /// Create a new order. Auth: CanRead() only (no Guid param for type matching).
     /// </summary>
-    [Remote, Create]
-    internal void Create(string customerName)
+    [Create]
+    public void Create(string customerName)
     {
         Id = Guid.NewGuid();
         CustomerName = customerName;

@@ -15,7 +15,7 @@ Follow this workflow when working with RemoteFactory patterns:
 1. **To understand a pattern**: Read the relevant file in `Design.Domain/`
    - `FactoryPatterns/AllPatterns.cs` - All three patterns side-by-side
    - `Aggregates/Order.cs` - Complete lifecycle example
-   - `Entities/OrderLine.cs` - Child entity without [Remote]
+   - `Entities/OrderLine.cs` - Child entity with no [Remote] child operation, and the same class as a root (entity duality)
 
 2. **To verify syntax**: Check `Design.Tests/FactoryTests/` for working examples
    - Tests demonstrate correct usage that compiles and runs
@@ -35,8 +35,8 @@ Follow this workflow when working with RemoteFactory patterns:
 
 | Pattern | Use When | Example | Key Characteristics |
 |---------|----------|---------|---------------------|
-| **Class Factory** | Aggregate roots with lifecycle, entities needing Create/Fetch/Save | `Order`, `Customer`, `Invoice` | Instance state, serializable, IFactorySaveMeta support |
-| **Interface Factory** | Remote services without entity identity | `IOrderRepository`, `IPaymentService` | Server implementation, client proxy, no operation attributes |
+| **Class Factory** | Aggregate roots with lifecycle, entities needing Create/Fetch/Save | `Order`, `CheckoutOrder`, `ClassExecuteDemo` | Instance state, serializable, IFactorySaveMeta support |
+| **Interface Factory** | A domain service the client calls (never a repository) | `IProductCatalog`, `ICustomerDirectory` | Server implementation, client proxy, no operation attributes |
 | **Static Factory** | Stateless commands and side effects | `EmailCommands.SendNotification` | No instance state, [Execute] operation; `[Remote]` decides whether it crosses to the server |
 
 ### Detailed Guidance
@@ -71,14 +71,14 @@ internal partial class MyEntity : IMyEntity
 {
     public int Id { get; set; }  // Public setter required for serialization
 
-    [Remote, Create]
-    internal void Create(string name, [Service] IMyService service) { }
+    [Create]
+    public void Create(string name, [Service] IMyChildListFactory children) { }  // local
 
     [Remote, Fetch]
-    internal void Fetch(int id, [Service] IMyService service) { }
+    internal Task<bool> Fetch(int id, [Service] IMyDbContext db) { }  // false -> null
 }
 ```
-**Generates**: `public IMyEntityFactory` with `Create()`, `Fetch()` methods returning `IMyEntity`. `[Remote]` promotes `internal` methods to `public` on the factory interface.
+**Generates**: `public IMyEntityFactory` with `Create()` (runs on the calling tier) and `Fetch()` (crosses to the server), returning `IMyEntity`. `[Remote]` promotes `internal` methods to `public` on the factory interface. A root's `[Create]` is the equivalent of `new` and is local; it is `[Remote]` only when creation needs something only the server has, such as tenant defaults or a sequence (VisionAlignment D14).
 
 ### Pattern 1b: Class Factory (Child Entity)
 ```csharp
@@ -90,52 +90,56 @@ internal partial class MyChild : IMyChild
     public int Id { get; set; }
 
     [Create]
-    internal void Create(string name) { }  // internal = server-only, trimmable
+    public void Create(string name) { }  // public, local: the client builds a child, then adds it
 
     [Fetch]
-    internal void Fetch(int id, string name) { }
+    internal void Fetch(MyChildRow row) { }  // internal = server-only, trimmable
+
+    [Insert]
+    internal void Insert(MyChildRow row) { }  // maps itself into the row its list hands it
 }
 ```
-**Generates**: `internal IMyChildFactory` with `Create()`, `Fetch()` methods. Not visible to client.
+**Generates**: `public IMyChildFactory` with a public `Create()`; `Fetch()` and `Save(target, row)` are `internal` interface members the server-side cascade calls. A child's `[Create]` is its one public operation (VisionAlignment R-C). For the save and load cascade, in which each object maps its own row, see `Order.cs`, `OrderLine.cs` and `OrderPersistence.cs` (R-D).
 
-### Pattern 2: Interface Factory
+### Pattern 2: Interface Factory (a domain service the client calls)
 ```csharp
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
-    Task<List<Item>> GetAllAsync();      // No operation attributes needed
-    Task<Item?> GetByIdAsync(int id);    // All methods become remote
+    Task<IReadOnlyList<ProductListing>> SearchAsync(string text);  // No operation attributes needed
+    Task<ProductListing?> FindBySkuAsync(string sku);              // All methods become remote
 }
 ```
-**Generates**: Proxy implementation that serializes to server.
+**Generates**: Proxy implementation that serializes to server. Name the interface for what it does. A repository is never an interface factory: persistence is a `[Service]` injected into server-side operations, as `Order` injects `IOrderDbContext` (VisionAlignment D12). See `AllPatterns.cs` (`IProductCatalog`). A method with no result returns `Task` (v1.10.4; `ICustomerDirectory.CloseAccount`).
 
 ### Pattern 2a: Interface Factory with [AuthorizeFactory<T>]
 ```csharp
-public interface IRepositoryAuth
+public interface ICustomerDirectoryAuth
 {
-    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool HasAccess();           // every method
-    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool CanAccessItem(Guid id); // methods with matching Guid param
+    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool HasAccess();                       // every method
+    [AuthorizeFactory(AuthorizeFactoryOperation.Execute)] bool CanAccessCustomer(Guid customerId); // methods with matching Guid param
 }
 
 [Factory]
-[AuthorizeFactory<IRepositoryAuth>]
-public interface IAuthorizedRepository
+[AuthorizeFactory<ICustomerDirectoryAuth>]
+public interface ICustomerDirectory
 {
-    Task<Item?> GetItem(Guid id);                 // No attributes — Anti-Pattern 2 / Critical Rule 4
-    Task<Item>  UpdateItem(Guid id, string name);
+    Task<CustomerProfile?> GetCustomer(Guid customerId);             // No attributes — Anti-Pattern 2 / Critical Rule 4
+    Task<CustomerProfile>  RenameCustomer(Guid customerId, string name);
+    Task CloseAccount(Guid customerId);
 }
 
-public class AuthorizedRepository : IAuthorizedRepository { /* plain service class */ }
+public class CustomerDirectory : ICustomerDirectory { /* plain service class */ }
 ```
-**Generates**: `IAuthorizedRepositoryFactory : IAuthorizedRepository` with `Can{Method}(matching-params)` helpers. `Local{Method}` invokes all applicable auth methods and throws `NotAuthorizedException` on denial before calling the impl.
+**Generates**: `ICustomerDirectoryFactory : ICustomerDirectory` with `Can{Method}(matching-params)` helpers. `Local{Method}` invokes all applicable auth methods and throws `NotAuthorizedException` on denial before calling the impl.
 
 **Key rules:**
 - Scopes `Execute` and `Read` apply uniformly across all interface methods. CRUD scopes (`Create`/`Fetch`/`Insert`/`Update`/`Delete`) silently never fire because interface methods have no CRUD operation.
-- Parameter matching by type enables per-method authorization (e.g., `CanAccessItem(Guid id)` runs only on interface methods that have a `Guid` parameter).
-- The impl class is a plain service — no `[Factory]`, no operation attributes, no `[Remote]`. Register it on the server only (`services.AddScoped<IAuthorizedRepository, AuthorizedRepository>()`).
+- Parameter matching by type enables per-method authorization (e.g., `CanAccessCustomer(Guid customerId)` receives the `Guid` from each interface method). Keep every method on the auth-matched parameter type: a method that lacks it fails CS7036 (#123).
+- The impl class is a plain service — no `[Factory]`, no operation attributes, no `[Remote]`. Name it for the interface without its `I`, in the same namespace, and `RegisterMatchingName` registers it on the server.
 - Contrast with `AuthorizedOrder.cs` (class factory, CRUD scopes, `CanCreate`/`CanFetch`/`CanSave`/`CanDelete`).
 
-See `AuthorizedRepository.cs` for the fully-commented pedagogy file.
+See `Services/CustomerDirectory.cs` for the fully-commented pedagogy file.
 
 ### Pattern 3: Static Factory
 ```csharp
@@ -165,16 +169,16 @@ Instance-method `[FactoryEventHandler<T>]` handlers compile but are silently ski
 public record OrderPlacedEvent(int OrderId, string Email) : FactoryEventBase;
 ```
 
-**Server-side raiser** (in any factory method):
+**Server-side raiser** (a write or a command; never a `[Create]`, which is `new` — D3):
 ```csharp
 [Factory]
 internal partial class Order
 {
-    [Remote, Create]
-    internal async Task Create(int id, [Service] IFactoryEvents events)
+    [Remote, Insert]
+    internal async Task Insert([Service] IOrderDbContext db, [Service] IFactoryEvents events)
     {
-        // ... do work ...
-        await events.Raise(new OrderPlacedEvent(id, "x@y.com"));
+        // ... write the row, flush ...
+        await events.Raise(new OrderPlacedEvent(Id, CustomerEmail));
     }
 }
 ```
@@ -228,16 +232,18 @@ The consumer drain pattern — `[Service]`-inject the coordinator (method
 injection, server-only) and drain **inside the factory method body**:
 
 ```csharp
-[Remote, Create]
-internal async Task Finalize(Guid id, [Service] AppDbContext db,
+// A command (static [Execute]), or a [Remote] Insert/Update; never a [Create] (D3)
+[Execute, Remote]
+internal static async Task<FinalizedInvoice> _Finalize(Guid id, decimal total, [Service] AppDbContext db,
     [Service] IFactoryEvents events,
     [Service] IFactoryEventPhaseCoordinator coordinator, CancellationToken ct)
 {
     // ... stage writes ...
-    await events.Raise(new InvoiceFinalizedEvent(id), RaiseOptions.None, ct); // Immediate handlers run here
+    await events.Raise(new InvoiceFinalizedEvent(id, total), RaiseOptions.None, ct); // Immediate handlers run here
     await db.SaveChangesAsync(ct);                          // flush — keys exist, tx open
     await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct); // AfterFlush handlers run here
     await db.Database.CurrentTransaction!.CommitAsync(ct);  // commit
+    return new FinalizedInvoice(id, total);
 }   // AfterCommit handlers run after this returns
 ```
 
@@ -364,23 +370,25 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 
 | Question | Answer | Reference | Reason |
 |----------|--------|-----------|--------|
-| Should this method be [Remote]? | Only aggregate root entry points | `Order.cs` vs `OrderLine.cs` | Once on server, stay on server |
+| Should this method be [Remote]? | Only when the client calls it and the call must cross to the server: a root's Fetch and writes, a server-needing [Execute]. Not a child operation, a local Create, or a bare [Execute] | `Order.cs` vs `OrderLine.cs` (whose root Fetch is [Remote]; its child operations are not) | Once on server, stay on server |
 | Should a [Remote] method be `internal`? | On instance methods, yes -- `[Remote]` requires `internal` (NF0105 error if `public`). Static methods are exempt: a static-factory [Execute] is `private static` behind a generated wrapper, a class-level [Execute] `public static` | `Order.cs`; `ClassFactoryWithExecute.cs` | Enables IL trimming; `[Remote]` promotes to `public` on factory interface; on static methods `[Remote]` alone drives the guard |
 | Does [Execute] need [Remote]? | Only when it needs the server -- [Execute] obeys [Remote]. Bare: one unguarded local path, runs where resolved with that tier's services. With [Remote]: the client crosses. On a class factory, `internal static` without [Remote] is server-only | `AllPatterns.cs` (`_SendNotification` / `_ScoreText`), `ClassFactoryWithExecute.cs` (`RunCommand` / `ScoreLocally` / `ArchiveOnServer`) | Client-side engines must not round-trip; both halves measured in RemoteFactory.TrimmingTests |
-| Should non-[Remote] methods be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
-| Can I use private setters? | No | `AllPatterns.cs:73` | IL trimming + source generation |
+| Should non-[Remote] methods be `internal`? | Yes, if only called from server-side code (child entities, within-aggregate ops). A child's `[Create]` is the exception: `public` and local, so the client can build a child (R-C) | `OrderLine.cs` | Internal methods get `IsServerRuntime` guard and are trimmable |
+| Can I use private setters? | No | `AllPatterns.cs:73` | The generated ordinal converter writes only properties it can set, so a private-setter property never crosses the wire (R-M) |
 | Should interface methods have attributes? | No | `AllPatterns.cs:203` | Interface IS the boundary |
 | Do I need `partial` keyword? | Yes, always | `AllPatterns.cs:49` | Generator adds code to class |
-| Should child entities have [Remote]? | No | `OrderLine.cs:27-41` | Would cause N+1 remote calls |
+| Should child entities have [Remote]? | Not on a child operation. A root operation on the same class (R-G) is [Remote] | `OrderLine.cs` | Their child Fetch/Insert/Update run inside the root's server call and their Create runs on the client, so [Remote] marks a crossing that never happens. Not an N+1 problem: once on the server, [Remote] does nothing different (D18) |
 | Can [Execute] return void? | No; `Task` when there is no result, `Task<T>` when the caller needs one | `AllPatterns.cs` (`_SendNotification`, `_Notify`) | Request-response: the caller awaits completion whether the call is local or remote |
+| How do I load-or-create (open, start, ensure)? | A class-level `[Remote, Execute]` that calls Fetch, then Create, through its own injected factory. Never a `[Create]` that looks for an existing object or a `[Fetch]` that makes one (D3, D11) | `Order.cs` (`OpenDraft`, `FetchDraft`), `CreateOrFetchTests.cs` | One round trip; the caller gets a fetched or a new, unsaved object, and each operation does what its name says |
+| Does my value object need `[Factory]`? | Only when constructing it needs a service or authorization. Otherwise it is a plain record, built with `new`, whose constructor throws on an invalid value (R-F) | `Money.cs` (`Money`, `Percentage`), `TaxRate.cs` | A factory with no service adds an interface, a registration and an injected parameter at every construction site, and buys nothing |
 | Where does business logic go? | In the entity, not the factory | `Order.cs:229-242` | DDD principle |
 | Can I store method-injected services? | Only if using constructor injection | `AllPatterns.cs:86-96` | Fields lost after serialization |
 | Does constructor injection affect ordinal serialization? | Yes -- a class with no parameterless or all-default-parameter ctor causes the generator to skip `IOrdinalSerializable`; the type then deserializes via the named/DI path (`GetRequiredService`), which resolves the ctor parameters from the DI container on each side of the wire | `CtorInjectionExample.cs`, `SerializationTests.cs` (`CtorInjectedEntity_*` tests) | Ordinal `FromOrdinalArray` uses object-initializer / positional construction and does not resolve DI. The generator's `RequiresServiceInstantiationCheck` looks only at ctor shape (parameter count, default values) -- not at `[Service]` attribute presence |
-| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | Class factory: `AuthorizedOrder.cs`. Interface factory: `AuthorizedRepository.cs`. ASP.NET: `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
-| Which `[AuthorizeFactory]` scope applies on an interface factory? | `Execute` and `Read` only | `AuthorizedRepository.cs` | Interface methods have no CRUD operation; `Create`/`Fetch`/`Insert`/`Update`/`Delete` scopes silently never fire. Use parameter matching for per-method authorization |
+| Which authorization approach? | `[AuthorizeFactory<T>]` for domain-specific rules; `[AspAuthorize]` for ASP.NET Core policies | Class factory: `AuthorizedOrder.cs`. Interface factory: `CustomerDirectory.cs`. ASP.NET: `SecureOrder.cs` | AuthorizeFactory gives client-side Can* methods; AspAuthorize leverages existing ASP.NET Core policies |
+| Which `[AuthorizeFactory]` scope applies on an interface factory? | `Execute` and `Read` only | `CustomerDirectory.cs` | Interface methods have no CRUD operation; `Create`/`Fetch`/`Insert`/`Update`/`Delete` scopes silently never fire. Use parameter matching for per-method authorization |
 | Does Can* inherit guard from the factory method? | No -- Can* derives guard from the auth class methods | `AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs` | Can* calls auth methods, not the factory method; auth method accessibility determines Can* behavior |
 | What does a denied authorization throw? | `NotAuthorizedException`, never with an empty message. A `string?` auth method's message is used verbatim; a `bool` one gets a framework message naming the operation and type, plus the auth method on interface factories. `Context` carries that detail as a property either way | `AuthorizationTests.cs` (`AuthorizedOrder_Save_ThrowsNotAuthorizedException_WhenDeleteDenied`), `NotAuthorizedExceptionTests.cs` | An empty exception message is dropped outright by some telemetry pipelines, so a correct refusal became an invisible failure; `bool` returns cannot carry a reason and are the common case |
-| Can Interface Factory return a record? | Yes, plain records/DTOs without Neatoo types | `AllPatterns.cs` | Records bypass reference handling (`RecordBypassConverterFactory`); do not mix Neatoo types into record properties |
+| Can Interface Factory return a record? | Yes | `AllPatterns.cs` (`ProductDetails`) | Records bypass reference handling (`RecordBypassConverterFactory`) for their whole subtree; a graph inside one must be a plain tree, with no back-references or shared instances (Anti-Pattern 9) |
 | How do I handle a factory event on the client? | Implement `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` and register it in DI | `FactoryEventRelayPattern.cs` (`InMemoryAggregatorRelay`) | Consumer-owned bridge to any aggregator; RemoteFactory invokes it fire-and-forget exactly once per remote round-trip (even empty batch), strictly after the caller's continuation resumes |
 | Can the client raise an event itself? | Yes — inject `IFactoryEvents` client-side and `Raise`. It is a round-trip of its own | `FactoryEventRelayPattern.cs` (`ClientRaisedNoticeHandler`) | Server handlers run and the batch relays back, including the caller's OWN event (client-side `Raise` dispatches nothing locally, so the relay has not otherwise seen it); `ServerOnly` opts out. Awaited, not fire-and-forget |
 | How do I handle a factory event on the server? | `[FactoryEventHandler<T>]` class attribute with a `static` method | `FactoryEventHandlerPattern.cs` | Static method = server handler running in the caller's scope (shared DbContext), sequential, awaited |
@@ -388,14 +396,13 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 | How do I stop an event from relaying to the client? | `events.Raise(..., RaiseOptions.ServerOnly)` | `FactoryEventRelayPattern.cs` | Server handlers still run; event excluded from `RemoteResponseDto` |
 | I want a handler to participate in the factory's DB transaction. | Use `[FactoryEventHandler<T>]` at the default `Immediate` phase (or `AfterFlush`, drained before the commit) — it runs in the caller's scope | `FactoryEventHandlerPattern.cs` | Shared scope → shared `DbContext` → same transaction; a throwing in-transaction handler rolls the whole thing back |
 | I want a handler to fire-and-forget (email, webhook). | Compose your own `Task.Run` + `IServiceScopeFactory.CreateScope()` inside the factory method; copy any ambient state explicitly before entering the background task. | v1.5.0 release notes | No framework-supplied fire-and-forget surface after v1.5.0 — explicit copy is required |
-| My handler needs database-generated state (identity keys) but must still be able to roll the save back. | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` between the factory body's flush and commit | `FactoryEventPhasesPattern.cs` (`Invoice.Finalize`) | Queued at `Raise`, drained in-transaction at the consumer's chosen point; exceptions propagate to the drain call |
+| My handler needs database-generated state (identity keys) but must still be able to roll the save back. | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` between the factory body's flush and commit | `FactoryEventPhasesPattern.cs` (`InvoiceFinalizer`) | Queued at `Raise`, drained in-transaction at the consumer's chosen point; exceptions propagate to the drain call |
 | I want a read-only projection that must never fail the save. | `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` | `FactoryEventPhasesPattern.cs` (`InvoiceSearchIndexRefresh`) | Framework drains after the entry call succeeds; no ambient transaction; exceptions logged (9003) and swallowed |
 | What happens if I declare `AfterFlush` but never drain? | The handler still runs — at the `AfterCommit` point, with Warning 9007 | `FactoryEventPhasesPattern.cs` (`InvoiceArchiver`) | Fail-open: forgetting the drain costs transaction placement, never the handler |
 | One save raises the same event N times and my deferred projection recomputes N times. | `Coalesce = true` on the attribute — identical queued dispatches collapse to one per drain | `FactoryEventPhasesPattern.cs` (`StatementProjection`) | Identity is `Equals` + same options + same registration; value-only event payloads coalesce reliably; flagless handlers keep one-run-per-raise |
 | Do phased handlers run if the factory call throws? | No — queued work is discarded (9006); only the `Immediate` handlers already ran, inside the rolled-back transaction | `FactoryEventPhasesPattern.cs` (`PaymentIntake`) | Deferred handlers never observe a failed operation |
 | Can I handle multiple event types in one class? | Yes, stack multiple `[FactoryEventHandler<T>]` attributes | `PersonEventHandler.cs` (Person example) | Generator finds one matching method per attribute |
-| How do I defer loading of related data? | Use `LazyLoad<T>` property with constructor-initialization pattern | `LazyLoadExample.cs` | Value is passive (no auto-load); call LoadAsync() explicitly; two-slot ordinal encoding |
-| Can I use BCL `Lazy<T>`? | No -- use `LazyLoad<T>` instead | `SerializationTests.cs` | BCL `Lazy<T>` has no serialization support; `LazyLoad<T>` serializes Value + IsLoaded |
+| How do I defer loading of related data? | A `[Remote, Fetch]` on the child list's factory, called when the data is needed | `docs/VisionAlignment.md` R-K | `LazyLoad<T>` is being removed (#114); do not use it |
 | Do I need to register DTOs for IL trimming? | No -- the generator auto-preserves DTO types from factory signatures, records included | `DtoConstructorRegistry.cs` | Parameterless ctor → `Register<T>(() => new T())` lambda used by `NeatooJsonTypeInfoResolver`; positional records → `PreserveType<T>()` rooting, deserialized via `RecordBypassConverterFactory` |
 | What if my nested DTO fails to deserialize under trimming? | Check that it is reachable from a factory method signature, a discovered DTO's members, or a `[Factory]` entity's members, and not only through an interface/abstract-typed member, a tuple, a non-generic collection subclass, or `object`; otherwise register it manually | `docs/trimming.md` | The generator walks properties and public fields, through every generic collection and both halves of every dictionary, from discovered DTOs AND every `[Factory]` class; only types it cannot reach statically need manual registration |
 | Can auth methods receive factory method parameters? | Yes -- parameters are matched by type | `ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs` | Auth method `CanFetch(Guid orderId)` receives the Guid from `Fetch(Guid orderId)` for per-entity access control |
@@ -413,8 +420,8 @@ services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
 [Factory]
 internal partial class OrderLine : IOrderLine
 {
-    [Remote, Create]  // WRONG: Causes N+1 remote calls
-    internal void Create(string productName, decimal price, int qty) { }
+    [Remote, Fetch]  // WRONG: [Remote] on a child operation
+    internal void Fetch(OrderLineRow row) { }
 }
 ```
 
@@ -423,12 +430,15 @@ internal partial class OrderLine : IOrderLine
 [Factory]
 internal partial class OrderLine : IOrderLine
 {
-    [Create]  // No [Remote] - called from server-side Order operations
-    internal void Create(string productName, decimal price, int qty) { }
+    [Create]  // public, local: the client creates a line, then calls Order.AddLine(line)
+    public void Create(string productName, decimal price, int qty) { }
+
+    [Fetch]   // internal: reached from Order.Fetch, already on the server
+    internal void Fetch(OrderLineRow row) { }
 }
 ```
 
-**Why it matters:** Each [Remote] creates a network round-trip. If Order has 10 lines, that's 10 extra HTTP calls instead of 1 atomic operation.
+**Why it matters:** `[Remote]` marks where a client call crosses to the server. A child's Fetch, Insert and Update are reached from the root's operations, which are already on the server, so `[Remote]` there marks a crossing that never happens and misplaces the operation. A child's Create needs nothing from the server, so `[Remote]` there would turn a local construction into a round trip. It is not an N+1 problem: once on the server, `[Remote]` does nothing different (VisionAlignment D18).
 
 ---
 
@@ -437,19 +447,19 @@ internal partial class OrderLine : IOrderLine
 **WRONG:**
 ```csharp
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
     [Fetch]  // WRONG: emits NF0106 — factory-operation attribute on interface method
-    Task<Item> GetByIdAsync(int id);
+    Task<ProductListing?> FindBySkuAsync(string sku);
 }
 ```
 
 **RIGHT:**
 ```csharp
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
-    Task<Item> GetByIdAsync(int id);  // No attribute - interface IS the boundary
+    Task<ProductListing?> FindBySkuAsync(string sku);  // No attribute - interface IS the boundary
 }
 ```
 
@@ -568,34 +578,22 @@ public partial class MyEntity { }  // partial required
 
 An entity can be an aggregate root in one context and a child in another. The mistake is applying [Remote] based on the type, not the context.
 
-**WRONG (applying [Remote] to all operations because "it's a Product"):**
+**WRONG (applying [Remote] to all operations because the line is sometimes a root):**
 ```csharp
-// Product.cs - used as aggregate root AND as child of Order
 [Factory]
-internal partial class Product : IProduct
+internal partial class OrderLine : IOrderLine
 {
-    [Remote, Fetch]  // OK as aggregate root entry point
-    internal void Fetch(int id, [Service] IProductRepository repo) { }
+    [Remote, Fetch]  // OK: a line-detail screen loads one line by id
+    internal Task<bool> Fetch(Guid id, [Service] IOrderDbContext db) { ... }
 
-    [Remote, Fetch]  // WRONG: This child-context method doesn't need [Remote]
-    internal void FetchAsChild(int id, string name, decimal price) { }
+    [Remote, Fetch]  // WRONG: the order's load hands this the row, already on the server
+    internal void Fetch(OrderLineRow row) { ... }
 }
 ```
 
-**RIGHT (separate operations for different contexts):**
-```csharp
-[Factory]
-internal partial class Product : IProduct
-{
-    [Remote, Fetch]  // Aggregate root context - client entry point (internal + [Remote] = promoted to public on interface)
-    internal void Fetch(int id, [Service] IProductRepository repo) { }
+**RIGHT:** `OrderLine.cs` — the root `Fetch(Guid id)` is `[Remote]`; the child `Fetch(OrderLineRow row)`, `Insert` and `Update` are plain `internal`; `Create` is `public` and local (R-C). `OrderLineDualityTests` loads a line as a root from the client and the order cascade still loads and saves it as a child.
 
-    [Fetch]  // Child context - called from Order.Fetch on server
-    internal void FetchAsChild(int id, string name, decimal price) { }
-}
-```
-
-**Why it matters:** [Remote] is about *how the method is called*, not *what the type is*. Same type can have both remote and non-remote operations.
+**Why it matters:** [Remote] is about *how the method is called*, not *what the type is*. The factory-method signature is the difference (R-G): a key for the root, the parent's row for the child.
 
 ---
 
@@ -625,19 +623,19 @@ internal partial class Order : IOrder
 
 ---
 
-### Anti-Pattern 9: Mixing Neatoo Types with Records in Interface Factory Return Types
+### Anti-Pattern 9: A Graph With Shared or Back References Inside a Record
 
 **WRONG:**
 ```csharp
-// A record that contains a Neatoo domain type as a property
-public record OrderSummary(
+// A record that holds a graph whose objects point back at each other
+public record CustomerOverview(
     string CustomerName,
-    IOrder ActiveOrder);  // WRONG: Neatoo domain type inside a plain record
+    IOrder ActiveOrder);  // WRONG when the order's graph has back-references or shared instances
 
 [Factory]
 public interface IOrderService
 {
-    Task<OrderSummary> GetSummaryAsync(int customerId);
+    Task<CustomerOverview> GetOverviewAsync(int customerId);
 }
 ```
 
@@ -654,7 +652,7 @@ public interface IOrderService
 **RIGHT (Option B - Use plain DTOs/records throughout):**
 ```csharp
 // If you need a record return type, use only plain data -- no Neatoo types
-public record OrderSummary(
+public record CustomerOverview(
     string CustomerName,
     string Status,
     decimal Total);  // All plain data, no Neatoo types
@@ -662,11 +660,11 @@ public record OrderSummary(
 [Factory]
 public interface IOrderService
 {
-    Task<OrderSummary> GetSummaryAsync(int customerId);
+    Task<CustomerOverview> GetOverviewAsync(int customerId);
 }
 ```
 
-**Why it matters:** RemoteFactory uses a two-path serialization strategy for reference handling. Mutable reference types (Dictionary, List, plain classes with default constructors) participate in `$id`/`$ref` reference tracking via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`. Types with parameterized constructors (records, immutable types) are claimed by `RecordBypassConverterFactory`, which serializes them without any reference metadata -- this is correct DDD behavior because records are value objects whose identity is defined by their values, not by reference. STJ cannot deserialize `$id`/`$ref` metadata on types with parameterized constructors (`ObjectWithParameterizedCtorRefMetadataNotSupported`), so bypassing is also a technical necessity. Mixing Neatoo types into a plain record creates a serialization mismatch: the record bypasses reference handling entirely (including its subtree), but the embedded Neatoo type's converter expects the resolver to be tracking references across the graph. Use either pure Neatoo types (with `[Factory]`) or pure records/DTOs -- not a mix.
+**Why it matters:** RemoteFactory uses a two-path serialization strategy for reference handling. Mutable reference types (Dictionary, List, plain classes with default constructors) participate in `$id`/`$ref` reference tracking via `NeatooPreserveReferenceHandler` on `JsonSerializerOptions`. Types with parameterized constructors (records, immutable types) are claimed by `RecordBypassConverterFactory`, which serializes them without any reference metadata -- this is correct DDD behavior because records are value objects whose identity is defined by their values, not by reference. STJ cannot deserialize `$id`/`$ref` metadata on types with parameterized constructors (`ObjectWithParameterizedCtorRefMetadataNotSupported`), so bypassing is also a technical necessity. The bypass covers the record's whole subtree, so nothing under it tracks references: a child that points back at its parent is a cycle, which System.Text.Json rejects, and an object reachable twice arrives as two separate copies. A graph that is a plain tree crosses intact under the bypass. `OrderCheckout` (a context whose only constructor takes services, so the bypass claims it too) holds an `IOrder` whose lines do not point back at it, and `ReadModelAndContextTests` pins that the order and its lines arrive. Return a graph with back-references or shared instances directly (Option A), or flatten it to plain data (Option B).
 
 ---
 
@@ -675,7 +673,7 @@ public interface IOrderService
 **LESS GOOD:**
 ```csharp
 // Client code calling a factory, then raising the operation's event separately
-var order = await factory.Create(...);
+order = await factory.Save(order);
 await factoryEvents.Raise(new OrderPlacedEvent(order.Id));  // a SECOND round-trip
 ```
 
@@ -684,14 +682,16 @@ await factoryEvents.Raise(new OrderPlacedEvent(order.Id));  // a SECOND round-tr
 [Factory]
 internal partial class Order
 {
-    [Remote, Create]
-    internal async Task Create(int id, [Service] IFactoryEvents events)
+    [Remote, Insert]
+    internal async Task Insert([Service] IOrderDbContext db, [Service] IFactoryEvents events)
     {
-        // ... do work ...
-        await events.Raise(new OrderPlacedEvent(id));  // Raised server-side
+        // ... write the row, flush ...
+        await events.Raise(new OrderPlacedEvent(Id));  // Raised server-side, by the write
     }
 }
 ```
+
+Raise from the write (`Insert`/`Update`/`Delete`) or a command, never from a `[Create]`: Create is `new`, runs locally, and stores nothing (D3; `CheckoutOrder` in `FactoryEventRelayPattern.cs`).
 
 **Why it matters:** both work, but they are not equivalent. An event raised inside the factory method is captured by the same request-scoped `IFactoryEventCollector` as the operation, so its handlers share the method's DI scope — and therefore its `DbContext` and transaction — and an `Immediate` handler that throws rolls the operation back. It costs no extra round-trip and rides the operation's own response.
 
@@ -726,22 +726,28 @@ public partial class OrderNotifier
 
 ## Critical Rules
 
-### 1. [Remote] is ONLY for Aggregate Root Entry Points
+### 1. [Remote] is ONLY for Client Entry Points That Cross to the Server
 ```csharp
 // CORRECT: Aggregate root has [Remote] + internal (promoted to public on factory interface)
 [Factory]
 internal partial class Order : IOrder
 {
-    [Remote, Create]  // Client entry point -- internal required by [Remote]
-    internal void Create(...) { }
+    [Remote, Fetch]  // Client entry point -- internal required by [Remote]
+    internal Task<bool> Fetch(...) { }
 }
 
-// CORRECT: Child entity does NOT have [Remote]
+// CORRECT: Child operations do NOT have [Remote]; a root operation on the same class does (R-G)
 [Factory]
 internal partial class OrderLine : IOrderLine
 {
-    [Create]  // Server-side only - called from Order operations
-    internal void Create(...) { }
+    [Create]  // public, local: the client builds a line (R-C)
+    public void Create(...) { }
+
+    [Fetch]   // internal: called from Order.Fetch on the server, as a child
+    internal void Fetch(OrderLineRow row) { }
+
+    [Remote, Fetch]  // a line-detail screen loads one line, as a root
+    internal Task<bool> Fetch(Guid id, ...) { }
 }
 ```
 
@@ -763,22 +769,22 @@ The developer's `public` vs `internal` on factory methods tells the generator wh
 [Factory]
 internal partial class Order : IOrder
 {
-    [Remote, Create]  // Guard: yes (Remote). Client routes to server. Promoted to public on IOrderFactory.
-    internal void Create(string name, [Service] IOrderLineListFactory lines) { }
+    [Create]          // Guard: no (public). Runs on the calling tier.
+    public void Create(string name, [Service] IOrderLineListFactory lines) { }
 
     [Remote, Fetch]   // Guard: yes (Remote). Client routes to server. Promoted to public on IOrderFactory.
-    internal Task<bool> Fetch(int id, [Service] IOrderRepository repo) { }
+    internal Task<bool> Fetch(int id, [Service] IOrderDbContext db) { }
 }
 
-// Child entity: internal methods for server-only operations
+// Child entity: public Create for the client, internal methods for server-only operations
 [Factory]
 internal partial class OrderLine : IOrderLine
 {
-    [Create]           // Guard: yes (internal). Server-only.
-    internal void Create(string name, decimal price, int qty) { }
+    [Create]           // Guard: no (public). The client creates a line.
+    public void Create(string name, decimal price, int qty) { }
 
     [Fetch]            // Guard: yes (internal). Server-only.
-    internal void Fetch(int id, string name, decimal price, int qty) { }
+    internal void Fetch(OrderLineRow row) { }
 }
 ```
 
@@ -825,7 +831,7 @@ The generated factory interface visibility derives from the methods. `[Remote]` 
 | All methods `internal` (no `[Remote]`) | `internal interface IXxxFactory` | All methods included |
 | Mix of `public`/`[Remote] internal` and plain `internal` | `public interface IXxxFactory` | All methods included; plain `internal` methods get `internal` modifier; `[Remote] internal` methods are promoted to `public` |
 
-`[Remote] internal` methods are treated as `public` for interface visibility purposes -- they appear as `public` members on the factory interface because clients need to call them. Plain `internal` methods (without `[Remote]`) appear with the `internal` access modifier. An all-`internal` factory interface (e.g., `IOrderLineFactory` where no methods have `[Remote]`) is not injectable from the client container. The client cannot even see it. This is the desired behavior for child entity factories.
+`[Remote] internal` methods are treated as `public` for interface visibility purposes -- they appear as `public` members on the factory interface because clients need to call them. Plain `internal` methods (without `[Remote]`) appear with the `internal` access modifier. An all-`internal` factory interface is not injectable from the client container; the client cannot even see it. A child entity's factory is not all-internal: its `[Create]` is `public` (R-C), so `IOrderLineFactory` is a `public` interface whose row `Fetch` and `Save` are `internal` members. As a child, the client sees `Create`; `OrderLine` is also a root (R-G), and its `[Remote, Fetch]` by line id is promoted to `public` like any root entry point.
 
 #### Internal Class with Public Interface Pattern
 
@@ -957,17 +963,17 @@ private static Task<bool> _SendNotification(...) { }  // Private, underscore pre
 ```csharp
 // WRONG — emits NF0106
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
     [Fetch]  // NF0106: factory-operation attribute on interface factory method
-    Task<Item> GetByIdAsync(int id);
+    Task<ProductListing?> FindBySkuAsync(string sku);
 }
 
 // CORRECT
 [Factory]
-public interface IMyRepository
+public interface IProductCatalog
 {
-    Task<Item> GetByIdAsync(int id);  // No attributes - all methods are remote
+    Task<ProductListing?> FindBySkuAsync(string sku);  // No attributes - all methods are remote
 }
 ```
 Enforced at compile time by **NF0106**. The rule applies to `[Create]`/`[Fetch]`/`[Insert]`/`[Update]`/`[Delete]`/`[Execute]` on any `[Factory]` interface method.
@@ -991,12 +997,12 @@ public MyEntity([Service] ILogger logger)  // Available everywhere
 ```
 Services injected via constructor are resolved from DI on both client and server. Use this when you need the service after the object crosses the wire.
 
-### Method Injection = Server Only (Common Case)
+### Method Injection = The Tier That Runs the Method
 ```csharp
-[Remote, Create]
-internal void Create(string name, [Service] IRepository repo)  // Server only
+[Remote, Fetch]
+internal Task<bool> Fetch(int id, [Service] IOrderDbContext db)  // runs on the server
 ```
-Method-injected services stored in fields are NOT serialized - they'll be null after crossing the client/server boundary. If you need a service reference after serialization, use constructor injection.
+A `[Service]` parameter resolves on the tier where its method runs: the server for `[Remote]` and `internal` methods (the common case), the calling tier for a `public` method such as a local `[Create]`. Method-injected services stored in fields are NOT serialized - they'll be null after crossing the client/server boundary. If you need a service reference after serialization, use constructor injection.
 
 ---
 
@@ -1028,7 +1034,8 @@ public partial class Order : IFactoryOnStartAsync, IFactoryOnCompleteAsync
 {
     public Task FactoryStartAsync(FactoryOperation op)
     {
-        // Before operation - validation, logging, setup
+        // Before operation - logging, setup. Not validation: a check the user can
+        // recover from is a verdict the UI reads before it acts (VisionAlignment R-E)
         return Task.CompletedTask;
     }
 
@@ -1049,7 +1056,7 @@ public partial class Order : IFactoryOnStartAsync, IFactoryOnCompleteAsync
 ```csharp
 // Program.cs
 builder.Services.AddNeatooAspNetCore(typeof(Order).Assembly);
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderDbContext, OrderDbContext>();  // Design's in-memory stand-in is a singleton
 
 var app = builder.Build();
 app.UseNeatoo();  // Adds /api/neatoo endpoint
@@ -1073,21 +1080,24 @@ builder.Services.AddKeyedScoped(
 
 When reviewing or extending the Design source of truth, verify these patterns are demonstrated:
 
-- [ ] At least one Class Factory with lifecycle hooks (`Order.cs`)
-- [ ] At least one Interface Factory (`IExampleRepository` in `AllPatterns.cs`)
-- [ ] At least one Static Factory with [Execute] (`ExampleCommands`)
-- [ ] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
-- [ ] Child entities without [Remote] (`OrderLine.cs`)
-- [ ] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
-- [ ] Value objects that serialize correctly (`Money` in `ValueObjects/`)
-- [ ] ASP.NET Core policy-based authorization (`SecureOrder.cs`)
+- [x] At least one Class Factory with lifecycle hooks (`Order.cs`)
+- [x] At least one Interface Factory, named as a domain service (`IProductCatalog` in `AllPatterns.cs`)
+- [x] A read model: `[Fetch]`-only, `bool`/`false` not-found (`ReadModels/OrderSummary.cs`)
+- [x] A context a screen binds to, verbs on the held aggregate, saved through the root (`Contexts/OrderCheckout.cs`)
+- [x] At least one Static Factory with [Execute] (`ExampleCommands`)
+- [x] Both [Execute] placements on each shape -- [Remote] and bare -- plus the server-only class-level one (`ExampleCommands._SendNotification` / `_ScoreText`; `ClassExecuteDemo.RunCommand` / `ScoreLocally` / `ArchiveOnServer`)
+- [x] Child entities with no [Remote] child operation (`OrderLine.cs`)
+- [x] Entity duality: one class as a child and a root, the factory-method signature the difference (`OrderLine.Fetch(row)` / `[Remote] OrderLine.Fetch(id)`, R-G)
+- [x] IFactorySaveMeta implementation with Insert/Update/Delete routing (`Order.cs`)
+- [x] Value objects: plain records whose constructors throw (`Money`, `Percentage`), beside one whose construction needs a server service and so carries `[Factory]` (`TaxRate`) (R-F)
+- [x] Create-or-fetch: a class-level `[Remote, Execute]` that calls Fetch, then Create (`Order.OpenDraft`, D11)
+- [x] ASP.NET Core policy-based authorization (`SecureOrder.cs`, tested over HTTP in `Design.Tests/Http/AspAuthorizeHttpTests.cs`)
 - [x] Custom domain authorization with [AuthorizeFactory<T>] (`AuthorizedOrder.cs`, `AuthorizedOrderAuth.cs`)
 - [x] Parameterized authorization: type-matched params and target entity params (`ParamAuthOrder.cs`, `ParamAuthOrderAuth.cs`)
-- [x] Interface Factory returning a record type (`AllPatterns.cs`: `ExampleRecordResult` record, `IExampleRepository.GetRecordByIdAsync`)
+- [x] Interface Factory returning a class and a record type (`AllPatterns.cs`: `ProductListing` class, `ProductDetails` record, `IProductCatalog`)
 - [x] Factory event handler (mediator) — server-side static handler (`FactoryEventHandlerPattern.cs`)
 - [x] Factory event relay — consumer-implemented `IFactoryEventRelay.Relay(IReadOnlyList<FactoryEventBase>)` bridge with in-memory aggregator demo (`FactoryEventRelayPattern.cs`: `InMemoryAggregatorRelay`)
 - [x] Event record with a nested record property — exercises automatic IL-trimming preservation for both the event type and the nested record (`FactoryEventHandlerPattern.cs`: `OrderShippedEvent` with `ShippingAddress`, `OrderShippedHandlers`)
-- [x] LazyLoad<T> property with constructor-initialization pattern (`LazyLoadExample.cs`)
 
 ---
 
@@ -1097,10 +1107,9 @@ These are known limitations or open questions. They are documented here to preve
 
 | Topic | Current State | Why Deferred | Reconsider When |
 |-------|--------------|--------------|-----------------|
-| Private setter support | Not supported | Adds reflection, incompatible with IL trimming | If .NET adds source-generator-accessible private member access |
+| Private setter support | Not supported; R-M makes setters public | The generated ordinal converter writes only properties it can set, so a private setter keeps the property off the wire | If R-M is revisited: `[UnsafeAccessor]` (.NET 8+) would let generated code reach a private setter without reflection |
 | OR logic for [AspAuthorize] | Only AND logic | Matches ASP.NET Core behavior, safer default | User demand + clear use case |
 | Automatic [Remote] detection | Must be explicit | Security risk of accidental exposure | Never - explicit is a core principle |
-| Collection factory injection | Requires local mode for AddLine | Serialize factories would add complexity | If common complaint from users |
 | IEnumerable<T> serialization | Only concrete collections | Type preservation complexity | User demand for interface collections |
 
 ---
@@ -1173,7 +1182,7 @@ infrastructure already exists.
 
 ## Common Mistakes to Avoid (Summary)
 
-1. **Adding [Remote] to child entities** - Children are server-side only
+1. **Adding [Remote] to child entities** - A child's Fetch/Insert/Update run inside the root's server call; its Create is public and local
 2. **Public static factory methods** - Must be `private static` with underscore
 3. **Private property setters** - Won't serialize/deserialize
 4. **[Fetch] on interface methods** - Interface factories don't use operation attributes
@@ -1194,23 +1203,29 @@ infrastructure already exists.
 | `Design.Domain/Aggregates/Order.cs` | Complete aggregate with lifecycle hooks and IFactorySaveMeta |
 | `Design.Domain/Aggregates/AuthorizedOrder.cs` | [AuthorizeFactory<T>] on a CLASS FACTORY — CRUD scopes, CanCreate/CanFetch/CanSave/CanDelete |
 | `Design.Domain/Aggregates/AuthorizedOrderAuth.cs` | Auth interface and implementation for AuthorizedOrder |
-| `Design.Domain/Aggregates/AuthorizedRepository.cs` | [AuthorizeFactory<T>] on an INTERFACE FACTORY — Execute/Read scopes, parameter matching, Can{Method} per interface method |
+| `Design.Domain/Services/CustomerDirectory.cs` | [AuthorizeFactory<T>] on an INTERFACE FACTORY (a domain service) — Execute/Read scopes, parameter matching, Can{Method} per interface method, a `Task` command |
+| `Design.Domain/ReadModels/OrderSummary.cs` | Read model: `[Fetch]`-only class the client holds, `bool`/`false` not-found, line records as a property |
+| `Design.Domain/Contexts/OrderCheckout.cs` | Context (D13): loaded in one call, verbs on the held order run on the client, saved through the order's root factory; factories by constructor |
 | `Design.Domain/Aggregates/ParamAuthOrder.cs` | Parameterized [AuthorizeFactory<T>] with type-matched and target entity params |
 | `Design.Domain/Aggregates/ParamAuthOrderAuth.cs` | Auth interface and implementation with parameterized methods |
 | `Design.Domain/Aggregates/SecureOrder.cs` | [AspAuthorize] policy-based authorization patterns |
-| `Design.Domain/Entities/OrderLine.cs` | Child entity (no [Remote]) - demonstrates entity duality |
-| `Design.Domain/ValueObjects/Money.cs` | Record-based value object serialization |
+| `Design.Domain/Entities/OrderLine.cs` | Child entity and child list: public local Create, row-mapped Fetch/Insert/Update, the list's R-D cascade; and the line as a root, a `[Remote, Fetch]` by id (entity duality, R-G) |
+| `Design.Domain/Aggregates/OrderPersistence.cs` | The order's rows and `IOrderDbContext`, the store Order's operations inject; the cascade in outline |
+| `Design.Domain/ValueObjects/Money.cs` | Plain-record value objects (`Money`, `Percentage`): no factory, constructors throw (R-F) |
+| `Design.Domain/ValueObjects/TaxRate.cs` | A value object that carries `[Factory]` because its construction needs a server-only service: static `[Remote, Fetch]`, null for an unknown key |
 | `Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs` | `[FactoryEventHandler<T>]` class attribute with `static` method — server-side handler running in the caller's DI scope (shared DbContext/transaction), sequential, awaited |
 | `Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` | Consumer-implemented `IFactoryEventRelay.Relay` — bridges relayed events to an aggregator (demonstrates the `InMemoryAggregatorRelay` reference impl) |
 | `Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs` | `DispatchPhase` on the handler attribute — consumer `AfterFlush` drain via `IFactoryEventPhaseCoordinator`, per-drain-point ordering, fail-open never-drained path, discard on failure, opt-in `Coalesce` collapse vs. per-raise control |
-| `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | LazyLoad<T> property with constructor-initialization and deferred loading |
+| `Design.Domain/FactoryPatterns/LazyLoadExample.cs` | Kept only until LazyLoad is removed (#114, R-K); not guidance |
 | `Design.Tests/FactoryTests/*.cs` | Working examples of each pattern |
 | `Design.Tests/FactoryTests/FactoryEventRelayTests.cs` | `Relay(IReadOnlyList<FactoryEventBase>)` invocation, batch contents, `RaiseOptions.ServerOnly` exclusion, empty-batch still invokes Relay once |
 | `Design.Tests/FactoryTests/FactoryEventPhasesTests.cs` | Observed marker sequences for the four phase scenarios: each phase at its drain point, phase order vs. raise order, fail-open sweep, failed-call discard |
 | `Design.Tests/FactoryTests/ParamAuthorizationTests.cs` | Parameterized auth: type-matched params, target params, CanXxx suppression |
 | `Design.Tests/FactoryTests/InterfaceFactoryAuthorizationTests.cs` | Interface-factory auth: Execute/Read scopes, parameter matching, Can{Method}, NotAuthorizedException across client/server |
-| `Design.Tests/FactoryTests/LazyLoadTests.cs` | LazyLoad<T> round-trip and deferred loading tests |
+| `Design.Tests/FactoryTests/LazyLoadTests.cs` | Kept only until LazyLoad is removed (#114, R-K) |
 | `Design.Tests/FactoryTests/SerializationTests.cs` | Round-trip serialization validation |
+| `Design.Tests/FactoryTests/CreateOrFetchTests.cs` | `Order.OpenDraft` from the client: the stored Draft when there is one, a new unsaved order otherwise, one call each |
+| `Design.Tests/FactoryTests/ValueObjectTests.cs` | Value-object constructors throw; `TaxRate` loads from the server, null for an unknown region, its table absent on the client |
 | `Design.Tests/TestInfrastructure/DesignClientServerContainers.cs` | Two DI container test pattern |
 | `Design.Tests/FactoryTests/DesignServerCompositionTests.cs` | Verifies `Design.Server` can actually serve `Design.Domain` — resolves each server-only dependency and runs domain operations against the server's own composition |
 | `Design.Server/Program.cs` | Server pipeline: middleware order and the hosted-WASM fallback |

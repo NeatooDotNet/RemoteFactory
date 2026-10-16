@@ -83,6 +83,17 @@ public static partial class RelayTestCommands
         return Task.FromResult(new RelayTestResult { Id = Guid.NewGuid(), Name = name });
     }
 
+    /// <summary>Raises a relayable event, then fails: the call has no response to carry it.</summary>
+    [Execute]
+    [Remote]
+    internal static async Task<RelayTestResult> _CreateThenFail(
+        string name,
+        [Service] IFactoryEvents factoryEvents)
+    {
+        await factoryEvents.Raise(new TestRelayEvent(Guid.NewGuid(), $"Failed: {name}"));
+        throw new InvalidOperationException($"{name} failed after raising.");
+    }
+
     [Execute]
     [Remote]
     internal static async Task<RelayTestResult> _CreateWithServerOnlyCombinedFlags(

@@ -1,6 +1,7 @@
 using Design.Domain.Aggregates;
 using Design.Domain.Entities;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.Services;
 using Design.Domain.ValueObjects;
 using Design.Server;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,14 +88,23 @@ public class DesignServerCompositionTests
 
         // [Service] method injection — Design.Domain factory methods.
         Assert.NotNull(sp.GetRequiredService<IExampleService>());        // AllPatterns
-        Assert.NotNull(sp.GetRequiredService<IExampleRepository>());     // AllPatterns (interface factory)
-        Assert.NotNull(sp.GetRequiredService<IOrderRepository>());       // Order aggregate
+        Assert.NotNull(sp.GetRequiredService<IProductCatalog>());        // AllPatterns (interface factory)
+        Assert.NotNull(sp.GetRequiredService<ICustomerDirectory>());     // Services (authorized interface factory)
+        Assert.NotNull(sp.GetRequiredService<IOrderDbContext>());        // Order aggregate
         Assert.NotNull(sp.GetRequiredService<INotificationService>());   // handler pattern + static command
         Assert.NotNull(sp.GetRequiredService<IProductReviewService>());  // lazy-load pattern
         Assert.NotNull(sp.GetRequiredService<IPhaseAuditService>());     // phase pattern
+        Assert.NotNull(sp.GetRequiredService<ITaxTable>());              // TaxRate value object
+        Assert.NotNull(sp.GetRequiredService<ISupportLog>());            // SupportRequests command
+        Assert.NotNull(sp.GetRequiredService<ICheckoutLedger>());        // CheckoutLedgerHandler
+        Assert.NotNull(sp.GetRequiredService<ICustomerPreferencesStore>()); // CustomerPreferences
 
         // Constructor injection — resolved when the factory news up the entity.
         Assert.NotNull(sp.GetRequiredService<ITenantTokenService>());
+
+        // The signed-in user AuthorizedOrderAuth reads, built from HttpContext.User
+        // (anonymous here, with no request).
+        Assert.NotNull(sp.GetRequiredService<ICurrentUser>());
 
         // Generated factory interfaces, also method-injected by Design.Domain. They come
         // from AddNeatooAspNetCore's registrar rather than the server-only seam, so a
@@ -103,7 +113,8 @@ public class DesignServerCompositionTests
         Assert.NotNull(sp.GetRequiredService<ILazyLoadFactory>());
         Assert.NotNull(sp.GetRequiredService<IOrderLineFactory>());
         Assert.NotNull(sp.GetRequiredService<IOrderLineListFactory>());
-        Assert.NotNull(sp.GetRequiredService<IMoneyFactory>());
+        Assert.NotNull(sp.GetRequiredService<IOrderFactory>());          // Order.OpenDraft
+        Assert.NotNull(sp.GetRequiredService<IClassExecuteDemoFactory>()); // ClassExecuteDemo's [Execute] methods
     }
 
     /// <summary>
@@ -139,9 +150,9 @@ public class DesignServerCompositionTests
         var sp = scope.ServiceProvider;
 
         var invoiceId = Guid.NewGuid();
-        var factory = sp.GetRequiredService<IInvoiceFactory>();
+        var finalize = sp.GetRequiredService<InvoiceFinalizer.Finalize>();
 
-        await factory.Finalize(invoiceId, 250m);
+        await finalize(invoiceId, 250m);
 
         var audit = sp.GetRequiredService<IPhaseAuditService>();
         Assert.Equal(
@@ -152,7 +163,7 @@ public class DesignServerCompositionTests
     /// <summary>
     /// The order aggregate's create-and-save path against the server's composition. It
     /// method-injects both a generated child factory (<c>IOrderLineListFactory</c>) and
-    /// the repository, so it fails if either the framework registration or the explicit
+    /// the order store (IOrderDbContext), so it fails if either the framework registration or the explicit
     /// non-conventional one is absent.
     /// </summary>
     [Fact]
@@ -163,7 +174,7 @@ public class DesignServerCompositionTests
         var sp = scope.ServiceProvider;
 
         var factory = sp.GetRequiredService<IOrderFactory>();
-        var order = await factory.Create("composition-test");
+        var order = factory.Create("composition-test");
 
         var saved = await factory.Save(order);
 

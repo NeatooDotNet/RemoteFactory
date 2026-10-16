@@ -379,6 +379,15 @@ if (!DictionaryAndFieldDtoSmokeTest.RunPublicField())
     failedChecks.Add("public-field DTO preservation");
 }
 
+// IFactorySaveMeta round trip (EXSET-016): a public-setter save target with no
+// ordinal converter keeps IsNew and IsDeleted across serialization, in both
+// formats. It survives only through the generator's PreserveProperties emission,
+// and was observed red against the generator before it had one.
+if (!SaveMetaRoundTripSmokeTest.Run())
+{
+    failedChecks.Add("save meta round trip without ordinal converter");
+}
+
 Console.WriteLine($"IsServerRuntime: {NeatooRuntime.IsServerRuntime}");
 Console.WriteLine($"Class factory resolved: {factory != null}");
 Console.WriteLine($"Static factory delegate resolved: {doWorkDelegate != null}");

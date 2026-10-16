@@ -1,6 +1,6 @@
 # Getting Started
 
-In [Why RemoteFactory](the-problem.md) you saw the single-layer concept: write your domain model as if client and server don't exist, and let RemoteFactory handle the persistence routing. This guide makes it real — you'll build an Employee domain class that persists through RemoteFactory without DTOs, controllers, or mapping code.
+In [Why RemoteFactory](the-problem.md) you saw the single-layer concept: write your domain model once, load it on both tiers, and let RemoteFactory carry its objects and operations across the seam without DTOs or controllers. This guide makes it real: an `Order` aggregate, the one in RemoteFactory's compiled example set (`src/Design`), built on the client and loaded and saved on the server.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ In [Why RemoteFactory](the-problem.md) you saw the single-layer concept: write y
 
 ## Project Structure
 
-RemoteFactory's architecture needs three projects: one for the domain model (shared), one for the server, and one for the client. The domain project is referenced by both sides — the same `Employee` class runs on client and server, with RemoteFactory generating different behavior for each.
+RemoteFactory's architecture needs three projects: one for the domain model (shared), one for the server, and one for the client. The domain project is referenced by both sides — the same `Order` class is loaded on client and server, with RemoteFactory generating different behavior for each.
 
 ```
 YourSolution/
@@ -40,42 +40,51 @@ dotnet add package Neatoo.RemoteFactory.AspNetCore
 dotnet add package Neatoo.RemoteFactory
 ```
 
-The client needs its own direct `Neatoo.RemoteFactory` reference if it declares any factory types — including `[FactoryEventHandler<T>]` classes with client-side relay methods. Roslyn source generators only run in projects with a direct package reference; a transitive reference through the domain project does not flow the generator, so no `FactoryServiceRegistrar` is emitted for client-declared types. A project that purely consumes factories (injects the interface, calls methods) without declaring any factory types of its own can rely on the transitive reference. When in doubt, add the direct reference — it is the safe default. See [IL Trimming](trimming.md#prerequisite-direct-neatooremotefactory-reference-in-every-project-with-factory-types) for the full explanation.
+The client needs its own direct `Neatoo.RemoteFactory` reference if it declares any factory types of its own. Roslyn source generators only run in projects with a direct package reference; a transitive reference through the domain project does not flow the generator, so no `FactoryServiceRegistrar` is emitted for client-declared types. A project that purely consumes factories (injects the interface, calls methods) without declaring any factory types of its own can rely on the transitive reference. When in doubt, add the direct reference — it is the safe default. See [IL Trimming](trimming.md#prerequisite-direct-neatooremotefactory-reference-in-every-project-with-factory-types) for the full explanation.
 
 ## Server Configuration
 
-The server registers RemoteFactory, maps the HTTP endpoint, hosts the Blazor WASM client, and registers your infrastructure services (repositories, database contexts, etc.):
+The server registers RemoteFactory with the assembly that holds your factories:
+
+<!-- snippet: readme-server-setup -->
+<a id='snippet-readme-server-setup'></a>
+```cs
+services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+```
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+That call sits in one method, `AddDesignServer()`, beside the server-only services your factory methods take as `[Service]` parameters (here the order store, `IOrderDbContext`). The server's `Program` calls it, adds the endpoint, and hosts the Blazor WASM client:
 
 <!-- snippet: getting-started-server-program -->
 <a id='snippet-getting-started-server-program'></a>
 ```cs
-// Register RemoteFactory services and domain assembly
-builder.Services.AddNeatooAspNetCore(
-    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    typeof(Employee).Assembly);
+var builder = WebApplication.CreateBuilder(args);
 
-// Register IName -> Name pairs (auth services, repositories, etc.)
-builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
-
-// Register your infrastructure services
-builder.Services.AddInfrastructureServices();
+// RemoteFactory plus the server-only services [Service] parameters resolve (ServerServices.cs)
+builder.Services.AddDesignServer();
 
 var app = builder.Build();
 
-// Hosted Blazor WASM middleware
+// Serve the hosted Blazor WASM client
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
-// Add the /api/neatoo endpoint for remote calls
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
+// The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();
 
-// Fallback: serve index.html for unmatched routes (SPA routing)
 app.MapFallbackToFile("index.html");
+
+await app.RunAsync();
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Program.cs#L8-L31' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`AddNeatooAspNetCore()` registers factories, serialization, and server-side handlers. `UseNeatoo()` adds the `/api/neatoo` endpoint — the single entry point for all remote factory calls. `UseBlazorFrameworkFiles()` and `MapFallbackToFile()` enable hosted Blazor WASM — the server serves the client application.
+`AddNeatooAspNetCore()` registers factories, serialization, and server-side handlers. `UseNeatoo()` adds the `/api/neatoo` endpoint — the single entry point for all remote factory calls. `UseBlazorFrameworkFiles()` and `MapFallbackToFile()` enable hosted Blazor WASM — the server serves the client application. `UseAuthentication()` and `UseAuthorization()` sign the caller in before the endpoint runs; your application registers its scheme ([Authorization](authorization.md#configure-the-server)).
 
 ## Client Configuration
 
@@ -84,139 +93,181 @@ The client registers RemoteFactory in Remote mode and provides an HttpClient for
 <!-- snippet: getting-started-client-program -->
 <a id='snippet-getting-started-client-program'></a>
 ```cs
-// Register RemoteFactory for client mode with domain assembly
-builder.Services.AddNeatooRemoteFactory(
-    NeatooFactory.Remote,
-    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    typeof(Employee).Assembly);
+// The factory proxies: calls marked [Remote] go to the server
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
 
-// Register HttpClient for remote calls to server
-// In hosted WASM mode, HostEnvironment.BaseAddress targets the server that hosts the client
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
+// The HttpClient RemoteFactory sends them with: the server that hosts this client
+builder.Services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-
-// Optional: Register IName -> Name pairs (auth services, etc.) on the client.
-// Enables factory Can* methods and Create to run locally without a server round-trip.
-// If omitted, these methods will fall back to remote calls.
-builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L11-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
-`NeatooFactory.Remote` tells RemoteFactory this is the client side — factory calls will be serialized and sent to the server via the keyed HttpClient.
+`NeatooFactory.Remote` tells RemoteFactory this is the client side: calls to a `[Remote]` operation are serialized and sent to the server through the keyed HttpClient, and everything else runs on the client.
 
 ## Define Your Domain Model
 
-This is where RemoteFactory's value shows up. You write the persistence logic directly on the domain object — each attribute tells RemoteFactory which persistence stage the method handles. No separate repository layer, no DTOs, no controllers:
+The client holds the aggregate through its public interface:
 
-<!-- snippet: getting-started-employee-model -->
-<a id='snippet-getting-started-employee-model'></a>
+<!-- snippet: order-interface -->
+<a id='snippet-order-interface'></a>
 ```cs
-// [Remote] executes on server; [Service] injects from DI (not serialized)
-[Remote, Fetch]
-internal async Task<bool> Fetch(Guid id, [Service] IEmployeeRepository repo, CancellationToken ct)
+public interface IOrder : IFactorySaveMeta
 {
-    var entity = await repo.GetByIdAsync(id, ct);
-    if (entity == null) return false;
-    MapFromEntity(entity);
-    IsNew = false;
+    int Id { get; set; }
+    string CustomerName { get; set; }
+    OrderStatus Status { get; set; }
+    IOrderLineList Lines { get; set; }
+    Money Total { get; }
+    void AddLine(IOrderLine line);
+    void RemoveLine(IOrderLine line);
+    bool CanSubmit { get; }
+    void Submit();
+    void Cancel();
+    void MarkDeleted();
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L37-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-order-interface' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+The operations live on the domain object itself. Each attribute names the operation; `[Service]` parameters are injected on the tier that runs the method, so the order store (`IOrderDbContext`) is a server service the client never sees. No DTOs, no controllers:
+
+<!-- snippet: readme-domain-model -->
+<a id='snippet-readme-domain-model'></a>
+```cs
+/// <summary>
+/// Creates a new Order. Local: runs on the tier that calls it.
+/// </summary>
+[Create]
+public void Create(
+    string customerName,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    CustomerName = customerName;
+    Lines = lineListFactory.Create();
+    Status = OrderStatus.Draft;
+    IsNew = true;
+}
+
+/// <summary>
+/// Loads an existing Order and its lines; false when there is none.
+/// </summary>
+[Remote, Fetch]
+internal async Task<bool> Fetch(
+    int id,
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
+{
+    var row = await db.FindAsync(id);
+    if (row == null)
+        return false;
+
+    LoadFrom(row, lineListFactory);
     return true;
 }
 
-// Save() routes to Insert/Update/Delete based on IsNew and IsDeleted
+/// <summary>
+/// Inserts a new Order and its lines.
+/// </summary>
 [Remote, Insert]
-internal async Task Insert([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Insert(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    await repo.AddAsync(MapToEntity(), ct);
-    await repo.SaveChangesAsync(ct);
-    IsNew = false;
+    var row = new OrderRow();
+    MapTo(row);
+    db.Add(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
+    Id = row.Id;
 }
 
+/// <summary>
+/// Updates an existing Order and its lines.
+/// </summary>
 [Remote, Update]
-internal async Task Update([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Update(
+    [Service] IOrderDbContext db,
+    [Service] IOrderLineListFactory lineListFactory)
 {
-    await repo.UpdateAsync(MapToEntity(), ct);
-    await repo.SaveChangesAsync(ct);
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    MapTo(row);
+    lineListFactory.Save(Lines, row.Lines);
+    await db.SaveChangesAsync();
 }
 
+/// <summary>
+/// Deletes an Order. Its line rows go with its row.
+/// </summary>
 [Remote, Delete]
-internal async Task Delete([Service] IEmployeeRepository repo, CancellationToken ct)
+internal async Task Delete([Service] IOrderDbContext db)
 {
-    await repo.DeleteAsync(Id, ct);
-    await repo.SaveChangesAsync(ct);
+    var row = await db.FindAsync(Id)
+        ?? throw new KeyNotFoundException($"Order {Id} not found");
+    db.Remove(row);
+    await db.SaveChangesAsync();
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Aggregates/Employee.cs#L32-L66' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-employee-model' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L234-L318' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-domain-model' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 Quick reference:
 - `[Factory]` — Generates the factory interface and implementation
-- `[Create]` — Instantiation (constructors or static methods)
-- `[Fetch]` — Load existing data
+- `[Create]` — The equivalent of `new`; local, runs on the tier that calls it
+- `[Fetch]` — Load existing data; `false` when it is not there, so the factory returns null
 - `[Insert]`, `[Update]`, `[Delete]` — Write operations (routed by `Save()`)
-- `[Remote]` — Client entry point that crosses to the server
+- `[Remote]` — A client entry point: the call crosses to the server
 - `[Service]` — DI-injected parameter (not serialized)
 
 ## Use the Factory
 
-Inject the generated factory and use it. The caller doesn't need to know about client/server — it's just method calls:
+Inject the generated factory and use it. The caller doesn't need to know where each operation runs — it's just method calls:
 
-<!-- snippet: getting-started-usage -->
-<a id='snippet-getting-started-usage'></a>
+<!-- snippet: readme-client-usage -->
+<a id='snippet-readme-client-usage'></a>
 ```cs
-public async Task UseEmployeeFactory(IEmployeeModelFactory factory)
-{
-    // Create new instance via generated factory
-    var employee = factory.Create();
-    employee.FirstName = "Jane";
-    employee.Email = "jane@example.com";
+// The customer's draft: the stored one, or a new one. One server call.
+IOrder? order = await orderFactory.OpenDraft("Customer_42");
 
-    // Save routes to Insert (IsNew=true), Update (IsNew=false), or Delete (IsDeleted=true)
-    employee = await factory.Save(employee);  // Insert: IsNew becomes false
+// Build a line on the client and add it. No server call.
+order.AddLine(lineFactory.Create("Widget C", 12.50m, 2));
 
-    // Fetch loads existing data from server
-    var fetched = await factory.Fetch(employee!.Id);
-
-    // Modify and save routes to Update
-    fetched!.FirstName = "Jane Updated";
-    await factory.Save(fetched);
-
-    // Mark deleted and save routes to Delete
-    fetched.IsDeleted = true;
-    await factory.Save(fetched);
-}
+// Save sends the whole order; keep what it returns.
+order = await orderFactory.Save(order);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/GettingStarted/EmployeeModelUsage.cs#L5-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Tests/FactoryTests/OrderUsageTests.cs#L31-L40' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-client-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## What Just Happened?
 
 ### The Remote Call
 
-When the client calls `factory.Fetch(id)`:
+When the client calls `orderFactory.Save(order)`:
 
-1. Client factory serializes the method name and value parameters
+1. Client factory serializes the order and its lines
 2. HTTP POST to `/api/neatoo`
-3. Server deserializes the request, creates an Employee instance, resolves `IEmployeeRepository` from DI
-4. Server calls `Employee.Fetch()` with the injected repository
-5. Server serializes the populated Employee and returns it
-6. Client deserializes the Employee instance
+3. Server deserializes the order, resolves `IOrderDbContext` from its DI container
+4. Server calls the order's `Insert` (a new order) with the injected store
+5. Server serializes the saved order and returns it
+6. Client deserializes it, and the caller keeps it: `order = await orderFactory.Save(order)`
 
-No DTOs. No controllers. No manual mapping.
+Creating the order's line, `lineFactory.Create(...)`, made no call at all: `Create` is local. No DTOs. No controllers. No manual mapping.
 
-### The Persistence Routing
+### Save Routing
 
-When the client calls `factory.Save(employee)`, RemoteFactory inspects the entity metadata and routes to the right method:
+When the client calls `orderFactory.Save(order)`, RemoteFactory reads the object's state and runs the matching write:
 
 - `IsNew = true` → calls your `[Insert]` method
 - `IsNew = false` → calls your `[Update]` method
 - `IsDeleted = true` → calls your `[Delete]` method
 
-One `Save()` call, three possible outcomes. You wrote the persistence logic for each case; RemoteFactory decided which one to run.
+One `Save()` call, three possible outcomes. You wrote each write; RemoteFactory picked the one to run.
 
 ## Next Steps
 
-- [Factory Operations](factory-operations.md) — All seven persistence operations in detail
+- [Factory Operations](factory-operations.md) — Create, Fetch, Insert, Update, Delete and Execute in detail
 - [Service Injection](service-injection.md) — Constructor vs method injection across the boundary
 - [Client-Server Architecture](client-server-architecture.md) — The big picture mental model
 - [Factory Modes](factory-modes.md) — Remote, Logical, and Server registration modes
@@ -236,7 +287,7 @@ One `Save()` call, three possible outcomes. You wrote the persistence logic for 
 
 **Serialization errors:**
 - Verify both client and server use the same serialization format (see [Serialization](serialization.md))
-- Check all properties are serializable (primitives, collections, or types with `[Factory]`)
+- Check all properties are serializable: primitives, collections, records (a value object needs no factory to cross), and `[Factory]` types
 
 **401/403 errors:**
 - Check authorization configuration — see [Authorization](authorization.md)

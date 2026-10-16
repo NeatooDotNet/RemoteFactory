@@ -15,90 +15,51 @@
 
 ## Server Setup (ASP.NET Core)
 
-<!-- snippet: aspnetcore-basic-setup -->
-<a id='snippet-aspnetcore-basic-setup'></a>
+<!-- snippet: getting-started-server-program -->
+<a id='snippet-getting-started-server-program'></a>
 ```cs
-public static class BasicSetup
-{
-    public static void Configure(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-        // Register RemoteFactory services with the domain assembly
-        builder.Services.AddNeatooAspNetCore(typeof(Employee).Assembly);
+// RemoteFactory plus the server-only services [Service] parameters resolve (ServerServices.cs)
+builder.Services.AddDesignServer();
 
-        var app = builder.Build();
+var app = builder.Build();
 
-        // Map the /api/neatoo endpoint for remote delegate requests
-        app.UseNeatoo();
+// Serve the hosted Blazor WASM client
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
 
-        app.Run();
-    }
-}
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
+// The RemoteFactory endpoint: one route for every factory call, no controllers
+app.UseNeatoo();
+
+app.MapFallbackToFile("index.html");
+
+await app.RunAsync();
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/BasicSetupSamples.cs#L8-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-basic-setup' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Server/Program.cs#L61-L83' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-server-program' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+`AddDesignServer()` is the example's own composition method. Its RemoteFactory registration is:
+
+<!-- snippet: readme-server-setup -->
+<a id='snippet-readme-server-setup'></a>
+```cs
+services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+```
+<sup><a href='/src/Design/Design.Server/ServerServices.cs#L74-L76' title='Snippet source file'>snippet source</a> | <a href='#snippet-readme-server-setup' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Multiple Assemblies
 
-If `[Factory]` types are in multiple assemblies:
-
-<!-- snippet: aspnetcore-multi-assembly -->
-<a id='snippet-aspnetcore-multi-assembly'></a>
-```cs
-public static class MultiAssemblySample
-{
-    public static void ConfigureServices(IServiceCollection services)
-    {
-        // Register factories from multiple domain assemblies
-        services.AddNeatooAspNetCore(
-            typeof(Employee).Assembly
-            // , typeof(OtherDomain.Entity).Assembly
-        );
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/ServiceRegistrationSamples.cs#L22-L34' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-multi-assembly' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+Pass every assembly that declares `[Factory]` types to the **one** `AddNeatooAspNetCore` call: `AddNeatooAspNetCore(typeof(IOrder).Assembly, typeof(IInvoice).Assembly)`. A second call replaces the first call's assembly list instead of adding to it. The client's `AddNeatooRemoteFactory` takes the same list.
 
 ### CORS Configuration (Non-Hosted Deployments Only)
 
-CORS is only needed when the client and server are on different origins (e.g., standalone Blazor WASM hosted separately from the API). In hosted WASM mode, CORS is unnecessary because both share the same origin.
-
-<!-- snippet: aspnetcore-cors -->
-<a id='snippet-aspnetcore-cors'></a>
-```cs
-public static class CorsConfigurationSample
-{
-    public static void Configure(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
-
-        // Only needed for non-hosted deployments where client and server
-        // are on different origins (e.g., separate Blazor WASM standalone app)
-        builder.Services.AddCors(options =>
-        {
-            options.AddDefaultPolicy(policy =>
-            {
-                policy.WithOrigins("https://client.example.com")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod();
-            });
-        });
-
-        builder.Services.AddNeatooAspNetCore(typeof(Employee).Assembly);
-
-        var app = builder.Build();
-
-        app.UseCors();    // CORS must be before UseNeatoo
-        app.UseNeatoo();
-
-        app.Run();
-    }
-}
-```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Server.WebApi/Samples/AspNetCore/CorsConfigurationSamples.cs#L9-L38' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cors' title='Start of snippet'>anchor</a></sup>
-<!-- endSnippet -->
+CORS is only needed when the client and server are on different origins (e.g., standalone Blazor WASM hosted separately from the API). In hosted WASM mode, CORS is unnecessary because both share the same origin. When it is needed, add a policy that allows the client's origin with `POST` and the `Content-Type` and `X-Correlation-Id` headers, and call `app.UseCors()` before `app.UseNeatoo()`.
 
 ---
 
@@ -107,34 +68,35 @@ public static class CorsConfigurationSample
 <!-- snippet: getting-started-client-program -->
 <a id='snippet-getting-started-client-program'></a>
 ```cs
-// Register RemoteFactory for client mode with domain assembly
-builder.Services.AddNeatooRemoteFactory(
-    NeatooFactory.Remote,
-    new NeatooSerializationOptions { Format = SerializationFormat.Ordinal },
-    typeof(Employee).Assembly);
+// The factory proxies: calls marked [Remote] go to the server
+builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(IOrder).Assembly);
 
-// Register HttpClient for remote calls to server
-// In hosted WASM mode, HostEnvironment.BaseAddress targets the server that hosts the client
-builder.Services.AddKeyedScoped(RemoteFactoryServices.HttpClientKey,
+// The HttpClient RemoteFactory sends them with: the server that hosts this client
+builder.Services.AddKeyedScoped(
+    RemoteFactoryServices.HttpClientKey,
     (sp, key) => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-
-// Optional: Register IName -> Name pairs (auth services, etc.) on the client.
-// Enables factory Can* methods and Create to run locally without a server round-trip.
-// If omitted, these methods will fall back to remote calls.
-builder.Services.RegisterMatchingName(typeof(Employee).Assembly);
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Program.cs#L11-L27' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Program.cs#L65-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-getting-started-client-program' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Factory Modes
 
-```csharp
-// Remote mode - calls go to server
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Remote, ...);
+The client above registers in `NeatooFactory.Remote` mode: `[Remote]` operations, and operations whose authorization runs on the server (`[AspAuthorize]`, or a `[Remote]` authorization method), go to the server; everything else runs on the client. `NeatooFactory.Logical` runs every operation in one process, with nothing serialized, for tests and single-tier apps:
 
-// Local mode - everything runs locally (for testing, single-tier apps)
-builder.Services.AddNeatooRemoteFactory(NeatooFactory.Local, ...);
+<!-- snippet: modes-logical-config -->
+<a id='snippet-modes-logical-config'></a>
+```cs
+// One process, no HTTP: every operation runs here, [Remote] ones included
+services.AddNeatooRemoteFactory(NeatooFactory.Logical, typeof(IOrder).Assembly);
+
+// So the services a server would supply to [Service] parameters are registered here too
+services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
+services.RegisterMatchingName(typeof(IOrder).Assembly);
 ```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/LogicalModeTests.cs#L28-L35' title='Snippet source file'>snippet source</a> | <a href='#snippet-modes-logical-config' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+`IOrderDbContext` is the example's order store, an in-memory stand-in for a database: in Logical mode, register whatever your `[Service]` parameters need. The server's `AddNeatooAspNetCore` registers in `NeatooFactory.Server` mode.
 
 ---
 
@@ -142,57 +104,77 @@ builder.Services.AddNeatooRemoteFactory(NeatooFactory.Local, ...);
 
 ### Inject and Use
 
+<!-- snippet: skill-blazor-inject -->
+<a id='snippet-skill-blazor-inject'></a>
+```razor
+@inject IOrderFactory OrderFactory
+@inject IOrderLineFactory LineFactory
+```
+<sup><a href='/src/Design/Design.Client.Blazor/Pages/Home.razor#L17-L20' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-blazor-inject' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
 <!-- snippet: skill-blazor-usage -->
 <a id='snippet-skill-blazor-usage'></a>
-```cs
-// Blazor component showing factory injection and usage
-public partial class EmployeeManagementComponent : ComponentBase
+```razor
+private void CreateOrder()
 {
-    [Inject]
-    private IEmployeeFactory EmployeeFactory { get; set; } = null!;
-
-    private IEmployee? _employee;
-
-    protected override async Task OnInitializedAsync()
+    try
     {
-        // Create a new employee
-        _employee = await EmployeeFactory.Create("John", "Doe");
+        messages += "Creating order (local, no server call)...\n";
+        currentOrder = OrderFactory.Create("Demo Customer");
+        messages += $"Created order: IsNew={currentOrder.IsNew}, Status={currentOrder.Status}\n";
     }
-
-    private async Task LoadEmployee(Guid id)
+    catch (Exception ex)
     {
-        // Fetch existing employee
-        _employee = await EmployeeFactory.Fetch(id);
-    }
-
-    private async Task SaveEmployee()
-    {
-        if (_employee == null) return;
-
-        // Save routes to Insert/Update/Delete based on IsNew/IsDeleted
-        _employee = await EmployeeFactory.Save(_employee);
+        messages += $"Error: {ex.Message}\n";
     }
 }
 
-// Placeholder interfaces for demonstration
-// (Actual interfaces are generated by RemoteFactory)
-public interface IEmployeeFactory
+private async Task FetchOrder()
 {
-    Task<IEmployee> Create(string firstName, string lastName);
-    Task<IEmployee?> Fetch(Guid id);
-    Task<IEmployee> Save(IEmployee employee);
+    try
+    {
+        messages += $"Fetching order #{InMemoryOrderDbContext.DraftOrderId}...\n";
+        currentOrder = await OrderFactory.Fetch(InMemoryOrderDbContext.DraftOrderId);
+        messages += currentOrder == null
+            ? "Order not found\n"
+            : $"Fetched order: Id={currentOrder.Id}, Lines={currentOrder.Lines.Count}\n";
+    }
+    catch (Exception ex)
+    {
+        messages += $"Error: {ex.Message}\n";
+    }
 }
 
-public interface IEmployee
+private void AddLine()
 {
-    Guid Id { get; }
-    string FirstName { get; set; }
-    string LastName { get; set; }
-    bool IsNew { get; }
-    bool IsDeleted { get; set; }
+    try
+    {
+        // The client builds the line with the line factory, then hands it to the order (R-C)
+        currentOrder!.AddLine(LineFactory.Create("Demo Widget", 12.50m, 1));
+        messages += $"Added line: Lines={currentOrder.Lines.Count}\n";
+    }
+    catch (Exception ex)
+    {
+        messages += $"Error: {ex.Message}\n";
+    }
+}
+
+private async Task SaveOrder()
+{
+    try
+    {
+        // Save returns a new instance from the server: reassign it
+        currentOrder = await OrderFactory.Save(currentOrder!);
+        messages += $"Saved order: Id={currentOrder?.Id}, Lines={currentOrder?.Lines.Count}\n";
+    }
+    catch (Exception ex)
+    {
+        messages += $"Error: {ex.Message}\n";
+    }
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Client.Blazor/Samples/Skill/BlazorUsageSamples.cs#L5-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-blazor-usage' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Client.Blazor/Pages/Home.razor#L177-L235' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-blazor-usage' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Static Factory Commands

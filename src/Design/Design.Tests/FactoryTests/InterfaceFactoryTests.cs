@@ -2,8 +2,9 @@
 // DESIGN SOURCE OF TRUTH: Interface Factory Tests
 // =============================================================================
 //
-// Tests demonstrating the INTERFACE FACTORY pattern.
-// Interface factories create remote proxies for service interfaces.
+// Tests demonstrating the INTERFACE FACTORY pattern: a domain service the
+// client calls. Interface factories create remote proxies for service
+// interfaces.
 //
 // =============================================================================
 
@@ -14,44 +15,48 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Design.Tests.FactoryTests;
 
 /// <summary>
-/// Tests for INTERFACE FACTORY pattern (IExampleRepository).
+/// Tests for INTERFACE FACTORY pattern (IProductCatalog).
 /// </summary>
+/// <remarks>
+/// ProductCatalog is registered by RegisterMatchingName on every container
+/// (IProductCatalog -> ProductCatalog). On the client the generated proxy is
+/// registered first, so the client resolves the proxy.
+/// </remarks>
 public class InterfaceFactoryTests
 {
     /// <summary>
-    /// Verifies interface factory methods work through remote proxy.
+    /// Verifies interface factory methods work through the remote proxy.
     /// </summary>
     /// <remarks>
     /// DESIGN DECISION: Interface factories are always remote
     ///
-    /// When you resolve IExampleRepository from the client container,
-    /// you get a proxy that serializes calls to the server where the
-    /// actual ExampleRepository implementation runs.
+    /// When you resolve IProductCatalog from the client container, you get a
+    /// proxy that serializes calls to the server where the actual
+    /// ProductCatalog implementation runs.
     ///
     /// This is different from Class Factories where you get the actual
     /// entity back. Interface factories return the interface itself.
     /// </remarks>
     [Fact]
-    public async Task InterfaceFactory_GetAllAsync_ReturnsDataFromServer()
+    public async Task InterfaceFactory_SearchAsync_ReturnsDataFromServer()
     {
-        // Arrange - register the server implementation
-        var (client, server, _) = DesignClientServerContainers.Scopes(
-            configureServer: services =>
-            {
-                services.AddScoped<IExampleRepository, ExampleRepository>();
-            });
+        // Arrange
+        var (server, client, _) = DesignClientServerContainers.Scopes();
 
+        #region interface-factory-usage
         // Get the interface from client - this is the proxy
-        var repository = client.GetRequiredService<IExampleRepository>();
+        var catalog = client.GetRequiredService<IProductCatalog>();
 
         // Act - call goes through proxy to server
-        var result = await repository.GetAllAsync();
+        var result = await catalog.SearchAsync("Widget");
+        #endregion
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(2, result.Count);
-        Assert.Contains(result, x => x.Name == "Item 1");
-        Assert.Contains(result, x => x.Name == "Item 2");
+        Assert.Equal(3, result.Count);
+        Assert.Contains(result, x => x.Name == "Widget A");
+        Assert.Contains(result, x => x.Name == "Widget B");
+        Assert.Equal(1, client.ServiceProvider.GetRequiredService<ServerServiceProvider>().RemoteCallCount);
 
         client.Dispose();
         server.Dispose();
@@ -61,24 +66,20 @@ public class InterfaceFactoryTests
     /// Verifies interface factory method with parameters.
     /// </summary>
     [Fact]
-    public async Task InterfaceFactory_GetByIdAsync_ReturnsSpecificItem()
+    public async Task InterfaceFactory_FindBySkuAsync_ReturnsSpecificItem()
     {
         // Arrange
-        var (client, server, _) = DesignClientServerContainers.Scopes(
-            configureServer: services =>
-            {
-                services.AddScoped<IExampleRepository, ExampleRepository>();
-            });
-
-        var repository = client.GetRequiredService<IExampleRepository>();
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var catalog = client.GetRequiredService<IProductCatalog>();
 
         // Act
-        var result = await repository.GetByIdAsync(42);
+        var result = await catalog.FindBySkuAsync("WB-200");
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(42, result.Id);
-        Assert.Equal("Item 42", result.Name);
+        Assert.Equal("WB-200", result.Sku);
+        Assert.Equal("Widget B", result.Name);
+        Assert.Equal(25.00m, result.UnitPrice);
 
         client.Dispose();
         server.Dispose();
@@ -93,24 +94,19 @@ public class InterfaceFactoryTests
     /// This test validates the full client-server round-trip for plain records.
     /// </remarks>
     [Fact]
-    public async Task InterfaceFactory_GetRecordByIdAsync_ReturnsRecordFromServer()
+    public async Task InterfaceFactory_GetDetailsAsync_ReturnsRecordFromServer()
     {
         // Arrange
-        var (client, server, _) = DesignClientServerContainers.Scopes(
-            configureServer: services =>
-            {
-                services.AddScoped<IExampleRepository, ExampleRepository>();
-            });
-
-        var repository = client.GetRequiredService<IExampleRepository>();
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var catalog = client.GetRequiredService<IProductCatalog>();
 
         // Act - record round-trips through serialization
-        var result = await repository.GetRecordByIdAsync(42);
+        var result = await catalog.GetDetailsAsync("WA-100");
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(42, result.Id);
-        Assert.Equal("Record 42", result.Name);
+        Assert.Equal("WA-100", result.Sku);
+        Assert.Equal("The standard widget.", result.Description);
 
         client.Dispose();
         server.Dispose();
@@ -122,24 +118,18 @@ public class InterfaceFactoryTests
     /// <remarks>
     /// DESIGN DECISION: Nullable return types work through serialization
     ///
-    /// The proxy correctly handles null responses from the server.
-    /// This is important for repository patterns where not-found
-    /// is a valid result.
+    /// The proxy correctly handles null responses from the server. Not found
+    /// is a valid answer from a lookup.
     /// </remarks>
     [Fact]
-    public async Task InterfaceFactory_GetByIdAsync_HandlesNullResult()
+    public async Task InterfaceFactory_FindBySkuAsync_HandlesNullResult()
     {
-        // Arrange - custom implementation that returns null
-        var (client, server, _) = DesignClientServerContainers.Scopes(
-            configureServer: services =>
-            {
-                services.AddScoped<IExampleRepository, NullReturningRepository>();
-            });
-
-        var repository = client.GetRequiredService<IExampleRepository>();
+        // Arrange
+        var (server, client, _) = DesignClientServerContainers.Scopes();
+        var catalog = client.GetRequiredService<IProductCatalog>();
 
         // Act
-        var result = await repository.GetByIdAsync(999);
+        var result = await catalog.FindBySkuAsync("NO-SUCH-SKU");
 
         // Assert
         Assert.Null(result);
@@ -151,49 +141,25 @@ public class InterfaceFactoryTests
     /// <summary>
     /// Verifies interface factory works in local mode.
     /// </summary>
+    /// <remarks>
+    /// In Logical (single-tier) mode the generator registers no proxy:
+    /// IProductCatalog resolves straight to ProductCatalog through
+    /// RegisterMatchingName, and the call is a direct call.
+    /// </remarks>
     [Fact]
     public async Task InterfaceFactory_WorksInLocalMode()
     {
         // Arrange
         var (_, _, local) = DesignClientServerContainers.Scopes();
-
-        // In local mode, register the implementation directly
-        // (normally done in ConfigureContainer, but showing explicit for clarity)
-        var localServices = new ServiceCollection();
-        localServices.AddScoped<IExampleRepository, ExampleRepository>();
-        var localProvider = localServices.BuildServiceProvider();
-
-        var repository = localProvider.GetRequiredService<IExampleRepository>();
+        var catalog = local.GetRequiredService<IProductCatalog>();
 
         // Act - direct call, no proxy
-        var result = await repository.GetAllAsync();
+        var result = await catalog.SearchAsync("Widget");
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(2, result.Count);
+        Assert.IsType<ProductCatalog>(catalog);
+        Assert.Equal(3, result.Count);
 
-        await localProvider.DisposeAsync();
         local.Dispose();
-    }
-}
-
-/// <summary>
-/// Repository implementation that returns null for testing.
-/// </summary>
-internal class NullReturningRepository : IExampleRepository
-{
-    public Task<IReadOnlyList<ExampleDto>> GetAllAsync()
-    {
-        return Task.FromResult<IReadOnlyList<ExampleDto>>([]);
-    }
-
-    public Task<ExampleDto?> GetByIdAsync(int id)
-    {
-        return Task.FromResult<ExampleDto?>(null);
-    }
-
-    public Task<ExampleRecordResult?> GetRecordByIdAsync(int id)
-    {
-        return Task.FromResult<ExampleRecordResult?>(null);
     }
 }

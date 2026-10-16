@@ -358,6 +358,31 @@ public class PartialSaveTests
             // Act & Assert - Without Update, Save throws NotImplementedException
             Assert.Throws<NotImplementedException>(() => _factory.Save(obj));
         }
+
+        [Fact]
+        public void InsertOnly_Save_ThrowsNotImplemented_WhenDeleted()
+        {
+            // Arrange
+            var obj = _factory.Create();
+            obj.IsNew = false;
+            obj.IsDeleted = true;
+
+            // Act & Assert - Without Delete, Save throws NotImplementedException
+            Assert.Throws<NotImplementedException>(() => _factory.Save(obj));
+        }
+
+        [Fact]
+        public void InsertOnly_Save_ThrowsNotImplemented_WhenNewAndDeleted()
+        {
+            // Arrange
+            var obj = _factory.Create();
+            obj.IsNew = true;
+            obj.IsDeleted = true;
+
+            // Act & Assert - Without Delete, even a new-and-deleted object throws;
+            // the null short-circuit lives inside the Delete branch
+            Assert.Throws<NotImplementedException>(() => _factory.Save(obj));
+        }
     }
 
     #endregion

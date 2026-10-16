@@ -8,55 +8,59 @@ Use `[Execute]` for operations that return a result. The client awaits the respo
 
 > **Note:** `[Execute]` also works on non-static `[Factory]` classes when the operation returns the containing type. See `references/class-factory.md` for that pattern.
 
-<!-- snippet: skill-static-execute-commands -->
-<a id='snippet-skill-static-execute-commands'></a>
+<!-- snippet: ordercommands-declaration -->
+<a id='snippet-ordercommands-declaration'></a>
 ```cs
 [Factory]
-public static partial class SkillEmployeeCommands
+public static partial class OrderCommands
+```
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L47-L50' title='Snippet source file'>snippet source</a> | <a href='#snippet-ordercommands-declaration' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: operations-execute -->
+<a id='snippet-operations-execute'></a>
+```cs
+[Remote, Execute]
+private static async Task<SubmitOutcome> _SubmitOrder(
+    int orderId,
+    [Service] IOrderFactory orderFactory,
+    CancellationToken cancellationToken)
 {
-    [Remote, Execute]
-    private static async Task<bool> _SendNotification(
-        string recipient,
-        string message,
-        [Service] IEmailService service)
-    {
-        await service.SendAsync(recipient, "Notification", message);
-        return true;
-    }
+    var order = await orderFactory.Fetch(orderId, cancellationToken);
+    if (order == null)
+        return SubmitOutcome.NotFound;
+    if (!order.CanSubmit)
+        return SubmitOutcome.NotSubmittable;
 
-    [Remote, Execute]
-    private static async Task<SkillEmployeeSummary> _GetEmployeeSummary(
-        Guid employeeId,
-        [Service] IEmployeeRepository repo)
-    {
-        var employee = await repo.GetByIdAsync(employeeId);
-        if (employee == null)
-            return new SkillEmployeeSummary { Id = employeeId, Found = false };
-
-        return new SkillEmployeeSummary
-        {
-            Id = employeeId,
-            FullName = $"{employee.FirstName} {employee.LastName}",
-            Position = employee.Position,
-            Found = true
-        };
-    }
-}
-
-public class SkillEmployeeSummary
-{
-    public Guid Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string Position { get; set; } = string.Empty;
-    public bool Found { get; set; }
+    order.Submit();
+    await orderFactory.Save(order, cancellationToken);
+    return SubmitOutcome.Submitted;
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Skill/StaticFactorySamples.cs#L6-L46' title='Snippet source file'>snippet source</a> | <a href='#snippet-skill-static-execute-commands' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L60-L77' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: operations-execute-command -->
+<a id='snippet-operations-execute-command'></a>
+```cs
+[Remote, Execute]
+private static async Task _CancelOrder(int orderId, [Service] IOrderFactory orderFactory)
+{
+    var order = await orderFactory.Fetch(orderId)
+        ?? throw new KeyNotFoundException($"Order {orderId} not found");
+    if (order.Status == OrderStatus.Cancelled)
+        return;   // already cancelled: a retried call is not an error
+
+    order.Cancel();
+    await orderFactory.Save(order);
+}
+```
+<sup><a href='/src/Design/Design.Domain/Services/OrderCommands.cs#L82-L94' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-execute-command' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 **Generates**:
-- `SkillEmployeeCommands.SendNotification(recipient, message)` delegate
-- `SkillEmployeeCommands.GetEmployeeSummary(employeeId)` delegate
+- the `OrderCommands.SubmitOrder(orderId)` delegate type, returning `SubmitOutcome`
+- the `OrderCommands.CancelOrder(orderId)` delegate type; each also takes an optional `CancellationToken`, and is resolved from DI
 
 **Usage**:
 ```csharp
@@ -93,16 +97,16 @@ Leave `[Remote]` off when the command must run on the tier that calls it — a c
 <!-- snippet: attributes-execute-local -->
 <a id='snippet-attributes-execute-local'></a>
 ```cs
-[Factory]
-public static partial class TallyCommand
+[Execute]
+private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
 {
-    [Execute]  // No [Remote] - runs on whichever tier resolves the delegate, with that tier's services
-    private static Task<decimal> _Total(decimal baseSalary, decimal bonus, [Service] ISalaryCalculator calculator)
-        => Task.FromResult(calculator.Calculate(baseSalary, bonus));
+    return Task.FromResult(scorer.Score(text));
 }
 ```
-<sup><a href='/src/docs/reference-app/EmployeeManagement.Domain/Samples/Attributes/MinimalAttributesSamples.cs#L99-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L507-L513' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-execute-local' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
+
+`ITextScorer` is the example's pure-computation scoring service. The client registers it, so the bare command runs there with no server call.
 
 ### [Execute] returns `Task` or `Task<T>`, never `void`
 

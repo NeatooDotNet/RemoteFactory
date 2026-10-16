@@ -75,6 +75,44 @@ public class FactoryEventRelayTests
         Assert.Empty(relay.Received);
     }
 
+    /// <summary>
+    /// Each response carries only the events its own call raised, even when calls share
+    /// a server scope (as these test containers do; ASP.NET gives each request its own).
+    /// </summary>
+    [Fact]
+    public async Task SequentialCalls_SameServerScope_EachBatchCarriesOnlyItsOwnEvents()
+    {
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
+
+        await client.ServiceProvider.GetRequiredService<RelayTestCommands.Create>()("first");
+        await RelayTestHarness.WaitForAsync(() => relay.InvocationCount == 1, "the first Relay invocation");
+
+        await client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateNoEvents>()("second");
+        await RelayTestHarness.WaitForAsync(() => relay.InvocationCount == 2, "the second Relay invocation");
+
+        var received = Assert.Single(relay.ReceivedOfType<TestRelayEvent>());
+        Assert.Equal("Created: first", received.Message);
+    }
+
+    /// <summary>
+    /// A call that fails after raising has no response, so its events are dropped; they
+    /// do not ride the next call's response in the same server scope.
+    /// </summary>
+    [Fact]
+    public async Task FailedCall_SameServerScope_ItsEventsDoNotRideTheNextCall()
+    {
+        var (server, client, relay) = RelayTestHarness.ScopesWithRelay();
+
+        await Assert.ThrowsAnyAsync<Exception>(
+            () => client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateThenFail>()("doomed"));
+
+        await client.ServiceProvider.GetRequiredService<RelayTestCommands.CreateNoEvents>()("next");
+        await RelayTestHarness.WaitForAsync(() => relay.InvocationCount >= 1, "the next call's Relay invocation");
+
+        Assert.Equal(1, relay.InvocationCount);
+        Assert.Empty(relay.Received);
+    }
+
     [Fact]
     public async Task RelayException_DoesNotPropagateToFactoryCaller()
     {

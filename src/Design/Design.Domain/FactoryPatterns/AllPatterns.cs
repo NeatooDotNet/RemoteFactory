@@ -39,7 +39,7 @@ namespace Design.Domain.FactoryPatterns;
 /// - [Remote] marks client-to-server entry points
 /// - [Create] generates a factory method that instantiates and initializes
 /// - [Fetch] generates a factory method that loads existing state
-/// - Method injection ([Service] on parameters) = server-only
+/// - Method injection ([Service] on parameters) = resolved on the tier that runs the method
 /// </summary>
 /// <remarks>
 /// COMMON MISTAKE: Forgetting the 'partial' keyword
@@ -86,13 +86,14 @@ public partial class ExampleClassFactory
     // -------------------------------------------------------------------------
     // DESIGN DECISION: Constructor injection vs method injection
     //
-    // Constructor injection ([Service] on constructor): The service is available
-    // on BOTH client and server. Use sparingly - only for services genuinely
-    // needed on both sides.
+    // Constructor injection: DI fills the constructor wherever the object is
+    // built, on BOTH client and server. Use sparingly - only for services
+    // genuinely needed on both sides.
     //
-    // Method injection ([Service] on method parameters): Server-only. This is
-    // the common case. Most services (repositories, external APIs, etc.) should
-    // only run on the server.
+    // Method injection ([Service] on method parameters): resolved from the
+    // container of the tier that runs the method, so for a [Remote] method the
+    // server's. This is the common case: most services (repositories, external
+    // APIs, etc.) exist only on the server and are reached through [Remote].
     //
     // SERIALIZATION INTERACTION: see CtorInjectionExample.cs
     //
@@ -177,6 +178,14 @@ public partial class ExampleClassFactory
 // client and server. The interface defines the contract; the server provides
 // the implementation. Clients only see the interface.
 //
+// DESIGN DECISION: An interface factory is a DOMAIN SERVICE the client calls
+//
+// Name it for what it does (a catalog, a directory, a pricing service). A
+// repository is never an interface factory: persistence is a [Service]
+// injected into server-side operations, as Order injects IOrderDbContext
+// (VisionAlignment D12, #112). Exposing a repository to the client would
+// let the UI read and write rows that no aggregate guards.
+//
 // =============================================================================
 
 /// <summary>
@@ -216,34 +225,38 @@ public partial class ExampleClassFactory
 ///
 /// Enforced at compile time by NF0106 — see CLAUDE-DESIGN.md Anti-Pattern 2.
 /// </remarks>
+#region interface-factory-contract
 [Factory]
-public interface IExampleRepository
+public interface IProductCatalog
 {
     /// <summary>
-    /// Fetches all items. Executed on server, called from client.
+    /// Products whose name contains the text. Executed on the server, called from the client.
     /// </summary>
     /// <remarks>
     /// GENERATOR BEHAVIOR: The proxy serializes this call to the server,
-    /// where the actual IExampleRepository implementation runs.
+    /// where the actual ProductCatalog implementation runs.
     /// No attributes needed - the [Factory] on the interface is sufficient.
     /// </remarks>
-    Task<IReadOnlyList<ExampleDto>> GetAllAsync();
+    Task<IReadOnlyList<ProductListing>> SearchAsync(string text);
 
     /// <summary>
-    /// Fetches a single item by ID.
+    /// One product by SKU, or null when there is none.
     /// </summary>
-    Task<ExampleDto?> GetByIdAsync(int id);
+    Task<ProductListing?> FindBySkuAsync(string sku);
 
     /// <summary>
-    /// Fetches a single item by ID, returning a record with a primary constructor.
+    /// A product's details, returned as a record with a primary constructor.
     /// </summary>
     /// <remarks>
     /// Demonstrates that Interface Factory methods can return plain records
     /// (no [Factory] attribute). The record is serialized without $id/$ref
     /// metadata, avoiding the System.Text.Json parameterized constructor limitation.
+    /// ProductListing (a class) and ProductDetails (a record) take the two
+    /// serialization paths a returned type can take.
     /// </remarks>
-    Task<ExampleRecordResult?> GetRecordByIdAsync(int id);
+    Task<ProductDetails?> GetDetailsAsync(string sku);
 }
+#endregion
 
 // DID NOT DO THIS: Require [Remote] on interface methods
 //
@@ -255,45 +268,61 @@ public interface IExampleRepository
 // The rule: [Factory] on interface = all methods are remote entry points.
 
 /// <summary>
-/// Server-only implementation of IExampleRepository.
+/// Server-side implementation of IProductCatalog.
 /// </summary>
 /// <remarks>
 /// DESIGN DECISION: Server implementations don't need [Factory] because they're
 /// not exposed to clients. The interface defines the factory contract.
 ///
+/// It is named for the interface without its leading I and sits in the same
+/// namespace, so RegisterMatchingName registers it (IProductCatalog -> ProductCatalog).
+///
 /// COMMON MISTAKE: Adding [Factory] to the implementation class
 ///
 /// WRONG:
 /// [Factory]  // <-- Unnecessary and causes duplicate registration
-/// public class ExampleRepository : IExampleRepository { }
+/// public class ProductCatalog : IProductCatalog { }
 ///
 /// RIGHT:
-/// public class ExampleRepository : IExampleRepository { }  // No [Factory]
+/// public class ProductCatalog : IProductCatalog { }  // No [Factory]
 ///
 /// The interface already has [Factory]; the implementation is just a service.
 /// </remarks>
-public class ExampleRepository : IExampleRepository
+#region interface-factory-implementation
+public class ProductCatalog : IProductCatalog
 {
-    public Task<IReadOnlyList<ExampleDto>> GetAllAsync()
+    // In real code, this would query a product store
+    private static readonly ProductDetails[] Products =
+    [
+        new("WA-100", "Widget A", 10.00m, "The standard widget."),
+        new("WB-200", "Widget B", 25.00m, "The heavy-duty widget."),
+        new("WC-300", "Widget C", 7.00m, "The compact widget."),
+    ];
+
+    public Task<IReadOnlyList<ProductListing>> SearchAsync(string text)
     {
-        // In real code, this would query a database
-        return Task.FromResult<IReadOnlyList<ExampleDto>>(
-        [
-            new ExampleDto { Id = 1, Name = "Item 1" },
-            new ExampleDto { Id = 2, Name = "Item 2" }
-        ]);
+        IReadOnlyList<ProductListing> found = Products
+            .Where(p => p.Name.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Select(ToListing)
+            .ToList();
+        return Task.FromResult(found);
     }
 
-    public Task<ExampleDto?> GetByIdAsync(int id)
+    public Task<ProductListing?> FindBySkuAsync(string sku)
     {
-        return Task.FromResult<ExampleDto?>(new ExampleDto { Id = id, Name = $"Item {id}" });
+        var product = Products.FirstOrDefault(p => p.Sku == sku);
+        return Task.FromResult(product == null ? null : ToListing(product));
     }
 
-    public Task<ExampleRecordResult?> GetRecordByIdAsync(int id)
+    public Task<ProductDetails?> GetDetailsAsync(string sku)
     {
-        return Task.FromResult<ExampleRecordResult?>(new ExampleRecordResult(id, $"Record {id}"));
+        return Task.FromResult(Products.FirstOrDefault(p => p.Sku == sku));
     }
+
+    private static ProductListing ToListing(ProductDetails product) =>
+        new() { Sku = product.Sku, Name = product.Name, UnitPrice = product.UnitPrice };
 }
+#endregion
 
 // =============================================================================
 // PATTERN 3: STATIC FACTORY (Execute Commands)
@@ -475,11 +504,13 @@ public static partial class ExampleCommands
     /// The rule: [Remote] when the command needs the server; bare when it must run
     /// where it is called.
     /// </remarks>
+    #region attributes-execute-local
     [Execute]
     private static Task<int> _ScoreText(string text, [Service] ITextScorer scorer)
     {
         return Task.FromResult(scorer.Score(text));
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // DID NOT DO THIS: Use instance methods for stateless operations
@@ -561,12 +592,18 @@ public class NotificationService : INotificationService
 }
 
 /// <summary>
-/// Simple DTO for data transfer (class with public setters).
+/// A product as a search result: a class with public setters and a parameterless
+/// constructor.
 /// </summary>
-public class ExampleDto
+/// <remarks>
+/// IL trimming: the generator emits DtoConstructorRegistry.Register&lt;ProductListing&gt;
+/// for a returned class with a parameterless constructor. No consumer action needed.
+/// </remarks>
+public class ProductListing
 {
-    public int Id { get; set; }
+    public string Sku { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public decimal UnitPrice { get; set; }
 }
 
 /// <summary>
@@ -578,11 +615,11 @@ public class ExampleDto
 /// by System.Text.Json's reference handling limitation.
 ///
 /// IL trimming: because this record has no parameterless constructor, the
-/// generator emits DtoConstructorRegistry.PreserveType&lt;ExampleRecordResult&gt;()
+/// generator emits DtoConstructorRegistry.PreserveType&lt;ProductDetails&gt;()
 /// in the FactoryServiceRegistrar (plain DTOs with a parameterless ctor get
 /// Register&lt;T&gt;(() => new T()) instead). No consumer action needed.
 ///
 /// Do NOT add [Factory] here -- that would route serialization through the
 /// ordinal converter. Plain records fall through to standard STJ handling.
 /// </remarks>
-public record ExampleRecordResult(int Id, string Name);
+public record ProductDetails(string Sku, string Name, decimal UnitPrice, string Description);

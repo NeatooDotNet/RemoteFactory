@@ -1,165 +1,185 @@
 # Interface Factory
 
-The Interface Factory pattern generates a client-side proxy for a server-only service. You define the contract as a C# interface with `[Factory]`, provide the implementation on the server, and RemoteFactory generates a proxy that serializes calls across the client/server boundary. Clients inject the interface from DI and call it normally — the proxy handles serialization and HTTP transport.
+An interface factory is a domain service the client calls and the server runs. You declare the contract as a C# interface with `[Factory]` and implement it on the server. RemoteFactory generates a proxy that serializes each call to the server. Clients inject the interface from DI and call it as usual. The code comes from RemoteFactory's compiled example set, `src/Design`.
 
-This pattern is for services without entity identity: query services, report generators, third-party API wrappers. If you need entity lifecycle management (Create, Fetch, Save), use a [Class Factory](factory-operations.md) instead. If you need stateless command delegates, use a [Static Factory](factory-operations.md#execute-operation).
+Use it for a call that returns and is done: a search, a lookup, a calculation only the server can make. When the client holds an object and binds to it, use a [Class Factory](factory-operations.md). For a stateless command, use a [Static Factory](factory-operations.md#execute-operation). A repository is never an interface factory: persistence is a `[Service]` injected into server-side operations.
 
 See the [Decision Guide](decision-guide.md#which-factory-pattern) for a comparison of all three patterns.
 
 ## Complete Example
 
-### 1. Define the interface
+### 1. Declare the interface
 
-Place `[Factory]` on the interface. Methods need no operation attributes — every method on the interface is automatically a remote entry point.
+Put `[Factory]` on the interface. Its methods need no operation attributes: every method is a call to the server. Design's product catalog:
 
-```csharp
+<!-- snippet: interface-factory-contract -->
+<a id='snippet-interface-factory-contract'></a>
+```cs
 [Factory]
-public interface IOrderQueryService
+public interface IProductCatalog
 {
-    Task<IReadOnlyList<OrderSummary>> GetAllAsync();
-    Task<OrderSummary?> GetByIdAsync(int id);
-    Task<int> CountAsync();
+    /// <summary>
+    /// Products whose name contains the text. Executed on the server, called from the client.
+    /// </summary>
+    /// <remarks>
+    /// GENERATOR BEHAVIOR: The proxy serializes this call to the server,
+    /// where the actual ProductCatalog implementation runs.
+    /// No attributes needed - the [Factory] on the interface is sufficient.
+    /// </remarks>
+    Task<IReadOnlyList<ProductListing>> SearchAsync(string text);
+
+    /// <summary>
+    /// One product by SKU, or null when there is none.
+    /// </summary>
+    Task<ProductListing?> FindBySkuAsync(string sku);
+
+    /// <summary>
+    /// A product's details, returned as a record with a primary constructor.
+    /// </summary>
+    /// <remarks>
+    /// Demonstrates that Interface Factory methods can return plain records
+    /// (no [Factory] attribute). The record is serialized without $id/$ref
+    /// metadata, avoiding the System.Text.Json parameterized constructor limitation.
+    /// ProductListing (a class) and ProductDetails (a record) take the two
+    /// serialization paths a returned type can take.
+    /// </remarks>
+    Task<ProductDetails?> GetDetailsAsync(string sku);
 }
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L228-L259' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-contract' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-### 2. Implement on the server
+The methods return a class (`ProductListing`) and a record (`ProductDetails`). Both are plain types with no `[Factory]`, serialized as the call's result.
 
-The implementation is a plain class. It does **not** get `[Factory]` — only the interface has it.
+### 2. Implement it on the server
 
-```csharp
-public class OrderQueryService : IOrderQueryService
+The implementation is a plain class. It does **not** get `[Factory]`; only the interface has it.
+
+<!-- snippet: interface-factory-implementation -->
+<a id='snippet-interface-factory-implementation'></a>
+```cs
+public class ProductCatalog : IProductCatalog
 {
-    private readonly AppDbContext _db;
+    // In real code, this would query a product store
+    private static readonly ProductDetails[] Products =
+    [
+        new("WA-100", "Widget A", 10.00m, "The standard widget."),
+        new("WB-200", "Widget B", 25.00m, "The heavy-duty widget."),
+        new("WC-300", "Widget C", 7.00m, "The compact widget."),
+    ];
 
-    public OrderQueryService(AppDbContext db) => _db = db;
-
-    public async Task<IReadOnlyList<OrderSummary>> GetAllAsync()
+    public Task<IReadOnlyList<ProductListing>> SearchAsync(string text)
     {
-        return await _db.Orders
-            .Select(o => new OrderSummary { Id = o.Id, CustomerName = o.CustomerName })
-            .ToListAsync();
+        IReadOnlyList<ProductListing> found = Products
+            .Where(p => p.Name.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Select(ToListing)
+            .ToList();
+        return Task.FromResult(found);
     }
 
-    public async Task<OrderSummary?> GetByIdAsync(int id)
+    public Task<ProductListing?> FindBySkuAsync(string sku)
     {
-        var order = await _db.Orders.FindAsync(id);
-        return order == null ? null : new OrderSummary { Id = order.Id, CustomerName = order.CustomerName };
+        var product = Products.FirstOrDefault(p => p.Sku == sku);
+        return Task.FromResult(product == null ? null : ToListing(product));
     }
 
-    public async Task<int> CountAsync()
+    public Task<ProductDetails?> GetDetailsAsync(string sku)
     {
-        return await _db.Orders.CountAsync();
+        return Task.FromResult(Products.FirstOrDefault(p => p.Sku == sku));
     }
+
+    private static ProductListing ToListing(ProductDetails product) =>
+        new() { Sku = product.Sku, Name = product.Name, UnitPrice = product.UnitPrice };
 }
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/AllPatterns.cs#L291-L325' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-implementation' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-### 3. Register in DI (server only)
+### 3. Register the implementation on the server
 
-```csharp
-// Program.cs (server)
-builder.Services.AddScoped<IOrderQueryService, OrderQueryService>();
+The server registers the implementation for the interface. `ProductCatalog` is named for its interface without the leading `I`, in the same namespace, so the server's `RegisterMatchingName` call registers it (see [Service Injection](service-injection.md#registermatchingname)). The explicit form is `services.AddScoped<IProductCatalog, ProductCatalog>()`. The client registers nothing: the generated registration gives it the proxy.
+
+### 4. Call it from the client
+
+Resolve the interface and call it. The proxy sends the call to the server:
+
+<!-- snippet: interface-factory-usage -->
+<a id='snippet-interface-factory-usage'></a>
+```cs
+// Get the interface from client - this is the proxy
+var catalog = client.GetRequiredService<IProductCatalog>();
+
+// Act - call goes through proxy to server
+var result = await catalog.SearchAsync("Widget");
 ```
-
-Or use convention-based registration:
-```csharp
-builder.Services.RegisterMatchingName<IOrderQueryService>();  // Auto-finds OrderQueryService
-```
-
-### 4. Use from client code
-
-Inject the interface and call it. The generated proxy handles the rest.
-
-```csharp
-@inject IOrderQueryService OrderQuery
-
-@code {
-    private IReadOnlyList<OrderSummary>? orders;
-
-    protected override async Task OnInitializedAsync()
-    {
-        orders = await OrderQuery.GetAllAsync();
-    }
-}
-```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/InterfaceFactoryTests.cs#L46-L52' title='Snippet source file'>snippet source</a> | <a href='#snippet-interface-factory-usage' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 ## What the Generator Produces
 
-For an interface with `[Factory]`, the generator creates:
+For `IProductCatalog` the generator emits:
+1. **`IProductCatalogFactory`**, which extends `IProductCatalog`, and **`ProductCatalogFactory`**, which implements it. On the client each method serializes its arguments, posts them to `/api/neatoo`, and deserializes the result.
+2. **A delegate type per method**, which the server's endpoint invokes.
+3. **Registrations for each mode:**
+   - **Remote:** `IProductCatalog` and `IProductCatalogFactory` resolve to the proxy.
+   - **Server:** the delegates call the `IProductCatalog` the application registered. The generator registers no implementation; step 3 does.
+   - **Logical:** nothing in between. `IProductCatalog` resolves to the implementation.
 
-1. **A proxy class** that implements the interface. Each method serializes its arguments, sends an HTTP POST to `/api/neatoo`, and deserializes the response.
-2. **Delegate types** for each method on the interface.
-3. **DI registrations** that wire the proxy in Remote mode and the real implementation in Server/Logical mode.
+The client injects `IProductCatalog` and never names the proxy.
 
-The client never sees the proxy directly — it injects `IOrderQueryService` from DI and gets the proxy automatically.
+## No Attributes on Interface Methods
 
-## Critical Rule: No Attributes on Interface Methods
-
-Interface methods do **not** need `[Fetch]`, `[Create]`, `[Remote]`, or any other operation attribute. The `[Factory]` attribute on the interface itself is sufficient. Every method on the interface is automatically remote.
+`[Factory]` on the interface makes every method a remote entry point. An operation attribute on an interface method is compile error **NF0106**:
 
 ```csharp
-// WRONG - causes duplicate generation
+// WRONG - NF0106: factory-operation attribute on interface factory method
 [Factory]
-public interface IOrderQueryService
+public interface IProductCatalog
 {
-    [Fetch]  // Don't do this
-    Task<OrderSummary?> GetByIdAsync(int id);
-}
-
-// RIGHT - no attributes on methods
-[Factory]
-public interface IOrderQueryService
-{
-    Task<OrderSummary?> GetByIdAsync(int id);
+    [Fetch]
+    Task<ProductListing?> FindBySkuAsync(string sku);
 }
 ```
 
-**Why it matters:** The generator treats every interface method as a remote entry point. Adding operation attributes creates duplicate registrations and generation conflicts.
+`[Remote]` is not needed either: every method of an interface factory is already remote.
 
-## Anti-Pattern: [Factory] on the Implementation Class
+## No [Factory] on the Implementation
 
-Only the interface gets `[Factory]`. The implementation is a plain service class registered in DI.
+Only the interface gets `[Factory]`. On the implementation too, the build fails with CS0101 and CS0111: the class's own factory is generated as `IProductCatalogFactory` and `ProductCatalogFactory`, the same names as the interface's.
 
 ```csharp
-// WRONG - duplicate registration
+// WRONG - CS0101/CS0111: both declarations generate ProductCatalogFactory
 [Factory]
-public interface IOrderQueryService { ... }
-
-[Factory]  // Don't do this
-public class OrderQueryService : IOrderQueryService { ... }
-
-// RIGHT - only interface has [Factory]
-[Factory]
-public interface IOrderQueryService { ... }
-
-public class OrderQueryService : IOrderQueryService { ... }  // No [Factory]
+public class ProductCatalog : IProductCatalog { ... }
 ```
 
-**Why it matters:** The interface defines the factory contract. Adding `[Factory]` to the implementation creates a second, conflicting factory registration.
+## Authorization
+
+`[AuthorizeFactory<T>]` on the interface applies an authorization class to its methods. The checks run on the server before the implementation, and the generated `I{Name}Factory` gains a `Can*` method for each method (`ICustomerDirectoryFactory.CanGetCustomer`). A method has no result to carry a refusal, so a refusal is an exception, which the client raises as `HttpRequestException`. Design's customer directory carries one. See [Authorization — Authorization Failures](authorization.md#authorization-failures).
 
 ## Differences from Class Factory
 
 | Aspect | Class Factory | Interface Factory |
 |--------|---------------|-------------------|
-| `[Factory]` goes on | The class (`internal partial class Order`) | The interface (`public interface IOrderQueryService`) |
-| Operation attributes | Required (`[Create]`, `[Fetch]`, `[Remote]`, etc.) | Not used — all methods are implicitly remote |
-| Entity state | Yes — properties serialized across boundary | No — request/response only |
+| `[Factory]` goes on | The class (`internal partial class Order`) | The interface (`public interface IProductCatalog`) |
+| Operation attributes | Required (`[Create]`, `[Fetch]`, `[Insert]`, ...), `[Remote]` on entry points | None: every method is remote |
+| Object state | Serialized across the boundary | None: arguments and result only |
 | `IFactorySaveMeta` | Supported (Insert/Update/Delete routing) | Not applicable |
-| `partial` keyword | Required on the class | Not required on the interface |
-| Implementation | The `[Factory]` class IS the implementation | Separate implementation class, no `[Factory]` |
-| Generated output | Factory that creates/manages instances | Proxy that forwards calls to server |
+| `partial` | Expected on the class. Without it the factory is still generated, but the class is written in the Named shape, never the ordinal one ([Serialization](serialization.md)) | Not used |
+| Implementation | The `[Factory]` class is the implementation | A separate class, with no `[Factory]` |
+| Generated output | A factory that creates, loads and saves instances | A proxy that forwards calls to the server |
 
-## When to Use Interface Factory
+## When to Use an Interface Factory
 
-- **Query services** — Read-only data access that returns DTOs or projections
-- **Third-party API wrappers** — Wrap external services behind a clean interface
-- **Report generators** — Server-side computation exposed to the client
-- **Any remote service without entity lifecycle** — If you don't need Create/Fetch/Save semantics, interface factory is the simpler choice
+- **Queries that return and are done:** a search, a lookup, a report, returning records or plain classes.
+- **Server-side computation:** a pricing or scheduling service the client asks for an answer.
+- **Wrappers for external services:** a third-party API the server calls on the client's behalf.
 
-When you need entity identity, state management, and persistence routing, use a [Class Factory](factory-operations.md) instead.
+When the client holds an object, edits it and saves it, use a [Class Factory](factory-operations.md). When it binds to a read-only object, use a `[Fetch]`-only class factory.
 
 ## Next Steps
 
-- [Decision Guide](decision-guide.md#which-factory-pattern) — Choosing between factory patterns
-- [Factory Operations](factory-operations.md) — Class Factory operations reference
-- [Client-Server Architecture](client-server-architecture.md) — How the proxy fits in the architecture
-- [ASP.NET Core Integration](aspnetcore-integration.md) — Server setup for the `/api/neatoo` endpoint
+- [Decision Guide](decision-guide.md#which-factory-pattern): choosing between factory patterns
+- [Factory Operations](factory-operations.md): class factory operations
+- [Client-Server Architecture](client-server-architecture.md): how the proxy fits in
+- [ASP.NET Core Integration](aspnetcore-integration.md): server setup for the `/api/neatoo` endpoint

@@ -59,20 +59,22 @@ public class ClassFactoryExecuteTests
     }
 
     /// <summary>
-    /// Verifies that Create still works alongside Execute on the same factory.
+    /// Verifies that Create still works alongside Execute on the same factory: it sets what it is
+    /// given (Create is `new`, D3).
     /// </summary>
     [Fact]
-    public async Task Create_StillWorks_AlongsideExecute()
+    public void Create_StillWorks_AlongsideExecute()
     {
         // Arrange
         var (_, _, local) = DesignClientServerContainers.Scopes();
         var factory = local.GetRequiredService<IClassExecuteDemoFactory>();
 
         // Act
-        var result = await factory.Create("test");
+        var result = factory.Create(7, "test");
 
         // Assert
         Assert.NotNull(result);
+        Assert.Equal(7, result.Id);
         Assert.Equal("test", result.Name);
 
         local.Dispose();

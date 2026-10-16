@@ -21,7 +21,7 @@ RemoteFactory's factory-event surface is a mediator pattern: factory methods rai
 
 `IFactoryEvents.Raise<T>()` is a mediator that dispatches events to every handler decorated with `[FactoryEventHandler<T>]`. The three invariants of the **default (`Immediate`) phase** — an attribute with no `DispatchPhase` argument — are:
 
-1. **Shared scope.** Handlers resolve `[Service]` dependencies from the caller's `IServiceProvider`. A `DbContext` injected into the factory method and a `DbContext` injected into the handler are the same instance and the same transaction. The flip side: an `Immediate` handler observes the caller's **staged (unflushed) state** — a projection that queries the database here reads the world without the aggregate's pending writes. That is what the [deferred phases](#dispatch-phases) are for.
+1. **Shared scope.** Handlers resolve `[Service]` dependencies from the caller's `IServiceProvider`. A scoped `DbContext` injected into the factory method and one injected into the handler are the same instance and the same transaction. (A transient registration resolves a new instance for each.) The flip side: an `Immediate` handler observes the caller's **staged (unflushed) state** — a projection that queries the database here reads the world without the aggregate's pending writes. That is what the [deferred phases](#dispatch-phases) are for.
 2. **Sequential.** Handlers run one after another in unspecified order. Callers must not rely on a specific ordering. A `DbContext` is not thread-safe, so handlers cannot run in parallel.
 3. **Awaited.** `Raise<T>()` returns only after every `Immediate` handler has completed. A handler exception aborts the remaining handlers and propagates to the caller so the transaction can roll back. Across the client/server boundary, the HTTP call stays open until all server-side handlers finish — including, for deferred phases, the entry call's completion drain.
 
@@ -29,70 +29,78 @@ Handlers do not know about each other, and the raising code does not know which 
 
 ### Raising an Event
 
-Inject `IFactoryEvents` as a `[Service]` parameter inside a factory method and call `Raise`:
+An event is a record inheriting `FactoryEventBase`. Records give structural equality and immutability; `FactoryEventBase` is the marker the generator looks for. The code on this page comes from RemoteFactory's compiled example set, `src/Design`:
 
-```csharp
+<!-- snippet: events-event -->
+<a id='snippet-events-event'></a>
+```cs
 public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
+```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs#L71-L73' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-event' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-[Factory]
-internal partial class Order
+Raise it inside the operation it belongs to: inject `IFactoryEvents` as a `[Service]` parameter and call `Raise`. An event announces something that happened, so it is raised by a write (`[Insert]`, `[Update]`, `[Delete]`) or a command (`[Execute]`). A `[Create]` should not raise one: it only builds a new object, and nothing has happened yet. Design's checkout raises it when it is stored:
+
+<!-- snippet: events-raise -->
+<a id='snippet-events-raise'></a>
+```cs
+[Remote, Insert]
+internal async Task Insert([Service] IFactoryEvents factoryEvents, CancellationToken cancellationToken)
 {
-    public int Id { get; set; }
-    public decimal Total { get; set; }
+    // A real Insert writes the row here, then raises.
 
-    [Remote, Create]
-    internal async Task Create(
-        int id,
-        decimal total,
-        [Service] IFactoryEvents factoryEvents,
-        CancellationToken ct)
-    {
-        Id = id;
-        Total = total;
-        // Pass the factory method's CancellationToken through to Raise so
-        // handlers that declare a CancellationToken parameter observe cancellation.
-        await factoryEvents.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.None, ct);
-    }
+    // Raise the event. With default RaiseOptions.None, the event is:
+    //   1. Dispatched to every server-side [FactoryEventHandler<T>] static-method
+    //      handler in THIS method's DI scope, sequentially, awaited. A handler
+    //      that touches a DbContext sees the same DbContext this factory uses;
+    //      a handler exception aborts the chain and propagates to this method
+    //      (letting the caller's transaction roll back).
+    //   2. Captured for relay back to the client in RemoteResponseDto. On the
+    //      client, IFactoryEventRelay.Relay(...) is invoked fire-and-forget
+    //      strictly AFTER this factory method's return value has been handed
+    //      back to the caller and their continuation has resumed.
+    // The save's token is threaded through, so handlers that take a
+    // CancellationToken observe the caller's cancellation.
+    await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.None, cancellationToken);
+
+    // Stored: the next Save routes to Update.
+    IsNew = false;
 }
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs#L147-L170' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-raise' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-Event types must be records inheriting `FactoryEventBase`. Records give structural equality and immutability; `FactoryEventBase` is the marker the generator looks for.
-
-The `Raise<T>` signature is:
-
-```csharp
-Task Raise<T>(
-    T factoryEvent,
-    RaiseOptions options = RaiseOptions.None,
-    CancellationToken cancellationToken = default)
-    where T : FactoryEventBase;
-```
-
-Thread the caller's `CancellationToken` through — handlers that declare a `CancellationToken` parameter receive it.
+`Raise<T>(T factoryEvent, RaiseOptions options = RaiseOptions.None, CancellationToken cancellationToken = default)` is constrained to `T : FactoryEventBase`. Thread the operation's `CancellationToken` through, as the Insert does: handlers that declare a `CancellationToken` parameter receive it.
 
 ### Server-Side Handler (Static Method)
 
 A `[FactoryEventHandler<T>]` class with a `static` matching method is treated as a server-side handler. The generator registers it with `FactoryEventHandlerRegistry`. Each handler runs in the caller's DI scope — the same `IServiceProvider` that resolved the factory method. `[Service]` parameters resolve from that scope, and the `CancellationToken` is the token the caller passed to `Raise`.
 
-```csharp
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public static partial class OrderCheckoutJournal
+<!-- snippet: attributes-factoryeventhandler -->
+<a id='snippet-attributes-factoryeventhandler'></a>
+```cs
+[FactoryEventHandler<OrderPlacedEvent>]
+public static partial class OrderNotifyHandlers
 {
-    internal static async Task RecordCheckoutInLedger(
-        OrderCheckoutCompleted evt,
-        [Service] AppDbContext db,    // SAME DbContext the factory method is using
-        CancellationToken ct)          // caller's CancellationToken
+    internal static async Task SendOrderConfirmation(
+        OrderPlacedEvent orderEvent,
+        [Service] INotificationService notificationService,
+        CancellationToken cancellationToken)
     {
-        db.LedgerEntries.Add(new LedgerEntry(evt.OrderId, evt.Total));
-        await db.SaveChangesAsync(ct);
-        // These changes participate in the factory's transaction. Throwing from
-        // this handler aborts the factory operation and rolls everything back.
+        await notificationService.SendAsync(
+            orderEvent.CustomerEmail,
+            $"Order {orderEvent.OrderId} confirmed!");
     }
 }
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventHandlerPattern.cs#L92-L106' title='Snippet source file'>snippet source</a> | <a href='#snippet-attributes-factoryeventhandler' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+The handler resolves its `[Service]` parameters from the caller's scope on each dispatch, so a scoped or singleton service it shares with the factory method is the same instance: a scoped `DbContext` the handler writes to takes part in the operation's transaction. A transient service is a new instance. A throw from an `Immediate` handler aborts the operation. Design's `CheckoutLedgerHandler` handles `OrderCheckoutCompleted` the same way, passing the token on to its ledger.
 
 The generator finds the handler method by signature:
 
+- The method is `static`. An instance method emits NF0503 and is ignored (see [Diagnostics](#diagnostics)).
 - Return type must be `Task` (not `void`, not `Task<T>`)
 - The first non-`[Service]`, non-`CancellationToken` parameter must be of type `T`
 - Accessibility may be any level (public, internal, private)
@@ -101,26 +109,7 @@ Exactly one matching method must exist — see [Diagnostics](#diagnostics) below
 
 ### Multiple Handler Types on One Class
 
-Stack multiple `[FactoryEventHandler<T>]` attributes to handle several event types from the same class. The generator matches one method per attribute:
-
-```csharp
-[FactoryEventHandler<OrderCheckoutCompleted>]
-[FactoryEventHandler<OrderShipped>]
-public static partial class OrderAuditHandler
-{
-    internal static Task LogCheckout(
-        OrderCheckoutCompleted evt,
-        [Service] IAuditLogService audit,
-        CancellationToken ct) =>
-        audit.LogAsync("Checkout", evt.OrderId, "Order", $"Total: {evt.Total:C}", ct);
-
-    internal static Task LogShipment(
-        OrderShipped evt,
-        [Service] IAuditLogService audit,
-        CancellationToken ct) =>
-        audit.LogAsync("Shipped", evt.OrderId, "Order", evt.Carrier, ct);
-}
-```
+Stack several `[FactoryEventHandler<T>]` attributes on one class to handle several event types, with one matching `static` method per event type. Repeating the same event type on one class emits NF0504, and only the first declaration registers. Several classes may also handle the same event: Design's `OrderNotifyHandlers` and `OrderAuditHdlrs` both handle `OrderPlacedEvent`, and both run.
 
 ### Transactional vs Fire-and-Forget
 
@@ -132,13 +121,66 @@ If your handler talks to an external system that should never block or fail the 
 
 ## Dispatch Phases
 
-The attribute's optional `DispatchPhase` argument declares *when* a handler runs relative to the factory operation that raised the event:
+The attribute's optional `DispatchPhase` argument declares *when* a handler runs relative to the factory operation that raised the event. Design handles one event at all three phases:
 
-```csharp
-[FactoryEventHandler<InvoiceFinalized>]                            // Immediate — the default
-[FactoryEventHandler<InvoiceFinalized>(DispatchPhase.AfterFlush)]  // deferred, consumer-drained
-[FactoryEventHandler<InvoiceFinalized>(DispatchPhase.AfterCommit)] // deferred, framework-drained
+<!-- snippet: events-phase-handlers -->
+<a id='snippet-events-phase-handlers'></a>
+```cs
+/// <summary>
+/// Immediate (no attribute argument — the default). Runs at <c>Raise</c>, inside
+/// the caller's transaction, seeing staged state. A throw here aborts
+/// <c>Finalize</c> itself — this handler is atomic with the save.
+/// </summary>
+[FactoryEventHandler<InvoiceFinalizedEvent>]
+public static partial class InvoiceBalanceGuard
+{
+    internal static Task Enforce(
+        InvoiceFinalizedEvent finalized,
+        [Service] IPhaseAuditService audit)
+    {
+        audit.Record(finalized.InvoiceId, "invoice-immediate");
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// AfterFlush: queued at <c>Raise</c>, run at the factory method's
+/// <c>DrainAsync</c> call. In a real consumer this is the projection that needs
+/// database-generated state (identity keys, computed totals) while the
+/// transaction is still open — it can still roll the operation back by throwing.
+/// </summary>
+[FactoryEventHandler<InvoiceFinalizedEvent>(DispatchPhase.AfterFlush)]
+public static partial class InvoiceLedgerProjection
+{
+    internal static Task Project(
+        InvoiceFinalizedEvent finalized,
+        [Service] IPhaseAuditService audit)
+    {
+        audit.Record(finalized.InvoiceId, "invoice-flush");
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// AfterCommit: queued at <c>Raise</c>, run by the framework after the entry
+/// call completes. No ambient transaction — a throw is logged (9003) and
+/// swallowed. The right phase for read-only refresh work that must never fail
+/// the save it follows.
+/// </summary>
+[FactoryEventHandler<InvoiceFinalizedEvent>(DispatchPhase.AfterCommit)]
+public static partial class InvoiceSearchIndexRefresh
+{
+    internal static Task Refresh(
+        InvoiceFinalizedEvent finalized,
+        [Service] IPhaseAuditService audit)
+    {
+        audit.Record(finalized.InvoiceId, "invoice-commit");
+        return Task.CompletedTask;
+    }
+}
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs#L155-L208' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-phase-handlers' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 | Phase | Runs at | Sees | Exceptions |
 |-------|---------|------|------------|
@@ -150,32 +192,44 @@ RemoteFactory owns **no persistence concepts** — it never flushes and never co
 
 ### Draining AfterFlush — `IFactoryEventPhaseCoordinator`
 
-`[Service]`-inject the coordinator (method injection — server-only, like the persistence services it belongs beside) and drain **inside the factory method body**, at your flush/commit seam:
+`[Service]`-inject the coordinator and drain **inside the factory method body**, at your flush/commit seam. The coordinator is registered on the server and in Logical mode, beside the persistence services it works with, so the method is `[Remote]`. Finalizing an invoice stages writes, flushes and commits, so it is a command, not a Create:
 
-```csharp
-[Remote, Create]
-internal async Task Finalize(
-    Guid id,
-    [Service] AppDbContext db,
-    [Service] IFactoryEvents events,
-    [Service] IFactoryEventPhaseCoordinator coordinator,
-    CancellationToken ct)
+<!-- snippet: events-phase-drain -->
+<a id='snippet-events-phase-drain'></a>
+```cs
+[Factory]
+public static partial class InvoiceFinalizer
 {
-    // ... stage writes ...
+    [Execute]
+    [Remote]
+    internal static async Task<FinalizedInvoice> _Finalize(
+        Guid id,
+        decimal total,
+        [Service] IFactoryEvents events,
+        [Service] IFactoryEventPhaseCoordinator coordinator,
+        [Service] IPhaseAuditService audit,
+        CancellationToken ct)
+    {
+        // Immediate handlers run HERE, atomic with the staged writes.
+        await events.Raise(new InvoiceFinalizedEvent(id, total), RaiseOptions.None, ct);
 
-    // Immediate handlers run here, atomic with the staged writes.
-    await events.Raise(new InvoiceFinalized(id), RaiseOptions.None, ct);
+        // A real consumer flushes here (e.g. DbContext.SaveChangesAsync) —
+        // database-generated state now exists, transaction still open.
 
-    await db.SaveChangesAsync(ct);          // flush — DB-generated state exists, tx open
+        // AfterFlush handlers run HERE, in-transaction, seeing flushed state.
+        // An exception propagates out of this call so the transaction rolls back.
+        await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct);
 
-    // AfterFlush handlers run here, in-transaction, seeing flushed state.
-    // An exception propagates out of this call so the transaction rolls back.
-    await coordinator.DrainAsync(DispatchPhase.AfterFlush, ct);
+        audit.Record(id, "invoice-method-done");
 
-    await db.Database.CurrentTransaction!.CommitAsync(ct);  // commit
+        // A real consumer commits here. AfterCommit handlers run after this
+        // method returns and the entry call completes.
+        return new FinalizedInvoice(id, total);
+    }
 }
-// AfterCommit handlers run after this method returns and the entry call completes.
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs#L234-L265' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-phase-drain' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 Only `AfterFlush` is consumer-drainable: `Immediate` handlers are never queued, and the `AfterCommit` drain point belongs to the framework — it runs only after the entry call has succeeded. `DrainAsync` throws `ArgumentOutOfRangeException` for any other phase. The drain must run inside the factory body: the coordinator returns without draining when no entry factory call is active in the scope, so a transaction helper that wraps the factory call *from outside* drains into nothing — compose the helper into the body instead.
 
@@ -194,10 +248,23 @@ Only `AfterFlush` is consumer-drainable: `Immediate` handlers are never queued, 
 
 A save that touches N items often raises the same event N times, and a deferred projection then recomputes N times for one visible change. The attribute's `Coalesce` named argument collapses identical **queued** dispatches so the drain runs the handler once:
 
-```csharp
-[FactoryEventHandler<StatementChanged>(DispatchPhase.AfterCommit, Coalesce = true)]
-public static partial class StatementProjection { /* ... */ }
+<!-- snippet: events-coalesce -->
+<a id='snippet-events-coalesce'></a>
+```cs
+[FactoryEventHandler<StatementChangedEvent>(DispatchPhase.AfterCommit, Coalesce = true)]
+public static partial class StatementProjection
+{
+    internal static Task Recompute(
+        StatementChangedEvent changed,
+        [Service] IPhaseAuditService audit)
+    {
+        audit.Record(changed.AccountId, "statement-recompute");
+        return Task.CompletedTask;
+    }
+}
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventPhasesPattern.cs#L528-L540' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-coalesce' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 - **Identity is `Equals`.** Two queued dispatches collapse when they carry the same handler registration, `Equals`-equal events, and the same `RaiseOptions`. Records give structural equality by default — with two hazards that follow. An event with a **reference-typed member** (a `List<T>`, an entity) never compares equal across raises, so coalescing is a silent no-op for it: prefer value-only payloads on events whose handlers coalesce. And a **custom `Equals` override** that compares semantically distinct raises equal collapses dispatches you may have expected — the override owns that outcome.
 - **Pending work only.** At any moment the scope holds at most one pending dispatch per identity; a dispatch a running drain has already taken is history, and a raise arriving after it starts a fresh pending dispatch. The observable counts — [9002](#runtime-log-events) drained, [9006](#runtime-log-events) discarded — reflect the collapsed queue, and each collapse logs Debug [9008](#runtime-log-events) instead of a second 9001.
@@ -227,9 +294,9 @@ When a factory operation runs on the server and raises events via `IFactoryEvent
 ```
 CLIENT                           SERVER
   |                                 |
-  | 1. factory.Create(...)          |
+  | 1. factory.Save(checkout)       |
   |-------------------------------->|
-  |                                 | 2. Create runs in the request scope
+  |                                 | 2. Insert runs in the request scope
   |                                 | 3. await events.Raise(new OrderCheckoutCompleted(...))
   |                                 |    - every Immediate [FactoryEventHandler<T>] static
   |                                 |      handler runs sequentially in the same scope;
@@ -251,39 +318,59 @@ The server runs every handler before serializing the response — `Immediate` at
 
 ### Client-Side Relay (Consumer Implements `IFactoryEventRelay`)
 
-RemoteFactory does not generate any client-relay machinery. Consumers implement `IFactoryEventRelay` and register it in DI. RemoteFactory invokes `Relay(batch)` fire-and-forget, exactly once per `[Remote]` call — including the empty-batch case — strictly after the caller's `await` resumes.
+RemoteFactory does not generate any client-relay machinery. Consumers implement `IFactoryEventRelay` and register it in DI. RemoteFactory invokes `Relay(batch)` fire-and-forget, exactly once per successful `[Remote]` call — including the empty-batch case — strictly after the caller's `await` resumes.
 
-```csharp
-public sealed class AggregatorRelay : IFactoryEventRelay
+Design's relay collects what it receives; a production relay forwards each event to the application's aggregator or message bus:
+
+<!-- snippet: events-relay -->
+<a id='snippet-events-relay'></a>
+```cs
+public sealed class InMemoryAggregatorRelay : IFactoryEventRelay
 {
-    private readonly IEventAggregator _aggregator;
+    private readonly ConcurrentQueue<FactoryEventBase> _received = new();
 
-    public AggregatorRelay(IEventAggregator aggregator) => _aggregator = aggregator;
+    public IReadOnlyCollection<FactoryEventBase> Received => _received.ToArray();
+
+    public IEnumerable<T> ReceivedOfType<T>() where T : FactoryEventBase =>
+        _received.OfType<T>();
 
     public Task Relay(IReadOnlyList<FactoryEventBase> events)
     {
-        // One [Remote] call = exactly one Relay invocation, even when events.Count == 0.
-        // The empty-batch case is a useful "a factory call just returned" signal.
-        foreach (var evt in events) _aggregator.Publish(evt);
+        ArgumentNullException.ThrowIfNull(events);
+        // Per the contract: one [Remote] call = one Relay call, even when the batch is empty.
+        // Consumers can use the empty-batch invocation as a "a factory call just returned"
+        // signal (e.g. for end-of-batch UI refresh).
+        foreach (var evt in events)
+        {
+            _received.Enqueue(evt);
+        }
         return Task.CompletedTask;
     }
 }
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs#L331-L354' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-relay' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+The client registers it in its container:
+
+<!-- snippet: events-relay-register -->
+<a id='snippet-events-relay-register'></a>
+```cs
+// Consumer replaces the NoOp default by registering their own relay.
+services.AddSingleton<IFactoryEventRelay>(aggregator);
+```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/FactoryEventRelayTests.cs#L23-L26' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-relay-register' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 > **Instance-method `[FactoryEventHandler<T>]` handlers are no longer supported on the client.** The former client-relay pattern (register-by-attribute + `Register/Unregister` weak refs) has been removed. Declaring an instance method inside a `[FactoryEventHandler<T>]` class now emits **NF0503 (Warning)** and is silently skipped at runtime. Make the method `static` (server handler) **or** implement `IFactoryEventRelay` on your own class (client reception).
 
 ### IFactoryEventRelay
 
-```csharp
-public interface IFactoryEventRelay
-{
-    Task Relay(IReadOnlyList<FactoryEventBase> events);
-}
-```
+The interface has one method, `Task Relay(IReadOnlyList<FactoryEventBase> events)`.
 
 **Contract guarantees (see also [CLAUDE-DESIGN](../src/Design/CLAUDE-DESIGN.md) Execution Model):**
 
-- Invoked exactly once per **remote round-trip** — a `[Remote]` factory call, or a [client-initiated `Raise`](#client-initiated-raise). The empty-batch case (no events raised) still produces one invocation with `events.Count == 0`. The only exception: if batch deserialization throws `UnknownFactoryEventTypeException`, `Relay` is not invoked for that call and log event **3009** is emitted.
+- Invoked exactly once per **successful remote round-trip** — a `[Remote]` factory call, or a [client-initiated `Raise`](#client-initiated-raise). The empty-batch case (no events raised) still produces one invocation with `events.Count == 0`. Two cases produce none: a call that throws (the server reported a failure, or the transport did), and a batch that fails to deserialize, such as one naming an event type the client cannot resolve (`UnknownFactoryEventTypeException`), which emits log event **3009**. A consumer that uses the empty-batch call as a "the call returned" signal gets no signal from a call that throws.
 - Post-return ordering is a hard guarantee — dispatch uses `Task.Run(async () => { await Task.Yield(); ... }, CancellationToken.None)` in `MakeRemoteDelegateRequest`, so `Relay` runs strictly after the caller's continuation. Holds across sync-context (Blazor UI) and no-sync-context (console, server-render) hosts.
 - Relay exceptions are caught and logged (EventId **3008** `FactoryEventRelayFailed`). They never propagate to the factory caller.
 - Consumers own threading / SyncContext marshaling inside `Relay`. For Blazor UI work, dispatch back to the UI thread inside the implementation.
@@ -302,14 +389,20 @@ Server and Logical modes do not register `IFactoryEventRelay` at all (no relay s
 
 ### RaiseOptions.ServerOnly
 
-To raise an event that runs server-side handlers but is **not** relayed to the client, pass `RaiseOptions.ServerOnly`:
+To raise an event that runs server-side handlers but is **not** relayed to the client, pass `RaiseOptions.ServerOnly`. The checkout's Update re-announces a change the client made and already knows about:
 
-```csharp
-await factoryEvents.Raise(
-    new OrderCheckoutCompleted(id, total),
-    RaiseOptions.ServerOnly,
-    ct);
+<!-- snippet: events-serveronly -->
+<a id='snippet-events-serveronly'></a>
+```cs
+[Remote, Update]
+internal async Task Update([Service] IFactoryEvents factoryEvents, CancellationToken cancellationToken)
+{
+    // ServerOnly: server handlers run, client does NOT receive the event
+    await factoryEvents.Raise(new OrderCheckoutCompleted(Id, Total), RaiseOptions.ServerOnly, cancellationToken);
+}
 ```
+<sup><a href='/src/Design/Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs#L182-L189' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-serveronly' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 Use this for server-internal concerns (trigger a downstream process, record an audit row) that the UI does not need to know about. `ServerOnly` composes with other flags:
 
@@ -324,10 +417,14 @@ The flags mean the same thing for a [client-initiated `Raise`](#client-initiated
 
 Client code can raise an event itself. In Remote mode `IFactoryEvents` resolves to `RemoteFactoryEvents`, which sends the event to the server as its own round-trip:
 
-```csharp
-// Client — IFactoryEvents injected from the client container
-await factoryEvents.Raise(new SessionEnded(sessionId));
+<!-- snippet: events-client-raise -->
+<a id='snippet-events-client-raise'></a>
+```cs
+var events = client.ServiceProvider.GetRequiredService<IFactoryEvents>();
+await events.Raise(new ClientRaisedNotice(88));
 ```
+<sup><a href='/src/Design/Design.Tests/FactoryTests/FactoryEventRelayTests.cs#L131-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-events-client-raise' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 Server-side it lands in the ordinary dispatch path, so the request-scoped collector captures it and every `[FactoryEventHandler<T>]` runs before the response is written. The response carries the batch back and `IFactoryEventRelay.Relay` receives it — the same machinery as a factory call, because `HandleRemoteDelegateRequest` does not branch on which delegate ran.
 
@@ -336,20 +433,22 @@ Server-side it lands in the ordinary dispatch path, so the request-scoped collec
 ```
 CLIENT                              SERVER
   |                                    |
-  | 1. await events.Raise(SessionEnded)|
+  | 1. await events.Raise(             |
+  |      ClientRaisedNotice)           |
   |    (no local dispatch happens)     |
   |----------------------------------->|
-  |                                    | 2. handlers for SessionEnded run
-  |                                    | 3. a handler raises AuditWritten
+  |                                    | 2. handlers for ClientRaisedNotice run
+  |                                    | 3. a handler raises NoticeAcknowledged
   |                                    |    - both captured in the collector
   |        RemoteResponseDto           |
-  |  { RelayedEvents: [SessionEnded,   |
-  |                    AuditWritten] } |
+  |  { RelayedEvents:                  |
+  |      [ClientRaisedNotice,          |
+  |       NoticeAcknowledged] }        |
   |<-----------------------------------|
-  | 4. Relay([SessionEnded, AuditWritten])
+  | 4. Relay([ClientRaisedNotice, NoticeAcknowledged])
 ```
 
-That echo is deliberate, not a transport artifact. `RemoteFactoryEvents.Raise` dispatches **nothing locally**, so the client's relay has not otherwise seen the event — relaying it back is the only way client-side handlers observe it at all. Pass `RaiseOptions.ServerOnly` to suppress the whole batch; handlers still run server-side and the client receives one invocation with `events.Count == 0`.
+That echo is deliberate, not a transport artifact. `RemoteFactoryEvents.Raise` dispatches **nothing locally**, so the client's relay has not otherwise seen the event — relaying it back is the only way client-side handlers observe it at all. Pass `RaiseOptions.ServerOnly` to keep the raised event itself out of the batch; its handlers still run server-side. `ServerOnly` applies to that event only: an event a handler raises with `RaiseOptions.None` is still relayed. For Design's `ClientRaisedNotice`, raised `ServerOnly`, the batch would be `[NoticeAcknowledged]`. A `ServerOnly` raise whose handlers raise nothing gives one invocation with `events.Count == 0`.
 
 **A client raise is not fire-and-forget.** `Raise` returns only after every server handler completes, and a handler exception propagates back to the client, which means nothing relays for that call. RemoteFactory has had no fire-and-forget event surface since v1.5.0 removed `[Event]` — compose `Task.Run` + `IServiceScopeFactory.CreateScope()` yourself if that is what you need.
 
@@ -367,23 +466,9 @@ In Logical (local) mode no collector is registered and no relay occurs, because 
 
 ## Serialization and Transport
 
-Relayed events travel in `RemoteResponseDto.RelayedEvents`:
+Relayed events travel in `RemoteResponseDto.RelayedEvents`, beside the response's `Json`. It is a list of `RelayedFactoryEvent`, each carrying the event's `TypeFullName` and its own `Json`.
 
-```csharp
-public class RemoteResponseDto
-{
-    public string? Json { get; private set; }
-    public IReadOnlyList<RelayedFactoryEvent>? RelayedEvents { get; private set; }
-}
-
-public class RelayedFactoryEvent
-{
-    public string TypeFullName { get; set; } = null!;
-    public string Json { get; set; } = null!;
-}
-```
-
-On the wire, `RelayedEvents` is `null` (not an empty list) when zero events are captured — this preserves backward-compatible JSON payloads. The client normalizes `null` to `Array.Empty<FactoryEventBase>()` before invoking `Relay`, so the consumer always observes exactly one `Relay` call per `[Remote]` invocation.
+On the wire, `RelayedEvents` is `null` (not an empty list) when zero events are captured — this preserves backward-compatible JSON payloads. The client normalizes `null` to `Array.Empty<FactoryEventBase>()` before invoking `Relay`, so an empty batch still produces its one `Relay` call per successful `[Remote]` invocation.
 
 Event types are resolved on the client by `TypeFullName` against the runtime `FactoryEventTypeRegistry` (internal) — an `AppDomain.CurrentDomain.GetAssemblies()` scan for non-abstract `FactoryEventBase` descendants, lazy-initialized on first use and thread-safe. On a miss, the registry rescans once before throwing `UnknownFactoryEventTypeException` (to pick up dynamically-loaded assemblies). When two distinct `Type`s share a `FullName`, log event **3012** `FactoryEventTypeRegistryCollision` is emitted (Warning) and the first-scanned type wins. `RelayedFactoryEvent` and `List<RelayedFactoryEvent>` are registered with `NeatooTransportJsonContext` so they survive IL trimming.
 
@@ -406,9 +491,10 @@ See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mech
 | Does a `[FactoryEventHandler<T>]` class need `[Factory]`? | No — it is a separate generator pipeline |
 | Can one class handle multiple event types? | Yes — stack multiple `[FactoryEventHandler<T>]` attributes |
 | How do I stop an event from reaching the client? | Pass `RaiseOptions.ServerOnly` to `Raise` |
-| Where must events be raised? | Inside a factory method, via `[Service] IFactoryEvents` |
+| Where should events be raised? | Inside the write or command they belong to, via `[Service] IFactoryEvents`. Client code can also raise one, as its own round trip (see [Client-Initiated Raise](#client-initiated-raise)) |
+| Can a `[Create]` raise an event? | It should not: a Create builds a new object, and nothing has happened yet. Raise from the `[Insert]` that stores it |
 | What type must events inherit from? | `FactoryEventBase` (records only) |
-| What must the handler method return? | `Task` |
+| What must the handler method be? | `static`, returning `Task` |
 | What is the required parameter order? | `T evt` first (after any `[Service]`/`CancellationToken`), services and `CancellationToken` anywhere |
 | How do I defer a handler until after the flush? | `[FactoryEventHandler<T>(DispatchPhase.AfterFlush)]` + `IFactoryEventPhaseCoordinator.DrainAsync(AfterFlush)` inside the factory body (see [Dispatch Phases](#dispatch-phases)) |
 | How do I run a handler only after the operation has committed? | `[FactoryEventHandler<T>(DispatchPhase.AfterCommit)]` — the framework drains it after the entry call succeeds |
@@ -423,28 +509,14 @@ See [IL Trimming](trimming.md#factory-event-type-preservation) for the full mech
 **Less good:**
 
 ```csharp
-// Client code calling a factory, then raising the operation's event separately
-var order = await factory.Create(...);
-await factoryEvents.Raise(new OrderCheckoutCompleted(order.Id, order.Total));  // second round-trip
+// WRONG for an operation's own event: a second round trip, outside the save's transaction
+checkout = await factory.Save(checkout);
+await factoryEvents.Raise(new OrderCheckoutCompleted(checkout.Id, checkout.Total));
 ```
 
-**Better:**
+**Better:** raise it inside the write, as the checkout's Insert does in [Raising an Event](#raising-an-event).
 
-```csharp
-[Remote, Create]
-internal async Task Create(
-    int id,
-    decimal total,
-    [Service] IFactoryEvents events,
-    CancellationToken ct)
-{
-    Id = id; Total = total;
-    // Server-side, inside factory method — caller's CT threaded through.
-    await events.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.None, ct);
-}
-```
-
-**Why it matters:** the two are not equivalent, though both work. An event raised inside the factory method is captured by the same request-scoped `IFactoryEventCollector` as the operation, so its handlers share the method's DI scope — and therefore its `DbContext` and transaction — and an `Immediate` handler that throws rolls the operation back. It costs no extra round-trip, and it rides the operation's own response.
+**Why it matters:** the two are not equivalent, though both work. An event raised inside the factory method is dispatched on the method's own `IServiceProvider`, so its handlers share the method's DI scope — and therefore its scoped `DbContext` and transaction — and an `Immediate` handler that throws rolls the operation back. On the server the request-scoped `IFactoryEventCollector` also captures it for the operation's response. It costs no extra round-trip, and it rides the operation's own response.
 
 A client-side `Raise` is [a supported path](#client-initiated-raise) but a *separate* round-trip with its own request scope. It shares no transaction with the factory call that preceded it, and it cannot roll that call back. When the event belongs to the operation, raise it inside the operation.
 
@@ -453,46 +525,35 @@ A client-side `Raise` is [a supported path](#client-initiated-raise) but a *sepa
 **Wrong:**
 
 ```csharp
-[Factory]                                   // WRONG: two pipelines on one class
+// WRONG - CS0111: both pipelines emit a FactoryServiceRegistrar for the class
+[Factory]
 [FactoryEventHandler<OrderCheckoutCompleted>]
-public partial class OrderNotifier
+public static partial class CheckoutNotifier
 {
-    public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
+    internal static Task Handle(OrderCheckoutCompleted evt) => Task.CompletedTask;
 }
 ```
 
-**Right:**
+**Right:** the handler class carries `[FactoryEventHandler<T>]` only, as `OrderNotifyHandlers` does in [Server-Side Handler](#server-side-handler-static-method).
 
-```csharp
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public partial class OrderNotifier
-{
-    public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
-}
-```
-
-**Why it matters:** `[FactoryEventHandler<T>]` runs through a completely separate generator pipeline from `[Factory]`. The handler class is not a factory and should not be treated as one. Adding `[Factory]` forces the class through the factory generation pipeline where it would need factory methods, interfaces, and registration.
+**Why it matters:** `[FactoryEventHandler<T>]` runs through a separate generator pipeline from `[Factory]`. On a static class, `[Factory]` also generates a static factory, and each pipeline emits the class's `FactoryServiceRegistrar`, so the build fails with CS0111.
 
 ### Wrong Return Type
 
 **Wrong:**
 
 ```csharp
+// WRONG - NF0501: no matching handler method, because it does not return Task
 [FactoryEventHandler<OrderCheckoutCompleted>]
-public partial class OrderNotifier
+public static partial class CheckoutNotifier
 {
-    public async void HandleCheckout(OrderCheckoutCompleted evt) { }          // NF0501
-    public Task<string> HandleCheckoutTyped(OrderCheckoutCompleted evt) { }   // NF0501
+    internal static async void Handle(OrderCheckoutCompleted evt) { await Task.Yield(); }
 }
 ```
 
-**Right:**
+**Right:** a `static` method returning `Task`, as in [Server-Side Handler](#server-side-handler-static-method).
 
-```csharp
-public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
-```
-
-**Why it matters:** The dispatcher awaits `Task`. `void` cannot be awaited, and `Task<T>` would force every handler to return a value with no clear meaning. The generator enforces this with NF0501.
+**Why it matters:** The dispatcher awaits `Task`. `void` cannot be awaited, and `Task<T>` would force every handler to return a value with no clear meaning. A method of either shape does not match, so the class has no handler: NF0501.
 
 ---
 
@@ -530,11 +591,11 @@ public Task HandleCheckout(OrderCheckoutCompleted evt) => Task.CompletedTask;
 
 ## DI Registration
 
-Registered automatically by `AddRemoteFactoryServices` based on `FactoryMode`:
+Registered automatically by `AddNeatooRemoteFactory`, by `NeatooFactory` mode:
 
 | Service | Server mode | Remote (client) mode | Logical mode |
 |---------|-------------|----------------------|--------------|
-| `IFactoryEvents` | Scoped | Scoped (no relay) | Scoped |
+| `IFactoryEvents` | Scoped (`FactoryEventsDispatcher`) | Scoped (`RemoteFactoryEvents`, sends each raise to the server) | Scoped (`FactoryEventsDispatcher`) |
 | `IFactoryEventCollector` | Scoped | — | — |
 | `IFactoryEventRelay` | — | Singleton (`NoOpFactoryEventRelay` via `TryAdd`) | — |
 | `IFactoryEventPhaseCoordinator` | Scoped | — | Scoped |
@@ -552,75 +613,13 @@ Static handler classes (`[FactoryEventHandler<T>]` with a static method) registe
 
 ## Complete Example
 
-```csharp
-// --------------- Shared assembly (visible to client and server) ---------------
-public record OrderCheckoutCompleted(int OrderId, decimal Total) : FactoryEventBase;
+The pieces above make up one flow, in `src/Design/Design.Domain/FactoryPatterns/FactoryEventRelayPattern.cs` and its tests:
+1. **The event**, `OrderCheckoutCompleted`, is a record in the shared domain assembly ([Raising an Event](#raising-an-event)).
+2. **The checkout's `[Remote, Insert]`** raises it on the server, inside the save ([Raising an Event](#raising-an-event)).
+3. **The server handler** `CheckoutLedgerHandler` records it in the save's scope, sequentially and awaited, with the save's token ([Server-Side Handler](#server-side-handler-static-method)).
+4. **The response** carries it back to the client, where the registered `IFactoryEventRelay` receives it after `Save` returns ([Client-Side Relay](#client-side-relay-consumer-implements-ifactoryeventrelay)).
 
-public interface IOrder { int Id { get; set; } decimal Total { get; set; } }
-
-// --------------- Server + client: the factory raises the event ---------------
-[Factory]
-internal partial class Order : IOrder
-{
-    public int Id { get; set; }
-    public decimal Total { get; set; }
-
-    public Order() { }
-
-    [Remote, Create]
-    internal async Task Create(
-        int id,
-        decimal total,
-        [Service] IFactoryEvents events,
-        CancellationToken ct)
-    {
-        Id = id;
-        Total = total;
-        // Thread the factory method's CancellationToken through so handlers
-        // that declare a CancellationToken parameter observe cancellation.
-        await events.Raise(new OrderCheckoutCompleted(id, total), RaiseOptions.None, ct);
-    }
-}
-
-// --------------- Server: static handler runs in the caller's scope ---------------
-// Sharing the factory method's DI scope means audit.LogAsync participates in
-// the same transaction as the Create above. A throw here rolls everything back.
-[FactoryEventHandler<OrderCheckoutCompleted>]
-public static partial class OrderCheckoutAudit
-{
-    internal static Task Log(
-        OrderCheckoutCompleted evt,
-        [Service] IAuditLogService audit,
-        CancellationToken ct) =>
-        audit.LogAsync("Checkout", evt.OrderId, "Order", $"Total: {evt.Total:C}", ct);
-}
-
-// --------------- Client: consumer-owned relay bridges to UI bus ---------------
-// Implement IFactoryEventRelay once, dispatch from there to viewmodels / aggregator.
-public sealed class CheckoutUiRelay : IFactoryEventRelay
-{
-    private readonly ICheckoutBanner _banner;
-
-    public CheckoutUiRelay(ICheckoutBanner banner) => _banner = banner;
-
-    public Task Relay(IReadOnlyList<FactoryEventBase> events)
-    {
-        foreach (var evt in events)
-        {
-            if (evt is OrderCheckoutCompleted oc)
-            {
-                _banner.Show($"Order {oc.OrderId} completed: {oc.Total:C}");
-            }
-        }
-        return Task.CompletedTask;
-    }
-}
-
-// --------------- Client Program.cs ---------------
-// Either order works (TryAdd-before / override-after).
-services.AddSingleton<IFactoryEventRelay, CheckoutUiRelay>();
-services.AddNeatooRemoteFactory(NeatooFactory.Remote, typeof(Order).Assembly);
-```
+`FactoryEventRelayTests.Relay_EventRaisedInRemoteInsert_DeliveredToConsumer` runs steps 1, 2 and 4 on the client/server containers, and `Save_PassesTheCallersToken_ToTheServerHandler` runs step 3.
 
 ---
 

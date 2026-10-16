@@ -13,9 +13,10 @@
 // factory interface signatures:
 //
 //   public interface IOrderFactory {
-//       Task<IOrder> Create(string customerName, ...);
-//       Task<IOrder> Fetch(int id, ...);
-//       Task<IOrder?> Save(IOrder target, ...);
+//       IOrder Create(string customerName, ...);       // local
+//       Task<IOrder?> Fetch(int id, ...);              // [Remote]; null when absent
+//       Task<IOrder> OpenDraft(string customerName);   // [Remote] Execute: Fetch, else Create
+//       Task<IOrder?> Save(IOrder target, ...);        // [Remote] Insert/Update/Delete
 //   }
 //
 // This enables IL trimming of the concrete Order class on the client
@@ -33,6 +34,7 @@ namespace Design.Domain.Aggregates;
 /// Public interface for Order aggregate root.
 /// Exposed to callers outside the assembly (e.g., Blazor client).
 /// </summary>
+#region order-interface
 public interface IOrder : IFactorySaveMeta
 {
     int Id { get; set; }
@@ -40,11 +42,14 @@ public interface IOrder : IFactorySaveMeta
     OrderStatus Status { get; set; }
     IOrderLineList Lines { get; set; }
     Money Total { get; }
-    void AddLine(string productName, decimal unitPrice, int quantity);
+    void AddLine(IOrderLine line);
+    void RemoveLine(IOrderLine line);
+    bool CanSubmit { get; }
     void Submit();
     void Cancel();
     void MarkDeleted();
 }
+#endregion
 
 /// <summary>
 /// Order aggregate root demonstrating lifecycle hooks and Save routing.
@@ -72,18 +77,29 @@ public interface IOrder : IFactorySaveMeta
 /// creates a Save() method on the factory that routes to Insert/Update/Delete
 /// based on the IsNew and IsDeleted properties.
 /// </remarks>
+#region order-class-declaration
 [Factory]
 internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, IFactoryOnCompleteAsync
+#endregion
 {
     // -------------------------------------------------------------------------
     // Properties
+    //
+    // GENERATOR BEHAVIOR: The ordinal format writes these as one JSON array, in
+    // ordinal name order (CustomerName, Id, IsDeleted, IsNew, Lines, Status), not
+    // in declaration order. Total has no setter, so it is not written; the other
+    // side computes it. Lines is an interface, so it is written with its concrete
+    // type: {"$type": "...OrderLineList", "$value": [...]}. SerializationTests
+    // pins both.
     // -------------------------------------------------------------------------
 
+    #region serialization-ordinal-versioning
     public int Id { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public OrderStatus Status { get; set; } = OrderStatus.Draft;
     public IOrderLineList Lines { get; set; } = null!;
     public Money Total => Lines?.CalculateTotal() ?? Money.Zero;
+    #endregion
 
     // -------------------------------------------------------------------------
     // IFactorySaveMeta Implementation
@@ -102,8 +118,10 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     // 3. Works with detached scenarios (entity saved, modified, saved again)
     // -------------------------------------------------------------------------
 
+    #region save-ifactorysavemeta
     public bool IsNew { get; set; } = true;
     public bool IsDeleted { get; set; }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Lifecycle Hooks
@@ -120,50 +138,51 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Called before any factory operation begins.
+    /// Called before each of Order's Task-returning operations begins.
     /// </summary>
     /// <remarks>
-    /// GENERATOR BEHAVIOR: FactoryStartAsync is called at the beginning of
-    /// Create, Fetch, Insert, Update, and Delete operations.
+    /// GENERATOR BEHAVIOR: the async start hook runs before a Task-returning
+    /// operation: here Fetch, FetchDraft, Insert, Update and Delete. It does not run
+    /// for the synchronous Create, and no start hook runs for a constructor or
+    /// static Create/Fetch or for a class-level [Execute] such as OpenDraft.
+    /// CustomerPreferences shows a start hook doing work.
     ///
     /// Use cases:
-    /// - Logging operation start
-    /// - Validating preconditions
-    /// - Starting transactions
-    /// - Loading related data
+    /// - Logging or auditing the operation
+    /// - Setup the operation needs (timestamps, correlation)
     ///
-    /// COMMON MISTAKE: Throwing exceptions to prevent operations
+    /// DID NOT DO THIS: Validate in the hook and throw to stop the operation
     ///
-    /// While you CAN throw to cancel an operation, consider returning
-    /// a result type or using validation instead. Exceptions should be
-    /// for truly exceptional conditions.
+    /// A check the user can recover from is a verdict the UI reads before
+    /// it acts (a CanX or a result), never a throw in a factory method or a
+    /// hook. Authorization is [AuthorizeFactory<T>]. A throw is for broken
+    /// state (VisionAlignment R-E).
     /// </remarks>
     public Task FactoryStartAsync(FactoryOperation factoryOperation)
     {
-        // Example: Could log, validate, or prepare for the operation
+        // Example: Could log or prepare for the operation
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Called after any factory operation completes successfully.
+    /// Called after each of Order's Task-returning operations completes successfully.
     /// </summary>
     /// <remarks>
-    /// GENERATOR BEHAVIOR: FactoryCompleteAsync is called after the operation
-    /// method returns but before the result is returned to the caller.
+    /// GENERATOR BEHAVIOR: the async complete hook runs after a Task-returning
+    /// operation succeeds, before the result is returned to the caller. Like the
+    /// start hook, it does not run for synchronous, constructor or static
+    /// operations, nor for a class-level [Execute], nor after a bool operation
+    /// (Fetch, FetchDraft) that returns false.
     ///
     /// Use cases:
-    /// - Clearing dirty flags
     /// - Resetting tracking state
-    /// - Committing transactions
-    /// - Raising domain events
+    /// - Logging completion
     ///
-    /// DID NOT DO THIS: Call FactoryComplete on failure
-    ///
-    /// Reasons:
-    /// 1. Clear semantics - complete means success
-    /// 2. Use IFactoryOnCancelled for failure handling
-    /// 3. Prevents confusing state after errors
+    /// When an operation throws, the start hook has already run and the complete
+    /// hook does not. When an async instance operation is cancelled, IFactoryOnCancelled / IFactoryOnCancelledAsync runs instead,
+    /// then the cancellation propagates.
     /// </remarks>
+    #region operations-lifecycle-oncomplete
     public Task FactoryCompleteAsync(FactoryOperation factoryOperation)
     {
         // Example: Reset IsNew after successful Insert
@@ -173,27 +192,52 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         }
         return Task.CompletedTask;
     }
+    #endregion
 
     // -------------------------------------------------------------------------
     // Factory Operations
     // -------------------------------------------------------------------------
 
+    // The operations README and getting started embed (region readme-domain-model).
+    // Why each is shaped this way, kept here so the embedded code stays short:
+    //
+    // DESIGN DECISION: A root's Create is local (VisionAlignment D14)
+    //   Create is the equivalent of `new`. Building an empty draft order needs
+    //   nothing only the server has, so the client creates it without a round
+    //   trip; the order first reaches the server when it is saved. A root's Create
+    //   is [Remote] only when creation needs the server: tenant defaults, a
+    //   sequence, or an [AuthorizeFactory] check that needs server services (the
+    //   check runs inside Create, on whichever tier runs it; the Save is enforced
+    //   on the server either way). It is public because it is not [Remote]: an
+    //   internal Create would be server-only and guarded. The [Service]
+    //   IOrderLineListFactory resolves on the calling tier; every generated
+    //   factory is registered on both tiers.
+    //
+    // DESIGN DECISION: A missing order is a false Fetch, not an exception
+    //   Fetch is the one operation that handles "not there" cleanly: it returns
+    //   false and the factory returns null (VisionAlignment R-I). The load is
+    //   symmetric with the save: the list receives the row's line rows and hands
+    //   each line its own row (R-D).
+    //
+    // GENERATOR BEHAVIOR: Save routes on IsNew and IsDeleted
+    //   IsNew=true -> Insert; IsNew=false, IsDeleted=false -> Update;
+    //   IsNew=false, IsDeleted=true -> Delete.
+    //
+    // THE CASCADE (R-D): Insert and Update make or find the order's row, map the
+    //   order into it, hand the row's line collection to the list factory's Save,
+    //   and flush once. The list and each line do the rest; the root never maps a
+    //   line.
+    //
+    // DESIGN DECISION: A missing row in Update or Delete is an exception
+    //   The order was loaded, so its row existing is the expected state; a row
+    //   deleted underneath it is a failure the caller sees (VisionAlignment R-I).
+    #region readme-domain-model
+    #region operations-create-method
     /// <summary>
-    /// Creates a new Order on the server.
+    /// Creates a new Order. Local: runs on the tier that calls it.
     /// </summary>
-    /// <remarks>
-    /// DESIGN DECISION: Aggregate root Create methods are [Remote]
-    ///
-    /// The client calls IOrderFactory.Create(), which crosses to the server.
-    /// All child entity creation (OrderLine) happens server-side.
-    ///
-    /// COMMON MISTAKE: Making child factories [Remote]
-    ///
-    /// OrderLine.Create() should NOT be [Remote] because it's called from
-    /// within Order operations that are already on the server.
-    /// </remarks>
-    [Remote, Create]
-    internal void Create(
+    [Create]
+    public void Create(
         string customerName,
         [Service] IOrderLineListFactory lineListFactory)
     {
@@ -202,69 +246,143 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
         Status = OrderStatus.Draft;
         IsNew = true;
     }
+    #endregion
 
+    #region operations-fetch-instance
     /// <summary>
-    /// Fetches an existing Order from the server.
+    /// Loads an existing Order and its lines; false when there is none.
     /// </summary>
     [Remote, Fetch]
-    internal void Fetch(
+    internal async Task<bool> Fetch(
         int id,
+        [Service] IOrderDbContext db,
         [Service] IOrderLineListFactory lineListFactory)
     {
-        // Simulate loading from database
-        Id = id;
-        CustomerName = $"Customer_{id}";
-        Status = OrderStatus.Submitted;
-        Lines = lineListFactory.Fetch(
-        [
-            (1, "Widget A", 10.00m, 2),
-            (2, "Widget B", 25.00m, 1)
-        ]);
+        var row = await db.FindAsync(id);
+        if (row == null)
+            return false;
+
+        LoadFrom(row, lineListFactory);
+        return true;
+    }
+    #endregion
+
+    #region operations-insert
+    /// <summary>
+    /// Inserts a new Order and its lines.
+    /// </summary>
+    [Remote, Insert]
+    internal async Task Insert(
+        [Service] IOrderDbContext db,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        var row = new OrderRow();
+        MapTo(row);
+        db.Add(row);
+        lineListFactory.Save(Lines, row.Lines);
+        await db.SaveChangesAsync();
+        Id = row.Id;
+    }
+    #endregion
+
+    #region operations-update
+    /// <summary>
+    /// Updates an existing Order and its lines.
+    /// </summary>
+    [Remote, Update]
+    internal async Task Update(
+        [Service] IOrderDbContext db,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        var row = await db.FindAsync(Id)
+            ?? throw new KeyNotFoundException($"Order {Id} not found");
+        MapTo(row);
+        lineListFactory.Save(Lines, row.Lines);
+        await db.SaveChangesAsync();
+    }
+    #endregion
+
+    #region operations-delete
+    /// <summary>
+    /// Deletes an Order. Its line rows go with its row.
+    /// </summary>
+    [Remote, Delete]
+    internal async Task Delete([Service] IOrderDbContext db)
+    {
+        var row = await db.FindAsync(Id)
+            ?? throw new KeyNotFoundException($"Order {Id} not found");
+        db.Remove(row);
+        await db.SaveChangesAsync();
+    }
+    #endregion
+    #endregion
+
+    /// <summary>
+    /// Loads the customer's Draft order. Server-only: <see cref="OpenDraft"/> calls it.
+    /// </summary>
+    /// <remarks>
+    /// Internal without [Remote], so the client cannot call it; the client asks for
+    /// a draft through OpenDraft, which decides between this and Create.
+    /// </remarks>
+    [Fetch]
+    internal async Task<bool> FetchDraft(
+        string customerName,
+        [Service] IOrderDbContext db,
+        [Service] IOrderLineListFactory lineListFactory)
+    {
+        var row = await db.FindDraftAsync(customerName);
+        if (row == null)
+            return false;
+
+        LoadFrom(row, lineListFactory);
+        return true;
+    }
+
+    /// <summary>
+    /// The customer's Draft order: the stored one if there is one, otherwise a new one.
+    /// </summary>
+    /// <remarks>
+    /// DESIGN DECISION: Create-or-fetch is an [Execute] that calls Fetch, then Create (VisionAlignment D11)
+    ///
+    /// One round trip. On the server it fetches the customer's Draft and, when there
+    /// is none, creates one through the same factory. A new order is returned unsaved:
+    /// it reaches the store when the client saves it.
+    ///
+    /// DID NOT DO THIS: A [Create] that looks for an existing order, or a [Fetch]
+    /// that makes one when none is found
+    ///
+    /// Create is `new` and Fetch takes a key (D3). Either hybrid hides from the
+    /// caller which one it got, and puts the decision in an operation whose name
+    /// says the opposite.
+    ///
+    /// GENERATOR BEHAVIOR: a class-level [Execute] must return the class's service
+    /// type, here Task&lt;IOrder&gt;. It is public static, and [Remote] sends the
+    /// call to the server.
+    /// </remarks>
+    #region operations-class-execute
+    [Remote, Execute]
+    public static async Task<IOrder> OpenDraft(
+        string customerName,
+        [Service] IOrderFactory factory)
+    {
+        return await factory.FetchDraft(customerName)
+            ?? factory.Create(customerName);
+    }
+    #endregion
+
+    private void LoadFrom(OrderRow row, IOrderLineListFactory lineListFactory)
+    {
+        Id = row.Id;
+        CustomerName = row.CustomerName;
+        Status = row.Status;
+        Lines = lineListFactory.Fetch(row.Lines);
         IsNew = false;
     }
 
-    /// <summary>
-    /// Inserts a new Order to the database.
-    /// </summary>
-    /// <remarks>
-    /// GENERATOR BEHAVIOR: When Save() is called and IsNew=true, IsDeleted=false,
-    /// the factory routes to this Insert method.
-    /// </remarks>
-    [Remote, Insert]
-    internal Task Insert([Service] IOrderRepository repository)
+    private void MapTo(OrderRow row)
     {
-        // In real code: repository.InsertAsync(this)
-        // Simulate ID assignment
-        Id = Random.Shared.Next(1000, 9999);
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Updates an existing Order in the database.
-    /// </summary>
-    /// <remarks>
-    /// GENERATOR BEHAVIOR: When Save() is called and IsNew=false, IsDeleted=false,
-    /// the factory routes to this Update method.
-    /// </remarks>
-    [Remote, Update]
-    internal Task Update([Service] IOrderRepository repository)
-    {
-        // In real code: repository.UpdateAsync(this)
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Deletes an Order from the database.
-    /// </summary>
-    /// <remarks>
-    /// GENERATOR BEHAVIOR: When Save() is called and IsNew=false, IsDeleted=true,
-    /// the factory routes to this Delete method.
-    /// </remarks>
-    [Remote, Delete]
-    internal Task Delete([Service] IOrderRepository repository)
-    {
-        // In real code: repository.DeleteAsync(this)
-        return Task.CompletedTask;
+        row.CustomerName = CustomerName;
+        row.Status = Status;
     }
 
     // -------------------------------------------------------------------------
@@ -283,21 +401,41 @@ internal partial class Order : IOrder, IFactorySaveMeta, IFactoryOnStartAsync, I
     // 3. Easier to test domain logic in isolation
     // -------------------------------------------------------------------------
 
-    public void AddLine(string productName, decimal unitPrice, int quantity)
+    /// <summary>
+    /// Adds a line the caller built with IOrderLineFactory.Create (R-C).
+    /// </summary>
+    public void AddLine(IOrderLine line)
     {
         if (Status != OrderStatus.Draft)
             throw new InvalidOperationException("Cannot add lines to a submitted order");
 
-        Lines.AddLine(productName, unitPrice, quantity);
+        Lines.AddLine(line);
     }
+
+    public void RemoveLine(IOrderLine line)
+    {
+        if (Status != OrderStatus.Draft)
+            throw new InvalidOperationException("Cannot remove lines from a submitted order");
+
+        Lines.RemoveLine(line);
+    }
+
+    /// <summary>
+    /// Whether the order can be submitted: a draft with at least one line.
+    /// </summary>
+    /// <remarks>
+    /// The verdict a screen or a command reads before it calls Submit (R-E).
+    /// Get-only, so it is not serialized; each tier computes it.
+    /// </remarks>
+    public bool CanSubmit => Status == OrderStatus.Draft && Lines.Count > 0;
 
     public void Submit()
     {
-        if (Status != OrderStatus.Draft)
-            throw new InvalidOperationException("Order is not in draft status");
-
-        if (Lines.Count == 0)
-            throw new InvalidOperationException("Cannot submit an empty order");
+        // Calling Submit when CanSubmit is false is a caller bug, not a user error
+        if (!CanSubmit)
+            throw new InvalidOperationException(Status != OrderStatus.Draft
+                ? "Order is not in draft status"
+                : "Cannot submit an empty order");
 
         Status = OrderStatus.Submitted;
     }
@@ -327,47 +465,4 @@ public enum OrderStatus
     Shipped,
     Delivered,
     Cancelled
-}
-
-/// <summary>
-/// Repository interface for Order persistence.
-/// </summary>
-/// <remarks>
-/// Note: This is NOT a [Factory] interface - it's a plain service interface
-/// for server-side use. The Order's Insert/Update/Delete methods use it.
-///
-/// Uses IOrder (public interface) so the repository interface can be public
-/// even though the Order concrete class is internal.
-/// </remarks>
-public interface IOrderRepository
-{
-    Task InsertAsync(IOrder order);
-    Task UpdateAsync(IOrder order);
-    Task DeleteAsync(IOrder order);
-}
-
-/// <summary>
-/// Mock implementation for testing.
-/// </summary>
-public class InMemoryOrderRepository : IOrderRepository
-{
-    private readonly List<IOrder> _orders = [];
-
-    public Task InsertAsync(IOrder order)
-    {
-        _orders.Add(order);
-        return Task.CompletedTask;
-    }
-
-    public Task UpdateAsync(IOrder order)
-    {
-        // In-memory - nothing to do
-        return Task.CompletedTask;
-    }
-
-    public Task DeleteAsync(IOrder order)
-    {
-        _orders.Remove(order);
-        return Task.CompletedTask;
-    }
 }

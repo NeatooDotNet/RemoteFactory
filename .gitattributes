@@ -3,3 +3,7 @@
 # bash fails with "bad interpreter: /usr/bin/env bash^M" — an error that reads like
 # a missing interpreter rather than a line-ending problem.
 *.sh text eol=lf
+
+# mdsnippets writes LF into the .md files it fills. Checking every .md out as LF
+# keeps a run from showing untouched files as modified on a CRLF checkout.
+*.md text eol=lf

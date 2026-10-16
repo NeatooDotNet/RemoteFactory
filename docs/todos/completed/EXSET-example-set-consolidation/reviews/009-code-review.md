@@ -1,0 +1,126 @@
+# EXSET-009 code review — 2026-10-15
+
+**Reviewer:** code-reviewer (per-plan, Step 5; `09483b9` against `64a5d73`). **Verdict:** APPROVED. No veto-tier findings.
+
+There are eight callouts, and every one bears on a Must criterion. More than five is itself the lead finding. The Design work and the regions landed cleanly. The callouts are concentrated in what the page *says*, in four places:
+- what a local Create's rule protects (1);
+- the static factory's `[AuthorizeFactory]` outcome (2);
+- the `Can*` behaviour once an operation carries `[AspAuthorize]` (3);
+- the page's own definition of authorization against its target-parameter section (5).
+
+**Build.** 0 errors in all three builds:
+- Main solution: 2 warnings, both the OrderEntry WASM `NativeFileReference` notice (`009-build.log`).
+- Design solution: 0 warnings (`009-design-build.log`).
+- Reference app: 0 warnings (`009-refapp-build.log`), after the two deletions and the region-marker removal.
+
+**Tests.** 0 failed on both TFMs:
+- Unit 852, and integration 652 + 7 skipped. The 7 are the known `ShowcasePerformanceTests` (3), `RelayTimingTests` (2) and `FactoryReferenceIdentityTests.Ordinal_*` (2, #133), each named in `009-test.log` on both TFMs.
+- Design 171 + 1 skipped. The skip is `SaveTests.AuthorizedSave_NewAndDeleted_ReturnsNull` (#104) on both TFMs (`009-design-test.log`). That is up 5 from 008's 166: the four `AspAuthorizeHttpTests` and `AuthorizedOrder_CanCreate_GuardsTheCreate_OnTheClient`. So the run exercised this change.
+- `009-unfixed-aspauthorize-test.log` shows `Fetch_AnonymousCaller_IsDenied` failing on both TFMs against the pre-#127 `AspAuthorize`, which makes it an honest pin for #127.
+- `009-mdsnippets.log` has no missing-snippet or error line. The logs (14:19) predate the commit (14:21:25), so I checked the attributions against the committed sources. All nine I checked match: the eleven `authorization.md` embeds' sources, `getting-started-server-program` `#L61-L83`, and `authorization-policy-config` `#L102-L107`.
+
+The deliverable landed as scoped:
+
+- **Direction and shape.**
+  - The page teaches from `AuthorizedOrder` and `AuthorizedOrderAuth` (`[AuthorizeFactory<T>]` over an injected `ICurrentUser`), `SecureOrder` (`[AspAuthorize]`, interface-first) and `ParamAuthOrderAuth`'s declarations.
+  - The server configuration sits in one new seam method, `ServerServices.AddDesignAuthorization` (`ServerServices.cs:100-113`), called from `AddDesignServer` before `AddDesignServerServices`. Program gains exactly the two middleware lines under one comment (`Program.cs:73-75`), so the Constraint on getting started's embed holds.
+  - `ICurrentUser`/`ClaimsUser` (`Services/CurrentUser.cs`) has a non-matching implementation name and is registered explicitly. That is plan-review callout 4. `AddHttpContextAccessor()` is inside the embedded region (callout 5).
+- **Checked against the generator.** These hold:
+  - **Flag table.** `FactoryOperation.Execute = Read | Execute`, `Create = Create | Read`, `Fetch = Fetch | Read`, and the writes are `| Write` (`FactoryOperation.cs:11-16`). An auth method matches when its flags share a bit with the operation (`FactoryGenerator.Types.cs:619`). So `Read` covers Create, Fetch and Execute, and `Write` covers Insert, Update and Delete, as the table says.
+  - **The `Can*` set.** `AddCanMethods` adds `Can{method.Name}` for every authorized read, write, Save and class-level Execute (`FactoryModelBuilder.cs:850-950`). The generated `IAuthorizedOrderFactory` has `CanCreate`, `CanFetch`, `CanInsert`, `CanUpdate`, `CanDelete` and `CanSave` (`Design.Domain/Generated/.../AuthorizedOrderFactory.g.cs:21-26`). That matches `authorization.md:105`.
+  - **Target-parameter suppression and `CanSave`'s overloads.** A write whose auth takes the target gets no `Can*`, and Save gets a parameterless overload (non-target methods only) and a target overload with all of them (`FactoryModelBuilder.cs:861-899`). The generated `IParamAuthOrderFactory` shows `CanFetch(Guid)`, `CanSave()` and `CanSave(IParamAuthOrder)` and no `CanInsert`, `CanUpdate` or `CanDelete` (`ParamAuthOrderFactory.g.cs:21-24`). With no non-target method, `CanSave()` returns `Authorized(true)` (`ClassFactoryRenderer.cs:1391-1397`).
+  - **Order.** The auth class's methods run first, each short-circuiting, then one `IAspAuthorize.Authorize` over every `[AspAuthorize]` (`ClassFactoryRenderer.cs:1416-1460`). That is "Combining Both Approaches" (`authorization.md:197`). An `[AspAuthorize]` makes a read or a write remote (`FactoryModelBuilder.cs:351-353, :402-404`), which is the page's "keep such checks off a Create that should stay local".
+  - **`aspForbid`.** It is true only for interface methods (`:437`). `Can*` (`:594`), Save (`:710`) and the default (`:1060`) pass false. The static delegate always forbids (`StaticFactoryRenderer.cs:307`).
+  - **Refusal outcomes.**
+    - A non-forbidding `[AspAuthorize]` refusal returns `new {T}(authorized)` (`ClassFactoryRenderer.cs:1452-1458`), so a read returns null.
+    - Save throws `NotAuthorizedException(authorized, "operation Save on {ServiceType}")` (`:1083-1092`), and TrySave returns the `Authorized<T>` (`:1097-1103`).
+    - A forbid calls `ForbidAsync` and throws `AspForbidException` (`AspAuthorize.cs:91-95, :106-110`). The handler answers that with an empty `RemoteResponseDto` (`HandleRemoteDelegateRequest.cs:246-251`), so the status is whatever the scheme's forbid set. The client turns a non-success status into `HttpRequestException` with the status (`MakeRemoteDelegateRequestHttpCall.cs:33-38`).
+    - Both of the page's messages are verbatim: `Not Authenticated` / `Not Authorized` (`AspAuthorize.cs:90, :105`) and "Authorization denied for operation Save on IAuthorizedOrder; no reason was supplied." (`NotAuthorizedException.cs:95-97` with the Save context).
+    - The interface-factory context is the generated "operation GetCustomer on ICustomerDirectory (ICustomerDirectoryAuth.HasAccess)" (`ICustomerDirectoryFactory.g.cs:96`).
+  - **`aspnetcore-integration.md`'s "When a Call Fails"** (`:143-150`): class-factory read null at 200, Save `NotAuthorizedException` at 200, interface-factory auth a 500, and the forbid deferred to Authorization. That agrees with `authorization.md:259-268`.
+- **The Design changes.**
+  - **`AuthorizedOrderAuth(ICurrentUser user)`.** It is signed in for `HasAccess`, with one role each for Create (Sales), Fetch (Sales or Support) and Delete (Manager).
+  - **The three Creates** are `public [Create]`. The generated `Create` is synchronous and unguarded (`AuthorizedOrderFactory.g.cs:55-65`; `SecureOrderFactory.g.cs:17` non-nullable). That is D14 and plan-review callout 8.
+  - **`SecureOrder`** is an `internal` class with `ISecureOrder`, whose `IsNew`/`IsDeleted` are public `get; set;` (C-19, R-M).
+  - **The harness** shares one fresh `TestUser` per `Scopes()` call, registered with `Add` after the convention (`DesignClientServerContainers.cs:278-285`).
+  - **`DesignHttpHost`.** Its `TestUserScheme` signs each request in from a per-client `X-Test-User` header, set by `AsUser` (a `DelegatingHandler`). That is per client, not shared host state, which settles the plan review's Theoretical item about parallel classes. `GatedOrderAuth` puts the switches on top of the real `AuthorizedOrderAuth` over the request's `ICurrentUser` (plan-review callout 10). The HTTP client registers an anonymous `ICurrentUser`, and no HTTP test creates an `AuthorizedOrder` on it.
+  - **The Blazor client** registers `ClaimsUser.Anonymous`, and its comment says to build the user from `AuthenticationStateProvider` (plan-review callout 6).
+  - **`DesignServerCompositionTests`** resolves the server's `ICurrentUser` with no request.
+- **Regions** (`.claude/rules/design-snippets.md`).
+  - All eleven `authorization.md` embeds and the skill's five re-pointed embeds are defined exactly once, all under `src/Design`. `authorization.md` has 11 fences, each inside a snippet pair.
+  - `aspnetcore-middleware-order`, `authorization-combined`, `authorization-combined-flags` and `authorization-method-level` appear nowhere outside `docs/todos`.
+  - The reference app's `AuthorizationSamples.cs` has 0 `#region`/`#endregion` lines, and its 26 deleted lines are all markers.
+  - Every embed in `docs/`, the README and the skill still resolves to one definition. The exceptions are pre-existing: `attributes-factoryhintnamelength` (I-14, EXSET-014) and the three `service-injection-*` duplicates in the reference app, which are the same at `64a5d73` (EXSET-010).
+- **Shared pages.**
+  - README, getting started, `aspnetcore-integration.md` and the skill's `setup.md` gain the two middleware lines through `getting-started-server-program`. README and getting started each gain one sentence that matches the change.
+  - `aspnetcore-integration.md`'s Middleware Order becomes prose pointing at the Basic Setup Program (plan-review callout 14). Its CORS paragraph still stands, now that the old CORS sample is gone.
+  - `factory-modes.md` and `serialization.md` change only in `<sup>` lines.
+  - The skill's `advanced-patterns.md` gains one sentence naming `ICurrentUser` and `OrderRoles`, so its embeds stay self-contained. Its hand-written blocks and "Returns `Authorized<T>`" are skill prose (Todo 2, T-28).
+- **Links.**
+  - Every outbound link on `authorization.md` resolves: `aspnetcore-integration.md#middleware-order`, `#when-a-call-fails`, the in-page `#authorization-failures`, and the four Next Steps pages.
+  - The one inbound anchor in the repository, `getting-started.md:87` → `#configure-the-server`, resolves. Nothing outside `docs/todos` links an anchor the rewrite removed.
+  - `aspnetcore-integration.md:121`'s `#basic-setup` resolves.
+- **Ledger.**
+  - T-09: the "events bypass authorization" line is gone.
+  - C-24: there is no `Terminate`.
+  - C-27: no `IPermissionRepository`/`IRepository`, and `ICustomerDirectory` is named.
+  - U-02: three local Creates, with 009 added as owner.
+  - I-01: public-setter types.
+  - I-02: `authorization.md:85-89`.
+  - T-22.
+
+  All of these match the diff. C-19 overstates (callout 8). T-11 and I-09 record outcomes that callouts 2 and 3 qualify.
+
+**Sacred tests.** Every `AuthorizationTests` assertion is unchanged. The diff removes `ResetFlags()`/flag lines, replaces them with role removals on the shared `TestUser`, and drops `await` from `Create`. Scenario 11 gains a `RemoteCallCount == 0` assertion. The `ParamAuthorizationTests` call sites and `SaveTests`' skipped #104 test lose only `await` and `ResetFlags()`, as Keith approved (plan-review callout 3, Amendments). No test was deleted. There was no test review at `09483b9`; `009-test-review.md` appeared during this review and is not re-litigated.
+
+| # | Callout | Affects | Triage |
+|---|---|---|---|
+| 1 | **The page says the server enforces the same rule the client asks `CanCreate` about. With a local Create, nothing on the server ever runs the Create rule.**<br>• `authorization.md:3`: "The client can ask `CanCreate()` before it offers a "New" button, and the server enforces the same rule before a Fetch or a Save runs". `:11` says the rules run on "the tier that runs the operation". `:85` says "the rules run on both".<br>• `IAuthorizedOrderAuth.CanCreate` is `[AuthorizeFactory(Create)]`. It matches only Create (`FactoryOperation.cs:12`; `FactoryGenerator.Types.cs:619`). Insert is `Insert \| Write`, so the server's Save runs `HasAccess` (signed in), never `CanCreate` (Sales).<br>• Design's comments say the same as the page: "Fetch and Save still run the same rules on the server" (`Design.Client.Blazor/Program.cs:92-93`) and "the server runs the same rules for Fetch and Save" (`AuthorizedOrderAuth.cs:114`). Both are true only of the Fetch and write rules.<br>• D14 accepts this ("the check runs inside the generated Create on whichever tier runs it; the Save is enforced on the server either way"). The page never says it.<br>• Confidence High. Reachable by: a reader who puts a "only Sales may create orders" rule in a Create-scoped auth method. Any client that registers its own `ICurrentUser`, or skips `Create` and sends a new object to `Save`, inserts as any signed-in user.<br>• One option: say that a local Create's rule runs only on the client, so a rule that must hold goes on a `Write`/`Insert` method too. | AC-4 · Must (D14, R-E) | **Punch** — `CanCreate` is `Create | Insert`, so the server re-checks the create rule at Save; the page and comments say a local Create's check is for the screen. |
+| 2 | **"A static factory's `[Execute]` ... An `[AuthorizeFactory]` refusal is an exception on the server, so the response is a 500" is not what the generator does. A static factory never runs its auth methods.**<br>• `authorization.md:266-267`. The ledger's T-11 row repeats it ("an interface or static factory's is a 500").<br>• `BuildExecuteDelegate` reads `AuthMethodInfos` only to decide `isRemote` (`FactoryModelBuilder.cs:546-548`). The model it builds carries `AspAuthorize` and no auth methods (`Model/ExecuteDelegateModel.cs:34-61`). `StaticFactoryRenderer.cs:285-327` renders the policy check and then the call, and nothing else. `TypeAuthMethods` runs for every type, the static ones included (`FactoryGenerator.Types.cs:181`).<br>• So `[AuthorizeFactory<T>]` on a static class with a `[Remote]` auth method moves the call to the server and then checks nothing. A non-`[Remote]` one is ignored outright. `:193`'s "an auth method without `[Remote]` runs alongside a bare `[Execute]`" is false for the static shape too. That sentence is main's #91 text, kept.<br>• This is a library gap (silent non-enforcement, with no diagnostic), outside 009's diff. The page's sentence at `:266` is 009's. No test in either solution puts `[AuthorizeFactory<T>]` on a static class.<br>• Confidence High on the generator source; not compiled. Reachable by: a reader who follows `:193`/`:266` and guards a static command with `[AuthorizeFactory<T>]`. The command runs for anyone. | AC-4 · Must (T-11) | **Punch** — Keith: fixed in the generator. A static factory's local registration now runs the matching auth methods and throws `NotAuthorizedException`, and registers the auth class. `StaticAuthorizeFactoryTests` fail 4 of 5 without it. The page's 500 line and main's "runs alongside" are now true. |
+| 3 | **The `Can*` section says where a `Can*` runs "follows the auth class's methods, not the operation's". An `[AspAuthorize]` on the operation makes its `Can*` an async server call, and Design's `SecureOrder` shows it.**<br>• `authorization.md:243-251`; `:105` "Each returns `Authorized`"; `:255` (CanSave's guard: `internal` or `[Remote]` only).<br>• `AddCanMethods` treats `[AspAuthorize]` as internal (`FactoryModelBuilder.cs:919-920`), and `BuildCanMethod` makes it remote and `Task` (`:585-587`). The generated `ISecureOrderFactory` declares `Task<Authorized> CanFetch/CanInsert/CanUpdate/CanDelete/CanSave` (`SecureOrderFactory.g.cs:21-25`), wired to `RemoteCanFetch` on the client (`:67`).<br>• `:251`'s "a `[Remote] internal` Fetch can have a `CanFetch` that runs on the client, as long as the auth class's methods are `public`" fails when the Fetch also carries `[AspAuthorize]`, which `:197` invites.<br>• CLAUDE-DESIGN states the interaction ("`[AspAuthorize]` interaction: ... the Can* method always gets the guard"). The page does not.<br>• Confidence High; read from the generated files on disk (14:19). Reachable by: a reader who adds `[AspAuthorize]` to an `[AuthorizeFactory]` operation and calls `CanFetch()` synchronously, or expects it to answer without a round trip. | AC-4 · Must (I-09) | **Punch** — the Can* table gains the `[AspAuthorize]` row (`Task<Authorized>`, on the server); "Checking Before Acting" names `Task<Authorized>`. |
+| 4 | **Scenario 11's triage amendment did not land: the name still says the Create crosses, and nothing in it crosses.**<br>• Plan-review callout 9's triage: "scenario 11 becomes 'Create runs on the client with no call; the Save crosses'".<br>• At `09483b9`, `AuthorizedOrder_Create_WorksThroughClientServer` (`AuthorizationTests.cs:347`) creates and asserts `RemoteCallCount == 0`. It has no Save. The file header still says scenarios 11 and 12 "verify serialization round-trip" (`:20`).<br>• No `AuthorizationTests` scenario now saves a client-built `AuthorizedOrder` through the server. `ClientErrorHandlingTests` saves only fetched ones, and `AspAuthorizeHttpTests` saves a client-built `SecureOrder`.<br>• The working tree renames the test and fixes the header (see Could not verify). It adds no Save.<br>• Confidence High. Reachable by: a reader of Design's tests looking for a client-created order whose Insert runs the server's rules, which is the path callout 1 turns on. | AC-4 · Must (U-02) | **Punch** — scenario 11 saves through the server and asserts one remote call; the header comment and name were fixed in the working tree. |
+| 5 | **The page defines authorization so that excludes its own target-parameter example.**<br>• `authorization.md:14`: "A rule the user can satisfy or not is authorization. A check of the object's own state is a verdict the screen reads before it acts, such as `Order.CanSubmit`; it is not a refusal."<br>• `:216-229` then teach a `Write` auth method that reads the object's state and refuses a write when `Status` is `Locked` (`ParamAuthOrderAuth.cs:190`). `:229` says that refusal is authorization.<br>• R-E: "a check the user can recover from is a verdict the UI reads before acting (a `CanX` or a result) ... authorization is `[AuthorizeFactory<T>]`". It does not say whether a state-based write refusal is one or the other. `:14` picks a reading, and the target section picks the other.<br>• Confidence Medium (a reading of R-E). Reachable by: a reader deciding where "no edits to a locked order" goes. The page sends them both ways.<br>• One option: ask Keith which reading R-E means, then align `:14` or the target section. | AC-4 · Must (R-E) | **Punch** — Keith: split by who decides. The intro calls a who-may rule (Sales creates, nobody edits Locked) authorization and a user-changeable state a verdict. |
+| 6 | **"Implement with Injected Services" embeds no injection.**<br>• `authorization.md:67-83`. The `authorization-implementation` region starts inside the class (`AuthorizedOrderAuth.cs:118-126`), so the primary constructor `AuthorizedOrderAuth(ICurrentUser user)` (`:116`) is not shown. The snippet reads `user.IsAuthenticated` from nowhere.<br>• The skill's copy (`advanced-patterns.md:42-56`) has the same gap. The sentence 009 added says "injected by constructor" but does not show it.<br>• Confidence High. Reachable by: a reader who copies the implementation. One option: start the region at the class declaration. | AC-3 · Must | **Punch** — the region now starts at the class declaration, so the constructor injection shows (page and skill). |
+| 7 | **Several Design comments contradict the code beside them.**<br>• `SecureOrder.cs:98-99`: an unregistered policy "fails with "Authorization policy not found"". `AspAuthorize` throws that only when `CombineAsync` returns null (`AspAuthorize.cs:131-135`). For a named policy that is not registered, ASP.NET Core's `AuthorizationPolicy.CombineAsync` throws its own "The AuthorizationPolicy named: '...' was not found." (framework knowledge; not run).<br>• `AuthorizedOrder.cs:6` says "with [Remote] internal methods", and `:14-17` list `CanCreate`, `CanFetch`, `CanSave` and `CanDelete`. Create is now public and local (`:25-31`), and the factory also has `CanInsert` and `CanUpdate` (`AuthorizedOrderFactory.g.cs:23-24`).<br>• `AuthorizedOrder.cs:59`: "TrySave catches NotAuthorizedException". `TrySave` returns the local result, and nothing is caught (`ClassFactoryRenderer.cs:1097-1103`). This is pre-existing, in a header this plan edited.<br>• `AuthorizationTests.cs:51` (at the commit): "Even though the source methods are [Remote] internal". The working tree rewrites it.<br>• Confidence High, except the framework message (Medium). Reachable by: a developer who searches the server log for the quoted message after forgetting a policy; a reader of Design, the stated source of truth. | AC-4 · Must | **Punch** — SecureOrder's comment no longer quotes a message; AuthorizedOrder's header names the local Create, the full Can* set and TrySave's behaviour; AuthorizationTests:51 fixed. |
+| 8 | **The ledger's C-19 row credits the page with an embed it does not have.**<br>• `audit-ledger.md` C-19, the 009 entry: "authorization.md embeds IAuthorizedOrder and ISecureOrder types".<br>• The page shows `AuthorizedOrder`'s declaration, `: IAuthorizedOrder` (`authorization.md:96-98`), and three `SecureOrder` method bodies. Neither `ISecureOrder` nor `SecureOrder`'s declaration appears.<br>• "SecureOrder is interface-first" holds (`SecureOrder.cs:20-27, :55`).<br>• Confidence High. Reachable by: the close-out audit's AC-4 trace, which reads the ledger as the record of what each plan fixed. | AC-4 · Must (C-19) | **Punch** — the C-19 row says what the page embeds. |
+
+## Could not verify
+
+- `ISecureOrderFactory`'s and the other `.g.cs` shapes come from `Design.Domain/Generated` on disk, written at 14:19:09 by the logged build. They are not tracked, so I read them as that build's output, not the commit's. No source changed between the build and the commit as far as the diff shows. Late in this review the generated folder was being rewritten (a concurrent build), so those citations cannot be re-read at the moment.
+- The working tree changed during this review, after every 009 log and after the commit:
+  - `AuthorizationTests.cs`: scenario 11 renamed `AuthorizedOrder_Create_RunsOnTheClient`, and the header and the `Can*` comment rewritten.
+  - `ClientErrorHandlingTests.cs`: header.
+  - A new `Http/AuthorizeFactoryHttpTests.cs`.
+  - A new `Http/ZzProbeTests.cs`, a probe that ends in `Assert.Fail` and would fail the Design run if committed.
+  - The plan's Test Evidence (11 embeds, not 12), and the todo's Plan Index row (Serves AC-3, AC-4; plan-review callout 15).
+
+  None of these has been built or tested. Before commit they need both solutions built and tested, and the probe removed.
+- At `09483b9` the Plan Index row still reads AC-2, AC-3, AC-4, against the plan's Serves line (AC-3, AC-4). The working tree corrects it.
+- The cookie handler's forbid redirect, and `ForbidAsync` throwing when no scheme is registered (`authorization.md:268`). These are framework behaviour, as the plan review noted; I did not run them.
+
+## Theoretical (not triaged)
+
+Two were taken (2026-10-15): the server Program's comment no longer names `ICurrentUser` on pages that never define it, and CLAUDE-DESIGN's `SecureOrder` line is checked. The rest are left.
+
+- The shared server embed's comment names `ICurrentUser` ("[AspAuthorize] and ICurrentUser read HttpContext.User", `Program.cs:73`). README, getting started and the skill's `setup.md` never define it, which strains `setup.md`'s self-containment.
+- `CanSave(target)` runs "the ones without a target first, then the ones that inspect the object" (`authorization.md:237`). The generator runs them in declaration order (`ClassFactoryRenderer.cs:1416-1427`), and `ParamAuthOrderAuth` happens to declare `CanWriteRole` first.
+- The message table's `[AspAuthorize]` row omits a handler's own authentication failure message (`AspAuthorize.cs:90`, `Failure?.Message`).
+- The `public` row's "synchronously" (`authorization.md:247`) holds only for `bool`/`string?` auth methods. A `Task`-returning one makes `Can*` a `Task` (`FactoryModelBuilder.cs:587`).
+- `aspnetcore-integration.md:121`'s "`[AspAuthorize]`, which names no scheme of its own" reads as if the attribute cannot name one. It takes `AuthenticationSchemes` (`authorization.md:120`).
+- `CLAUDE-DESIGN.md:1095` still leaves "ASP.NET Core policy-based authorization (`SecureOrder.cs`)" unchecked, now that it is tested. The plan review placed CLAUDE-DESIGN in EXSET-012's sweep.
+
+## Read report
+
+- **Read beyond the brief:**
+  - `FactoryModelBuilder.cs:60-135` (static factory), `:185-300`, `:330-470`, `:470-610`, `:610-1090`
+  - `FactoryGenerator.Types.cs:170-195`, `:595-720`; `FactoryGenerator.Transform.cs:307-415`
+  - `ClassFactoryRenderer.cs:385-425`, `:1070-1110`, `:1380-1545`
+  - `InterfaceFactoryRenderer.cs:420-500`; `StaticFactoryRenderer.cs:270-330`; `Model/ExecuteDelegateModel.cs`
+  - `AspAuthorize.cs:55-157`; `Authorized.cs:30-60`; `MakeRemoteDelegateRequestHttpCall.cs:20-45`; `WebApplicationExtensions.cs:60-95`
+  - The generated `AuthorizedOrderFactory.g.cs`, `SecureOrderFactory.g.cs`, `ParamAuthOrderFactory.g.cs` (interfaces) and `ICustomerDirectoryFactory.g.cs` (auth throws)
+  - `Order.cs` `CanSubmit`; `ParamAuthOrderAuth.cs` by grep
+  - `CLAUDE-DESIGN.md` by grep and `:800-825`; `VisionAlignment.md` D14, R-E and R-M; `release-notes/v1.10.6.md` by grep
+  - The old `authorization.md` at `64a5d73`; the working-tree diff, read-only
+- **Named but unused:**
+  - `InterfaceFactoryAuthorizationTests` and `ShowcaseAuthRemoteTests`, beyond the comments that cite them
+  - `docs/attributes-reference.md` (EXSET-014), beyond confirming that its embeds still resolve

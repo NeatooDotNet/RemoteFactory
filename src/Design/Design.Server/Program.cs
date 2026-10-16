@@ -9,23 +9,16 @@
 // DESIGN DECISION: Minimal server setup
 //
 // The server only needs:
-// 1. Service registration -- AddNeatooAspNetCore() for the factory services and
-//    endpoints, plus the server-only dependencies factory methods resolve by
-//    [Service] injection. Both live in ServerServices.cs (see the comment at the
-//    call below for why they are behind one method rather than inline here).
-// 2. UseNeatoo() - adds the middleware for handling factory requests
+// 1. Service registration -- AddNeatooAspNetCore() for the generated factories and
+//    the request handler, plus the server-only dependencies factory methods resolve by
+//    [Service] injection. Both live in ServerServices.cs.
+// 2. UseNeatoo() - maps the /api/neatoo endpoint and its correlation middleware
 // 3. Hosted WASM middleware to serve the Blazor client
+// 4. UseAuthentication and UseAuthorization before UseNeatoo, so HttpContext.User
+//    is set when [AspAuthorize] and ICurrentUser read it
 //
-// =============================================================================
-
-using Design.Server;
-using Neatoo.RemoteFactory.AspNetCore;   // for app.UseNeatoo() below
-
-var builder = WebApplication.CreateBuilder(args);
-
-// -------------------------------------------------------------------------
-// Register everything: RemoteFactory itself plus the server-only services
-// Design.Domain's factory methods resolve by [Service] injection.
+// The code below is embedded in getting started (region
+// getting-started-server-program); the reasons are kept here so it stays short.
 //
 // DESIGN DECISION: One named seam instead of a list of calls here
 //
@@ -40,41 +33,55 @@ var builder = WebApplication.CreateBuilder(args);
 // assembly argument would have gone unnoticed for the same reason.
 //
 // Add new server-only services THERE, not here.
-// -------------------------------------------------------------------------
-builder.Services.AddDesignServer();
-
-var app = builder.Build();
-
-// -------------------------------------------------------------------------
-// Hosted Blazor WASM middleware
 //
-// UseBlazorFrameworkFiles() configures the server to serve the client's
-// _framework files (blazor.webassembly.js, dotnet.wasm, etc.).
-// UseStaticFiles() serves the client's wwwroot content.
-// These must come BEFORE UseNeatoo() so static files are served directly.
-// -------------------------------------------------------------------------
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
-
-// -------------------------------------------------------------------------
+// Hosted Blazor WASM middleware: UseBlazorFrameworkFiles() serves the client's
+// _framework files (blazor.webassembly.js, dotnet.wasm, etc.) and UseStaticFiles()
+// its wwwroot content. They come BEFORE UseNeatoo() so static files are served
+// directly.
+//
 // DESIGN DECISION: UseNeatoo adds the RemoteFactory middleware
 //
 // This middleware:
-// - Intercepts requests to the configured endpoint (default: /api/neatoo)
+// - Maps the one endpoint, POST /api/neatoo (a fixed path; the client posts to it)
+// - Reads the X-Correlation-Id header into ICorrelationContext and echoes it back
 // - Deserializes the factory operation request
 // - Resolves the delegate and invokes the operation
 // - Serializes the result back to the client
 //
 // No controllers needed - it's all handled by the middleware.
-// -------------------------------------------------------------------------
+//
+// The SPA fallback comes AFTER all other middleware and route mappings so that
+// API routes (/api/neatoo) are handled first.
+//
+// =============================================================================
+
+using Design.Server;
+using Neatoo.RemoteFactory.AspNetCore;   // for app.UseNeatoo() below
+
+#region getting-started-server-program
+var builder = WebApplication.CreateBuilder(args);
+
+// RemoteFactory plus the server-only services [Service] parameters resolve (ServerServices.cs)
+builder.Services.AddDesignServer();
+
+var app = builder.Build();
+
+// Serve the hosted Blazor WASM client
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
+// Sign the caller in before the endpoint runs: the authorization checks read HttpContext.User
+app.UseAuthentication();
+app.UseAuthorization();
+
+// The RemoteFactory endpoint: one route for every factory call, no controllers
 app.UseNeatoo();
 
-// -------------------------------------------------------------------------
-// Fallback: serve index.html for unmatched routes (SPA routing)
-//
-// This must come AFTER all other middleware and route mappings so that
-// API routes (/api/neatoo) are handled first.
-// -------------------------------------------------------------------------
 app.MapFallbackToFile("index.html");
 
 await app.RunAsync();
+#endregion
+
+// Public so the HTTP tests can host this exact Program (WebApplicationFactory<Program>).
+// .NET 10 makes a top-level Program public by itself; .NET 9 does not.
+public partial class Program;

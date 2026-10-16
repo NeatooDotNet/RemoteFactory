@@ -32,7 +32,7 @@ namespace Design.Domain.FactoryPatterns;
 /// Unlike static factory [Execute] (which generates delegate types), class factory
 /// [Execute] generates proper factory methods on the IXxxFactory interface. This
 /// keeps the calling pattern consistent:
-///   var result = await factory.StartForPatient(patientId);
+///   var result = await factory.RunCommand(input);
 ///
 /// DESIGN DECISION: Return type must be the containing type
 ///
@@ -49,14 +49,25 @@ public partial class ClassExecuteDemo
     public ClassExecuteDemo() { }
 
     /// <summary>
-    /// Standard Create method -- establishes that this is a class factory.
+    /// Create is `new`: it sets what it is given and runs on the tier that calls it.
     /// </summary>
-    [Remote, Create]
-    internal Task Create(string name, [Service] IExampleService service)
+    /// <remarks>
+    /// DESIGN DECISION: The [Execute] methods build through this Create (VisionAlignment D3)
+    ///
+    /// Each [Execute] below computes an id with its own service, then asks the
+    /// injected factory for the instance. Construction stays in one place, and no
+    /// method news up a [Factory] type.
+    ///
+    /// DID NOT DO THIS: [Remote, Create] that calls a service for the id
+    ///
+    /// A Create that needs a service to build is a server round trip for `new`. The
+    /// service work belongs to the operation that needs it.
+    /// </remarks>
+    [Create]
+    public void Create(int id, string name)
     {
-        Id = service.GenerateId();
+        Id = id;
         Name = name;
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -107,12 +118,9 @@ public partial class ClassExecuteDemo
     /// </remarks>
     [Remote, Execute]
     public static async Task<ClassExecuteDemo> RunCommand(
-        string input, [Service] IExampleService service)
+        string input, [Service] IExampleService service, [Service] IClassExecuteDemoFactory factory)
     {
-        var instance = new ClassExecuteDemo();
-        instance.Id = service.GenerateId();
-        instance.Name = $"Executed: {input}";
-        return instance;
+        return factory.Create(service.GenerateId(), $"Executed: {input}");
     }
 
     /// <summary>
@@ -142,12 +150,10 @@ public partial class ClassExecuteDemo
     /// and cannot observe any of that.
     /// </remarks>
     [Execute]
-    public static Task<ClassExecuteDemo> ScoreLocally(string input, [Service] ITextScorer scorer)
+    public static Task<ClassExecuteDemo> ScoreLocally(
+        string input, [Service] ITextScorer scorer, [Service] IClassExecuteDemoFactory factory)
     {
-        var instance = new ClassExecuteDemo();
-        instance.Id = scorer.Score(input);
-        instance.Name = $"Scored: {input}";
-        return Task.FromResult(instance);
+        return Task.FromResult(factory.Create(scorer.Score(input), $"Scored: {input}"));
     }
 
     /// <summary>
@@ -179,11 +185,9 @@ public partial class ClassExecuteDemo
     /// the method resolving and running through the server container.
     /// </remarks>
     [Execute]
-    internal static Task<ClassExecuteDemo> ArchiveOnServer(string input, [Service] IExampleService service)
+    internal static Task<ClassExecuteDemo> ArchiveOnServer(
+        string input, [Service] IExampleService service, [Service] IClassExecuteDemoFactory factory)
     {
-        var instance = new ClassExecuteDemo();
-        instance.Id = service.GenerateId();
-        instance.Name = $"Archived: {input}";
-        return Task.FromResult(instance);
+        return Task.FromResult(factory.Create(service.GenerateId(), $"Archived: {input}"));
     }
 }

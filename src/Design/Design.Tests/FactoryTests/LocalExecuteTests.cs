@@ -109,6 +109,28 @@ public class LocalExecuteTests
     }
 
     /// <summary>
+    /// Verifies ClassExecuteDemo's Create is local: it runs on the client with no server call.
+    /// ScoreLocally above builds its result through this same Create, on the client.
+    /// </summary>
+    [Fact]
+    public void Create_ClassFactory_Local_RunsOnClient()
+    {
+        // Arrange
+        var (server, client) = ScopesWithNoWire();
+        var factory = client.GetRequiredService<IClassExecuteDemoFactory>();
+
+        // Act - the wire stand-in would throw if this left the client
+        var result = factory.Create(11, "built locally");
+
+        // Assert
+        Assert.Equal(11, result.Id);
+        Assert.Equal("built locally", result.Name);
+
+        server.Dispose();
+        client.Dispose();
+    }
+
+    /// <summary>
     /// The control for the stand-in: a [Remote, Execute] sample must try to cross the wire
     /// and hit it. Without this, the two tests above could pass with a stand-in that is
     /// never consulted.

@@ -8,13 +8,14 @@
 // client actually calls it, which is why this file exists as a seam a test can
 // call rather than as inline lines in Program.cs.
 //
-// DESIGN DECISION: RegisterMatchingName first, explicit registrations after
+// DESIGN DECISION: Explicit registrations first, RegisterMatchingName after
 //
-// RegisterMatchingName auto-maps IFoo -> Foo across the assembly, which covers
-// most pairs for free. It matches on NAME, so any pair whose implementation is
-// not the interface name minus the "I" needs an explicit line -- listed below
-// with the reason, because "why is this one explicit" is the question a reader
-// arrives with.
+// RegisterMatchingName auto-maps IFoo -> Foo across the assemblies, which covers
+// most pairs for free. It matches on NAME and registers with TryAdd, so an
+// explicit registration made before it is the one that stands. Any pair whose
+// implementation is not the interface name minus the "I", or that must not be
+// transient, gets an explicit line -- listed below with the reason, because "why
+// is this one explicit" is the question a reader arrives with.
 //
 // COMMON MISTAKE: Registering services only in the test container
 //
@@ -27,8 +28,12 @@
 
 using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.Services;
+using Design.Domain.ValueObjects;
+using Microsoft.AspNetCore.Http;
 using Neatoo.RemoteFactory;
 using Neatoo.RemoteFactory.AspNetCore;
+using System.Security.Claims;
 
 namespace Design.Server;
 
@@ -56,17 +61,82 @@ public static class ServerServices
         // -------------------------------------------------------------------
         // DESIGN DECISION: AddNeatooAspNetCore registers everything RemoteFactory needs
         //
-        // Scans the assembly for [Factory] types, registers the generated factory
-        // delegates, configures the middleware, and sets Mode = Server.
+        // Registers the generated factories of the assembly passed, in server mode,
+        // with the request handler the /api/neatoo endpoint calls. The endpoint
+        // itself is mapped by app.UseNeatoo() in Program.cs. The serialization
+        // format is the default, Ordinal, which the client's default matches.
         //
         // COMMON MISTAKE: Forgetting to pass the assembly
         //
         // WRONG:  services.AddNeatooAspNetCore();                     // nothing registered
         // RIGHT:  services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
         // -------------------------------------------------------------------
+        #region readme-server-setup
         services.AddNeatooAspNetCore(typeof(IOrder).Assembly);
+        #endregion
+
+        services.AddDesignLogging();
+
+        services.AddDesignAuthorization();
 
         return services.AddDesignServerServices();
+    }
+
+    /// <summary>
+    /// Authentication, the policies [AspAuthorize] names, and the signed-in user.
+    /// </summary>
+    /// <remarks>
+    /// <c>AddAuthentication()</c> registers no scheme: the application adds its own
+    /// (cookies, JWT bearer, ...), and Design.Tests adds a test scheme. [AspAuthorize]
+    /// names no scheme, so the policy reads <c>HttpContext.User</c>, which
+    /// <c>UseAuthentication()</c> in Program.cs sets from the default scheme.
+    /// <c>AspAuthorize</c> needs <c>IHttpContextAccessor</c>; without it every
+    /// [AspAuthorize] call throws "No AspCoreNet Authorization registered".
+    ///
+    /// ICurrentUser is built from the same <c>HttpContext.User</c>, so
+    /// [AuthorizeFactory] classes on the server read the user [AspAuthorize] sees.
+    /// It is registered explicitly; see Design.Domain/Services/CurrentUser.cs.
+    /// </remarks>
+    private static IServiceCollection AddDesignAuthorization(this IServiceCollection services)
+    {
+        #region authorization-policy-config
+        services.AddAuthentication();   // add your scheme here: cookies, JWT bearer, ...
+        services.AddAuthorization(options =>
+            options.AddPolicy("RequireAuthenticated", policy => policy.RequireAuthenticatedUser()));
+        services.AddHttpContextAccessor();
+        #endregion
+
+        #region service-injection-httpcontext
+        services.AddScoped<ICurrentUser>(sp =>
+            new ClaimsUser(sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.User ?? new ClaimsPrincipal()));
+        #endregion
+
+        return services;
+    }
+
+    /// <summary>
+    /// The log categories RemoteFactory writes to.
+    /// </summary>
+    /// <remarks>
+    /// Three prefixes, because RemoteFactory logs under three:
+    /// - <c>Neatoo.RemoteFactory</c>: the server's request handling and event dispatch,
+    ///   the serializer, the client's remote calls.
+    /// - <c>RemoteFactory.Trace</c>: each request's serialize and deserialize steps.
+    ///   It is NOT under the prefix above, so a filter on that prefix leaves it off.
+    /// - The generated class factories, which log under their own type names, so in
+    ///   the domain's namespace (<c>Design.Domain.Aggregates.OrderFactory</c>). Static
+    ///   and interface factories write no entries of their own.
+    /// </remarks>
+    private static IServiceCollection AddDesignLogging(this IServiceCollection services)
+    {
+        #region aspnetcore-logging
+        services.AddLogging(logging => logging
+            .AddFilter("Neatoo.RemoteFactory", LogLevel.Information)
+            .AddFilter("RemoteFactory.Trace", LogLevel.Warning)   // Trace: every request's (de)serialization
+            .AddFilter("Design", LogLevel.Information));          // the generated class factories
+        #endregion
+
+        return services;
     }
 
     /// <summary>
@@ -96,25 +166,48 @@ public static class ServerServices
         //
         // Registered before RegisterMatchingName on purpose: the convention uses
         // TryAdd*, so an explicit registration made first is the one that stands.
+        //
+        // The in-memory stores stand in for a database, so they outlive each
+        // request's scope; a real DbContext would be scoped.
+        //
+        // InMemoryTaxTable, InMemorySupportLog and InMemoryCheckoutLedger are not named for their
+        // interfaces, so the convention would miss them -- on purpose: the
+        // convention also runs on clients, and all three are server-only.
+        //
+        // TenantTokenService takes a constructor argument the convention cannot
+        // supply. In a real server this value comes from configuration or the
+        // request's tenant claim. Whatever the SERVER registers is what a
+        // [Service]-injected method sees; a Blazor client registering its own
+        // instance is what the CLIENT's constructor injection sees after the entity
+        // deserializes -- that contrast is the point of the CtorInjectionExample
+        // pattern.
+        //
+        // COMMON MISTAKE: Registering only the interface of a matched pair
+        //
+        // RegisterMatchingName registers the concrete type too (TryAddTransient(Foo)).
+        // For TenantTokenService that registration could never be built -- DI has no
+        // string to pass -- and in Development, where ASP.NET Core builds every
+        // registration at startup, the server would not start. Registering the
+        // concrete first, built with its token, means the convention's TryAdd
+        // leaves it alone; the interface forwards to it, one instance per scope.
+        //
+        // The convention pass covers the stateless remainder (INotificationService
+        // -> NotificationService, IProductCatalog -> ProductCatalog).
         // ---------------------------------------------------------------------
+        #region aspnetcore-service-registration
         services.AddScoped<IPhaseAuditService, PhaseAuditService>();
-        services.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        services.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         services.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         services.AddScoped<IExampleService, ExampleService>();
+        services.AddSingleton<ITaxTable, InMemoryTaxTable>();
+        services.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
+        services.AddSingleton<ISupportLog, InMemorySupportLog>();
+        services.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
+        services.AddScoped(_ => new TenantTokenService("server-token"));
+        services.AddScoped<ITenantTokenService>(sp => sp.GetRequiredService<TenantTokenService>());
 
-        // Explicit for a different reason: the implementation takes a constructor
-        // argument the convention cannot supply. In a real server this value comes
-        // from configuration or the request's tenant claim. Whatever the SERVER
-        // registers is what a [Service]-injected method sees; a Blazor client
-        // registering its own instance is what the CLIENT's constructor injection
-        // sees after the entity deserializes -- that contrast is the point of the
-        // CtorInjectionExample pattern.
-        services.AddScoped<ITenantTokenService>(_ => new TenantTokenService("server-token"));
-
-        // Convention pass for the stateless remainder (INotificationService ->
-        // NotificationService, IExampleRepository -> ExampleRepository) and for the
-        // IFoo -> Foo pairs the generated factories expect to resolve.
         services.RegisterMatchingName(typeof(IOrder).Assembly);
+        #endregion
 
         return services;
     }

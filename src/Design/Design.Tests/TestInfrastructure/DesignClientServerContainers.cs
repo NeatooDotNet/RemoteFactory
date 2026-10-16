@@ -21,6 +21,8 @@
 
 using Design.Domain.Aggregates;
 using Design.Domain.FactoryPatterns;
+using Design.Domain.Services;
+using Design.Domain.ValueObjects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -42,6 +44,12 @@ namespace Design.Tests.TestInfrastructure;
 public class ServerServiceProvider
 {
     public IServiceProvider ServerProvider { get; set; } = null!;
+
+    /// <summary>
+    /// Number of calls this client has sent to the server. Lets a test show that an
+    /// operation without [Remote] ran on the client.
+    /// </summary>
+    public int RemoteCallCount { get; set; }
 }
 
 /// <summary>
@@ -86,6 +94,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
     public async Task<T?> ForDelegateNullable<T>(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _serviceProvider.GetRequiredService<ServerServiceProvider>().RemoteCallCount++;
 
         // Serialize the request (client side)
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
@@ -111,6 +120,7 @@ internal sealed class MakeSerializedServerStandinDelegateRequest : IMakeRemoteDe
 
     public async Task ForDelegateEvent(Type delegateType, object?[]? parameters, CancellationToken cancellationToken)
     {
+        _serviceProvider.GetRequiredService<ServerServiceProvider>().RemoteCallCount++;
         var remoteRequest = _neatooJsonSerializer.ToRemoteDelegateRequest(delegateType, parameters);
         var json = JsonSerializer.Serialize(remoteRequest);
         var remoteRequestOnServer = JsonSerializer.Deserialize<RemoteRequestDto>(json)!;
@@ -232,32 +242,52 @@ public static class DesignClientServerContainers
         Action<IServiceCollection>? configureClient = null,
         SerializationFormat format = SerializationFormat.Ordinal)
     {
+        #region clientserver-container-setup
         var serializationOptions = new NeatooSerializationOptions { Format = format };
 
         var serverCollection = new ServiceCollection();
         var clientCollection = new ServiceCollection();
         var localCollection = new ServiceCollection();
 
-        // Add base configuration
+        // One mode per container: Server handles requests, Remote serializes its
+        // [Remote] calls, Logical runs everything in-process
         ConfigureContainer(serverCollection, NeatooFactory.Server, serializationOptions);
         ConfigureContainer(clientCollection, NeatooFactory.Remote, serializationOptions);
         ConfigureContainer(localCollection, NeatooFactory.Logical, serializationOptions);
 
+        // The client's remote calls go to the server scope, serialized, in place of HTTP
+        clientCollection.AddScoped<ServerServiceProvider>();
+        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
+        #endregion
+
         // Server-only services
         serverCollection.AddScoped<IExampleService, ExampleService>();
         serverCollection.AddScoped<INotificationService, NotificationService>();
-        serverCollection.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        serverCollection.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         serverCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         serverCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
+        serverCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
+        serverCollection.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
+        serverCollection.AddSingleton<ISupportLog, InMemorySupportLog>();
+        serverCollection.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
         localCollection.AddScoped<IExampleService, ExampleService>();
         localCollection.AddScoped<INotificationService, NotificationService>();
-        localCollection.AddScoped<IOrderRepository, InMemoryOrderRepository>();
+        localCollection.AddSingleton<IOrderDbContext, InMemoryOrderDbContext>();
         localCollection.AddScoped<IProductReviewService, InMemoryProductReviewService>();
         localCollection.AddScoped<IPhaseAuditService, PhaseAuditService>();
+        localCollection.AddSingleton<ITaxTable, InMemoryTaxTable>();
+        localCollection.AddSingleton<ICustomerPreferencesStore, InMemoryCustomerPreferencesStore>();
+        localCollection.AddSingleton<ISupportLog, InMemorySupportLog>();
+        localCollection.AddSingleton<ICheckoutLedger, InMemoryCheckoutLedger>();
 
-        // Client needs server provider reference for remote calls
-        clientCollection.AddScoped<ServerServiceProvider>();
-        clientCollection.AddScoped<IMakeRemoteDelegateRequest, MakeSerializedServerStandinDelegateRequest>();
+        // One signed-in user, shared by the three containers, as a real user is the
+        // same person on the client and the server. Tests take a role away to deny.
+        var user = new TestUser();
+        foreach (var collection in new[] { serverCollection, clientCollection, localCollection })
+        {
+            collection.AddSingleton(user);
+            collection.AddSingleton<ICurrentUser>(user);
+        }
 
         // Apply custom configuration
         configureServer?.Invoke(serverCollection);

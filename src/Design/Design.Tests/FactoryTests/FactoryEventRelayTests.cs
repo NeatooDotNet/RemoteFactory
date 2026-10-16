@@ -20,8 +20,10 @@ public class FactoryEventRelayTests
         var (server, client, _) = DesignClientServerContainers.Scopes(
             configureClient: services =>
             {
+                #region events-relay-register
                 // Consumer replaces the NoOp default by registering their own relay.
                 services.AddSingleton<IFactoryEventRelay>(aggregator);
+                #endregion
             });
         return (server, client, aggregator);
     }
@@ -40,18 +42,20 @@ public class FactoryEventRelayTests
     }
 
     /// <summary>
-    /// Server raises an event during a [Remote, Create] method. The event is captured
-    /// in the response and passed to the consumer's IFactoryEventRelay.Relay.
+    /// The client creates a checkout locally and saves it; the server's [Remote, Insert]
+    /// raises the event, which is captured in the response and passed to the consumer's
+    /// IFactoryEventRelay.Relay.
     /// </summary>
     [Fact]
-    public async Task Relay_EventRaisedInRemoteCreate_DeliveredToConsumer()
+    public async Task Relay_EventRaisedInRemoteInsert_DeliveredToConsumer()
     {
         var (server, client, relay) = ScopesWithRelay();
 
         try
         {
             var factory = client.GetRequiredService<ICheckoutOrderFactory>();
-            await factory.Create(42, 99.95m);
+            var checkout = factory.Create(42, 99.95m);
+            await factory.Save(checkout);
 
             await WaitForRelayAsync(() => relay.ReceivedOfType<OrderCheckoutCompleted>().Any());
 
@@ -71,6 +75,11 @@ public class FactoryEventRelayTests
     /// from the relay. The consumer's Relay is still invoked once per factory call,
     /// but the batch is empty.
     /// </summary>
+    /// <remarks>
+    /// The checkout's Update raises ServerOnly; its Insert raises the relayed event.
+    /// The test waits for the Insert's event before saving again, so the one event
+    /// already received is the Insert's, and no second one may arrive.
+    /// </remarks>
     [Fact]
     public async Task Relay_ServerOnlyFlag_EventNotRelayedToConsumer()
     {
@@ -79,11 +88,18 @@ public class FactoryEventRelayTests
         try
         {
             var factory = client.GetRequiredService<ICheckoutOrderFactory>();
-            await factory.CreateWithServerOnlyEvent(7, 5.00m);
+            var checkout = await factory.Save(factory.Create(7, 5.00m));
+            await WaitForRelayAsync(() => relay.ReceivedOfType<OrderCheckoutCompleted>().Any());
+            Assert.Single(relay.ReceivedOfType<OrderCheckoutCompleted>());
+            Assert.False(checkout.IsNew);
 
-            // Give the fire-and-forget relay a chance to run, then assert nothing arrived.
+            checkout.Total = 6.00m;
+            await factory.Save(checkout);
+
+            // Give the fire-and-forget relay a chance to run, then assert the Update's event did not arrive.
             await Task.Delay(50);
-            Assert.Empty(relay.ReceivedOfType<OrderCheckoutCompleted>());
+            var received = Assert.Single(relay.ReceivedOfType<OrderCheckoutCompleted>());
+            Assert.Equal(5.00m, received.Total);
         }
         finally
         {
@@ -112,8 +128,10 @@ public class FactoryEventRelayTests
 
         try
         {
+            #region events-client-raise
             var events = client.ServiceProvider.GetRequiredService<IFactoryEvents>();
             await events.Raise(new ClientRaisedNotice(88));
+            #endregion
 
             await WaitForRelayAsync(() => relay.ReceivedOfType<NoticeAcknowledged>().Any());
 
@@ -143,13 +161,59 @@ public class FactoryEventRelayTests
             Assert.Equal("NoOpFactoryEventRelay", relay.GetType().Name);
 
             var factory = client.GetRequiredService<ICheckoutOrderFactory>();
-            // Must not throw — NoOp relay silently drops the batch.
-            await factory.Create(1, 10m);
+            // Must not throw — NoOp relay silently drops the batch. Save is the remote
+            // call whose response carries the batch; Create is local and never reaches it.
+            await factory.Save(factory.Create(1, 10m));
         }
         finally
         {
             server.Dispose();
             client.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The checkout's writes pass the save's token to Raise, so the server handler gets
+    /// the caller's token: for the Insert's raise, and for the Update's ServerOnly raise,
+    /// which runs the handler though nothing is relayed.
+    /// </summary>
+    [Fact]
+    public async Task Save_PassesTheCallersToken_ToTheServerHandler()
+    {
+        var ledger = new TokenRecordingLedger();
+        var (server, client, _) = DesignClientServerContainers.Scopes(
+            configureServer: services => services.AddSingleton<ICheckoutLedger>(ledger));
+
+        try
+        {
+            var factory = client.GetRequiredService<ICheckoutOrderFactory>();
+            using var cts = new CancellationTokenSource();
+
+            var checkout = await factory.Save(factory.Create(11, 20.00m), cts.Token);   // Insert
+            checkout.Total = 21.00m;
+            await factory.Save(checkout, cts.Token);                                    // Update, ServerOnly
+
+            Assert.Equal([(11, 20.00m), (11, 21.00m)], ledger.Entries.Select(e => (e.OrderId, e.Total)));
+            Assert.All(ledger.Entries, e => Assert.False(e.Token.IsCancellationRequested));
+
+            cts.Cancel();
+            Assert.All(ledger.Entries, e => Assert.True(e.Token.IsCancellationRequested));
+        }
+        finally
+        {
+            server.Dispose();
+            client.Dispose();
+        }
+    }
+
+    private sealed class TokenRecordingLedger : ICheckoutLedger
+    {
+        public List<(int OrderId, decimal Total, CancellationToken Token)> Entries { get; } = [];
+
+        public Task RecordAsync(int orderId, decimal total, CancellationToken cancellationToken)
+        {
+            Entries.Add((orderId, total, cancellationToken));
+            return Task.CompletedTask;
         }
     }
 }
