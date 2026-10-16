@@ -49,3 +49,48 @@ Written by the orchestrator from the code-reviewer's report.
 - **Observation 2 and the two-root transaction.** VisionAlignment §3 ("Across roots, an `[Execute]` seam or an event") covers it, so the observation is reworded if run2 repeats it.
 - **SKR-007's own sessions ran Bash.** That is outside this plan. It is recorded for the Neatoo session in the message sent at close.
 - **The skill's snippet-source links name `/src/Design` paths.** They point only at the repository, so only the test is affected.
+
+---
+
+# Code Review — RFSK-006 — 2026-10-16 — Round 2
+
+Written by the orchestrator from the code-reviewer's report.
+
+**Verdict: APPROVED**
+
+**Logs:** none apply. Only markdown changed (`docs/todos/**` and prose in the skill's references).
+
+## What was confirmed
+
+- **V1 resolved.** All eleven run2 and run3 transcripts were parsed:
+  - `dontAsk` throughout, with only Skill, Read, Grep and Glob used;
+  - every call into `~/.claude/skills`, except the two denied attempts the scoring names;
+  - only `~/.claude/CLAUDE.md` loaded;
+  - each output is identical to its transcript's final text;
+  - the probe, the stderr and the command all match the Run record.
+- **The `setup.md` amendment** matches VisionAlignment §2 statement 4 and D18 nearly word for word, and contradicts nothing in the skill. The sync is clean, and #171 is the right home for the `docs/` copy.
+- **The scoring holds.** All eleven outputs were read in full, and every cited range was checked. On the three observations:
+  - **1, s7's `[Remote, Create]`:** not a fall.
+  - **2, run3's leftover clause:** not a fall under the scoring's rule.
+  - **3, s7's unassigned server-side Saves:** not a fall, but a departure from "reassign either way" that is rightly recorded for Keith.
+- **Round-1 callouts:** 1–4 addressed, and 5 partly (callout 2 below).
+
+## Callouts (both taken)
+
+1. **The T18 boundary between run2's fall and run3's pass was recorded unevenly.** Observation 2's excuse also covers run2's second clause, so the fall rests on the first. **Taken:**
+   - the Verdict names the first clause as the fall;
+   - Observation 2 cites run3 out10:21, :215 and :299, and calls the pass narrow.
+2. **T20 omitted s2's `ContactSearchFilter` and `ContactListItem`.** **Taken:** both are added to the T20 cell with their R-H reading.
+
+## Could not verify
+
+- **Exit codes:** the evidence is `006-runs/exit-codes.txt`, a copy of the console summary. The scoring file now says so.
+- **s1–s5 identical to SKR-007's prompts:** not re-checked here; the test review closed it.
+
+## Theoretical (all taken)
+
+- **Observation 1's counter-reading** ("`[Fetch]` … takes a key"): it is now answered in Observation 1.
+- **s1–s9 ran against the old sentence:** the Verdict now says so, and says why the claim holds.
+- **F-a's quote was a paraphrase:** the cell now quotes both runs verbatim.
+- **The deferred tools were not denied:** recorded in the Run record.
+- **`references/static-factory.md:130`**, "`[Remote]` alone decides where it runs": it now reads "decides whether the client's call crosses". The skill was re-synced, and no scenario was re-run for a phrase narrowed toward the row's answer.

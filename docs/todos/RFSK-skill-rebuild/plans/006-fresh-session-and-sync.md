@@ -4,7 +4,7 @@
 **Date:** 2026-10-16
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-7, AC-8
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-16
 **Plan-review opt-in:** No (no code; a test of the skill)
 **Code-review opt-in:** Yes (the scoring is a judgment; a second reader checks it against the outputs)
@@ -89,7 +89,8 @@ No code changed on this branch, so the full suite was not re-run here; the arc's
 
 ## Gate Record
 
-- 
+- Round 1 (2026-10-16): test review APPROVED; the exit codes and the command, which it could not verify, are now recorded — `reviews/006-test-review.md`. Code review CONCERNS, with veto V1: run1 was not isolated (Amendment 1); callouts 1–5 were taken in the re-score — `reviews/006-code-review.md`
+- Round 2 (2026-10-16), after run2 and run3 and Amendment 2: test review APPROVED, with its theoretical items taken. Code review APPROVED: callouts 1 (the T18 boundary) and 2 (T20 records) were taken, and so were all its theoretical items, including the `static-factory.md:130` phrase — Done
 
 ---
 
@@ -104,6 +105,7 @@ No code changed on this branch, so the full suite was not re-run here; the arc's
    - The sentence now says the client's call to a `[Remote]` operation crosses, any other call runs on the tier that makes it, the same operation called on the server runs there locally, and `internal` without `[Remote]` is server-only.
    - The skill was re-synced and s10 re-run as run3, which passes.
    - `docs/getting-started.md:107` has the same sentence. It is published documentation, not the skill, so it is parked as #171.
+   - At the round-2 code review, `references/static-factory.md`'s "`[Remote]` alone decides where it runs" became "decides whether the client's call crosses". The skill was re-synced; no re-run, because the phrase only narrows toward the row's answer.
 
 ---
 

@@ -66,6 +66,10 @@ claude -p "$(cat sN.txt)" --permission-mode dontAsk --strict-mcp-config \
 
 **stderr:** each session printed only the two settings notices about the user settings' `Write(...)` allow rules.
 
+**Two gaps in the isolation, neither used.**
+- **Deferred tools were not denied.** The built-in deferred tools (LSP, Monitor, SendMessage, RemoteTrigger and others) were not explicitly blocked. No session called one.
+- **Exit codes are a console copy.** They are `006-runs/exit-codes.txt`, the run's printed summary.
+
 **Results:**
 
 | Run | Scenario | Exit code | Lines |
@@ -86,9 +90,11 @@ claude -p "$(cat sN.txt)" --permission-mode dontAsk --strict-mcp-config \
 
 **After the amendment, no scenario falls into any RemoteFactory trap row or any of the four findings.** AC-7 is met.
 
-- **One row was fallen into in run2.** s10, the "what is RemoteFactory for" scenario, gave the habit's answer to T18 in prose (out10:1): "An operation marked `[Remote]` runs on the server … An operation without `[Remote]` runs on the client with no network call."
+- **One row was fallen into in run2.** s10, the "what is RemoteFactory for" scenario, gave the habit's answer to T18 in prose (out10:1). The fall is the first clause: "An operation marked `[Remote]` runs on the server". That defines `[Remote]` by where code lives. The second clause, "An operation without `[Remote]` runs on the client with no network call", is true of every call s10 makes, as in Observation 2.
 - **The cause was in the skill.** s10 read `references/setup.md`, whose factory-modes sentence ended "everything else runs on the client".
-- **The fix.** That sentence now says a call the client makes to a `[Remote]` operation crosses, any other call runs on the tier that makes it, and the same operation called on the server runs there locally. The skill was re-synced and s10 re-run as run3. run3 describes `[Remote]` as the call crossing (run3 out10:5, 113).
+- **The fix.** That sentence now says a call the client makes to a `[Remote]` operation crosses, any other call runs on the tier that makes it, and the same operation called on the server runs there locally. The skill was re-synced and s10 re-run as run3. run3 replaces the first clause with "the call goes over the wire" and describes `[Remote]` as the call crossing (run3 out10:5, 113).
+- **Most scenarios ran against the old sentence.** s1–s9 ran (run2) before the amendment, so only s10 exercised the final skill. "None fallen into after the amendment" still holds: the amendment only narrows one sentence toward the row's answer, and s1–s9 screen clean even against the old text.
+- **One more phrase, changed after the runs.** At the code review's suggestion, `references/static-factory.md`'s "`[Remote]` alone decides where it runs" now reads "decides whether the client's call crosses". No scenario was re-run for it.
 
 ## Scenarios
 
@@ -121,21 +127,26 @@ Every scenario that reaches a row is listed with its own evidence.
 | T15 `[Remote]` on a child's `[Insert]` | pass | **s1, s4, s6:** no child or list operation carries `[Remote]`; the child `Create` is `public` and local (out1:331-367; out4:276-277, 311-340; out6:205-250, 553-563). |
 | T18 does `[Remote]` mean "runs on the server" | **run2: fallen into (s10, prose); run3: pass** | **s10, run2:** the prose gives the habit's answer (out10:1); see Verdict. **s10, run3:** `[Remote]` is the call crossing: "If an operation is marked `[Remote]`, the call goes over the wire"; "the client's call crosses" (run3 out10:5, 113). Its remaining "Without `[Remote]`, the method runs in the browser" is Observation 2.<br>**s6:** child operations "only run inside `Company`'s server operations, which have already crossed" (out6:561, 563).<br>**s1, s4:** the same placement reasoning (out1:367; out4:277).<br>**s5, s7:** server code calls the `[Remote]` Fetch and Save directly, with no second hop (out5:224-239; out7:406-425).<br>**s8:** "the `[Remote] internal` write operations … run on the server" (out8:8, 147) describes `[Remote] internal` methods, for which it is true. |
 | T19 a command that needs the server | pass | **s3:** a `[Remote, Execute]` for the server call (out3:34-45).<br>**s5:** an `internal static [Execute]` without `[Remote]`, because no client starts the job: "A `[Remote]` command would open a public endpoint … A plain static `[Execute]` would ship the EF query to the client" (out5:202-204, 261). |
-| T20 a DTO from a controller | pass | No controller and no DTO class in any output. A screen's server truth is a `[Fetch]`-only read model (out2:193-210; out7:187-235; out9:52-90).<br>**Hand-written records that cross:** `ContactListItem` (out7:198), `RecentContact`, `RegisteredCompany` (out9:113) and `ContactValues` (out7:47). Each is a value inside a read model, an interface-factory return or the merge model, never a transfer type that stands in for a domain object (R-H).<br>**Framing:** "no DTOs and no controllers" in s1, s2, s3, s6, s7 and s10 (out1:15; out2:482; out3:300; out6:9; out7:187; run3 out10:5). |
+| T20 a DTO from a controller | pass | No controller and no DTO class in any output. A screen's server truth is a `[Fetch]`-only read model (out2:193-210; out7:187-235; out9:52-90).<br>**Hand-written records that cross:** `ContactListItem` (out7:198), `RecentContact`, `RegisteredCompany` (out9:113) and `ContactValues` (out7:47). s2 adds two more: `ContactSearchFilter` (out2:90), the `[Remote, Fetch]`'s parameter sent from the client (out2:209, 303), and `ContactListItem` (out2:181), inside the read model. Each is a parameter value, a value inside a read model, an interface-factory return or a value in the merge model, never a transfer type that stands in for a domain object (R-H).<br>**Framing:** "no DTOs and no controllers" in s1, s2, s3, s6, s7 and s10 (out1:15; out2:482; out3:300; out6:9; out7:187; run3 out10:5). |
 
 ## The four findings
 
 | Finding | Reached by | Result |
 |---|---|---|
-| F-a "persistence routing" as the headline | s10 (run2 and run3) | Not fallen into. s10 opens with one domain assembly on both tiers, so there are "no controllers or DTOs" (run3 out10:5; out10:1). "Persistence routing" appears in no output. |
+| F-a "persistence routing" as the headline | s10 (run2 and run3) | Not fallen into. s10 opens with one domain assembly on both tiers, so "you don't write controllers or DTOs" (run3 out10:5); run2 says "without DTOs or controllers" (out10:1). "Persistence routing" appears in no output. |
 | F-b N+1 as the reason child operations are `internal` | s6, s4, s1 | Not fallen into. The reason given is placement: the operations "only run inside `Company`'s server operations, which have already crossed. `[Remote]` here wouldn't add a round trip, but it would give the client a way in that bypasses the company" (out6:561). s4 says "they only run inside the visit's save, which is already on the server" (out4:277), and s1 the same (out1:367). "N+1" appears in no output. |
 | F-c a repository-named interface factory | s9 | Not fallen into. The run's only interface factory is `ICompanyRegistry`, "named for what it does. It is not a repository" (out9:106-118). |
 | F-d `[Remote, Create]` where creation needs nothing | s10, s7, s1-s6, s8 | Not fallen into. Each `[Remote, Create]` needs server data and says so: s10's contact reads its default region from the Settings table (out10:218-222; run3 out10:113-116); s7's merge model reads both contacts (out7:238, 320). Every other root `Create` is local: out1:219, out2:163, out3:163, out5:66, out6:94, out8:195, and the note in run3 out10:149, 183. s4's `Create` is `internal` and called only by `OpenToday`, because the salesperson comes from the server (out4:124, 178). |
 
 ## Observations (no row fallen into)
 
-1. **s7's merge model is a `ValidateBase` with no row, built by a `[Remote, Create]` that reads both contacts** (out7:238, 320-351). That is scored as a pass on T4 and F-d. The attribute is a claim about the object: the merge is not in the store and is never saved, so "not in the store yet" holds. Building it needs the server (D14). It is not a loaded child claiming to be new, which is what T4 forbids. Recorded because it differs from the checkout context's shape, a `[Fetch]` that holds the loaded aggregate.
-2. **run3's s10 still says "Without `[Remote]`, the method runs in the browser"** (run3 out10:5). In s10 every call comes from the client, so this is true of every call it makes, and the same paragraph says `[Remote]` marks the call going over the wire. Recorded rather than re-run again.
+1. **s7's merge model is a `ValidateBase` with no row, built by a `[Remote, Create]` that reads both contacts** (out7:238, 320-351). That is scored as a pass on T4 and F-d. The attribute is a claim about the object: the merge is not in the store and is never saved, so "not in the store yet" holds. Building it needs the server (D14). It is not a loaded child claiming to be new, which is what T4 forbids. There is a counter-reading: `SKILL.md` says "`[Fetch]` … takes a key", and this `Create` takes two keys and loads two rows. It is still scored a pass. What it loads are the inputs, not the object itself, which has no row to reflect, so a `[Fetch]` would claim the store holds a merge. The harm T4 guards against, a second insert, cannot happen to an object that is never saved. Recorded because it differs from the checkout context's shape, a `[Fetch]` that holds the loaded aggregate.
+2. **run3's s10 still says "Without `[Remote]`, the method runs in the browser"** (run3 out10:5). In s10 every call comes from the client, so this is true of every call it makes, and the same paragraph says `[Remote]` marks the call going over the wire. The same framing appears three more times, each true of s10's design, where every server method is `[Remote] internal`:
+   - "[the `[Remote]`] bodies only ever run on the server" (run3 out10:21);
+   - "only `[Remote]` methods take it as a parameter" (:215);
+   - "`[Remote]` calls go to the server, everything else runs here" (:299).
+
+   A pass, but a narrow one. Recorded rather than re-run again.
 3. **s7 saves on the server without reassigning** (out7:423-425). The row says "reassign either way". Neither object is used afterwards, so nothing reads a stale instance. Recorded for the user.
 4. **s6 and s10 tried to read the repository and were denied.** s6 tried the exact paths named in the skill's mdsnippets "snippet source" links. A distributed copy has no checkout behind those links, so this affects only a test run on this machine.
 5. **s7 opens the transaction in its merge command** (out7:421). The command saves two roots, and VisionAlignment section 3 puts a cross-root operation in an `[Execute]` seam.
