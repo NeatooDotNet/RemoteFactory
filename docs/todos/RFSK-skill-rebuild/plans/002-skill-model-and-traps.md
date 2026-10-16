@@ -4,7 +4,7 @@
 **Date:** 2026-10-16
 **Related Todo:** [../todo.md](../todo.md)
 **Serves:** AC-1, AC-2, AC-6, AC-9, AC-12
-**Status:** In Progress
+**Status:** Done
 **Last Updated:** 2026-10-16
 **Plan-review opt-in:** No (no code, no public API; the code review below checks the doctrine)
 **Code-review opt-in:** Yes (the page restates documented rules: VisionAlignment sections 0, 2 and 4 are the rules it must not contradict)
@@ -94,7 +94,7 @@ Walked 2026-10-16 on the arc at `95befa1`.
 |---|---|---|---|---|
 | Model statements first | Required | `[explicit-skip]` | the page's `## The model` is the first section after the two-paragraph opening; code review | — |
 | Eleven rows, questions as the Neatoo pointer block | Required | `[explicit-skip]` | code review against `Neatoo/skills/neatoo/SKILL.md:42` | — |
-| Every C# block an embed, each pinned | Required | `[integration]` | 8 fences, 8 embeds. `skill-context-checkout`: `ReadModelAndContextTests.OrderCheckout_LoadsWithItsOrder_InOneCall`, `…_ReturnsNull_WhenOrderDoesNotExist`, `…_VerbsRunOnClient_AndSaveGoesThroughTheRoot`. `operations-class-execute`, `skill-order-fetchdraft`: `CreateOrFetchTests.OpenDraft_FetchesTheCustomersDraft_WhenOneExists`, `…_CreatesANewUnsavedOrder_WhenTheCustomerHasNoDraft`. `skill-orderline-root-and-child`: `OrderLineDualityTests` (all three), `SaveTests` for the child Insert and Update through the order. `skill-execute-*`: `LocalExecuteTests.Execute_ClassFactory_WithRemote_TriesTheWire`, `…_WithoutRemote_RunsOnClient`, `ClassFactoryExecuteTests.Execute_InternalStaticWithoutRemote_RunsOnServer`. `skill-readmodel`: `ReadModelAndContextTests.OrderSummary_*` | ✓ |
+| Every C# block an embed, each pinned | Required | `[integration]` | 8 fences, 8 embeds. `skill-context-checkout`: `ReadModelAndContextTests.OrderCheckout_LoadsWithItsOrder_InOneCall`, `…_ReturnsNull_WhenOrderDoesNotExist`, `…_VerbsRunOnClient_AndSaveGoesThroughTheRoot`. `operations-class-execute`, `skill-order-fetchdraft`: `CreateOrFetchTests.OpenDraft_FetchesTheCustomersDraft_WhenOneExists`, `…_CreatesANewUnsavedOrder_WhenTheCustomerHasNoDraft`. `skill-orderline-root-and-child`: `OrderLineDualityTests` (all three); the child Insert and Update through the order by `AggregateTests.Order_EditLinesFromClient_SavesExactlyThoseChanges` and `AggregateTests.Order_SavedResult_CanBeEditedAndSavedAgain`. `skill-execute-*`: `LocalExecuteTests.Execute_ClassFactory_WithRemote_TriesTheWire`, `…_WithoutRemote_RunsOnClient`, `ClassFactoryExecuteTests.Execute_InternalStaticWithoutRemote_RunsOnServer`. `skill-readmodel`: `ReadModelAndContextTests.OrderSummary_*` | ✓ |
 | No contradiction, no fixed defect as open, no ruling ID | Required | `[explicit-skip]` | code review; grep for `D\d`, `R-[A-P]`, `T\d`, `F\d`, `Q\d` finds none (the one "(R-I)", in an embedded comment, was removed from `OrderCheckout.cs`) | — |
 | Points at the Neatoo skill without copying | Required | `[explicit-skip]` | code review | — |
 | Known pains with issue or analyzer | Optional | `[explicit-skip]` | 10 lines: #135, #123, #104, #141, #131, #97, #114, three pending analyzers | — |
@@ -105,7 +105,8 @@ Walked 2026-10-16 on the arc at `95befa1`.
 
 ## Gate Record
 
-- 
+- Round 1 (2026-10-16): test review APPROVED (one evidence row re-cited to `AggregateTests`) — `reviews/002-test-review.md`. Code review APPROVED with 6 callouts, all fixed: two Neatoo questions made word for word; the Save row limited to the client; the pointer names the Neatoo model; #104 stated as filed; F6 parked as #165; the setter pain narrowed to `private`/`protected` — `reviews/002-code-review.md`
+- No round 2: no veto in either review — Done
 
 ---
 
