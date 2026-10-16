@@ -89,9 +89,17 @@ Walked 2026-10-16 on the arc at `606c1cf`.
 
 ## Test Evidence
 
+The flip step was not run, as in RFSK-001: temporary production edits are refused by the permission classifier. No behaviour changed; the three regions and three comment edits are markers and doc comments.
+
 | Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|---|
-| | | | | |
+| Every C# block an embed or a WRONG block | Required | `[explicit-skip]` | per page, fences = embeds + WRONG: class-factory 11 = 11 + 0, interface-factory 6 = 6 + 0, static-factory 7 = 7 + 0, service-injection 7 = 6 + 1, setup 9 = 9 + 0, anti-patterns 15 = 0 + 15 | ✓ |
+| The three new regions pinned | Required | `[integration]` | `skill-command-inject`, `skill-command-call`: resolving the generated `ExampleCommands.SendNotification` delegate on the client and calling it is `StaticFactoryTests.Execute_SendNotification_ReturnsResult`. `skill-client-services`: the client resolving `ITextScorer` for a bare `[Execute]` is `LocalExecuteTests.Execute_StaticFactory_WithoutRemote_RunsOnClient` and `…Execute_ClassFactory_WithoutRemote_RunsOnClient`. The three regions sit in `Design.Client.Blazor`, which `Design.sln` compiles but no test runs; the tests run the same calls through `DesignClientServerContainers`, which registers the client by `RegisterMatchingName`. This is the arrangement the existing `getting-started-client-program`, `skill-blazor-inject` and `skill-blazor-usage` regions already have | ✓ (through the mirroring containers) |
+| No repository interface factory, no retired type | Required | `[explicit-skip]` | grep of the six pages: no `IEmployeeRepository`, `IMyRepository`, `IDeptRepo`, `IAuthorizedRepository`, `SkillConsultation`, `SkillEmployee*`, `IConsultationFactory`; every "repository" is the corrected framing | ✓ |
+| No N+1 reason, no "server only" title | Required | `[explicit-skip]` | grep: no "N+1"; method injection is "the tier that runs the method"; code review | — |
+| `SKILL.md` links land on embeds | Required | `[explicit-skip]` | code review | — |
+| No contradiction with a ruling or the generator | Required | `[explicit-skip]` | code review | — |
+| mdsnippets clean; both green | Required | `[explicit-skip]` | `reviews/003-*.log`: unit 871, integration 664 (5 skipped), Design 177 (1 skipped), both TFMs; outside the skill, `docs/factory-operations.md` changed by one embedded comment line | ✓ |
 
 ---
 
