@@ -186,7 +186,11 @@ public async Task Save()
 
 ## Cancellation
 
-A `[Remote]` operation that declares a `CancellationToken` parameter receives the request's token. It is not serialized and is not a `[Service]`. On the server it fires when the client cancels or disconnects, or when the host begins shutting down (`IHostApplicationLifetime.ApplicationStopping`). On shutdown the client is still connected: the operation's cancellation is a server exception, and the client's call fails as one. Pass the token on to the work that can stop:
+A `[Remote]` operation that declares a `CancellationToken` parameter receives the request's token. It is not serialized and is not a `[Service]`. On the server it fires when the client cancels or disconnects, or when the host begins shutting down (`IHostApplicationLifetime.ApplicationStopping`). Neither ending is a server failure, so the `OperationCanceledException` does not reach the ASP.NET Core pipeline, where request logging would record a 500 at Error:
+- **The client left.** The request ends with status 499 (Client Closed Request) and no body. Nobody receives it.
+- **The server is stopping.** The client is still connected and receives 503; its call throws `HttpRequestException` with `StatusCode` 503.
+
+Any other `OperationCanceledException`, such as a timeout inside the operation, is the operation's own failure and escapes as a 500. Pass the token on to the work that can stop:
 
 <!-- snippet: aspnetcore-cancellation -->
 <a id='snippet-aspnetcore-cancellation'></a>
