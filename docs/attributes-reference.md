@@ -337,7 +337,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L87-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L88-L108' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 See [Service Injection](service-injection.md) for method and constructor injection.

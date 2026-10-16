@@ -300,7 +300,7 @@ public static async Task<IOrder> OpenDraft(
         ?? factory.Create(customerName);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L362-L371' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Aggregates/Order.cs#L364-L373' title='Snippet source file'>snippet source</a> | <a href='#snippet-operations-class-execute' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 `FetchDraft` is a plain `internal` `[Fetch]` with no `[Remote]`, so only the server calls it. The client calls `orderFactory.OpenDraft(customerName)` and gets the stored draft or a new, unsaved one, in one round trip. Don't put that choice in a Create that looks for an existing object, or in a Fetch that makes one: either hides which one the caller got.
@@ -388,7 +388,7 @@ public void AddLine(IOrderLine line)
     Add((OrderLine)line);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L283-L351' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L286-L354' title='Snippet source file'>snippet source</a> | <a href='#snippet-collection-factory-basic' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 - **The list's Create is public and local,** so a root created on the client creates its list there. Its other operations are `internal`: only the root's operations call them, on the server.
@@ -490,7 +490,7 @@ internal async Task<bool> Fetch(
     return true;
 }
 ```
-<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L87-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/ReadModels/OrderSummary.cs#L88-L108' title='Snippet source file'>snippet source</a> | <a href='#snippet-aspnetcore-cancellation' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ## Method Parameters

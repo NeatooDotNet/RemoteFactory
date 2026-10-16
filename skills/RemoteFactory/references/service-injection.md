@@ -144,7 +144,7 @@ internal void Update(OrderLineRow row)
     MapTo(row);
 }
 ```
-<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L128-L170' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/Design/Design.Domain/Entities/OrderLine.cs#L145-L187' title='Snippet source file'>snippet source</a> | <a href='#snippet-orderline-child' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->
 
 ### Why No [Remote] on Children?

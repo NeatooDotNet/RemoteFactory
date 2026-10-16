@@ -92,6 +92,11 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 
 ## Discovery Log
 
+### 2026-10-16 — RFSK-001 · serves AC-2
+- **Finding:** No Design test showed a class-level `[Remote, Execute]` crossing the wire; the control used a static command.
+- **Decision:** Amend
+- **Follow-up:** n/a
+
 ---
 
 ## Skipped Steps

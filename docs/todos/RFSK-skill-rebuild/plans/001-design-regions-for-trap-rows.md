@@ -93,9 +93,17 @@ Walked 2026-10-16 on `main` at `249baa3`; nothing edited.
 
 ## Test Evidence
 
+The flip step was not run: temporarily breaking production code to watch a test fail was refused by the session's permission classifier. The plan adds region markers only, and every cited test except the new one was gated in EXSET. The new control's failure mode is its own assertion: without `[Remote]`, `RunCommand` runs locally and no exception is thrown.
+
 | Acceptance bullet (short) | Priority | Tier declared | Test method | Tier confirmed |
 |---|---|---|---|---|
-| | | | | |
+| Checkout: one call, null when missing, verbs on client, save through root | Required | `[integration]` | `Design.Tests.FactoryTests.ReadModelAndContextTests.OrderCheckout_LoadsWithItsOrder_InOneCall`, `…OrderCheckout_ReturnsNull_WhenOrderDoesNotExist`, `…OrderCheckout_VerbsRunOnClient_AndSaveGoesThroughTheRoot` | ✓ |
+| Summary: line records, null when missing | Required | `[integration]` | `…ReadModelAndContextTests.OrderSummary_FetchedThroughClient_ArrivesWithLineRecords`, `…OrderSummary_ReturnsNull_WhenOrderDoesNotExist` | ✓ |
+| `ClassExecuteDemo`: `[Remote]` crosses, bare runs on caller, `internal` on server | Required | `[integration]` | `…LocalExecuteTests.Execute_ClassFactory_WithRemote_TriesTheWire` (new), `…LocalExecuteTests.Execute_ClassFactory_WithoutRemote_RunsOnClient`, `…ClassFactoryExecuteTests.Execute_InternalStaticWithoutRemote_RunsOnServer`; the client-side guard is pinned at `[unit]` in `RemoteFactory.UnitTests…InternalVisibilityTests`, because `IsServerRuntime` is process-wide | ✓ |
+| Order line: root by id, null, stays a child | Required | `[integration]` | `…OrderLineDualityTests.OrderLine_FetchedAsARoot_ByItsId`, `…OrderLine_FetchedAsARoot_IsNull_WhenNoOrderHoldsIt`, `…OrderLine_StaysAChild_OfItsOrder` | ✓ |
+| `OpenDraft`: existing draft, else new unsaved | Required | `[integration]` | `…CreateOrFetchTests.OpenDraft_FetchesTheCustomersDraft_WhenOneExists`, `…OpenDraft_CreatesANewUnsavedOrder_WhenTheCustomerHasNoDraft` | ✓ |
+| Region names unique; mdsnippets clean, attribution drift only | Required | `[explicit-skip: tooling check]` | all 8 regions extracted; 7 markdown files changed, 0 lines besides `snippet source` attributions | ✓ |
+| Both solutions green, both TFMs | Required | `[explicit-skip: meta-bullet]` | `reviews/001-*.log`: unit 871, integration 664 (5 skipped), Design 177 (1 skipped). One net9.0 unit failure, `CanMethod_Public_ReturnsAuthorized_WhenAllowed`, is the #100 flake; green on re-run (`001-unit-rerun.log`) | ✓ |
 
 ---
 
@@ -107,9 +115,17 @@ Walked 2026-10-16 on `main` at `249baa3`; nothing edited.
 
 ## Plan Amendments
 
+### 2026-10-16 — One control test added; regions named
+
+- **Section affected:** Steps 7, Current State
+- **Original said:** "No new test is expected; step 7 confirms rather than adds."
+- **What changed:** `LocalExecuteTests.Execute_ClassFactory_WithRemote_TriesTheWire` added. The existing control used the static `ExampleCommands`, so nothing showed the class-level `[Remote]` `RunCommand` crossing. Regions: `skill-context-checkout`, `skill-context-usage`, `skill-readmodel` (wraps `aspnetcore-cancellation`), `skill-execute-remote`, `skill-execute-local`, `skill-execute-internal`, `skill-orderline-root-and-child` (wraps `orderline-child` and `orderline-duality`; the duality comment moved above the block), `skill-order-fetchdraft`.
+- **Why:** the T19 row claims the crossing for a class factory; the test now pins it.
+- **Discovery Log:** 2026-10-16 / RFSK-001
+
 ---
 
 ## Notes
 
 - Loaded: `.claude/rules/design-snippets.md`, CLAUDE.md "Skill Code Samples", VisionAlignment sections 2 and 4. The project declares no design skill for Step 2.
-- Unattended from here (todo header). The one open question for Keith is none; region names are chosen at the keyboard and recorded in Current State's successor, the PR body.
+- Unattended from here (todo header).
