@@ -7,6 +7,7 @@ abandonment. Move rows to the Completed section together with the folder move.
 
 | ID | Todo | Created | Location |
 |----|------|---------|----------|
+| RFSK | Rebuild the RemoteFactory skill around the model and the trap rows | 2026-10-16 | [RFSK-skill-rebuild](./RFSK-skill-rebuild/todo.md) |
 
 ## Completed
 
