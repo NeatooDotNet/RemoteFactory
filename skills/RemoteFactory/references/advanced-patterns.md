@@ -84,44 +84,31 @@ internal partial class AuthorizedOrder : IAuthorizedOrder, IFactorySaveMeta, IFa
 
 ### Parameterized Authorization Methods
 
-Auth methods can receive parameters matched by type from factory method parameters:
+An auth method receives the operation's parameters, matched **by type**, not by name. `ParamAuthOrder`'s `Fetch(Guid orderId)` hands its id to:
 
-```csharp
-public interface IOrderAuthorization
-{
-    // Guid param matched to Fetch(Guid orderId) by type
-    [AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
-    bool CanFetchOrder(Guid orderId);
-
-    // Parameterless Read for Create
-    [AuthorizeFactory(AuthorizeFactoryOperation.Read)]
-    bool CanRead();
-}
+<!-- snippet: authorization-parameterized -->
+<a id='snippet-authorization-parameterized'></a>
+```cs
+[AuthorizeFactory(AuthorizeFactoryOperation.Fetch)]
+bool CanFetchOrder(Guid orderId);
 ```
+<sup><a href='/src/Design/Design.Domain/Aggregates/ParamAuthOrderAuth.cs#L89-L92' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-parameterized' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
-The generator produces `CanFetch(Guid)` on the factory interface. Parameters are matched **by type**, not name.
-
-Use specific scopes (e.g., `Fetch`) for parameterized methods — a `Read`-scoped method with a `Guid` param would try to match Create too, which may not have a `Guid` parameter.
+The generator produces `CanFetch(Guid)` on the factory interface. Give a parameterized auth method a specific scope (`Fetch`): a `Read`-scoped one with a `Guid` parameter would try to match `Create` too, which may take no `Guid`.
 
 ### Target Parameter Authorization
 
-Auth methods can receive the **target entity** on write operations for state-based authorization:
+An auth method can receive the **target object** on write operations, for a check that depends on its state:
 
-```csharp
-public interface IOrderAuthorization
-{
-    [AuthorizeFactory(AuthorizeFactoryOperation.Write)]
-    bool CanWrite(IOrder target);
-}
-
-public class OrderAuthorization : IOrderAuthorization
-{
-    public bool CanWrite(IOrder target)
-    {
-        return target.Status != "Locked"; // Deny writes to locked records
-    }
-}
+<!-- snippet: authorization-target -->
+<a id='snippet-authorization-target'></a>
+```cs
+[AuthorizeFactory(AuthorizeFactoryOperation.Write)]
+bool CanWrite(IParamAuthOrder target);
 ```
+<sup><a href='/src/Design/Design.Domain/Aggregates/ParamAuthOrderAuth.cs#L131-L134' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-target' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 **CanXxx generation with target parameters:** When Write auth has a target parameter, `CanInsert`/`CanUpdate`/`CanDelete` are **not generated** — the entity isn't available before the write operation. `CanSave` is the exception: two overloads are generated because the caller has the entity in hand when deciding whether to save. `CanSave()` (parameterless) runs only non-target Write auth methods (role checks). `CanSave(target)` runs ALL Write auth methods — both non-target and target-parameterized. `CanCreate`/`CanFetch` are still generated when Read auth is parameterless.
 
@@ -162,7 +149,37 @@ services.AddHttpContextAccessor();
 
 The server also calls `app.UseAuthentication()` and `app.UseAuthorization()` before `app.UseNeatoo()`, so the policy sees the signed-in user.
 
-**Note:** Multiple [AspAuthorize] attributes use AND logic (all must pass).
+Roles, and several attributes on one operation, which all must pass:
+
+<!-- snippet: authorization-policy-roles -->
+<a id='snippet-authorization-policy-roles'></a>
+```cs
+[Remote, Insert]
+[AspAuthorize(Roles = "Admin,Manager")]
+internal Task Insert()
+{
+    Id = Random.Shared.Next(1000, 9999);
+    return Task.CompletedTask;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L127-L135' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-roles' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+<!-- snippet: authorization-policy-multiple -->
+<a id='snippet-authorization-policy-multiple'></a>
+```cs
+[Remote, Update]
+[AspAuthorize("RequireAuthenticated")]
+[AspAuthorize(Roles = "Manager")]
+internal Task Update()
+{
+    return Task.CompletedTask;
+}
+```
+<sup><a href='/src/Design/Design.Domain/Aggregates/SecureOrder.cs#L158-L166' title='Snippet source file'>snippet source</a> | <a href='#snippet-authorization-policy-multiple' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
+
+`[AspAuthorize]` needs `IAspAuthorize`, which `AddNeatooAspNetCore` registers; an operation that carries it always runs its check on the server.
 
 ---
 
@@ -462,40 +479,9 @@ var fetched = await orderFactory.Fetch(order!.Id);      // serialized again
 
 ---
 
-## NuGet Package Structure
+## Packages and generated code
 
-When consuming RemoteFactory via NuGet:
-
-```xml
-<PackageReference Include="Neatoo.RemoteFactory" Version="x.y.z" />
-<PackageReference Include="Neatoo.RemoteFactory.AspNetCore" Version="x.y.z" />
-```
-
-**Neatoo.RemoteFactory**: Core library + embedded source generator
-**Neatoo.RemoteFactory.AspNetCore**: Server-side ASP.NET Core integration
-
----
-
-## Framework Support
-
-RemoteFactory supports:
-- .NET 9.0 (STS)
-- .NET 10.0 (LTS)
-
-Both frameworks are included in the NuGet packages.
-
----
-
-## Generated Code Location
-
-Generated code appears in:
-```
-obj/Debug/{tfm}/generated/Neatoo.Generator/Neatoo.Factory/
-```
-
-Files generated:
-- `{Namespace}.{TypeName}Factory.g.cs` - Factory interface and implementation
-- `{Namespace}.{TypeName}.Ordinal.g.cs` - Serialization implementation
+`Neatoo.RemoteFactory` is the core library with the source generator embedded; `Neatoo.RemoteFactory.AspNetCore` is the server's ASP.NET Core integration. Both target .NET 9.0 and .NET 10.0. Where the generated files land: [setup.md](setup.md#generated-code).
 
 ---
 
@@ -513,67 +499,28 @@ A derived class needs its own `[Factory]` to get a factory, whatever its base ca
 - their operation methods (`[Create]`, `[Fetch]`, `[Insert]`, `[Update]`, `[Delete]`, `[Execute]`), with their `[Remote]`, `[Service]` and `[AspAuthorize]`, but not their constructors;
 - the nearest base class's `[AuthorizeFactory<T>]`, when the derived class declares none.
 
+The worked example is in [polymorphic-hierarchy.md](polymorphic-hierarchy.md).
+
 ---
 
 ## Troubleshooting
 
 ### "Type not registered" at runtime
 
-The factory method wasn't registered. Check:
-1. Is the assembly passed to `AddNeatooRemoteFactory()`?
-2. Does the class have `[Factory]` attribute?
-3. Does the method have appropriate operation attribute (`[Create]`, `[Fetch]`, etc.)?
+The factory was not registered. Check that the assembly is passed to `AddNeatooRemoteFactory` (client) and `AddNeatooAspNetCore` (server), that the class carries `[Factory]` itself (a base class's does not count), and that the method carries an operation attribute. For a `[Service]` parameter, check that the service is registered on the tier where the method runs: a `public` local method resolves it on the client.
 
-### Serialization returns null properties
+### A property is empty after the round trip
 
-Properties need public setters. Change:
-```csharp
-public int Id { get; private set; }  // Won't serialize
-```
-To:
-```csharp
-public int Id { get; set; }  // Will serialize
-```
+The serializer writes only what it can set on the other side. A `private` or `protected` setter is dropped with no diagnostic; make it public ([anti-patterns.md](anti-patterns.md#12-a-private-setter)).
 
-### CS0260 compilation error
+### Serialization falls back to the named shape
 
-Missing `partial` keyword:
-```csharp
-[Factory]
-public partial class MyEntity { }  // Add 'partial'
-```
+A class factory without `partial` gets no ordinal serializer and no diagnostic; add `partial` ([anti-patterns.md](anti-patterns.md#13-a-missing-partial)). A static `[Factory]` class without it is NF0101.
 
-### Method-injected service is null
+### A method-injected service is null
 
-Services injected via method parameters are NOT serialized:
-```csharp
-// This field will be null after round-trip
-private IService _service;
+A `[Service]` parameter's service is used inside its method and never crosses the wire; a field holding it is empty on the client. Inject a service the object needs on both tiers through its constructor ([service-injection.md](service-injection.md)).
 
-[Remote, Create]
-internal void Create([Service] IService service)
-{
-    _service = service;  // WRONG - will be null on client
-}
-```
+### A child operation shows up on the client's factory interface
 
-Use constructor injection if you need the service after serialization:
-```csharp
-public MyEntity([Service] IService service)
-{
-    _service = service;  // Available on both sides
-}
-```
-
-### N+1 remote calls performance issue
-
-Child entities should NOT have `[Remote]`:
-```csharp
-// WRONG - each line causes a remote call
-[Factory]
-internal partial class Assignment : IAssignment
-{
-    [Remote, Create]  // Remove [Remote]
-    internal void Create() { }
-}
-```
+It carries `[Remote]`. A child's persistence operations are `internal` and take no `[Remote]`: the call is already on the server when they run ([anti-patterns.md](anti-patterns.md#5-remote-on-a-childs-operation)).
