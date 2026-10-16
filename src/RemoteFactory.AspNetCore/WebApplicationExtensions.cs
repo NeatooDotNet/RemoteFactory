@@ -88,6 +88,25 @@ public static class WebApplicationExtensions
 			{
 				linkedCts?.Dispose();
 			}
+		})
+		.AddEndpointFilter(async (context, next) =>
+		{
+			// A cancellation caused by the client leaving or the server stopping is not a
+			// server failure (#116). Escaping, it would reach the pipeline as a 500 that
+			// request logging writes at Error with a stack trace. Any other
+			// OperationCanceledException is the operation's own, and still escapes.
+			try
+			{
+				return await next(context);
+			}
+			catch (OperationCanceledException) when (context.HttpContext.RequestAborted.IsCancellationRequested)
+			{
+				return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);
+			}
+			catch (OperationCanceledException) when (hostLifetime?.ApplicationStopping.IsCancellationRequested == true)
+			{
+				return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+			}
 		});
 
 		return app;
