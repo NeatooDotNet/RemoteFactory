@@ -137,7 +137,7 @@ public static Task<Invoice> GenerateInvoice(int orderId, [Service] IInvoiceServi
 public int Id { get; private set; }
 ```
 
-**Fix:** a public setter on every property that must cross the wire. A `private` or `protected` setter is dropped with no diagnostic; an analyzer is pending.
+**Fix:** a public setter on every property that must cross the wire. A `private` or `protected` setter is dropped with no diagnostic; an analyzer is pending. This is a plain `[Factory]` class's rule. A Neatoo partial property serializes through its property manager, so a private setter does not drop it; its setter visibility is the Neatoo skill's.
 
 ## 13. A missing `partial`
 
@@ -187,7 +187,7 @@ CS0051 occurs only when an `internal` type appears in a `public` method of a `pu
 | A `public` static command | Conflicts with the delegate | `private static _Name` |
 | An always-`true` result | Tells the caller nothing | `Task` |
 | A class `[Execute]` returning another type | Fails in generated code | A static command |
-| A `private` or `protected` setter | Dropped from serialization | A public setter |
+| A `private` or `protected` setter on a plain `[Factory]` class | Dropped from serialization | A public setter (a Neatoo partial property is not affected) |
 | No `partial` | Named serialization, or NF0101 | `partial` |
 | A method service in a field | Null on the client | Use it in the method, or inject in the constructor |
 | Parameter defaults | Dropped | Pass every argument |

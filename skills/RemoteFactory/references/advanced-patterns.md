@@ -511,7 +511,7 @@ The factory was not registered. Check that the assembly is passed to `AddNeatooR
 
 ### A property is empty after the round trip
 
-The serializer writes only what it can set on the other side. A `private` or `protected` setter is dropped with no diagnostic; make it public ([anti-patterns.md](anti-patterns.md#12-a-private-setter)).
+On a plain `[Factory]` class the serializer writes only what it can set on the other side. A `private` or `protected` setter is dropped with no diagnostic; make it public ([anti-patterns.md](anti-patterns.md#12-a-private-setter)). A Neatoo partial property serializes through its property manager, so this is not its cause.
 
 ### Serialization falls back to the named shape
 

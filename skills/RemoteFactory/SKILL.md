@@ -62,6 +62,8 @@ A mainstream .NET developer reaches for these under load. Each row is the questi
 | A screen that displays server truth | Read model: a plain `[Factory]` class with `[Fetch]` only | `OrderSummary` [below](#read-model) |
 | A value | A `record`. It crosses the wire with no factory; it takes `[Factory]` only when building it needs a service or authorization | `TaxRate` in [advanced-patterns.md](references/advanced-patterns.md) |
 
+A Neatoo entity already implements `IFactorySaveMeta`: `EntityBase` sets `IsNew` from the operation lifecycle and `IsDeleted` through `Delete()`, and its setters are protected, so an entity's operations never assign them. The hand-set flags in this skill's examples are for a plain class.
+
 The context loads its order in one round trip, works on it on the client, and saves through the order's root factory. Its factories arrive through the constructor, so they exist on whichever tier holds it:
 
 <!-- snippet: skill-context-checkout -->
@@ -355,7 +357,7 @@ A static method has no promotion to do: on a static factory or a class-level sta
 | Should interface-factory methods have attributes? | No. Every method of an interface factory is a remote entry point; an operation attribute on one is NF0106 |
 | Which `[AuthorizeFactory<T>]` scopes apply on an interface factory? | `Execute` and `Read`. Per-method checks match on parameters; a refusal throws `NotAuthorizedException` on the client. [interface-factory.md](references/interface-factory.md) |
 | Can `[Execute]` return `void`? | No (NF0102). `Task` when there is no result; `Task<T>` when the caller needs one. A class-level `[Execute]` returns `Task<T>` of the class's own service type |
-| Do properties need public setters? | Yes. The serializer writes only what it can set on the other side |
+| Do properties need public setters? | On a plain `[Factory]` class, yes: the serializer writes only what it can set on the other side. A Neatoo partial property serializes through Neatoo's property manager, which bypasses setters; its setter visibility is the Neatoo skill's |
 | Do I need `partial`? | Yes, on every `[Factory]` class |
 | How do I defer loading a child collection? | A `[Remote, Fetch]` on the child list's factory, called when the data is needed |
 | How do I handle a factory event on the server? | A `[FactoryEventHandler<T>]` class with a `static` matching method; it runs in the caller's scope. [factory-events.md](references/factory-events.md) |
@@ -373,7 +375,7 @@ A static method has no promotion to do: on a static factory or a class-level sta
 Open defects and missing diagnostics a new library meets, each with its issue or the analyzer it waits for.
 
 - A `[Factory]` class (not a static one) without `partial` still gets a factory but silently serializes in the named shape - analyzer pending.
-- A property with a `private` or `protected` setter is silently left out of serialization - analyzer pending.
+- On a plain `[Factory]` class, a property with a `private` or `protected` setter is silently left out of serialization - analyzer pending. A Neatoo partial property is not affected.
 - A class-level `[Execute]` that does not return `Task<T>` of the containing type fails inside the generated code - analyzer pending.
 - A `[Service]` parameter before a value parameter breaks a static `[Execute]` in generated code, with no diagnostic - [#135](https://github.com/NeatooDotNet/RemoteFactory/issues/135). Put value parameters first.
 - On an interface factory with `[AuthorizeFactory<T>]`, an auth method whose parameter some interface methods lack fails CS7036 in generated code - [#123](https://github.com/NeatooDotNet/RemoteFactory/issues/123). Keep every authorized method on the parameter the auth method takes.

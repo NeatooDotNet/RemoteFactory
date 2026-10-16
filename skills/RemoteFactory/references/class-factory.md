@@ -117,7 +117,7 @@ public bool IsDeleted { get; set; }
 
 A class that leaves out the operation `Save` routes to gets a generated `Save` that throws `NotImplementedException` on that branch: a new object with no `[Insert]`, a loaded one with no `[Update]`, a deleted one with no `[Delete]` (new-and-deleted included, so the "nothing" row needs a `[Delete]`). Declare every operation the object's states can reach.
 
-Both properties are public `get; set;`: routing happens on the server, so they must cross the wire. `Save` returns the saved instance - from the client, a new one - so the caller reassigns:
+Both properties are public `get; set;`: routing happens on the server, so they must cross the wire. That is a plain class's shape. A Neatoo entity already implements `IFactorySaveMeta`: `EntityBase` sets `IsNew` from the operation lifecycle and `IsDeleted` through `Delete()`, with protected setters, so its operations never assign them. `Save` returns the saved instance - from the client, a new one - so the caller reassigns:
 
 <!-- snippet: save-usage -->
 <a id='snippet-save-usage'></a>
@@ -361,7 +361,7 @@ internal async Task<bool> Fetch(Guid id, [Service] IOrderDbContext db)
 ## Rules
 
 1. `partial` on every `[Factory]` class; the generator adds serialization to it.
-2. Public setters on every property that must cross the wire.
+2. On a plain class, public setters on every property that must cross the wire. A Neatoo partial property serializes through its property manager; its setter visibility is the Neatoo skill's.
 3. `[Remote] internal` on the operations the client calls; `[Remote] public` is NF0105.
 4. Child operations `internal`, never `[Remote]`; a child's `Create` `public` and local.
 5. A class-level `[Execute]` is `static` and returns `Task<T>` of the class's service type.
