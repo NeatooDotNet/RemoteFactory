@@ -395,7 +395,7 @@ Each file is a mechanism reference under the decisions above.
 - [setup.md](references/setup.md) - server and client configuration, the Blazor page
 - [factory-events.md](references/factory-events.md) - handlers, dispatch phases, coalescing, the client relay, `RaiseOptions`
 - [advanced-patterns.md](references/advanced-patterns.md) - authorization, correlation, entity duality, value objects, child collections, testing on client and server containers
-- [polymorphic-hierarchy.md](references/polymorphic-hierarchy.md) - several concrete types over one generic base
+- [polymorphic-hierarchy.md](references/polymorphic-hierarchy.md) - concrete types over an abstract base: what a derived `[Factory]` inherits, and what it must declare itself
 - [trimming.md](references/trimming.md) - IL trimming for the Blazor client
 - [anti-patterns.md](references/anti-patterns.md) - the mistakes, each labelled WRONG, with the fix
 

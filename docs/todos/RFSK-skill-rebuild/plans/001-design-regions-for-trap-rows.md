@@ -103,7 +103,7 @@ The flip step was not run: temporarily breaking production code to watch a test 
 | Order line: root by id, null, stays a child | Required | `[integration]` | `…OrderLineDualityTests.OrderLine_FetchedAsARoot_ByItsId`, `…OrderLine_FetchedAsARoot_IsNull_WhenNoOrderHoldsIt`, `…OrderLine_StaysAChild_OfItsOrder` | ✓ |
 | `OpenDraft`: existing draft, else new unsaved | Required | `[integration]` | `…CreateOrFetchTests.OpenDraft_FetchesTheCustomersDraft_WhenOneExists`, `…OpenDraft_CreatesANewUnsavedOrder_WhenTheCustomerHasNoDraft` | ✓ |
 | Region names unique; mdsnippets clean, attribution drift only | Required | `[explicit-skip: tooling check]` | all 8 regions extracted; 7 markdown files changed, 0 lines besides `snippet source` attributions | ✓ |
-| Both solutions green, both TFMs | Required | `[explicit-skip: meta-bullet]` | `reviews/001-*.log`: unit 871, integration 664 (5 skipped), Design 177 (1 skipped). One net9.0 unit failure, `CanMethod_Public_ReturnsAuthorized_WhenAllowed`, is the #100 flake; green on re-run (`001-unit-rerun.log`) | ✓ |
+| Both solutions green, both TFMs | Required | `[explicit-skip: meta-bullet]` | `reviews/001-test.log` and `001-design-test.log` (a fresh full run after the gate): unit 871, integration 664 (5 skipped), Design 177 (1 skipped), green on both TFMs. The first run's net9.0 failure, `CanMethod_Public_ReturnsAuthorized_WhenAllowed`, was the #100 flake; that run is superseded | ✓ |
 
 ---
 

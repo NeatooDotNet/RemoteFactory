@@ -82,7 +82,7 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 
 ## Dismissed
 
-- 
+- s7 (RFSK-006) saves on the server without reassigning, and never uses either object afterwards · not a fall: nothing reads a stale instance, and the skill's T13 row already says "reassign either way"; a fresh-session output, not product code · RFSK-006 Observation 3
 
 ## Parked
 
@@ -104,6 +104,11 @@ AC-11 rides whichever plan is open when the Neatoo session sends the wording; if
 - **Finding:** Every Required criterion and every Optional one except AC-11 is met by a Done plan. The Neatoo session has sent no wording for AC-11, and the standing orders forbid writing it.
 - **Decision:** Accept the Optional gap; park it as #173. The Punchlist is empty, so the sweep has nothing to work.
 - **Follow-up:** #173
+
+### 2026-10-16 — Close-out audit round 1 · serves AC-5, AC-11, AC-12
+- **Finding:** Grade C. V1: RFSK-006's "reported to the Neatoo session at close" was untraced. Callouts: the `SKILL.md` index misdescribed the hierarchy page (AC-5); the missing-operation half of VisionAlignment F5 was absent (AC-12); #171 and #173 lacked an origin line and had wrong locations.
+- **Decision:** Fix all of them on `RFSK-closeout-fixes`. The SKR-007 isolation finding was sent to `desktopNeatooSkills`. Observation 3 is Dismissed. The skill index and the `class-factory.md` save table were edited and re-synced. The issue bodies were corrected. Then re-audit.
+- **Follow-up:** `reviews/close-out-audit.md`
 
 ---
 

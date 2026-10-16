@@ -115,6 +115,8 @@ public bool IsDeleted { get; set; }
 | false | true | `[Delete]` |
 | true | true | nothing |
 
+A class that leaves out the operation `Save` routes to gets a generated `Save` that throws `NotImplementedException` on that branch: a new object with no `[Insert]`, a loaded one with no `[Update]`, a deleted one with no `[Delete]` (new-and-deleted included, so the "nothing" row needs a `[Delete]`). Declare every operation the object's states can reach.
+
 Both properties are public `get; set;`: routing happens on the server, so they must cross the wire. `Save` returns the saved instance - from the client, a new one - so the caller reassigns:
 
 <!-- snippet: save-usage -->
