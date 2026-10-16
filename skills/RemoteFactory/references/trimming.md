@@ -137,7 +137,7 @@ Put the same annotation on the wrapper's `T`, or close the generic at the bounda
 
 ## `IFactorySaveMeta` on a trimmed client
 
-`Save` routes on the server from `IsNew` and `IsDeleted`; if either drops out of the payload, every save routes to Insert and Delete does nothing. They are public `get; set;`:
+`Save` routes on the server from `IsNew` and `IsDeleted`; if either drops out of the payload, every save routes to Insert and Delete does nothing. On a plain class they are public `get; set;` (a Neatoo entity's come from `EntityBase` and serialize with its other state):
 
 <!-- snippet: save-ifactorysavemeta -->
 <a id='snippet-save-ifactorysavemeta'></a>
