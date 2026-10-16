@@ -9,7 +9,7 @@
 **Plan-review opt-in:** No (no code; a test of the skill)
 **Code-review opt-in:** Yes (the scoring is a judgment; a second reader checks it against the outputs)
 **Branch:** RFSK-006-fresh-session-and-sync
-**PR:** —
+**PR:** #172
 
 ---
 
