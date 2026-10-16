@@ -54,6 +54,16 @@ public class NotAuthorizedException : Exception
 	{
 	}
 
+	/// <summary>
+	/// Rebuilds, on the client, an exception the server sent as a denial: every part as
+	/// the server's exception had it, the message included.
+	/// </summary>
+	internal NotAuthorizedException(string message, Authorized? authorized, string? context) : base(message)
+	{
+		this.Authorized = authorized;
+		this.Context = context;
+	}
+
 	public NotAuthorizedException()
 	{
 	}

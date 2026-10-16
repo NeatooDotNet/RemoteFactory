@@ -155,7 +155,7 @@ public class ProductCatalog : IProductCatalog { ... }
 
 ## Authorization
 
-`[AuthorizeFactory<T>]` on the interface applies an authorization class to its methods. The checks run on the server before the implementation, and the generated `I{Name}Factory` gains a `Can*` method for each method (`ICustomerDirectoryFactory.CanGetCustomer`). A method has no result to carry a refusal, so a refusal is an exception, which the client raises as `HttpRequestException`. Design's customer directory carries one. See [Authorization — Authorization Failures](authorization.md#authorization-failures).
+`[AuthorizeFactory<T>]` on the interface applies an authorization class to its methods. The checks run on the server before the implementation, and the generated `I{Name}Factory` gains a `Can*` method for each method (`ICustomerDirectoryFactory.CanGetCustomer`). A method has no result to carry a refusal, so a refusal is a `NotAuthorizedException`, thrown on the server and thrown again on the client. Design's customer directory carries one. See [Authorization — Authorization Failures](authorization.md#authorization-failures).
 
 ## Differences from Class Factory
 

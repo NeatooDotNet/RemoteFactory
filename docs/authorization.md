@@ -273,7 +273,7 @@ A class factory's refusal is a result:
 Over HTTP the refusal travels in a normal response. The client then sees the `null`, or `NotAuthorizedException` from `Save`, as on the server. `[AspAuthorize]` on a class-factory method refuses the same way; an anonymous caller is refused too (since v1.10.6). See [ASP.NET Core Integration — When a Call Fails](aspnetcore-integration.md#when-a-call-fails).
 
 An interface factory's method, and a static factory's `[Execute]`, have no result to carry a refusal:
-- **An `[AuthorizeFactory]` refusal** is an exception on the server, so the response is a 500. The client raises `HttpRequestException`.
+- **An `[AuthorizeFactory]` refusal** is a `NotAuthorizedException` on the server. `UseNeatoo()` answers it with a 403 that carries the exception, and the client throws it again, with the same `Message` and `Context` (#103). Code that catches `NotAuthorizedException` therefore works the same on either tier.
 - **An `[AspAuthorize]` refusal forbids the request** through the default scheme's forbid. JWT bearer answers 403, which the client raises as `HttpRequestException`. The cookie scheme redirects instead. With no scheme registered, the forbid itself throws, and the response is a 500.
 
 ### What a Denial Says

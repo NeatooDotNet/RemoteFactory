@@ -250,6 +250,14 @@ public static class LocalServer
 				// context.Forbid() have already been called
 				return new RemoteResponseDto(string.Empty);
 			}
+			catch (NotAuthorizedException ex)
+			{
+				// A refusal, not a failure: the host answers it as a denial the client
+				// rethrows (UseNeatoo's endpoint, #103), so it is not logged as an error.
+				sw.Stop();
+				log.RemoteRequestNotAuthorized(correlationId, delegateTypeName, ex.Message);
+				throw;
+			}
 			catch (Exception ex) when (ex is not AspForbidException)
 			{
 				sw.Stop();

@@ -99,6 +99,18 @@ public static class WebApplicationExtensions
 			{
 				return await next(context);
 			}
+			catch (NotAuthorizedException ex)
+			{
+				// A refusal thrown on the server: an interface-factory method's or a static
+				// [Execute]'s auth check, or the operation's own (#103). It is sent as a 403
+				// whose body the client rethrows as the same NotAuthorizedException; escaping,
+				// it would reach the client as a 500.
+				context.HttpContext.Response.Headers[NotAuthorizedResponseDto.HeaderName] = "true";
+				return Results.Json(
+					NotAuthorizedResponseDto.From(ex),
+					NeatooTransportJsonContext.Default.NotAuthorizedResponseDto,
+					statusCode: StatusCodes.Status403Forbidden);
+			}
 			catch (OperationCanceledException) when (context.HttpContext.RequestAborted.IsCancellationRequested)
 			{
 				return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);

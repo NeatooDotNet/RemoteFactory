@@ -30,6 +30,16 @@ public static class MakeRemoteDelegateRequestHttpCallImplementation
 
 			var response = await httpClient.SendAsync(httpRequest, cancellationToken);
 
+			// A refusal the server sent as a denial (#103): rethrown here as it was thrown there.
+			// A 403 without the header is someone else's, and fails as any other status does.
+			if (response.StatusCode == System.Net.HttpStatusCode.Forbidden
+				&& response.Headers.Contains(NotAuthorizedResponseDto.HeaderName))
+			{
+				var denial = await response.Content.ReadFromJsonAsync(NeatooTransportJsonContext.Default.NotAuthorizedResponseDto, cancellationToken)
+					?? throw new HttpRequestException("Not-authorized response with an empty body.", null, response.StatusCode);
+				throw denial.ToException();
+			}
+
 			if (!response.IsSuccessStatusCode)
 			{
 				var issue = await response.Content.ReadAsStringAsync(cancellationToken);
