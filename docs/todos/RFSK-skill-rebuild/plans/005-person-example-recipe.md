@@ -51,9 +51,9 @@
 
 ## Acceptance
 
-- [ ] `PersonModel` has no `[JsonInclude]`, `[DynamicDependency]`, `[DynamicallyAccessedMembers]` or private setter, and is `partial` `[explicit-skip: grep; the example has no test project]`
-- [ ] The generator emits an ordinal serializer for `PersonModel` that reads and writes `IsNew` and `IsDeleted` `[explicit-skip: inspect the generated file; no test project]`
-- [ ] Both solutions build with no new warning and their tests stay green `[explicit-skip: meta-bullet]`
+- [ ] `PersonModel` has no `[JsonInclude]`, `[DynamicDependency]`, `[DynamicallyAccessedMembers]` or private setter, and is `partial` `[explicit-skip: grep; the example has no test project]` · Optional
+- [ ] The generator emits an ordinal serializer for `PersonModel` that reads and writes `IsNew` and `IsDeleted` `[explicit-skip: inspect the generated file; no test project]` · Optional
+- [ ] Both solutions build with no new warning and their tests stay green `[explicit-skip: meta-bullet]` · Optional
 
 ---
 

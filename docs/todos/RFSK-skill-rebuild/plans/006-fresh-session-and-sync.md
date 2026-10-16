@@ -100,7 +100,7 @@ No code changed on this branch, so the full suite was not re-run here; the arc's
    - run1 is kept as `006-runs/run1/` and not scored.
    - All ten scenarios ran again as run2, under `--permission-mode dontAsk`, `--strict-mcp-config`, Read, Glob and Grep scoped to `~/.claude/skills/**`, and denies on the shells, agents, web tools, edit tools and the source, temp and project trees.
    - The isolation was proven by a probe first and verified from every transcript afterwards.
-   - SKR-007's sessions ran the same way and also used Bash; that is reported to the Neatoo session at close.
+   - SKR-007's sessions ran the same way and also used Bash. That was reported to the Neatoo session (`desktopNeatooSkills`) on 2026-10-16, at the close-out audit (todo Discovery Log).
 2. **2026-10-16, the T18 row (run2 s10).** s10's explanation gave the habit's answer: "`[Remote]` runs on the server … without `[Remote]` runs on the client". It came from `references/setup.md`, whose factory-modes sentence ended "everything else runs on the client".
    - The sentence now says the client's call to a `[Remote]` operation crosses, any other call runs on the tier that makes it, the same operation called on the server runs there locally, and `internal` without `[Remote]` is server-only.
    - The skill was re-synced and s10 re-run as run3, which passes.
