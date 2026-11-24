@@ -1,5 +1,9 @@
 # Neatoo RemoteFactory
 
+> **RemoteFactory is now [DTZero](https://github.com/NeatooDotNet/DTZero).** This repository is archived and receives no further changes, and its open issues have moved to DTZero.
+>
+> DTZero 2.0.0 behaves exactly as RemoteFactory 1.10.9; every public name changes. `Neatoo.RemoteFactory` is now [`DTZero`](https://www.nuget.org/packages/DTZero), and `Neatoo.RemoteFactory.AspNetCore` is now [`DTZero.AspNetCore`](https://www.nuget.org/packages/DTZero.AspNetCore). The [v2.0.0 migration guide](https://github.com/NeatooDotNet/DTZero/blob/main/docs/release-notes/v2.0.0.md#migration-guide) lists what the compiler does not catch: the endpoint and headers, the trimming feature switch, and log filters.
+
 **One domain model on the client and the server, with no DTOs and no controllers between them**
 
 When the library that defines your objects is loaded on both tiers, as it is with Blazor WebAssembly, the client/server seam needs no DTOs and no API controllers. RemoteFactory is a Roslyn source generator that makes that practical: it generates the factories and the serialization that carry your objects and their operations across the wire, through one endpoint the library maps. Persistence routing (Create, Fetch, then Save to Insert, Update or Delete) is one use of that.

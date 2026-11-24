@@ -7,6 +7,8 @@ version: 2.0.0
 
 # RemoteFactory
 
+> **RemoteFactory is now DTZero, and this skill is superseded by the DTZero skill** at https://github.com/NeatooDotNet/DTZero/tree/main/skills/DTZero. This skill describes RemoteFactory 1.10.9 (`Neatoo.RemoteFactory`). DTZero 2.0.0 behaves the same, but every public name changes: the `DTZero` and `DTZero.AspNetCore` packages, the `DTZero` namespace, `AddDTZero`, `AddDTZeroAspNetCore`, `UseDTZero`, and the `DTZero.IsServerRuntime` feature switch. For a DTZero project, use the DTZero skill.
+
 RemoteFactory is a Roslyn source generator for 3-tier .NET applications. When the library that holds the domain objects is loaded on both tiers, the client/server seam needs no DTOs and no controllers: RemoteFactory generates the factories and their serialization at compile time, and one endpoint carries every call. It works with any class that carries `[Factory]` - a Neatoo entity, a plain class, a static command, a record.
 
 Every C# block in this skill and its references is compiled and tested in RemoteFactory's `src/Design` projects, on real client and server containers. The only hand-written code is a short block labelled WRONG.
